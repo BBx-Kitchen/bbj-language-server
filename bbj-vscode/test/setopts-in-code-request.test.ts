@@ -52,12 +52,12 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
     }
 
     /**
-     * D-02/D-04 negative (plan 88-11, gap closure G-88-3): a quoted absolute argument is not a
-     * `HEX_STRING` token BBj ever hex-decodes -- it is the exact invalid form the composer used
-     * to emit before plan 88-10's writer fix. decodeInCode must report not-found here, never an
-     * edit target, since editable/found follow the decoder's own verdict (T-88-01).
+     * A quoted absolute argument is not a `HEX_STRING` token BBj ever hex-decodes -- it is the
+     * exact invalid form the composer previously emitted before its in-place writer was fixed.
+     * decodeInCode must report not-found here, never an edit target, since editable/found follow
+     * the decoder's own verdict (T-88-01).
      */
-    test('an absolute SETOPTS "$hex$" statement (quoted -- the invalid form the composer used to emit before plan 88-10) returns not-found: no decode, no edit offered', async () => {
+    test('an absolute SETOPTS "$hex$" statement (quoted -- the invalid form the composer previously emitted) returns not-found: no decode, no edit offered', async () => {
         const source = 'SETOPTS "$08004020$"';
         const document = await parseSource(source);
         const offset = source.indexOf('$08004020$');
@@ -179,9 +179,9 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
     });
 
     /**
-     * The absolute edit contract's round trip (plan 88-11, gap closure G-88-3): `hexRange` spans
-     * the whole `$…$` token (delimiter-inclusive, per the bare-form test above) and
-     * `bbjHexLiteral` re-emits a complete `$…$` literal -- exactly what every in-place writer
+     * The absolute edit contract's round trip: `hexRange` spans the whole `$…$` token
+     * (delimiter-inclusive, per the bare-form test above) and `bbjHexLiteral` re-emits a
+     * complete `$…$` literal -- exactly what every in-place writer
      * (VS Code `setopts-composer-webview.ts`, IntelliJ `ComposerLauncher.java`) splices into that
      * range. Neither half is sufficient alone: this is the one test that exercises both together
      * and would fail with doubled or deleted delimiters if either side changed without the other.

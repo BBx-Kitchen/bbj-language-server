@@ -71,11 +71,11 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
     });
 
     /**
-     * D-02 narrowing (plan 88-11, gap closure G-88-3): a quoted `STRING_LITERAL` is never a
-     * decodable hex literal, even when its content looks like one -- BBj itself never
-     * hex-decodes it. `parseHexLiteral` must consult the raw CST source text (the only place a
-     * `STRING_LITERAL` and a `HEX_STRING` remain distinguishable) rather than the converted
-     * value, which the value converter has already made byte-identical for both terminals.
+     * A quoted `STRING_LITERAL` is never a decodable hex literal, even when its content looks
+     * like one -- BBj itself never hex-decodes it. `parseHexLiteral` must consult the raw CST
+     * source text (the only place a `STRING_LITERAL` and a `HEX_STRING` remain distinguishable)
+     * rather than the converted value, which the value converter has already made
+     * byte-identical for both terminals.
      */
     test('detectSetOptsShape returns no shape for a quoted absolute hex literal ("$08004020$") -- BBj never hex-decodes a STRING_LITERAL', async () => {
         const { leaf } = await parseAndFindLeaf('SETOPTS "$08004020$"', '$08004020$');
@@ -121,10 +121,10 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
     test('detectSetOptsShape returns undefined for non-hex characters (quoted-string form, valid parse)', async () => {
         // The bare HEX_STRING terminal (`\$[0-9a-fA-F]*\$`) cannot even lex "ZZ" between the
         // delimiters, so this fixture MUST stay quoted -- a quoted STRING_LITERAL accepts any
-        // content and reaches the scanner as a well-formed StringLiteral. Since plan 88-11, the
-        // quoted form is rejected by parseHexLiteral's own raw-source-text shape test before
-        // parseVector ever runs; the undefined result is now the same "not a HEX_STRING token"
-        // verdict every other quoted fixture gets, not a parseVector-specific rejection.
+        // content and reaches the scanner as a well-formed StringLiteral. The quoted form is
+        // rejected by parseHexLiteral's own raw-source-text shape test before parseVector ever
+        // runs; the undefined result is now the same "not a HEX_STRING token" verdict every
+        // other quoted fixture gets, not a parseVector-specific rejection.
         const { leaf } = await parseAndFindLeaf('SETOPTS "$ZZ$"', '$ZZ$');
         const target = setoptsHoverTarget(leaf)!;
         expect(detectSetOptsShape(target)).toBeUndefined();
@@ -307,9 +307,9 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('unparseable-mask');
     });
 
-    /** D-02 narrowing (plan 88-11): a quoted mask literal is a plain string, never a hex decode,
-     * so a chain built on one must never be folded to a false "safe" -- reported unsafe with the
-     * same unparseable-mask reason a genuinely non-literal mask (a variable) already gets. */
+    /** A quoted mask literal is a plain string, never a hex decode, so a chain built on one must
+     * never be folded to a false "safe" -- reported unsafe with the same unparseable-mask reason
+     * a genuinely non-literal mask (a variable) already gets. */
     test('a chain reassignment whose single mask literal is quoted ("$08$") is reported unsafe with unsafeReason "unparseable-mask", never safe with a folded effect', async () => {
         const target = await parseAndFindSetOptsTarget('Z$=OPTS\nZ$=IOR(Z$,"$08$")\nSETOPTS Z$');
         const shape = traceOptsChain(target)!;
@@ -647,8 +647,8 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
         expect(markdown).not.toContain('Sets these options');
     });
 
-    /** D-02 narrowing (plan 88-11): the mask-call decode site consults the same raw-source-text
-     * shape test as the absolute and chain-link sites. */
+    /** The mask-call decode site consults the same raw-source-text shape test as the absolute
+     * and chain-link sites. */
     test('detectSetOptsShape decodes a bare IOR mask-call argument (HEX_STRING form)', async () => {
         const target = await parseAndFindCallTarget('A$=IOR(A$,$08$)', 'IOR');
         const shape = detectSetOptsShape(target)!;
