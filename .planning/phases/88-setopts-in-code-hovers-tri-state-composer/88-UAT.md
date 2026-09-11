@@ -242,18 +242,25 @@ blocked: 0
     the installed bundle, that all three composer entry points are registered in package.json's
     contributes block and the compiled out/extension.cjs client bundle, that decodeInCode opens
     the edit gate on the safe chain and keeps it shut with a named reason on the byte-range
-    chains, that composeTriState renders the canonical block. Its "205ms/15000ms" codeAction
-    latency measurement is now known to have run in the wrong ordering (on an already-Validated
-    document) and must be re-run cold before it can be trusted as a clearance for this path.
+    chains, that composeTriState renders the canonical block. 88-12 fixed and this plan's Task 1
+    re-proved both server-side halves of this gap's root cause: textDocument/codeAction now
+    answers within a named 5000ms budget, gated on the same DocumentState.Linked state hover uses
+    (not the later, unbounded DocumentState.Validated); a cold-ordering probe against the
+    reinstalled bundle (workspace = repo root, codeAction issued immediately after didOpen, no
+    wait for diagnostics) measured 7ms, down from the pre-fix 56016ms hang on the same fixture.
+    88-12 also added a second, non-intention editor-context-menu entry point into the IntelliJ
+    composer, and this plan's Task 1 confirmed its action class and plugin.xml registration are
+    present in the built distributable. All of this is artifact-and-socket evidence — a spawned
+    LSP server process answering within budget, a built plugin distributable containing the new
+    action — never a rendered Alt+Enter popup or a working right-click menu in a live IDE.
   missing:
-    - "A fix that decouples the IntelliJ composer entry point from LSP4IJ's blocking, no-timeout
-      textDocument/codeAction wait — e.g. bound the wait, relax/lower the BBj codeAction handler's
-      required document state, answer null fast when the workspace hasn't settled, and/or add a
-      non-intention IntelliJ entry point (editor action/context-menu, bypassing
-      ShowIntentionActionsHandler) so the composer is reachable even while intention-search is
-      blocked on an unrelated slow intention"
-    - "Re-run 88-08's codeAction latency gate in the correct COLD ordering (fresh didOpen, before
-      DocumentState.Validated) rather than the warm/already-validated ordering it used"
+    - "The live Alt+Enter invocation in IntelliJ against the build named below: the composer entry
+      appears and opens, with the observed time-to-appear noted (zip bbj-intellij-0.1.0.zip,
+      sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66)"
+    - "The live invocation of the new editor-context-menu entry point on the same line, against
+      the identical build (zip bbj-intellij-0.1.0.zip, sha256
+      e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66), confirming it opens the
+      same composer"
   debug_session: .planning/debug/g-88-2-docker-pull-hang.md (supersedes .planning/debug/g-88-2-composer-never-activates.md for the IntelliJ side; the VS Code finding there stands, now confirmed fixed)
 
 - gap_id: G-88-3
@@ -327,17 +334,26 @@ blocked: 0
       issue: "lines 343-344: tautological oracle (expectation built from the same production template literal) — cannot catch this class of bug"
     - path: "bbj-vscode/test/setopts-in-code-request.test.ts"
       issue: "lines 55/91/166 fixtures use the invalid double-quoted form; line 87 pins the delimiter-inclusive hexRange contract — a fix narrowing hexRange must update this"
+  automated_evidence: |
+    88-10 fixed both manifestations at their source (one shared bbjHexLiteral/BbjHexLiteral.of
+    formatter, routed through by composeSetOptsBlock's IOR/AND lines and both hosts' absolute
+    in-place writers) and proved the emitted TEXT is valid BBj syntax with a non-tautological,
+    literal-string test oracle. 88-11 narrowed the decoder to the grammar's own HEX_STRING shape
+    so a quoted literal is rejected rather than accepted at all three decode sites, and proved the
+    absolute edit contract's range and formatter compose via a dedicated round-trip test. This
+    plan's Task 1 re-proved the fix at the shipped-artifact layer: over a real LSP connection to
+    the freshly rebuilt and reinstalled VS Code bundle, every composeTriState-returned
+    reassignment line's mask argument is a bare delimited hex literal with no quote character
+    anywhere in the composed text. All three layers — generated text, accepted text, and the
+    shipped bundle's own output over the wire — are proven; none of it drives a live BASIS
+    runtime.
   missing:
-    - "One shared bbjHexLiteral(digits) => `$${digits}$` formatter in setopts-catalog.ts, routed
-      through by every generated line kind (SETOPTS argument, IOR argument, AND argument) —
-      remove the spurious quotes at setopts-catalog.ts:455/457"
-    - "Pick exactly one side of the hexRange/hexDigits contract mismatch — either narrow hexRange
-      to the digits only (updating setopts-in-code-request.test.ts:87) or have
-      setopts-composer-webview.ts's writer re-emit the $...$ wrapper — never both"
-    - "Harden setopts-catalog.test.ts's oracle with literal expected strings (never the production
-      template) plus boundary neighbors; tighten parseHexLiteral to reject the double-quoted form
-      so invalid fixtures fail loudly instead of round-tripping"
-    - "Fix ComposerLauncher.java:501's independent IntelliJ-side duplicate of manifestation (1)"
-    - "Re-run the live mask-width falsification (test 8 / 88-RESEARCH.md Assumption A2) after the
-      quoting fix — it was never actually answered; the defect aborted the run first"
+    - "A live read of the composer's generated block in either IDE: each IOR/AND argument a bare
+      delimited hex literal with no quotes, and the in-place SETOPTS rewrite keeping its
+      delimiters — against the build named in 88-LIVE-RETEST.md"
+    - "The live BBjServices run that finally decides 88-RESEARCH.md Assumption A2 (is a
+      16-byte/32-hex-digit mask the right width against a real OPTS value). This question is
+      still UNANSWERED, not expected to pass — the quoting defect aborted the original attempt
+      before AND() ever saw two decoded operands, so a width defect here would be a NEW finding,
+      not a regression"
   debug_session: .planning/debug/g-88-3-composer-mask-literal-quoting.md
