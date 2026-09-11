@@ -87,9 +87,9 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
-        <!-- A second, non-intention door into the SETOPTS-in-code composer (#475, G-88-2 gap
-             closure): reaches the same launcher as ConfigureSetoptsInCodeIntention's Alt+Enter
-             lightbulb without entering IntelliJ's shared, single-modal intention search. -->
+        <!-- A second, non-intention door into the SETOPTS-in-code composer (#475): reaches the
+             same launcher as ConfigureSetoptsInCodeIntention's Alt+Enter lightbulb without
+             entering IntelliJ's shared, single-modal intention search. -->
         <action id="bbj.composeSetoptsInCode"
                 class="com.basis.bbj.intellij.actions.BbjComposeSetoptsInCodeAction"
                 text="Configure SETOPTS Options in Code…"
