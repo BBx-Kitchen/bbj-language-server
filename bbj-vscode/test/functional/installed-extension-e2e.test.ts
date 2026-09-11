@@ -340,6 +340,39 @@ describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code (#475
             expect(composed.text).toMatch(/AND\(/);
             expect(composed.text).toMatch(/SETOPTS /);
         }, 60_000);
+
+        test('composeTriState mask arguments are bare delimited hex literals over the installed bundle, never quoted (gap-closure round two)', async () => {
+            // The shipped-artifact counterpart of the unit oracle in setopts-catalog.test.ts: same
+            // defect class (a mask argument wrapped in a stray pair of double quotes turns a
+            // 16-byte hex-decoded value into a 34-character plain string, raising a BBj !ERROR=17
+            // at run time), asserted here against the bundle a user actually loads, over the wire.
+            const pos = findPosition(fixtureText, 'SETOPTS B$', 'B$');
+            const decode = await connection.sendRequest(SETOPTS_DECODE_IN_CODE_METHOD, {
+                uri: fixtureUri, line: pos.line, character: pos.character,
+            } satisfies SetOptsInCodeDecodeParams) as SetOptsInCodeDecodeResult;
+            expect(decode.initial).toBeDefined();
+            const entries = decode.initial!.entries;
+            expect(entries.length).toBeGreaterThanOrEqual(2);
+            const [first, second] = entries;
+
+            const composed = await connection.sendRequest(SETOPTS_COMPOSE_TRISTATE_METHOD, {
+                selection: {
+                    entries: [
+                        { byte: first.byte, mask: first.mask, state: 'set' },
+                        { byte: second.byte, mask: second.mask, state: 'clear' },
+                    ],
+                },
+            } satisfies SetOptsComposeTriStateParams) as SetOptsComposeTriStateResult;
+
+            expect(composed.text).not.toContain('"');
+            const reassignmentLines = composed.text.split('\n').filter(l => /IOR\(|AND\(/.test(l));
+            expect(reassignmentLines.length).toBeGreaterThanOrEqual(2);
+            for (const line of reassignmentLines) {
+                // A dollar delimiter, hex digits, a dollar delimiter, directly between the comma
+                // and the closing parenthesis -- a bare delimited hex literal, no quote character.
+                expect(line).toMatch(/,\$[0-9a-fA-F]+\$\)/);
+            }
+        }, 60_000);
     });
 });
 
