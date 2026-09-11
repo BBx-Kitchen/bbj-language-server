@@ -12,7 +12,7 @@ import {
 } from '../src/language/setopts-in-code-request.js';
 import { detectSetOptsShape, setoptsHoverTarget, UNSAFE_REASON_TEXT } from '../src/language/setopts-code-scanner.js';
 import { findLeafNodeAtOffset } from '../src/language/bbj-validator.js';
-import { composeSetOptsBlock, type SetOptsTriStateSelection } from '../src/setopts-catalog.js';
+import { bbjHexLiteral, composeSetOptsBlock, type SetOptsTriStateSelection } from '../src/setopts-catalog.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /**
@@ -51,7 +51,13 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
         return { uri: document.uri.toString(), line: position.line, character: position.character };
     }
 
-    test('an absolute SETOPTS "$hex$" statement returns found/editable/mode "absolute" with the hex literal range and digits', async () => {
+    /**
+     * D-02/D-04 negative (plan 88-11, gap closure G-88-3): a quoted absolute argument is not a
+     * `HEX_STRING` token BBj ever hex-decodes -- it is the exact invalid form the composer used
+     * to emit before plan 88-10's writer fix. decodeInCode must report not-found here, never an
+     * edit target, since editable/found follow the decoder's own verdict (T-88-01).
+     */
+    test('an absolute SETOPTS "$hex$" statement (quoted -- the invalid form the composer used to emit before plan 88-10) returns not-found: no decode, no edit offered', async () => {
         const source = 'SETOPTS "$08004020$"';
         const document = await parseSource(source);
         const offset = source.indexOf('$08004020$');
@@ -59,17 +65,7 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
 
         const result = handler(paramsAt(document, offset));
 
-        expect(result.found).toBe(true);
-        expect(result.editable).toBe(true);
-        expect(result.mode).toBe('absolute');
-        expect(result.chain).toBeUndefined();
-        expect(result.initial).toBeUndefined();
-        expect(result.absolute).toBeDefined();
-        expect(result.absolute!.line).toBe(0);
-        expect(result.absolute!.hexDigits).toBe('08004020');
-        const [start, end] = result.absolute!.hexRange;
-        expect(source.slice(start, end)).toBe('"$08004020$"');
-        expect(result.summary).toContain('__SETOPTS $08004020$__');
+        expect(result).toEqual({ found: false, editable: false, mode: 'none' });
     });
 
     test('an absolute SETOPTS $hex$ (bare HEX_STRING) statement resolves the same way', async () => {
@@ -88,7 +84,7 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
     });
 
     test('a safe OPTS->IOR/AND->SETOPTS chain returns found/editable/mode "chain" with the reassignment range, indent and prefill selection', async () => {
-        const source = 'A$=OPTS\n    A$=IOR(A$,"$08$")\n    A$=AND(A$,"$F7$")\nSETOPTS A$';
+        const source = 'A$=OPTS\n    A$=IOR(A$,$08$)\n    A$=AND(A$,$F7$)\nSETOPTS A$';
         const document = await parseSource(source);
         const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
         const handler = createDecodeInCodeHandler(stubDeps(document));
@@ -163,7 +159,7 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
     });
 
     test('hovering a single IOR/AND call directly (mask-call shape) is not an edit-in-place target — found: false, mode: "none"', async () => {
-        const source = 'A$=IOR(A$,"$08$")';
+        const source = 'A$=IOR(A$,$08$)';
         const document = await parseSource(source);
         const offset = source.indexOf('IOR') + 1;
         const handler = createDecodeInCodeHandler(stubDeps(document));
@@ -180,6 +176,39 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
         expect(() => handler({ uri: 'file:///not-open.bbj', line: 0, character: 0 })).not.toThrow();
         const result = handler({ uri: 'file:///not-open.bbj', line: 0, character: 0 });
         expect(result).toEqual({ found: false, editable: false, mode: 'none' });
+    });
+
+    /**
+     * The absolute edit contract's round trip (plan 88-11, gap closure G-88-3): `hexRange` spans
+     * the whole `$…$` token (delimiter-inclusive, per the bare-form test above) and
+     * `bbjHexLiteral` re-emits a complete `$…$` literal -- exactly what every in-place writer
+     * (VS Code `setopts-composer-webview.ts`, IntelliJ `ComposerLauncher.java`) splices into that
+     * range. Neither half is sufficient alone: this is the one test that exercises both together
+     * and would fail with doubled or deleted delimiters if either side changed without the other.
+     */
+    test('round trip: splicing bbjHexLiteral output into hexRange re-decodes to the new digits, with no quote character in the rebuilt line', async () => {
+        const source = 'SETOPTS $08004020$';
+        const document = await parseSource(source);
+        const offset = source.indexOf('$08004020$');
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const decoded = handler(paramsAt(document, offset));
+        expect(decoded.found).toBe(true);
+        expect(decoded.mode).toBe('absolute');
+        const [start, end] = decoded.absolute!.hexRange;
+
+        const newDigits = 'FF00FF00';
+        const rebuiltLine = source.slice(0, start) + bbjHexLiteral(newDigits) + source.slice(end);
+        expect(rebuiltLine).not.toContain('"');
+
+        const rebuiltDocument = await parseSource(rebuiltLine);
+        const rebuiltOffset = rebuiltLine.indexOf(newDigits);
+        const rebuiltHandler = createDecodeInCodeHandler(stubDeps(rebuiltDocument));
+        const redecoded = rebuiltHandler(paramsAt(rebuiltDocument, rebuiltOffset));
+
+        expect(redecoded.found).toBe(true);
+        expect(redecoded.mode).toBe('absolute');
+        expect(redecoded.absolute!.hexDigits).toBe(newDigits);
     });
 });
 
