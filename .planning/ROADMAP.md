@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 9/9 plans executed (7 executed; 88-08 and 88-09 are a second UAT gap-closure round for G-88-1 and G-88-2)
+**Plans**: 9/13 plans executed (7 executed; 88-08 and 88-09 were a second UAT gap-closure round for G-88-1 and G-88-2; 88-10 through 88-13 are a third round for the diagnosed G-88-2 and G-88-3)
 
 Plans:
 **Wave 1**
@@ -380,6 +380,21 @@ Plans:
 
 - [x] 88-08-PLAN.md — Make `vsce package` rebuild `out/` before packaging, reinstall the VS Code extension, and prove the SHIPPED bundle serves the SETOPTS hover, both `bbj/composer/setopts/*` requests and prompt diagnostics/codeAction over a real LSP connection
 - [x] 88-09-PLAN.md — Build the IntelliJ distributable and assert from inside it that the composer intention, its description resources and this phase's hover code ship; script the live retest; make the pre-UAT rebuild a standing QA step
+
+**Gap closure, round 3** *(from the diagnosed UAT gaps G-88-2 — IntelliJ's Alt+Enter hangs on a timeout-free `textDocument/codeAction` wait — and G-88-3 — the composer generates invalid BBj hex literals; G-88-1 is resolved and out of scope)*
+
+**Wave 1**
+
+- [ ] 88-10-PLAN.md — One BBj hex-literal formatter per host: the generated `IOR`/`AND` masks lose their spurious quotes, both in-place `SETOPTS` writers put a complete `$…$` literal back, and the tautological test oracle is replaced with literal expected strings
+- [ ] 88-12-PLAN.md — `textDocument/codeAction` answers within a bounded budget on hover's document state, the cold-ordering latency probe replaces 88-08's warm measurement, and IntelliJ gains an editor context-menu entry that bypasses intention search
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 88-11-PLAN.md — The decoder accepts only the grammar's own `HEX_STRING` token, the decode-side fixture corpus migrates to real BBj syntax, and the range-plus-formatter round trip is pinned
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 88-13-PLAN.md — Rebuild and prove both distributables, correct the QA checklist's now-invalid sample syntax, script round two of the live retest, and narrow both gap records without resolving them
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
