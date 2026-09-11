@@ -294,7 +294,7 @@ describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-0
     }
 
     test('hovering SETOPTS on a safe OPTS->IOR chain lists the set options and states the cleared side explicitly', async () => {
-        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+        const document = await parse('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
         expect(document.parseResult.parserErrors).toHaveLength(0);
 
@@ -326,11 +326,11 @@ describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-0
     });
 
     test('hovering the IOR token of a chain-link call names the option it sets', async () => {
-        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+        const document = await parse('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
         expect(document.parseResult.parserErrors).toHaveLength(0);
 
-        const position = positionOf(document, 'IOR(A$,"$08$")');
+        const position = positionOf(document, 'IOR(A$,$08$)');
         const hover = await hoverAt(document, position);
 
         expect(hover).toBeDefined();
@@ -340,11 +340,11 @@ describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-0
     });
 
     test('hovering the AND token of a chain-link call names the option it CLEARS, with wording that says it is cleared', async () => {
-        const document = await parse('A$=OPTS\nA$=AND(A$,"$F7$")\nSETOPTS A$', { validation: true });
+        const document = await parse('A$=OPTS\nA$=AND(A$,$F7$)\nSETOPTS A$', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
         expect(document.parseResult.parserErrors).toHaveLength(0);
 
-        const position = positionOf(document, 'AND(A$,"$F7$")');
+        const position = positionOf(document, 'AND(A$,$F7$)');
         const hover = await hoverAt(document, position);
 
         expect(hover).toBeDefined();
@@ -354,12 +354,12 @@ describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-0
         expect(value).not.toContain('Sets these options');
     });
 
-    test('hovering the first argument inside IOR(opts$,"$08$") returns no SETOPTS markdown', async () => {
-        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+    test('hovering the first argument inside IOR(opts$,$08$) returns no SETOPTS markdown', async () => {
+        const document = await parse('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
         expect(document.parseResult.parserErrors).toHaveLength(0);
 
-        const position = positionOf(document, 'IOR(A$,"$08$")');
+        const position = positionOf(document, 'IOR(A$,$08$)');
         // "IOR(" is 4 characters; land inside the "A$" argument, not the "IOR" token.
         const hover = await hoverAt(document, position, 'IOR('.length + 1);
 

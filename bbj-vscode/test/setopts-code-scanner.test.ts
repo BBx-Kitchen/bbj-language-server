@@ -70,17 +70,6 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
         });
     });
 
-    test('detectSetOptsShape decodes an absolute hex literal (quoted-string form)', async () => {
-        const { leaf } = await parseAndFindLeaf('SETOPTS "$08004020$"', '$08004020$');
-        const target = setoptsHoverTarget(leaf)!;
-        const shape = detectSetOptsShape(target);
-        expect(shape).toEqual({
-            kind: 'absolute',
-            hexDigits: '08004020',
-            vector: { bytes: [0x08, 0x00, 0x40, 0x20], digitCount: 8 },
-        });
-    });
-
     /**
      * D-02 narrowing (plan 88-11, gap closure G-88-3): a quoted `STRING_LITERAL` is never a
      * decodable hex literal, even when its content looks like one -- BBj itself never
@@ -131,8 +120,11 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
 
     test('detectSetOptsShape returns undefined for non-hex characters (quoted-string form, valid parse)', async () => {
         // The bare HEX_STRING terminal (`\$[0-9a-fA-F]*\$`) cannot even lex "ZZ" between the
-        // delimiters; a quoted STRING_LITERAL accepts any content and reaches the scanner as
-        // a well-formed StringLiteral, exercising parseVector's own hex-format rejection.
+        // delimiters, so this fixture MUST stay quoted -- a quoted STRING_LITERAL accepts any
+        // content and reaches the scanner as a well-formed StringLiteral. Since plan 88-11, the
+        // quoted form is rejected by parseHexLiteral's own raw-source-text shape test before
+        // parseVector ever runs; the undefined result is now the same "not a HEX_STRING token"
+        // verdict every other quoted fixture gets, not a parseVector-specific rejection.
         const { leaf } = await parseAndFindLeaf('SETOPTS "$ZZ$"', '$ZZ$');
         const target = setoptsHoverTarget(leaf)!;
         expect(detectSetOptsShape(target)).toBeUndefined();
@@ -212,7 +204,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     }
 
     test('OPTS -> IOR -> SETOPTS: safe chain, one link folded into effect.set', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.unsafeReason).toBeUndefined();
@@ -231,7 +223,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('a comma-chained unrelated assignment on the OPTS origin line does not break detection', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS,OTHER$="x"\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS,OTHER$="x"\nA$=IOR(A$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(1);
@@ -246,7 +238,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('two IOR links to the tracked variable in one comma-chained statement do not silently drop the second link', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$"),A$=IOR(A$,"$10$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$),A$=IOR(A$,$10$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         // Both same-statement links can't be represented by the current one-verdict-per-statement
         // model without inventing a new shape, so this must fail closed -- never report `safe: true`
@@ -256,7 +248,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('last write wins per bit: an IOR then an AND on the same bit leaves it in effect.clear, not effect.set', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nA$=AND(A$,"$F7$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$)\nA$=AND(A$,$F7$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(2);
@@ -295,7 +287,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('an IOR/AND call whose first argument is a different variable stops the walk with unsafeReason "alias"', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(false);
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('alias');
@@ -342,7 +334,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('a bracket ArrayElement assignment target (A$[1]=IOR(A$[1],...)) stops the walk with unsafeReason "indexed-target"', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$[1]=IOR(A$[1],"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$[1]=IOR(A$[1],$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(false);
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
@@ -356,14 +348,14 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('a whole-variable target with a byte-range IOR argument (A$=IOR(A$(1,1),...)) stops the walk with unsafeReason "indexed-target", not "alias"', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$(1,1),"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$(1,1),$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(false);
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
     });
 
     test('GUARD: a byte-range mutation of an unrelated variable stays transparent to the walk', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nB$(1,1)=IOR(B$(1,1),"$08$")\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nB$(1,1)=IOR(B$(1,1),$08$)\nA$=IOR(A$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(1);
@@ -371,7 +363,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
     });
 
     test('GUARD: an IOR/AND call whose first argument is a genuinely different variable still reports "alias"', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(false);
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('alias');
@@ -388,7 +380,7 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         const source = `A$=OPTS
 class public C
     method public void m()
-        A$=IOR(A$,"$08$")
+        A$=IOR(A$,$08$)
         SETOPTS A$
     methodend
 classend`;
@@ -399,7 +391,7 @@ classend`;
     });
 
     test('a CompoundStatement sibling is transparent: an IOR link inside a semicolon-joined line is found as though it were a direct element', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$") ; OTHER$="ignored"\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$) ; OTHER$="ignored"\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(1);
@@ -410,7 +402,7 @@ classend`;
         // Here `SETOPTS A$` is the *second* element of a CompoundStatement on its own physical
         // line, so `target.$container` is the CompoundStatement itself, not the Program --
         // `findAnchor` must climb past it rather than treating it as the search's top scope.
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$") ; SETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$) ; SETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(1);
@@ -418,7 +410,7 @@ classend`;
     });
 
     test('variable names and the IOR/AND/OPTS names compare case-insensitively', async () => {
-        const target = await parseAndFindSetOptsTarget('a$=OPTS\na$=Ior(A$,"$08$")\nsetopts A$');
+        const target = await parseAndFindSetOptsTarget('a$=OPTS\na$=Ior(A$,$08$)\nsetopts A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         expect(shape.links).toHaveLength(1);
@@ -426,7 +418,7 @@ classend`;
 
     test('foldChainEffect emits set/clear in SETOPTS_BITS catalog order regardless of statement order', async () => {
         // byte 2 IOR before byte 1 IOR in source order; effect arrays must still read byte-1-then-byte-2.
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$0010$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$0010$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(true);
         // $0010$ = byte 1 $00$ (nothing), byte 2 $10$ (NUM() strips embedded spaces) -- single link,
@@ -440,7 +432,7 @@ classend`;
     });
 
     test('detectSetOptsShape routes a SetOptsStatement whose opts is a SymbolRef through traceOptsChain', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$');
         const shape = detectSetOptsShape(target);
         expect(shape).toMatchObject({ kind: 'chain', safe: true, variableName: 'a$' });
     });
@@ -461,8 +453,8 @@ classend`;
         const preamble = Array.from({ length: 300 }, (_, i) => `PRINT "line ${i}"`).join('\n');
 
         test('a large preamble entirely before the safe chain does not change the result', async () => {
-            const withoutPreamble = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$');
-            const withPreamble = await parseAndFindSetOptsTarget(`${preamble}\nA$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$`);
+            const withoutPreamble = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$');
+            const withPreamble = await parseAndFindSetOptsTarget(`${preamble}\nA$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$`);
             const baseline = traceOptsChain(withoutPreamble)!;
             const withPreambleResult = traceOptsChain(withPreamble)!;
             expect(withPreambleResult.safe).toBe(baseline.safe);
@@ -475,7 +467,7 @@ classend`;
 class public C
     method public void m()
 ${preamble.split('\n').map(l => `        ${l}`).join('\n')}
-        A$=IOR(A$,"$08$")
+        A$=IOR(A$,$08$)
         SETOPTS A$
     methodend
 classend`;
@@ -512,7 +504,7 @@ describe('setoptsHoverTarget: shape (c) - single IOR/AND call resolution (88-02)
     }
 
     test('hovering the IOR token of a chain-link call resolves to that MethodCall', async () => {
-        const source = 'A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$';
+        const source = 'A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$';
         const leaf = await parseAndFindLeafAt(source, source.indexOf('IOR') + 1);
         const target = setoptsHoverTarget(leaf);
         expect(target).toBeDefined();
@@ -520,7 +512,7 @@ describe('setoptsHoverTarget: shape (c) - single IOR/AND call resolution (88-02)
     });
 
     test('hovering the first argument inside IOR(...) does not resolve to the call (ParameterCall exclusion)', async () => {
-        const source = 'A$=IOR(A$,"$08$")';
+        const source = 'A$=IOR(A$,$08$)';
         const argOffset = source.indexOf('(A$') + 1; // lands on the "A$" argument, not the "IOR" token
         const leaf = await parseAndFindLeafAt(source, argOffset);
         expect(setoptsHoverTarget(leaf)).toBeUndefined();
@@ -579,7 +571,7 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
     }
 
     test('safe chain markdown states the runtime-vector framing and lists Sets/Clears in catalog order, with an explicit (none) for the empty side', async () => {
-        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,$08$)\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
         const markdown = setoptsHoverMarkdown(shape);
         expect(markdown).toContain('__SETOPTS a$__');
@@ -615,7 +607,7 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
         const cases: Array<[string, SetOptsUnsafeReason]> = [
             ['A$=OPTS\nIF X=1\nSETOPTS A$', 'control-flow'],
             ['A$=OPTS\nA$="hello"\nSETOPTS A$', 'reassigned'],
-            ['A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$', 'alias'],
+            ['A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,$08$)\nSETOPTS A$', 'alias'],
             ['A$=OPTS\nX$="$08$"\nA$=IOR(A$,X$)\nSETOPTS A$', 'unparseable-mask'],
             ['LET A$=OPTS\nLET A$(2,1)=AND(A$(2,1),$7F$)\nSETOPTS A$', 'indexed-target'],
             ['PRINT "hi"\nSETOPTS A$', 'no-origin'],
@@ -636,7 +628,7 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
     });
 
     test('IOR single-call markdown names the option it sets, headed by the uppercase mask hex', async () => {
-        const target = await parseAndFindCallTarget('A$=IOR(A$,"$08$")', 'IOR');
+        const target = await parseAndFindCallTarget('A$=IOR(A$,$08$)', 'IOR');
         const shape = detectSetOptsShape(target)!;
         expect(shape.kind).toBe('mask-call');
         const markdown = setoptsHoverMarkdown(shape);
@@ -646,7 +638,7 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
 
     test('AND single-call markdown names the option it CLEARS, never as set', async () => {
         // $F7$ = every byte-1 catalog bit set except $08$ -- the absent bit is the one cleared.
-        const target = await parseAndFindCallTarget('A$=AND(A$,"$F7$")', 'AND');
+        const target = await parseAndFindCallTarget('A$=AND(A$,$F7$)', 'AND');
         const shape = detectSetOptsShape(target)!;
         expect(shape.kind).toBe('mask-call');
         const markdown = setoptsHoverMarkdown(shape);
