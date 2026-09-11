@@ -203,7 +203,7 @@ status: complete
 2. **Tasks 1+2 (GREEN): port the guard module and route both edit-in-place writers through it** - `33e09f41` (feat)
 3. **Task 3: build/lint/targeted-suite/whole-suite verification** - no source changes required (0 failures beyond the documented baseline); folded into this closing commit.
 
-**Plan metadata:** commit pending (this SUMMARY + STATE.md + ROADMAP.md + REQUIREMENTS.md)
+**Plan metadata:** `283d36c6` (docs: complete plan — SUMMARY.md + STATE.md + ROADMAP.md + REQUIREMENTS.md)
 
 ## Files Created/Modified
 - `bbj-vscode/src/setopts-stale-edit-guard.ts` - new module: constants, `SetOptsStaleEditGuard`, `sameSetOptsInCodeDecode`, `applyIfUnchanged`
@@ -283,6 +283,15 @@ Phase 88 fully complete (all 15 plans summarized). DISC-06 is now met on the VS 
 both statically-safe edit-in-place shapes, including the safety of the *apply*, not just the
 correctness of the computed range (which plan 88-14 already fixed). Ready for phase-level
 verification / UAT, pending the three human-verification items named above.
+
+## Self-Check: PASSED
+
+- FOUND: `bbj-vscode/src/setopts-stale-edit-guard.ts`
+- FOUND: `bbj-vscode/test/setopts-stale-edit-guard.test.ts`
+- FOUND: `.planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-15-SUMMARY.md`
+- FOUND commit `6394d6ec` (test)
+- FOUND commit `33e09f41` (feat)
+- FOUND commit `283d36c6` (docs metadata)
 
 ---
 *Phase: 88-setopts-in-code-hovers-tri-state-composer*
