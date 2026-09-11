@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
-current_phase_name: setopts-in-code-hovers-tri-state-composer
+current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
 status: executing
-stopped_at: "Completed 88-14-PLAN.md (gap-closure round: chain edit-in-place region now anchored on the reassignment statements' own CST ranges instead of origin/SETOPTS line arithmetic; fails closed with a new shared-line reason on every line-sharing shape; DISC-05/DISC-06 marked complete)"
-last_updated: "2026-09-11T14:13:23.682Z"
+stopped_at: "Completed 88-15-PLAN.md (gap-closure round 5, final: VS Code stale-edit guard ported from IntelliJ and wired into both SETOPTS-in-code edit-in-place writers; all 15/15 Phase 88 plans now summarized)"
+last_updated: "2026-09-11T16:22:00.000Z"
 last_activity: 2026-09-11
-last_activity_desc: Phase 88 execution started
-state_head: dbb88d5a369ffa7d4128afa8182d56b022ef8c49
+last_activity_desc: Phase 88 execution complete — 88-15 closes the final gap-closure round
+state_head: 33e09f41db1bf0350b4e09df675cf4a9dc4310d5
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 34
-  completed_plans: 32
-  percent: 44
+  completed_plans: 34
+  percent: 45
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 88 (setopts-in-code-hovers-tri-state-composer) — READY TO EXECUTE
-Plan: 14 of 14
-Status: All plans executed; phase-level verification/UAT still pending (G-88-2/G-88-3 live-render residue outstanding per 88-13-SUMMARY.md)
-Last activity: 2026-09-11 — Completed 88-14-PLAN.md (chain edit-in-place region gap closure)
+Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
+Plan: 15 of 15
+Status: All 15 plans executed and summarized; phase-level verification/UAT still pending (three human-verification items: IntelliJ composer reachability, live mask-width, live VS Code observation of the 88-15 stale-edit guard)
+Last activity: 2026-09-11 — Completed 88-15-PLAN.md (final gap-closure round: VS Code stale-edit guard)
 
 ## Performance Metrics
 
@@ -172,6 +172,7 @@ Last activity: 2026-09-11 — Completed 88-14-PLAN.md (chain edit-in-place regio
 | Phase 88 P12 | 20min | 3 tasks | 9 files |
 | Phase 88 P13 | 35min | 3 tasks | 4 files |
 | Phase 88 P14 | 30min | 3 tasks | 3 files |
+| Phase 88 P15 | ~20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -291,6 +292,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: 88-12 (gap-closure G-88-2): textDocument/codeAction gated at DocumentState.Linked (hover's gate, not Validated) with a named 5000ms budget racing the state wait, overriding Langium's default registration after startLanguageServer(shared); a cold-ordering probe (workspace=repo root, codeAction issued immediately after didOpen) confirms the fix -- 7ms vs. the pre-fix 56016ms hang. IntelliJ gains a second, non-intention editor-context-menu entry point (bbj.composeSetoptsInCode) into the tri-state composer, calling the identical launcher the Alt+Enter intention uses. G-88-2 stays status:failed -- no IntelliJ sandbox exists in this devcontainer; plan 88-13 stages the live retest.
 - [Phase 88]: [Phase 88]: 88-13: rebuilt both distributables and proved this round's fixes ship (new shipped-bundle e2e assertion that composeTriState mask arguments are bare hex, never quoted; IntelliJ plugin jar proven to carry the new context-menu action + Java formatter + unchanged intention), corrected QA/FULL-TEST-CHECKLIST.md's now-invalid quoted hover sample syntax and added the IntelliJ context-menu row, rewrote 88-LIVE-RETEST.md as round two, and narrowed G-88-2/G-88-3's missing: lists to exactly the live-render residue -- both gaps stay status:failed pending the next human retest
 - [Phase 88]: [Phase 88]: 88-14 (gap-closure): decodeInCode's chain edit-in-place region is now anchored on the reassignment statements' own CST ranges (via traceOptsChain's new linkStatementNodes field) rather than origin/SETOPTS line arithmetic; every shape whose region cannot be expressed as a whole-line replace the chain owns outright (shared-line reassignment, comma-joined assignment, comment/unrelated-statement interleaving) fails closed with a new SetOptsNotEditableReason('shared-line') instead of an empty or inverted replace range -- DISC-05/DISC-06 marked complete
+- [Phase 88]: [Phase 88]: 88-15 (gap-closure round 5, final): setopts-stale-edit-guard.ts ports IntelliJ's StaleEditGuard/DecodeEquality contract to VS Code — applyIfUnchanged snapshots the target document's version, re-issues the identical decodeInCode request the panel was opened from (bounded by a 10s timeout), compares the whole fresh decode field-wise via sameSetOptsInCodeDecode, re-checks the version immediately before the write, and fails closed on every branch; both edit-in-place writers (setopts-tristate-webview.ts chain path, setopts-composer-webview.ts absolute-literal path) now route their applyEdit through it, while compose-new and every config.bbx caller stay unguarded since neither has a captured range that can go stale. All 15/15 Phase 88 plans now complete; three items remain human verification (IntelliJ composer reachability, live mask-width, live VS Code observation of this guard).
 
 ### Tech Debt
 
@@ -357,13 +359,16 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-11T13:10:04.475Z
-Stopped at: Completed 88-14-PLAN.md (gap-closure round: chain edit-in-place region now anchored on the reassignment statements' own CST ranges instead of origin/SETOPTS line arithmetic; fails closed with a new shared-line reason on every line-sharing shape; DISC-05/DISC-06 marked complete)
+Last session: 2026-09-11T16:22:00.000Z
+Stopped at: Completed 88-15-PLAN.md (final gap-closure round: VS Code stale-edit guard ported from IntelliJ and wired into both SETOPTS-in-code edit-in-place writers; all 15/15 Phase 88 plans now summarized)
 Resume file: None
 
-Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
-Tri-State Composer. Phase 87's shared `bbj/composer/setopts/*` layer, `DecodeEquality`
-comparator and SETOPTS DTO family are the foundation Phase 88's hover/tri-state work builds on.
+Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
+human verification and cannot be automated in this devcontainer: IntelliJ composer reachability
+(no IntelliJ sandbox here), the live mask-width falsification (headless BBj execution blocked
+here), and the live VS Code observation of the 88-15 stale-edit guard (editing a real .bbj file
+while the composer panel is open, then pressing Apply). All three are staged in
+`88-LIVE-RETEST.md` round two.
 
 ## Deferred Items
 
