@@ -132,22 +132,50 @@ export function setoptsHoverTarget(leaf: CstNode): AstNode | undefined {
 }
 
 /**
- * Parse a `$HEX$`-delimited (or bare) hex string literal into a vector, returning the vector
- * alongside its canonical uppercase hex digits. Delimiters are stripped when both are present;
- * anything that isn't a `StringLiteral`, or doesn't round-trip through {@link parseVector},
- * returns `undefined` — never a partial decode. Shared by the absolute shape, the mask-call
- * shape, and every `IOR`/`AND` chain-link mask inside {@link traceOptsChain}.
+ * The grammar's own `HEX_STRING` terminal shape — a `$` delimiter, zero or more hex digits, a
+ * `$` delimiter, anchored at both ends. Mirrors `bbj.langium:950`,
+ * `terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;`, exactly. {@link parseHexLiteral} accepts a
+ * literal's raw source text only when it matches this shape.
+ */
+const HEX_STRING_TOKEN_SHAPE = /^\$[0-9a-fA-F]*\$$/;
+
+/**
+ * Parse a BBj hex-string literal into a vector, returning the vector alongside its canonical
+ * uppercase hex digits — but ONLY when the literal is a genuine `HEX_STRING` token (`$08004020$`),
+ * never a `STRING_LITERAL` that merely contains the same characters (`"$08004020$"` or
+ * `"08004020"`).
+ *
+ * Per `bbj.langium:949-950`, `STRING_LITERAL` (`/"([^"]|"{2})*"/`) and `HEX_STRING`
+ * (`/\$[0-9a-fA-F]*\$/`) are two SEPARATE terminals feeding the same `StringLiteral.value`
+ * assignment — one AST type, two different tokens. `BBjValueConverter.runConverter`
+ * (`bbj-value-converter.ts:14`) strips the surrounding `"` from a `STRING_LITERAL` before the
+ * AST value is read, so by the time `expr.value` is inspected, a quoted `"$08004020$"` and a
+ * genuine `$08004020$` are BYTE-IDENTICAL — the converted value cannot tell them apart. The only
+ * place the distinction survives is the CST node's raw source text (`expr.$cstNode?.text`),
+ * which still carries the `"` delimiters for the quoted form and does not for the bare one.
+ * Accepting the quoted form here would report a decode for a line BBj itself never hex-decodes —
+ * a quoted hex string is a plain multi-character string at runtime, not a
+ * one-byte-per-two-hex-digits vector — and is exactly how an invalid generated mask
+ * round-tripped cleanly through this module's own tests (#475 gap closure).
+ *
+ * Falls back to the converted value only when the node carries no CST text at all (no caller in
+ * this module produces such a node today — it would mean a synthesised AST); the same anchored
+ * shape test is applied there too, so there is exactly one accepted shape, never a lenient
+ * fallback. Delimiters are stripped only after the shape test passes. Anything that isn't a
+ * `StringLiteral`, doesn't match the `HEX_STRING` shape, or doesn't round-trip through
+ * {@link parseVector} returns `undefined` — never a partial decode. Shared by the absolute
+ * shape, the mask-call shape, and every `IOR`/`AND` chain-link mask inside
+ * {@link traceOptsChain}.
  */
 function parseHexLiteral(expr: AstNode | undefined): { hexDigits: string; vector: SetOptsVector } | undefined {
     if (!expr || !isStringLiteral(expr)) {
         return undefined;
     }
-    let text = expr.value;
-    // BBj hex literals are written `$08004020$`; the value converter may or may not retain the
-    // delimiters, so strip exactly one leading and trailing `$` when both are present.
-    if (text.length >= 2 && text.startsWith('$') && text.endsWith('$')) {
-        text = text.slice(1, -1);
+    const raw = expr.$cstNode?.text ?? expr.value;
+    if (!HEX_STRING_TOKEN_SHAPE.test(raw)) {
+        return undefined;
     }
+    const text = raw.slice(1, -1);
     const vector = parseVector(text);
     if (!vector) {
         return undefined;
