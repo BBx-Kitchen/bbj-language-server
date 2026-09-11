@@ -20,6 +20,7 @@ import { registerResolvedConfigPathRequest } from './resolved-config-path-reques
 import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
 import { createConfigWatcher } from './config-watcher.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
+import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -76,6 +77,16 @@ const configWatcher = createConfigWatcher({
 
 // Start the language server with the shared services
 startLanguageServer(shared);
+
+// Register AFTER startLanguageServer to override Langium's default codeAction handler
+// deliberately: IntelliJ evaluates every registered intention (including LSP4IJ's all-language
+// LSPIntentionAction0..19, which waits on our textDocument/codeAction reply with no timeout of
+// its own) inside one modal, EDT-blocking "Searching for Context Actions..." dialog. A server
+// that can hold that request open indefinitely can freeze the editor's UI thread through a client
+// that is behaving reasonably, so this handler answers within a named budget and gates on the
+// same document state hover uses, rather than Langium's later default. See
+// bbj-code-action-handler.ts for the full rationale.
+registerBoundedCodeActionHandler(connection, shared, BBj);
 
 // Ask the client to re-request inlay hints, e.g. after Java classes (and the Javadoc-based
 // parameter names) arrived asynchronously. Clients without refresh support just ignore us.
