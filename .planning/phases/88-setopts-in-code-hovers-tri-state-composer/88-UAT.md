@@ -117,7 +117,9 @@ blocked: 0
 
 - gap_id: G-88-1
   truth: "Hovering a SETOPTS literal, a safe var$=OPTS(...)...SETOPTS var$ chain, an IOR(...) call, and an AND(...) call in both VS Code and IntelliJ each names the option(s) that line sets/clears."
-  status: failed
+  status: resolved
+  resolved_by: "live retest tests 4 (VS Code) and 5 (IntelliJ), both passed 2026-09-11 — all 5 hover targets, including the byte-range chain's named-unsafe-reason decode, render correctly against the rebuilt basis-intl.bbj-lang-0.12.28 and a fresh bbj-intellij-0.1.0.zip"
+  resolved_at: 2026-09-11
   reason: |
     User reported: VSCode: no hover at all. IntelliJ: works for a literal SETOPS but it appears
     it can't determine OPTS from the runtime. This also makes to sense to determine the current
