@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
-current_phase_name: setopts-in-code-hovers-tri-state-composer
+current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
 status: executing
-stopped_at: "Completed 88-07-PLAN.md (gap-closure: byte-range accessor OPTS chain classification)"
-last_updated: "2026-09-08T16:44:45.466Z"
-last_activity: 2026-09-08
-last_activity_desc: Phase 88 execution started
-state_head: 0b1794f84f32ce39c3072fd415ab974132e6d23a
+stopped_at: "Completed 88-10-PLAN.md (gap-closure: composer hex-literal syntax, G-88-3 codegen half fixed; live verification pending 88-13)"
+last_updated: "2026-09-11T10:07:02.605Z"
+last_activity: 2026-09-11
+last_activity_desc: Phase 88 execution resumed (wave continue)
+state_head: ab331ca932bfe728ad561425b48edfc9a7223764
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 28
-  completed_plans: 26
+  total_plans: 32
+  completed_plans: 29
   percent: 44
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 88 (setopts-in-code-hovers-tri-state-composer) — READY TO EXECUTE
-Plan: 2 of 7
+Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-09-08 — Phase 88 execution started
+Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
 
 ## Performance Metrics
 
@@ -167,6 +167,7 @@ Last activity: 2026-09-08 — Phase 88 execution started
 | Phase 88 P06 | 20min | 3 tasks | 5 files |
 | Phase 88 P05 | 25min | 3 tasks | 13 files |
 | Phase 88 P07 | 20min | 2 tasks | 3 files |
+| Phase 88 P10 | 25min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -281,6 +282,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: 88-06: SetOptsInCodeRequestSender declared in setopts-tristate-webview.ts and imported into setopts-in-code-ui.ts; scope ('reassignments' vs 'block') decided client-side from whether a chain target is present, but the composed bytes always come from the server's composeSetOptsBlock; DISC-06 still NOT marked complete pending 88-05 (IntelliJ dialog)
 - [Phase 88]: [Phase 88]: 88-05: SetoptsTriStateComposerDialog reuses SetoptsComposerDialog's exact skeleton (ComposerFlow+PreviewDebouncer+CR-01 gating) with a ButtonGroup-backed Set/Clear/Leave radio row replacing the checkbox, and a read-only block preview replacing the mask-character/raw-tail region; ComposerLauncher.Kind.SETOPTS_IN_CODE routes absolute/chain/compose-new/not-editable to the right dialog and guarded write; DISC-06 (#475) closed -- both IDE halves (88-06 VS Code, 88-05 IntelliJ) now exist
 - [Phase 88]: [Phase 88]: 88-07: SetOptsUnsafeReason 'indexed-target' plus indexedAccessRootName classify byte-range/element accessor mutations (A$(1,1)=, A$[1]=, or as an IOR/AND argument) as unsafe instead of silently transparent, closing the false-safe/empty-effect defect at G-88-1's code half (live-hover retest still pending, G-88-1 stays status:failed)
+- [Phase 88]: 88-10 (gap-closure G-88-3): bbjHexLiteral/BbjHexLiteral.of is the one formatter per host deciding a BBj hex literal's $...$ delimiters; composeSetOptsBlock's IOR/AND lines and both hosts' absolute in-place writers now route through it; SetOptsEditTarget.hexSyntax discriminator (default config-bare) keeps the #474 config.bbx composer's bare-hex syntax unchanged and pinned by a direct test. G-88-3 stays status:failed pending plan 88-13's live BBjServices verification.
 
 ### Tech Debt
 
@@ -347,8 +349,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-08T13:26:28.661Z
-Stopped at: Completed 88-07-PLAN.md (gap-closure: byte-range accessor OPTS chain classification)
+Last session: 2026-09-11T10:07:02.400Z
+Stopped at: Completed 88-10-PLAN.md (gap-closure: composer hex-literal syntax, G-88-3 codegen half fixed; live verification pending 88-13)
 Resume file: None
 
 Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
