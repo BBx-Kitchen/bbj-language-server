@@ -14,10 +14,15 @@
  *
  * `decodeInCode` resolves the target through the exact same `setoptsHoverTarget` +
  * `detectSetOptsShape` pair the hover uses (`bbj-hover.ts`), so hover and edit gating can never
- * disagree: `editable` is derived directly from the scanner's own safety verdict, never
- * re-decided here (T-88-01). `composeTriState` is a thin pass-through to
- * `composeSetOptsBlock` — it adds no arithmetic of its own, the same single-source-of-truth
- * convention `composer-commands.ts` already documents for its own handlers.
+ * disagree about whether a chain is *decodable*: the scanner (`traceOptsChain`) remains the
+ * single source of truth for that verdict, never re-decided here (T-88-01). This module adds
+ * exactly one further, independent gate on top of that verdict for the `chain` shape: whether
+ * the resulting edit can be expressed as a whole-line region the chain owns outright — a
+ * representability question about this module's own line-based payload, not a second opinion on
+ * the chain's safety. {@link NOT_EDITABLE_REASON_TEXT} is that gate's only reason source (plan
+ * 88-14). `composeTriState` is a thin pass-through to `composeSetOptsBlock` — it adds no
+ * arithmetic of its own, the same single-source-of-truth convention `composer-commands.ts`
+ * already documents for its own handlers.
  */
 import type { Connection } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
@@ -57,11 +62,19 @@ export interface SetOptsInCodeAbsoluteEdit {
 /** The edit target for a safe `var$=OPTS … SETOPTS var$` chain. */
 export interface SetOptsInCodeChainEdit {
     variableName: string;
-    /** 0-based document line of the first reassignment statement (half-open range start). */
+    /**
+     * 0-based document line of the first reassignment statement, taken from that statement's own
+     * CST range (half-open range start). Equal to `endLine` for a chain with no reassignments,
+     * where it is the `SETOPTS` statement's line and the region is a pure insertion point.
+     */
     startLine: number;
-    /** 0-based document line of the `SETOPTS` statement (half-open range end, exclusive). */
+    /**
+     * 0-based line after the last reassignment statement's own last line (half-open range end,
+     * exclusive). Always less than or equal to the `SETOPTS` statement's line and never less than
+     * `startLine`.
+     */
     endLine: number;
-    /** Leading whitespace of the reassignment region's first line (or the `SETOPTS` line when empty). */
+    /** Leading whitespace of `startLine`. */
     indent: string;
 }
 

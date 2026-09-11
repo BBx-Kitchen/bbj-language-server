@@ -208,6 +208,147 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
         }
     });
 
+    /**
+     * An unrelated statement sharing a reassignment's line: replacing line 1 wholesale would
+     * delete `OTHER$="ignored"`, which the chain does not own.
+     */
+    test('an unrelated statement sharing a reassignment line closes the edit gate', async () => {
+        const source = 'A$=OPTS\nA$=IOR(A$,$08$) ; OTHER$="ignored"\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(false);
+        expect(result.reason).toBe(NOT_EDITABLE_REASON_TEXT['shared-line']);
+        expect(result.chain).toBeUndefined();
+    });
+
+    test('all three statements on one line closes the edit gate', async () => {
+        const source = 'A$=OPTS ; A$=IOR(A$,$08$) ; SETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(false);
+        expect(result.chain).toBeUndefined();
+    });
+
+    /**
+     * A comma-joined reassignment: the scanner legitimately calls this chain safe, but the
+     * refusal here is the edit gate's — the whole `LET A$=IOR(A$,$08$),B$="x"` statement cannot
+     * be replaced without destroying `B$="x"`.
+     */
+    test('a comma-joined reassignment closes the edit gate (the scanner still calls the chain safe)', async () => {
+        const source = 'A$=OPTS\nLET A$=IOR(A$,$08$),B$="x"\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const rootNode = document.parseResult.value.$cstNode!;
+        const leaf = findLeafNodeAtOffset(rootNode, variableOffset)!;
+        const target = setoptsHoverTarget(leaf)!;
+        const shape = detectSetOptsShape(target)!;
+        expect(shape).toMatchObject({ kind: 'chain', safe: true });
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(false);
+        expect(result.chain).toBeUndefined();
+    });
+
+    /**
+     * A `LET`-prefixed single reassignment stays editable. Proves the region is anchored on the
+     * whole statement, not the assignment inside it — anchoring on the assignment would leave the
+     * `LET` keyword in the residue and wrongly close the gate.
+     */
+    test('a LET-prefixed single reassignment stays editable', async () => {
+        const source = 'LET A$=OPTS\nLET A$=IOR(A$,$08$)\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(true);
+        expect(result.chain!.startLine).toBe(1);
+        expect(result.chain!.endLine).toBe(2);
+    });
+
+    /**
+     * A comment between the origin and the first reassignment is preserved: the region is
+     * anchored on the reassignment's own line, not the origin's line plus one, so the comment
+     * line sits outside the replace region and survives the edit.
+     */
+    test('a comment between the origin and the first reassignment is preserved (region starts at the reassignment, not origin+1)', async () => {
+        const source = 'A$=OPTS\nREM note\nA$=IOR(A$,$08$)\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(true);
+        expect(result.chain!.startLine).toBe(2);
+        expect(result.chain!.endLine).toBe(3);
+    });
+
+    /**
+     * A comment between two reassignments closes the gate — refusing rather than silently
+     * deleting the user's comment.
+     */
+    test('a comment between two reassignments closes the edit gate', async () => {
+        const source = 'A$=OPTS\nA$=IOR(A$,$08$)\nREM note\nA$=AND(A$,$F7$)\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(false);
+        expect(result.reason).toBe(NOT_EDITABLE_REASON_TEXT['shared-line']);
+        expect(result.chain).toBeUndefined();
+    });
+
+    test('a blank line between two reassignments stays editable', async () => {
+        const source = 'A$=OPTS\nA$=IOR(A$,$08$)\n\nA$=AND(A$,$F7$)\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.editable).toBe(true);
+        expect(result.chain!.startLine).toBe(1);
+        expect(result.chain!.endLine).toBe(4);
+    });
+
+    /**
+     * The scanner contract the region depends on: `linkStatementNodes` is defined with the same
+     * length as `links`, and every entry carries a `$cstNode`.
+     */
+    test('detectSetOptsShape exposes linkStatementNodes with the same length as links, each carrying a $cstNode', async () => {
+        const source = 'A$=OPTS\n    A$=IOR(A$,$08$)\n    A$=AND(A$,$F7$)\nSETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const rootNode = document.parseResult.value.$cstNode!;
+        const leaf = findLeafNodeAtOffset(rootNode, variableOffset)!;
+        const target = setoptsHoverTarget(leaf)!;
+        const shape = detectSetOptsShape(target)!;
+
+        expect(shape).toMatchObject({ kind: 'chain', safe: true });
+        if (shape.kind === 'chain') {
+            expect(shape.linkStatementNodes).toBeDefined();
+            expect(shape.linkStatementNodes).toHaveLength(shape.links.length);
+            for (const stmt of shape.linkStatementNodes!) {
+                expect(stmt.$cstNode).toBeDefined();
+            }
+        }
+    });
+
     test('a position with no SETOPTS shape nearby returns found: false, editable: false, mode: "none"', async () => {
         const source = 'PRINT "hello"';
         const document = await parseSource(source);
