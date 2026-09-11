@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import {
     BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, MAX_BYTES, SETOPTS_BITS,
     SETOPTS_IN_CODE_DEFAULT_VAR,
-    composeSetOptsBlock, composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector,
+    bbjHexLiteral, composeSetOptsBlock, composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector,
     encodeVector, emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector,
     rawTail, setBit, setMaskChar, setRawTail, setoptsPreview, singleBitAndMask, singleBitIorMask,
     triStateFromChainEffect, unknownBitsInByte,
@@ -324,6 +324,24 @@ describe('singleBitIorMask / singleBitAndMask (full-width masks)', () => {
     });
 });
 
+describe('bbjHexLiteral (G-88-3: the one formatter that decides a BBj hex literal\'s delimiters)', () => {
+    test('wraps digits in a dollar sign on each side, nothing else', () => {
+        expect(bbjHexLiteral('08')).toBe('$08$');
+    });
+
+    test('the empty-literal form is $$, since HEX_STRING permits zero digits', () => {
+        expect(bbjHexLiteral('')).toBe('$$');
+    });
+
+    test('never introduces a double-quote character', () => {
+        expect(bbjHexLiteral('DEADBEEF')).not.toContain('"');
+    });
+
+    test('carries no whitespace', () => {
+        expect(bbjHexLiteral('08')).not.toMatch(/\s/);
+    });
+});
+
 describe('composeSetOptsBlock', () => {
     function selectionOf(entries: SetOptsTriStateEntry[]): SetOptsTriStateSelection {
         return { entries };
@@ -333,18 +351,62 @@ describe('composeSetOptsBlock', () => {
     const byte2Bit20 = SETOPTS_BITS.find(b => b.byte === 2 && b.mask === 0x20)!;
 
     test('a mixed Set/Clear/Leave selection emits opts$=OPTS, IOR lines, AND lines, then SETOPTS opts$', () => {
+        // Expected lines are LITERAL strings, cross-checked against the sibling mask-value tests
+        // above (`singleBitIorMask(1, 0x08)` and `singleBitAndMask(2, 0x20)`), never built by
+        // re-evaluating composeSetOptsBlock's own production template — that tautology (re-running
+        // the exact code under test to build its own expectation) is what let G-88-3's `"$…$"`
+        // double-quote defect ship past this file with 33 previously-passing tests.
         const selection = selectionOf([
             { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
             { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
         ]);
         const result = composeSetOptsBlock({ selection });
         expect(result.lines).toEqual([
-            `${SETOPTS_IN_CODE_DEFAULT_VAR}=OPTS`,
-            `${SETOPTS_IN_CODE_DEFAULT_VAR}=IOR(${SETOPTS_IN_CODE_DEFAULT_VAR},"$${singleBitIorMask(byte1Bit08.byte, byte1Bit08.mask)}$")`,
-            `${SETOPTS_IN_CODE_DEFAULT_VAR}=AND(${SETOPTS_IN_CODE_DEFAULT_VAR},"$${singleBitAndMask(byte2Bit20.byte, byte2Bit20.mask)}$")`,
-            `SETOPTS ${SETOPTS_IN_CODE_DEFAULT_VAR}`,
+            'opts$=OPTS',
+            'opts$=IOR(opts$,$08000000000000000000000000000000$)',
+            'opts$=AND(opts$,$FFDFFFFFFFFFFFFFFFFFFFFFFFFFFFFF$)',
+            'SETOPTS opts$',
         ]);
         expect(result.text).toBe(result.lines.join('\n'));
+    });
+
+    test('the FIRST catalog entry (byte 1, mask 0x80) as Set produces a literal, delimiter-only IOR line', () => {
+        // Pins the low end of the mask-base index alongside the mid-catalog case above; an
+        // off-by-one in the byte index would show at exactly one of the two catalog boundaries.
+        const first = SETOPTS_BITS[0]!;
+        expect(first.byte).toBe(1);
+        expect(first.mask).toBe(0x80);
+        const result = composeSetOptsBlock({
+            selection: selectionOf([{ byte: first.byte, mask: first.mask, state: 'set' }]),
+            scope: 'reassignments',
+        });
+        expect(result.lines).toEqual(['opts$=IOR(opts$,$80000000000000000000000000000000$)']);
+    });
+
+    test('the LAST catalog entry (byte 9, mask 0x10) as Clear produces a literal, delimiter-only AND line', () => {
+        const last = SETOPTS_BITS[SETOPTS_BITS.length - 1]!;
+        expect(last.byte).toBe(9);
+        expect(last.mask).toBe(0x10);
+        const result = composeSetOptsBlock({
+            selection: selectionOf([{ byte: last.byte, mask: last.mask, state: 'clear' }]),
+            scope: 'reassignments',
+        });
+        expect(result.lines).toEqual(['opts$=AND(opts$,$FFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFF$)']);
+    });
+
+    test('no composed line, in either scope, contains a double-quote character', () => {
+        // The property the old tautological oracle could never express: BBj's grammar treats a
+        // quoted string and a hex string as separate terminals (bbj.langium:949-950), so a `"`
+        // anywhere in a generated IOR/AND argument silently defeats hex decoding at runtime.
+        const selection = selectionOf([
+            { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
+            { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
+        ]);
+        const block = composeSetOptsBlock({ selection });
+        const reassignments = composeSetOptsBlock({ selection, scope: 'reassignments' });
+        for (const line of [...block.lines, ...reassignments.lines]) {
+            expect(line.includes('"')).toBe(false);
+        }
     });
 
     test('all Set lines come before all Clear lines, in SETOPTS_BITS catalog order, regardless of selection order', () => {
