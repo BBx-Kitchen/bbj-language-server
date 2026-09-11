@@ -86,9 +86,23 @@ export type SetOptsCodeShape =
         /**
          * The `Assignment` node whose value resolved to the `OPTS`-sourced origin, present only
          * when `safe` is `true`. Widened in plan 88-03 so `setopts-in-code-request.ts` can locate
-         * the origin's document line for its edit-in-place range without a second AST walk.
+         * the origin's document line for its edit-in-place range without a second AST walk. As of
+         * plan 88-14 it is used only to bound the region from above (the origin must end on a
+         * line strictly before the region starts) — the region itself comes from
+         * {@link linkStatementNodes}, not from `originNode`'s own line arithmetic.
          */
         originNode?: AstNode;
+        /**
+         * The enclosing statement of each entry in {@link links}, in the same order, present only
+         * when `safe` is `true`. Widened in plan 88-14 for `setopts-in-code-request.ts`'s
+         * edit-in-place region so that region is anchored on the reassignment statements' own CST
+         * ranges rather than on the origin's and `SETOPTS` statement's line numbers.
+         * Deliberately a sibling field rather than a member of `SetOptsChainLink`, because
+         * `setopts-code-scanner.test.ts`'s bounded-walk regression compares two documents'
+         * `links` arrays with `toEqual`, and an AST node on a link would make that comparison
+         * document-identity-sensitive.
+         */
+        linkStatementNodes?: AstNode[];
     }
     | { kind: 'mask-call'; fnName: 'IOR' | 'AND'; maskHex: string; vector: SetOptsVector };
 
@@ -441,6 +455,9 @@ interface ChainWalkResult {
     unsafeReason?: SetOptsUnsafeReason;
     /** Links in backward-encounter order (newest/closest-to-target first); callers reverse. */
     linksNewestFirst: SetOptsChainLink[];
+    /** Positional counterpart of {@link linksNewestFirst}: the enclosing statement of each entry,
+     * same order, same length (plan 88-14 widening). */
+    linkStatementsNewestFirst: AstNode[];
     /** The origin `Assignment` node, present only when `safe` is `true` (plan 88-03 widening). */
     originNode?: AstNode;
 }
@@ -454,34 +471,36 @@ function walkChain(statements: ReadonlyArray<AstNode>, anchorStatement: AstNode,
     const flat = flattenStatements(statements);
     const anchorIndex = flat.indexOf(anchorStatement);
     const linksNewestFirst: SetOptsChainLink[] = [];
+    const linkStatementsNewestFirst: AstNode[] = [];
     if (anchorIndex === -1) {
         // Structural anomaly (anchorStatement not found in its own container's flattened
         // array) — fail closed rather than guess a position.
-        return { safe: false, unsafeReason: 'no-origin', linksNewestFirst };
+        return { safe: false, unsafeReason: 'no-origin', linksNewestFirst, linkStatementsNewestFirst };
     }
     for (let i = anchorIndex - 1; i >= 0; i--) {
         const verdict = matchStatement(flat[i], trackedName);
         switch (verdict.kind) {
             case 'control-flow':
-                return { safe: false, unsafeReason: 'control-flow', linksNewestFirst };
+                return { safe: false, unsafeReason: 'control-flow', linksNewestFirst, linkStatementsNewestFirst };
             case 'origin':
-                return { safe: true, linksNewestFirst, originNode: verdict.originNode };
+                return { safe: true, linksNewestFirst, linkStatementsNewestFirst, originNode: verdict.originNode };
             case 'link':
                 linksNewestFirst.push(verdict.link);
+                linkStatementsNewestFirst.push(flat[i]);
                 break;
             case 'reassigned':
-                return { safe: false, unsafeReason: 'reassigned', linksNewestFirst };
+                return { safe: false, unsafeReason: 'reassigned', linksNewestFirst, linkStatementsNewestFirst };
             case 'alias':
-                return { safe: false, unsafeReason: 'alias', linksNewestFirst };
+                return { safe: false, unsafeReason: 'alias', linksNewestFirst, linkStatementsNewestFirst };
             case 'unparseable-mask':
-                return { safe: false, unsafeReason: 'unparseable-mask', linksNewestFirst };
+                return { safe: false, unsafeReason: 'unparseable-mask', linksNewestFirst, linkStatementsNewestFirst };
             case 'indexed-target':
-                return { safe: false, unsafeReason: 'indexed-target', linksNewestFirst };
+                return { safe: false, unsafeReason: 'indexed-target', linksNewestFirst, linkStatementsNewestFirst };
             case 'irrelevant':
                 break;
         }
     }
-    return { safe: false, unsafeReason: 'no-origin', linksNewestFirst };
+    return { safe: false, unsafeReason: 'no-origin', linksNewestFirst, linkStatementsNewestFirst };
 }
 
 /**
@@ -615,7 +634,10 @@ export function traceOptsChain(target: SetOptsStatement): Extract<SetOptsCodeSha
     const links = [...walk.linksNewestFirst].reverse();
     const effect = foldChainEffect(links);
     return walk.safe
-        ? { kind: 'chain', variableName, safe: true, links, effect, originNode: walk.originNode }
+        ? {
+            kind: 'chain', variableName, safe: true, links, effect, originNode: walk.originNode,
+            linkStatementNodes: [...walk.linkStatementsNewestFirst].reverse(),
+        }
         : { kind: 'chain', variableName, safe: false, unsafeReason: walk.unsafeReason, links, effect };
 }
 

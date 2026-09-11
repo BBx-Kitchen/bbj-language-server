@@ -21,9 +21,9 @@
  */
 import type { Connection } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import type { LangiumDocument } from 'langium';
+import type { CstNode, LangiumDocument } from 'langium';
 import { findLeafNodeAtOffset } from './bbj-validator.js';
-import { isSetOptsStatement } from './generated/ast.js';
+import { isLetStatement, isSetOptsStatement } from './generated/ast.js';
 import {
     detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget, UNSAFE_REASON_TEXT,
 } from './setopts-code-scanner.js';
@@ -120,6 +120,74 @@ function lineIndent(document: LangiumDocument, lineNumber: number): string {
 }
 
 /**
+ * Why a *decodable* `chain` shape is still not edit-eligible. This is never a decode verdict —
+ * the scanner (`traceOptsChain`) remains the single source of truth for whether a chain is
+ * safe; this module adds exactly one further, independent gate on top: whether the resulting
+ * edit can be expressed as a whole-line region the chain owns outright. The hover must keep
+ * showing a line-sharing chain's real accumulated effect per DISC-05, while the edit gate closes
+ * per DISC-06 and D-04. This reason deliberately does NOT live in `SetOptsUnsafeReason` /
+ * `UNSAFE_REASON_TEXT`: `setopts-code-scanner.test.ts`'s exhaustiveness test ties
+ * `UNSAFE_REASON_TEXT`'s key count to the reasons `traceOptsChain` itself emits, and this reason
+ * is never emitted by `traceOptsChain` — it would be both wrong and untestable there.
+ */
+export type SetOptsNotEditableReason = 'shared-line';
+
+/** Single source of truth for {@link SetOptsNotEditableReason}'s user-facing sentence, mirroring
+ * `UNSAFE_REASON_TEXT`'s own convention. */
+export const NOT_EDITABLE_REASON_TEXT: Record<SetOptsNotEditableReason, string> = {
+    'shared-line': "one of this chain's statements shares its physical line with other code, "
+        + 'so the reassignment block cannot be rewritten without touching code outside the chain',
+};
+
+/**
+ * The line of the given CST node's LAST character — never the position one past its end, so a
+ * node whose text happens to carry a trailing line break (e.g. a `CommentStatement`'s `COMMENT`
+ * token, which the grammar's terminal optionally captures through) cannot inflate a computed
+ * region by a line.
+ */
+function lastLineOf(document: LangiumDocument, cst: CstNode): number {
+    return document.textDocument.positionAt(cst.offset + Math.max(cst.length - 1, 0)).line;
+}
+
+/**
+ * `;` is BBj's own statement separator and therefore the only non-whitespace character a
+ * chain's edit region may contain outside its own reassignment statements. Anything else in the
+ * residue — an unrelated statement sharing a reassignment's line, a `CommentStatement` from a
+ * trailing or interleaved `REM`, a stray expression — means the region is not the chain's to
+ * rewrite.
+ */
+const REGION_RESIDUE_SHAPE = /^[\s;]*$/;
+
+/**
+ * Whether the document text of the half-open `[startLine, endLine)` region contains nothing but
+ * `spans` (each an `[offset, offset+length)` range over the document, order-independent),
+ * whitespace and `;` separators.
+ */
+function regionOwnedExclusively(
+    document: LangiumDocument, startLine: number, endLine: number,
+    spans: ReadonlyArray<{ offset: number; length: number }>,
+): boolean {
+    const regionStart = document.textDocument.offsetAt({ line: startLine, character: 0 });
+    const regionEnd = document.textDocument.offsetAt({ line: endLine, character: 0 });
+    const fullText = document.textDocument.getText();
+    const sorted = [...spans].sort((a, b) => a.offset - b.offset);
+    let cursor = regionStart;
+    let residue = '';
+    for (const span of sorted) {
+        const spanStart = Math.max(span.offset, regionStart);
+        const spanEnd = Math.min(span.offset + span.length, regionEnd);
+        if (spanStart > cursor) {
+            residue += fullText.slice(cursor, spanStart);
+        }
+        cursor = Math.max(cursor, spanEnd);
+    }
+    if (cursor < regionEnd) {
+        residue += fullText.slice(cursor, regionEnd);
+    }
+    return REGION_RESIDUE_SHAPE.test(residue);
+}
+
+/**
  * Build the `bbj/composer/setopts/decodeInCode` request handler. Resolves the document with
  * `deps.documents.getDocument` only (no filesystem read), finds the leaf CST node at the given
  * position, and runs it through the exact `setoptsHoverTarget`/`detectSetOptsShape` pair the
@@ -186,16 +254,81 @@ export function createDecodeInCodeHandler(deps: SetOptsInCodeDeps): (params: Set
                 // possibly-wrong edit range (the "never touch what you can't round-trip" rule).
                 return NOT_FOUND;
             }
-            const endLine = document.textDocument.positionAt(setoptsCst.offset).line;
-            const originLine = document.textDocument.positionAt(originCst.offset).line;
-            const startLine = originLine + 1;
-            const indentLine = startLine < endLine ? startLine : endLine;
+
+            const notEditable = (): SetOptsInCodeDecodeResult => ({
+                found: true,
+                editable: false,
+                mode: 'chain',
+                reason: NOT_EDITABLE_REASON_TEXT['shared-line'],
+                summary,
+            });
+
+            // The invariant this region computation guarantees: the half-open
+            // `[startLine, endLine)` region contains the chain's reassignment statements,
+            // whitespace and `;` separators and nothing else, so a whole-line replace of it can
+            // neither delete code the chain does not own nor leave a superseded reassignment
+            // behind.
+            const setoptsStartLine = document.textDocument.positionAt(setoptsCst.offset).line;
+            const originEndLine = lastLineOf(document, originCst);
+
+            const linkStatements = shape.linkStatementNodes;
+            if (!linkStatements || linkStatements.length !== shape.links.length) {
+                // A structural anomaly the scanner should never produce for a safe chain — fail
+                // closed the same way as the missing-CST guard above, not as a user-facing reason.
+                return NOT_FOUND;
+            }
+            const linkCsts: CstNode[] = [];
+            for (const stmt of linkStatements) {
+                const cst = stmt.$cstNode;
+                if (!cst) {
+                    return NOT_FOUND;
+                }
+                // A comma-joined `LET A$=IOR(A$,$08$),B$="x"` is a single statement the scanner
+                // legitimately calls safe, but its whole text cannot be replaced without
+                // destroying `B$="x"` — only a single-assignment LetStatement's whole text can be
+                // safely replaced.
+                if (!isLetStatement(stmt) || stmt.assignments.length !== 1) {
+                    return notEditable();
+                }
+                linkCsts.push(cst);
+            }
+
+            let startLine: number;
+            let endLine: number;
+            if (linkCsts.length === 0) {
+                // Zero-link chain: the region is a pure insertion point at the start of the
+                // SETOPTS line. Inserting there is always non-destructive and always lands after
+                // the origin; when the origin and SETOPTS share a line there is no such point —
+                // exactly the inverted-range case.
+                if (!(originEndLine < setoptsStartLine)) {
+                    return notEditable();
+                }
+                startLine = setoptsStartLine;
+                endLine = setoptsStartLine;
+            } else {
+                startLine = Math.min(...linkCsts.map(cst => document.textDocument.positionAt(cst.offset).line));
+                endLine = Math.max(...linkCsts.map(cst => lastLineOf(document, cst))) + 1;
+                if (!(originEndLine < startLine) || !(endLine <= setoptsStartLine)) {
+                    return notEditable();
+                }
+                const spans = linkCsts.map(cst => ({ offset: cst.offset, length: cst.length }));
+                if (!regionOwnedExclusively(document, startLine, endLine, spans)) {
+                    return notEditable();
+                }
+            }
+
+            // Structural backstop: unreachable given the requirements above, kept so no future
+            // refactor can hand either writer an inverted range.
+            if (startLine > endLine) {
+                return NOT_FOUND;
+            }
+
             return {
                 found: true,
                 editable: true,
                 mode: 'chain',
                 summary,
-                chain: { variableName: shape.variableName, startLine, endLine, indent: lineIndent(document, indentLine) },
+                chain: { variableName: shape.variableName, startLine, endLine, indent: lineIndent(document, startLine) },
                 initial: triStateFromChainEffect(shape.effect),
             };
         }
