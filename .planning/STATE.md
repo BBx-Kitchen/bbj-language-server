@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-11-PLAN.md
-last_updated: "2026-09-12T10:28:41.364Z"
+stopped_at: Completed 89-12-PLAN.md
+last_updated: "2026-09-12T10:39:27.492Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: f2f410263e5e58b5584f227ef48e8745e77509ef
+state_head: 3ae52ed3ae7514f87c292d03dd2bc221a2006a07
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 45
+  completed_plans: 46
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -185,6 +185,7 @@ transitioned to Phase 89.
 | Phase 89 P09 | 25min | 2 tasks | 6 files |
 | Phase 89 P10 | 12min | 2 tasks | 8 files |
 | Phase 89 P11 | 25min | 2 tasks | 10 files |
+| Phase 89 P12 | 12min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -320,6 +321,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-11: isBuildableDocumentUri checks the open document's language id (bbx-config excluded regardless of extension) before falling back to serviceRegistry.hasServices, mirroring Langium's own ServiceRegistry.getServices lookup order
 - [Phase 89]: 89-11: BBjDocumentBuilder.update returns without calling the base method at all when the filtered changed list and deleted are both empty, avoiding a currentState reset/build-phase fire for a config-only change
 - [Phase 89]: 89-11: setoptsConfigPanelArgAt is the single argument-building function shared by the Code Action, active-editor command and cue-click dispatch, replacing the former argForLine wrapper
+- [Phase 89]: 89-12: cvs mapped to ComposerLensKinds and BBx Config mapped to the server as bbx-config, re-pinning Phase 84's invariant as a two-mapping check; a pre-existing D-01 comment token on the touched BbjComposeSetoptsAction Javadoc line was dropped to satisfy this plan's own register-check regex
 
 ### Tech Debt
 
@@ -386,8 +388,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T10:28:41.086Z
-Stopped at: Completed 89-11-PLAN.md
+Last session: 2026-09-12T10:39:27.264Z
+Stopped at: Completed 89-12-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
