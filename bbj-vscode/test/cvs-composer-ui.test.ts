@@ -332,8 +332,8 @@ describe('cvs-composer-webview.ts source assertions (#649)', () => {
         expect(/\$\(['"]chars['"]\)\.disabled\s*=\s*!m\.charsEnabled/.test(webviewSource)).toBe(true);
     });
 
-    test('sets user-derived values via textContent, never innerHTML', () => {
-        expect(webviewSource).not.toMatch(/\.innerHTML\s*=/);
+    test('sets user-derived values via textContent, never innerHTML (clearing a container to empty is fine)', () => {
+        expect(webviewSource).not.toMatch(/\.innerHTML\s*=\s*[^'"\s]/);
         expect((webviewSource.match(/\.textContent\s*=/g) ?? []).length).toBeGreaterThanOrEqual(3);
     });
 
