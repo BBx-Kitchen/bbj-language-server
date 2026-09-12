@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-14-PLAN.md
-last_updated: "2026-09-12T14:24:46.065Z"
+stopped_at: Completed 89-15-PLAN.md
+last_updated: "2026-09-12T14:36:11.169Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 858a52ce83ad1b5f31babae0e956cf9f0b4e41e9
+state_head: d7101ea52c083ed05d6bbd80e7a280c73b36ba34
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 48
+  completed_plans: 49
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 2 of 16
+Plan: 3 of 16
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -188,6 +188,7 @@ transitioned to Phase 89.
 | Phase 89 P12 | 12min | 2 tasks | 5 files |
 | Phase 89 P13 | 28min | 2 tasks | 5 files |
 | Phase 89 P14 | 16min | 2 tasks | 7 files |
+| Phase 89 P15 | 15min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-14: CVS() incomplete decode outcome stays editable:false (fail closed) so the codelens cue's existing found && editable gate keeps half-typed lines cue-free with no code change
 - [Phase 89]: 89-14: cvsCallStillMatches re-locates the call via findCvsCalls (span-exact), not just a text-slice comparison, so a grown unterminated call is refused as stale
 - [Phase 89]: 89-14: runComposeCvsCommand decodes the caret before falling through to compose-new, so bbj.composeCvs from the palette/context menu can no longer nest a call inside a partial or existing one
+- [Phase 89]: 89-15: CvsComposerDialog takes a CvsComposeMode instead of a boolean editMode, throwing IllegalArgumentException for NOT_EDITABLE; the assign-to row is now hidden in both replace modes (edit-in-place and completing an unfinished call), not just editing
+- [Phase 89]: 89-15: openCvs routes through CvsComposeMode.of and reuses the single existing guarded CVS write for both edit-in-place and completing an unfinished call, differing only in the write-command name; DecodeEquality.sameCvs now compares incomplete so a stale unfinished-call completion cannot pass the guard
 
 ### Tech Debt
 
@@ -395,8 +398,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T14:24:15.355Z
-Stopped at: Completed 89-14-PLAN.md
+Last session: 2026-09-12T14:36:10.869Z
+Stopped at: Completed 89-15-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
