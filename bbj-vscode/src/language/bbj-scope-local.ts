@@ -9,10 +9,12 @@ import {
     LangiumDocument,
     LocalSymbols,
     MapScope,
-    MultiMap
+    MultiMap,
+    WorkspaceManager
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
+import type { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { FunctionNodeDescription, getClassRefNode, getFQNFullname, ParameterData } from './bbj-nodedescription-provider.js';
 import { logger } from './logger.js';
 import { collectAllUseStatements } from './bbj-scope.js';
@@ -22,6 +24,7 @@ import {
     BbjClass,
     CompoundStatement,
     FieldDecl, isArrayDecl, isAssignment, isBbjClass,
+    isBBjClassMember,
     isClass,
     isClasspath,
     isDefFunction,
@@ -45,16 +48,23 @@ import {
 } from './generated/ast.js';
 import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
 
+/** Minimal shape needed to detect a real `BBjWorkspaceManager` without a runtime import of
+ * bbj-ws-manager.ts, which would close an import cycle (bbj-ws-manager -> bbj-document-validator
+ * -> bbj-scope -> bbj-scope-local). */
+type IsExternalDocumentCapable = Pick<BBjWorkspaceManager, 'isExternalDocument'>;
 
 export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected readonly javaInterop: JavaInteropService;
     protected readonly astNodeLocator: AstNodeLocator;
+    /** Lazily read so DI construction order never matters, mirroring bbj-linker.ts's own accessor. */
+    private readonly workspaceManager: () => WorkspaceManager;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
         this.astNodeLocator = services.workspace.AstNodeLocator;
+        this.workspaceManager = () => services.shared.workspace.WorkspaceManager;
     }
 
     override async collectExportedSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
@@ -108,9 +118,34 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         const scopes = new MultiMap<AstNode, AstNodeDescription>();
         // Override to process node in an async way
         // to trigger backend resolution of Java class references.
-        for (const node of AstUtils.streamAllContents(rootNode)) {
+        //
+        // For an external (PREFIX) document, only class member signatures are ever linked
+        // (see bbj-linker.ts's link()) — a reference deep inside a method body can never be
+        // resolved from outside that file, so collecting local symbols from inside member
+        // bodies is pure unused work that still scales with body size. Mirror the linker's
+        // own rule here: process a non-private member's own node and (for a method) its
+        // parameters, then prune the body instead of descending into it. A private member is
+        // skipped entirely, matching what the linker would never expose either.
+        const wsManager = this.workspaceManager();
+        const externalDoc = typeof (wsManager as Partial<IsExternalDocumentCapable>).isExternalDocument === 'function'
+            && (wsManager as unknown as IsExternalDocumentCapable).isExternalDocument(document.uri);
+
+        const treeIter = AstUtils.streamAllContents(rootNode).iterator();
+        for (const node of treeIter) {
             await interruptAndCheck(cancelToken);
-            await this.processNode(node, document, scopes);
+            if (externalDoc && isBBjClassMember(node)) {
+                if ((node as { visibility?: string }).visibility?.toLowerCase() !== 'private') {
+                    await this.processNode(node, document, scopes);
+                    if (isMethodDecl(node)) {
+                        for (const param of node.params) {
+                            await this.processNode(param, document, scopes);
+                        }
+                    }
+                }
+                treeIter.prune();
+            } else {
+                await this.processNode(node, document, scopes);
+            }
         }
 
         if (isProgram(rootNode)) {

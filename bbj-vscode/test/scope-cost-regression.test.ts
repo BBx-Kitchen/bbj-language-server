@@ -1,11 +1,12 @@
 import { AstNode, AstNodeDescription, FileSystemNode, FileSystemProvider, LangiumDocument, Stream, URI } from 'langium';
 import { parseHelper } from 'langium/test';
+import { CancellationToken } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { findFirst } from './test-helper.js';
 import { BBjIndexManager } from '../src/language/bbj-index-manager.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
-import { BbjClass, isUse, Model, Use } from '../src/language/generated/ast.js';
+import { BbjClass, isBbjClass, isUse, Model, Use } from '../src/language/generated/ast.js';
 
 /**
  * Regression harness for #505: `::file::Class` scope lookups and PREFIX-document symbol
@@ -267,4 +268,134 @@ describe('path-keyed class index stays correct (#505)', () => {
         const result = lookupClassesForPath(handle, 'lib/C0.bbj', false);
         expect(result.map(d => d.name)).toEqual(['::lib/C0.bbj::C0']);
     });
+});
+
+describe('PREFIX symbol collection does not walk member bodies (#505)', () => {
+    const PREFIX_DIR = '/virtual/prefix';
+    const PROJECT_DIR = '/virtual/project';
+
+    /**
+     * A class with a public two-parameter method, a protected one-parameter method that
+     * ends in `methodret`, and a private one-parameter method — each body padded to `n`
+     * assignment lines, so a body-walking symbol collector's work scales with `n` and a
+     * signature-only collector's does not.
+     */
+    function classWithBodies(n: number): string {
+        const body = Array.from({ length: n }, () => 'x$ = "text"').join('\n');
+        return [
+            'class public Ext',
+            '    field public BBjString name!',
+            '    method public pub(BBjString a!, BBjString b!)',
+            body,
+            '    methodend',
+            '    method protected prot(BBjString c!)',
+            body,
+            '    methodret x$',
+            '    methodend',
+            '    method private priv(BBjString d!)',
+            body,
+            '    methodend',
+            'classend',
+        ].join('\n');
+    }
+
+    async function setupFixtures() {
+        const files = new Map<string, string>();
+        const services = createBBjTestServices({ fileSystemProvider: () => new InMemoryFileSystemProvider(files) });
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: [PREFIX_DIR], classpath: [] };
+
+        const parse = parseHelper<Model>(services.BBj);
+        const smallText = classWithBodies(2);
+        const largeText = classWithBodies(200);
+
+        const parseAt = async (dir: string, name: string, text: string) => {
+            const uri = `file://${dir}/${name}`;
+            files.set(URI.parse(uri).fsPath, text);
+            const doc = await parse(text, { documentUri: uri, validation: false });
+            expect(doc.parseResult.lexerErrors).toEqual([]);
+            expect(doc.parseResult.parserErrors).toEqual([]);
+            return doc;
+        };
+
+        const prefixSmall = await parseAt(PREFIX_DIR, 'Small.bbj', smallText);
+        const prefixLarge = await parseAt(PREFIX_DIR, 'Large.bbj', largeText);
+        const projectSmall = await parseAt(PROJECT_DIR, 'Small.bbj', smallText);
+        const projectLarge = await parseAt(PROJECT_DIR, 'Large.bbj', largeText);
+
+        return { services, prefixSmall, prefixLarge, projectSmall, projectLarge };
+    }
+
+    type ScopeComputationWithProcessNode = {
+        processNode(node: AstNode, document: LangiumDocument, scopes: unknown): Promise<void>;
+    };
+
+    async function countProcessNodeCalls(services: TestServices, document: LangiumDocument): Promise<number> {
+        const scopeComputation = services.BBj.references.ScopeComputation as unknown as ScopeComputationWithProcessNode;
+        const spy = vi.spyOn(scopeComputation, 'processNode');
+        try {
+            await services.BBj.references.ScopeComputation.collectLocalSymbols(document, CancellationToken.None);
+            return spy.mock.calls.length;
+        } finally {
+            spy.mockRestore();
+        }
+    }
+
+    test('processNode calls on a PREFIX document do not depend on body size', async () => {
+        const { services, prefixSmall, prefixLarge } = await setupFixtures();
+
+        const smallCalls = await countProcessNodeCalls(services, prefixSmall);
+        const largeCalls = await countProcessNodeCalls(services, prefixLarge);
+
+        expect(largeCalls).toEqual(smallCalls);
+    });
+
+    test('a non-PREFIX document still walks member bodies', async () => {
+        const { services, projectSmall, projectLarge } = await setupFixtures();
+
+        const smallCalls = await countProcessNodeCalls(services, projectSmall);
+        const largeCalls = await countProcessNodeCalls(services, projectLarge);
+
+        expect(largeCalls).toBeGreaterThan(smallCalls);
+    });
+
+    test('PREFIX member signatures stay in scope and private members are skipped like the linker', async () => {
+        const { services, prefixSmall } = await setupFixtures();
+
+        const scopes = await services.BBj.references.ScopeComputation.collectLocalSymbols(prefixSmall, CancellationToken.None);
+        const extClass = findFirst(prefixSmall, isBbjClass, true);
+        if (!extClass) {
+            throw new Error('No BbjClass node found in fixture document');
+        }
+        const names = scopes.getStream(extClass).toArray().map(d => d.name);
+
+        expect(names).toContain('pub');
+        expect(names).toContain('prot');
+        expect(names).not.toContain('priv');
+    });
+
+    test('symbol collection wall time stays within a generous ratio as bodies grow', async () => {
+        const { services, prefixSmall, prefixLarge } = await setupFixtures();
+        const ROUNDS = 3;
+        const CALLS = 100;
+
+        const timeRounds = async (document: LangiumDocument) => {
+            const timings: number[] = [];
+            for (let r = 0; r < ROUNDS; r++) {
+                const start = performance.now();
+                for (let i = 0; i < CALLS; i++) {
+                    await services.BBj.references.ScopeComputation.collectLocalSymbols(document, CancellationToken.None);
+                }
+                timings.push(performance.now() - start);
+            }
+            return Math.min(...timings);
+        };
+
+        const smallMs = await timeRounds(prefixSmall);
+        const largeMs = await timeRounds(prefixLarge);
+
+        expect(largeMs).toBeLessThanOrEqual(Math.max(smallMs * 8, smallMs + 150));
+    }, 60000);
 });
