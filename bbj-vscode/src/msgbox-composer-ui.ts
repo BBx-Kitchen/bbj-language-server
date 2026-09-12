@@ -39,8 +39,9 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
         const lineNo = range.start.line;
         // Only the MSGBOX call the cursor is inside — so a line with several calls
         // (e.g. IF..THEN MSGBOX(..) ELSE MSGBOX(..)) offers the action for the right one.
-        const decoded = decodeMsgboxCall(document.lineAt(lineNo).text, range.start.character);
-        const result = msgboxPanelArgFromDecode(document.uri.toString(), lineNo, decoded);
+        const lineText = document.lineAt(lineNo).text;
+        const decoded = decodeMsgboxCall(lineText, range.start.character);
+        const result = msgboxPanelArgFromDecode(document.uri.toString(), lineNo, lineText, decoded);
         if (!result) {
             return [];
         }
@@ -54,13 +55,15 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
  * both decide identically. `undefined` when there is nothing to offer (`found: false`).
  */
 export function msgboxPanelArgFromDecode(
-    uri: string, line: number, decoded: MsgboxDecodeCallResult,
+    uri: string, line: number, lineText: string, decoded: MsgboxDecodeCallResult,
 ): { arg: MsgboxPanelArg; label: string } | undefined {
     if (!decoded.found || !decoded.edit || !decoded.initial) {
         return undefined;
     }
+    const callText = lineText.slice(decoded.edit.callStart, decoded.edit.callEnd);
     const target = {
         uri, line, callStart: decoded.edit.callStart, callEnd: decoded.edit.callEnd,
+        callText,
         trailingArgs: decoded.trailingArgs ?? [],
     };
     const arg: MsgboxPanelArg = { target, initial: decoded.initial };

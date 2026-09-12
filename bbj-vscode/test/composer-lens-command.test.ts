@@ -185,7 +185,7 @@ describe('openComposerAt', () => {
 
         expect(openMsgboxComposerPanelMock).toHaveBeenCalledTimes(1);
         const decoded = decodeMsgboxCall(lineText, character);
-        const expected = msgboxPanelArgFromDecode('file:///a.bbj', 0, decoded);
+        const expected = msgboxPanelArgFromDecode('file:///a.bbj', 0, lineText, decoded);
         expect(openMsgboxComposerPanelMock.mock.calls[0][1]).toEqual(expected!.arg);
         expect(showInformationMessageMock).not.toHaveBeenCalled();
     });

@@ -14,26 +14,43 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const {
     registerCommandMock, registerCodeActionsProviderMock, createWebviewPanelMock, showInformationMessageMock,
-    FakeCodeAction,
+    showWarningMessageMock, applyEditMock,
+    FakeCodeAction, FakeRange, FakeWorkspaceEdit,
 } = vi.hoisted(() => {
     class FakeCodeAction {
         command: unknown;
         constructor(public title: string, public kind: unknown) { }
+    }
+    class FakeRange {
+        constructor(public startLine: number, public startCharacter: number, public endLine: number, public endCharacter: number) { }
+    }
+    class FakeWorkspaceEdit {
+        insert = vi.fn();
+        replace = vi.fn();
     }
     return {
         registerCommandMock: vi.fn(),
         registerCodeActionsProviderMock: vi.fn(),
         createWebviewPanelMock: vi.fn(),
         showInformationMessageMock: vi.fn(),
-        FakeCodeAction,
+        showWarningMessageMock: vi.fn(),
+        applyEditMock: vi.fn().mockResolvedValue(true),
+        FakeCodeAction, FakeRange, FakeWorkspaceEdit,
     };
 });
+
+let textDocuments: Array<{ uri: { toString(): string }; lineAt(line: number): { text: string } }> = [];
 
 vi.mock('vscode', () => ({
     window: {
         createWebviewPanel: createWebviewPanelMock,
         activeTextEditor: undefined,
         showInformationMessage: showInformationMessageMock,
+        showWarningMessage: showWarningMessageMock,
+    },
+    workspace: {
+        get textDocuments() { return textDocuments; },
+        applyEdit: applyEditMock,
     },
     commands: {
         registerCommand: registerCommandMock,
@@ -43,11 +60,14 @@ vi.mock('vscode', () => ({
     },
     CodeActionKind: { RefactorRewrite: { value: 'refactor.rewrite' } },
     CodeAction: FakeCodeAction,
+    Range: FakeRange,
+    WorkspaceEdit: FakeWorkspaceEdit,
+    Uri: { parse: (s: string) => ({ toString: () => s, __uri: s }) },
     ViewColumn: { Beside: 2 },
 }));
 
 import { registerMsgboxComposer, msgboxPanelArgFromDecode } from '../src/msgbox-composer-ui.js';
-import { openMsgboxComposerPanel, MsgboxPanelArg } from '../src/msgbox-composer-webview.js';
+import { openMsgboxComposerPanel, msgboxCallStillMatches, MsgboxPanelArg, MsgboxEditTarget } from '../src/msgbox-composer-webview.js';
 import { decodeMsgboxCall, MSGBOX_REPLACE_BANNER_TEXT } from '../src/msgbox-composer.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openMsgboxComposerPanel>[0];
@@ -131,18 +151,30 @@ describe('msgboxPanelArgFromDecode (#648)', () => {
     test('returns the same { arg, label } shape the lightbulb uses, and undefined for not-found', () => {
         const line = 'r = MSGBOX("Hi", 36, "T")';
         const decoded = decodeMsgboxCall(line);
-        const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, decoded);
+        const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, line, decoded);
         expect(result?.label).toBe('Configure MSGBOX options (Yes, No · Question icon)');
         expect(result?.arg.initial?.buttonSet).toBe(4);
-        expect(msgboxPanelArgFromDecode('file:///a.bbj', 0, { found: false })).toBeUndefined();
+        expect(result?.arg.target?.callText).toBe(line.slice(decoded.edit!.callStart, decoded.edit!.callEnd));
+        expect(msgboxPanelArgFromDecode('file:///a.bbj', 0, line, { found: false })).toBeUndefined();
     });
 
     test('produces the replace-mode label and arg.replace for an undecodable expression', () => {
         const line = 'r = MSGBOX("Hi", flags%, "T")';
         const decoded = decodeMsgboxCall(line);
-        const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, decoded);
+        const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, line, decoded);
         expect(result?.label).toBe('Compose MSGBOX options (replaces expression)…');
         expect(result?.arg.replace).toEqual({ originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT });
+    });
+});
+
+describe('msgboxCallStillMatches (#648)', () => {
+    test('true when the call span still reads the captured text, false after it changes', () => {
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25,
+            callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        expect(msgboxCallStillMatches('r = MSGBOX("Hi", 36, "T")', target)).toBe(true);
+        expect(msgboxCallStillMatches('r = MSGBOX("Bye", 36, "T")', target)).toBe(false);
     });
 });
 
@@ -151,7 +183,7 @@ describe('Panel init message carries replace (#648)', () => {
         const { panel: panelA, getHandler: getHandlerA } = createFakePanel();
         createWebviewPanelMock.mockReturnValueOnce(panelA);
         const replaceArg: MsgboxPanelArg = {
-            target: { uri: 'file:///a.bbj', line: 0, callStart: 0, callEnd: 10, trailingArgs: [] },
+            target: { uri: 'file:///a.bbj', line: 0, callStart: 0, callEnd: 10, callText: 'MSGBOX(...)', trailingArgs: [] },
             initial: { message: '"Hi"', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] },
             replace: { originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT },
         };
@@ -163,13 +195,105 @@ describe('Panel init message carries replace (#648)', () => {
         const { panel: panelB, getHandler: getHandlerB } = createFakePanel();
         createWebviewPanelMock.mockReturnValueOnce(panelB);
         const decodableArg: MsgboxPanelArg = {
-            target: { uri: 'file:///a.bbj', line: 0, callStart: 0, callEnd: 10, trailingArgs: [] },
+            target: { uri: 'file:///a.bbj', line: 0, callStart: 0, callEnd: 10, callText: 'MSGBOX(...)', trailingArgs: [] },
             initial: { message: '"Hi"', title: '', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
         };
         openMsgboxComposerPanel(fakeContext, decodableArg);
         getHandlerB()!({ type: 'ready' });
         const initB = panelB.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'init');
         expect((initB![0] as { replace: unknown }).replace).toBeNull();
+    });
+});
+
+describe('openMsgboxComposerPanel EDIT mode staleness guard (#648)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+    });
+
+    function fakeDocument(text: string, uri: string): { uri: { toString(): string }; lineAt(line: number): { text: string } } {
+        return {
+            uri: { toString: () => uri },
+            lineAt: (_line: number) => ({ text }),
+        };
+    }
+
+    test('EDIT mode replaces the call span in place and disposes the panel when the call is unchanged', async () => {
+        const line = 'r = MSGBOX("Hi", 36, "T")';
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        textDocuments = [fakeDocument(line, 'file:///a.bbj')];
+        const arg: MsgboxPanelArg = {
+            target,
+            initial: { message: '"Hi"', title: '"T"', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = {
+            buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [],
+            message: '"Hi"', title: '"T"', assignTo: '', useConstants: false,
+        };
+        await handler({ type: 'insert', payload });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        expect(showWarningMessageMock).not.toHaveBeenCalled();
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test('EDIT mode refuses to write and does not dispose when the document is missing', async () => {
+        const target: MsgboxEditTarget = {
+            uri: 'file:///gone.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        textDocuments = [];
+        const arg: MsgboxPanelArg = {
+            target,
+            initial: { message: '"Hi"', title: '"T"', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = {
+            buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [],
+            message: '"Hi"', title: '"T"', assignTo: '', useConstants: false,
+        };
+        await handler({ type: 'insert', payload });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+        expect(panel.dispose).not.toHaveBeenCalled();
+    });
+
+    test('EDIT mode refuses to write when the call text changed since the composer opened', async () => {
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        textDocuments = [fakeDocument('r = MSGBOX("Bye", 36, "T")', 'file:///a.bbj')];
+        const arg: MsgboxPanelArg = {
+            target,
+            initial: { message: '"Hi"', title: '"T"', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = {
+            buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [],
+            message: '"Hi"', title: '"T"', assignTo: '', useConstants: false,
+        };
+        await handler({ type: 'insert', payload });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+        expect(panel.dispose).not.toHaveBeenCalled();
     });
 });
 

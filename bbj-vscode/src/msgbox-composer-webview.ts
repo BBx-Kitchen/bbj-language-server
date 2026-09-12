@@ -17,9 +17,20 @@ import {
     msgboxPreview,
 } from './msgbox-composer.js';
 
+/** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
+export interface MsgboxEditTarget {
+    uri: string;
+    line: number;
+    callStart: number;
+    callEnd: number;
+    /** The call's own text at [callStart, callEnd) when the composer opened. */
+    callText: string;
+    trailingArgs: string[];
+}
+
 export interface MsgboxPanelArg {
     /** Replace an existing call span in place (from the Code Action). Absent = insert new at cursor. */
-    target?: { uri: string; line: number; callStart: number; callEnd: number; trailingArgs: string[] };
+    target?: MsgboxEditTarget;
     /** Prefill values for the form. */
     initial?: {
         message: string;
@@ -52,8 +63,16 @@ interface Selection {
     useConstants: boolean;
 }
 
+/** True when `target`'s captured call span still reads exactly `target.callText` in `currentLineText`. */
+export function msgboxCallStillMatches(currentLineText: string, target: MsgboxEditTarget): boolean {
+    return currentLineText.slice(target.callStart, target.callEnd) === target.callText;
+}
+
+const STALE_CALL_TEXT = 'The MSGBOX() call changed since the composer opened; nothing was applied.';
+
 export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: MsgboxPanelArg): void {
     const editMode = !!arg?.target;
+    const target = arg?.target;
 
     // For a NEW statement, capture the target editor + position now (the webview steals focus).
     let insertUri: vscode.Uri | undefined;
@@ -109,9 +128,14 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
                 // Apply via a WorkspaceEdit so the change lands in the existing editor tab
                 // without opening the document again in the webview's (Beside) column.
                 const edit = new vscode.WorkspaceEdit();
-                if (editMode && arg?.target) {
-                    const uri = vscode.Uri.parse(arg.target.uri);
-                    const range = new vscode.Range(arg.target.line, arg.target.callStart, arg.target.line, arg.target.callEnd);
+                if (editMode && target) {
+                    const document = vscode.workspace.textDocuments.find(d => d.uri.toString() === target.uri);
+                    if (!document || !msgboxCallStillMatches(document.lineAt(target.line).text, target)) {
+                        vscode.window.showWarningMessage(STALE_CALL_TEXT);
+                        break;
+                    }
+                    const uri = vscode.Uri.parse(target.uri);
+                    const range = new vscode.Range(target.line, target.callStart, target.line, target.callEnd);
                     edit.replace(uri, range, r.statement);
                 } else if (insertUri && insertPosition) {
                     edit.insert(insertUri, insertPosition, r.statement);

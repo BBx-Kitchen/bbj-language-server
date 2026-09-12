@@ -61,7 +61,7 @@ export async function openComposerAt(context: vscode.ExtensionContext, target: C
         }
         case 'msgbox': {
             const decoded = decodeMsgboxCall(lineText, target.character);
-            const result = msgboxPanelArgFromDecode(target.uri, target.line, decoded);
+            const result = msgboxPanelArgFromDecode(target.uri, target.line, lineText, decoded);
             if (!result) {
                 vscode.window.showInformationMessage(LENS_TARGET_GONE_TEXT);
                 return;
