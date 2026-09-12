@@ -13,7 +13,7 @@ Committed scope. Each maps to exactly one roadmap phase.
 
 ### Composer discoverability & coverage
 
-- [x] **DISC-01**: User sees a persistent, clickable cue on every line where a composer applies (MSGBOX, addWindow, addChildWindow, CVS, SETOPTS) in both VS Code and IntelliJ, without placing the caret or opening a context menu (#650)
+- [ ] **DISC-01**: User sees a persistent, clickable cue on every line where a composer applies (MSGBOX, addWindow, addChildWindow, CVS, SETOPTS) in both VS Code and IntelliJ, without placing the caret or opening a context menu (#650)
 - [ ] **DISC-02**: User is offered the MSGBOX composer when the options argument is an expression; a sum of constant Java static fields or integer literals pre-fills the composer, any other expression opens it in compose-and-replace mode (#648)
 - [ ] **DISC-03**: User can compose a CVS() call visually in both IDEs from the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128; applied in ascending order) with the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place (#649)
 - [x] **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633)
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DISC-01 | Phase 89 | Complete |
+| DISC-01 | Phase 89 | Pending |
 | DISC-02 | Phase 89 | Pending |
 | DISC-03 | Phase 89 | Pending |
 | DISC-04 | Phase 87 | Complete |
