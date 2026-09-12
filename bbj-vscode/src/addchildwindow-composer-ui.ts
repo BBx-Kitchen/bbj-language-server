@@ -25,42 +25,57 @@ export function registerAddChildWindowComposer(context: vscode.ExtensionContext)
     );
 }
 
+/**
+ * Build the `AddChildWindowPanelArg` and Code Action label for the addChildWindow call at
+ * `character` on `lineText`, or `undefined` if there is nothing to rewrite: no call at all, or a
+ * call with neither an existing flags literal nor a spot to add one (the no-title overloads
+ * cannot take flags). Shared by the Code Action provider and the composer-cue click command
+ * (`composer-lens-command.ts`) so both entry points decode the same call the same way — mirrors
+ * `addWindowPanelArgAt` (`addwindow-composer-ui.ts`).
+ */
+export function addChildWindowPanelArgAt(
+    uri: string, line: number, lineText: string, character: number,
+): { arg: AddChildWindowPanelArg; label: string } | undefined {
+    const info = findAddChildWindowCallAt(lineText, character);
+    if (!info) return undefined;
+    if (info.flagsValue === undefined && info.flagsInsertOffset === undefined) return undefined;
+
+    const flags = info.flagsValue ?? 0;
+    const eventMask = info.eventMaskValue ?? null;
+    const arg: AddChildWindowPanelArg = {
+        target: {
+            uri,
+            line,
+            flagsRange: info.flagsRange,
+            flagsInsertOffset: info.flagsInsertOffset,
+            eventMaskRange: info.eventMaskRange,
+            eventMaskInsertOffset: info.eventMaskInsertOffset,
+            preservedFlagBits: unknownBits(flags, CHILD_WINDOW_FLAGS),
+            preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, CHILD_EVENT_MASK_BITS),
+        },
+        initial: {
+            flags, eventMask,
+            // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
+            receiver: '', window: 'window!', id: '', context: '',
+            x: '', y: '', width: '', height: '',
+            title: titleArg(info.args),
+        },
+    };
+
+    const label = info.flagsValue !== undefined
+        ? `Configure child window flags (${describeChildFlags(flags)})`
+        : 'Add child window flags…';
+    return { arg, label };
+}
+
 class AddChildWindowCodeActionProvider implements vscode.CodeActionProvider {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] {
         const lineNo = range.start.line;
-        const info = findAddChildWindowCallAt(document.lineAt(lineNo).text, range.start.character);
-        if (!info) return [];
+        const result = addChildWindowPanelArgAt(document.uri.toString(), lineNo, document.lineAt(lineNo).text, range.start.character);
+        if (!result) return [];
 
-        const flags = info.flagsValue ?? 0;
-        const eventMask = info.eventMaskValue ?? null;
-        const arg: AddChildWindowPanelArg = {
-            target: {
-                uri: document.uri.toString(),
-                line: lineNo,
-                flagsRange: info.flagsRange,
-                flagsInsertOffset: info.flagsInsertOffset,
-                eventMaskRange: info.eventMaskRange,
-                eventMaskInsertOffset: info.eventMaskInsertOffset,
-                preservedFlagBits: unknownBits(flags, CHILD_WINDOW_FLAGS),
-                preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, CHILD_EVENT_MASK_BITS),
-            },
-            initial: {
-                flags, eventMask,
-                // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
-                receiver: '', window: 'window!', id: '', context: '',
-                x: '', y: '', width: '', height: '',
-                title: titleArg(info.args),
-            },
-        };
-
-        // Only offer the action when there is something to rewrite: an existing flags literal, or a
-        // spot to add one (the no-title overloads cannot take flags).
-        if (info.flagsValue === undefined && info.flagsInsertOffset === undefined) return [];
-        const label = info.flagsValue !== undefined
-            ? `Configure child window flags (${describeChildFlags(flags)})`
-            : 'Add child window flags…';
-        const action = new vscode.CodeAction(label, vscode.CodeActionKind.RefactorRewrite);
-        action.command = { command: 'bbj.composeAddChildWindow', title: label, arguments: [arg] };
+        const action = new vscode.CodeAction(result.label, vscode.CodeActionKind.RefactorRewrite);
+        action.command = { command: 'bbj.composeAddChildWindow', title: result.label, arguments: [result.arg] };
         return [action];
     }
 }
