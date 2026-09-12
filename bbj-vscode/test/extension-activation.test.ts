@@ -84,6 +84,7 @@ vi.mock('../src/msgbox-composer-ui.js', () => ({ registerMsgboxComposer: vi.fn()
 vi.mock('../src/addwindow-composer-ui.js', () => ({ registerAddWindowComposer: vi.fn() }));
 vi.mock('../src/addchildwindow-composer-ui.js', () => ({ registerAddChildWindowComposer: vi.fn() }));
 vi.mock('../src/composer-lens-command.js', () => ({ registerComposerLensCommand: vi.fn() }));
+vi.mock('../src/cvs-composer-ui.js', () => ({ registerCvsComposer: vi.fn() }));
 vi.mock('../src/setopts-composer-ui.js', () => ({ registerSetOptsComposer: vi.fn() }));
 vi.mock('../src/Commands/Commands.cjs', () => ({
     default: {

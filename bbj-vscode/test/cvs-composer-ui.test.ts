@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -339,5 +340,26 @@ describe('cvs-composer-webview.ts source assertions (#649)', () => {
 
     test('carries a nonce CSP like the other composer panels', () => {
         expect(webviewSource).toMatch(/script-src 'nonce-\$\{nonce\}'/);
+    });
+});
+
+describe('package.json manifest (#649)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const packageJson: any = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+
+    test('contributes.commands has the bbj.composeCvs entry', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const entry = packageJson.contributes.commands.find((c: any) => c.command === 'bbj.composeCvs');
+        expect(entry).toEqual({ category: 'BBj', command: 'bbj.composeCvs', title: 'Compose CVS() (visual)…' });
+    });
+
+    test('menus["editor/context"] has an entry for bbj.composeCvs scoped to bbj files', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const entry = packageJson.contributes.menus['editor/context'].find((m: any) => m.command === 'bbj.composeCvs');
+        expect(entry).toEqual({ command: 'bbj.composeCvs', when: 'editorLangId == bbj', group: '1_modification' });
+    });
+
+    test('activationEvents includes onCommand:bbj.composeCvs', () => {
+        expect(packageJson.activationEvents).toContain('onCommand:bbj.composeCvs');
     });
 });
