@@ -5,6 +5,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.MsgboxReplace;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
@@ -24,6 +26,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
@@ -52,6 +55,8 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final boolean editMode;
     private final ComposerModels.MsgboxPreviewInput initial;
     private final List<String> trailingArgs;
+    @Nullable
+    private final MsgboxReplace replace;
     private final AtomicInteger seq = new AtomicInteger();
     private final ComposerFlow flow;
     private final Consumer<ComposerNotices.Notice> balloonOnce;
@@ -78,7 +83,8 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private volatile String statement = "";
 
     public MsgboxComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
-                               @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs) {
+                               @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs,
+                               @Nullable MsgboxReplace replace) {
         super(project);
         this.project = project;
         this.server = server;
@@ -86,6 +92,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         this.initial = initial;
         this.editMode = editMode;
         this.trailingArgs = trailingArgs;
+        this.replace = replace;
         this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
         this.flow = new ComposerFlow(
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
@@ -108,6 +115,19 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     protected @Nullable JComponent createCenterPanel() {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
+
+        // Compose-and-replace: the server could not decode the existing options expression, so show
+        // its banner verbatim and the original expression read-only before anything else in the
+        // dialog. Neither component is created when replace == null; OK keeps its normal Apply
+        // behaviour and no confirmation dialog is added anywhere.
+        if (replace != null) {
+            JBLabel banner = new JBLabel(replace.banner, AllIcons.General.BalloonWarning, SwingConstants.LEFT);
+            root.add(banner);
+            JBTextField originalOptionsField = new JBTextField(replace.originalOptions);
+            originalOptionsField.setEditable(false);
+            root.add(labeled("Original options expression", originalOptionsField));
+            root.add(Box.createVerticalStrut(JBUI.scale(8)));
+        }
 
         JPanel preview = new JPanel(new FlowLayout(FlowLayout.CENTER));
         preview.add(schematic);

@@ -291,8 +291,8 @@ public final class ComposerLauncher {
         }
         boolean edit = decoded != null && decoded.found;
         MsgboxComposerDialog dialog = edit
-                ? new MsgboxComposerDialog(project, server, catalogs, decoded.initial, true, decoded.trailingArgs)
-                : new MsgboxComposerDialog(project, server, catalogs, null, false, null);
+                ? new MsgboxComposerDialog(project, server, catalogs, decoded.initial, true, decoded.trailingArgs, decoded.replace)
+                : new MsgboxComposerDialog(project, server, catalogs, null, false, null, null);
         if (!dialog.showAndGet()) {
             return;
         }
