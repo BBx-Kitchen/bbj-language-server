@@ -10,6 +10,9 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.ComposerCatalogs;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
@@ -129,4 +132,19 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/composer/setopts/composeTriState")
     CompletableFuture<SetoptsComposeTriStateResult> setoptsComposeTriState(SetoptsComposeTriStateParams params);
+
+    /**
+     * Decode the {@code CVS(...)} call at the caret into an edit-in-place verdict + prefill
+     * payload, computed by {@code decodeCvsCall} in {@code cvs-composer.ts} and nothing else
+     * (#649). {@code found=false} when there is no CVS() call at the caret.
+     */
+    @JsonRequest("bbj/composer/cvs/decodeCall")
+    CompletableFuture<CvsDecodeResult> cvsDecodeCall(DecodeCallParams params);
+
+    /**
+     * Full CVS() preview (mask + composed statement + summary + validation) for one selection,
+     * computed by {@code cvsPreview} in {@code cvs-composer.ts} and nothing else (#649).
+     */
+    @JsonRequest("bbj/composer/cvs/preview")
+    CompletableFuture<CvsPreview> cvsPreview(CvsPreviewParams params);
 }

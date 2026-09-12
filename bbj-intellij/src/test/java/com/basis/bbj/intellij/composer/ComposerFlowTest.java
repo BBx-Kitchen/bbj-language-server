@@ -165,6 +165,18 @@ class ComposerFlowTest {
         }
 
         @Override
+        public CompletableFuture<com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult> cvsDecodeCall(
+                DecodeCallParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CompletableFuture<com.basis.bbj.intellij.composer.ComposerModels.CvsPreview> cvsPreview(
+                com.basis.bbj.intellij.composer.ComposerModels.CvsPreviewParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
             throw new UnsupportedOperationException();
         }

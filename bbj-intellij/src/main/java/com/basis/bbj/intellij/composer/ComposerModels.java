@@ -49,6 +49,8 @@ public final class ComposerModels {
         public AddWindowCatalogs addchildwindow;
         /** SETOPTS byte/bit catalog (#633). */
         public SetoptsCatalogs setopts;
+        /** CVS() operation-bit catalog (#649). */
+        public CvsCatalogs cvs;
     }
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -470,6 +472,81 @@ public final class ComposerModels {
     public static final class SetoptsComposeTriStateResult {
         public String text;
         public List<String> lines;
+    }
+
+    // ---- CVS() (#649) ------------------------------------------------------------------------------
+
+    /**
+     * One documented CVS() operation bit ({@code CVS_BITS} entry in {@code cvs-composer.ts}).
+     * {@code detail}/{@code since} are null for a plain bit; {@code charsCustomizable} is true when
+     * the optional {@code chars} argument replaces the default space character for this operation.
+     */
+    public static final class CvsBit {
+        public long value;
+        public String label;
+        public String detail;
+        public String since;
+        public boolean charsCustomizable;
+    }
+
+    /** CVS() field of {@code bbj/composer/catalogs} — the eight documented bits plus the shared chars tooltip. */
+    public static final class CvsCatalogs {
+        public List<CvsBit> bits;
+        public String charsTooltip;
+    }
+
+    /** The CVS() call span (line-relative) to replace when reconfiguring in place. */
+    public static final class CvsEdit {
+        public int callStart;
+        public int callEnd;
+    }
+
+    /** Prefill payload for an editable CVS() decode: the string argument, the set bits, and chars. */
+    public static final class CvsInitial {
+        public String str;
+        public List<Long> bits;
+        public String chars;
+    }
+
+    /**
+     * Result of {@code bbj/composer/cvs/decodeCall}; {@code found=false} when there is no CVS()
+     * call at the caret. {@code editable=false} still carries {@code edit} and a {@code reason} so
+     * callers can locate and report on the call (#649).
+     */
+    public static final class CvsDecodeResult {
+        public boolean found;
+        public boolean editable;
+        public String reason;
+        public CvsEdit edit;
+        public CvsInitial initial;
+        public List<String> trailingArgs;
+    }
+
+    /** Flat UI selection for the CVS() preview request; mirrors {@code CvsPreviewInput} exactly. */
+    public static final class CvsPreviewInput {
+        public String str = "";
+        public List<Long> bits;
+        public String chars = "";
+        public String assignTo;
+        public List<String> trailingArgs;
+        public boolean editMode;
+    }
+
+    /** Param wrapper: the handler expects {@code { "input": ... }}. */
+    public static final class CvsPreviewParams {
+        public CvsPreviewInput input;
+        public CvsPreviewParams(CvsPreviewInput input) { this.input = input; }
+    }
+
+    /** Result of {@code bbj/composer/cvs/preview} — the full recomputed statement for one selection. */
+    public static final class CvsPreview {
+        public long mask;
+        public String statement;
+        public String summary;
+        public boolean charsEnabled;
+        public String strError;
+        public String charsError;
+        public boolean valid;
     }
 
     // ---- Composer cue (#650) ------------------------------------------------------------------

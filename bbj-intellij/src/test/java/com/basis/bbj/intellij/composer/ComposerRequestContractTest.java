@@ -41,7 +41,7 @@ class ComposerRequestContractTest {
     private static final Path SETOPTS_IN_CODE_REQUEST_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "setopts-in-code-request.ts").toAbsolutePath().normalize();
 
-    /** The fourteen names this test expects; also independently derived reflectively below. */
+    /** The sixteen names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -56,7 +56,9 @@ class ComposerRequestContractTest {
         "bbj/composer/setopts/decodeCall",
         "bbj/composer/setopts/preview",
         "bbj/composer/setopts/decodeInCode",
-        "bbj/composer/setopts/composeTriState"
+        "bbj/composer/setopts/composeTriState",
+        "bbj/composer/cvs/decodeCall",
+        "bbj/composer/cvs/preview"
     );
 
     private static String readLanguageServerSource(Path path) {

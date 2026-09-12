@@ -37,6 +37,10 @@ import {
     MASK_COMMA_BYTE, MASK_DOT_BYTE,
     type SetOptsSelection, type SetOptsVector,
 } from '../setopts-catalog.js';
+import {
+    CVS_BITS, CVS_CHARS_TOOLTIP, decodeCvsCall, cvsPreview,
+    type CvsPreviewInput,
+} from '../cvs-composer.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }
@@ -82,6 +86,7 @@ export const composerHandlers = {
             bits: SETOPTS_BITS,
             byteGroups: Object.keys(BYTE_GROUPS).map(Number).map(byte => ({ byte, label: BYTE_GROUPS[byte] })),
         },
+        cvs: { bits: CVS_BITS, charsTooltip: CVS_CHARS_TOOLTIP },
     }),
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -233,6 +238,16 @@ export const composerHandlers = {
      */
     'bbj/composer/setopts/preview': (p: { original?: string; selection: SetOptsSelection }) =>
         setoptsPreview(p.original ? parseVector(p.original) : undefined, p.selection),
+
+    // ---- CVS() (#649) ----------------------------------------------------------------------------
+    /**
+     * Decode the `CVS(...)` call at the caret (or the first call on the line) into an
+     * edit-in-place verdict + prefill payload. Thin pass-through to `decodeCvsCall` in
+     * `cvs-composer.ts` — no new arithmetic here.
+     */
+    'bbj/composer/cvs/decodeCall': (p: LineQuery) => decodeCvsCall(p.line, p.character),
+    /** Full CVS() preview (mask + composed statement + summary + validation) for one selection. */
+    'bbj/composer/cvs/preview': (p: { input: CvsPreviewInput }) => cvsPreview(p.input),
 } as const;
 
 /** Register every composer request on the LSP connection. Call once during server startup. */

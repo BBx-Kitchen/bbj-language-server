@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { composerHandlers, registerComposerRequests } from '../src/language/composer-commands';
 import { decodeMsgboxCall } from '../src/msgbox-composer';
+import { decodeCvsCall, cvsPreview } from '../src/cvs-composer';
 
 // Thin pass-through handlers: these tests assert the request layer faithfully re-exposes the pure
 // composer API (the arithmetic itself is covered by msgbox-composer / addwindow-composer tests).
@@ -18,6 +19,8 @@ describe('composer LS command layer (#433)', () => {
         expect(c.addchildwindow.eventBits).toHaveLength(19);
         expect(c.setopts.bits).toHaveLength(50);
         expect(c.setopts.byteGroups.map((g: any) => g.byte)).toEqual([1, 2, 3, 4, 7, 8, 9]);
+        expect(c.cvs.bits.map((b: any) => b.value)).toEqual([1, 2, 4, 8, 16, 32, 64, 128]);
+        expect(c.cvs.charsTooltip.length).toBeGreaterThan(0);
     });
 
     test('msgbox encode/decode round-trips a selection through expr', () => {
@@ -258,6 +261,18 @@ describe('composer LS command layer (#433)', () => {
             const viaHandler = call('bbj/composer/msgbox/decodeCall', { line, character });
             expect(viaHandler).toEqual(decodeMsgboxCall(line, character));
         }
+    });
+
+    test('cvs/decodeCall and cvs/preview delegate to cvs-composer.ts (#649)', () => {
+        const line = 'x$ = CVS(a$, 1+4)';
+        const viaHandlerWithCaret = call('bbj/composer/cvs/decodeCall', { line, character: 6 });
+        expect(viaHandlerWithCaret).toEqual(decodeCvsCall(line, 6));
+        const viaHandlerNoCaret = call('bbj/composer/cvs/decodeCall', { line });
+        expect(viaHandlerNoCaret).toEqual(decodeCvsCall(line));
+
+        const input = { str: 'a$', bits: [1, 4], chars: '"*"' };
+        const preview = call('bbj/composer/cvs/preview', { input }) as any;
+        expect(preview).toEqual(cvsPreview(input));
     });
 
     test('registerComposerRequests wires every handler onto the connection', () => {
