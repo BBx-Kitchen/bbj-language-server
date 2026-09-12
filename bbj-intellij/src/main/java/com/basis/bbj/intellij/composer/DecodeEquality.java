@@ -282,9 +282,10 @@ public final class DecodeEquality {
 
     /**
      * True when both are null, false when exactly one is null, and otherwise a field-wise
-     * comparison of {@code found}, {@code editable}, {@code reason}, the {@code edit} payload
-     * ({@code callStart}/{@code callEnd}), the {@code initial} payload ({@code str}, order-sensitive
-     * {@code bits}, {@code chars}) and the top-level {@code trailingArgs} (#649).
+     * comparison of {@code found}, {@code editable}, {@code incomplete}, {@code reason}, the
+     * {@code edit} payload ({@code callStart}/{@code callEnd}), the {@code initial} payload
+     * ({@code str}, order-sensitive {@code bits}, {@code chars}) and the top-level
+     * {@code trailingArgs} (#649).
      */
     public static boolean sameCvs(CvsDecodeResult a, CvsDecodeResult b) {
         if (a == null || b == null) {
@@ -292,6 +293,7 @@ public final class DecodeEquality {
         }
         return a.found == b.found
                 && a.editable == b.editable
+                && a.incomplete == b.incomplete
                 && Objects.equals(a.reason, b.reason)
                 && sameCvsEdit(a.edit, b.edit)
                 && sameCvsInitial(a.initial, b.initial)
