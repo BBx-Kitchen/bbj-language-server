@@ -85,6 +85,11 @@ class ComposerFlowTest {
         CompletableFuture<ComposerCatalogs> catalogs = CompletableFuture.completedFuture(new ComposerCatalogs());
         CompletableFuture<MsgboxDecodeResult> msgboxDecode = CompletableFuture.completedFuture(new MsgboxDecodeResult());
 
+        /** Counts every composerCatalogs()/msgboxDecodeCall(...) call this double receives, so a
+         * cache-reuse test can assert a request was (or was not) sent again. */
+        final AtomicInteger catalogsRequests = new AtomicInteger();
+        final AtomicInteger decodeRequests = new AtomicInteger();
+
         /** Non-zero only for the timeout-stacking regression test: delays the stage's own future
          * starting from the moment the stage is actually invoked (lazily), not from test setup, so
          * sequential per-stage delays genuinely stack in real elapsed time the way slow (not hung)
@@ -94,6 +99,7 @@ class ComposerFlowTest {
 
         @Override
         public CompletableFuture<ComposerCatalogs> composerCatalogs() {
+            catalogsRequests.incrementAndGet();
             return catalogsDelayMillis > 0 ? delayedCopy(catalogs, catalogsDelayMillis) : catalogs;
         }
 
@@ -109,6 +115,7 @@ class ComposerFlowTest {
 
         @Override
         public CompletableFuture<MsgboxDecodeResult> msgboxDecodeCall(DecodeCallParams params) {
+            decodeRequests.incrementAndGet();
             return msgboxDecodeDelayMillis > 0 ? delayedCopy(msgboxDecode, msgboxDecodeDelayMillis) : msgboxDecode;
         }
 
@@ -246,14 +253,20 @@ class ComposerFlowTest {
         return future;
     }
 
-    private static CompletableFuture<Void> driveMsgboxLaunch(ComposerFlow flow, CompletableFuture<BbjComposerServer> serverFuture,
+    private static CompletableFuture<Void> driveMsgboxLaunch(ComposerFlow flow, ComposerHandleCache handles,
             AtomicBoolean decodeCalled, AtomicBoolean successRan) {
-        return flow.launch("MSGBOX", serverFuture,
+        return flow.launch("MSGBOX", handles,
                 (server, catalogs) -> {
                     decodeCalled.set(true);
                     return server.msgboxDecodeCall(new DecodeCallParams("msgbox", 0));
                 },
                 (server, catalogs, decoded) -> successRan.set(true));
+    }
+
+    /** Wraps an already-resolved server future in a fresh, single-use handle cache -- the shape
+     * every pre-existing test in this file uses since it drives exactly one launch through it. */
+    private static ComposerHandleCache handlesOf(CompletableFuture<BbjComposerServer> serverFuture) {
+        return new ComposerHandleCache(() -> serverFuture);
     }
 
     @Test
@@ -266,7 +279,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(server), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(server)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(),
@@ -292,7 +305,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(server), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(server)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(),
@@ -312,7 +325,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(null), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(null)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(), "a null server proxy must produce exactly one notice");
@@ -336,7 +349,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(server), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(server)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(), "a null catalogs payload must produce exactly one notice");
@@ -356,7 +369,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(server), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(server)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(),
@@ -387,7 +400,7 @@ class ComposerFlowTest {
         AtomicBoolean successRan = new AtomicBoolean(false);
 
         long startNanos = System.nanoTime();
-        driveMsgboxLaunch(flow, serverFuture, decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(serverFuture), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
         long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
 
@@ -420,7 +433,7 @@ class ComposerFlowTest {
         AtomicReference<ComposerCatalogs> receivedCatalogs = new AtomicReference<>();
         AtomicReference<MsgboxDecodeResult> receivedDecoded = new AtomicReference<>();
 
-        flow.launch("MSGBOX", CompletableFuture.completedFuture(server),
+        flow.launch("MSGBOX", handlesOf(CompletableFuture.completedFuture(server)),
                 (s, c) -> s.msgboxDecodeCall(new DecodeCallParams("msgbox", 0)),
                 (s, c, d) -> {
                     receivedServer.set(s);
@@ -437,6 +450,93 @@ class ComposerFlowTest {
         assertTrue(notifier.notices.isEmpty(), "the happy path must raise no notice at all");
     }
 
+    // -- launch() through one ComposerHandleCache: reuse across opens (#612) --------------------
+
+    @Test
+    void aSecondLaunchThroughTheSameHandlesReusesServerAndCatalogsButDecodesAgain() throws Exception {
+        FakeComposerServer server = new FakeComposerServer();
+        AtomicInteger resolverRuns = new AtomicInteger();
+        ComposerHandleCache handles = new ComposerHandleCache(() -> {
+            resolverRuns.incrementAndGet();
+            return CompletableFuture.completedFuture(server);
+        });
+
+        RecordingNotifier notifier = new RecordingNotifier();
+        ComposerFlow flow = new ComposerFlow(new RecordingEdt(), notifier, ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
+        AtomicBoolean decodeCalled = new AtomicBoolean(false);
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+        decodeCalled.set(false);
+        successRan.set(false);
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, resolverRuns.get(),
+                "a second launch through the same handles must not re-resolve the server");
+        assertEquals(1, server.catalogsRequests.get(),
+                "a second launch through the same handles must not re-request catalogs");
+        assertEquals(2, server.decodeRequests.get(),
+                "each open still sends its own decode request -- that result depends on the caret line");
+        assertTrue(notifier.notices.isEmpty(), "two successful launches through the same handles raise no notice");
+    }
+
+    @Test
+    void aFailedLaunchClearsTheHandlesSoTheRetryResolvesFromScratch() throws Exception {
+        FakeComposerServer server = new FakeComposerServer();
+        server.msgboxDecode = CompletableFuture.failedFuture(new RuntimeException("decode boom"));
+        AtomicInteger resolverRuns = new AtomicInteger();
+        ComposerHandleCache handles = new ComposerHandleCache(() -> {
+            resolverRuns.incrementAndGet();
+            return CompletableFuture.completedFuture(server);
+        });
+
+        RecordingNotifier notifier = new RecordingNotifier();
+        ComposerFlow flow = new ComposerFlow(new RecordingEdt(), notifier, ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
+        AtomicBoolean decodeCalled = new AtomicBoolean(false);
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, notifier.notices.size(), "a failed decode must raise exactly one notice");
+        assertEquals(ComposerNotices.Reason.REQUEST_FAILED, notifier.notices.get(0).reason);
+        assertEquals(1, resolverRuns.get());
+
+        server.msgboxDecode = CompletableFuture.completedFuture(new MsgboxDecodeResult());
+        decodeCalled.set(false);
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+
+        assertEquals(2, resolverRuns.get(),
+                "a failed launch must clear the handles so the balloon Retry resolves the server again "
+                        + "from scratch, not from a proxy that may already be dead");
+    }
+
+    @Test
+    void aNullServerIsNotKeptAndRaisesNotReady() throws Exception {
+        AtomicInteger resolverRuns = new AtomicInteger();
+        AtomicInteger callCount = new AtomicInteger();
+        FakeComposerServer server = new FakeComposerServer();
+        ComposerHandleCache handles = new ComposerHandleCache(() -> {
+            resolverRuns.incrementAndGet();
+            return CompletableFuture.completedFuture(callCount.getAndIncrement() == 0 ? null : server);
+        });
+
+        RecordingNotifier notifier = new RecordingNotifier();
+        ComposerFlow flow = new ComposerFlow(new RecordingEdt(), notifier, ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
+        AtomicBoolean decodeCalled = new AtomicBoolean(false);
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, notifier.notices.size(), "a null server proxy must raise exactly one notice");
+        assertEquals(ComposerNotices.Reason.NOT_READY, notifier.notices.get(0).reason);
+        assertEquals(1, resolverRuns.get());
+
+        driveMsgboxLaunch(flow, handles, decodeCalled, successRan).get(5, TimeUnit.SECONDS);
+
+        assertEquals(2, resolverRuns.get(),
+                "a null result is never kept, so the next launch through the same handles resolves again");
+    }
+
     @Test
     void exactlyOneNoticeIsRaisedEvenWhenTheFailureIsWrappedByTheFutureMachinery() throws Exception {
         FakeComposerServer server = new FakeComposerServer();
@@ -448,7 +548,7 @@ class ComposerFlowTest {
         AtomicBoolean decodeCalled = new AtomicBoolean(false);
         AtomicBoolean successRan = new AtomicBoolean(false);
 
-        driveMsgboxLaunch(flow, CompletableFuture.completedFuture(server), decodeCalled, successRan)
+        driveMsgboxLaunch(flow, handlesOf(CompletableFuture.completedFuture(server)), decodeCalled, successRan)
                 .get(5, TimeUnit.SECONDS);
 
         assertEquals(1, notifier.notices.size(), "a wrapped failure must still produce exactly one notice");
