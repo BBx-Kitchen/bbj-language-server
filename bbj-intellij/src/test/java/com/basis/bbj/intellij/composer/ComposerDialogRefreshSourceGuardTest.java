@@ -13,16 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins the #538 dialog-refresh wiring across all four composer dialogs -- MSGBOX, addWindow,
- * addChildWindow and SETOPTS: each one observes both the success and the failure side of its
- * preview request through {@link ComposerFlow#observe}, checks its sequence number on both paths
- * before touching anything, disables OK and labels the dialog on a failure, and rate-limits its
- * balloon to one per dialog session via {@link ComposerFlow#once}. A failure here means one of four
- * things happened -- a dialog went back to observing only the success side of its preview request,
- * lost the sequence check on one of the two paths, lost the OK gating that stops a stale statement
- * from being accepted, or started raising a balloon per keystroke instead of one per dialog session
- * -- and this guard fails the build for it instead of letting a user discover it as a
- * silently-accepted stale statement.
+ * Pins the #538 dialog-refresh wiring across every composer dialog: each one observes both the
+ * success and the failure side of its preview request through {@link ComposerFlow#observe},
+ * checks its sequence number on both paths before touching anything, disables OK and labels the
+ * dialog on a failure, and rate-limits its balloon to one per dialog session via
+ * {@link ComposerFlow#once}. A failure here means one of four things happened -- a dialog went
+ * back to observing only the success side of its preview request, lost the sequence check on one
+ * of the two paths, lost the OK gating that stops a stale statement from being accepted, or
+ * started raising a balloon per keystroke instead of one per dialog session -- and this guard
+ * fails the build for it instead of letting a user discover it as a silently-accepted stale
+ * statement.
  */
 class ComposerDialogRefreshSourceGuardTest {
 
@@ -62,14 +62,17 @@ class ComposerDialogRefreshSourceGuardTest {
             MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     /**
-     * Dialogs whose live preview is coalesced through the {@code PreviewDebouncer}'s fixed 300ms
-     * trailing-edge delay disable OK a third time -- synchronously, the instant a new preview is
-     * scheduled -- rather than only on the constructor's initial disable and a later failed preview.
-     * {@code SetoptsTriStateComposerDialog} and {@code CvsComposerDialog} reuse the exact same
-     * debounce seam and OK-gating rule {@code SetoptsComposerDialog} established, so all three carry
-     * the third disable.
+     * Every composer dialog's live preview is coalesced through the one shared
+     * {@code PreviewDebouncer} seam, so every dialog disables OK a third time -- synchronously,
+     * the instant a new preview is scheduled -- rather than only on the constructor's initial
+     * disable and a later failed preview. {@code MsgboxComposerDialog} routes through the same
+     * {@code scheduleRefresh()} shape that {@code SetoptsComposerDialog},
+     * {@code SetoptsTriStateComposerDialog} and {@code CvsComposerDialog} already established;
+     * {@code AddWindowComposerDialog} and {@code AddChildWindowComposerDialog} join this list once
+     * they carry the same wiring.
      */
-    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
+    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(
+            MSGBOX_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
@@ -210,6 +213,46 @@ class ComposerDialogRefreshSourceGuardTest {
                     source.getFileName() + " no listener may pass previewDebouncer::trigger as a method "
                             + "reference -- every trigger must go through scheduleRefresh() so OK is "
                             + "disabled first");
+        }
+    }
+
+    /**
+     * Every debounced dialog wires the shared debounce seam identically: one delay constant, one
+     * scheduler instance, one debouncer instance, and no bespoke {@code Alarm} of its own. A dialog
+     * that drifted from this shape (a different delay, a second scheduler, or a raw {@code Alarm})
+     * would defeat the purpose of sharing one seam across all six dialogs.
+     */
+    @Test
+    void everyDebouncedDialogSharesTheOneDebounceSeamWithTheSameDelay() {
+        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(1, countOccurrences(text, "PREVIEW_DEBOUNCE_MS = 300L"),
+                    source.getFileName() + " must declare exactly one PREVIEW_DEBOUNCE_MS = 300L");
+            assertEquals(1, countOccurrences(text, "new AlarmScheduler(getDisposable())"),
+                    source.getFileName() + " must build exactly one AlarmScheduler over its own disposable");
+            assertEquals(1, countOccurrences(text, "new PreviewDebouncer("),
+                    source.getFileName() + " must build exactly one PreviewDebouncer");
+            assertEquals(0, countOccurrences(text, "new Alarm("),
+                    source.getFileName() + " must not create a bespoke Alarm of its own -- "
+                            + "AlarmScheduler is the only Alarm owner");
+        }
+    }
+
+    /**
+     * A debounced dialog listener that called {@code refresh()} directly would bypass the OK-disable
+     * that {@code scheduleRefresh()} exists to guarantee, reopening the stale-apply window this guard
+     * closes elsewhere. Only the debouncer's own action reference may name {@code refresh}.
+     */
+    @Test
+    void noDebouncedDialogListenerRefreshesDirectly() {
+        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(1, countOccurrences(text, "this::refresh"),
+                    source.getFileName() + " must reference refresh() exactly once -- as the "
+                            + "PreviewDebouncer's own action");
+            assertEquals(0, countOccurrences(text, "-> refresh()"),
+                    source.getFileName() + " no listener may call refresh() directly -- every "
+                            + "listener must route through scheduleRefresh()");
         }
     }
 

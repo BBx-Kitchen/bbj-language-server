@@ -6,6 +6,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxReplace;
+import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.PreviewDebouncer;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
@@ -44,10 +46,13 @@ import java.util.function.Consumer;
  * Swing composer for {@code MSGBOX()} (#426/#433): pick icon / button set / default button / flags
  * and message/title, and the language server encodes the numeric {@code expr}, composes the
  * statement, and validates the string fields ({@code bbj/composer/msgbox/preview}). Create flow —
- * inserts a fresh {@code MSGBOX(...)} statement.
+ * inserts a fresh {@code MSGBOX(...)} statement. Every input routes through {@link #scheduleRefresh()}
+ * over the shared {@code PreviewDebouncer} seam, so a burst of typing sends one preview request per
+ * settle point instead of one per keystroke (#611).
  */
 public final class MsgboxComposerDialog extends DialogWrapper {
     private static final int CUSTOM_BUTTON_SET = 7;
+    private static final long PREVIEW_DEBOUNCE_MS = 300L;
 
     private final Project project;
     private final BbjComposerServer server;
@@ -60,6 +65,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final AtomicInteger seq = new AtomicInteger();
     private final ComposerFlow flow;
     private final Consumer<ComposerNotices.Notice> balloonOnce;
+    private final PreviewDebouncer previewDebouncer;
     private JPanel assignToRow;
 
     private final JBTextField message = new JBTextField("\"Message\"");
@@ -98,6 +104,11 @@ public final class MsgboxComposerDialog extends DialogWrapper {
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
                 balloonOnce,
                 ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+        this.previewDebouncer = new PreviewDebouncer(
+                new AlarmScheduler(getDisposable()),
+                PREVIEW_DEBOUNCE_MS,
+                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
+                this::refresh);
         setTitle(editMode ? "Configure MSGBOX" : "Compose MSGBOX");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
@@ -162,7 +173,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         customPanel.setBorder(BorderFactory.createTitledBorder("Custom button labels"));
         for (JBTextField cb : customButtons) {
             customPanel.add(cb);
-            cb.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
+            cb.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
         }
         customPanel.add(customError);
         root.add(customPanel);
@@ -172,20 +183,20 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         flags.setBorder(BorderFactory.createTitledBorder("Extra options"));
         for (CatalogItem it : catalogs.flags) {
             JBCheckBox cb = new JBCheckBox(it.label);
-            cb.addActionListener(e -> refresh());
+            cb.addActionListener(e -> scheduleRefresh());
             flagChecks.put(it.value, cb);
             flags.add(cb);
         }
         root.add(flags);
         root.add(useConstants);
 
-        buttonSet.addActionListener(e -> { updateCustomVisibility(); refresh(); });
-        icon.addActionListener(e -> refresh());
-        defaultButton.addActionListener(e -> refresh());
-        useConstants.addActionListener(e -> refresh());
-        message.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
-        titleField.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
-        assignTo.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
+        buttonSet.addActionListener(e -> { updateCustomVisibility(); scheduleRefresh(); });
+        icon.addActionListener(e -> scheduleRefresh());
+        defaultButton.addActionListener(e -> scheduleRefresh());
+        useConstants.addActionListener(e -> scheduleRefresh());
+        message.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
+        titleField.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
+        assignTo.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
         updateCustomVisibility();
         return root;
     }
@@ -221,6 +232,17 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         }
     }
 
+    /**
+     * Every checkbox/combo/field listener calls this instead of {@link #refresh()} directly: it
+     * disables OK synchronously the instant a new preview is scheduled, and it is re-enabled only
+     * when the debounced preview resolves.
+     */
+    private void scheduleRefresh() {
+        setOKActionEnabled(false);
+        previewDebouncer.trigger();
+    }
+
+    /** No listener calls this directly -- every listener routes through {@link #scheduleRefresh()}. */
     private void refresh() {
         MsgboxPreviewInput input = new MsgboxPreviewInput();
         input.message = message.getText();
