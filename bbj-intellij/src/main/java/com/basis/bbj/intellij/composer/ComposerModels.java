@@ -529,12 +529,19 @@ public final class ComposerModels {
 
     /**
      * Result of {@code bbj/composer/cvs/decodeCall}; {@code found=false} when there is no CVS()
-     * call at the caret. {@code editable=false} still carries {@code edit} and a {@code reason} so
-     * callers can locate and report on the call (#649).
+     * call at the caret. A found call that is not editable is either {@code incomplete} (no mask
+     * argument yet) or refused with a {@code reason} — the two are mutually exclusive, and only
+     * the not-editable, non-incomplete case carries a {@code reason} (#649).
      */
     public static final class CvsDecodeResult {
         public boolean found;
         public boolean editable;
+        /**
+         * True when the call has no mask argument yet — argument-less, still being typed, or
+         * closed without one. {@code editable} is then false and {@code reason} is absent; {@code
+         * edit}, {@code initial} and {@code trailingArgs} describe the call a composer replaces.
+         */
+        public boolean incomplete;
         public String reason;
         public CvsEdit edit;
         public CvsInitial initial;

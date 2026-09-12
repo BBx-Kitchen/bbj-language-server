@@ -639,11 +639,12 @@ public final class ComposerLauncher {
     }
 
     /**
-     * Opens the CVS() composer (#649), either prefilled for edit-in-place on a decoded literal-mask
-     * call or blank for compose-new. A {@code found && !editable} decode (a non-literal mask) opens
-     * no dialog at all -- just the server's own reason, mirroring {@link #openSetoptsInCode}'s
-     * not-editable branch. The edit path replaces only the decoded call span through
-     * {@link StaleEditGuard}; the compose-new path inserts at the caret.
+     * Opens the CVS() composer (#649), routed through {@link CvsComposeMode#of}: blank for
+     * compose-new, prefilled for edit-in-place on a decoded literal-mask call, or prefilled to
+     * complete an unfinished call the user is still typing -- both replace modes write through the
+     * ONE guarded CVS replacement below, differing only in the write-command name. A NOT_EDITABLE
+     * decode (a non-literal or undocumented-bit mask) opens no dialog at all -- just the server's
+     * own reason, mirroring {@link #openSetoptsInCode}'s not-editable branch.
      */
     private static void openCvs(Project project, Editor editor, BbjComposerServer server,
                                 CvsCatalogs catalogs, CvsDecodeResult decoded, int line, int col) {
@@ -651,17 +652,18 @@ public final class ComposerLauncher {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.CVS)), null);
             return;
         }
-        if (decoded != null && decoded.found && !decoded.editable) {
+        CvsComposeMode mode = CvsComposeMode.of(decoded);
+        if (mode == CvsComposeMode.NOT_EDITABLE) {
             String reason = decoded.reason != null
                     ? decoded.reason
                     : "This CVS() call cannot be safely edited in place.";
             ComposerNoticeRenderer.render(project, ComposerNotices.requestFailed(labelOf(Kind.CVS), reason), null);
             return;
         }
-        boolean edit = decoded != null && decoded.found && decoded.editable;
-        CvsComposerDialog dialog = edit
-                ? new CvsComposerDialog(project, server, catalogs, decoded.initial, true, decoded.trailingArgs)
-                : new CvsComposerDialog(project, server, catalogs, null, false, null);
+        boolean replacing = mode == CvsComposeMode.EDIT_IN_PLACE || mode == CvsComposeMode.COMPLETE_CALL;
+        CvsComposerDialog dialog = replacing
+                ? new CvsComposerDialog(project, server, catalogs, decoded.initial, mode, decoded.trailingArgs)
+                : new CvsComposerDialog(project, server, catalogs, null, mode, null);
         if (!dialog.showAndGet()) {
             return;
         }
@@ -669,11 +671,12 @@ public final class ComposerLauncher {
         if (text == null || text.isEmpty()) {
             return;
         }
-        if (edit) {
+        if (replacing) {
             CvsEdit ed = decoded.edit;
+            String commandName = mode == CvsComposeMode.EDIT_IN_PLACE ? "Configure CVS()" : "Complete CVS() call";
             StaleEditGuard guard = new StaleEditGuard(
                     documentViewOf(editor),
-                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure CVS()", null, body),
+                    body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),
                     ComposerLauncher::onEdt,
                     notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.CVS)),
                     StaleEditGuard.REDECODE_TIMEOUT_MILLIS);

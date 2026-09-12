@@ -39,9 +39,10 @@ import java.util.function.Consumer;
  * operation checkboxes (applied in ascending order, no byte-group headers, no scroll pane), the
  * source string expression, an optional replacement-characters field, and a live debounced
  * preview of the resulting mask and composed statement. The dialog owns no CVS() arithmetic itself
- * -- every value it shows comes from {@code bbj/composer/cvs/preview}. Edit-in-place and
- * compose-new both flow through this same constructor; the caller ({@link ComposerLauncher})
- * decides which line, if any, was decoded.
+ * -- every value it shows comes from {@code bbj/composer/cvs/preview}. This one constructor serves
+ * all three {@link CvsComposeMode} outcomes the caller ({@link ComposerLauncher}) can reach: a
+ * blank compose-new dialog, an edit-in-place dialog on an existing literal-sum call, or a
+ * complete-the-call dialog on a call the user is still typing.
  */
 public final class CvsComposerDialog extends DialogWrapper {
 
@@ -51,6 +52,7 @@ public final class CvsComposerDialog extends DialogWrapper {
     private final BbjComposerServer server;
     private final CvsCatalogs catalogs;
     private final boolean editMode;
+    private final boolean completing;
     @Nullable
     private final List<String> trailingArgs;
     private final AtomicInteger seq = new AtomicInteger();
@@ -76,13 +78,17 @@ public final class CvsComposerDialog extends DialogWrapper {
     private volatile String statement = "";
 
     public CvsComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server,
-            @NotNull CvsCatalogs catalogs, @Nullable CvsInitial initial, boolean editMode,
+            @NotNull CvsCatalogs catalogs, @Nullable CvsInitial initial, @NotNull CvsComposeMode mode,
             @Nullable List<String> trailingArgs) {
         super(project);
+        if (mode == CvsComposeMode.NOT_EDITABLE) {
+            throw new IllegalArgumentException("CvsComposerDialog must never open for NOT_EDITABLE");
+        }
         this.project = project;
         this.server = server;
         this.catalogs = catalogs;
-        this.editMode = editMode;
+        this.editMode = mode == CvsComposeMode.EDIT_IN_PLACE;
+        this.completing = mode == CvsComposeMode.COMPLETE_CALL;
         this.trailingArgs = trailingArgs;
         this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
         this.flow = new ComposerFlow(
@@ -94,8 +100,8 @@ public final class CvsComposerDialog extends DialogWrapper {
                 PREVIEW_DEBOUNCE_MS,
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
                 this::refresh);
-        setTitle(editMode ? "Configure CVS()" : "Compose CVS()");
-        setOKButtonText(editMode ? "Apply" : "Insert");
+        setTitle(editMode ? "Configure CVS()" : completing ? "Complete CVS() call" : "Compose CVS()");
+        setOKButtonText(editMode || completing ? "Apply" : "Insert");
         init();
         // Disable OK until the first preview round-trip resolves (#538): otherwise a fast/keyboard
         // accept landing before any preview arrives would keep OK enabled while apply() has never
@@ -123,7 +129,9 @@ public final class CvsComposerDialog extends DialogWrapper {
         root.add(strError);
 
         assignToRow = labeled("Assign result to (optional)", assignTo);
-        assignToRow.setVisible(!editMode); // in edit mode the assignment lives outside the replaced call span
+        // In both replace modes (edit-in-place and completing an unfinished call) any assignment
+        // sits outside the replaced call span, so the row is visible only when composing new.
+        assignToRow.setVisible(!editMode && !completing);
         root.add(assignToRow);
 
         // ONE flat, titled checkbox list -- no byte-group headers, no scroll pane.
@@ -198,8 +206,12 @@ public final class CvsComposerDialog extends DialogWrapper {
         }
         input.bits = bits;
         input.chars = charsField.getText();
-        input.assignTo = assignTo.getText();
+        // Assignment lives outside the replaced call span in both replace modes; only compose-new
+        // reads it from the (visible) assign field.
+        input.assignTo = (!editMode && !completing) ? assignTo.getText() : null;
         input.trailingArgs = trailingArgs;
+        // False while completing an unfinished call, so the server validates the string as
+        // required -- unlike edit-in-place, where the verbatim string is already known-good.
         input.editMode = editMode;
 
         int mySeq = seq.incrementAndGet();
