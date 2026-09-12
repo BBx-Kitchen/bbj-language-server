@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-09-PLAN.md
-last_updated: "2026-09-12T10:03:20.005Z"
+stopped_at: Completed 89-10-PLAN.md
+last_updated: "2026-09-12T10:13:37.626Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 3ba5f27b820f630dc54e33309658017e56d480f4
+state_head: 63a41755e553759dde321f24690dd7f81b63f7a8
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 43
+  completed_plans: 44
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -183,6 +183,7 @@ transitioned to Phase 89.
 | Phase 89 P06 | 6min | 3 tasks | 2 files |
 | Phase 89 P08 | 10min | 2 tasks | 8 files |
 | Phase 89 P09 | 25min | 2 tasks | 6 files |
+| Phase 89 P10 | 12min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -314,6 +315,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: Config routing decision: route — config.bbx routed to the language server under its own bbx-config id, superseding Phase 84's pinned invariant; plans 89-11/89-12 proceed unchanged
 - [Phase 89]: Phase 89 89-08: CvsComposerDialog reuses SETOPTS's exact ComposerFlow/PreviewDebouncer/scheduleRefresh plumbing in a single flat titled checkbox list (no byte-group headers, no scroll pane); MsgboxComposerDialog's compose-and-replace banner renders the server's replace.banner verbatim plus a read-only original-expression field, with no client-side wording and no confirmation dialog
 - [Phase 89]: Phase 89 89-09: setopts-in-code cue scans only the SETOPTS keyword itself (never IOR(/AND( lines); MSGBOX/addChildWindow cues carry no decode veto while CVS/SETOPTS-in-code require their composer's own editable verdict; the Roadmap Success Criterion 5 structural test actually lives in composer-codelens-handler.test.ts (widened to mix all five kinds), not composer-codelens.test.ts as an earlier summary and this plan assumed.
+- [Phase 89]: 89-10: ConfigureCvsIntention's isAvailable reuses ComposerLauncher.isCaretOnCall(editor, "cvs(") unchanged — The keyword already ends in a literal '(' and gets a trailing boundary for free, so no SETOPTS-style multi-keyword widening was needed
 
 ### Tech Debt
 
@@ -380,8 +382,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T10:03:19.751Z
-Stopped at: Completed 89-09-PLAN.md
+Last session: 2026-09-12T10:13:31.911Z
+Stopped at: Completed 89-10-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain

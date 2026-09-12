@@ -426,7 +426,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
   5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
 
-**Plans**: 9/13 plans executed (7 waves)
+**Plans**: 10/13 plans executed (7 waves)
 
 **Wave 1**
 
@@ -451,7 +451,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 89-10-PLAN.md — IntelliJ CVS() intention and context-menu action
+- [x] 89-10-PLAN.md — IntelliJ CVS() intention and context-menu action
 - [ ] 89-11-PLAN.md — Config files routed to the server as text-only `bbx-config`; VS Code client SETOPTS lens retired (gated on the recorded decision)
 
 **Wave 6** *(blocked on Wave 5 completion)*
