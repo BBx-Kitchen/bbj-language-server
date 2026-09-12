@@ -163,7 +163,7 @@ The CTRL() function reports on the status of selected items on a GUI device and 
 CTRL(chan:int, control_id?:int, func?:int, context_id?:int, ERR?!:lineref): string
 
 /@@
-\`CVS(string,int{,ERR=lineref})\`
+\`CVS(string,int{,chars}{,ERR=lineref})\`
 
 The CVS() function modifies a given string by the value of int from the table below:
 
@@ -183,12 +183,16 @@ The CVS() function modifies a given string by the value of int from the table be
 
 64-Repace "," and "." characters with values as specified in OPTS(see SETOPTS)
 
-If the optional char parameter was specified, use it instead of space.
+128-Strip all spaces (BBj-specific)
+
+The optional chars argument replaces the default space character for operations 1, 2, 16, 32
+and 128 (BBj 19.0 and later), and accepts multiple characters for operations 1, 2 and 128
+(BBj 19.10 and later).
 
 Documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/cvs_function_bbj.htm
 
 @/
-CVS(str:string, conversion_flags:int, ERR?!:lineref): string
+CVS(str:string, conversion_flags:int, chars?:string, ERR?!:lineref): string
 
 /@@
 \`CVT(unit_value,conversion_type{,ERR=lineref})\`
