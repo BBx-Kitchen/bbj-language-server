@@ -14,8 +14,9 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Editor action: open the visual SETOPTS composer for the resolved config file (#633). PSI-free by
- * design -- {@code BbxConfigLanguage}/{@code BbjConfigFileType} (Phase 84 Plan 05) has no parser and
- * is unmapped to the server, so this action's availability check scans no syntax tree at all (D-01).
+ * design -- {@code BbxConfigLanguage}/{@code BbjConfigFileType} (Phase 84 Plan 05) has no parser, and
+ * the config language reaches the language server only under its own {@code bbx-config} language id,
+ * which the server never parses, so this action's availability check scans no syntax tree at all.
  * One entry point covers both modes (D-05/D-06): the caret's line is captured inside {@link
  * ComposerLauncher#launch} and decoded server-side via {@code bbj/composer/setopts/decodeCall} --
  * an existing {@code SETOPTS <hex>} line opens the dialog in edit mode for that line, any other line

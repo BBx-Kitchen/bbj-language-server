@@ -311,5 +311,8 @@
         <languageMapping language="BBj"
                          serverId="bbjLanguageServer"
                          languageId="bbj"/>
+        <languageMapping language="BBx Config"
+                         serverId="bbjLanguageServer"
+                         languageId="bbx-config"/>
     </extensions>
 </idea-plugin>

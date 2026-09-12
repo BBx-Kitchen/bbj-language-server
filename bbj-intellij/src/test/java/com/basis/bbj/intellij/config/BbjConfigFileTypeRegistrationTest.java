@@ -23,8 +23,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Mechanical proof of the plugin.xml wiring a config file needs: its own highlighter factory
  * (never the stock TextMate one), an editor-highlighter provider for the config file type, no
- * {@code extensions} claim on the config {@code fileType} entry, and exactly one LSP4IJ language
- * mapping -- naming BBj -- so a config file never reaches the language server.
+ * {@code extensions} claim on the config {@code fileType} entry, and exactly two LSP4IJ language
+ * mappings -- BBj as BBj source, and the config language only under its own {@code bbx-config} id,
+ * which the language server answers for the composer cue and never parses or diagnoses (#650).
  */
 class BbjConfigFileTypeRegistrationTest {
 
@@ -37,6 +38,8 @@ class BbjConfigFileTypeRegistrationTest {
     private static final String CONFIG_FILE_TYPE_NAME = "BBx Config";
     private static final String CONFIG_LANGUAGE_ID = "BBx Config";
     private static final String BBJ_LANGUAGE_ID = "BBj";
+    private static final String BBJ_SERVER_LANGUAGE_ID = "bbj";
+    private static final String CONFIG_SERVER_LANGUAGE_ID = "bbx-config";
     private static final String FACTORY_IMPLEMENTATION_CLASS =
             "com.basis.bbj.intellij.BbxConfigSyntaxHighlighterFactory";
 
@@ -123,12 +126,33 @@ class BbjConfigFileTypeRegistrationTest {
     }
 
     @Test
-    void exactlyOneLanguageMappingExistsAndItNamesBbj() {
+    void theBbjLanguageIsMappedAsBbjAndTheConfigLanguageOnlyAsBbxConfig() {
         Document document = readPluginXml();
         List<Element> mappings = elementsByTagName(document, "languageMapping");
-        assertEquals(1, mappings.size(), "exactly one LSP4IJ languageMapping element must exist");
-        assertEquals(BBJ_LANGUAGE_ID, mappings.get(0).getAttribute("language"),
-                "the single languageMapping must name the BBj language, never the config language");
+        assertEquals(2, mappings.size(), "exactly two LSP4IJ languageMapping elements must exist");
+
+        Element bbjMapping = mappings.stream()
+                .filter(e -> BBJ_LANGUAGE_ID.equals(e.getAttribute("language")))
+                .findFirst()
+                .orElse(null);
+        assertTrue(bbjMapping != null, "no languageMapping found with language=\"" + BBJ_LANGUAGE_ID + "\"");
+        assertEquals(BBJ_SERVER_LANGUAGE_ID, bbjMapping.getAttribute("languageId"),
+                "the BBj languageMapping must use languageId=\"" + BBJ_SERVER_LANGUAGE_ID + "\"");
+        assertEquals("bbjLanguageServer", bbjMapping.getAttribute("serverId"));
+
+        Element configMapping = mappings.stream()
+                .filter(e -> CONFIG_LANGUAGE_ID.equals(e.getAttribute("language")))
+                .findFirst()
+                .orElse(null);
+        assertTrue(configMapping != null, "no languageMapping found with language=\"" + CONFIG_LANGUAGE_ID + "\"");
+        assertEquals(CONFIG_SERVER_LANGUAGE_ID, configMapping.getAttribute("languageId"),
+                "the config languageMapping must use languageId=\"" + CONFIG_SERVER_LANGUAGE_ID + "\"");
+        assertEquals("bbjLanguageServer", configMapping.getAttribute("serverId"));
+
+        assertFalse(mappings.stream()
+                        .anyMatch(e -> CONFIG_LANGUAGE_ID.equals(e.getAttribute("language"))
+                                && BBJ_SERVER_LANGUAGE_ID.equals(e.getAttribute("languageId"))),
+                "no languageMapping may pair the config language with languageId=\"" + BBJ_SERVER_LANGUAGE_ID + "\"");
     }
 
     @Test
