@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
-status: verifying
-stopped_at: Completed 89-13-PLAN.md
-last_updated: "2026-09-12T11:10:27.613Z"
+status: executing
+stopped_at: Completed 89-14-PLAN.md
+last_updated: "2026-09-12T14:24:46.065Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: b0b9afe06d4ad7df3ce2ca4dad2482ad9f3ab914
+state_head: 858a52ce83ad1b5f31babae0e956cf9f0b4e41e9
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 47
-  completed_plans: 47
+  total_plans: 50
+  completed_plans: 48
   percent: 56
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 13 of 13
-Status: Phase complete — ready for verification
+Plan: 2 of 16
+Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
 
@@ -187,6 +187,7 @@ transitioned to Phase 89.
 | Phase 89 P11 | 25min | 2 tasks | 10 files |
 | Phase 89 P12 | 12min | 2 tasks | 5 files |
 | Phase 89 P13 | 28min | 2 tasks | 5 files |
+| Phase 89 P14 | 16min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -325,6 +326,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-12: cvs mapped to ComposerLensKinds and BBx Config mapped to the server as bbx-config, re-pinning Phase 84's invariant as a two-mapping check; a pre-existing D-01 comment token on the touched BbjComposeSetoptsAction Javadoc line was dropped to satisfy this plan's own register-check regex
 - [Phase 89]: Phase 89 89-13: bbj-hover-handler.ts overrides textDocument/hover to answer a bbx-config document instantly, closing a real >6s hang where Langium's default hover handler awaited WorkspaceManager.ready before checking document state -- discovered live while proving the T-89-42 mitigation, the same class of hang the codeAction/codeLens overrides already closed; every other document's hover is delegated unchanged.
 - [Phase 89]: Phase 89 89-13: All 13 phase plans now summarized; DISC-01/02/03 (#650, #648, #649) marked Complete via the shared-ID gate. Both distributables rebuilt and reinstalled from the final tree, proven against the fixture over IPC (sha256-identical main.cjs in both bundles).
+- [Phase 89]: 89-14: CVS() incomplete decode outcome stays editable:false (fail closed) so the codelens cue's existing found && editable gate keeps half-typed lines cue-free with no code change
+- [Phase 89]: 89-14: cvsCallStillMatches re-locates the call via findCvsCalls (span-exact), not just a text-slice comparison, so a grown unterminated call is refused as stale
+- [Phase 89]: 89-14: runComposeCvsCommand decodes the caret before falling through to compose-new, so bbj.composeCvs from the palette/context menu can no longer nest a call inside a partial or existing one
 
 ### Tech Debt
 
@@ -391,8 +395,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T11:10:13.962Z
-Stopped at: Completed 89-13-PLAN.md
+Last session: 2026-09-12T14:24:15.355Z
+Stopped at: Completed 89-14-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
