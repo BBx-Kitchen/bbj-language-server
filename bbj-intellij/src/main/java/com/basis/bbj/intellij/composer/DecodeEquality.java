@@ -4,9 +4,13 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
+import com.basis.bbj.intellij.composer.ComposerModels.MsgboxReplace;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
@@ -55,7 +59,16 @@ public final class DecodeEquality {
         return a.found == b.found
                 && sameMsgboxEdit(a.edit, b.edit)
                 && Objects.equals(a.trailingArgs, b.trailingArgs)
-                && sameMsgboxInitial(a.initial, b.initial);
+                && sameMsgboxInitial(a.initial, b.initial)
+                && sameMsgboxReplace(a.replace, b.replace)
+                && Objects.equals(a.hasOptions, b.hasOptions);
+    }
+
+    private static boolean sameMsgboxReplace(MsgboxReplace a, MsgboxReplace b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return Objects.equals(a.originalOptions, b.originalOptions) && Objects.equals(a.banner, b.banner);
     }
 
     private static boolean sameMsgboxEdit(MsgboxEdit a, MsgboxEdit b) {
@@ -265,5 +278,39 @@ public final class DecodeEquality {
             }
         }
         return true;
+    }
+
+    /**
+     * True when both are null, false when exactly one is null, and otherwise a field-wise
+     * comparison of {@code found}, {@code editable}, {@code reason}, the {@code edit} payload
+     * ({@code callStart}/{@code callEnd}), the {@code initial} payload ({@code str}, order-sensitive
+     * {@code bits}, {@code chars}) and the top-level {@code trailingArgs} (#649).
+     */
+    public static boolean sameCvs(CvsDecodeResult a, CvsDecodeResult b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.found == b.found
+                && a.editable == b.editable
+                && Objects.equals(a.reason, b.reason)
+                && sameCvsEdit(a.edit, b.edit)
+                && sameCvsInitial(a.initial, b.initial)
+                && Objects.equals(a.trailingArgs, b.trailingArgs);
+    }
+
+    private static boolean sameCvsEdit(CvsEdit a, CvsEdit b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.callStart == b.callStart && a.callEnd == b.callEnd;
+    }
+
+    private static boolean sameCvsInitial(CvsInitial a, CvsInitial b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        // bits has no equals override on its own and comparison is order-sensitive: applying the
+        // same set of CVS() operations in a different order is a different call.
+        return Objects.equals(a.str, b.str) && Objects.equals(a.bits, b.bits) && Objects.equals(a.chars, b.chars);
     }
 }

@@ -8,6 +8,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.ComposerCatalogs;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsPreviewInput;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
@@ -82,6 +86,19 @@ class ComposerModelsJsonBoundaryTest {
                 "bits":[{"byte":8,"mask":64,"label":"MKEYED verb creates XKEYED files","detail":null,
                   "bbj":"bbj-specific","bbjDetail":null,"since":null}],
                 "byteGroups":[{"byte":1,"label":"Errors, console & listing"}]
+              },
+              "cvs":{
+                "bits":[
+                  {"value":1,"label":"Strip leading spaces","detail":null,"since":null,"charsCustomizable":true},
+                  {"value":2,"label":"Strip trailing spaces","detail":null,"since":null,"charsCustomizable":true},
+                  {"value":4,"label":"Convert to uppercase","detail":null,"since":null,"charsCustomizable":false},
+                  {"value":8,"label":"Convert to lowercase","detail":null,"since":null,"charsCustomizable":false},
+                  {"value":16,"label":"Convert non-printable characters to spaces","detail":null,"since":null,"charsCustomizable":true},
+                  {"value":32,"label":"Replace multiple spaces with one space","detail":null,"since":null,"charsCustomizable":true},
+                  {"value":64,"label":"Replace comma and period per SETOPTS mask settings","detail":null,"since":null,"charsCustomizable":false},
+                  {"value":128,"label":"Strip all spaces","detail":"BBj-specific (not in PRO/5)","since":null,"charsCustomizable":true}
+                ],
+                "charsTooltip":"From BBj 19.0, the optional chars argument replaces the default space character."
               }
             }}""";
 
@@ -98,6 +115,10 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(8, result.setopts.bits.get(0).byteNo);
         assertEquals("bbj-specific", result.setopts.bits.get(0).bbj);
         assertEquals("Errors, console & listing", result.setopts.byteGroups.get(0).label);
+        assertEquals(8, result.cvs.bits.size(), "the CVS() catalog carries all eight documented op bits");
+        assertTrue(result.cvs.bits.get(0).charsCustomizable);
+        assertFalse(result.cvs.bits.get(2).charsCustomizable, "uppercase (bit 4) is not chars-customizable");
+        assertTrue(result.cvs.charsTooltip.length() > 0);
     }
 
     @Test
@@ -164,6 +185,30 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(1, result.trailingArgs.size());
         assertEquals(1, result.initial.flags.size());
         assertEquals(512L, result.initial.flags.get(0));
+    }
+
+    /** Compose-and-replace mode (#648): {@code replace} carries the original text and the banner. */
+    @Test
+    void aMsgboxDecodeCallResponseCarryingReplaceParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,
+              "edit":{"callStart":10,"callEnd":42},
+              "trailingArgs":[],
+              "initial":{"message":"\\"Hi\\"","title":"","assignTo":null,"buttonSet":0,
+                "icon":0,"defaultButton":0,"flags":[],"customButtons":[],"trailingArgs":[],
+                "editMode":null,"useConstants":null},
+              "replace":{"originalOptions":"flags%","banner":"Could not decode this options expression — composing will replace it."},
+              "hasOptions":true
+            }}""";
+
+        MsgboxDecodeResult result = parse("bbj/composer/msgbox/decodeCall", MsgboxDecodeResult.class, envelope,
+            DecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertTrue(result.hasOptions);
+        assertEquals("flags%", result.replace.originalOptions);
+        assertEquals("Could not decode this options expression — composing will replace it.", result.replace.banner);
     }
 
     @Test
@@ -284,6 +329,89 @@ class ComposerModelsJsonBoundaryTest {
 
         assertTrue(json.contains("\"byte\":3"), "expected the wire key 'byte', got: " + json);
         assertFalse(json.contains("byteNo"), "the Java field name byteNo must never leak onto the wire: " + json);
+    }
+
+    // ---- CVS() (#649) --------------------------------------------------------------------------
+
+    @Test
+    void aFullyPopulatedCvsDecodeCallResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,"editable":true,"reason":null,
+              "edit":{"callStart":5,"callEnd":25},
+              "initial":{"str":"a$","bits":[1,4],"chars":"\\"*\\""},
+              "trailingArgs":["ERR=100"]
+            }}""";
+
+        CvsDecodeResult result = parse(
+            "bbj/composer/cvs/decodeCall", CvsDecodeResult.class, envelope, DecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertTrue(result.editable);
+        assertNull(result.reason);
+        assertEquals(5, result.edit.callStart);
+        assertEquals(25, result.edit.callEnd);
+        assertEquals("a$", result.initial.str);
+        assertEquals(2, result.initial.bits.size());
+        assertEquals(1L, result.initial.bits.get(0));
+        assertEquals("\"*\"", result.initial.chars);
+        assertEquals(1, result.trailingArgs.size());
+    }
+
+    /** A not-editable verdict still carries {@code edit} + {@code reason}, but no {@code initial}/{@code trailingArgs}. */
+    @Test
+    void aNotEditableCvsDecodeCallResponseWithEveryOptionalFieldOmittedParsesWithoutFailing() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,"editable":false,
+              "reason":"The mask argument is not a sum of integer literals, so it cannot be safely decoded.",
+              "edit":{"callStart":5,"callEnd":18}
+            }}""";
+
+        CvsDecodeResult result = parse(
+            "bbj/composer/cvs/decodeCall", CvsDecodeResult.class, envelope, DecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertFalse(result.editable);
+        assertEquals(
+            "The mask argument is not a sum of integer literals, so it cannot be safely decoded.", result.reason);
+        assertEquals(5, result.edit.callStart);
+        assertNull(result.initial, "a not-editable verdict must carry no initial payload");
+        assertNull(result.trailingArgs, "a not-editable verdict must carry no trailingArgs");
+    }
+
+    @Test
+    void aCvsPreviewResponseWithMask255ParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "mask":255,"statement":"a$ = CVS(a$, 255, \\"*\\")",
+              "summary":"Strip leading spaces \\u00b7 Strip all spaces \\u2014 applied in ascending order",
+              "charsEnabled":true,"strError":null,"charsError":null,"valid":true
+            }}""";
+
+        CvsPreview result = parse("bbj/composer/cvs/preview", CvsPreview.class, envelope, CvsPreviewParams.class);
+
+        assertEquals(255L, result.mask);
+        assertTrue(result.charsEnabled);
+        assertTrue(result.valid);
+        assertNull(result.strError);
+    }
+
+    /**
+     * The request direction: proves {@code CvsPreviewInput.bits} serializes as a bare JSON array
+     * of numbers, the shape {@code cvsPreview} in {@code cvs-composer.ts} expects.
+     */
+    @Test
+    void theCvsPreviewParamsSerializeBitsAsAJsonArrayOfNumbers() {
+        CvsPreviewInput input = new CvsPreviewInput();
+        input.str = "a$";
+        input.bits = List.of(1L, 4L);
+        input.chars = "\"*\"";
+        CvsPreviewParams params = new CvsPreviewParams(input);
+
+        String json = new com.google.gson.Gson().toJson(params);
+
+        assertTrue(json.contains("\"bits\":[1,4]"), "expected a bare numeric array for bits, got: " + json);
     }
 
     // ---- Composer cue (#650) ----------------------------------------------------------------------

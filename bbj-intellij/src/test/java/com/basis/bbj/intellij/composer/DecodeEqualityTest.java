@@ -4,9 +4,13 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
+import com.basis.bbj.intellij.composer.ComposerModels.MsgboxReplace;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
@@ -57,6 +61,11 @@ class DecodeEqualityTest {
         initial.editMode = true;
         initial.useConstants = false;
         decoded.initial = initial;
+        MsgboxReplace replace = new MsgboxReplace();
+        replace.originalOptions = "flags%";
+        replace.banner = "Could not decode this options expression — composing will replace it.";
+        decoded.replace = replace;
+        decoded.hasOptions = true;
         return decoded;
     }
 
@@ -81,6 +90,13 @@ class DecodeEqualityTest {
         initial.editMode = src.initial.editMode;
         initial.useConstants = src.initial.useConstants;
         decoded.initial = initial;
+        if (src.replace != null) {
+            MsgboxReplace replace = new MsgboxReplace();
+            replace.originalOptions = src.replace.originalOptions;
+            replace.banner = src.replace.banner;
+            decoded.replace = replace;
+        }
+        decoded.hasOptions = src.hasOptions;
         return decoded;
     }
 
@@ -230,7 +246,10 @@ class DecodeEqualityTest {
                 d -> d.initial.customButtons = List.of("mutated"),
                 d -> d.initial.trailingArgs = List.of("mutated"),
                 d -> d.initial.editMode = !d.initial.editMode,
-                d -> d.initial.useConstants = !d.initial.useConstants);
+                d -> d.initial.useConstants = !d.initial.useConstants,
+                d -> d.replace.originalOptions = "mutated%",
+                d -> d.replace.banner = "mutated banner",
+                d -> d.hasOptions = !d.hasOptions);
 
         for (Consumer<MsgboxDecodeResult> mutator : mutators) {
             MsgboxDecodeResult a = baseMsgbox();
@@ -261,6 +280,28 @@ class DecodeEqualityTest {
         nullTrailing.trailingArgs = null;
         assertFalse(DecodeEquality.sameMsgbox(a, nullTrailing),
                 "a null trailingArgs on one side only must not match");
+
+        MsgboxDecodeResult nullReplace = copyOfMsgbox(a);
+        nullReplace.replace = null;
+        assertFalse(DecodeEquality.sameMsgbox(a, nullReplace), "a null replace on one side only must not match");
+    }
+
+    @Test
+    void twoIdenticalMsgboxDecodesWithANullReplaceOnBothSidesMatch() {
+        MsgboxDecodeResult a = baseMsgbox();
+        a.replace = null;
+        MsgboxDecodeResult b = copyOfMsgbox(a);
+        b.replace = null;
+        assertTrue(DecodeEquality.sameMsgbox(a, b), "a null replace on both sides must compare equal");
+    }
+
+    @Test
+    void twoMsgboxDecodesDifferingOnlyInReplaceOriginalOptionsDoNotMatch() {
+        MsgboxDecodeResult a = baseMsgbox();
+        MsgboxDecodeResult b = copyOfMsgbox(a);
+        b.replace.originalOptions = "different%";
+        assertFalse(DecodeEquality.sameMsgbox(a, b),
+                "a different replace.originalOptions must not match, even with everything else identical");
     }
 
     @Test
@@ -548,5 +589,108 @@ class DecodeEqualityTest {
         nullInitial.initial = null;
         assertFalse(DecodeEquality.sameSetoptsInCode(a, nullInitial),
                 "a null initial on one side only must not match");
+    }
+
+    // ---- CVS() fixtures (#649) ------------------------------------------------------------------
+
+    private static CvsDecodeResult baseCvs() {
+        CvsDecodeResult decoded = new CvsDecodeResult();
+        decoded.found = true;
+        decoded.editable = true;
+        decoded.reason = null;
+        CvsEdit edit = new CvsEdit();
+        edit.callStart = 5;
+        edit.callEnd = 20;
+        decoded.edit = edit;
+        CvsInitial initial = new CvsInitial();
+        initial.str = "a$";
+        initial.bits = new ArrayList<>(List.of(1L, 4L));
+        initial.chars = "\"*\"";
+        decoded.initial = initial;
+        decoded.trailingArgs = new ArrayList<>(List.of("ERR=100"));
+        return decoded;
+    }
+
+    private static CvsDecodeResult copyOfCvs(CvsDecodeResult src) {
+        CvsDecodeResult decoded = new CvsDecodeResult();
+        decoded.found = src.found;
+        decoded.editable = src.editable;
+        decoded.reason = src.reason;
+        if (src.edit != null) {
+            CvsEdit edit = new CvsEdit();
+            edit.callStart = src.edit.callStart;
+            edit.callEnd = src.edit.callEnd;
+            decoded.edit = edit;
+        }
+        if (src.initial != null) {
+            CvsInitial initial = new CvsInitial();
+            initial.str = src.initial.str;
+            initial.bits = src.initial.bits == null ? null : new ArrayList<>(src.initial.bits);
+            initial.chars = src.initial.chars;
+            decoded.initial = initial;
+        }
+        decoded.trailingArgs = src.trailingArgs == null ? null : new ArrayList<>(src.trailingArgs);
+        return decoded;
+    }
+
+    @Test
+    void twoIdenticalCvsDecodesMatch() {
+        CvsDecodeResult a = baseCvs();
+        CvsDecodeResult b = copyOfCvs(a);
+        assertTrue(DecodeEquality.sameCvs(a, b),
+                "two independently built results with identical field values must compare equal by value");
+    }
+
+    @Test
+    void changingAnySingleComparedCvsFieldBreaksTheMatch() {
+        List<Consumer<CvsDecodeResult>> mutators = List.of(
+                d -> d.found = !d.found,
+                d -> d.editable = !d.editable,
+                d -> d.reason = "The mask argument is not a sum of integer literals, so it cannot be safely decoded.",
+                d -> d.edit.callStart = d.edit.callStart + 1,
+                d -> d.edit.callEnd = d.edit.callEnd + 1,
+                d -> d.initial.str = "b$",
+                d -> d.initial.bits = List.of(2L, 1L), // same values, different order
+                d -> d.initial.chars = "\"#\"",
+                d -> d.trailingArgs = List.of("mutated"));
+
+        for (Consumer<CvsDecodeResult> mutator : mutators) {
+            CvsDecodeResult a = baseCvs();
+            CvsDecodeResult b = copyOfCvs(a);
+            mutator.accept(b);
+            assertFalse(DecodeEquality.sameCvs(a, b), "mutating exactly one compared CVS field must break the match");
+        }
+    }
+
+    @Test
+    void cvsNullsOnEitherSideAreHandledWithoutThrowing() {
+        assertTrue(DecodeEquality.sameCvs(null, null), "both null must match");
+        assertFalse(DecodeEquality.sameCvs(baseCvs(), null), "one null must not match");
+        assertFalse(DecodeEquality.sameCvs(null, baseCvs()), "one null must not match, either order");
+
+        CvsDecodeResult a = baseCvs();
+
+        CvsDecodeResult nullEdit = copyOfCvs(a);
+        nullEdit.edit = null;
+        assertFalse(DecodeEquality.sameCvs(a, nullEdit), "a null edit on one side only must not match");
+
+        CvsDecodeResult nullInitial = copyOfCvs(a);
+        nullInitial.initial = null;
+        assertFalse(DecodeEquality.sameCvs(a, nullInitial), "a null initial on one side only must not match");
+    }
+
+    @Test
+    void notEditableCvsDecodesWithNoInitialOnBothSidesCompareEqual() {
+        CvsDecodeResult a = new CvsDecodeResult();
+        a.found = true;
+        a.editable = false;
+        a.reason = "This CVS() call has no mask argument, so there is nothing to compose from.";
+        CvsEdit edit = new CvsEdit();
+        edit.callStart = 5;
+        edit.callEnd = 12;
+        a.edit = edit;
+
+        CvsDecodeResult b = copyOfCvs(a);
+        assertTrue(DecodeEquality.sameCvs(a, b), "a null initial and trailingArgs on both sides must compare equal");
     }
 }

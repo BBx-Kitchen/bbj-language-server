@@ -222,12 +222,31 @@ public final class ComposerModels {
         public int callEnd;
     }
 
+    /**
+     * Present only in compose-and-replace mode: the original options text and a banner explaining
+     * that composing will replace it, since the language server could not decode the expression
+     * (#648). {@code banner} comes verbatim from the language server so IntelliJ never hard-codes
+     * the wording.
+     */
+    public static final class MsgboxReplace {
+        public String originalOptions;
+        public String banner;
+    }
+
     /** Result of {@code bbj/composer/msgbox/decodeCall}; {@code found=false} when none at the caret. */
     public static final class MsgboxDecodeResult {
         public boolean found;
         public MsgboxEdit edit;
         public List<String> trailingArgs;
         public MsgboxPreviewInput initial;
+        /** Present only in compose-and-replace mode (#648); null when the call decoded normally. */
+        public MsgboxReplace replace;
+        /**
+         * True when the call already carries an options argument (decodable or undecodable);
+         * false/absent when there is no options argument yet (the bare-call "add options" case).
+         * {@code initial}/{@code replace} alone cannot always distinguish these (#648).
+         */
+        public Boolean hasOptions;
     }
 
     /** addWindow token ranges / insert offsets (line-relative) to rewrite in place. */
