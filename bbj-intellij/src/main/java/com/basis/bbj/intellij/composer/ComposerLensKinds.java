@@ -32,6 +32,7 @@ public final class ComposerLensKinds {
         map.put("msgbox", ComposerLauncher.Kind.MSGBOX);
         map.put("addwindow", ComposerLauncher.Kind.ADDWINDOW);
         map.put("addchildwindow", ComposerLauncher.Kind.ADDCHILDWINDOW);
+        map.put("cvs", ComposerLauncher.Kind.CVS);
         map.put("setopts-in-code", ComposerLauncher.Kind.SETOPTS_IN_CODE);
         map.put("setopts-config", ComposerLauncher.Kind.SETOPTS);
         WIRE_TO_LAUNCHER_KIND = Collections.unmodifiableMap(map);
@@ -39,7 +40,6 @@ public final class ComposerLensKinds {
 
     /**
      * The {@link ComposerLauncher.Kind} a cue's wire {@code kind} string routes to, or empty for
-     * a kind this plugin does not yet handle (e.g. {@code "cvs"}, until a CVS launcher kind exists),
      * an unrecognized string, {@code null} or blank.
      */
     public static Optional<ComposerLauncher.Kind> launcherKindOf(String wireKind) {
