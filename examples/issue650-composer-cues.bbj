@@ -1,0 +1,14 @@
+REM #650 -- composer cue fixture: addWindow code lines, a REM-commented call, a string decoy.
+REM Extended by a later plan with the other composer kinds this phase adds.
+sysgui! = BBjAPI().openSysGui("X0")
+
+win1! = sysgui!.addWindow(10, 10, 400, 300, "First", $00010003$)
+win2! = sysgui!.addWindow(50, 50, 300, 200, "Second", $00000001$)
+
+win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")
+
+rem win5! = sysgui!.addWindow(0, 0, 100, 100, "Commented")
+
+msg$ = "sysgui!.addWindow(1, 2, 3, 4)"
+
+release

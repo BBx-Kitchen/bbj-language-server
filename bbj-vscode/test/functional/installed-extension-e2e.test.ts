@@ -593,6 +593,141 @@ describe.skipIf(!installPresent)('cold-ordering codeAction probe against the rei
     }, 120_000);
 });
 
+/**
+ * Composer cue discoverability on the installed bundle (#650): proves the shipped extension
+ * advertises `codeLensProvider` and serves `Compose addWindow` cues over `textDocument/codeLens`
+ * for the new fixture -- addWindow calls in code, a REM-commented call and a string-literal decoy
+ * excluded, and `(1/2)`/`(2/2)` suffixing for the two calls that share one line. Spawns its own
+ * server process (separate from the describe blocks above) so the captured `initialize` result
+ * is this describe's own, not discarded like the shared-connection block's.
+ */
+describe.skipIf(!installPresent)('composer cues on the installed bundle (#650)', () => {
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    let fixtureText: string;
+    let fixtureUri: string;
+    let initializeResult: { capabilities?: { codeLensProvider?: unknown } };
+    const stderr: string[] = [];
+
+    const CUE_FIXTURE_PATH = path.resolve(TEST_DIR, '../../../examples/issue650-composer-cues.bbj');
+
+    beforeAll(async () => {
+        fixtureText = fs.readFileSync(CUE_FIXTURE_PATH, 'utf-8');
+        fixtureUri = pathToFileURL(CUE_FIXTURE_PATH).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        initializeResult = await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: null,
+            workspaceFolders: null,
+            capabilities: {},
+        }) as { capabilities?: { codeLensProvider?: unknown } };
+        await connection.sendNotification('initialized', {});
+
+        await connection.sendNotification('workspace/didChangeConfiguration', {
+            settings: { bbj: { compiler: { trigger: 'off' } } },
+        });
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: fixtureUri,
+                languageId: 'bbj',
+                version: 1,
+                text: fixtureText,
+            },
+        });
+    }, 120_000);
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    test('initialize advertises codeLensProvider', () => {
+        expect(initializeResult.capabilities?.codeLensProvider, `stderr: ${stderr.join('') || '(empty)'}`).toBeDefined();
+    });
+
+    test('client bundle: the compiled out/extension.cjs carries the bbj.openComposerAt command literal', () => {
+        // Only string literals are safe to assert against a bundled/minified client -- see the
+        // identical rationale on the SETOPTS-in-code command-literal test above.
+        const bundle = fs.readFileSync(install!.extensionCjsPath, 'utf-8');
+        expect(bundle).toContain('bbj.openComposerAt');
+    });
+
+    test('textDocument/codeLens returns Compose addWindow cues on each addWindow code line, (1/2)/(2/2) on the shared line, none on the REM or string-literal lines', async () => {
+        type CueLens = {
+            range: { start: { line: number; character: number } };
+            command?: { command?: string; title?: string; arguments?: Array<{ kind?: string }> };
+        };
+        // Poll until the codeLens list is non-empty, since the workspace scan continues in the
+        // background and the first request can race the document's cold build.
+        const deadline = Date.now() + 30_000;
+        let lenses: CueLens[] | null = null;
+        while (Date.now() < deadline) {
+            lenses = await connection.sendRequest('textDocument/codeLens', {
+                textDocument: { uri: fixtureUri },
+            }) as CueLens[] | null;
+            if (lenses && lenses.length > 0) {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        expect(lenses, `codeLens never returned any lenses within budget. stderr: ${stderr.join('') || '(empty)'}`).toBeTruthy();
+        expect(lenses!.length).toBeGreaterThan(0);
+
+        for (const lens of lenses!) {
+            expect(lens.command?.command).toBe('bbj.openComposerAt');
+            expect(lens.command?.arguments?.[0]?.kind).toBe('addwindow');
+        }
+
+        const win1Line = findPosition(
+            fixtureText,
+            'win1! = sysgui!.addWindow(10, 10, 400, 300, "First", $00010003$)',
+            'addWindow',
+        ).line;
+        const win2Line = findPosition(
+            fixtureText,
+            'win2! = sysgui!.addWindow(50, 50, 300, 200, "Second", $00000001$)',
+            'addWindow',
+        ).line;
+        const sharedLine = findPosition(
+            fixtureText,
+            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
+            'addWindow',
+        ).line;
+        const lines = fixtureText.split('\n');
+        const remLineIdx = lines.findIndex(l => l.trim().startsWith('rem win5!'));
+        const stringLineIdx = lines.findIndex(l => l.includes('msg$ ='));
+        expect(remLineIdx, 'expected to find the REM-commented addWindow line').toBeGreaterThanOrEqual(0);
+        expect(stringLineIdx, 'expected to find the string-literal decoy line').toBeGreaterThanOrEqual(0);
+
+        expect(lenses!.some(l => l.range.start.line === win1Line)).toBe(true);
+        expect(lenses!.some(l => l.range.start.line === win2Line)).toBe(true);
+        expect(lenses!.some(l => l.range.start.line === remLineIdx)).toBe(false);
+        expect(lenses!.some(l => l.range.start.line === stringLineIdx)).toBe(false);
+
+        const sharedLineLenses = lenses!
+            .filter(l => l.range.start.line === sharedLine)
+            .sort((a, b) => a.range.start.character - b.range.start.character);
+        expect(sharedLineLenses).toHaveLength(2);
+        expect(sharedLineLenses[0].command?.title).toBe('Compose addWindow (1/2)');
+        expect(sharedLineLenses[1].command?.title).toBe('Compose addWindow (2/2)');
+    }, 60_000);
+});
+
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {
     // Visible skip rather than silent absence: a CI run (or any environment without the
     // ext-test rig) would otherwise appear to cover this without ever resolving an install.
