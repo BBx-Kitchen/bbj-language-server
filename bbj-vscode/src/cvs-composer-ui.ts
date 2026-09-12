@@ -3,9 +3,12 @@
  *
  * Thin client layer: a command + a Code Action, both opening the visual webview. All mask/decode
  * logic lives in the editor-agnostic ./cvs-composer module. Two entry points:
- *   - Command "bbj.composeCvs" with no args -> compose a NEW CVS() call at the cursor.
- *   - Code Action on an existing CVS(...) call with a literal-sum mask -> decode its bits/chars
- *     and edit them in place.
+ *   - Command "bbj.composeCvs" is position-aware (#649 gap closure): a `CvsPanelArg` argument
+ *     (the lightbulb's) opens unchanged; otherwise it decodes the cursor — an editable call opens
+ *     edit mode, an incomplete call opens complete-the-call mode, a hard-stop reason shows a
+ *     message, and only a cursor with no CVS call under it composes a NEW call at the cursor.
+ *   - Code Action on a CVS(...) call whose mask is editable, or that has no mask yet, offers the
+ *     matching compose action; a non-literal or undocumented-bit mask gets no action.
  */
 import * as vscode from 'vscode';
 import { decodeCvsCall, describeCvsMask, encodeCvsMask } from './cvs-composer.js';
@@ -13,13 +16,52 @@ import { openCvsComposerPanel, type CvsPanelArg } from './cvs-composer-webview.j
 
 export function registerCvsComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('bbj.composeCvs', (arg?: CvsPanelArg) => openCvsComposerPanel(context, arg)),
+        vscode.commands.registerCommand('bbj.composeCvs', (arg?: unknown) => runComposeCvsCommand(context, arg)),
         vscode.languages.registerCodeActionsProvider(
             { language: 'bbj' },
             new CvsCodeActionProvider(),
             { providedCodeActionKinds: [vscode.CodeActionKind.RefactorRewrite] },
         ),
     );
+}
+
+/** True for a `CvsPanelArg` — the lightbulb's own argument shape (a `target` and/or `initial` key). */
+function isCvsPanelArg(arg: unknown): arg is CvsPanelArg {
+    return typeof arg === 'object' && arg !== null && ('target' in arg || 'initial' in arg);
+}
+
+/**
+ * `bbj.composeCvs` without a panel argument decodes the caret position first, so the Command
+ * Palette and the editor context menu never nest a whole new call inside a partial or existing
+ * one: an editable call opens edit mode, an incomplete call opens complete-the-call mode, a
+ * not-editable call shows the server's reason and opens no panel, and only a cursor with no CVS
+ * call under it falls through to compose-new at the cursor (unchanged).
+ * A `CvsPanelArg` argument — what the lightbulb and the composer cue both pass — opens exactly
+ * that argument without consulting the active editor at all.
+ */
+export function runComposeCvsCommand(context: vscode.ExtensionContext, arg?: unknown): void {
+    if (isCvsPanelArg(arg)) {
+        openCvsComposerPanel(context, arg);
+        return;
+    }
+
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const position = editor.selection.active;
+        const lineText = editor.document.lineAt(position.line).text;
+        const result = cvsPanelArgAt(editor.document.uri.toString(), position.line, lineText, position.character);
+        if (result) {
+            openCvsComposerPanel(context, result.arg);
+            return;
+        }
+        const decoded = decodeCvsCall(lineText, position.character);
+        if (decoded.found && decoded.reason) {
+            vscode.window.showInformationMessage(decoded.reason);
+            return;
+        }
+    }
+
+    openCvsComposerPanel(context);
 }
 
 /**
