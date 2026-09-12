@@ -120,21 +120,31 @@ interface FakePanel {
     dispose: ReturnType<typeof vi.fn>;
     onDidDispose: ReturnType<typeof vi.fn>;
 }
-function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown) => unknown) | undefined } {
+function createFakePanel(): {
+    panel: FakePanel;
+    getHandler: () => ((msg: unknown) => unknown) | undefined;
+    getDisposeListener: () => (() => void) | undefined;
+    messageSubscriptionDispose: ReturnType<typeof vi.fn>;
+} {
     let handler: ((msg: unknown) => unknown) | undefined;
+    let disposeListener: (() => void) | undefined;
+    const messageSubscriptionDispose = vi.fn();
     const panel: FakePanel = {
         webview: {
             html: '',
             postMessage: vi.fn(),
             onDidReceiveMessage: vi.fn((cb: (msg: unknown) => unknown) => {
                 handler = cb;
-                return { dispose: vi.fn() };
+                return { dispose: messageSubscriptionDispose };
             }),
         },
         dispose: vi.fn(),
-        onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDispose: vi.fn((cb: () => void) => {
+            disposeListener = cb;
+            return { dispose: vi.fn() };
+        }),
     };
-    return { panel, getHandler: () => handler };
+    return { panel, getHandler: () => handler, getDisposeListener: () => disposeListener, messageSubscriptionDispose };
 }
 
 describe('MsgboxCodeActionProvider labels (#648)', () => {
@@ -420,6 +430,42 @@ describe('openMsgboxComposerPanel completing an unfinished call', () => {
         expect(applyEditMock).not.toHaveBeenCalled();
         expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
         expect(panel.dispose).not.toHaveBeenCalled();
+    });
+});
+
+describe('closing the MSGBOX panel disposes its message handler and leaves the extension context untouched (#530)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+    });
+
+    test('leaves fakeContext.subscriptions.length unchanged, disposes the message subscription on panel dispose, and still delivers a ready message beforehand', () => {
+        const localContext = { subscriptions: [] } as unknown as Parameters<typeof openMsgboxComposerPanel>[0];
+        const before = (localContext as unknown as { subscriptions: unknown[] }).subscriptions.length;
+        const { panel, getHandler, getDisposeListener, messageSubscriptionDispose } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        const arg: MsgboxPanelArg = {
+            target,
+            initial: { message: '"Hi"', title: '"T"', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        };
+        openMsgboxComposerPanel(localContext, arg);
+
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
+        expect(panel.onDidDispose).toHaveBeenCalledTimes(1);
+
+        // A ready message posted before disposal still produces the init message.
+        getHandler()!({ type: 'ready' });
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'init' }));
+
+        expect(messageSubscriptionDispose).not.toHaveBeenCalled();
+        getDisposeListener()!();
+        expect(messageSubscriptionDispose).toHaveBeenCalledTimes(1);
+
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
     });
 });
 
