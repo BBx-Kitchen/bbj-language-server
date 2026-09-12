@@ -12,11 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins the #433 preview-wiring fix: all three composer intentions return a real
+ * Pins the #433 preview-wiring fix: every composer intention returns a real
  * {@code IntentionPreviewInfo.Html} preview instead of {@code IntentionPreviewInfo.EMPTY}, so the
  * platform's fallback description lookup is never entered from the lightbulb popup, and the other
  * intention members that must not move -- {@code invoke}, {@code isAvailable},
- * {@code startInWriteAction} -- stay wired exactly as before. A failure here means one of the three
+ * {@code startInWriteAction} -- stay wired exactly as before. A failure here means one of the
  * intentions went back to an empty preview, so the IDE resumes resolving the per-intention
  * description resource on every popup and raises the reported error if that resource is ever
  * missing again.
@@ -39,11 +39,15 @@ class ComposerIntentionPreviewSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
             "ConfigureSetoptsInCodeIntention.java").toAbsolutePath();
 
+    private static final Path CVS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "ConfigureCvsIntention.java").toAbsolutePath();
+
     private static final Path PLUGIN_XML = Paths.get(
             "src", "main", "resources", "META-INF", "plugin.xml").toAbsolutePath();
 
     private static final Path[] INTENTION_SOURCES = {
-            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_IN_CODE_SOURCE
+            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_IN_CODE_SOURCE, CVS_SOURCE
     };
 
     private static String readSource(Path path) {
@@ -147,12 +151,12 @@ class ComposerIntentionPreviewSourceGuardTest {
     }
 
     @Test
-    void pluginXmlStillRegistersAllFourIntentionsUntouched() {
+    void pluginXmlRegistersAllFiveIntentionsExactlyOnce() {
         String text = readSource(PLUGIN_XML);
 
-        assertEquals(4, countOccurrences(text, "<intentionAction>"),
-                "plugin.xml must register exactly four <intentionAction> extensions -- the three "
-                        + "this fix covers, plus the new SETOPTS-in-code intention (#475)");
+        assertEquals(5, countOccurrences(text, "<intentionAction>"),
+                "plugin.xml must register exactly five <intentionAction> extensions -- MSGBOX, "
+                        + "addWindow, addChildWindow, SETOPTS-in-code (#475) and CVS (#649)");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureMsgboxIntention"),
                 "the MSGBOX registration's fully-qualified class name must appear exactly once");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureAddWindowIntention"),
@@ -161,5 +165,7 @@ class ComposerIntentionPreviewSourceGuardTest {
                 "the addChildWindow registration's fully-qualified class name must appear exactly once");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureSetoptsInCodeIntention"),
                 "the SETOPTS-in-code registration's fully-qualified class name must appear exactly once");
+        assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureCvsIntention"),
+                "the CVS registration's fully-qualified class name must appear exactly once");
     }
 }

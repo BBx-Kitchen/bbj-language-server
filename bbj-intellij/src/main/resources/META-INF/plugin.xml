@@ -97,6 +97,13 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
+        <action id="bbj.composeCvs"
+                class="com.basis.bbj.intellij.actions.BbjComposeCvsAction"
+                text="Compose CVS()…"
+                description="Visually compose or edit a CVS(...) call">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
         <!-- LSP4IJ's Code Vision bridge dispatches a composer cue click here by id (#650):
              no add-to-group and no keyboard-shortcut, since this action is never invoked by a
              menu or a keystroke, only by LSP4IJ's own command executor. -->
