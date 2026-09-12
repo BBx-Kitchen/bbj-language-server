@@ -426,13 +426,13 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
   5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
 
-**Plans**: 2/13 plans executed (7 waves)
+**Plans**: 3/13 plans executed (7 waves)
 
 **Wave 1**
 
 - [x] 89-01-PLAN.md — Server-side composer cue tracer (addWindow) with bounded Parsed-gated codeLens handler, no-reparse proof, and VS Code click-through
 - [x] 89-02-PLAN.md — MSGBOX expression options: shared constant-sum decode, compose-and-replace mode, VS Code lightbulb and banner
-- [ ] 89-03-PLAN.md — CVS() domain module (catalog, literal-sum edit verdict, preview) and `chars` arity fix in functions.ts/.bbl
+- [x] 89-03-PLAN.md — CVS() domain module (catalog, literal-sum edit verdict, preview) and `chars` arity fix in functions.ts/.bbl
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

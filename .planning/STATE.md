@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-02-PLAN.md
-last_updated: "2026-09-12T07:51:03.870Z"
+stopped_at: Completed 89-03-PLAN.md
+last_updated: "2026-09-12T08:04:46.055Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: f800df72207178a4795ac1d8127ad5fa64f36cd8
+state_head: 0564d9f046a8751a0002cd12bc3ccddbbca02593
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 36
+  completed_plans: 37
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -176,6 +176,7 @@ transitioned to Phase 89.
 | Phase 88 P15 | ~20min | 3 tasks | 6 files |
 | Phase 89 P01 | 14min | 3 tasks | 12 files |
 | Phase 89 P02 | 20min | 2 tasks | 7 files |
+| Phase 89 P03 | 17min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -299,6 +300,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88 UAT, closeout 2026-09-12]: All 3 outstanding human_verification items (IntelliJ Alt+Enter/context-menu reachability, live mask-width falsification against a real BBjServices, live VS Code observation of the 88-15 stale-edit guard) confirmed passing against a freshly rebuilt VS Code VSIX and bbj-intellij-0.1.0.zip (sha256 50ae9d74...) at HEAD f56c17e2. G-88-1/G-88-2/G-88-3 all resolved; 88-VERIFICATION.md status: passed; 88-UAT.md 9/9 pass. Filed GitHub issue #666 ("Improve the user experience and discoverability for SETOPTS handling") as a follow-up — during retest the tester noted it's not obvious how to create a new SETOPTS block or upgrade an existing one to a different format; needs a dedicated UX/flow review across both IDEs, out of scope for Phase 88. Notably overlaps Phase 89's own "Composer Discoverability" scope.
 - [Phase 89]: COMPOSER_CODE_LENS_BUDGET_MS=5000ms bounds cue-request hold time, mirroring CODE_ACTION_BUDGET_MS; handler gates at DocumentState.Parsed (not IndexedReferences) since the cue provider never touches linking; workspace/codeLens/refresh sent via connection.sendRequest(CodeLensRefreshRequest.type) since this vscode-languageserver version has no codeLens.refresh() helper.
 - [Phase 89]: decodeMsgboxCall recognizes closed +-sums of integer literals and/or BBjMsgBox.* constants via a reverse lookup built once from the existing catalogs; anything else opens VS Code compose-and-replace mode with the original text and a banner, no second confirmation.
+- [Phase 89]: 89-03: cvs-composer.ts follows setopts-catalog.ts's catalog+compose+decode+preview shape; CVS_BITS 128 carries a BBj-specific detail and 1/2/16/32/128 are chars-customizable; decodeCvsCall recognizes only integer-literal +-sums as editable
 
 ### Tech Debt
 
@@ -365,8 +367,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T07:51:03.640Z
-Stopped at: Completed 89-02-PLAN.md
+Last session: 2026-09-12T08:04:45.818Z
+Stopped at: Completed 89-03-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
