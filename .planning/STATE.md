@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-06-PLAN.md
-last_updated: "2026-09-12T09:30:18.406Z"
+stopped_at: Completed 89-08-PLAN.md
+last_updated: "2026-09-12T09:43:54.772Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 0070178b619d2a9b1e3f78c6663dfd49adaff2f4
+state_head: 3b577f4af14d072a0d3976f7a9fbb23f30c8072c
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 41
+  completed_plans: 42
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -181,6 +181,7 @@ transitioned to Phase 89.
 | Phase 89 P05 | 14min | 2 tasks | 6 files |
 | Phase 89 P07 | 25min | 2 tasks | 9 files |
 | Phase 89 P06 | 6min | 3 tasks | 2 files |
+| Phase 89 P08 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -310,6 +311,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-07: CVS() wire requests (decodeCall/preview) + cvs catalog land as thin pass-throughs; IntelliJ DTOs/interface methods/equality (sameCvs) pinned by contract/boundary/equality tests; MsgboxDecodeResult also gained hasOptions to match plan 89-02's deviation, with sameMsgbox extended to compare replace/hasOptions
 - [Phase 89]: Code Vision spike: GO (IU-262.10315.125) — IntelliJ IDEA 2026.2.2, macOS aarch64, LSP4IJ 0.21.0; composer cue rendered and clicked through
 - [Phase 89]: Config routing decision: route — config.bbx routed to the language server under its own bbx-config id, superseding Phase 84's pinned invariant; plans 89-11/89-12 proceed unchanged
+- [Phase 89]: Phase 89 89-08: CvsComposerDialog reuses SETOPTS's exact ComposerFlow/PreviewDebouncer/scheduleRefresh plumbing in a single flat titled checkbox list (no byte-group headers, no scroll pane); MsgboxComposerDialog's compose-and-replace banner renders the server's replace.banner verbatim plus a read-only original-expression field, with no client-side wording and no confirmation dialog
 
 ### Tech Debt
 
@@ -376,8 +378,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T09:30:18.157Z
-Stopped at: Completed 89-06-PLAN.md
+Last session: 2026-09-12T09:43:54.518Z
+Stopped at: Completed 89-08-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
