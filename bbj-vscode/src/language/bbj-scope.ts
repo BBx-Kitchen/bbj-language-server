@@ -51,7 +51,8 @@ import {
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { normalize, resolve } from 'path';
+import type { BBjIndexManager } from './bbj-index-manager.js';
+import { resolve } from 'path';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
 
@@ -314,9 +315,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // subfolder can reference files by their project-root-relative path.
             .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, bbjFilePath)))
             .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath))));
-        let bbjClasses = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
-            return adjustedFileUris.some(adjustedFileUri => normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase());
-        })
+        let bbjClasses = stream((this.indexManager as BBjIndexManager).getBBjClassesForFiles(adjustedFileUris));
         if (!simpleName) {
             bbjClasses = bbjClasses.map(d => {
                 if (d.node) {
