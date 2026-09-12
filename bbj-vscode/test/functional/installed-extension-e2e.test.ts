@@ -24,6 +24,9 @@ import {
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = path.resolve(TEST_DIR, '../../../examples/issue475-setopts-in-code.bbj');
+/** The composer-cue fixture (#650), covering every composer kind plus its non-editable/decoy
+ * counterparts. Shared by every describe below that spawns its own server against it. */
+const CUE_FIXTURE_PATH = path.resolve(TEST_DIR, '../../../examples/issue650-composer-cues.bbj');
 /** The repository root, resolved from this file's own location -- never a hardcoded absolute
  * path. Used by the cold-ordering probe below, which opens the WHOLE repo as its workspace (the
  * same shape the tester's IntelliJ project used when the live probe measured a 56016ms hang). */
@@ -609,8 +612,6 @@ describe.skipIf(!installPresent)('composer cues on the installed bundle (#650)',
     let initializeResult: { capabilities?: { codeLensProvider?: unknown } };
     const stderr: string[] = [];
 
-    const CUE_FIXTURE_PATH = path.resolve(TEST_DIR, '../../../examples/issue650-composer-cues.bbj');
-
     beforeAll(async () => {
         fixtureText = fs.readFileSync(CUE_FIXTURE_PATH, 'utf-8');
         fixtureUri = pathToFileURL(CUE_FIXTURE_PATH).toString();
@@ -690,8 +691,12 @@ describe.skipIf(!installPresent)('composer cues on the installed bundle (#650)',
 
         for (const lens of lenses!) {
             expect(lens.command?.command).toBe('bbj.openComposerAt');
-            expect(lens.command?.arguments?.[0]?.kind).toBe('addwindow');
         }
+        // The fixture now carries every composer kind (#650 extension); scope this test's own
+        // assertions to the addwindow-kind lenses only -- other kinds are covered by the
+        // "every composer kind carries its cue" describe below.
+        const addWindowLenses = lenses!.filter(l => l.command?.arguments?.[0]?.kind === 'addwindow');
+        expect(addWindowLenses.length).toBeGreaterThan(0);
 
         const win1Line = findPosition(
             fixtureText,
@@ -714,18 +719,350 @@ describe.skipIf(!installPresent)('composer cues on the installed bundle (#650)',
         expect(remLineIdx, 'expected to find the REM-commented addWindow line').toBeGreaterThanOrEqual(0);
         expect(stringLineIdx, 'expected to find the string-literal decoy line').toBeGreaterThanOrEqual(0);
 
-        expect(lenses!.some(l => l.range.start.line === win1Line)).toBe(true);
-        expect(lenses!.some(l => l.range.start.line === win2Line)).toBe(true);
-        expect(lenses!.some(l => l.range.start.line === remLineIdx)).toBe(false);
-        expect(lenses!.some(l => l.range.start.line === stringLineIdx)).toBe(false);
+        expect(addWindowLenses.some(l => l.range.start.line === win1Line)).toBe(true);
+        expect(addWindowLenses.some(l => l.range.start.line === win2Line)).toBe(true);
+        expect(addWindowLenses.some(l => l.range.start.line === remLineIdx)).toBe(false);
+        expect(addWindowLenses.some(l => l.range.start.line === stringLineIdx)).toBe(false);
 
-        const sharedLineLenses = lenses!
+        const sharedLineLenses = addWindowLenses
             .filter(l => l.range.start.line === sharedLine)
             .sort((a, b) => a.range.start.character - b.range.start.character);
         expect(sharedLineLenses).toHaveLength(2);
         expect(sharedLineLenses[0].command?.title).toBe('Compose addWindow (1/2)');
         expect(sharedLineLenses[1].command?.title).toBe('Compose addWindow (2/2)');
     }, 60_000);
+});
+
+/**
+ * Every composer kind's cue on the installed bundle (#650), against the fully extended fixture:
+ * MSGBOX (literal, constant-sum, expression), addWindow, addChildWindow, an editable CVS() call,
+ * an editable in-code SETOPTS chain -- and NO cue for their non-editable/decoy counterparts (a
+ * non-literal CVS() mask, an interrupted SETOPTS chain, the REM line, the string decoy). Spawns
+ * its own server, separate from every other describe in this file.
+ */
+describe.skipIf(!installPresent)('every composer kind carries its cue', () => {
+    type CueLens = {
+        range: { start: { line: number; character: number } };
+        command?: { command?: string; title?: string; arguments?: Array<{ kind?: string }> };
+    };
+
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    let fixtureText: string;
+    let lenses: CueLens[];
+    const stderr: string[] = [];
+
+    beforeAll(async () => {
+        fixtureText = fs.readFileSync(CUE_FIXTURE_PATH, 'utf-8');
+        const fixtureUri = pathToFileURL(CUE_FIXTURE_PATH).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: null,
+            workspaceFolders: null,
+            capabilities: {},
+        });
+        await connection.sendNotification('initialized', {});
+
+        await connection.sendNotification('workspace/didChangeConfiguration', {
+            settings: { bbj: { compiler: { trigger: 'off' } } },
+        });
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: fixtureUri,
+                languageId: 'bbj',
+                version: 1,
+                text: fixtureText,
+            },
+        });
+
+        // Poll until the codeLens list is non-empty -- the same cold-build race every other
+        // describe in this file guards against.
+        const deadline = Date.now() + 30_000;
+        let result: CueLens[] | null = null;
+        while (Date.now() < deadline) {
+            result = await connection.sendRequest('textDocument/codeLens', {
+                textDocument: { uri: fixtureUri },
+            }) as CueLens[] | null;
+            if (result && result.length > 0) {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        expect(result, `codeLens never returned any lenses within budget. stderr: ${stderr.join('') || '(empty)'}`).toBeTruthy();
+        lenses = result!;
+    }, 120_000);
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    function linesFor(kind: string): number[] {
+        return lenses
+            .filter(l => l.command?.arguments?.[0]?.kind === kind)
+            .map(l => l.range.start.line)
+            .sort((a, b) => a - b);
+    }
+
+    test('msgbox cues appear on all three MSGBOX lines (literal, constant-sum and expression)', () => {
+        const expected = [
+            findPosition(fixtureText, 'r = MSGBOX("Save?", 36, "Confirm")', 'MSGBOX').line,
+            findPosition(
+                fixtureText,
+                'r = MSGBOX("Save?", BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_ICON_QUESTION, "Confirm")',
+                'MSGBOX',
+            ).line,
+            findPosition(fixtureText, 'r = MSGBOX("Save?", flags%, "Confirm")', 'MSGBOX').line,
+        ].sort((a, b) => a - b);
+        expect(linesFor('msgbox')).toEqual(expected);
+    });
+
+    test('addwindow cues appear on both standalone lines and both calls sharing one line', () => {
+        const win1Line = findPosition(
+            fixtureText, 'win1! = sysgui!.addWindow(10, 10, 400, 300, "First", $00010003$)', 'addWindow',
+        ).line;
+        const win2Line = findPosition(
+            fixtureText, 'win2! = sysgui!.addWindow(50, 50, 300, 200, "Second", $00000001$)', 'addWindow',
+        ).line;
+        const sharedLine = findPosition(
+            fixtureText,
+            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
+            'addWindow',
+        ).line;
+        expect(linesFor('addwindow')).toEqual([win1Line, win2Line, sharedLine, sharedLine].sort((a, b) => a - b));
+    });
+
+    test('addchildwindow cue appears on its call line', () => {
+        const line = findPosition(
+            fixtureText, 'window!.addChildWindow(101, "Child", 10, 10, 200, 150, $00000000$)', 'addChildWindow',
+        ).line;
+        expect(linesFor('addchildwindow')).toEqual([line]);
+    });
+
+    test('cvs cue appears only on the editable literal-sum line, never the non-literal mode% line', () => {
+        const editableLine = findPosition(fixtureText, 'trimmed$ = CVS(name$, 1+4)', 'CVS').line;
+        expect(linesFor('cvs')).toEqual([editableLine]);
+    });
+
+    test('setopts-in-code cue appears only on the absolute literal and the safe chain\'s SETOPTS line', () => {
+        const absoluteLine = findPosition(fixtureText, 'SETOPTS $04$', 'SETOPTS').line;
+        const safeChainLine = findPosition(fixtureText, 'SETOPTS b$', 'SETOPTS').line;
+        expect(linesFor('setopts-in-code')).toEqual([absoluteLine, safeChainLine].sort((a, b) => a - b));
+    });
+
+    test('no composer cue lands on the mode% CVS line, the interrupted chain\'s SETOPTS line, the REM line or the string decoy', () => {
+        const modeLine = findPosition(fixtureText, 'trimmed$ = CVS(name$, mode%)', 'CVS').line;
+        const interruptedChainLine = findPosition(fixtureText, 'SETOPTS e$', 'SETOPTS').line;
+        const lines = fixtureText.split('\n');
+        const remLineIdx = lines.findIndex(l => l.trim().startsWith('rem win5!'));
+        const stringLineIdx = lines.findIndex(l => l.includes('msg$ ='));
+        expect(remLineIdx, 'expected to find the REM-commented addWindow line').toBeGreaterThanOrEqual(0);
+        expect(stringLineIdx, 'expected to find the string-literal decoy line').toBeGreaterThanOrEqual(0);
+
+        for (const badLine of [modeLine, interruptedChainLine, remLineIdx, stringLineIdx]) {
+            expect(lenses.some(l => l.range.start.line === badLine)).toBe(false);
+        }
+    });
+});
+
+/**
+ * A `bbx-config` document reaches the installed bundle only for its composer cue (#650, DISC-01):
+ * exactly one `setopts-config` cue per SETOPTS line, a hover that settles well inside the codeLens
+ * budget instead of hanging, and never a non-empty `publishDiagnostics` payload -- proof the
+ * config document is never parsed, linked or diagnosed as BBj source over the wire.
+ */
+describe.skipIf(!installPresent)('config documents are text-only', () => {
+    const CONFIG_TEXT = 'PREFIX "/tmp/"\nSETOPTS 00000080\n';
+
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    let configUri: string;
+    const diagnosticsByUri = new Map<string, unknown[]>();
+    const stderr: string[] = [];
+
+    beforeAll(async () => {
+        const configPath = path.join(os.tmpdir(), 'issue650-config.bbx');
+        configUri = pathToFileURL(configPath).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        // Registered BEFORE didOpen so no notification can be missed.
+        connection.onNotification('textDocument/publishDiagnostics', (params: { uri?: string; diagnostics?: unknown[] }) => {
+            if (params?.uri) {
+                diagnosticsByUri.set(params.uri, params.diagnostics ?? []);
+            }
+        });
+
+        await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: null,
+            workspaceFolders: null,
+            capabilities: {},
+        });
+        await connection.sendNotification('initialized', {});
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: configUri,
+                languageId: 'bbx-config',
+                version: 1,
+                text: CONFIG_TEXT,
+            },
+        });
+    }, 120_000);
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    test('textDocument/codeLens returns exactly one Compose SETOPTS cue, on line 1', async () => {
+        type CueLens = {
+            range: { start: { line: number } };
+            command?: { command?: string; arguments?: Array<{ kind?: string }> };
+        };
+        const deadline = Date.now() + 15_000;
+        let lenses: CueLens[] | null = null;
+        while (Date.now() < deadline) {
+            lenses = await connection.sendRequest('textDocument/codeLens', {
+                textDocument: { uri: configUri },
+            }) as CueLens[] | null;
+            if (lenses && lenses.length > 0) {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        expect(lenses, `codeLens never returned any lenses within budget. stderr: ${stderr.join('') || '(empty)'}`).toBeTruthy();
+        expect(lenses).toHaveLength(1);
+        expect(lenses![0].range.start.line).toBe(1);
+        expect(lenses![0].command?.command).toBe('bbj.openComposerAt');
+        expect(lenses![0].command?.arguments?.[0]?.kind).toBe('setopts-config');
+    }, 30_000);
+
+    test('a hover on the config document settles (resolved or rejected) well within the codeLens budget, never hangs', async () => {
+        const hoverOutcome = connection.sendRequest('textDocument/hover', {
+            textDocument: { uri: configUri },
+            position: { line: 1, character: 0 },
+        }).then(() => 'settled' as const, () => 'settled' as const);
+        const timedOut = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 6000));
+        const outcome = await Promise.race([hoverOutcome, timedOut]);
+        expect(outcome, `hover on the config document did not settle within the budget. stderr: ${stderr.join('') || '(empty)'}`).toBe('settled');
+    }, 10_000);
+
+    test('publishDiagnostics for the config document, if any arrived, never carries a non-empty diagnostics array', async () => {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const diags = diagnosticsByUri.get(configUri);
+        if (diags !== undefined) {
+            expect(diags).toHaveLength(0);
+        }
+    }, 10_000);
+});
+
+/**
+ * The new MSGBOX and CVS() decode payloads (#648, #649), proven over the wire against the
+ * installed bundle rather than the source tree's unit tests alone.
+ */
+describe.skipIf(!installPresent)('new decode payloads on the installed bundle', () => {
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    let fixtureText: string;
+    const stderr: string[] = [];
+
+    beforeAll(async () => {
+        fixtureText = fs.readFileSync(CUE_FIXTURE_PATH, 'utf-8');
+        const fixtureUri = pathToFileURL(CUE_FIXTURE_PATH).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: null,
+            workspaceFolders: null,
+            capabilities: {},
+        });
+        await connection.sendNotification('initialized', {});
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: fixtureUri,
+                languageId: 'bbj',
+                version: 1,
+                text: fixtureText,
+            },
+        });
+    }, 120_000);
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    test('bbj/composer/msgbox/decodeCall on the flags% line returns compose-and-replace carrying the original expression', async () => {
+        const lineText = fixtureText.split('\n')[
+            findPosition(fixtureText, 'r = MSGBOX("Save?", flags%, "Confirm")', 'MSGBOX').line
+        ];
+        const result = await connection.sendRequest('bbj/composer/msgbox/decodeCall', { line: lineText }) as {
+            found?: boolean;
+            replace?: { originalOptions?: string };
+        };
+        expect(result.found, `stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
+        expect(result.replace?.originalOptions).toBe('flags%');
+    }, 30_000);
+
+    test('bbj/composer/cvs/decodeCall on the literal-sum line returns editable with the verbatim string argument', async () => {
+        const lineText = fixtureText.split('\n')[
+            findPosition(fixtureText, 'trimmed$ = CVS(name$, 1+4)', 'CVS').line
+        ];
+        const result = await connection.sendRequest('bbj/composer/cvs/decodeCall', { line: lineText }) as {
+            found?: boolean;
+            editable?: boolean;
+            initial?: { str?: string; bits?: number[] };
+        };
+        expect(result.found, `stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
+        expect(result.editable).toBe(true);
+        expect(result.initial?.str).toBe('name$');
+        expect(result.initial?.bits).toEqual([1, 4]);
+    }, 30_000);
 });
 
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {

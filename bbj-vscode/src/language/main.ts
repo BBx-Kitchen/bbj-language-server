@@ -22,6 +22,7 @@ import { createConfigWatcher } from './config-watcher.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
+import { registerConfigAwareHoverHandler } from './bbj-hover-handler.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -96,6 +97,14 @@ registerBoundedCodeActionHandler(connection, shared, BBj);
 // named budget, gated at DocumentState.Parsed, resolving documents in-memory only. See
 // composer-codelens-handler.ts for the full rationale.
 registerComposerCodeLensHandler(connection, shared, BBj);
+
+// Register AFTER startLanguageServer to override Langium's default hover handler deliberately: a
+// config document (#650) is never built, and Langium's default hover handler's own
+// `WorkspaceManager.ready` wait (ahead of the document-state check) held that fact behind the full
+// cold workspace-initialization time rather than failing fast, the same DoS-shaped hang the
+// codeAction/codeLens overrides above already close. This handler answers a config document's
+// hover instantly and delegates every other document unchanged. See bbj-hover-handler.ts.
+registerConfigAwareHoverHandler(connection, shared);
 
 // Ask the client to re-request inlay hints, e.g. after Java classes (and the Javadoc-based
 // parameter names) arrived asynchronously. Clients without refresh support just ignore us.

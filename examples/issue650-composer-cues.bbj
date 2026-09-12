@@ -1,5 +1,6 @@
 REM #650 -- composer cue fixture: addWindow code lines, a REM-commented call, a string decoy.
-REM Extended by a later plan with the other composer kinds this phase adds.
+REM Extended with MSGBOX, addChildWindow, CVS() and SETOPTS-in-code shapes, including their
+REM non-editable/decoy counterparts, so every composer kind has one fixture to prove against.
 sysgui! = BBjAPI().openSysGui("X0")
 
 win1! = sysgui!.addWindow(10, 10, 400, 300, "First", $00010003$)
@@ -10,5 +11,27 @@ win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0,
 rem win5! = sysgui!.addWindow(0, 0, 100, 100, "Commented")
 
 msg$ = "sysgui!.addWindow(1, 2, 3, 4)"
+
+r = MSGBOX("Save?", 36, "Confirm")
+r = MSGBOX("Save?", BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_ICON_QUESTION, "Confirm")
+r = MSGBOX("Save?", flags%, "Confirm")
+
+window! = win1!
+window!.addChildWindow(101, "Child", 10, 10, 200, 150, $00000000$)
+
+trimmed$ = CVS(name$, 1+4)
+trimmed$ = CVS(name$, mode%)
+
+SETOPTS $04$
+
+b$=OPTS
+b$=IOR(b$,$01$)
+SETOPTS b$
+
+e$=OPTS
+e$=IOR(e$,$01$)
+IF 1=1 THEN
+FI
+SETOPTS e$
 
 release
