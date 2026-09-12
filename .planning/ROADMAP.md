@@ -426,7 +426,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
   5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
 
-**Plans**: 13/13 plans executed (7 waves)
+**Plans**: 13/16 plans executed (7 waves; 89-14 through 89-16 are a UAT gap-closure round for G-89-3)
 
 **Wave 1**
 
@@ -461,6 +461,12 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [x] 89-13-PLAN.md — Installed-bundle evidence for every cue kind, rebuilt distributables, QA checklist rows and end-of-phase human checks
+
+**Gap closure** *(from UAT gap G-89-3, major: Alt+Enter on an unfinished `CVS(` call in IntelliJ shows the not-editable notice instead of opening the CVS() composer; VS Code has the same gap silently. 89-14 and 89-15 run in parallel in wave 1; 89-16 waits for both)*
+
+- [ ] 89-14-PLAN.md — Shared-server `incomplete` decode outcome for a CVS call with no mask yet, VS Code complete-the-call lightbulb and panel behind a span-exact stale check, position-aware `bbj.composeCvs`, and no cue on half-typed lines
+- [ ] 89-15-PLAN.md — IntelliJ `Complete CVS() call` dialog routed by a plain-Java mode seam through the existing single guarded CVS write, with `sameCvs`, wire-boundary and source-guard pins and corrected intention wording
+- [ ] 89-16-PLAN.md — Installed-bundle proof of the new outcome, rebuilt distributables, QA rows 19/25 unfinished-call steps, the MSGBOX nesting follow-up todo, and the UAT test 3 re-run as end-of-phase human checks
 
 **UI hint**: yes
 
