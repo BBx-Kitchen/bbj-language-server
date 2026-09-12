@@ -1,7 +1,7 @@
 ---
 phase: 89-cvs-composer-msgbox-expressions-composer-discoverability
 verified: 2026-09-12T15:10:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -13,6 +13,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "In IntelliJ, using a plugin zip rebuilt from the final tree (after any code-review fixes) and installed fresh: press Alt+Enter or use the editor context menu on an unfinished CVS() call — type `a$ = CVS(` (editor auto-closes the parenthesis) and press Alt+Enter choosing `Configure CVS() options…`; repeat on `b$ = CVS(name$` via the context menu. Also re-run UAT test 3's original three entry points (Alt+Enter, context menu, Compose CVS() cue) on a complete call."
     expected: "A `Complete CVS() call` dialog opens with no error notice for every unfinished-call entry point; the string field is editable (empty, then prefillable with typed text like `name$`), there is no assign-to field, and OK stays disabled while the string is empty. The eight operations still render as one flat checkbox list with no byte-group headers and no scroll pane; the chars field stays visible but greyed while no chars-customizable bit is checked, with its BBj 19.0/19.10 tooltip; OK stays disabled until the first preview resolves. Applying leaves exactly one complete CVS() call on each line — never a nested `CVS(CVS(`. QA/FULL-TEST-CHECKLIST.md row 25 step 5."
     why_human: "The Alt+Enter intention popup, the modal Swing dialog's rendered layout/greying/OK-gating, and the resulting document write all happen in a running IntelliJ that this devcontainer cannot drive headlessly. Structural/source-guard tests (CvsComposeModeTest, ComposerApplyGuardSourceGuardTest, DecodeEqualityTest, ComposerModelsJsonBoundaryTest — all passing, re-run in this session) prove the routing, guard reuse and wire contract are correct, but none of them render a live dialog."
