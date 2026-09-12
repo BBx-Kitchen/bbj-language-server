@@ -187,6 +187,7 @@ public final class CvsComposerDialog extends DialogWrapper {
      */
     private void scheduleRefresh() {
         setOKActionEnabled(false);
+        seq.incrementAndGet(); // invalidate any response already in flight before this keystroke
         previewDebouncer.trigger();
     }
 

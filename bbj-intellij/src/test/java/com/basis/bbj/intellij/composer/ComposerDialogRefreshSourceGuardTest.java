@@ -269,12 +269,44 @@ class ComposerDialogRefreshSourceGuardTest {
     void eachDialogChecksItsSequenceOnBothTheSuccessAndTheFailurePath() {
         for (Path source : DIALOG_SOURCES) {
             String text = readSource(source);
-            assertEquals(1, countOccurrences(text, "seq.incrementAndGet()"),
-                    source.getFileName() + " must take exactly one sequence number per refresh");
+            boolean debounced = DEBOUNCED_DIALOG_SOURCES.contains(source);
+            int expectedIncrements = debounced ? 2 : 1;
+            assertEquals(expectedIncrements, countOccurrences(text, "seq.incrementAndGet()"),
+                    debounced
+                            ? source.getFileName() + " must take a sequence number twice: once in "
+                                    + "scheduleRefresh() to invalidate any response already in flight "
+                                    + "before the latest keystroke, once in refresh() for its own request"
+                            : source.getFileName() + " must take exactly one sequence number per refresh");
             assertEquals(2, countOccurrences(text, "mySeq == seq.get()"),
                     source.getFileName() + " must check the sequence on both the success path and the "
                             + "failure path -- that is what makes a superseded failure as harmless as a "
                             + "superseded success");
+        }
+    }
+
+    /**
+     * {@code scheduleRefresh()} runs synchronously on every keystroke, long before the debounced
+     * {@code refresh()} actually fires -- so if it does not also advance {@code seq}, a response
+     * already in flight from before this keystroke can still match {@code refresh()}'s own
+     * {@code seq.incrementAndGet()} value and get applied, re-enabling OK from stale field values.
+     * Extracts each debounced dialog's {@code scheduleRefresh()} method body (up to its first closing
+     * brace -- the body is a flat, three-statement method with no nested blocks in any of the six
+     * dialogs) and asserts it advances the sequence number itself, not just {@code refresh()}.
+     */
+    @Test
+    void eachDebouncedDialogsScheduleRefreshAdvancesTheSequenceNumberBeforeTriggeringTheDebouncer() {
+        String marker = "private void scheduleRefresh() {";
+        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+            String text = readSource(source);
+            int start = text.indexOf(marker);
+            assertTrue(start >= 0, source.getFileName() + " must declare a scheduleRefresh() method");
+            int end = text.indexOf('}', start);
+            assertTrue(end > start, source.getFileName() + " scheduleRefresh() must be closed");
+            String body = text.substring(start, end);
+            assertTrue(body.contains("seq.incrementAndGet()"),
+                    source.getFileName() + " scheduleRefresh() must call seq.incrementAndGet() so any "
+                            + "response already in flight before this keystroke can never be mistaken "
+                            + "for current once the debounced refresh() actually fires");
         }
     }
 
