@@ -426,7 +426,41 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
   5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
 
-**Plans**: TBD
+**Plans**: 13 plans (7 waves)
+
+**Wave 1**
+
+- [ ] 89-01-PLAN.md — Server-side composer cue tracer (addWindow) with bounded Parsed-gated codeLens handler, no-reparse proof, and VS Code click-through
+- [ ] 89-02-PLAN.md — MSGBOX expression options: shared constant-sum decode, compose-and-replace mode, VS Code lightbulb and banner
+- [ ] 89-03-PLAN.md — CVS() domain module (catalog, literal-sum edit verdict, preview) and `chars` arity fix in functions.ts/.bbl
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 89-04-PLAN.md — IntelliJ cue click-through: LSPCommandAction for `bbj.openComposerAt`, explicit-position launcher, coupling and contract tests
+- [ ] 89-05-PLAN.md — VS Code CVS() composer panel, command and lightbulb
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 89-06-PLAN.md — Go/no-go spike: both distributables built, IntelliJ Code Vision render verified by a human, and the config-routing decision recorded
+- [ ] 89-07-PLAN.md — CVS request handlers and IntelliJ wire DTOs, MSGBOX replace payload, decode equality
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 89-08-PLAN.md — IntelliJ CVS() dialog with guarded edit, and MSGBOX compose-and-replace banner
+- [ ] 89-09-PLAN.md — Server cues for MSGBOX, addChildWindow, CVS and in-code SETOPTS, with VS Code dispatch
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 89-10-PLAN.md — IntelliJ CVS() intention and context-menu action
+- [ ] 89-11-PLAN.md — Config files routed to the server as text-only `bbx-config`; VS Code client SETOPTS lens retired (gated on the recorded decision)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 89-12-PLAN.md — IntelliJ CVS cue mapping and BBx Config language mapping (gated on GO and the routing decision)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 89-13-PLAN.md — Installed-bundle evidence for every cue kind, rebuilt distributables, QA checklist rows and end-of-phase human checks
 **UI hint**: yes
 
 ### Phase 90: Composer Robustness & IntelliJ Composer Performance
