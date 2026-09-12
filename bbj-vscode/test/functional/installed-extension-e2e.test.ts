@@ -882,7 +882,7 @@ describe.skipIf(!installPresent)('every composer kind carries its cue', () => {
 });
 
 /**
- * A `bbx-config` document reaches the installed bundle only for its composer cue (#650, DISC-01):
+ * A `bbx-config` document reaches the installed bundle only for its composer cue (#650):
  * exactly one `setopts-config` cue per SETOPTS line, a hover that settles well inside the codeLens
  * budget instead of hanging, and never a non-empty `publishDiagnostics` payload -- proof the
  * config document is never parsed, linked or diagnosed as BBj source over the wire.

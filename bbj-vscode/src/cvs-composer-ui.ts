@@ -1,5 +1,5 @@
 /**
- * VS Code UI for the CVS() composer (#649, DISC-03).
+ * VS Code UI for the CVS() composer (#649).
  *
  * Thin client layer: a command + a Code Action, both opening the visual webview. All mask/decode
  * logic lives in the editor-agnostic ./cvs-composer module. Two entry points:
