@@ -97,7 +97,7 @@ describe('CVS() composer logic (#649)', () => {
         const result = decodeCvsCall('x$ = CVS(a$, 1+4)', 6);
         expect(result.found).toBe(true);
         expect(result.editable).toBe(true);
-        expect(result.edit).toEqual({ callStart: 5, callEnd: 18 });
+        expect(result.edit).toEqual({ callStart: 5, callEnd: 17 });
         expect(result.initial).toEqual({ str: 'a$', bits: [1, 4], chars: '' });
         expect(result.trailingArgs).toEqual([]);
     });
