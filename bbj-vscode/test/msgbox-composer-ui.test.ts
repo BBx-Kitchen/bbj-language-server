@@ -14,12 +14,15 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const {
     registerCommandMock, registerCodeActionsProviderMock, createWebviewPanelMock, showInformationMessageMock,
-    showWarningMessageMock, applyEditMock,
-    FakeCodeAction, FakeRange, FakeWorkspaceEdit,
+    showWarningMessageMock, applyEditMock, showQuickPickMock, createQuickPickMock, showInputBoxMock,
+    FakeCodeAction, FakePosition, FakeRange, FakeWorkspaceEdit,
 } = vi.hoisted(() => {
     class FakeCodeAction {
         command: unknown;
         constructor(public title: string, public kind: unknown) { }
+    }
+    class FakePosition {
+        constructor(public line: number, public character: number) { }
     }
     class FakeRange {
         constructor(public startLine: number, public startCharacter: number, public endLine: number, public endCharacter: number) { }
@@ -35,18 +38,44 @@ const {
         showInformationMessageMock: vi.fn(),
         showWarningMessageMock: vi.fn(),
         applyEditMock: vi.fn().mockResolvedValue(true),
-        FakeCodeAction, FakeRange, FakeWorkspaceEdit,
+        // Resolves to the first catalog item — the picker always advances the wizard
+        // deterministically in these tests; individual selections are not under test here.
+        showQuickPickMock: vi.fn((items: Array<{ value: number }>) => Promise.resolve(items[0])),
+        createQuickPickMock: vi.fn(() => {
+            const qp = {
+                items: [] as Array<{ value: number; label: string }>,
+                selectedItems: [] as Array<{ value: number; label: string }>,
+                onDidAccept: vi.fn((cb: () => void) => { qp.__accept = cb; }),
+                onDidHide: vi.fn((cb: () => void) => { qp.__hide = cb; }),
+                show: vi.fn(() => { qp.__accept?.(); }),
+                hide: vi.fn(),
+                dispose: vi.fn(),
+                __accept: undefined as (() => void) | undefined,
+                __hide: undefined as (() => void) | undefined,
+            };
+            return qp;
+        }),
+        showInputBoxMock: vi.fn(),
+        FakeCodeAction, FakePosition, FakeRange, FakeWorkspaceEdit,
     };
 });
 
 let textDocuments: Array<{ uri: { toString(): string }; lineAt(line: number): { text: string } }> = [];
+let activeTextEditor: {
+    document: { uri: { toString(): string }; lineCount: number; lineAt(line: number): { text: string } };
+    selection: { active: { line: number; character: number } };
+    edit: ReturnType<typeof vi.fn>;
+} | undefined;
 
 vi.mock('vscode', () => ({
     window: {
         createWebviewPanel: createWebviewPanelMock,
-        activeTextEditor: undefined,
+        get activeTextEditor() { return activeTextEditor; },
         showInformationMessage: showInformationMessageMock,
         showWarningMessage: showWarningMessageMock,
+        showQuickPick: showQuickPickMock,
+        createQuickPick: createQuickPickMock,
+        showInputBox: showInputBoxMock,
     },
     workspace: {
         get textDocuments() { return textDocuments; },
@@ -60,13 +89,14 @@ vi.mock('vscode', () => ({
     },
     CodeActionKind: { RefactorRewrite: { value: 'refactor.rewrite' } },
     CodeAction: FakeCodeAction,
+    Position: FakePosition,
     Range: FakeRange,
     WorkspaceEdit: FakeWorkspaceEdit,
     Uri: { parse: (s: string) => ({ toString: () => s, __uri: s }) },
     ViewColumn: { Beside: 2 },
 }));
 
-import { registerMsgboxComposer, msgboxPanelArgFromDecode } from '../src/msgbox-composer-ui.js';
+import { registerMsgboxComposer, msgboxPanelArgFromDecode, captureComposeArgTarget } from '../src/msgbox-composer-ui.js';
 import { openMsgboxComposerPanel, msgboxCallStillMatches, MsgboxPanelArg, MsgboxEditTarget } from '../src/msgbox-composer-webview.js';
 import { decodeMsgboxCall, MSGBOX_REPLACE_BANNER_TEXT } from '../src/msgbox-composer.js';
 
@@ -387,6 +417,162 @@ describe('openMsgboxComposerPanel completing an unfinished call (D-04/D-05)', ()
         expect(applyEditMock).not.toHaveBeenCalled();
         expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
         expect(panel.dispose).not.toHaveBeenCalled();
+    });
+});
+
+describe('bbj.composeMsgbox picker re-resolves its target before writing (#532)', () => {
+    let quickPickSideEffect: (() => void) | undefined;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+        activeTextEditor = undefined;
+        quickPickSideEffect = undefined;
+        showQuickPickMock.mockImplementation((items: Array<{ value: number }>) => {
+            const effect = quickPickSideEffect;
+            quickPickSideEffect = undefined;
+            effect?.();
+            return Promise.resolve(items[0]);
+        });
+    });
+
+    function getComposeHandler(): (arg?: unknown) => Promise<void> | void {
+        registerMsgboxComposer(fakeContext);
+        const call = registerCommandMock.mock.calls.find(c => c[0] === 'bbj.composeMsgbox')!;
+        return call[1] as (arg?: unknown) => Promise<void> | void;
+    }
+
+    function makeFakeEditor(uri: string, lines: string[]) {
+        const editBuilder = { replace: vi.fn(), insert: vi.fn() };
+        const editor = {
+            document: {
+                uri: { toString: () => uri },
+                get lineCount() { return lines.length; },
+                lineAt: (n: number) => ({ text: lines[n] }),
+            },
+            selection: { active: { line: 0, character: 0 } },
+            edit: vi.fn((cb: (b: typeof editBuilder) => void) => { cb(editBuilder); return Promise.resolve(true); }),
+        };
+        return { editor, editBuilder };
+    }
+
+    test('an unchanged edit-arg call replaces exactly the captured token span', async () => {
+        const lines = ['r = MSGBOX("Hi", 36, "T")'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+
+        await getComposeHandler()({ edit: { line: 0, exprRange: [17, 19], current: 36 } });
+
+        expect(editor.edit).toHaveBeenCalledTimes(1);
+        expect(editBuilder.replace).toHaveBeenCalledTimes(1);
+        const [rangeArg, textArg] = editBuilder.replace.mock.calls[0];
+        expect(rangeArg).toEqual(new FakeRange(0, 17, 0, 19));
+        expect(textArg).toBe('0');
+        expect(showWarningMessageMock).not.toHaveBeenCalled();
+    });
+
+    test('a line inserted above during the wizard aborts with the stale warning and no edit', async () => {
+        const lines = ['r = MSGBOX("Hi", 36, "T")'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+        quickPickSideEffect = () => { lines.unshift(''); };
+
+        await getComposeHandler()({ edit: { line: 0, exprRange: [17, 19], current: 36 } });
+
+        expect(editor.edit).not.toHaveBeenCalled();
+        expect(editBuilder.replace).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+    });
+
+    test('the message text changing during the wizard aborts with the stale warning and no edit', async () => {
+        const lines = ['r = MSGBOX("Hi", 36, "T")'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+        quickPickSideEffect = () => { lines[0] = 'r = MSGBOX("Bye", 36, "T")'; };
+
+        await getComposeHandler()({ edit: { line: 0, exprRange: [17, 19], current: 36 } });
+
+        expect(editor.edit).not.toHaveBeenCalled();
+        expect(editBuilder.replace).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+    });
+
+    test('an unterminated call that grows during the wizard is refused by the span-exact check', async () => {
+        const lines = ['r = MSGBOX("Hi"'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+        quickPickSideEffect = () => { lines[0] = 'r = MSGBOX("Hi", 1'; };
+
+        await getComposeHandler()({ insert: { line: 0, character: 15 } });
+
+        expect(editor.edit).not.toHaveBeenCalled();
+        expect(editBuilder.insert).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+    });
+
+    test('the edit-arg token already differing before the wizard opens aborts before showQuickPick is called', async () => {
+        const lines = ['r = MSGBOX("Hi", 4, "T")'];
+        const { editor } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+
+        await getComposeHandler()({ edit: { line: 0, exprRange: [17, 19], current: 36 } });
+
+        expect(showQuickPickMock).not.toHaveBeenCalled();
+        expect(editor.edit).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+    });
+
+    test('the document losing its lines during the wizard aborts with the stale warning and no edit', async () => {
+        const lines = ['r = MSGBOX("Hi", 36, "T")'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+        quickPickSideEffect = () => { lines.length = 0; };
+
+        await getComposeHandler()({ edit: { line: 0, exprRange: [17, 19], current: 36 } });
+
+        expect(editor.edit).not.toHaveBeenCalled();
+        expect(editBuilder.replace).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+    });
+
+    test('no argument on a plain statement composes new at the cursor, unchanged', async () => {
+        const lines = ['x = 1'];
+        const { editor, editBuilder } = makeFakeEditor('file:///a.bbj', lines);
+        activeTextEditor = editor as unknown as typeof activeTextEditor;
+        showInputBoxMock.mockResolvedValueOnce('"Message"').mockResolvedValueOnce('');
+
+        await getComposeHandler()();
+
+        expect(editor.edit).toHaveBeenCalledTimes(1);
+        expect(editBuilder.insert).toHaveBeenCalledTimes(1);
+        const [, textArg] = editBuilder.insert.mock.calls[0];
+        expect(textArg).toBe('ret! = MSGBOX("Message")');
+        expect(showWarningMessageMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('captureComposeArgTarget (#532)', () => {
+    test('edit: requires the same exprRange and exprValue at the argument line', () => {
+        const line = 'r = MSGBOX("Hi", 36, "T")';
+        const target = captureComposeArgTarget('file:///a.bbj', 0, line, { edit: { line: 0, exprRange: [17, 19], current: 36 } });
+        expect(target).toEqual({
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        });
+    });
+
+    test('edit: returns undefined when the token moved or the value no longer matches', () => {
+        expect(captureComposeArgTarget('file:///a.bbj', 0, 'r = MSGBOX("Hi", 4, "T")', { edit: { line: 0, exprRange: [17, 19], current: 36 } })).toBeUndefined();
+    });
+
+    test('insert: requires the same optionInsertOffset at the argument line', () => {
+        const line = 'a! = msgbox("Hello World!")';
+        const offset = line.length - 1;
+        const target = captureComposeArgTarget('file:///a.bbj', 0, line, { insert: { line: 0, character: offset } });
+        expect(target?.callText).toBe(line.slice(target!.callStart, target!.callEnd));
+    });
+
+    test('returns undefined for an argument with neither edit nor insert', () => {
+        expect(captureComposeArgTarget('file:///a.bbj', 0, 'r = MSGBOX("Hi", 36, "T")', {})).toBeUndefined();
     });
 });
 

@@ -6,14 +6,21 @@
  *   - Command "bbj.composeMsgbox" with no args  -> compose a NEW MSGBOX statement at the cursor.
  *   - Same command invoked by the Code Action    -> decode an existing call's numeric expr,
  *                                                   let the user reconfigure, replace it in place.
+ * The `edit`/`insert` arguments are re-resolved against the live document immediately before
+ * showing the wizard and again immediately before writing, and fail closed on any mismatch
+ * (D-01/D-02, #532) — a document edit while the QuickPick wizard is open can never land on the
+ * wrong text.
  */
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
     MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, stateFromSelection,
-    validateStringField, decodeMsgboxCall, MsgboxDecodeCallResult,
+    validateStringField, decodeMsgboxCall, findMsgboxCallAt, MsgboxDecodeCallResult,
 } from './msgbox-composer.js';
-import { openMsgboxComposerPanel, MsgboxPanelArg } from './msgbox-composer-webview.js';
+import {
+    openMsgboxComposerPanel, msgboxCallStillMatches, MSGBOX_STALE_CALL_TEXT,
+    MsgboxPanelArg, MsgboxEditTarget,
+} from './msgbox-composer-webview.js';
 
 interface ComposeArg {
     /** Reconfigure an existing numeric `expr` in place (call already has options). */
@@ -87,11 +94,54 @@ function visualAction(title: string, arg: MsgboxPanelArg): vscode.CodeAction {
     return action;
 }
 
+/**
+ * Re-resolve the picker's `edit`/`insert` argument against `lineText` — the argument's own line,
+ * never a search elsewhere (D-02). `edit` requires a call whose `exprRange` and `exprValue` still
+ * match the captured token exactly; `insert` requires a call whose `optionInsertOffset` still
+ * matches the captured position exactly. Returns `undefined` on any mismatch, or when `arg` has
+ * neither branch.
+ */
+export function captureComposeArgTarget(
+    uri: string, line: number, lineText: string, arg: ComposeArg,
+): MsgboxEditTarget | undefined {
+    if (arg.edit) {
+        const { exprRange, current } = arg.edit;
+        const call = findMsgboxCallAt(lineText, exprRange[0]);
+        if (!call || !call.exprRange || call.exprRange[0] !== exprRange[0] || call.exprRange[1] !== exprRange[1] || call.exprValue !== current) {
+            return undefined;
+        }
+        return { uri, line, callStart: call.callStart, callEnd: call.callEnd, callText: lineText.slice(call.callStart, call.callEnd), trailingArgs: [] };
+    }
+    if (arg.insert) {
+        const call = findMsgboxCallAt(lineText, arg.insert.character);
+        if (!call || call.optionInsertOffset !== arg.insert.character) {
+            return undefined;
+        }
+        return { uri, line, callStart: call.callStart, callEnd: call.callEnd, callText: lineText.slice(call.callStart, call.callEnd), trailingArgs: [] };
+    }
+    return undefined;
+}
+
 async function runComposer(arg?: ComposeArg): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         return;
     }
+
+    let target: MsgboxEditTarget | undefined;
+    if (arg?.edit || arg?.insert) {
+        const { line } = (arg.edit ?? arg.insert)!;
+        if (line < 0 || line >= editor.document.lineCount) {
+            vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);
+            return;
+        }
+        target = captureComposeArgTarget(editor.document.uri.toString(), line, editor.document.lineAt(line).text, arg);
+        if (!target) {
+            vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);
+            return;
+        }
+    }
+
     const initial = arg?.edit ? decode(arg.edit.current) : DEFAULT_STATE;
 
     const state = await runWizard(initial);
@@ -100,15 +150,23 @@ async function runComposer(arg?: ComposeArg): Promise<void> {
     }
     const expr = encode(state);
 
-    if (arg?.edit) {
-        // Reconfigure: replace just the numeric expr token.
-        const { line, exprRange } = arg.edit;
-        const range = new vscode.Range(line, exprRange[0], line, exprRange[1]);
-        await editor.edit(b => b.replace(range, String(expr)));
-    } else if (arg?.insert) {
-        // Add options to a bare MSGBOX("..."): insert `, <expr>` after the message.
-        const pos = new vscode.Position(arg.insert.line, arg.insert.character);
-        await editor.edit(b => b.insert(pos, `, ${expr}`));
+    if (target) {
+        // Re-resolve immediately before writing (D-01/D-03): the document may have changed while
+        // the wizard was open. Any mismatch aborts with no edit applied.
+        if (target.line < 0 || target.line >= editor.document.lineCount || !msgboxCallStillMatches(editor.document.lineAt(target.line).text, target)) {
+            vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);
+            return;
+        }
+        if (arg?.edit) {
+            // Reconfigure: replace just the numeric expr token.
+            const { line, exprRange } = arg.edit;
+            const range = new vscode.Range(line, exprRange[0], line, exprRange[1]);
+            await editor.edit(b => b.replace(range, String(expr)));
+        } else if (arg?.insert) {
+            // Add options to a bare MSGBOX("..."): insert `, <expr>` after the message.
+            const pos = new vscode.Position(arg.insert.line, arg.insert.character);
+            await editor.edit(b => b.insert(pos, `, ${expr}`));
+        }
     } else {
         // New statement: ask for message/title, insert at cursor.
         const message = await vscode.window.showInputBox({
