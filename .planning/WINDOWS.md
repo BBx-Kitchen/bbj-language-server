@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 1
 waived_count: 0
-fixed_count: 0
+fixed_count: 1
 total_count: 2
-last_updated: 2026-09-12T07:23:30.542Z
+last_updated: 2026-09-12T07:52:09.102Z
 ---
 
 # Broken Windows Ledger
@@ -16,7 +16,7 @@ last_updated: 2026-09-12T07:23:30.542Z
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 70 | unmet-truth |  |  | Phase 70 truth 4 unmet: a CI hygiene guardrail needs breadth hardening plus regression fixtures. Detail is embargoed under PROC-01 — see 70-VERIFICATION.md gap 2 and 70-REVIEW.md (CR-01..CR-04) in the phase directory (off public main). Accepted as unmet by explicit human decision 2026-08-21; deferred, not waived. | open |  | 2026-08-21T09:44:03.777Z |  |
-| 2 | 89 | deviation | bbj-vscode/src/language/main.ts |  | Plan 89-01 Task 2: connection.languages.codeLens.refresh() does not exist in this vscode-languageserver version; used connection.sendRequest(CodeLensRefreshRequest.type) instead (same wire behaviour). | open |  | 2026-09-12T07:23:30.542Z |  |
+| 2 | 89 | deviation | bbj-vscode/src/language/main.ts |  | Plan 89-01 Task 2: connection.languages.codeLens.refresh() does not exist in this vscode-languageserver version; used connection.sendRequest(CodeLensRefreshRequest.type) instead (same wire behaviour). | fixed |  | 2026-09-12T07:23:30.542Z | 2026-09-12T07:52:09.102Z |
 
 ````json
 [
@@ -39,10 +39,10 @@ last_updated: 2026-09-12T07:23:30.542Z
     "file": "bbj-vscode/src/language/main.ts",
     "line": null,
     "description": "Plan 89-01 Task 2: connection.languages.codeLens.refresh() does not exist in this vscode-languageserver version; used connection.sendRequest(CodeLensRefreshRequest.type) instead (same wire behaviour).",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-12T07:23:30.542Z",
-    "resolved_at": null
+    "resolved_at": "2026-09-12T07:52:09.102Z"
   }
 ]
 ````
