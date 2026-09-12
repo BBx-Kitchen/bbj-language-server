@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Phase 89 context gathered
-last_updated: "2026-09-12T07:06:54.416Z"
+stopped_at: Completed 89-01-PLAN.md
+last_updated: "2026-09-12T07:23:58.130Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 88 complete, transitioned to Phase 89
-state_head: ba50abf0a1bd4da58cea0ec809b1cc08a7cfe1ab
+last_activity_desc: Phase 89 execution started
+state_head: 541c0f60db41d736ad744e045299437805577308
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 34
+  completed_plans: 35
   percent: 56
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — READY TO EXECUTE
-Plan: Not started
+Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-09-12 — Phase 88 complete (all 15 plans, 88-VERIFICATION.md status: passed),
+Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
 
 ## Performance Metrics
@@ -174,6 +174,7 @@ transitioned to Phase 89.
 | Phase 88 P13 | 35min | 3 tasks | 4 files |
 | Phase 88 P14 | 30min | 3 tasks | 3 files |
 | Phase 88 P15 | ~20min | 3 tasks | 6 files |
+| Phase 89 P01 | 14min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -295,6 +296,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: [Phase 88]: 88-14 (gap-closure): decodeInCode's chain edit-in-place region is now anchored on the reassignment statements' own CST ranges (via traceOptsChain's new linkStatementNodes field) rather than origin/SETOPTS line arithmetic; every shape whose region cannot be expressed as a whole-line replace the chain owns outright (shared-line reassignment, comma-joined assignment, comment/unrelated-statement interleaving) fails closed with a new SetOptsNotEditableReason('shared-line') instead of an empty or inverted replace range -- DISC-05/DISC-06 marked complete
 - [Phase 88]: [Phase 88]: 88-15 (gap-closure round 5, final): setopts-stale-edit-guard.ts ports IntelliJ's StaleEditGuard/DecodeEquality contract to VS Code — applyIfUnchanged snapshots the target document's version, re-issues the identical decodeInCode request the panel was opened from (bounded by a 10s timeout), compares the whole fresh decode field-wise via sameSetOptsInCodeDecode, re-checks the version immediately before the write, and fails closed on every branch; both edit-in-place writers (setopts-tristate-webview.ts chain path, setopts-composer-webview.ts absolute-literal path) now route their applyEdit through it, while compose-new and every config.bbx caller stay unguarded since neither has a captured range that can go stale. All 15/15 Phase 88 plans now complete; three items remain human verification (IntelliJ composer reachability, live mask-width, live VS Code observation of this guard).
 - [Phase 88 UAT, closeout 2026-09-12]: All 3 outstanding human_verification items (IntelliJ Alt+Enter/context-menu reachability, live mask-width falsification against a real BBjServices, live VS Code observation of the 88-15 stale-edit guard) confirmed passing against a freshly rebuilt VS Code VSIX and bbj-intellij-0.1.0.zip (sha256 50ae9d74...) at HEAD f56c17e2. G-88-1/G-88-2/G-88-3 all resolved; 88-VERIFICATION.md status: passed; 88-UAT.md 9/9 pass. Filed GitHub issue #666 ("Improve the user experience and discoverability for SETOPTS handling") as a follow-up — during retest the tester noted it's not obvious how to create a new SETOPTS block or upgrade an existing one to a different format; needs a dedicated UX/flow review across both IDEs, out of scope for Phase 88. Notably overlaps Phase 89's own "Composer Discoverability" scope.
+- [Phase 89]: COMPOSER_CODE_LENS_BUDGET_MS=5000ms bounds cue-request hold time, mirroring CODE_ACTION_BUDGET_MS; handler gates at DocumentState.Parsed (not IndexedReferences) since the cue provider never touches linking; workspace/codeLens/refresh sent via connection.sendRequest(CodeLensRefreshRequest.type) since this vscode-languageserver version has no codeLens.refresh() helper.
 
 ### Tech Debt
 
@@ -361,9 +363,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T05:54:02.776Z
-Stopped at: Phase 89 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/89-cvs-composer-msgbox-expressions-composer-discoverability/89-CONTEXT.md
+Last session: 2026-09-12T07:23:57.903Z
+Stopped at: Completed 89-01-PLAN.md
+Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
 human verification and cannot be automated in this devcontainer: IntelliJ composer reachability
