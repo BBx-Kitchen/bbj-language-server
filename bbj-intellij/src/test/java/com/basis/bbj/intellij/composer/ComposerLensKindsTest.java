@@ -23,6 +23,7 @@ class ComposerLensKindsTest {
         "msgbox, MSGBOX",
         "addwindow, ADDWINDOW",
         "addchildwindow, ADDCHILDWINDOW",
+        "cvs, CVS",
         "setopts-in-code, SETOPTS_IN_CODE",
         "setopts-config, SETOPTS"
     })
@@ -34,7 +35,7 @@ class ComposerLensKindsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"cvs", "unknown"})
+    @ValueSource(strings = {"unknown"})
     @NullAndEmptySource
     void anyOtherWireKindIsEmpty(String wireKind) {
         assertEquals(Optional.empty(), ComposerLensKinds.launcherKindOf(wireKind));
@@ -46,9 +47,9 @@ class ComposerLensKindsTest {
     }
 
     @Test
-    void mappedWireKindsReturnsExactlyTheFiveMappedStrings() {
+    void mappedWireKindsReturnsExactlyTheSixMappedStrings() {
         assertEquals(
-            Set.of("msgbox", "addwindow", "addchildwindow", "setopts-in-code", "setopts-config"),
+            Set.of("msgbox", "addwindow", "addchildwindow", "cvs", "setopts-in-code", "setopts-config"),
             ComposerLensKinds.mappedWireKinds());
     }
 }
