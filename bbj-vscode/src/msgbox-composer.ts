@@ -648,6 +648,14 @@ export interface MsgboxDecodeCallResult {
     };
     /** Present only in compose-and-replace mode: the original text and the banner to show (#648). */
     replace?: { originalOptions: string; banner: string };
+    /**
+     * True when the call already carries an options argument (decodable or undecodable);
+     * false/absent when there is no options argument yet (the bare-call "add options" case).
+     * `initial`/`replace` alone cannot always distinguish these (e.g. an explicit `0` with no
+     * title decodes to the same all-zero `initial` as a bare call), so UI label logic that only
+     * has this payload — not the raw call text — needs this discriminator (#648).
+     */
+    hasOptions?: boolean;
 }
 
 /**
@@ -683,6 +691,7 @@ export function decodeMsgboxCall(line: string, character?: number): MsgboxDecode
                 buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
                 flags: flagsFromState(st), customButtons: buttons,
             },
+            hasOptions: hasExpr,
         };
     }
     if (info.args.length >= 2) {
@@ -696,6 +705,7 @@ export function decodeMsgboxCall(line: string, character?: number): MsgboxDecode
                 buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
             },
             replace: { originalOptions: info.optionsText ?? '', banner: MSGBOX_REPLACE_BANNER_TEXT },
+            hasOptions: true,
         };
     }
     return { found: false };
