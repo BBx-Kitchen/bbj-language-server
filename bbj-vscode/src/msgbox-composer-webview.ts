@@ -31,6 +31,13 @@ export interface MsgboxPanelArg {
         flags: number[];
         customButtons: string[];
     };
+    /**
+     * Present when the call's options argument could not be decoded (#648, D-08): the panel shows
+     * the original expression text and a banner, and Apply replaces the whole call span instead of
+     * prefilling from it. No second confirmation dialog is added (D-09) — the normal Apply button
+     * (labelled "Insert" here) applies.
+     */
+    replace?: { originalOptions: string; banner: string };
 }
 
 interface Selection {
@@ -87,6 +94,7 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
                     editMode,
                     catalogs: { buttonSets: BUTTON_SETS, icons: ICONS, defaultButtons: DEFAULT_BUTTONS, flags: FLAGS },
                     initial,
+                    replace: arg?.replace ?? null,
                 });
                 break;
             case 'change':
@@ -182,6 +190,13 @@ function getHtml(webview: vscode.Webview): string {
     padding: 8px 10px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; margin: 4px 0;
   }
   .summary { font-size: 0.82em; opacity: 0.75; min-height: 1.1em; }
+  .banner {
+    border-left: 3px solid var(--vscode-editorWarning-foreground);
+    padding: 6px 10px; margin: 0 0 12px; font-size: 0.88em;
+    background: var(--vscode-inputValidation-warningBackground, transparent);
+  }
+  .banner label { display: block; margin-top: 6px; }
+  .banner pre { margin: 2px 0 0; }
   .buttons { display: flex; gap: 8px; margin-top: 14px; }
   button {
     background: var(--vscode-button-background); color: var(--vscode-button-foreground);
@@ -195,6 +210,12 @@ function getHtml(webview: vscode.Webview): string {
 </head>
 <body>
   <h2 id="heading">MSGBOX Composer</h2>
+
+  <div class="banner hidden" id="replace-banner">
+    <div id="replace-banner-text"></div>
+    <label>Original options expression</label>
+    <pre id="original-options"></pre>
+  </div>
 
   <div class="mock-wrap">
     <div class="mock">
@@ -300,6 +321,13 @@ function getHtml(webview: vscode.Webview): string {
     const m = e.data;
     if (m.type === 'init') {
       $('heading').textContent = m.editMode ? 'Edit MSGBOX' : 'MSGBOX Composer';
+      if (m.replace) {
+        $('replace-banner-text').textContent = m.replace.banner;
+        $('original-options').textContent = m.replace.originalOptions;
+        $('replace-banner').classList.remove('hidden');
+      } else {
+        $('replace-banner').classList.add('hidden');
+      }
       const init = m.initial;
       $('message').value = init.message;
       $('title').value = init.title;

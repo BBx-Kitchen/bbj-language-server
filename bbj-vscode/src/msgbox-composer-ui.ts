@@ -10,8 +10,8 @@
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
-    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt, flagsFromState,
-    splitButtonsAndTrailing, validateStringField,
+    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, stateFromSelection,
+    validateStringField, decodeMsgboxCall, MsgboxDecodeCallResult,
 } from './msgbox-composer.js';
 import { openMsgboxComposerPanel, MsgboxPanelArg } from './msgbox-composer-webview.js';
 
@@ -39,43 +39,40 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
         const lineNo = range.start.line;
         // Only the MSGBOX call the cursor is inside — so a line with several calls
         // (e.g. IF..THEN MSGBOX(..) ELSE MSGBOX(..)) offers the action for the right one.
-        const info = findMsgboxCallAt(document.lineAt(lineNo).text, range.start.character);
-        if (!info) {
+        const decoded = decodeMsgboxCall(document.lineAt(lineNo).text, range.start.character);
+        const result = msgboxPanelArgFromDecode(document.uri.toString(), lineNo, decoded);
+        if (!result) {
             return [];
         }
-        const callSpan = { uri: document.uri.toString(), line: lineNo, callStart: info.callStart, callEnd: info.callEnd };
-
-        // Existing numeric options -> open the visual editor prefilled from the current call.
-        if (info.exprRange && info.exprValue !== undefined) {
-            const st = decode(info.exprValue);
-            // Split args past the title into custom button labels vs. args to preserve verbatim.
-            const { buttons, trailing } = splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7);
-            const arg: MsgboxPanelArg = {
-                target: { ...callSpan, trailingArgs: trailing },
-                initial: {
-                    message: info.args[0] ?? '""',
-                    title: info.args[2] ?? '',
-                    buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
-                    flags: flagsFromState(st),
-                    customButtons: buttons,
-                },
-            };
-            return [visualAction(`Configure MSGBOX options (${describe(info.exprValue)})`, arg)];
-        }
-        // Bare MSGBOX("...") with no options yet -> open the visual editor to add them.
-        if (info.optionInsertOffset !== undefined) {
-            const arg: MsgboxPanelArg = {
-                target: { ...callSpan, trailingArgs: [] },
-                initial: {
-                    message: info.args[0] ?? '""',
-                    title: '',
-                    buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
-                },
-            };
-            return [visualAction('Add MSGBOX options…', arg)];
-        }
-        return [];
+        return [visualAction(result.label, result.arg)];
     }
+}
+
+/**
+ * Build the visual-composer command argument + lightbulb label from a `decodeMsgboxCall` result
+ * (#648). Shared by the lightbulb (`MsgboxCodeActionProvider`) and any future cue dispatcher, so
+ * both decide identically. `undefined` when there is nothing to offer (`found: false`).
+ */
+export function msgboxPanelArgFromDecode(
+    uri: string, line: number, decoded: MsgboxDecodeCallResult,
+): { arg: MsgboxPanelArg; label: string } | undefined {
+    if (!decoded.found || !decoded.edit || !decoded.initial) {
+        return undefined;
+    }
+    const target = {
+        uri, line, callStart: decoded.edit.callStart, callEnd: decoded.edit.callEnd,
+        trailingArgs: decoded.trailingArgs ?? [],
+    };
+    const arg: MsgboxPanelArg = { target, initial: decoded.initial };
+    if (decoded.replace) {
+        arg.replace = decoded.replace;
+        return { arg, label: 'Compose MSGBOX options (replaces expression)…' };
+    }
+    if (decoded.hasOptions) {
+        const summary = describe(encode(stateFromSelection(decoded.initial)));
+        return { arg, label: `Configure MSGBOX options (${summary})` };
+    }
+    return { arg, label: 'Add MSGBOX options…' };
 }
 
 function visualAction(title: string, arg: MsgboxPanelArg): vscode.CodeAction {

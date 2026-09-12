@@ -52,14 +52,12 @@ import { decodeMsgboxCall, MSGBOX_REPLACE_BANNER_TEXT } from '../src/msgbox-comp
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openMsgboxComposerPanel>[0];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeDocument(text: string, uri = 'file:///a.bbj'): any {
     return {
         lineAt: (_line: number) => ({ text }),
         uri: { toString: () => uri },
     };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeRange(line: number, character: number): any {
     return { start: { line, character } };
 }
@@ -92,7 +90,6 @@ describe('MsgboxCodeActionProvider labels (#648)', () => {
     function getProvider() {
         registerMsgboxComposer(fakeContext as unknown as Parameters<typeof registerMsgboxComposer>[0]);
         const call = registerCodeActionsProviderMock.mock.calls[0];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return call[1] as any;
     }
 
