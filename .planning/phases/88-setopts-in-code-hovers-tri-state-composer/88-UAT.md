@@ -18,9 +18,10 @@ expected: |
   single `IOR(...)` call, and a single `AND(...)` call in a real `.bbj` file — in both VS Code
   and IntelliJ. Each hover names the option(s) that line sets; the `AND` hover names the
   option(s) it CLEARS (never shown as a raw/set bitmask).
-result: issue
+result: pass
 reported: "VSCode: no hover at all. IntelliJ: works for a literal SETOPS but it appears it can't determine OPTS from the runtime. This also makes to sense to determine the current opts - IOR or AND just set or unset something, so the hover bubble only would need to say what it changes in that place, not what it results in. tested with the following code block:   REM three SETOPTS tests\n\na$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$\n\nSETOPTS $00C20240000000000000000000000000$\n\nLET A$=OPTS\nLET A$(2,1)=AND(A$(2,1),$7F$)\nSETOPTS A$"
 severity: major
+superseded_by: "tests 4 and 5 (live retest Check 1), both passed 2026-09-11 — see resolved gap G-88-1"
 
 ### 2. Tri-state composer end-to-end in both live IDEs (QA rows 16, 20)
 expected: |
@@ -31,9 +32,10 @@ expected: |
   `var$=OPTS`/…/`SETOPTS var$` block is inserted at the line start. Invoke it on a chain
   interrupted by `IF`/`FI` (or `SWITCH`/`ON...GOTO`) — no edit is offered; a message names why
   the shape cannot be safely edited.
-result: issue
+result: pass
 reported: "how would I invoke it? In IntelliJ I just see a \"Searching Content Actions...\" popup hanging forever, in VSCode no idea, nothing happens"
 severity: major
+superseded_by: "tests 6 (VS Code) and 9 (IntelliJ, live retest round two) both passed — see resolved gap G-88-2"
 
 ### 3. Live-BBjServices mask-width falsification (QA row 21)
 expected: |
@@ -42,8 +44,9 @@ expected: |
   The generated `IOR`/`AND` calls (built on the 16-byte/32-hex-digit full-width mask base) run
   without raising a BBj `!ERROR` — confirms (or refutes) 88-RESEARCH.md Assumption A2's
   mask-width default against real BASIS runtime behavior.
-result: skipped
+result: pass
 reason: "composer isn't working (blocked by Test 2 failure — the tri-state composer never activates in either IDE, so a live-BASIS compose-and-run check cannot proceed)"
+superseded_by: "test 9 (live retest round two, Check 3 — live mask-width falsification), passed 2026-09-12 — see resolved gap G-88-3"
 
 ### 4. Live retest Check 1 — hover decode in VS Code
 expected: |
@@ -67,9 +70,10 @@ expected: |
   composes and inserts a whole new var$=OPTS/IOR/AND/SETOPTS var$ block; (d) invoking on either
   byte-range chain offers no edit and names why. FAIL signature from last round: lightbulb never
   appears / nothing happens.
-result: issue
+result: pass
 reported: "It works but produces an invalid line: SETOPTS 20C20240000000000000000000000000 only valid in config.bbx. In a program it needs to be SETOPTS $20C20240000000000000000000000000$ . With that fixed, everything else is a pass"
 severity: major
+superseded_by: "fixed by plans 88-10/88-11 (bbjHexLiteral formatter); re-confirmed passing via test 9 (live retest round two, Check 3) — see resolved gap G-88-3"
 
 ### 7. Live retest Check 2 — tri-state composer in IntelliJ
 expected: |
@@ -77,9 +81,10 @@ expected: |
   the freshly built bbj-intellij-0.1.0.zip. FAIL signature from last round: "Searching Content
   Actions..." popup hangs forever. If it still hangs, note how long and whether the file shows
   visible diagnostics at that moment.
-result: issue
+result: pass
 reported: "hangs on \"Searching for Context Option...\" and \"Pull Docker Image\""
 severity: blocker
+superseded_by: "fixed by plan 88-12 (bounded codeAction gated on DocumentState.Linked); re-confirmed passing via test 9 (live retest round two, Check 2) — see resolved gap G-88-2"
 
 ### 8. Live retest Check 3 — live mask-width falsification
 expected: |
@@ -90,7 +95,7 @@ expected: |
   running so this check isolates the mask-width question from the known delimiter bug. Expected:
   the generated IOR/AND calls (16-byte/32-hex-digit full-width mask base) run without raising a
   BBj !ERROR — confirms 88-RESEARCH.md Assumption A2 against real BASIS runtime behavior.
-result: issue
+result: pass
 reported: |
   Correction to the earlier "pass": !ERROR=17 (Strings must be the same length.) on
   [5] opts$=AND(opts$,"$DFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF$") for the composer's generated
@@ -103,6 +108,7 @@ reported: |
   are taken as literal text (making the operand longer than 16 bytes) instead of being decoded
   as hex — hence the length mismatch against opts$.
 severity: blocker
+superseded_by: "fixed by plans 88-10/88-11 (shared bbjHexLiteral formatter); re-confirmed passing via test 9 (live retest round two, Check 3) — see resolved gap G-88-3"
 
 ### 9. Live retest round two — IntelliJ reachability, live mask-width, and the stale-edit guard (Checks 2-4 of 88-LIVE-RETEST.md)
 expected: |
@@ -115,10 +121,10 @@ result: pass
 ## Summary
 
 total: 9
-passed: 3
-issues: 5
+passed: 9
+issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps

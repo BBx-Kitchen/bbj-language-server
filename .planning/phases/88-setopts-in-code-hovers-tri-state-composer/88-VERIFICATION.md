@@ -1,9 +1,9 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-verified: 2026-09-11T17:05:00Z
-status: human_needed
-score: 3/4 ROADMAP truths fully verified (1 present-behavior-unverified — IntelliJ composer reachability)
-behavior_unverified: 1
+verified: 2026-09-12T05:15:00Z
+status: passed
+score: 4/4 ROADMAP truths fully verified — the 3 remaining human_verification items (IntelliJ reachability, live mask-width, stale-edit guard live observation) were confirmed live by the user in 88-UAT.md test 9 (2026-09-12), against a freshly rebuilt VS Code VSIX and bbj-intellij-0.1.0.zip (sha256 50ae9d74...) built at this same commit
+behavior_unverified: 0
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
@@ -44,9 +44,9 @@ human_verification:
 # Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer Verification Report
 
 **Phase Goal:** Users working with SETOPTS/IOR/AND expressions directly in BBj code get accurate decode hovers everywhere, and can safely compose or edit the two statically-safe shapes.
-**Verified:** 2026-09-11T17:05:00Z
-**Status:** human_needed
-**Re-verification:** Yes — fifth round, following gap-closure plan 88-15 (VS Code stale-edit guard, closing round four's fresh-code-review CR-01)
+**Verified:** 2026-09-12T05:15:00Z
+**Status:** passed
+**Re-verification:** Yes — sixth round. All code-level work was already verified in round five (following gap-closure plan 88-15); this round only canonicalizes the 3 outstanding `human_verification` items after the user confirmed them live (88-UAT.md test 9, 2026-09-12): IntelliJ reachability (both Alt+Enter and the editor context-menu door), the live mask-width falsification against a real BBjServices, and the VS Code stale-edit guard's live observation.
 
 ## Why this moves from `gaps_found` to `human_needed`, not `passed`
 
