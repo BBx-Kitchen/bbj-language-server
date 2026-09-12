@@ -491,7 +491,7 @@ const MSGBOX_CONSTANT_TERM = /^bbjmsgbox\.([a-z_][a-z0-9_]*)$/i;
  * Parse a MSGBOX options expression as a `+`-sum of integer literals and/or `BBjMsgBox.*`
  * constant names (case-insensitive, optional whitespace around `+`), returning the equivalent
  * numeric value, or `undefined` when the text is not exactly that shape. This is a closed
- * reverse lookup over the catalogs above — never a general expression evaluator (#648, D-10).
+ * reverse lookup over the catalogs above — never a general expression evaluator (#648).
  */
 export function parseMsgboxOptionsSum(text: string): number | undefined {
     const trimmed = text.trim();
@@ -582,7 +582,7 @@ function buildCallInfo(line: string, callStart: number, open: number): MsgboxCal
             info.exprValue = parseInt(numMatch[2], 10);
         } else {
             // Not a bare integer literal -> try the closed `+`-sum of integers/BBjMsgBox
-            // constants recognizer (#648, D-10). Anything else is left undecoded.
+            // constants recognizer (#648). Anything else is left undecoded.
             const sum = parseMsgboxOptionsSum(info.optionsText);
             if (sum !== undefined) {
                 info.exprRange = trimmedRange(line, a, b);
@@ -627,8 +627,8 @@ export function findMsgboxCallAt(line: string, character: number): MsgboxCallInf
 
 /**
  * Shown when a MSGBOX options expression could not be decoded and the composer will replace it
- * on Apply instead of prefilling from it (#648, D-08). Mirrors the single-source reason-text
- * precedent in `setopts-in-code-request.ts`'s `NOT_EDITABLE_REASON_TEXT`.
+ * on Apply instead of prefilling from it (#648). Mirrors the single-source reason-text precedent
+ * in `setopts-in-code-request.ts`'s `NOT_EDITABLE_REASON_TEXT`.
  */
 export const MSGBOX_REPLACE_BANNER_TEXT = 'Could not decode this options expression — composing will replace it.';
 
@@ -667,7 +667,7 @@ export interface MsgboxDecodeCallResult {
  *   - A bare `MSGBOX("...")` with no options yet returns the existing add-options payload.
  *   - Anything else (with at least two arguments) returns compose-and-replace mode: the original
  *     options text and {@link MSGBOX_REPLACE_BANNER_TEXT}, with message/title/trailing args
- *     preserved verbatim (D-08).
+ *     preserved verbatim.
  */
 export function decodeMsgboxCall(line: string, character?: number): MsgboxDecodeCallResult {
     const info = character === undefined ? parseMsgboxCallOnLine(line) : findMsgboxCallAt(line, character);

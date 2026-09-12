@@ -228,7 +228,7 @@ describe('MSGBOX composer logic (#426)', () => {
     });
 
     test('parse yields no exprRange for a non-literal, non-constant-sum expr', () => {
-        // `32+4` is now a recognized integer-literal sum (#648, D-10) — use an arithmetic
+        // `32+4` is now a recognized integer-literal sum (#648) — use an arithmetic
         // operator the recognizer deliberately rejects to keep testing the "no exprRange" case.
         const info = parseMsgboxCallOnLine('MSGBOX("hi", 32*4)')!;
         expect(info).toBeDefined();

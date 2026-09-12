@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
- * Unit coverage for the VS Code MSGBOX composer UI's compose-and-replace mode (#648, DISC-02):
+ * Unit coverage for the VS Code MSGBOX composer UI's compose-and-replace mode (#648):
  *   - `MsgboxCodeActionProvider` labels (unchanged existing labels + the new replace-mode label)
  *   - `msgboxPanelArgFromDecode`, the shared function the lightbulb and any future cue dispatcher use
  *   - the webview's replace banner markup/script (read as text — no real webview host needed)

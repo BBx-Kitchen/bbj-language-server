@@ -32,9 +32,9 @@ export interface MsgboxPanelArg {
         customButtons: string[];
     };
     /**
-     * Present when the call's options argument could not be decoded (#648, D-08): the panel shows
-     * the original expression text and a banner, and Apply replaces the whole call span instead of
-     * prefilling from it. No second confirmation dialog is added (D-09) — the normal Apply button
+     * Present when the call's options argument could not be decoded (#648): the panel shows the
+     * original expression text and a banner, and Apply replaces the whole call span instead of
+     * prefilling from it. No second confirmation dialog is added — the normal Apply button
      * (labelled "Insert" here) applies.
      */
     replace?: { originalOptions: string; banner: string };
