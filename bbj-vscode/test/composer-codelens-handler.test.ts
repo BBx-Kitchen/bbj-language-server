@@ -9,6 +9,7 @@ import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Model } from '../src/language/generated/ast.js';
+import { initializeWorkspace } from './test-helper.js';
 
 const TEST_BUDGET_MS = 30;
 
@@ -120,26 +121,46 @@ describe('createBoundedComposerCodeLensHandler (#650)', () => {
 });
 
 /**
- * A document of at least 5000 lines answers 20 consecutive `provideCodeLens` calls with
- * deep-equal lists, with zero parser/DocumentBuilder.update/DocumentBuilder.build calls, proving
- * Roadmap Success Criterion 5 end-to-end through the real Langium services (not just the pure
- * candidate collector unit-tested in composer-codelens.test.ts).
+ * A document of at least 5000 lines — mixing addWindow, MSGBOX, addChildWindow, CVS() and a safe
+ * in-code SETOPTS chain — answers 20 consecutive `provideCodeLens` calls with deep-equal lists,
+ * with zero parser/DocumentBuilder.update/DocumentBuilder.build calls, proving Roadmap Success
+ * Criterion 5 end-to-end through the real Langium services (not just the pure candidate collector
+ * unit-tested in composer-codelens.test.ts) for every composer kind added in this plan, not just
+ * the original addWindow tracer.
  */
 describe('BBjComposerCodeLensProvider — no re-parse across repeated requests (#650)', () => {
-    test('20 consecutive requests on a 5000+ line document return deep-equal lists with zero parser/update/build calls', async () => {
+    test('20 consecutive requests on a 5000+ line mixed-kind document return deep-equal lists with zero parser/update/build calls', async () => {
         const services = createBBjServices(EmptyFileSystem);
         const parse = parseHelper<Model>(services.BBj);
+        // The in-code SETOPTS chain block below needs the workspace initialized so
+        // `traceOptsChain` can resolve the OPTS/IOR/AND references its decode depends on
+        // (mirrors composer-codelens.test.ts and setopts-in-code-request.test.ts). Combined with
+        // parsing 5000+ lines and 20 provideCodeLens passes over five detector kinds, this needs
+        // more than vitest's 5000ms default test timeout.
+        await initializeWorkspace(services.shared);
 
         const lines: string[] = [];
         for (let i = 0; i < 5000; i++) {
             if (i % 500 === 0) {
                 lines.push(`window${i}! = sysgui!.addWindow(1, 1, 1, 1, "W${i}", $00010003$)`);
+            } else if (i % 500 === 100) {
+                lines.push(`r${i} = MSGBOX("Hi${i}", 36, "T${i}")`);
+            } else if (i % 500 === 200) {
+                lines.push(`child${i}! = window!.addChildWindow(${i}, "Child${i}", 10, 10, 200, 150, $00000000$)`);
+            } else if (i % 500 === 300) {
+                lines.push(`x${i}$ = CVS(a$, 1+4)`);
             } else if (i % 7 === 0) {
                 lines.push(`rem not a real call: sysgui!.addWindow(1,1,1,1)`);
             } else {
                 lines.push(`let a${i} = ${i}`);
             }
         }
+        // A safe OPTS -> IOR/AND -> SETOPTS chain, appended once at the end of the document.
+        lines.push('C$=OPTS');
+        lines.push('C$=IOR(C$,$01$)');
+        lines.push('C$=AND(C$,$FE$)');
+        lines.push('SETOPTS C$');
+
         const source = lines.join('\n') + '\n';
         const document = await parse(source);
 
@@ -150,10 +171,10 @@ describe('BBjComposerCodeLensProvider — no re-parse across repeated requests (
         const provider = services.BBj.lsp.CodeLensProvider!;
         const params = { textDocument: { uri: document.uri.toString() } };
 
-        const results: unknown[] = [];
+        const results: CodeLens[][] = [];
         const start = Date.now();
         for (let i = 0; i < 20; i++) {
-            results.push(await provider.provideCodeLens(document, params));
+            results.push((await provider.provideCodeLens(document, params)) as CodeLens[]);
         }
         const elapsedFirst = Date.now() - start;
 
@@ -163,7 +184,12 @@ describe('BBjComposerCodeLensProvider — no re-parse across repeated requests (
         expect(parseSpy).not.toHaveBeenCalled();
         expect(updateSpy).not.toHaveBeenCalled();
         expect(buildSpy).not.toHaveBeenCalled();
+
+        // Every mixed-in kind is actually represented — the whole point of widening this fixture.
+        const kinds = new Set(results[0].map((lens) => lens.command?.arguments?.[0].kind));
+        expect(kinds).toEqual(new Set(['addwindow', 'msgbox', 'addchildwindow', 'cvs', 'setopts-in-code']));
+
         // Generous smoke ceiling for a single call's share of the 20-request total, not a benchmark.
         expect(elapsedFirst / 20).toBeLessThan(2000);
-    });
+    }, 30000);
 });
