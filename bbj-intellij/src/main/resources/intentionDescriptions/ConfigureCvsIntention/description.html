@@ -1,0 +1,17 @@
+<html>
+<body>
+<p>Opens the BBj visual composer for the <code>CVS(...)</code> call under the caret.</p>
+<!-- tooltip end -->
+<p>
+The composer is prefilled from the current call's mask and chars argument when the mask is a sum
+of integer literals; the string argument being converted is kept verbatim and shown read-only.
+Pressing OK replaces the call in place; Cancel changes nothing.
+</p>
+<p>
+A mask built from a variable or an expression cannot be edited in place -- the composer opens
+with the server's reason instead of a blank or guessed value. Available when the caret is inside
+such a call. The BBj language server must be running, because the composer decodes and re-encodes
+the call through it (#649).
+</p>
+</body>
+</html>
