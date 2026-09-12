@@ -426,7 +426,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
   5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
 
-**Plans**: 3/13 plans executed (7 waves)
+**Plans**: 4/13 plans executed (7 waves)
 
 **Wave 1**
 
@@ -436,7 +436,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 89-04-PLAN.md — IntelliJ cue click-through: LSPCommandAction for `bbj.openComposerAt`, explicit-position launcher, coupling and contract tests
+- [x] 89-04-PLAN.md — IntelliJ cue click-through: LSPCommandAction for `bbj.openComposerAt`, explicit-position launcher, coupling and contract tests
 - [ ] 89-05-PLAN.md — VS Code CVS() composer panel, command and lightbulb
 
 **Wave 3** *(blocked on Wave 2 completion)*

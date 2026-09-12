@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-03-PLAN.md
-last_updated: "2026-09-12T08:04:46.055Z"
+stopped_at: Completed 89-04-PLAN.md
+last_updated: "2026-09-12T08:23:45.955Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 0564d9f046a8751a0002cd12bc3ccddbbca02593
+state_head: b5ab43e50c7165d6ac0f45a41193a450d54b0fc3
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 37
+  completed_plans: 38
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -177,6 +177,7 @@ transitioned to Phase 89.
 | Phase 89 P01 | 14min | 3 tasks | 12 files |
 | Phase 89 P02 | 20min | 2 tasks | 7 files |
 | Phase 89 P03 | 17min | 2 tasks | 5 files |
+| Phase 89 P04 | 8min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: COMPOSER_CODE_LENS_BUDGET_MS=5000ms bounds cue-request hold time, mirroring CODE_ACTION_BUDGET_MS; handler gates at DocumentState.Parsed (not IndexedReferences) since the cue provider never touches linking; workspace/codeLens/refresh sent via connection.sendRequest(CodeLensRefreshRequest.type) since this vscode-languageserver version has no codeLens.refresh() helper.
 - [Phase 89]: decodeMsgboxCall recognizes closed +-sums of integer literals and/or BBjMsgBox.* constants via a reverse lookup built once from the existing catalogs; anything else opens VS Code compose-and-replace mode with the original text and a banner, no second confirmation.
 - [Phase 89]: 89-03: cvs-composer.ts follows setopts-catalog.ts's catalog+compose+decode+preview shape; CVS_BITS 128 carries a BBj-specific detail and 1/2/16/32/128 are chars-customizable; decodeCvsCall recognizes only integer-literal +-sums as editable
+- [Phase 89]: 89-04: ComposerLensKinds/ComposerLensTarget/ComposerLauncher.launchAt/BbjOpenComposerAtAction wire LSP4IJ's bbj.openComposerAt Code Vision click to an EDT-pinned action that opens the exact composer at the cue's own position; a fromCue stale check renders staleDocument instead of falling through to compose-new
 
 ### Tech Debt
 
@@ -367,8 +369,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T08:04:45.818Z
-Stopped at: Completed 89-03-PLAN.md
+Last session: 2026-09-12T08:23:45.722Z
+Stopped at: Completed 89-04-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
