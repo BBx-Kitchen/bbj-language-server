@@ -2,43 +2,42 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 89
-current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
-status: executing
-stopped_at: Completed 89-16-PLAN.md
-last_updated: "2026-09-12T14:50:40.578Z"
+current_phase: 90
+current_phase_name: Composer Robustness & IntelliJ Composer Performance
+status: planning
+stopped_at: Phase 89 complete, ready to plan Phase 90
+last_updated: "2026-09-12T15:15:53.125Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 89 execution started
-state_head: a3d3d975e04eff79d1ab03159bad5f793288b421
+last_activity_desc: Phase 89 complete, transitioned to Phase 90
+state_head: e60bbe14e26c7b719f4474cde2f529e7e467eaa9
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 50
   completed_plans: 50
-  percent: 56
+  percent: 67
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-12 (Phase 88 complete — all 3 outstanding human_verification items confirmed live; Phase 89 ready to plan)
+**Last Updated:** 2026-09-12 (Phase 89 complete — UAT round 2 passed 2/2 after gap closure G-89-3; Phase 90 ready to discuss/plan)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-07)
+See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 89 — CVS() Composer, MSGBOX Expressions & Composer Discoverability
+**Current Focus:** Phase 90 — Composer Robustness & IntelliJ Composer Performance
 
 ---
 
 ## Current Position
 
-Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 4 of 16
-Status: Ready to execute
-Last activity: 2026-09-12 — Phase 89 execution started
-transitioned to Phase 89.
+Phase: 90 — Composer Robustness & IntelliJ Composer Performance
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-12 — Phase 89 complete, transitioned to Phase 90
 
 ## Performance Metrics
 
@@ -334,6 +333,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-15: CvsComposerDialog takes a CvsComposeMode instead of a boolean editMode, throwing IllegalArgumentException for NOT_EDITABLE; the assign-to row is now hidden in both replace modes (edit-in-place and completing an unfinished call), not just editing
 - [Phase 89]: 89-15: openCvs routes through CvsComposeMode.of and reuses the single existing guarded CVS write for both edit-in-place and completing an unfinished call, differing only in the write-command name; DecodeEquality.sameCvs now compares incomplete so a stale unfinished-call completion cannot pass the guard
 - [Phase 89]: 89-16: MSGBOX compose-new nesting recorded as a Phase 90 todo instead of copying the CVS fix; QA row 19/25 step 5 folds three sub-actions into one numbered step — Gap decision 7 scoped the MSGBOX fix out of Phase 89; it needs its own design (guarded replace + MSGBOX's replace/sameMsgbox/banner semantics)
+- [Phase 89 UAT, closeout 2026-09-12]: Round 1 passed 3/4 with gap G-89-3 (an unfinished `CVS(` call showed the not-editable notice in IntelliJ and nested a second call in VS Code), closed by gap-closure plans 89-14..16. Round 2 passed 2/2 by hand in both IDEs against artifacts rebuilt at `deb25b4a` (VSIX sha256 8111f522…, bbj-intellij-0.1.0.zip sha256 55b3f52f…; the zip needed `clean buildPlugin` because Gradle judged it up to date). 89-VERIFICATION.md status: passed; 89-VALIDATION.md nyquist-compliant; 89-SECURITY.md threats_open 0. DISC-01/02/03 (#650, #648, #649) closed.
 
 ### Tech Debt
 
@@ -390,6 +390,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 84] UI-review follow-ups (advisory, 84-UI-REVIEW.md, 19/24 — copywriting 2/4 is the weak pillar): the IntelliJ Settings label still reads "config.bbx Path:" (`BbjSettingsComponent.java:281`) after the phase removed filename-specific wording everywhere else; `Commands.cjs` carries two divergent "no config path" strings (`NO_CONFIG_PATH_MESSAGE` vs. the inline string in `openConfigFile`); IntelliJ has no SETOPTS discoverability affordance (no CodeLens/hint equivalent), which is what confused the UAT tester. Candidates for a quick task; the first two are string-only.
 - ⚠️ [Phase 85] Follow-ups (advisory, none blocked verification): (1) 85-REVIEW.md info findings left out of fix scope — IN-01 `pollQuiescence()`'s catch-all drops the pending notification with no retry; IN-02 the crash-triggered `requestRestart(CRASH_RESTART_DELAY_MS)` in `BbjServerService.updateStatus()` does not clear `pendingRestartReason`. (2) Four pre-existing defects found in the UAT cold-start log and filed as GitHub issues #659-#662 (java-interop nested-class double resolution, primitive/array lookups, `config.bbx` log wording — a one-line fix in `bbj-ws-manager.ts` — and logger format). (3) `85-VERIFICATION.md` `verified:` frontmatter still carries the original 03:00Z stamp; the close-out re-run is recorded in its trailing section.
 - ⚠️ [Phase 86] Two residual review risks from 86-05-REVIEW.md accepted as-is at the UAT checkpoint (Test 4), not fixed: WR-01 — `updateStatus()` passes `ExpectedStopGuard.classify()` a `previousStatus` that lags the true immediate predecessor by one broadcast (self-corrects for the single-hop sequence G-86-1's fix targets; a duplicate/echoed `stopped` broadcast would not self-correct). WR-02 — `doRestart()` has no exception handling around the new bounded wait; a thrown exception would leave the server stopped with no console explanation. Candidates for a quick task if either surfaces in practice.
+- ⚠️ [Phase 89] Gap-closure-round code review (89-REVIEW.md, 0 critical / 1 warning / 1 info) is unfixed, and UAT round 2 passed without it: WR-01 — the VS Code composer panel always labels its primary button "Insert", even when completing or editing a call; IN-01 — `runComposeCvsCommand` decodes the same call twice on the hard-stop path. The first-round review (CR-01, WR-01..03) was fully fixed (89-REVIEW-FIX.md). Candidates for `/gsd-code-review 89 --fix` or a quick task; rebuild both extensions after either lands. MSGBOX compose-new still nests inside an unfinished `MSGBOX(` call — Phase 90 todo filed by 89-16.
 
 ### Quick Tasks Completed
 
@@ -400,16 +401,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T14:50:40.277Z
-Stopped at: Completed 89-16-PLAN.md
+Last session: 2026-09-12T15:15:53Z
+Stopped at: Phase 89 complete, ready to plan Phase 90
 Resume file: None
 
-Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
-human verification and cannot be automated in this devcontainer: IntelliJ composer reachability
-(no IntelliJ sandbox here), the live mask-width falsification (headless BBj execution blocked
-here), and the live VS Code observation of the 88-15 stale-edit guard (editing a real .bbj file
-while the composer panel is open, then pressing Apply). All three are staged in
-`88-LIVE-RETEST.md` round two.
+Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
+phase directory or CONTEXT.md yet — start with `/gsd-discuss-phase 90`. Fold in the todo
+`2026-09-12-msgbox-compose-new-nests-inside-an-unfinished-msgbox-call.md` filed by 89-16.
 
 ## Deferred Items
 
@@ -474,11 +472,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-07 after Phase 87 verify-work close-out (Phases 84-87 complete, 4/9; DISC-04 closed)*
+*State updated: 2026-09-12 after Phase 89 verify-work close-out (Phases 84-89 complete, 6/9; DISC-01..06 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-87 complete and verified; next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88`
+- Phases 84-89 complete and verified; next: `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
