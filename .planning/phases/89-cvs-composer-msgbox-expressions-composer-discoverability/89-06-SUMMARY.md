@@ -82,8 +82,9 @@ status: complete
 - **Config-routing decision (Task 3): route.** The human selected routing config.bbx files to the language server under their own `bbx-config` language id, superseding Phase 84's "config file never reaches the server" invariant with a refined one (server never parses/indexes/diagnoses the config content; a builder filter drops it). Plans 89-11 and 89-12 proceed unchanged.
 - Because Task 2 resolved GO, D-07's gutter-marker fallback is not needed — no gap-closure plan is required before plan 89-12.
 
-**Code Vision spike: GO (IU-262.10315.125)**
-**Config routing decision: route**
+Code Vision spike: GO (IU-262.10315.125)
+
+Config routing decision: route
 
 ## Task Commits
 
