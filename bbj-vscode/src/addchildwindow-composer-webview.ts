@@ -17,6 +17,7 @@ import * as vscode from 'vscode';
 import {
     CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, addchildwindowPreview,
 } from './addchildwindow-composer.js';
+import { getNonce } from './webview-nonce.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddChildWindowEditTarget {
@@ -421,11 +422,3 @@ function getHtml(webview: vscode.Webview): string {
 </html>`;
 }
 
-function getNonce(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < 32; i++) {
-        text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return text;
-}

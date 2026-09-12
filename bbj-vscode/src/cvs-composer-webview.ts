@@ -18,6 +18,7 @@
  */
 import * as vscode from 'vscode';
 import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview } from './cvs-composer.js';
+import { getNonce } from './webview-nonce.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface CvsEditTarget {
@@ -289,13 +290,4 @@ function getHtml(webview: vscode.Webview): string {
 </script>
 </body>
 </html>`;
-}
-
-function getNonce(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < 32; i++) {
-        text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return text;
 }

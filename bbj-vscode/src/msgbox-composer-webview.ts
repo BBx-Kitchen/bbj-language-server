@@ -16,6 +16,7 @@ import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     msgboxPreview,
 } from './msgbox-composer.js';
+import { getNonce } from './webview-nonce.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface MsgboxEditTarget {
@@ -415,11 +416,3 @@ function getHtml(webview: vscode.Webview): string {
 </html>`;
 }
 
-function getNonce(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < 32; i++) {
-        text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return text;
-}

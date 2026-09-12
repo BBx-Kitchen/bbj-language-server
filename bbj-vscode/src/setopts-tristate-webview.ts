@@ -26,6 +26,7 @@ import {
     SETOPTS_COMPOSE_TRISTATE_METHOD, SetOptsComposeTriStateParams, SetOptsComposeTriStateResult,
 } from './language/setopts-in-code-request.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
+import { getNonce } from './webview-nonce.js';
 
 /**
  * Forwards a JSON-RPC request to the language server. Declared here (rather than in
@@ -335,11 +336,3 @@ function getHtml(webview: vscode.Webview): string {
 </html>`;
 }
 
-function getNonce(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < 32; i++) {
-        text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return text;
-}

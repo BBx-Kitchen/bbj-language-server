@@ -18,6 +18,7 @@ import {
     BYTE_GROUPS, SETOPTS_BITS, bbjHexLiteral, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
     parseVector, rawTail, setoptsPreview, SetOptsSelection, SetOptsVector,
 } from './setopts-catalog.js';
+import { getNonce } from './webview-nonce.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 
 export interface SetOptsEditTarget {
@@ -337,11 +338,3 @@ function getHtml(webview: vscode.Webview): string {
 </html>`;
 }
 
-function getNonce(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < 32; i++) {
-        text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return text;
-}
