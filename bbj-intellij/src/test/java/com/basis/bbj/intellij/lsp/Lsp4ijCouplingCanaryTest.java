@@ -123,7 +123,7 @@ class Lsp4ijCouplingCanaryTest {
         Method getCommandPerformedThread = LSPCommandAction.class.getDeclaredMethod("getCommandPerformedThread");
         assertEquals(ActionUpdateThread.class, getCommandPerformedThread.getReturnType());
         assertFalse(Modifier.isFinal(getCommandPerformedThread.getModifiers()),
-            "getCommandPerformedThread must stay overridable -- the cue action pins it to EDT (T-89-11)");
+            "getCommandPerformedThread must stay overridable -- the cue action pins it to EDT");
 
         Method getArgumentAt = LSPCommand.class.getMethod("getArgumentAt", int.class, Class.class);
         assertNotNull(getArgumentAt);

@@ -139,8 +139,8 @@ public final class ComposerLauncher {
 
     /**
      * Opens any existing composer at an explicit {@code line}/{@code column} rather than the
-     * caret's own position, so a composer cue click (D-06) opens the composer for the call the
-     * cue actually marks, never wherever the caret happens to sit. {@code launch} above is now a
+     * caret's own position, so a composer cue click opens the composer for the call the cue
+     * actually marks, never wherever the caret happens to sit. {@code launch} above is now a
      * thin wrapper that captures the caret's own line/column and calls this method with
      * {@code fromCue = false}.
      *

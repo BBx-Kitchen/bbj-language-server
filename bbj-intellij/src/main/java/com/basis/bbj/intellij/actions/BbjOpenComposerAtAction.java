@@ -25,8 +25,8 @@ import org.jetbrains.annotations.NotNull;
  * {@code ComposerLensCommandContractTest}.
  *
  * <p>This action only routes the server-computed {@link ComposerLensTarget} to
- * {@link ComposerLauncher#launchAt}; it makes no applicability decision of its own (D-07's
- * anti-feature guard).</p>
+ * {@link ComposerLauncher#launchAt}; it makes no applicability decision of its own — that
+ * decision is entirely the server's.</p>
  */
 public final class BbjOpenComposerAtAction extends LSPCommandAction {
 
@@ -51,7 +51,7 @@ public final class BbjOpenComposerAtAction extends LSPCommandAction {
     /**
      * LSP4IJ's default {@link #getCommandPerformedThread()} is {@code ActionUpdateThread.BGT}
      * (a background thread), but {@link ComposerLauncher#launchAt} reads the document and opens
-     * modal dialogs, both of which require the EDT (T-89-11).
+     * modal dialogs, both of which require the EDT.
      */
     @Override
     protected @NotNull ActionUpdateThread getCommandPerformedThread() {

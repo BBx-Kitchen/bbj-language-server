@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.composer;
 
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.ComposerLensTarget;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
@@ -283,6 +284,41 @@ class ComposerModelsJsonBoundaryTest {
 
         assertTrue(json.contains("\"byte\":3"), "expected the wire key 'byte', got: " + json);
         assertFalse(json.contains("byteNo"), "the Java field name byteNo must never leak onto the wire: " + json);
+    }
+
+    // ---- Composer cue (#650) ----------------------------------------------------------------------
+
+    @Test
+    void aComposerLensTargetCommandArgumentParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "kind":"addwindow","uri":"file:///tmp/x.bbj","line":3,"character":12
+            }}""";
+
+        ComposerLensTarget result = parse("bbj.openComposerAt", ComposerLensTarget.class, envelope);
+
+        assertEquals("addwindow", result.kind);
+        assertEquals("file:///tmp/x.bbj", result.uri);
+        assertEquals(3, result.line);
+        assertEquals(12, result.character);
+    }
+
+    /**
+     * {@code kind} is a plain wire string, never a Java enum (see {@link ComposerLensTarget}'s own
+     * javadoc), so a kind the server adds later -- before this plugin's {@code ComposerLensKinds}
+     * knows how to route it -- parses without throwing rather than failing the whole command
+     * argument.
+     */
+    @Test
+    void anUnknownCueKindStillParses() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "kind":"future-kind","uri":"file:///tmp/x.bbj","line":0,"character":0
+            }}""";
+
+        ComposerLensTarget result = parse("bbj.openComposerAt", ComposerLensTarget.class, envelope);
+
+        assertEquals("future-kind", result.kind);
     }
 
     // ---- SETOPTS-in-code (#475, DISC-06, plan 88-04) --------------------------------------------
