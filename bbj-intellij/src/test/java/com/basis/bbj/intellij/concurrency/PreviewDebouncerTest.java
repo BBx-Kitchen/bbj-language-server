@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Behavioural coverage for {@link PreviewDebouncer}, driven entirely by {@link ManualScheduler}
@@ -97,6 +98,44 @@ class PreviewDebouncerTest {
         scheduler.advanceBy(DELAY_MS);
 
         assertEquals(2, runCount.get(), "a trigger after the action already ran schedules and runs a fresh task");
+    }
+
+    /**
+     * Pins the millisecond boundary at the dialog delay: one millisecond early, nothing has run;
+     * at the delay exactly, the action runs once; and a second debouncer showing an input arriving
+     * mid-window cancels and reschedules so the whole burst still yields exactly one dispatch.
+     * Across the whole test, two triggers are dispatched, no pending task is left behind, and at
+     * least one trigger cancelled a still-pending predecessor.
+     */
+    @Test
+    void oneMillisecondEarlyNothingRunsAtTheDelayExactlyOneRunsAndAMidWindowInputReschedules() {
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicInteger runCount = new AtomicInteger();
+        PreviewDebouncer debouncer = new PreviewDebouncer(scheduler, DELAY_MS, Runnable::run, runCount::incrementAndGet);
+
+        debouncer.trigger();
+        scheduler.advanceBy(DELAY_MS - 1);
+        assertEquals(0, runCount.get(), "one millisecond early, nothing has run yet");
+
+        scheduler.advanceBy(1);
+        assertEquals(1, runCount.get(), "at the delay exactly, the action runs once");
+
+        // A fresh debouncer instance, mirroring a burst that starts partway through the previous
+        // one's own dispatch cycle: a second input arriving mid-window must cancel and reschedule.
+        PreviewDebouncer freshDebouncer = new PreviewDebouncer(scheduler, DELAY_MS, Runnable::run, runCount::incrementAndGet);
+        freshDebouncer.trigger();
+        scheduler.advanceBy(200L);
+        freshDebouncer.trigger();
+        scheduler.advanceBy(DELAY_MS - 1);
+        assertEquals(1, runCount.get(), "one millisecond before the rescheduled delay, still nothing new has run");
+
+        scheduler.advanceBy(1);
+        assertEquals(2, runCount.get(), "the mid-window input rescheduled the run, which fires exactly once");
+
+        assertEquals(0, scheduler.pendingCount(), "no pending task is left behind after the whole burst");
+        assertEquals(2, scheduler.runCount(), "two dispatches total across the whole test");
+        assertTrue(scheduler.cancelInvocations() >= 1,
+                "the mid-window trigger must cancel its predecessor's still-pending task");
     }
 
     @Test

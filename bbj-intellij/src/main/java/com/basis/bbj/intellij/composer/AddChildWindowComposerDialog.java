@@ -5,6 +5,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewInput
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.CatalogItem;
+import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.PreviewDebouncer;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
@@ -43,14 +45,20 @@ import javax.swing.event.DocumentListener;
  * flag checkboxes and an opt-in event-mask section; the language server computes the hex, the
  * statement, and the schematic ({@code bbj/composer/addchildwindow/preview}) so no flag logic
  * lives here. Create flow inserts a fresh statement; edit flow rewrites the hex tokens in place.
+ * Every input routes through {@link #scheduleRefresh()} over the shared {@code PreviewDebouncer}
+ * seam, so a burst of typing sends one preview request per settle point instead of one per
+ * keystroke (#611).
  */
 public final class AddChildWindowComposerDialog extends DialogWrapper {
+    private static final long PREVIEW_DEBOUNCE_MS = 300L;
+
     private final Project project;
     private final BbjComposerServer server;
     private final AddWindowCatalogs catalogs;
     private final AtomicInteger seq = new AtomicInteger();
     private final ComposerFlow flow;
     private final Consumer<ComposerNotices.Notice> balloonOnce;
+    private final PreviewDebouncer previewDebouncer;
 
     private final Map<Long, JBCheckBox> flagChecks = new LinkedHashMap<>();
     private final Map<Long, JBCheckBox> eventChecks = new LinkedHashMap<>();
@@ -104,6 +112,11 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
                 balloonOnce,
                 ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+        this.previewDebouncer = new PreviewDebouncer(
+                new AlarmScheduler(getDisposable()),
+                PREVIEW_DEBOUNCE_MS,
+                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
+                this::refresh);
         setTitle(editMode ? "Configure child window flags" : "Compose addChildWindow");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
@@ -172,7 +185,7 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         // Event mask, opt-in.
         JPanel eventSection = new JPanel(new BorderLayout());
         eventSection.setBorder(BorderFactory.createTitledBorder("Event mask"));
-        eventEnabled.addActionListener(e -> { updateEventEnabled(); refresh(); });
+        eventEnabled.addActionListener(e -> { updateEventEnabled(); scheduleRefresh(); });
         eventSection.add(eventEnabled, BorderLayout.NORTH);
         eventPanel = new JPanel();
         eventPanel.setLayout(new BoxLayout(eventPanel, BoxLayout.Y_AXIS));
@@ -183,7 +196,7 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
 
         // Text fields trigger a refresh as the user types.
         for (JBTextField f : new JBTextField[]{receiver, window, id, context, title, x, y, width, height}) {
-            f.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
+            f.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
         }
 
         JBScrollPane scroll = new JBScrollPane(root);
@@ -222,7 +235,7 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
             if (it.detail != null) {
                 cb.setToolTipText(it.detail);
             }
-            cb.addActionListener(e -> refresh());
+            cb.addActionListener(e -> scheduleRefresh());
             into.put(it.value, cb);
             groupPanel.add(cb);
         }
@@ -238,7 +251,18 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         return out;
     }
 
-    /** Build the current selection, ask the LS for a preview, and update the UI on the EDT. */
+    /**
+     * Every checkbox/field listener calls this instead of {@link #refresh()} directly: it disables
+     * OK synchronously the instant a new preview is scheduled, and it is re-enabled only when the
+     * debounced preview resolves.
+     */
+    private void scheduleRefresh() {
+        setOKActionEnabled(false);
+        previewDebouncer.trigger();
+    }
+
+    /** No listener calls this directly -- every listener routes through {@link #scheduleRefresh()}.
+     * Build the current selection, ask the LS for a preview, and update the UI on the EDT. */
     private void refresh() {
         AddChildWindowPreviewInput input = new AddChildWindowPreviewInput();
         input.flags = selected(flagChecks);

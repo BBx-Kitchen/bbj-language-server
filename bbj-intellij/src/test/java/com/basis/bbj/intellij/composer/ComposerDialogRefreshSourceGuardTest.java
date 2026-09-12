@@ -65,14 +65,13 @@ class ComposerDialogRefreshSourceGuardTest {
      * Every composer dialog's live preview is coalesced through the one shared
      * {@code PreviewDebouncer} seam, so every dialog disables OK a third time -- synchronously,
      * the instant a new preview is scheduled -- rather than only on the constructor's initial
-     * disable and a later failed preview. {@code MsgboxComposerDialog} routes through the same
-     * {@code scheduleRefresh()} shape that {@code SetoptsComposerDialog},
-     * {@code SetoptsTriStateComposerDialog} and {@code CvsComposerDialog} already established;
-     * {@code AddWindowComposerDialog} and {@code AddChildWindowComposerDialog} join this list once
-     * they carry the same wiring.
+     * disable and a later failed preview. {@code MsgboxComposerDialog}, {@code AddWindowComposerDialog}
+     * and {@code AddChildWindowComposerDialog} route through the same {@code scheduleRefresh()}
+     * shape that {@code SetoptsComposerDialog}, {@code SetoptsTriStateComposerDialog} and
+     * {@code CvsComposerDialog} already established, so all six carry the third disable.
      */
     private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(
-            MSGBOX_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
+            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
