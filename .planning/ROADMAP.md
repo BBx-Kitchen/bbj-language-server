@@ -483,7 +483,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. Typing quickly in an IntelliJ composer dialog produces one preview round trip per settle point, not one per keystroke, via the existing `Scheduler`/`Alarm` debounce seam rather than a new ad hoc `Alarm` per dialog (research Pitfall 12).
   5. Reopening a composer in the same IntelliJ session pays no repeated server-resolution or catalog round trip; the cache is invalidated on language-server restart.
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans executed
 
 *(Wave 1: 90-01, 90-02, 90-03, 90-04 run in parallel. Wave 2: 90-05 and 90-06. Wave 3: 90-07. Wave 4: 90-08.)*
 
@@ -494,7 +494,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 - [x] 90-05-PLAN.md — One shared panel-lifecycle helper disposing the message handler with its panel for all six VS Code composer panels, plus a source-discovered regression test (#530)
 - [x] 90-06-PLAN.md — IntelliJ addWindow/addChildWindow dialogs show per-field error labels and gate OK on the shared `valid` flag, pinned at the Gson boundary
 - [x] 90-07-PLAN.md — IntelliJ `Complete MSGBOX call` mode routed by `MsgboxComposeMode` through the single guarded MSGBOX write, with `sameMsgbox` comparing `incomplete`
-- [ ] 90-08-PLAN.md — Installed-bundle proof, rebuilt VSIX and plugin zip, QA rows in both IDEs, closed MSGBOX todo, and end-of-phase human checks
+- [x] 90-08-PLAN.md — Installed-bundle proof, rebuilt VSIX and plugin zip, QA rows in both IDEs, closed MSGBOX todo, and end-of-phase human checks
 
 **UI hint**: yes
 
