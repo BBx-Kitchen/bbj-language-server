@@ -96,7 +96,10 @@ vi.mock('vscode', () => ({
     ViewColumn: { Beside: 2 },
 }));
 
-import { registerMsgboxComposer, msgboxPanelArgFromDecode, captureComposeArgTarget } from '../src/msgbox-composer-ui.js';
+import {
+    registerMsgboxComposer, msgboxPanelArgFromDecode, captureComposeArgTarget,
+    runComposeMsgboxVisualCommand, msgboxPanelArgAtCursor,
+} from '../src/msgbox-composer-ui.js';
 import { openMsgboxComposerPanel, msgboxCallStillMatches, MsgboxPanelArg, MsgboxEditTarget } from '../src/msgbox-composer-webview.js';
 import { decodeMsgboxCall, MSGBOX_REPLACE_BANNER_TEXT } from '../src/msgbox-composer.js';
 
@@ -198,7 +201,7 @@ describe('msgboxPanelArgFromDecode (#648)', () => {
         expect(result?.arg.replace).toEqual({ originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT });
     });
 
-    test('produces the completing label and a target.incomplete arg for an unfinished call (D-04)', () => {
+    test('produces the completing label and a target.incomplete arg for an unfinished call', () => {
         const line = 'x = MSGBOX(';
         const decoded = decodeMsgboxCall(line, 11);
         const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, line, decoded);
@@ -222,7 +225,7 @@ describe('msgboxCallStillMatches (#648)', () => {
     });
 });
 
-describe('msgboxCallStillMatches is span-exact (D-03)', () => {
+describe('msgboxCallStillMatches is span-exact', () => {
     test('a same-prefix but grown unterminated call is refused even though the slice still matches', () => {
         const target: MsgboxEditTarget = {
             uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 11,
@@ -352,7 +355,7 @@ describe('openMsgboxComposerPanel EDIT mode staleness guard (#648)', () => {
     });
 });
 
-describe('openMsgboxComposerPanel completing an unfinished call (D-04/D-05)', () => {
+describe('openMsgboxComposerPanel completing an unfinished call', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         textDocuments = [];
@@ -573,6 +576,133 @@ describe('captureComposeArgTarget (#532)', () => {
 
     test('returns undefined for an argument with neither edit nor insert', () => {
         expect(captureComposeArgTarget('file:///a.bbj', 0, 'r = MSGBOX("Hi", 36, "T")', {})).toBeUndefined();
+    });
+});
+
+describe('position-aware MSGBOX commands', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+        activeTextEditor = undefined;
+    });
+
+    function setActiveEditor(uri: string, lines: string[], line: number, character: number) {
+        activeTextEditor = {
+            document: {
+                uri: { toString: () => uri },
+                get lineCount() { return lines.length; },
+                lineAt: (l: number) => ({ text: lines[l] }),
+            },
+            selection: { active: { line, character } },
+            edit: vi.fn(),
+        } as unknown as typeof activeTextEditor;
+    }
+
+    test('bbj.composeMsgboxVisual with no argument on an unfinished call opens Complete MSGBOX call', () => {
+        setActiveEditor('file:///a.bbj', ['x = MSGBOX('], 0, 11);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        registerMsgboxComposer(fakeContext);
+        const handler = registerCommandMock.mock.calls.find(c => c[0] === 'bbj.composeMsgboxVisual')![1] as (arg?: unknown) => void;
+        handler();
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete MSGBOX call');
+    });
+
+    test('a plain object without target/initial (e.g. a document URI) also decodes the cursor', () => {
+        setActiveEditor('file:///a.bbj', ['x = MSGBOX('], 0, 11);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeMsgboxVisualCommand(fakeContext, { toString: () => 'file:///a.bbj' });
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete MSGBOX call');
+    });
+
+    test('cursor inside a decodable call opens Edit MSGBOX', () => {
+        const line = 'r = MSGBOX("Hi", 36, "T")';
+        setActiveEditor('file:///a.bbj', [line], 0, line.indexOf('36'));
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeMsgboxVisualCommand(fakeContext);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Edit MSGBOX');
+    });
+
+    test('cursor inside a compose-and-replace call opens Edit MSGBOX with a non-null replace', () => {
+        const line = 'r = MSGBOX("Hi", flags%, "T")';
+        setActiveEditor('file:///a.bbj', [line], 0, line.indexOf('flags%'));
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeMsgboxVisualCommand(fakeContext);
+
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Edit MSGBOX');
+        getHandler()!({ type: 'ready' });
+        const initCall = panel.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'init');
+        expect((initCall![0] as { replace: unknown }).replace).not.toBeNull();
+    });
+
+    test('cursor with no MSGBOX call composes a NEW call at the cursor (unchanged)', () => {
+        setActiveEditor('file:///a.bbj', ['x = 1'], 0, 3);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeMsgboxVisualCommand(fakeContext);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('MSGBOX Composer');
+    });
+
+    test('a MsgboxPanelArg argument opens exactly that argument while activeTextEditor is undefined', () => {
+        activeTextEditor = undefined; // proves the active editor is never consulted for this argument shape
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 25, callText: 'MSGBOX("Hi", 36, "T")', trailingArgs: [],
+        };
+        const arg: MsgboxPanelArg = {
+            target,
+            initial: { message: '"Hi"', title: '"T"', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        };
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeMsgboxVisualCommand(fakeContext, arg);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Edit MSGBOX');
+    });
+
+    test('bbj.composeMsgbox with no argument and the cursor inside an unfinished call opens Complete MSGBOX call; showQuickPick and editor.edit are never called', () => {
+        setActiveEditor('file:///a.bbj', ['x = MSGBOX('], 0, 11);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        registerMsgboxComposer(fakeContext);
+        const handler = registerCommandMock.mock.calls.find(c => c[0] === 'bbj.composeMsgbox')![1] as (arg?: unknown) => Promise<void> | void;
+        handler();
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete MSGBOX call');
+        expect(showQuickPickMock).not.toHaveBeenCalled();
+        expect(activeTextEditor?.edit).not.toHaveBeenCalled();
+    });
+});
+
+describe('msgboxPanelArgAtCursor', () => {
+    test('decodes the editor cursor line the same way as the lightbulb', () => {
+        const line = 'x = MSGBOX(';
+        const editor = {
+            document: { uri: { toString: () => 'file:///a.bbj' }, lineAt: () => ({ text: line }) },
+            selection: { active: { line: 0, character: 11 } },
+        } as unknown as Parameters<typeof msgboxPanelArgAtCursor>[0];
+        const result = msgboxPanelArgAtCursor(editor);
+        expect(result?.label).toBe('Complete MSGBOX call…');
+        expect(result?.arg.target?.incomplete).toBe(true);
     });
 });
 

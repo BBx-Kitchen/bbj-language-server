@@ -202,6 +202,20 @@ describe('openComposerAt', () => {
         expect(openMsgboxComposerPanelMock.mock.calls[0][1].replace).toBeDefined();
     });
 
+    test('msgbox: an unfinished call passes an argument whose target.incomplete is true', async () => {
+        const lineText = 'x = MSGBOX(';
+        textDocuments = [fakeDocument('file:///a.bbj', [lineText])];
+        const character = lineText.indexOf('MSGBOX');
+        const target: ComposerLensTarget = { kind: 'msgbox', uri: 'file:///a.bbj', line: 0, character };
+
+        await openComposerAt(fakeContext, target);
+
+        expect(openMsgboxComposerPanelMock).toHaveBeenCalledTimes(1);
+        const arg = openMsgboxComposerPanelMock.mock.calls[0][1] as { target?: { incomplete?: boolean; callStart?: number } };
+        expect(arg.target?.incomplete).toBe(true);
+        expect(arg.target?.callStart).toBe(4);
+    });
+
     test('msgbox: a line no longer carrying the call shows the gone message and opens no panel', async () => {
         textDocuments = [fakeDocument('file:///a.bbj', ['x = 1'])];
         const target: ComposerLensTarget = { kind: 'msgbox', uri: 'file:///a.bbj', line: 0, character: 0 };

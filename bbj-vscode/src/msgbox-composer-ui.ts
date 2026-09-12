@@ -1,15 +1,20 @@
 /**
  * VS Code UI for the MSGBOX composer spike (#426).
  *
- * Thin client layer: a QuickPick wizard + a Code Action. All flag arithmetic lives in the
- * editor-agnostic ./msgbox-composer module. Two entry points:
- *   - Command "bbj.composeMsgbox" with no args  -> compose a NEW MSGBOX statement at the cursor.
- *   - Same command invoked by the Code Action    -> decode an existing call's numeric expr,
- *                                                   let the user reconfigure, replace it in place.
+ * Thin client layer: a QuickPick wizard + a visual webview panel + a Code Action. Both commands
+ * are position-aware:
+ *   - "bbj.composeMsgbox" with an `edit`/`insert` argument (from the Code Action) reconfigures an
+ *     existing numeric `expr` in place or adds options to a bare call. With no argument, it first
+ *     decodes the cursor position — the QuickPick can neither complete an unfinished call nor
+ *     rewrite a whole call in place, so any found call under the cursor hands off to the visual
+ *     panel instead of nesting a new statement inside it; only a cursor with no MSGBOX
+ *     call composes a NEW statement via the QuickPick wizard.
+ *   - "bbj.composeMsgboxVisual" with a `MsgboxPanelArg` (the lightbulb's or a cue's) opens exactly
+ *     that argument. With no argument, it decodes the cursor the same way; only a cursor with no
+ *     MSGBOX call composes new at the cursor.
  * The `edit`/`insert` arguments are re-resolved against the live document immediately before
  * showing the wizard and again immediately before writing, and fail closed on any mismatch
- * (D-01/D-02, #532) — a document edit while the QuickPick wizard is open can never land on the
- * wrong text.
+ * — a document edit while the QuickPick wizard is open can never land on the wrong text (#532).
  */
 import * as vscode from 'vscode';
 import {
@@ -31,14 +36,53 @@ interface ComposeArg {
 
 export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: ComposeArg) => runComposer(arg)),
-        vscode.commands.registerCommand('bbj.composeMsgboxVisual', (arg?: MsgboxPanelArg) => openMsgboxComposerPanel(context, arg)),
+        vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: ComposeArg) => runComposer(context, arg)),
+        vscode.commands.registerCommand('bbj.composeMsgboxVisual', (arg?: unknown) => runComposeMsgboxVisualCommand(context, arg)),
         vscode.languages.registerCodeActionsProvider(
             { language: 'bbj' },
             new MsgboxCodeActionProvider(),
             { providedCodeActionKinds: [vscode.CodeActionKind.RefactorRewrite] },
         ),
     );
+}
+
+/** True for a `MsgboxPanelArg` — the lightbulb's and a cue's own argument shape (a `target` and/or `initial` key). */
+function isMsgboxPanelArg(arg: unknown): arg is MsgboxPanelArg {
+    return typeof arg === 'object' && arg !== null && ('target' in arg || 'initial' in arg);
+}
+
+/**
+ * `bbj.composeMsgboxVisual` without a panel argument decodes the caret position first, so the
+ * Command Palette and the editor context menu never nest a whole new call inside a partial or
+ * existing one: any found call under the cursor opens the matching panel, and only a cursor with
+ * no MSGBOX call falls through to compose-new at the cursor (unchanged). A `MsgboxPanelArg`
+ * argument — what the lightbulb and the composer cue both pass — opens exactly that argument
+ * without consulting the active editor at all.
+ */
+export function runComposeMsgboxVisualCommand(context: vscode.ExtensionContext, arg?: unknown): void {
+    if (isMsgboxPanelArg(arg)) {
+        openMsgboxComposerPanel(context, arg);
+        return;
+    }
+
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const result = msgboxPanelArgAtCursor(editor);
+        if (result) {
+            openMsgboxComposerPanel(context, result.arg);
+            return;
+        }
+    }
+
+    openMsgboxComposerPanel(context);
+}
+
+/** Decode the MSGBOX call under `editor`'s cursor into the same `{ arg, label }` shape the lightbulb uses. */
+export function msgboxPanelArgAtCursor(editor: vscode.TextEditor): { arg: MsgboxPanelArg; label: string } | undefined {
+    const position = editor.selection.active;
+    const lineText = editor.document.lineAt(position.line).text;
+    const decoded = decodeMsgboxCall(lineText, position.character);
+    return msgboxPanelArgFromDecode(editor.document.uri.toString(), position.line, lineText, decoded);
 }
 
 class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
@@ -96,7 +140,7 @@ function visualAction(title: string, arg: MsgboxPanelArg): vscode.CodeAction {
 
 /**
  * Re-resolve the picker's `edit`/`insert` argument against `lineText` — the argument's own line,
- * never a search elsewhere (D-02). `edit` requires a call whose `exprRange` and `exprValue` still
+ * never a search elsewhere. `edit` requires a call whose `exprRange` and `exprValue` still
  * match the captured token exactly; `insert` requires a call whose `optionInsertOffset` still
  * matches the captured position exactly. Returns `undefined` on any mismatch, or when `arg` has
  * neither branch.
@@ -122,7 +166,7 @@ export function captureComposeArgTarget(
     return undefined;
 }
 
-async function runComposer(arg?: ComposeArg): Promise<void> {
+async function runComposer(context: vscode.ExtensionContext, arg?: ComposeArg): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         return;
@@ -140,6 +184,16 @@ async function runComposer(arg?: ComposeArg): Promise<void> {
             vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);
             return;
         }
+    } else {
+        // The QuickPick can neither complete an unfinished call nor rewrite a whole call in
+        // place — any found call under the cursor hands off to the visual panel instead of
+        // nesting a new statement inside it. Only a cursor with no MSGBOX call falls
+        // through to compose-new below, unchanged.
+        const result = msgboxPanelArgAtCursor(editor);
+        if (result) {
+            openMsgboxComposerPanel(context, result.arg);
+            return;
+        }
     }
 
     const initial = arg?.edit ? decode(arg.edit.current) : DEFAULT_STATE;
@@ -151,7 +205,7 @@ async function runComposer(arg?: ComposeArg): Promise<void> {
     const expr = encode(state);
 
     if (target) {
-        // Re-resolve immediately before writing (D-01/D-03): the document may have changed while
+        // Re-resolve immediately before writing: the document may have changed while
         // the wizard was open. Any mismatch aborts with no edit applied.
         if (target.line < 0 || target.line >= editor.document.lineCount || !msgboxCallStillMatches(editor.document.lineAt(target.line).text, target)) {
             vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);

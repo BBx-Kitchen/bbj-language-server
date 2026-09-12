@@ -10,9 +10,9 @@
  *   - NEW (no target): compose a fresh `ret! = MSGBOX(...)` and insert it at the cursor.
  *   - EDIT (target.incomplete falsy): prefill from an existing call and replace that call span
  *     in place, preserving the assignment prefix and any trailing args we don't model.
- *   - COMPLETING (target.incomplete true, D-04): the target call has no message yet, or its
+ *   - COMPLETING (target.incomplete true): the target call has no message yet, or its
  *     options slot is open but empty — whatever is already typed is prefilled, no banner and no
- *     assign-to row (D-05), and Apply replaces the unfinished call's whole span through the same
+ *     assign-to row, and Apply replaces the unfinished call's whole span through the same
  *     staleness guard EDIT uses.
  */
 import * as vscode from 'vscode';
@@ -72,7 +72,7 @@ interface Selection {
 
 /**
  * True when `target`'s captured call span still reads exactly `target.callText` in
- * `currentLineText` AND a MSGBOX call still starts and ends at exactly that span (D-03). The
+ * `currentLineText` AND a MSGBOX call still starts and ends at exactly that span. The
  * second check catches an unterminated call the user kept typing into — a growing unterminated
  * call keeps the old text as a prefix, which the slice comparison alone would miss, exactly as
  * `cvsCallStillMatches` documents.
@@ -122,7 +122,7 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
 
     // Single source of truth: the compose/validate/render logic lives in the shared pure module,
     // which the IntelliJ client reaches over the LS (#433). Completing mode passes
-    // assignTo: undefined (D-05) — msgboxPreview's own editMode suppression doesn't cover it
+    // assignTo: undefined — msgboxPreview's own editMode suppression doesn't cover it
     // since completing sets editMode false (its message/title are still validated as required).
     const build = (sel: Selection) => msgboxPreview({
         ...sel,

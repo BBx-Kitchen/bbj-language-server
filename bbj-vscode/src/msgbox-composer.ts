@@ -683,8 +683,8 @@ export interface MsgboxDecodeCallResult {
  * it into a ready-to-prefill payload plus the call span to replace. One shared function used by
  * both the `bbj/composer/msgbox/decodeCall` LSP request and any in-process caller (#648), so the
  * language server and VS Code decide identically:
- *   - An unfinished call — no message yet, or an options slot that is open but empty — decodes as
- *     `incomplete` (D-04): whatever is already typed is prefilled, and a composer replaces the
+ *   - An unfinished call — no message yet, or an options slot that is open but empty — decodes
+ *     as incomplete: whatever is already typed is prefilled, and a composer replaces the
  *     whole `edit` span instead of decoding options.
  *   - A decodable integer literal or constant sum pre-fills exactly like before.
  *   - A bare `MSGBOX("...")` with no options yet returns the existing add-options payload.

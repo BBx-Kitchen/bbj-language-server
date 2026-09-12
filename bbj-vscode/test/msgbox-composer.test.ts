@@ -353,7 +353,7 @@ describe('MSGBOX options recognizer and shared decode (#648)', () => {
     });
 });
 
-describe('decodeMsgboxCall on an unfinished call (D-04)', () => {
+describe('decodeMsgboxCall on an unfinished call', () => {
     test('an empty MSGBOX( call decodes as incomplete with an empty message and title', () => {
         const line = 'x = MSGBOX(';
         expect(decodeMsgboxCall(line, 11)).toEqual({
