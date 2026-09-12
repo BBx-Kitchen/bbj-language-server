@@ -66,6 +66,9 @@ export function msgboxPanelArgFromDecode(
         callText,
         trailingArgs: decoded.trailingArgs ?? [],
     };
+    if (decoded.incomplete) {
+        return { arg: { target: { ...target, incomplete: true }, initial: decoded.initial }, label: 'Complete MSGBOX call…' };
+    }
     const arg: MsgboxPanelArg = { target, initial: decoded.initial };
     if (decoded.replace) {
         arg.replace = decoded.replace;

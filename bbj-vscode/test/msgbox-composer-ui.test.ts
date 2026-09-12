@@ -85,6 +85,7 @@ function fakeRange(line: number, character: number): any {
 interface FakePanel {
     webview: { html: string; postMessage: ReturnType<typeof vi.fn>; onDidReceiveMessage: ReturnType<typeof vi.fn> };
     dispose: ReturnType<typeof vi.fn>;
+    onDidDispose: ReturnType<typeof vi.fn>;
 }
 function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown) => unknown) | undefined } {
     let handler: ((msg: unknown) => unknown) | undefined;
@@ -98,6 +99,7 @@ function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown
             }),
         },
         dispose: vi.fn(),
+        onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
     };
     return { panel, getHandler: () => handler };
 }
@@ -165,6 +167,18 @@ describe('msgboxPanelArgFromDecode (#648)', () => {
         expect(result?.label).toBe('Compose MSGBOX options (replaces expression)…');
         expect(result?.arg.replace).toEqual({ originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT });
     });
+
+    test('produces the completing label and a target.incomplete arg for an unfinished call (D-04)', () => {
+        const line = 'x = MSGBOX(';
+        const decoded = decodeMsgboxCall(line, 11);
+        const result = msgboxPanelArgFromDecode('file:///a.bbj', 0, line, decoded);
+        expect(result?.label).toBe('Complete MSGBOX call…');
+        expect(result?.arg.target?.incomplete).toBe(true);
+        expect(result?.arg.target?.callStart).toBe(4);
+        expect(result?.arg.target?.callEnd).toBe(11);
+        expect(result?.arg.target?.callText).toBe('MSGBOX(');
+        expect(result?.arg.replace).toBeUndefined();
+    });
 });
 
 describe('msgboxCallStillMatches (#648)', () => {
@@ -175,6 +189,17 @@ describe('msgboxCallStillMatches (#648)', () => {
         };
         expect(msgboxCallStillMatches('r = MSGBOX("Hi", 36, "T")', target)).toBe(true);
         expect(msgboxCallStillMatches('r = MSGBOX("Bye", 36, "T")', target)).toBe(false);
+    });
+});
+
+describe('msgboxCallStillMatches is span-exact (D-03)', () => {
+    test('a same-prefix but grown unterminated call is refused even though the slice still matches', () => {
+        const target: MsgboxEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 11,
+            callText: 'MSGBOX(', trailingArgs: [],
+        };
+        expect(msgboxCallStillMatches('x = MSGBOX(', target)).toBe(true);
+        expect(msgboxCallStillMatches('x = MSGBOX("Hi"', target)).toBe(false);
     });
 });
 
@@ -288,6 +313,74 @@ describe('openMsgboxComposerPanel EDIT mode staleness guard (#648)', () => {
         const payload = {
             buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [],
             message: '"Hi"', title: '"T"', assignTo: '', useConstants: false,
+        };
+        await handler({ type: 'insert', payload });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The MSGBOX() call changed since the composer opened; nothing was applied.');
+        expect(panel.dispose).not.toHaveBeenCalled();
+    });
+});
+
+describe('openMsgboxComposerPanel completing an unfinished call (D-04/D-05)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+    });
+
+    const target: MsgboxEditTarget = {
+        uri: 'file:///a.bbj', line: 0, callStart: 4, callEnd: 11,
+        callText: 'MSGBOX(', trailingArgs: [], incomplete: true,
+    };
+    const arg: MsgboxPanelArg = {
+        target,
+        initial: { message: '', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] },
+    };
+
+    test('opens a panel titled "Complete MSGBOX call" and posts completing true / replace null on ready', () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete MSGBOX call');
+
+        getHandler()!({ type: 'ready' });
+        const initCall = panel.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'init');
+        expect(initCall![0]).toMatchObject({ completing: true, replace: null });
+    });
+
+    test('insert replaces the captured span with the composed call and no assignment prefix, then disposes the panel', async () => {
+        textDocuments = [fakeDocument('x = MSGBOX(', 'file:///a.bbj')];
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = {
+            buttonSet: 0, icon: 64, defaultButton: 0, flags: [], customButtons: [],
+            message: '"Saved"', title: '', assignTo: 'ret!', useConstants: false,
+        };
+        await handler({ type: 'insert', payload });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        const [, rangeArg, text] = edit.replace.mock.calls[0];
+        expect(rangeArg).toEqual(new FakeRange(0, 4, 0, 11));
+        expect(text).toBe('MSGBOX("Saved", 64)');
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test('a grown call refuses the write and shows the stale warning, keeping the panel open', async () => {
+        textDocuments = [fakeDocument('x = MSGBOX("S', 'file:///a.bbj')];
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openMsgboxComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = {
+            buttonSet: 0, icon: 64, defaultButton: 0, flags: [], customButtons: [],
+            message: '"Saved"', title: '', assignTo: 'ret!', useConstants: false,
         };
         await handler({ type: 'insert', payload });
 

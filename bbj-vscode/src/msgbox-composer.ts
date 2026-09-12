@@ -649,6 +649,12 @@ export const MSGBOX_REPLACE_BANNER_TEXT = 'Could not decode this options express
 /** Payload returned by `decodeMsgboxCall` — mirrors the previous `bbj/composer/msgbox/decodeCall` handler. */
 export interface MsgboxDecodeCallResult {
     found: boolean;
+    /**
+     * The call has no message yet, or its options slot is open but empty (`MSGBOX(`, `MSGBOX()`,
+     * `MSGBOX("Hi",`). A composer builds a whole call and replaces the `edit` span; nothing is
+     * decoded from options (`hasOptions` stays false), and `replace` is never present alongside it.
+     */
+    incomplete?: boolean;
     edit?: { callStart: number; callEnd: number };
     trailingArgs?: string[];
     initial?: {
@@ -677,6 +683,9 @@ export interface MsgboxDecodeCallResult {
  * it into a ready-to-prefill payload plus the call span to replace. One shared function used by
  * both the `bbj/composer/msgbox/decodeCall` LSP request and any in-process caller (#648), so the
  * language server and VS Code decide identically:
+ *   - An unfinished call — no message yet, or an options slot that is open but empty — decodes as
+ *     `incomplete` (D-04): whatever is already typed is prefilled, and a composer replaces the
+ *     whole `edit` span instead of decoding options.
  *   - A decodable integer literal or constant sum pre-fills exactly like before.
  *   - A bare `MSGBOX("...")` with no options yet returns the existing add-options payload.
  *   - Anything else (with at least two arguments) returns compose-and-replace mode: the original
@@ -687,6 +696,20 @@ export function decodeMsgboxCall(line: string, character?: number): MsgboxDecode
     const info = character === undefined ? parseMsgboxCallOnLine(line) : findMsgboxCallAt(line, character);
     if (!info) {
         return { found: false };
+    }
+    if ((info.args.length === 1 && info.args[0] === '') || (info.args.length >= 2 && info.args[1].trim() === '')) {
+        return {
+            found: true,
+            incomplete: true,
+            edit: { callStart: info.callStart, callEnd: info.callEnd },
+            trailingArgs: info.args.slice(3),
+            initial: {
+                message: info.args[0] ?? '',
+                title: info.args[2] ?? '',
+                buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
+            },
+            hasOptions: false,
+        };
     }
     const hasExpr = info.exprRange !== undefined && info.exprValue !== undefined;
     const canAddOptions = info.optionInsertOffset !== undefined;

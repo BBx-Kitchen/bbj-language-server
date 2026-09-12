@@ -6,15 +6,19 @@
  * message/title, and produces the schematic render with the shared ./msgbox-composer logic
  * (no flag math / button labels are duplicated here).
  *
- * Two modes:
- *   - NEW (no arg): compose a fresh `ret! = MSGBOX(...)` and insert it at the cursor.
- *   - EDIT (arg from the Code Action): prefill from an existing call and replace that call span
+ * Three modes:
+ *   - NEW (no target): compose a fresh `ret! = MSGBOX(...)` and insert it at the cursor.
+ *   - EDIT (target.incomplete falsy): prefill from an existing call and replace that call span
  *     in place, preserving the assignment prefix and any trailing args we don't model.
+ *   - COMPLETING (target.incomplete true, D-04): the target call has no message yet, or its
+ *     options slot is open but empty — whatever is already typed is prefilled, no banner and no
+ *     assign-to row (D-05), and Apply replaces the unfinished call's whole span through the same
+ *     staleness guard EDIT uses.
  */
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
-    msgboxPreview,
+    msgboxPreview, findMsgboxCalls,
 } from './msgbox-composer.js';
 import { getNonce } from './webview-nonce.js';
 
@@ -27,6 +31,8 @@ export interface MsgboxEditTarget {
     /** The call's own text at [callStart, callEnd) when the composer opened. */
     callText: string;
     trailingArgs: string[];
+    /** The target call is unfinished, so the panel composes a whole call and replaces its span. */
+    incomplete?: boolean;
 }
 
 export interface MsgboxPanelArg {
@@ -64,21 +70,32 @@ interface Selection {
     useConstants: boolean;
 }
 
-/** True when `target`'s captured call span still reads exactly `target.callText` in `currentLineText`. */
+/**
+ * True when `target`'s captured call span still reads exactly `target.callText` in
+ * `currentLineText` AND a MSGBOX call still starts and ends at exactly that span (D-03). The
+ * second check catches an unterminated call the user kept typing into — a growing unterminated
+ * call keeps the old text as a prefix, which the slice comparison alone would miss, exactly as
+ * `cvsCallStillMatches` documents.
+ */
 export function msgboxCallStillMatches(currentLineText: string, target: MsgboxEditTarget): boolean {
-    return currentLineText.slice(target.callStart, target.callEnd) === target.callText;
+    if (currentLineText.slice(target.callStart, target.callEnd) !== target.callText) {
+        return false;
+    }
+    return findMsgboxCalls(currentLineText).some(c => c.callStart === target.callStart && c.callEnd === target.callEnd);
 }
 
-const STALE_CALL_TEXT = 'The MSGBOX() call changed since the composer opened; nothing was applied.';
+export const MSGBOX_STALE_CALL_TEXT = 'The MSGBOX() call changed since the composer opened; nothing was applied.';
 
 export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: MsgboxPanelArg): void {
-    const editMode = !!arg?.target;
     const target = arg?.target;
+    const completing = !!target?.incomplete;
+    const editMode = !!target && !completing;
 
     // For a NEW statement, capture the target editor + position now (the webview steals focus).
+    // Completing mode also has no cursor-insert position: it replaces `target`'s captured span.
     let insertUri: vscode.Uri | undefined;
     let insertPosition: vscode.Position | undefined;
-    if (!editMode) {
+    if (!target) {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showInformationMessage('Open a BBj file first, then run the MSGBOX composer.');
@@ -92,19 +109,26 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
         message: '"Message"', title: '', assignTo: 'ret!',
         buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
     };
-    const trailingArgs = arg?.target?.trailingArgs ?? [];
+    const trailingArgs = target?.trailingArgs ?? [];
 
+    const title = completing ? 'Complete MSGBOX call' : (editMode ? 'Edit MSGBOX' : 'MSGBOX Composer');
     const panel = vscode.window.createWebviewPanel(
         'bbjMsgboxComposer',
-        editMode ? 'Edit MSGBOX' : 'MSGBOX Composer',
+        title,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
         { enableScripts: true, retainContextWhenHidden: true },
     );
     panel.webview.html = getHtml(panel.webview);
 
     // Single source of truth: the compose/validate/render logic lives in the shared pure module,
-    // which the IntelliJ client reaches over the LS (#433).
-    const build = (sel: Selection) => msgboxPreview({ ...sel, trailingArgs, editMode });
+    // which the IntelliJ client reaches over the LS (#433). Completing mode passes
+    // assignTo: undefined (D-05) — msgboxPreview's own editMode suppression doesn't cover it
+    // since completing sets editMode false (its message/title are still validated as required).
+    const build = (sel: Selection) => msgboxPreview({
+        ...sel,
+        assignTo: completing ? undefined : sel.assignTo,
+        trailingArgs, editMode,
+    });
 
     panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: Selection }) => {
         switch (msg.type) {
@@ -112,9 +136,10 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
                 panel.webview.postMessage({
                     type: 'init',
                     editMode,
+                    completing,
                     catalogs: { buttonSets: BUTTON_SETS, icons: ICONS, defaultButtons: DEFAULT_BUTTONS, flags: FLAGS },
                     initial,
-                    replace: arg?.replace ?? null,
+                    replace: completing ? null : (arg?.replace ?? null),
                 });
                 break;
             case 'change':
@@ -129,10 +154,10 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
                 // Apply via a WorkspaceEdit so the change lands in the existing editor tab
                 // without opening the document again in the webview's (Beside) column.
                 const edit = new vscode.WorkspaceEdit();
-                if (editMode && target) {
+                if (target) {
                     const document = vscode.workspace.textDocuments.find(d => d.uri.toString() === target.uri);
                     if (!document || !msgboxCallStillMatches(document.lineAt(target.line).text, target)) {
-                        vscode.window.showWarningMessage(STALE_CALL_TEXT);
+                        vscode.window.showWarningMessage(MSGBOX_STALE_CALL_TEXT);
                         break;
                     }
                     const uri = vscode.Uri.parse(target.uri);
@@ -309,6 +334,7 @@ function getHtml(webview: vscode.Webview): string {
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   const ICON_GLYPH = { 16: '🛑', 32: '❓', 48: '⚠️', 64: 'ℹ️' };
+  let completing = false;
 
   function fillSelect(sel, items, value) {
     sel.innerHTML = '';
@@ -345,7 +371,8 @@ function getHtml(webview: vscode.Webview): string {
   window.addEventListener('message', (e) => {
     const m = e.data;
     if (m.type === 'init') {
-      $('heading').textContent = m.editMode ? 'Edit MSGBOX' : 'MSGBOX Composer';
+      completing = m.completing;
+      $('heading').textContent = completing ? 'Complete MSGBOX call' : (m.editMode ? 'Edit MSGBOX' : 'MSGBOX Composer');
       if (m.replace) {
         $('replace-banner-text').textContent = m.replace.banner;
         $('original-options').textContent = m.replace.originalOptions;
@@ -357,7 +384,7 @@ function getHtml(webview: vscode.Webview): string {
       $('message').value = init.message;
       $('title').value = init.title;
       $('assignTo').value = init.assignTo || '';
-      if (m.editMode) $('assignTo-row').classList.add('hidden');
+      if (m.editMode || completing) $('assignTo-row').classList.add('hidden');
       $('customBtn0').value = init.customButtons[0] || '';
       $('customBtn1').value = init.customButtons[1] || '';
       $('customBtn2').value = init.customButtons[2] || '';

@@ -352,3 +352,57 @@ describe('MSGBOX options recognizer and shared decode (#648)', () => {
         expect(decodeMsgboxCall('x = foo(1, 2)')).toEqual({ found: false });
     });
 });
+
+describe('decodeMsgboxCall on an unfinished call (D-04)', () => {
+    test('an empty MSGBOX( call decodes as incomplete with an empty message and title', () => {
+        const line = 'x = MSGBOX(';
+        expect(decodeMsgboxCall(line, 11)).toEqual({
+            found: true,
+            incomplete: true,
+            edit: { callStart: 4, callEnd: 11 },
+            trailingArgs: [],
+            initial: {
+                message: '', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
+            },
+            hasOptions: false,
+        });
+    });
+
+    test('a closed but empty MSGBOX() call decodes the same, with callEnd past the closing paren', () => {
+        const line = 'x = MSGBOX()';
+        expect(decodeMsgboxCall(line, 11)).toEqual({
+            found: true,
+            incomplete: true,
+            edit: { callStart: 4, callEnd: 12 },
+            trailingArgs: [],
+            initial: {
+                message: '', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
+            },
+            hasOptions: false,
+        });
+    });
+
+    test('a call with a message but an empty options slot decodes as incomplete, prefilling the message', () => {
+        const line = 'x = MSGBOX("Hi",';
+        const r = decodeMsgboxCall(line, 16);
+        expect(r.incomplete).toBe(true);
+        expect(r.edit).toEqual({ callStart: 4, callEnd: 16 });
+        expect(r.initial?.message).toBe('"Hi"');
+        expect(r.hasOptions).toBe(false);
+        expect(r.replace).toBeUndefined();
+    });
+
+    test('an empty options slot with a title already typed decodes as incomplete, prefilling the title', () => {
+        const line = 'x = MSGBOX("Hi", , "T")';
+        const r = decodeMsgboxCall(line);
+        expect(r.incomplete).toBe(true);
+        expect(r.initial?.message).toBe('"Hi"');
+        expect(r.initial?.title).toBe('"T"');
+    });
+
+    test('decodable, bare add-options and compose-and-replace calls carry no incomplete flag', () => {
+        expect(decodeMsgboxCall('MSGBOX("Hi")').incomplete).toBeUndefined();
+        expect(decodeMsgboxCall('r = MSGBOX("Hi", 36, "T")').incomplete).toBeUndefined();
+        expect(decodeMsgboxCall('r = MSGBOX("Hi", flags%, "T")').incomplete).toBeUndefined();
+    });
+});
