@@ -12,6 +12,10 @@
  *     cursor.
  *   - EDIT (from the Code Action): the id/geometry/title/context are fixed in the source; the panel
  *     edits only the `$flags$` (and optional `$event_mask$`) hex tokens and applies them in place.
+ *
+ * Malformed free text (a bare `"101"` in the id field, an unterminated string, a bare numeric
+ * title) is shown inline under its field and refused on Insert — both in the panel and, as the
+ * authoritative guard, in the extension-side `insert` handler (#623).
  */
 import * as vscode from 'vscode';
 import {
@@ -127,6 +131,7 @@ export function openAddChildWindowComposerPanel(context: vscode.ExtensionContext
             case 'insert': {
                 if (!msg.payload) break;
                 const r = build(msg.payload);
+                if (!r.valid) break; // guard; the webview also disables the button
                 const edit = new vscode.WorkspaceEdit();
                 if (editMode && target) {
                     applyEdit(edit, r, target);
@@ -192,6 +197,8 @@ function getHtml(webview: vscode.Webview): string {
     border: 1px solid var(--vscode-input-border, transparent); padding: 4px 6px; border-radius: 2px;
     font-family: var(--vscode-font-family); font-size: 0.95em;
   }
+  input.invalid { border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground)); }
+  .error { color: var(--vscode-errorForeground); font-size: 0.8em; min-height: 1em; }
   fieldset { border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 3px; margin: 0 0 12px; padding: 8px 10px; }
   legend { font-size: 0.82em; opacity: 0.85; padding: 0 4px; }
   .flag-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
@@ -247,6 +254,7 @@ function getHtml(webview: vscode.Webview): string {
     border: none; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 0.95em;
   }
   button:hover { background: var(--vscode-button-hoverBackground); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
   .hidden { display: none; }
   .toggle-line { display: flex; align-items: center; gap: 6px; font-size: 0.9em; }
@@ -271,15 +279,15 @@ function getHtml(webview: vscode.Webview): string {
   <fieldset id="geometry">
     <legend>Statement</legend>
     <div class="grid">
-      <div class="row"><label for="receiver">Assign to</label><input type="text" id="receiver"></div>
-      <div class="row"><label for="window">Parent window expr</label><input type="text" id="window"></div>
-      <div class="row"><label for="id">ID</label><input type="text" id="id"></div>
-      <div class="row"><label for="context">Context expr</label><input type="text" id="context"></div>
-      <div class="row"><label for="title">Title expr</label><input type="text" id="title"></div>
-      <div class="row"><label for="x">x</label><input type="text" id="x"></div>
-      <div class="row"><label for="y">y</label><input type="text" id="y"></div>
-      <div class="row"><label for="width">width</label><input type="text" id="width"></div>
-      <div class="row"><label for="height">height</label><input type="text" id="height"></div>
+      <div class="row"><label for="receiver">Assign to</label><input type="text" id="receiver"><div class="error" id="receiver-error"></div></div>
+      <div class="row"><label for="window">Parent window expr</label><input type="text" id="window"><div class="error" id="window-error"></div></div>
+      <div class="row"><label for="id">ID</label><input type="text" id="id"><div class="error" id="id-error"></div></div>
+      <div class="row"><label for="context">Context expr</label><input type="text" id="context"><div class="error" id="context-error"></div></div>
+      <div class="row"><label for="title">Title expr</label><input type="text" id="title"><div class="error" id="title-error"></div></div>
+      <div class="row"><label for="x">x</label><input type="text" id="x"><div class="error" id="x-error"></div></div>
+      <div class="row"><label for="y">y</label><input type="text" id="y"><div class="error" id="y-error"></div></div>
+      <div class="row"><label for="width">width</label><input type="text" id="width"><div class="error" id="width-error"></div></div>
+      <div class="row"><label for="height">height</label><input type="text" id="height"><div class="error" id="height-error"></div></div>
     </div>
   </fieldset>
 
@@ -383,6 +391,16 @@ function getHtml(webview: vscode.Webview): string {
       $('preview').textContent = m.statement;
       $('flags-summary').textContent = 'flags = ' + m.flagsHex + '  ·  ' + m.flagsSummary;
       $('event-summary').textContent = 'event_mask = ' + (m.eventHex || '(unset)') + '  ·  ' + m.eventSummary;
+      const fieldErrors = {
+        receiver: m.receiverError, window: m.windowError, id: m.idError, context: m.contextError,
+        title: m.titleError, x: m.xError, y: m.yError, width: m.widthError, height: m.heightError,
+      };
+      for (const id of Object.keys(fieldErrors)) {
+        const msg = fieldErrors[id] || '';
+        $(id + '-error').textContent = msg;
+        $(id).classList.toggle('invalid', !!msg);
+      }
+      $('insert').disabled = !m.valid;
       drawMock(m.render);
     }
   });

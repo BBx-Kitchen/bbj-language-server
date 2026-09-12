@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
     CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, CHILD_WINDOW_FLAG,
     describeChildFlags, childWindowSchematic,
-    composeAddChildWindow, addchildwindowPreview,
+    composeAddChildWindow, addchildwindowPreview, AddChildWindowPreviewInput,
     parseAddChildWindowCallOnLine, findAddChildWindowCallAt,
     encodeBits, bitsSet, unknownBits,
 } from '../src/addchildwindow-composer';
@@ -173,5 +173,73 @@ describe('addChildWindow composer logic (#473)', () => {
         const mask = (CHILD_WINDOW_FLAG.BORDERLESS | CHILD_WINDOW_FLAG.DOCKING | reserved) >>> 0;
         expect(unknownBits(mask, CHILD_WINDOW_FLAGS)).toBe(reserved);
         expect(encodeBits([...bitsSet(mask, CHILD_WINDOW_FLAGS), unknownBits(mask, CHILD_WINDOW_FLAGS)])).toBe(mask);
+    });
+});
+
+describe('addchildwindowPreview field validation (#623)', () => {
+    const base: AddChildWindowPreviewInput = {
+        flags: [], eventMaskEnabled: false, eventMask: [],
+        receiver: 'child!', window: 'window!', id: '101', context: 'sysgui!.getAvailableContext()',
+        x: '10', y: '10', width: '200', height: '150', title: '"Child"',
+    };
+
+    test('a malformed id field sets idError and valid: false', () => {
+        const p = addchildwindowPreview({ ...base, id: '"101"' });
+        expect(p.idError).toBe('Not a number — remove the quotes: 101');
+        expect(p.valid).toBe(false);
+    });
+
+    test('malformed window/context fields each set their own structural error', () => {
+        const p1 = addchildwindowPreview({ ...base, window: 'getWin(' });
+        expect(p1.windowError).toBe('Unbalanced parentheses');
+        const p2 = addchildwindowPreview({ ...base, context: '"ctx' });
+        expect(p2.contextError).toBe('Unterminated string literal');
+    });
+
+    test('a non-string title sets titleError', () => {
+        const p = addchildwindowPreview({ ...base, title: 'caption' });
+        expect(p.titleError).toBeDefined();
+        expect(p.valid).toBe(false);
+    });
+
+    test('method calls and suffixed expressions are accepted for context/window/id', () => {
+        const p1 = addchildwindowPreview({ ...base, context: 'sysgui!.getAvailableContext()' });
+        expect(p1.contextError).toBeUndefined();
+        const p2 = addchildwindowPreview({ ...base, window: 'win!.getParent()' });
+        expect(p2.windowError).toBeUndefined();
+        const p3 = addchildwindowPreview({ ...base, id: 'nextId%+1' });
+        expect(p3.idError).toBeUndefined();
+        expect(p3.valid).toBe(true);
+    });
+
+    test('every free-text field blank composes the documented defaults and is valid', () => {
+        const p = addchildwindowPreview({
+            flags: [], eventMaskEnabled: false, eventMask: [],
+            receiver: '', window: '', id: '', context: '',
+            x: '', y: '', width: '', height: '', title: '',
+        });
+        expect(p.valid).toBe(true);
+        expect(p.receiverError).toBeUndefined();
+        expect(p.windowError).toBeUndefined();
+        expect(p.idError).toBeUndefined();
+        expect(p.contextError).toBeUndefined();
+        expect(p.titleError).toBeUndefined();
+        expect(p.xError).toBeUndefined();
+        expect(p.yError).toBeUndefined();
+        expect(p.widthError).toBeUndefined();
+        expect(p.heightError).toBeUndefined();
+        expect(p.statement).toBe('window!.addChildWindow(101, 0, 0, 0, 0, "", $00000000$, sysgui!.getAvailableContext())');
+    });
+
+    test('edit mode skips every field check even with malformed text', () => {
+        const p = addchildwindowPreview({ ...base, id: '"101"', title: 'caption', editMode: true });
+        expect(p.idError).toBeUndefined();
+        expect(p.titleError).toBeUndefined();
+        expect(p.valid).toBe(true);
+    });
+
+    test('addchildwindowPreview is pure: identical calls return deep-equal results', () => {
+        const input = { ...base, id: '"101"' };
+        expect(addchildwindowPreview(input)).toEqual(addchildwindowPreview(input));
     });
 });

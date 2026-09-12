@@ -55,6 +55,7 @@ vi.mock('vscode', () => ({
 }));
 
 import { openAddWindowComposerPanel, AddWindowPanelArg } from '../src/addwindow-composer-webview.js';
+import { openAddChildWindowComposerPanel, AddChildWindowPanelArg } from '../src/addchildwindow-composer-webview.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openAddWindowComposerPanel>[0];
 
@@ -184,6 +185,93 @@ describe('addwindow-composer-webview.ts source carries the validation markup and
 
     test('declares an error element id for every statement field', () => {
         for (const id of ['x', 'y', 'width', 'height', 'title', 'receiver', 'sysgui']) {
+            expect(source).toContain(`id="${id}-error"`);
+        }
+    });
+
+    test('the extension-side insert handler guards on the recomputed valid flag', () => {
+        expect(source).toContain('if (!r.valid) break;');
+    });
+
+    test('disables Insert from the preview\'s valid flag', () => {
+        expect(source).toContain("$('insert').disabled = !m.valid");
+    });
+
+    test('sets field error text only through .textContent, never innerHTML', () => {
+        expect(source).not.toMatch(/-error['"]\)\.innerHTML/);
+    });
+});
+
+describe('addChildWindow panel refuses malformed fields (#623)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        activeTextEditor = undefined;
+    });
+
+    const validPayload = {
+        flags: [] as number[], eventMaskEnabled: false, eventMask: [] as number[],
+        receiver: 'child!', window: 'window!', id: '101', context: 'sysgui!.getAvailableContext()',
+        title: '"Child"', x: '10', y: '10', width: '200', height: '150',
+    };
+    const malformedPayload = { ...validPayload, id: '"101"' };
+
+    test('insert with a malformed id field applies no edit and keeps the panel open', async () => {
+        setActiveEditor('file:///a.bbj', 0, 0);
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+        await handler({ type: 'insert', payload: malformedPayload });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(panel.dispose).not.toHaveBeenCalled();
+    });
+
+    test('insert with a valid payload applies exactly one edit and disposes the panel', async () => {
+        setActiveEditor('file:///a.bbj', 0, 0);
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+        await handler({ type: 'insert', payload: validPayload });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.insert).toHaveBeenCalledTimes(1);
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test('EDIT mode still applies its flags edit, since edit-mode fields are never validated', async () => {
+        const target = {
+            uri: 'file:///a.bbj', line: 0,
+            flagsRange: [10, 20] as [number, number],
+            preservedFlagBits: 0, preservedEventBits: 0,
+        };
+        const arg: AddChildWindowPanelArg = { target };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openAddChildWindowComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        await handler({ type: 'insert', payload: { ...malformedPayload, title: 'caption' } });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('addchildwindow-composer-webview.ts source carries the validation markup and guard (#623)', () => {
+    const source = readFileSync(
+        fileURLToPath(new URL('../src/addchildwindow-composer-webview.ts', import.meta.url)),
+        'utf-8',
+    );
+
+    test('declares an error element id for every statement field', () => {
+        for (const id of ['receiver', 'window', 'id', 'context', 'title', 'x', 'y', 'width', 'height']) {
             expect(source).toContain(`id="${id}-error"`);
         }
     });

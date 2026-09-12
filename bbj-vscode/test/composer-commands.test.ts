@@ -55,6 +55,27 @@ describe('composer LS command layer (#433)', () => {
         expect(p.flagsHex).toBe('$00000003$');
         expect(p.statement).toBe('w! = g!.addWindow(0, 0, 9, 9, "T", $00000003$)');
         expect(p.render.closeBox).toBe(true);
+        expect(p.valid).toBe(true);
+    });
+
+    test('addwindow/preview returns valid: false with xError for a malformed field (#623)', () => {
+        const p = call('bbj/composer/addwindow/preview', {
+            input: { flags: [], eventMaskEnabled: false, eventMask: [], receiver: 'w!', sysgui: 'g!', x: '"10"', y: '0', width: '9', height: '9', title: '"T"' },
+        }) as any;
+        expect(p.valid).toBe(false);
+        expect(p.xError).toBe('Not a number — remove the quotes: 10');
+    });
+
+    test('addchildwindow/preview returns valid: false with idError for a malformed field (#623)', () => {
+        const p = call('bbj/composer/addchildwindow/preview', {
+            input: {
+                flags: [], eventMaskEnabled: false, eventMask: [],
+                receiver: 'c!', window: 'w!', id: '"101"', context: 'ctx!',
+                x: '0', y: '0', width: '9', height: '9', title: '"T"',
+            },
+        }) as any;
+        expect(p.valid).toBe(false);
+        expect(p.idError).toBe('Not a number — remove the quotes: 101');
     });
 
     test('msgbox parseLine finds the call (first, or the one at the cursor)', () => {

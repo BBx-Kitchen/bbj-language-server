@@ -264,7 +264,7 @@ export interface AddWindowPreview {
  * well-formedness, then a conservative check that a bare `"..."` string literal isn't standing in
  * for a number — the reported bug shape (`"10"` typed where `10` was meant). Anything else
  * (a plain number, a numeric variable, an expression) is accepted; the text is never rewritten,
- * only flagged with a suggested fix (D-06).
+ * only flagged with a suggested fix.
  */
 export function validateNumericField(text: string): { ok: boolean; message?: string } {
     const t = text.trim();
@@ -302,7 +302,7 @@ export function addwindowPreview(input: AddWindowPreviewInput): AddWindowPreview
     });
 
     // Edit mode only rewrites the flags/event-mask hex tokens; the free-text fields come straight
-    // from the source and are never written, so they are never validated (D-09).
+    // from the source and are never written, so they are never validated.
     let receiverError: string | undefined;
     let sysguiError: string | undefined;
     let titleError: string | undefined;

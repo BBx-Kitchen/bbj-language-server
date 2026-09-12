@@ -12,10 +12,10 @@
  * This module owns the child-window catalogs and the mask <-> hex <-> statement conversions with NO
  * `vscode` dependency, so it is unit-testable and reusable by the IntelliJ client over LSP (#433).
  */
-import { expressionDisplayText } from './msgbox-composer.js';
+import { expressionDisplayText, validateBbjExpression, validateStringField } from './msgbox-composer.js';
 import {
     FlagItem, encodeBits, formatHex, parseHexLiteral, describeMask, knownMask, bitsSet, unknownBits,
-    scanArgs, trimmedRange,
+    scanArgs, trimmedRange, validateNumericField,
 } from './addwindow-composer.js';
 
 export { EVENT_MASK_BITS as CHILD_EVENT_MASK_BITS } from './addwindow-composer.js';
@@ -167,6 +167,26 @@ export interface AddChildWindowPreview {
     flagsSummary: string;
     eventSummary: string;
     render: ChildWindowSchematic & { title: string };
+    /** Structural error for `receiver`, when malformed. Absent (and in edit mode) when fine. */
+    receiverError?: string;
+    /** Structural error for `window`, when malformed. Absent (and in edit mode) when fine. */
+    windowError?: string;
+    /** Numeric error for `id`, e.g. a quoted number. Absent (and in edit mode) when fine. */
+    idError?: string;
+    /** Structural error for `context`, when malformed. Absent (and in edit mode) when fine. */
+    contextError?: string;
+    /** String-typing error for `title`, when it doesn't resolve to a String. Absent (and in edit mode) when fine. */
+    titleError?: string;
+    /** Numeric error for `x`. Absent (and in edit mode) when fine. */
+    xError?: string;
+    /** Numeric error for `y`. Absent (and in edit mode) when fine. */
+    yError?: string;
+    /** Numeric error for `width`. Absent (and in edit mode) when fine. */
+    widthError?: string;
+    /** Numeric error for `height`. Absent (and in edit mode) when fine. */
+    heightError?: string;
+    /** True exactly when no `*Error` key above is set — the extension-side insert guard reads this (#623). */
+    valid: boolean;
 }
 
 /**
@@ -192,12 +212,48 @@ export function addchildwindowPreview(input: AddChildWindowPreviewInput): AddChi
         eventMask: eventFull,
     });
 
+    // Edit mode only rewrites the flags/event-mask hex tokens; the free-text fields come straight
+    // from the source and are never written, so they are never validated.
+    let receiverError: string | undefined;
+    let windowError: string | undefined;
+    let idError: string | undefined;
+    let contextError: string | undefined;
+    let titleError: string | undefined;
+    let xError: string | undefined;
+    let yError: string | undefined;
+    let widthError: string | undefined;
+    let heightError: string | undefined;
+    if (!input.editMode) {
+        const receiverV = validateBbjExpression(input.receiver ?? '');
+        if (!receiverV.ok) receiverError = receiverV.message;
+        const windowV = validateBbjExpression(input.window ?? '');
+        if (!windowV.ok) windowError = windowV.message;
+        const idV = validateNumericField(input.id ?? '');
+        if (!idV.ok) idError = idV.message;
+        const contextV = validateBbjExpression(input.context ?? '');
+        if (!contextV.ok) contextError = contextV.message;
+        const titleV = validateStringField(input.title ?? '', { required: false });
+        if (!titleV.ok) titleError = titleV.message;
+        const xV = validateNumericField(input.x ?? '');
+        if (!xV.ok) xError = xV.message;
+        const yV = validateNumericField(input.y ?? '');
+        if (!yV.ok) yError = yV.message;
+        const widthV = validateNumericField(input.width ?? '');
+        if (!widthV.ok) widthError = widthV.message;
+        const heightV = validateNumericField(input.height ?? '');
+        if (!heightV.ok) heightError = heightV.message;
+    }
+    const valid = !receiverError && !windowError && !idError && !contextError && !titleError
+        && !xError && !yError && !widthError && !heightError;
+
     return {
         flags, eventMask, flagsHex: formatHex(flagsFull), eventHex: eventFull === null ? null : formatHex(eventFull),
         statement,
         flagsSummary: describeChildFlags(flags),
         eventSummary: eventMask === null ? '(default)' : describeChildEventMask(eventMask),
         render: { ...childWindowSchematic(flags), title: expressionDisplayText(input.title) },
+        receiverError, windowError, idError, contextError, titleError, xError, yError, widthError, heightError,
+        valid,
     };
 }
 
