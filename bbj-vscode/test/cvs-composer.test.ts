@@ -120,21 +120,100 @@ describe('CVS() composer logic (#649)', () => {
         expect(noChars.trailingArgs).toEqual(['ERR=100']);
     });
 
-    test('decodeCvsCall reports the three not-editable reasons, and found:false for no call', () => {
+    test('decodeCvsCall reports the two remaining not-editable reasons, and found:false for no call', () => {
         const nonLiteral = decodeCvsCall('x$ = CVS(a$, n%)');
         expect(nonLiteral.found).toBe(true);
         expect(nonLiteral.editable).toBe(false);
         expect(nonLiteral.reason).toBe(CVS_NOT_EDITABLE_REASON_TEXT['non-literal-mask']);
-
-        const missingMask = decodeCvsCall('x$ = CVS(a$)');
-        expect(missingMask.editable).toBe(false);
-        expect(missingMask.reason).toBe(CVS_NOT_EDITABLE_REASON_TEXT['missing-mask']);
+        expect(nonLiteral.incomplete).toBeUndefined();
 
         const unknownBits = decodeCvsCall('x$ = CVS(a$, 256)');
         expect(unknownBits.editable).toBe(false);
         expect(unknownBits.reason).toBe(CVS_NOT_EDITABLE_REASON_TEXT['unknown-bits']);
+        expect(unknownBits.incomplete).toBeUndefined();
 
         expect(decodeCvsCall('x$ = 1 + 1')).toEqual({ found: false });
+    });
+
+    test('CVS_NOT_EDITABLE_REASON_TEXT keeps exactly the two hard-stop reasons', () => {
+        expect(Object.keys(CVS_NOT_EDITABLE_REASON_TEXT)).toEqual(['non-literal-mask', 'unknown-bits']);
+    });
+
+    test('decodeCvsCall reports an unfinished or mask-less call as incomplete, never missing-mask', () => {
+        const noArgs = decodeCvsCall('a$ = CVS(', 9);
+        expect(noArgs).toEqual({
+            found: true, editable: false, incomplete: true,
+            edit: { callStart: 5, callEnd: 9 },
+            initial: { str: '', bits: [], chars: '' },
+            trailingArgs: [],
+        });
+
+        const closedParen = decodeCvsCall('a$ = CVS()', 9);
+        expect(closedParen).toEqual({
+            found: true, editable: false, incomplete: true,
+            edit: { callStart: 5, callEnd: 10 },
+            initial: { str: '', bits: [], chars: '' },
+            trailingArgs: [],
+        });
+
+        const oneArg = decodeCvsCall('a$ = CVS(a$', 11);
+        expect(oneArg).toEqual({
+            found: true, editable: false, incomplete: true,
+            edit: { callStart: 5, callEnd: 11 },
+            initial: { str: 'a$', bits: [], chars: '' },
+            trailingArgs: [],
+        });
+
+        const trailingComma = decodeCvsCall('a$ = CVS(a$,', 12);
+        expect(trailingComma).toEqual({
+            found: true, editable: false, incomplete: true,
+            edit: { callStart: 5, callEnd: 12 },
+            initial: { str: 'a$', bits: [], chars: '' },
+            trailingArgs: [],
+        });
+
+        const closedNoMask = decodeCvsCall('x$ = CVS(a$)');
+        expect(closedNoMask).toEqual({
+            found: true, editable: false, incomplete: true,
+            edit: { callStart: 5, callEnd: 12 },
+            initial: { str: 'a$', bits: [], chars: '' },
+            trailingArgs: [],
+        });
+
+        for (const r of [noArgs, closedParen, oneArg, trailingComma, closedNoMask]) {
+            expect(r.reason).toBeUndefined();
+        }
+    });
+
+    test('decodeCvsCall preserves chars/ERR text after an empty mask position (incomplete outcome)', () => {
+        const withChars = decodeCvsCall('x$ = CVS(a$, , "*", ERR=100)');
+        expect(withChars.incomplete).toBe(true);
+        expect(withChars.initial?.chars).toBe('"*"');
+        expect(withChars.trailingArgs).toEqual(['ERR=100']);
+
+        const noChars = decodeCvsCall('x$ = CVS(a$, , ERR=100)');
+        expect(noChars.incomplete).toBe(true);
+        expect(noChars.initial?.chars).toBe('');
+        expect(noChars.trailingArgs).toEqual(['ERR=100']);
+    });
+
+    test('a literal-sum mask still decodes editable with no incomplete flag', () => {
+        const result = decodeCvsCall('x$ = CVS(a$, 1+4)', 6);
+        expect(result.editable).toBe(true);
+        expect(result.incomplete).toBeUndefined();
+    });
+
+    test('composing into an incomplete call span never nests a second CVS(', () => {
+        const decoded = decodeCvsCall('a$ = CVS(', 9);
+        const statement = cvsPreview({ str: 'name$', bits: [1, 4], chars: '' }).statement;
+        const line = 'a$ = CVS(';
+        const spliced = line.slice(0, decoded.edit!.callStart) + statement + line.slice(decoded.edit!.callEnd);
+        expect(spliced).toBe('a$ = CVS(name$, 5)');
+        expect(decodeCvsCall(spliced, 6)).toMatchObject({
+            editable: true, initial: { str: 'name$', bits: [1, 4], chars: '' },
+        });
+
+        expect(cvsPreview({ str: '', bits: [1], chars: '' }).valid).toBe(false);
     });
 
     test('decodeCvsCall never silently wraps a beyond-2^32 literal into a small "editable" mask', () => {

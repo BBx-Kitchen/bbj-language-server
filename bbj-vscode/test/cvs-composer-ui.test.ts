@@ -130,6 +130,22 @@ describe('cvsPanelArgAt (#649)', () => {
         expect(cvsPanelArgAt('file:///a.bbj', 0, 'x$ = CVS(a$, n%)', 6)).toBeUndefined();
         expect(cvsPanelArgAt('file:///a.bbj', 0, 'x$ = "no call here"', 5)).toBeUndefined();
     });
+
+    test('an incomplete call returns a "Complete CVS() call…" target/initial the lightbulb uses', () => {
+        const result = cvsPanelArgAt('file:///a.bbj', 3, 'a$ = CVS(name$', 14);
+        expect(result).toBeDefined();
+        expect(result!.label).toBe('Complete CVS() call…');
+        expect(result!.arg.target).toEqual({
+            uri: 'file:///a.bbj',
+            line: 3,
+            callStart: 5,
+            callEnd: 14,
+            callText: 'CVS(name$',
+            trailingArgs: [],
+            incomplete: true,
+        });
+        expect(result!.arg.initial).toEqual({ str: 'name$', bits: [], chars: '' });
+    });
 });
 
 describe('CVS lightbulb (#649)', () => {
@@ -156,6 +172,14 @@ describe('CVS lightbulb (#649)', () => {
         const actions = provider.provideCodeActions(fakeDocument('file:///a.bbj', [line]), fakeRange(0, 6));
         expect(actions).toHaveLength(0);
     });
+
+    test('returns exactly one RefactorRewrite action for an unfinished call', () => {
+        const provider = getProvider();
+        const line = 'a$ = CVS(';
+        const actions = provider.provideCodeActions(fakeDocument('file:///a.bbj', [line]), fakeRange(0, 9));
+        expect(actions).toHaveLength(1);
+        expect(actions[0].command.command).toBe('bbj.composeCvs');
+    });
 });
 
 describe('registerCvsComposer (#649)', () => {
@@ -178,6 +202,16 @@ describe('cvsCallStillMatches (#649)', () => {
         };
         expect(cvsCallStillMatches('x$ = CVS(a$, 1+4)', target)).toBe(true);
         expect(cvsCallStillMatches('x$ = CVS(b$, 1+4)', target)).toBe(false);
+    });
+
+    test('a same-prefix but grown unterminated call is refused even though the slice still matches', () => {
+        const target: CvsEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 10,
+            callText: 'CVS(a', trailingArgs: [],
+        };
+        expect(cvsCallStillMatches('a$ = CVS(a', target)).toBe(true);
+        expect(cvsCallStillMatches('a$ = CVS(a$', target)).toBe(false);
+        expect(cvsCallStillMatches('a$ = CVS(a$, 5)', target)).toBe(false);
     });
 });
 
@@ -285,6 +319,69 @@ describe('openCvsComposerPanel (#649)', () => {
         openCvsComposerPanel(fakeContext, arg);
         const handler = getHandler()!;
         await handler({ type: 'insert', payload: { str: 'a$', bits: [1], chars: '', assignTo: '' } });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(showWarningMessageMock).toHaveBeenCalledWith('The CVS() call changed since the composer opened; nothing was applied.');
+        expect(panel.dispose).not.toHaveBeenCalled();
+    });
+
+    test('completing mode: opens a "Complete CVS() call" panel and posts completing/editMode on ready', () => {
+        textDocuments = [fakeDocument('file:///a.bbj', ['a$ = CVS(name$'])];
+        const target: CvsEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 14,
+            callText: 'CVS(name$', trailingArgs: [], incomplete: true,
+        };
+        const arg: CvsPanelArg = { target, initial: { str: 'name$', bits: [], chars: '' } };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openCvsComposerPanel(fakeContext, arg);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete CVS() call');
+
+        const handler = getHandler()!;
+        handler({ type: 'ready' });
+        const initCall = panel.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'init');
+        expect(initCall![0]).toMatchObject({ completing: true, editMode: false });
+    });
+
+    test('completing mode: insert replaces the captured span with a single call and no assign prefix, and disposes the panel', async () => {
+        textDocuments = [fakeDocument('file:///a.bbj', ['a$ = CVS(name$'])];
+        const target: CvsEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 14,
+            callText: 'CVS(name$', trailingArgs: [], incomplete: true,
+        };
+        const arg: CvsPanelArg = { target, initial: { str: 'name$', bits: [], chars: '' } };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openCvsComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        const payload = { str: 'name$', bits: [1, 4], chars: '', assignTo: 'ignored$' };
+        await handler({ type: 'insert', payload });
+
+        const expected = cvsPreview({
+            str: payload.str, bits: payload.bits, chars: payload.chars, trailingArgs: [], editMode: false,
+        });
+        expect(expected.statement).not.toContain('=');
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledWith(expect.anything(), expect.anything(), expected.statement);
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test('completing mode: refuses the write and shows the stale warning when the call grew', async () => {
+        textDocuments = [fakeDocument('file:///a.bbj', ['a$ = CVS(name$, 1'])];
+        const target: CvsEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 14,
+            callText: 'CVS(name$', trailingArgs: [], incomplete: true,
+        };
+        const arg: CvsPanelArg = { target, initial: { str: 'name$', bits: [], chars: '' } };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openCvsComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        await handler({ type: 'insert', payload: { str: 'name$', bits: [1, 4], chars: '', assignTo: '' } });
 
         expect(applyEditMock).not.toHaveBeenCalled();
         expect(showWarningMessageMock).toHaveBeenCalledWith('The CVS() call changed since the composer opened; nothing was applied.');
