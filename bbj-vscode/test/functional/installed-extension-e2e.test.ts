@@ -1063,6 +1063,33 @@ describe.skipIf(!installPresent)('new decode payloads on the installed bundle', 
         expect(result.initial?.str).toBe('name$');
         expect(result.initial?.bits).toEqual([1, 4]);
     }, 30_000);
+
+    test('bbj/composer/cvs/decodeCall on an unfinished call returns the incomplete outcome with the call span', async () => {
+        const unfinished = await connection.sendRequest('bbj/composer/cvs/decodeCall', {
+            line: 'a$ = CVS(',
+            character: 9,
+        }) as {
+            found?: boolean;
+            editable?: boolean;
+            incomplete?: boolean;
+            edit?: { callStart?: number; callEnd?: number };
+            initial?: { str?: string; bits?: number[] };
+            reason?: string;
+        };
+        expect(unfinished.found, `stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
+        expect(unfinished.editable).toBe(false);
+        expect(unfinished.incomplete).toBe(true);
+        expect(unfinished.edit).toEqual({ callStart: 5, callEnd: 9 });
+        expect(unfinished.initial?.str).toBe('');
+        expect(unfinished.initial?.bits).toEqual([]);
+        expect(unfinished.reason).toBeUndefined();
+
+        const closedWithoutMask = await connection.sendRequest('bbj/composer/cvs/decodeCall', {
+            line: 'a$ = CVS(name$)',
+        }) as { incomplete?: boolean; initial?: { str?: string } };
+        expect(closedWithoutMask.incomplete).toBe(true);
+        expect(closedWithoutMask.initial?.str).toBe('name$');
+    }, 30_000);
 });
 
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {
