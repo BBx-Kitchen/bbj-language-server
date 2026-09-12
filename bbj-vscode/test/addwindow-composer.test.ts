@@ -3,7 +3,7 @@ import {
     WINDOW_FLAGS, EVENT_MASK_BITS, encodeBits, bitsSet, unknownBits, knownMask,
     formatHex, parseHexLiteral, describeMask, describeFlags, describeEventMask,
     composeAddWindow, parseAddWindowCallOnLine, findAddWindowCallAt, windowSchematic, WINDOW_FLAG,
-    addwindowPreview,
+    addwindowPreview, validateNumericField, AddWindowPreviewInput,
 } from '../src/addwindow-composer';
 
 describe('addWindow composer logic (#430)', () => {
@@ -179,5 +179,85 @@ describe('addWindow composer logic (#430)', () => {
         expect(second.flagsInsertOffset).toBeDefined();
         expect(first.callStart).not.toBe(second.callStart);
         expect(findAddWindowCallAt(line, 0)).toBeUndefined(); // cursor on the IF, outside both calls
+    });
+});
+
+describe('addwindowPreview field validation (#623)', () => {
+    const base: AddWindowPreviewInput = {
+        flags: [], eventMaskEnabled: false, eventMask: [],
+        receiver: 'window!', sysgui: 'sysgui!', x: '10', y: '10', width: '400', height: '300', title: '"Win"',
+    };
+
+    test('validateNumericField accepts blank text and an ordinary expression', () => {
+        expect(validateNumericField('')).toEqual({ ok: true });
+        expect(validateNumericField('col%*2')).toEqual({ ok: true });
+    });
+
+    test('validateNumericField rejects a quoted number, quoted text, and unbalanced parens', () => {
+        expect(validateNumericField('"10"')).toEqual({ ok: false, message: 'Not a number — remove the quotes: 10' });
+        expect(validateNumericField('"wide"')).toEqual({ ok: false, message: 'Not a number — use a number or a numeric variable' });
+        expect(validateNumericField('(10')).toEqual({ ok: false, message: 'Unbalanced parentheses' });
+    });
+
+    test('a malformed x field sets xError and valid: false', () => {
+        const p = addwindowPreview({ ...base, x: '"10"' });
+        expect(p.xError).toBe('Not a number — remove the quotes: 10');
+        expect(p.valid).toBe(false);
+    });
+
+    test('a non-string title sets titleError starting with the quote-it-as suggestion', () => {
+        const p = addwindowPreview({ ...base, title: 'caption' });
+        expect(p.titleError).toBe('Not a string — quote it as "caption", or a string variable (caption$ / caption!)');
+        expect(p.valid).toBe(false);
+    });
+
+    test('a malformed sysgui/receiver each set their own structural error', () => {
+        const p1 = addwindowPreview({ ...base, sysgui: 'getGui(' });
+        expect(p1.sysguiError).toBe('Unbalanced parentheses');
+        const p2 = addwindowPreview({ ...base, receiver: '"a""b' });
+        expect(p2.receiverError).toBe('Unterminated string literal');
+    });
+
+    test('well-formed edge cases (doubled quotes, non-ASCII, method calls, !-suffixed vars) are accepted', () => {
+        expect(addwindowPreview({ ...base, title: '"a""b"' }).titleError).toBeUndefined();
+        expect(addwindowPreview({ ...base, title: '"Grüße ✓"' }).titleError).toBeUndefined();
+        expect(addwindowPreview({ ...base, sysgui: 'BBjAPI().openSysGui("X0")' }).sysguiError).toBeUndefined();
+        const p = addwindowPreview({ ...base, receiver: 'win!' });
+        expect(p.receiverError).toBeUndefined();
+        expect(p.valid).toBe(true);
+    });
+
+    test('a title literal with trailing text after the closing quote is rejected', () => {
+        const p = addwindowPreview({ ...base, title: '"a"b' });
+        expect(p.titleError).toBeDefined();
+        expect(p.valid).toBe(false);
+    });
+
+    test('every free-text field blank composes the documented defaults and is valid', () => {
+        const p = addwindowPreview({
+            flags: [], eventMaskEnabled: false, eventMask: [],
+            receiver: '', sysgui: '', x: '', y: '', width: '', height: '', title: '',
+        });
+        expect(p.valid).toBe(true);
+        expect(p.receiverError).toBeUndefined();
+        expect(p.sysguiError).toBeUndefined();
+        expect(p.titleError).toBeUndefined();
+        expect(p.xError).toBeUndefined();
+        expect(p.yError).toBeUndefined();
+        expect(p.widthError).toBeUndefined();
+        expect(p.heightError).toBeUndefined();
+        expect(p.statement).toBe('sysgui!.addWindow(0, 0, 0, 0, "", $00000000$)');
+    });
+
+    test('edit mode skips every field check even with malformed text', () => {
+        const p = addwindowPreview({ ...base, x: '"10"', title: 'caption', editMode: true });
+        expect(p.xError).toBeUndefined();
+        expect(p.titleError).toBeUndefined();
+        expect(p.valid).toBe(true);
+    });
+
+    test('addwindowPreview is pure: identical input yields deep-equal results', () => {
+        const input = { ...base, x: '"10"' };
+        expect(addwindowPreview(input)).toEqual(addwindowPreview(input));
     });
 });

@@ -13,8 +13,9 @@
  * This module owns the two catalogs and the mask <-> hex <-> statement conversions with NO
  * `vscode` dependency, so it is unit-testable and reusable by the IntelliJ client later.
  */
-// Reuse the shared BBj display-text helper from the MSGBOX composer scaffolding (#426).
-import { expressionDisplayText } from './msgbox-composer.js';
+// Reuse the shared BBj display-text and structural validators from the MSGBOX composer
+// scaffolding (#426) so every composer field agrees on what "well-formed BBj text" means.
+import { expressionDisplayText, validateBbjExpression, validateStringField } from './msgbox-composer.js';
 
 export interface FlagItem {
     /** The single bit this toggle sets, e.g. 0x00000002. */
@@ -240,6 +241,44 @@ export interface AddWindowPreview {
     flagsSummary: string;
     eventSummary: string;
     render: WindowSchematic & { title: string };
+    /** Structural/type error for `receiver`, when malformed. Absent (and in edit mode) when fine. */
+    receiverError?: string;
+    /** Structural error for `sysgui`, when malformed. Absent (and in edit mode) when fine. */
+    sysguiError?: string;
+    /** String-typing error for `title`, when it doesn't resolve to a String. Absent (and in edit mode) when fine. */
+    titleError?: string;
+    /** Numeric error for `x`, e.g. a quoted number. Absent (and in edit mode) when fine. */
+    xError?: string;
+    /** Numeric error for `y`. Absent (and in edit mode) when fine. */
+    yError?: string;
+    /** Numeric error for `width`. Absent (and in edit mode) when fine. */
+    widthError?: string;
+    /** Numeric error for `height`. Absent (and in edit mode) when fine. */
+    heightError?: string;
+    /** True exactly when no `*Error` key above is set — the extension-side insert guard reads this (#623). */
+    valid: boolean;
+}
+
+/**
+ * Validate a numeric field (`x`, `y`, `width`, `height`, and addChildWindow's `id`): structural
+ * well-formedness, then a conservative check that a bare `"..."` string literal isn't standing in
+ * for a number — the reported bug shape (`"10"` typed where `10` was meant). Anything else
+ * (a plain number, a numeric variable, an expression) is accepted; the text is never rewritten,
+ * only flagged with a suggested fix (D-06).
+ */
+export function validateNumericField(text: string): { ok: boolean; message?: string } {
+    const t = text.trim();
+    if (t === '') return { ok: true };
+    const structural = validateBbjExpression(t);
+    if (!structural.ok) return structural;
+    if (/^"([^"]|"")*"$/.test(t)) {
+        const content = expressionDisplayText(t).trim();
+        if (/^[+-]?\d+(\.\d+)?$/.test(content)) {
+            return { ok: false, message: `Not a number — remove the quotes: ${content}` };
+        }
+        return { ok: false, message: 'Not a number — use a number or a numeric variable' };
+    }
+    return { ok: true };
 }
 
 /**
@@ -262,12 +301,41 @@ export function addwindowPreview(input: AddWindowPreviewInput): AddWindowPreview
         flags: flagsFull, eventMask: eventFull,
     });
 
+    // Edit mode only rewrites the flags/event-mask hex tokens; the free-text fields come straight
+    // from the source and are never written, so they are never validated (D-09).
+    let receiverError: string | undefined;
+    let sysguiError: string | undefined;
+    let titleError: string | undefined;
+    let xError: string | undefined;
+    let yError: string | undefined;
+    let widthError: string | undefined;
+    let heightError: string | undefined;
+    if (!input.editMode) {
+        const receiverV = validateBbjExpression(input.receiver ?? '');
+        if (!receiverV.ok) receiverError = receiverV.message;
+        const sysguiV = validateBbjExpression(input.sysgui ?? '');
+        if (!sysguiV.ok) sysguiError = sysguiV.message;
+        const titleV = validateStringField(input.title ?? '', { required: false });
+        if (!titleV.ok) titleError = titleV.message;
+        const xV = validateNumericField(input.x ?? '');
+        if (!xV.ok) xError = xV.message;
+        const yV = validateNumericField(input.y ?? '');
+        if (!yV.ok) yError = yV.message;
+        const widthV = validateNumericField(input.width ?? '');
+        if (!widthV.ok) widthError = widthV.message;
+        const heightV = validateNumericField(input.height ?? '');
+        if (!heightV.ok) heightError = heightV.message;
+    }
+    const valid = !receiverError && !sysguiError && !titleError && !xError && !yError && !widthError && !heightError;
+
     return {
         flags, eventMask, flagsHex: formatHex(flagsFull), eventHex: eventFull === null ? null : formatHex(eventFull),
         statement,
         flagsSummary: describeFlags(flags),
         eventSummary: eventMask === null ? '(default)' : describeEventMask(eventMask),
         render: { ...windowSchematic(flags), title: expressionDisplayText(input.title) },
+        receiverError, sysguiError, titleError, xError, yError, widthError, heightError,
+        valid,
     };
 }
 
