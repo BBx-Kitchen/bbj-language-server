@@ -452,14 +452,81 @@ export interface MsgboxCallInfo {
     callEnd: number;
     /** Trimmed top-level argument texts. */
     args: string[];
-    /** [start, end) of the numeric `expr` token within the line, if arg #2 is an integer literal. */
+    /**
+     * [start, end) of the `expr` token within the line, when arg #2 is a decodable integer
+     * literal or a `+`-sum of integer literals and/or `BBjMsgBox.*` constants (#648).
+     */
     exprRange?: [number, number];
     exprValue?: number;
+    /** Trimmed text of arg #2, when there are at least two arguments (#648). */
+    optionsText?: string;
     /**
      * Line-relative offset at which to insert `, <expr>` when the call has ONLY a message and
      * no options argument yet (so the composer can *add* options to a bare `MSGBOX("...")`).
      */
     optionInsertOffset?: number;
+}
+
+/**
+ * Reverse lookup from an upper-cased `BBjMsgBox.*` constant name to its numeric value, built once
+ * from the existing catalogs. A closed set — no java-interop or evaluator path (#648, Pattern 3).
+ */
+const MSGBOX_CONSTANT_VALUES: ReadonlyMap<string, number> = (() => {
+    const map = new Map<string, number>();
+    for (const catalog of [BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS]) {
+        for (const item of catalog) {
+            if (item.constant) {
+                map.set(item.constant.toUpperCase(), item.value);
+            }
+        }
+    }
+    return map;
+})();
+
+/** Characters that immediately disqualify an options expression from the closed sum grammar. */
+const MSGBOX_OPTIONS_FORBIDDEN_CHARS = /["()[\]\-*/]/;
+const MSGBOX_CONSTANT_TERM = /^bbjmsgbox\.([a-z_][a-z0-9_]*)$/i;
+
+/**
+ * Parse a MSGBOX options expression as a `+`-sum of integer literals and/or `BBjMsgBox.*`
+ * constant names (case-insensitive, optional whitespace around `+`), returning the equivalent
+ * numeric value, or `undefined` when the text is not exactly that shape. This is a closed
+ * reverse lookup over the catalogs above — never a general expression evaluator (#648, D-10).
+ */
+export function parseMsgboxOptionsSum(text: string): number | undefined {
+    const trimmed = text.trim();
+    if (trimmed === '' || MSGBOX_OPTIONS_FORBIDDEN_CHARS.test(trimmed)) {
+        return undefined;
+    }
+    let sum = 0;
+    for (const rawTerm of trimmed.split('+')) {
+        const term = rawTerm.trim();
+        if (term === '') {
+            return undefined;
+        }
+        if (/^\d+$/.test(term)) {
+            sum += parseInt(term, 10);
+            continue;
+        }
+        const match = MSGBOX_CONSTANT_TERM.exec(term);
+        if (!match) {
+            return undefined;
+        }
+        const value = MSGBOX_CONSTANT_VALUES.get(match[1].toUpperCase());
+        if (value === undefined) {
+            return undefined;
+        }
+        sum += value;
+    }
+    return sum;
+}
+
+/** [start, end) of `line.slice(a, b)` with leading/trailing whitespace trimmed off. */
+function trimmedRange(line: string, a: number, b: number): [number, number] {
+    const text = line.slice(a, b);
+    const leading = /^\s*/.exec(text)![0].length;
+    const trailing = /\s*$/.exec(text.slice(leading))![0].length;
+    return [a + leading, b - trailing];
 }
 
 /**
@@ -505,13 +572,22 @@ function buildCallInfo(line: string, callStart: number, open: number): MsgboxCal
         args: argRanges.map(([a, b]) => line.slice(a, b).trim()),
     };
     if (argRanges.length > 1) {
-        // 2nd arg is a plain integer literal -> reconfigurable expr.
         const [a, b] = argRanges[1];
+        info.optionsText = line.slice(a, b).trim();
+        // 2nd arg is a plain integer literal -> reconfigurable expr.
         const numMatch = /^(\s*)(\d+)\s*$/.exec(line.slice(a, b));
         if (numMatch) {
             const exprStart = a + numMatch[1].length;
             info.exprRange = [exprStart, exprStart + numMatch[2].length];
             info.exprValue = parseInt(numMatch[2], 10);
+        } else {
+            // Not a bare integer literal -> try the closed `+`-sum of integers/BBjMsgBox
+            // constants recognizer (#648, D-10). Anything else is left undecoded.
+            const sum = parseMsgboxOptionsSum(info.optionsText);
+            if (sum !== undefined) {
+                info.exprRange = trimmedRange(line, a, b);
+                info.exprValue = sum;
+            }
         }
     } else if (argRanges.length === 1 && info.args[0] !== '') {
         // Only a message, no options yet: where `, <expr>` would be inserted.
@@ -547,4 +623,80 @@ export function findMsgboxCallAt(line: string, character: number): MsgboxCallInf
     const containing = findMsgboxCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
     if (containing.length === 0) return undefined;
     return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+}
+
+/**
+ * Shown when a MSGBOX options expression could not be decoded and the composer will replace it
+ * on Apply instead of prefilling from it (#648, D-08). Mirrors the single-source reason-text
+ * precedent in `setopts-in-code-request.ts`'s `NOT_EDITABLE_REASON_TEXT`.
+ */
+export const MSGBOX_REPLACE_BANNER_TEXT = 'Could not decode this options expression — composing will replace it.';
+
+/** Payload returned by `decodeMsgboxCall` — mirrors the previous `bbj/composer/msgbox/decodeCall` handler. */
+export interface MsgboxDecodeCallResult {
+    found: boolean;
+    edit?: { callStart: number; callEnd: number };
+    trailingArgs?: string[];
+    initial?: {
+        message: string;
+        title: string;
+        buttonSet: number;
+        icon: number;
+        defaultButton: number;
+        flags: number[];
+        customButtons: string[];
+    };
+    /** Present only in compose-and-replace mode: the original text and the banner to show (#648). */
+    replace?: { originalOptions: string; banner: string };
+}
+
+/**
+ * Find the MSGBOX call at the caret (or the first call when `character` is omitted) and decode
+ * it into a ready-to-prefill payload plus the call span to replace. One shared function used by
+ * both the `bbj/composer/msgbox/decodeCall` LSP request and any in-process caller (#648), so the
+ * language server and VS Code decide identically:
+ *   - A decodable integer literal or constant sum pre-fills exactly like before.
+ *   - A bare `MSGBOX("...")` with no options yet returns the existing add-options payload.
+ *   - Anything else (with at least two arguments) returns compose-and-replace mode: the original
+ *     options text and {@link MSGBOX_REPLACE_BANNER_TEXT}, with message/title/trailing args
+ *     preserved verbatim (D-08).
+ */
+export function decodeMsgboxCall(line: string, character?: number): MsgboxDecodeCallResult {
+    const info = character === undefined ? parseMsgboxCallOnLine(line) : findMsgboxCallAt(line, character);
+    if (!info) {
+        return { found: false };
+    }
+    const hasExpr = info.exprRange !== undefined && info.exprValue !== undefined;
+    const canAddOptions = info.optionInsertOffset !== undefined;
+    if (hasExpr || canAddOptions) {
+        const st = decode(hasExpr ? info.exprValue! : 0);
+        const { buttons, trailing } = hasExpr
+            ? splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7)
+            : { buttons: [], trailing: [] };
+        return {
+            found: true,
+            edit: { callStart: info.callStart, callEnd: info.callEnd },
+            trailingArgs: trailing,
+            initial: {
+                message: info.args[0] ?? '""',
+                title: hasExpr ? (info.args[2] ?? '') : '',
+                buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
+                flags: flagsFromState(st), customButtons: buttons,
+            },
+        };
+    }
+    if (info.args.length >= 2) {
+        return {
+            found: true,
+            edit: { callStart: info.callStart, callEnd: info.callEnd },
+            trailingArgs: info.args.slice(3),
+            initial: {
+                message: info.args[0] ?? '""',
+                title: info.args[2] ?? '',
+                buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
+            },
+            replace: { originalOptions: info.optionsText ?? '', banner: MSGBOX_REPLACE_BANNER_TEXT },
+        };
+    }
+    return { found: false };
 }

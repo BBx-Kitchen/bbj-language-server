@@ -15,8 +15,7 @@ import type { Connection } from 'vscode-languageserver';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     encode, decode, describe as describeMsgbox, composeStatement, stateFromSelection, flagsFromState,
-    validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine, msgboxPreview,
-    splitButtonsAndTrailing,
+    validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine, msgboxPreview, decodeMsgboxCall,
     type ComposeInput, type MsgboxPreviewInput,
 } from '../msgbox-composer.js';
 import {
@@ -107,30 +106,11 @@ export const composerHandlers = {
     /**
      * Find the MSGBOX call at the caret and decode it into a ready-to-prefill payload + the call
      * span to replace (edit-in-place). `found: false` when the caret is not inside a MSGBOX call.
+     * Delegates to the shared `decodeMsgboxCall` (#648) so the language server and VS Code decode
+     * identically — a constant-sum options expression pre-fills like a literal, and anything else
+     * comes back in compose-and-replace mode with the original text and a banner.
      */
-    'bbj/composer/msgbox/decodeCall': (p: LineQuery) => {
-        const info = p.character === undefined ? parseMsgboxCallOnLine(p.line) : findMsgboxCallAt(p.line, p.character);
-        const hasExpr = !!info && info.exprRange !== undefined && info.exprValue !== undefined;
-        const canAddOptions = !!info && info.optionInsertOffset !== undefined;
-        if (!info || (!hasExpr && !canAddOptions)) {
-            return { found: false };
-        }
-        const st = decode(hasExpr ? info.exprValue! : 0);
-        const { buttons, trailing } = hasExpr
-            ? splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7)
-            : { buttons: [], trailing: [] };
-        return {
-            found: true,
-            edit: { callStart: info.callStart, callEnd: info.callEnd },
-            trailingArgs: trailing,
-            initial: {
-                message: info.args[0] ?? '""',
-                title: hasExpr ? (info.args[2] ?? '') : '',
-                buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
-                flags: flagsFromState(st), customButtons: buttons,
-            },
-        };
-    },
+    'bbj/composer/msgbox/decodeCall': (p: LineQuery) => decodeMsgboxCall(p.line, p.character),
 
     // ---- addWindow -------------------------------------------------------------------------------
     /** Chosen flag bits -> mask + `$........$` hex (unknown bits OR-ed back for round-trip safety). */
