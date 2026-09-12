@@ -4,6 +4,9 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsCatalogs;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.CvsEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
@@ -43,7 +46,7 @@ import java.util.function.BiPredicate;
  */
 public final class ComposerLauncher {
 
-    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW, SETOPTS, SETOPTS_IN_CODE }
+    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW, SETOPTS, SETOPTS_IN_CODE, CVS }
 
     private ComposerLauncher() {}
 
@@ -231,6 +234,15 @@ public final class ComposerLauncher {
                             openSetoptsInCode(project, editor, server, catalogs.setopts, decoded, line, col, uri);
                         });
             }
+            case CVS -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.cvsDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> {
+                        if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                            return;
+                        }
+                        openCvs(project, editor, server, catalogs.cvs, decoded, line, col);
+                    });
         }
     }
 
@@ -267,6 +279,7 @@ public final class ComposerLauncher {
             case ADDCHILDWINDOW -> "addChildWindow";
             case SETOPTS -> "SETOPTS";
             case SETOPTS_IN_CODE -> "SETOPTS in code";
+            case CVS -> "CVS()";
         };
     }
 
@@ -623,6 +636,57 @@ public final class ComposerLauncher {
     /** Appends a trailing newline when absent, so a following line is never joined onto the inserted/replaced text. */
     private static String ensureTrailingNewline(String text) {
         return text.endsWith("\n") ? text : text + "\n";
+    }
+
+    /**
+     * Opens the CVS() composer (#649), either prefilled for edit-in-place on a decoded literal-mask
+     * call or blank for compose-new. A {@code found && !editable} decode (a non-literal mask) opens
+     * no dialog at all -- just the server's own reason, mirroring {@link #openSetoptsInCode}'s
+     * not-editable branch. The edit path replaces only the decoded call span through
+     * {@link StaleEditGuard}; the compose-new path inserts at the caret.
+     */
+    private static void openCvs(Project project, Editor editor, BbjComposerServer server,
+                                CvsCatalogs catalogs, CvsDecodeResult decoded, int line, int col) {
+        if (catalogs == null) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.CVS)), null);
+            return;
+        }
+        if (decoded != null && decoded.found && !decoded.editable) {
+            String reason = decoded.reason != null
+                    ? decoded.reason
+                    : "This CVS() call cannot be safely edited in place.";
+            ComposerNoticeRenderer.render(project, ComposerNotices.requestFailed(labelOf(Kind.CVS), reason), null);
+            return;
+        }
+        boolean edit = decoded != null && decoded.found && decoded.editable;
+        CvsComposerDialog dialog = edit
+                ? new CvsComposerDialog(project, server, catalogs, decoded.initial, true, decoded.trailingArgs)
+                : new CvsComposerDialog(project, server, catalogs, null, false, null);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        String text = dialog.getStatement();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        if (edit) {
+            CvsEdit ed = decoded.edit;
+            StaleEditGuard guard = new StaleEditGuard(
+                    documentViewOf(editor),
+                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure CVS()", null, body),
+                    ComposerLauncher::onEdt,
+                    notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.CVS)),
+                    StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+            guard.applyIfUnchanged(labelOf(Kind.CVS), line, col, decoded,
+                    (currentLineText, currentCol) -> server.cvsDecodeCall(new DecodeCallParams(currentLineText, currentCol)),
+                    DecodeEquality::sameCvs,
+                    () -> {
+                        int ls = editor.getDocument().getLineStartOffset(line);
+                        editor.getDocument().replaceString(ls + ed.callStart, ls + ed.callEnd, text);
+                    });
+        } else {
+            insertAtCaret(project, editor, text, "Compose CVS()");
+        }
     }
 
     /**

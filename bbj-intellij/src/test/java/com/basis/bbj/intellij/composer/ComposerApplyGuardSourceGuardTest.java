@@ -104,12 +104,13 @@ class ComposerApplyGuardSourceGuardTest {
         List<Integer> applyIfUnchanged = allIndicesOf(text, "applyIfUnchanged(");
         List<Integer> replaceString = allIndicesOf(text, "replaceString(");
 
-        assertEquals(5, applyIfUnchanged.size(),
-                "exactly five applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
-                        + "hex-edit path used by both window composers, the SETOPTS replacement, and "
-                        + "the two SETOPTS-in-code replacements (absolute literal, safe chain -- #475)");
-        assertEquals(5, replaceString.size(),
-                "exactly five replaceString( writes: one per guarded apply body");
+        assertEquals(6, applyIfUnchanged.size(),
+                "exactly six applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
+                        + "hex-edit path used by both window composers, the SETOPTS replacement, the "
+                        + "two SETOPTS-in-code replacements (absolute literal, safe chain -- #475), and "
+                        + "the CVS() replacement (#649)");
+        assertEquals(6, replaceString.size(),
+                "exactly six replaceString( writes: one per guarded apply body");
 
         for (int applyIndex : applyIfUnchanged) {
             boolean hasFollowingReplace = replaceString.stream().anyMatch(r -> r > applyIndex);
@@ -119,7 +120,7 @@ class ComposerApplyGuardSourceGuardTest {
     }
 
     @Test
-    void allFourEditFlowsReachTheGuardWithTheirOwnComparator() {
+    void everyEditFlowReachesTheGuardWithItsOwnComparator() {
         String text = readSource(LAUNCHER_SOURCE);
 
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameMsgbox"),
@@ -139,6 +140,8 @@ class ComposerApplyGuardSourceGuardTest {
         assertEquals(2, sameSetoptsInCodeCount,
                 "both SETOPTS-in-code edit flows (absolute literal, safe chain -- #475) must each "
                         + "reach the guard with sameSetoptsInCode exactly once");
+        assertEquals(1, countOccurrences(text, "DecodeEquality::sameCvs"),
+                "the CVS() edit flow must reach the guard with sameCvs exactly once (#649)");
     }
 
     @Test
@@ -154,6 +157,8 @@ class ComposerApplyGuardSourceGuardTest {
                 "addChildWindowDecodeCall( must appear exactly twice for the same reason");
         assertEquals(2, countOccurrences(text, "setoptsDecodeCall("),
                 "setoptsDecodeCall( must appear exactly twice for the same reason");
+        assertEquals(2, countOccurrences(text, "cvsDecodeCall("),
+                "cvsDecodeCall( must appear exactly twice for the same reason (#649)");
     }
 
     @Test

@@ -47,24 +47,29 @@ class ComposerDialogRefreshSourceGuardTest {
             "SetoptsTriStateComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path CVS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "CvsComposerDialog.java")
+            .toAbsolutePath();
+
     private static final Path FLOW_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "ComposerFlow.java")
             .toAbsolutePath();
 
     private static final Path BUILD_GRADLE_KTS = Paths.get("build.gradle.kts").toAbsolutePath();
 
-    /** One entry per composer dialog so a sixth composer added later is a one-line addition. */
-    private static final List<Path> DIALOG_SOURCES =
-            List.of(MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE);
+    /** One entry per composer dialog so a seventh composer added later is a one-line addition. */
+    private static final List<Path> DIALOG_SOURCES = List.of(
+            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     /**
      * Dialogs whose live preview is coalesced through the {@code PreviewDebouncer}'s fixed 300ms
-     * trailing-edge delay (CR-01) disable OK a third time -- synchronously, the instant a new
-     * preview is scheduled -- rather than only on the constructor's initial disable and a later
-     * failed preview. {@code SetoptsTriStateComposerDialog} reuses the exact same debounce seam
-     * and CR-01 rule {@code SetoptsComposerDialog} established, so both carry the third disable.
+     * trailing-edge delay disable OK a third time -- synchronously, the instant a new preview is
+     * scheduled -- rather than only on the constructor's initial disable and a later failed preview.
+     * {@code SetoptsTriStateComposerDialog} and {@code CvsComposerDialog} reuse the exact same
+     * debounce seam and OK-gating rule {@code SetoptsComposerDialog} established, so all three carry
+     * the third disable.
      */
-    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(SETOPTS_SOURCE, TRISTATE_SOURCE);
+    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
@@ -183,24 +188,29 @@ class ComposerDialogRefreshSourceGuardTest {
     }
 
     /**
-     * CR-01: every checkbox/field listener in SETOPTS must route through a single helper
+     * Every checkbox/field listener in a debounced dialog must route through a single helper
      * ({@code scheduleRefresh()}) that disables OK before scheduling the debounced preview, rather
      * than calling {@code previewDebouncer.trigger()} directly from a listener body -- a listener
      * that bypassed the helper would reopen the exact stale-apply window this guard exists to close.
      * {@code previewDebouncer.trigger()} itself must still appear exactly once (inside the helper).
+     * {@code CvsComposerDialog} reuses the exact same debounce seam {@code SetoptsComposerDialog}
+     * established, so it carries the same helper (#649).
      */
     @Test
-    void setoptsRoutesEveryListenerThroughTheOkDisablingScheduleHelperRatherThanTriggeringTheDebouncerDirectly() {
-        String text = withoutCommentLines(readSource(SETOPTS_SOURCE));
-        assertTrue(text.contains("private void scheduleRefresh()"),
-                "SetoptsComposerDialog must declare a scheduleRefresh() helper that disables OK and "
-                        + "triggers the debouncer");
-        assertEquals(1, countOccurrences(text, "previewDebouncer.trigger()"),
-                "previewDebouncer.trigger() must be called from exactly one place -- inside "
-                        + "scheduleRefresh() -- never inline from a listener body");
-        assertEquals(0, countOccurrences(text, "previewDebouncer::trigger"),
-                "no listener may pass previewDebouncer::trigger as a method reference -- every trigger "
-                        + "must go through scheduleRefresh() so OK is disabled first");
+    void debouncedDialogsRouteEveryListenerThroughTheOkDisablingScheduleHelperRatherThanTriggeringTheDebouncerDirectly() {
+        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertTrue(text.contains("private void scheduleRefresh()"),
+                    source.getFileName() + " must declare a scheduleRefresh() helper that disables OK "
+                            + "and triggers the debouncer");
+            assertEquals(1, countOccurrences(text, "previewDebouncer.trigger()"),
+                    source.getFileName() + " previewDebouncer.trigger() must be called from exactly one "
+                            + "place -- inside scheduleRefresh() -- never inline from a listener body");
+            assertEquals(0, countOccurrences(text, "previewDebouncer::trigger"),
+                    source.getFileName() + " no listener may pass previewDebouncer::trigger as a method "
+                            + "reference -- every trigger must go through scheduleRefresh() so OK is "
+                            + "disabled first");
+        }
     }
 
     @Test
