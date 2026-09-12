@@ -20,6 +20,7 @@ import {
 } from './setopts-catalog.js';
 import { getNonce } from './webview-nonce.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
+import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
 
 export interface SetOptsEditTarget {
     uri: string;
@@ -89,7 +90,7 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
 
     const build = (sel: PanelSelection) => setoptsPreview(original, toSelection(sel));
 
-    panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: PanelSelection }) => {
+    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: PanelSelection }) => {
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -132,7 +133,7 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
                 panel.dispose();
                 break;
         }
-    }, undefined, context.subscriptions);
+    });
 }
 
 function toSelection(sel: PanelSelection): SetOptsSelection {

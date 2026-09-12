@@ -85,6 +85,7 @@ interface FakePanel {
         onDidReceiveMessage: ReturnType<typeof vi.fn>;
     };
     dispose: ReturnType<typeof vi.fn>;
+    onDidDispose: ReturnType<typeof vi.fn>;
 }
 
 /** Creates a fake webview panel and exposes the message handler the module under test registers. */
@@ -100,6 +101,7 @@ function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown
             }),
         },
         dispose: vi.fn(),
+        onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
     };
     return { panel, getHandler: () => handler };
 }

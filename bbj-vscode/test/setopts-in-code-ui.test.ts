@@ -83,6 +83,7 @@ interface FakePanel {
         onDidReceiveMessage: ReturnType<typeof vi.fn>;
     };
     dispose: ReturnType<typeof vi.fn>;
+    onDidDispose: ReturnType<typeof vi.fn>;
 }
 
 /** Creates a fake webview panel and exposes the message handler the module under test registers. */
@@ -98,6 +99,7 @@ function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown
             }),
         },
         dispose: vi.fn(),
+        onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
     };
     return { panel, getHandler: () => handler };
 }
@@ -335,7 +337,7 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
             found: true, editable: true, mode: 'absolute',
             absolute: { line: 2, hexRange: [10, 18], hexDigits: '08004020' },
         });
-        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn(), onDidDispose: vi.fn(() => ({ dispose: vi.fn() })) });
         registerSetOptsInCodeComposer(fakeContext, sender);
         const handler = getRegisteredCommandHandler();
 
@@ -386,7 +388,7 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
             chain: { variableName: 'opts$', startLine: 3, endLine: 5, indent: '  ' },
             initial: { entries: [] },
         });
-        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn(), onDidDispose: vi.fn(() => ({ dispose: vi.fn() })) });
         registerSetOptsInCodeComposer(fakeContext, sender);
         const handler = getRegisteredCommandHandler();
 
@@ -400,7 +402,7 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
 
     test('found: false opens the tri-state panel with no target (compose-new)', async () => {
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({ found: false, editable: false, mode: 'none' });
-        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn(), onDidDispose: vi.fn(() => ({ dispose: vi.fn() })) });
         const vscodeModule = await import('vscode');
         const uri = { toString: () => 'file:///x.bbj' };
         (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = {

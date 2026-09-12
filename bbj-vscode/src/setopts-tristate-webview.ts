@@ -27,6 +27,7 @@ import {
 } from './language/setopts-in-code-request.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 import { getNonce } from './webview-nonce.js';
+import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
 
 /**
  * Forwards a JSON-RPC request to the language server. Declared here (rather than in
@@ -107,7 +108,7 @@ export function openSetOptsTriStateComposerPanel(
         return await sender(SETOPTS_COMPOSE_TRISTATE_METHOD, params) as SetOptsComposeTriStateResult;
     };
 
-    panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: PanelTriStateSelection }) => {
+    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: PanelTriStateSelection }) => {
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -150,7 +151,7 @@ export function openSetOptsTriStateComposerPanel(
                 panel.dispose();
                 break;
         }
-    }, undefined, context.subscriptions);
+    });
 }
 
 /**
