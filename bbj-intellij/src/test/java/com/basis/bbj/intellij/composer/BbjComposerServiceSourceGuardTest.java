@@ -103,7 +103,7 @@ class BbjComposerServiceSourceGuardTest {
                 "resolveServer(...) must still resolve the language server proxy exactly once");
         assertEquals(0, countOccurrences(text, "composerCatalogs"),
                 "the status subscription must never request catalogs -- catalogs are fetched lazily "
-                        + "on the first composer open after each server start (D-17)");
+                        + "on the first composer open after each server start");
     }
 
     @Test
