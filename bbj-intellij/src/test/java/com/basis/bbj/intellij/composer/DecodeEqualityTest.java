@@ -597,6 +597,7 @@ class DecodeEqualityTest {
         CvsDecodeResult decoded = new CvsDecodeResult();
         decoded.found = true;
         decoded.editable = true;
+        decoded.incomplete = false;
         decoded.reason = null;
         CvsEdit edit = new CvsEdit();
         edit.callStart = 5;
@@ -615,6 +616,7 @@ class DecodeEqualityTest {
         CvsDecodeResult decoded = new CvsDecodeResult();
         decoded.found = src.found;
         decoded.editable = src.editable;
+        decoded.incomplete = src.incomplete;
         decoded.reason = src.reason;
         if (src.edit != null) {
             CvsEdit edit = new CvsEdit();
@@ -646,6 +648,7 @@ class DecodeEqualityTest {
         List<Consumer<CvsDecodeResult>> mutators = List.of(
                 d -> d.found = !d.found,
                 d -> d.editable = !d.editable,
+                d -> d.incomplete = !d.incomplete,
                 d -> d.reason = "The mask argument is not a sum of integer literals, so it cannot be safely decoded.",
                 d -> d.edit.callStart = d.edit.callStart + 1,
                 d -> d.edit.callEnd = d.edit.callEnd + 1,
@@ -684,7 +687,7 @@ class DecodeEqualityTest {
         CvsDecodeResult a = new CvsDecodeResult();
         a.found = true;
         a.editable = false;
-        a.reason = "This CVS() call has no mask argument, so there is nothing to compose from.";
+        a.reason = "The mask argument is not a sum of integer literals, so it cannot be safely decoded.";
         CvsEdit edit = new CvsEdit();
         edit.callStart = 5;
         edit.callEnd = 12;
@@ -692,5 +695,77 @@ class DecodeEqualityTest {
 
         CvsDecodeResult b = copyOfCvs(a);
         assertTrue(DecodeEquality.sameCvs(a, b), "a null initial and trailingArgs on both sides must compare equal");
+    }
+
+    @Test
+    void twoIncompleteCvsDecodesOfTheSameUnfinishedCallMatch() {
+        CvsDecodeResult a = new CvsDecodeResult();
+        a.found = true;
+        a.editable = false;
+        a.incomplete = true;
+        CvsEdit editA = new CvsEdit();
+        editA.callStart = 5;
+        editA.callEnd = 9;
+        a.edit = editA;
+        CvsInitial initialA = new CvsInitial();
+        initialA.str = "";
+        initialA.bits = new ArrayList<>();
+        initialA.chars = "";
+        a.initial = initialA;
+        a.trailingArgs = new ArrayList<>();
+
+        CvsDecodeResult b = new CvsDecodeResult();
+        b.found = true;
+        b.editable = false;
+        b.incomplete = true;
+        CvsEdit editB = new CvsEdit();
+        editB.callStart = 5;
+        editB.callEnd = 9;
+        b.edit = editB;
+        CvsInitial initialB = new CvsInitial();
+        initialB.str = "";
+        initialB.bits = new ArrayList<>();
+        initialB.chars = "";
+        b.initial = initialB;
+        b.trailingArgs = new ArrayList<>();
+
+        assertTrue(DecodeEquality.sameCvs(a, b),
+                "two independently built incomplete decodes of the same unfinished call must match");
+    }
+
+    @Test
+    void anIncompleteCvsDecodeWhoseCallGrewDoesNotMatch() {
+        CvsDecodeResult before = new CvsDecodeResult();
+        before.found = true;
+        before.editable = false;
+        before.incomplete = true;
+        CvsEdit editBefore = new CvsEdit();
+        editBefore.callStart = 5;
+        editBefore.callEnd = 9;
+        before.edit = editBefore;
+        CvsInitial initialBefore = new CvsInitial();
+        initialBefore.str = "";
+        initialBefore.bits = new ArrayList<>();
+        initialBefore.chars = "";
+        before.initial = initialBefore;
+        before.trailingArgs = new ArrayList<>();
+
+        CvsDecodeResult after = new CvsDecodeResult();
+        after.found = true;
+        after.editable = false;
+        after.incomplete = true;
+        CvsEdit editAfter = new CvsEdit();
+        editAfter.callStart = 5;
+        editAfter.callEnd = 14;
+        after.edit = editAfter;
+        CvsInitial initialAfter = new CvsInitial();
+        initialAfter.str = "name$";
+        initialAfter.bits = new ArrayList<>();
+        initialAfter.chars = "";
+        after.initial = initialAfter;
+        after.trailingArgs = new ArrayList<>();
+
+        assertFalse(DecodeEquality.sameCvs(before, after),
+                "an incomplete call whose span or string grew must not match the earlier decode");
     }
 }

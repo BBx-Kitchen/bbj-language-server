@@ -108,9 +108,11 @@ class ComposerApplyGuardSourceGuardTest {
                 "exactly six applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
                         + "hex-edit path used by both window composers, the SETOPTS replacement, the "
                         + "two SETOPTS-in-code replacements (absolute literal, safe chain -- #475), and "
-                        + "the CVS() replacement (#649)");
+                        + "the one CVS() replacement that serves both edit-in-place and completing an "
+                        + "unfinished call (#649)");
         assertEquals(6, replaceString.size(),
-                "exactly six replaceString( writes: one per guarded apply body");
+                "exactly six replaceString( writes: one per guarded apply body, with the CVS() write "
+                        + "shared by edit-in-place and completing an unfinished call (#649)");
 
         for (int applyIndex : applyIfUnchanged) {
             boolean hasFollowingReplace = replaceString.stream().anyMatch(r -> r > applyIndex);
@@ -141,7 +143,36 @@ class ComposerApplyGuardSourceGuardTest {
                 "both SETOPTS-in-code edit flows (absolute literal, safe chain -- #475) must each "
                         + "reach the guard with sameSetoptsInCode exactly once");
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameCvs"),
-                "the CVS() edit flow must reach the guard with sameCvs exactly once (#649)");
+                "both the CVS() edit-in-place and complete-the-call flows must reach the guard with "
+                        + "sameCvs through the one shared call site exactly once (#649)");
+    }
+
+    /**
+     * Scoped to just {@code openCvs}'s own method body (#649): proves the completion path added
+     * alongside edit-in-place did not open a second write site, by isolating the exact text between
+     * that method's declaration and the next method's, then counting within that slice alone rather
+     * than the whole file.
+     */
+    @Test
+    void theCvsCompletionReusesTheSingleGuardedCvsReplacement() {
+        String text = withoutCommentLines(readSource(LAUNCHER_SOURCE));
+
+        int start = text.indexOf("private static void openCvs(");
+        assertTrue(start >= 0, "openCvs( method declaration not found -- has it been renamed?");
+        int end = text.indexOf("private static void insertAt(", start);
+        assertTrue(end > start, "insertAt( method declaration not found after openCvs( -- has it moved?");
+        String openCvsBody = text.substring(start, end);
+
+        assertEquals(1, countOccurrences(openCvsBody, "applyIfUnchanged("),
+                "openCvs must reach the guard exactly once, for both edit-in-place and completion");
+        assertEquals(1, countOccurrences(openCvsBody, "replaceString("),
+                "openCvs must guard exactly one replacement write, for both edit-in-place and completion");
+        assertEquals(1, countOccurrences(openCvsBody, "insertAtCaret("),
+                "openCvs's compose-new branch must still insert at the caret exactly once");
+        assertEquals(1, countOccurrences(openCvsBody, "CvsComposeMode.of("),
+                "openCvs must route through CvsComposeMode.of exactly once");
+        assertTrue(countOccurrences(openCvsBody, "COMPLETE_CALL") >= 1,
+                "openCvs must name COMPLETE_CALL at least once -- the completion branch must be present");
     }
 
     @Test

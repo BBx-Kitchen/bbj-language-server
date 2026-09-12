@@ -373,11 +373,37 @@ class ComposerModelsJsonBoundaryTest {
 
         assertTrue(result.found);
         assertFalse(result.editable);
+        assertFalse(result.incomplete, "an envelope with no incomplete key must parse as incomplete: false");
         assertEquals(
             "The mask argument is not a sum of integer literals, so it cannot be safely decoded.", result.reason);
         assertEquals(5, result.edit.callStart);
         assertNull(result.initial, "a not-editable verdict must carry no initial payload");
         assertNull(result.trailingArgs, "a not-editable verdict must carry no trailingArgs");
+    }
+
+    /** An unfinished call's decode: `incomplete: true`, `editable: false`, no `reason`. */
+    @Test
+    void anIncompleteCvsDecodeCallResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,"editable":false,"incomplete":true,
+              "edit":{"callStart":5,"callEnd":9},
+              "initial":{"str":"","bits":[],"chars":""},
+              "trailingArgs":[]
+            }}""";
+
+        CvsDecodeResult result = parse(
+            "bbj/composer/cvs/decodeCall", CvsDecodeResult.class, envelope, DecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertFalse(result.editable);
+        assertTrue(result.incomplete);
+        assertNull(result.reason);
+        assertEquals(5, result.edit.callStart);
+        assertEquals(9, result.edit.callEnd);
+        assertEquals("", result.initial.str);
+        assertTrue(result.initial.bits.isEmpty());
+        assertTrue(result.trailingArgs.isEmpty());
     }
 
     @Test
