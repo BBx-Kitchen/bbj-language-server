@@ -133,28 +133,83 @@ public final class ComposerLauncher {
         int caret = editor.getCaretModel().getOffset();
         int line = doc.getLineNumber(caret);
         int lineStart = doc.getLineStartOffset(line);
-        String lineText = doc.getText(new TextRange(lineStart, doc.getLineEndOffset(line)));
         int col = caret - lineStart;
+        launchAt(project, editor, kind, line, col, false);
+    }
+
+    /**
+     * Opens any existing composer at an explicit {@code line}/{@code column} rather than the
+     * caret's own position, so a composer cue click (D-06) opens the composer for the call the
+     * cue actually marks, never wherever the caret happens to sit. {@code launch} above is now a
+     * thin wrapper that captures the caret's own line/column and calls this method with
+     * {@code fromCue = false}.
+     *
+     * <p>A {@code line} outside the live document's current line count means the target has gone
+     * stale (the document changed since the cue/caret position was captured): this renders
+     * {@link ComposerNotices#staleDocument(String)} and returns without decoding anything.
+     * {@code column} is clamped to the resolved line's length rather than treated as a second
+     * staleness signal, matching how a caret position past end-of-line is already tolerated
+     * elsewhere in this class.</p>
+     *
+     * <p>When {@code fromCue} is {@code true}, a decode result that comes back {@code null} or
+     * with {@code found == false} also renders {@link ComposerNotices#staleDocument(String)} and
+     * returns — a stale cue must never fall through to the compose-new path, unlike the ordinary
+     * caret-driven flow where "nothing found here" legitimately means "compose a new call".</p>
+     */
+    public static void launchAt(@NotNull Project project, @NotNull Editor editor, @NotNull Kind kind,
+                                int line, int column, boolean fromCue) {
+        Document doc = editor.getDocument();
+        if (line < 0 || line >= doc.getLineCount()) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+            return;
+        }
+        int lineStart = doc.getLineStartOffset(line);
+        String lineText = doc.getText(new TextRange(lineStart, doc.getLineEndOffset(line)));
+        int col = Math.max(0, Math.min(column, lineText.length()));
 
         ComposerFlow flow = new ComposerFlow(
                 ComposerLauncher::onEdt,
-                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, kind)),
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launchAt(project, editor, kind, line, col, fromCue)),
                 ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
         CompletableFuture<BbjComposerServer> serverFuture = BbjComposerService.server(project);
 
         switch (kind) {
             case MSGBOX -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.msgboxDecodeCall(new DecodeCallParams(lineText, col)),
-                    (server, catalogs, decoded) -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line, col));
+                    (server, catalogs, decoded) -> {
+                        if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                            return;
+                        }
+                        openMsgbox(project, editor, server, catalogs.msgbox, decoded, line, col);
+                    });
             case ADDWINDOW -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.addWindowDecodeCall(new DecodeCallParams(lineText, col)),
-                    (server, catalogs, decoded) -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line, col));
+                    (server, catalogs, decoded) -> {
+                        if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                            return;
+                        }
+                        openAddWindow(project, editor, server, catalogs.addwindow, decoded, line, col);
+                    });
             case ADDCHILDWINDOW -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)),
-                    (server, catalogs, decoded) -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line, col));
+                    (server, catalogs, decoded) -> {
+                        if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                            return;
+                        }
+                        openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line, col);
+                    });
             case SETOPTS -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.setoptsDecodeCall(new SetoptsDecodeCallParams(lineText)),
-                    (server, catalogs, decoded) -> openSetopts(project, editor, server, catalogs.setopts, decoded, line, col));
+                    (server, catalogs, decoded) -> {
+                        if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                            ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                            return;
+                        }
+                        openSetopts(project, editor, server, catalogs.setopts, decoded, line, col);
+                    });
             case SETOPTS_IN_CODE -> {
                 // The in-code decode needs document-wide context (a document URI, not just a line
                 // of text), so the caret's virtual file is captured here on the EDT rather than
@@ -168,9 +223,26 @@ public final class ComposerLauncher {
                 String uri = uriOf(file);
                 flow.launch(labelOf(kind), serverFuture,
                         (server, catalogs) -> server.setoptsDecodeInCode(new SetoptsInCodeDecodeParams(uri, line, col)),
-                        (server, catalogs, decoded) -> openSetoptsInCode(project, editor, server, catalogs.setopts, decoded, line, col, uri));
+                        (server, catalogs, decoded) -> {
+                            if (staleForCue(fromCue, decoded != null && decoded.found)) {
+                                ComposerNoticeRenderer.render(project, ComposerNotices.staleDocument(labelOf(kind)), null);
+                                return;
+                            }
+                            openSetoptsInCode(project, editor, server, catalogs.setopts, decoded, line, col, uri);
+                        });
             }
         }
+    }
+
+    /**
+     * Whether a decode result must be reported as a stale target rather than reaching the
+     * compose-new path: only when the launch came from a cue ({@code fromCue}) and the decode
+     * result says nothing was found there. A caret-driven launch's own "nothing found" case
+     * legitimately opens compose-new, so this predicate is a no-op ({@code false}) when
+     * {@code fromCue} is {@code false}.
+     */
+    private static boolean staleForCue(boolean fromCue, boolean found) {
+        return fromCue && !found;
     }
 
     /**

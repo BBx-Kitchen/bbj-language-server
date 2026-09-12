@@ -471,4 +471,23 @@ public final class ComposerModels {
         public String text;
         public List<String> lines;
     }
+
+    // ---- Composer cue (#650) ------------------------------------------------------------------
+
+    /**
+     * Mirrors the command argument a composer cue's LSP {@code Command} carries
+     * ({@code ComposerLensTarget} in {@code bbj-vscode/src/composer-lens-contract.ts} exactly):
+     * which composer, on which document, at which position. {@code kind} is kept as a plain wire
+     * string, never a Java enum, so a kind the server adds later parses rather than throws at the
+     * boundary — {@link ComposerLensKinds#launcherKindOf(String)} is what decides whether this
+     * plugin currently handles it.
+     */
+    public static final class ComposerLensTarget {
+        public String kind;
+        public String uri;
+        public int line;
+        public int character;
+
+        public ComposerLensTarget() {}
+    }
 }
