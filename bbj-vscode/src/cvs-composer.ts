@@ -13,6 +13,11 @@
  * This module owns the catalog, mask helpers, call composition, call location and edit-in-place
  * decode logic with NO `vscode` dependency, so it is unit-testable and shared by the VS Code UI
  * and the language server (and, through the language server, IntelliJ).
+ *
+ * An unfinished or mask-less call (`CVS(`, `CVS()`, `CVS(a$`, `CVS(a$,`, or the closed `CVS(a$)`)
+ * decodes to its own `incomplete` outcome (#649 gap closure) rather than a hard "not editable"
+ * reason: a composer may still build a whole call and replace the call's span, it just has
+ * nothing to pre-fill from a mask.
  */
 import { scanArgs, trimmedRange } from './addwindow-composer.js';
 import { validateStringField } from './msgbox-composer.js';
@@ -177,11 +182,10 @@ export function findCvsCallAt(line: string, character: number): CvsCallInfo | un
 // Edit-in-place decode verdict
 // ---------------------------------------------------------------------------------------------
 
-export type CvsNotEditableReason = 'missing-mask' | 'non-literal-mask' | 'unknown-bits';
+export type CvsNotEditableReason = 'non-literal-mask' | 'unknown-bits';
 
 /** Single source of truth for {@link CvsNotEditableReason}'s user-facing sentence. */
 export const CVS_NOT_EDITABLE_REASON_TEXT: Record<CvsNotEditableReason, string> = {
-    'missing-mask': 'This CVS() call has no mask argument, so there is nothing to compose from.',
     'non-literal-mask': 'The mask argument is not a sum of integer literals, so it cannot be safely decoded.',
     'unknown-bits': 'The mask uses bits this composer does not document, so it cannot be safely rewritten.',
 };
@@ -189,6 +193,13 @@ export const CVS_NOT_EDITABLE_REASON_TEXT: Record<CvsNotEditableReason, string> 
 export interface CvsDecodeCallResult {
     found: boolean;
     editable?: boolean;
+    /**
+     * The call has no mask argument yet — argument-less, still being typed (`CVS(`, `CVS(a$,`),
+     * or closed without one (`CVS(a$)`). A composer may build a whole call and replace `edit`'s
+     * span, but nothing is pre-filled from a mask. `editable` stays false for this outcome, so a
+     * consumer that does not read this flag keeps refusing to rewrite the call.
+     */
+    incomplete?: boolean;
     reason?: string;
     edit?: { callStart: number; callEnd: number };
     initial?: { str: string; bits: number[]; chars: string };
@@ -198,10 +209,27 @@ export interface CvsDecodeCallResult {
 const ERR_ARG = /^ERR\s*=/i;
 
 /**
+ * Split the arguments after the mask position into an optional `chars` value and any trailing
+ * (typically `ERR=`) arguments. Shared by the editable and incomplete decode outcomes so the
+ * `ERR=` rule exists exactly once.
+ */
+function splitCharsAndTrailingArgs(rest: string[]): { chars: string; trailingArgs: string[] } {
+    if (rest.length === 0) {
+        return { chars: '', trailingArgs: [] };
+    }
+    if (ERR_ARG.test(rest[0])) {
+        return { chars: '', trailingArgs: rest };
+    }
+    return { chars: rest[0], trailingArgs: rest.slice(1) };
+}
+
+/**
  * Decode the `CVS(...)` call at `character` (or the first call on the line, when `character` is
  * omitted) into an edit-in-place verdict. Only an integer-literal-sum mask within the documented
- * bits is editable; everything else is reported not-editable with a named reason, still carrying
- * `edit` so callers can locate and report on the call.
+ * bits is editable. A call with no mask yet — argument-less, still being typed, or closed without
+ * one — is reported `incomplete` instead, still carrying `edit`/`initial`/`trailingArgs` so a
+ * composer can replace the whole span. A non-literal or undocumented-bit mask is reported
+ * not-editable with a named reason, still carrying `edit` so callers can locate and report on it.
  */
 export function decodeCvsCall(line: string, character?: number): CvsDecodeCallResult {
     const call = character === undefined ? parseCvsCallOnLine(line) : findCvsCallAt(line, character);
@@ -213,7 +241,15 @@ export function decodeCvsCall(line: string, character?: number): CvsDecodeCallRe
     const args = call.args;
 
     if (args.length < 2 || args[1].trim() === '') {
-        return { found: true, editable: false, reason: CVS_NOT_EDITABLE_REASON_TEXT['missing-mask'], edit };
+        const { chars, trailingArgs } = splitCharsAndTrailingArgs(args.slice(2));
+        return {
+            found: true,
+            editable: false,
+            incomplete: true,
+            edit,
+            initial: { str: args[0] ?? '', bits: [], chars },
+            trailingArgs,
+        };
     }
 
     const sum = parseCvsLiteralSum(args[1]);
@@ -227,16 +263,7 @@ export function decodeCvsCall(line: string, character?: number): CvsDecodeCallRe
         return { found: true, editable: false, reason: CVS_NOT_EDITABLE_REASON_TEXT['unknown-bits'], edit };
     }
 
-    let chars = '';
-    let trailingArgs: string[] = [];
-    if (args.length > 2) {
-        if (ERR_ARG.test(args[2])) {
-            trailingArgs = args.slice(2);
-        } else {
-            chars = args[2];
-            trailingArgs = args.slice(3);
-        }
-    }
+    const { chars, trailingArgs } = splitCharsAndTrailingArgs(args.slice(2));
 
     return {
         found: true,

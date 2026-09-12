@@ -23,31 +23,54 @@ export function registerCvsComposer(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Build the `CvsPanelArg` and Code Action label for the CVS() call at `character` on `lineText`,
- * or `undefined` when there is none, or the call is present but not safely editable (a missing,
- * non-literal or undocumented-bit mask, which gets no lightbulb action). Shared by the Code Action provider and any future
- * cue dispatcher so both entry points decode the same call the same way.
+ * Build the `CvsPanelArg` and Code Action label for the CVS() call at `character` on `lineText`.
+ * Returns `undefined` when there is no call, or the call has a mask that is not safely editable
+ * (a non-literal or undocumented-bit mask, which gets no lightbulb action). An editable
+ * literal-sum call opens the "Configure CVS() options" edit-in-place panel; an unfinished or
+ * mask-less call (`incomplete`) opens the "Complete CVS() call…" panel instead, which composes a
+ * whole call and replaces the call's span. Shared by the Code Action provider and any future cue
+ * dispatcher so every entry point decodes the same call the same way.
  */
 export function cvsPanelArgAt(
     uri: string, line: number, lineText: string, character: number,
 ): { arg: CvsPanelArg; label: string } | undefined {
     const decoded = decodeCvsCall(lineText, character);
-    if (!decoded.found || !decoded.editable || !decoded.edit || !decoded.initial) return undefined;
 
-    const callText = lineText.slice(decoded.edit.callStart, decoded.edit.callEnd);
-    const arg: CvsPanelArg = {
-        target: {
-            uri,
-            line,
-            callStart: decoded.edit.callStart,
-            callEnd: decoded.edit.callEnd,
-            callText,
-            trailingArgs: decoded.trailingArgs ?? [],
-        },
-        initial: decoded.initial,
-    };
-    const label = `Configure CVS() options (${describeCvsMask(encodeCvsMask(decoded.initial.bits))})`;
-    return { arg, label };
+    if (decoded.found && decoded.editable && decoded.edit && decoded.initial) {
+        const callText = lineText.slice(decoded.edit.callStart, decoded.edit.callEnd);
+        const arg: CvsPanelArg = {
+            target: {
+                uri,
+                line,
+                callStart: decoded.edit.callStart,
+                callEnd: decoded.edit.callEnd,
+                callText,
+                trailingArgs: decoded.trailingArgs ?? [],
+            },
+            initial: decoded.initial,
+        };
+        const label = `Configure CVS() options (${describeCvsMask(encodeCvsMask(decoded.initial.bits))})`;
+        return { arg, label };
+    }
+
+    if (decoded.found && decoded.incomplete && decoded.edit && decoded.initial) {
+        const callText = lineText.slice(decoded.edit.callStart, decoded.edit.callEnd);
+        const arg: CvsPanelArg = {
+            target: {
+                uri,
+                line,
+                callStart: decoded.edit.callStart,
+                callEnd: decoded.edit.callEnd,
+                callText,
+                trailingArgs: decoded.trailingArgs ?? [],
+                incomplete: true,
+            },
+            initial: decoded.initial,
+        };
+        return { arg, label: 'Complete CVS() call…' };
+    }
+
+    return undefined;
 }
 
 class CvsCodeActionProvider implements vscode.CodeActionProvider {

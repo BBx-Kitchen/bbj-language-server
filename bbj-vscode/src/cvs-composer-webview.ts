@@ -10,14 +10,17 @@
  * Every mask, statement and validity value comes from `cvsPreview` — this module never computes
  * a mask itself.
  *
- * Two modes:
+ * Three modes:
  *   - NEW (no target): compose a fresh `CVS(...)` call and insert it at the cursor.
- *   - EDIT (from the lightbulb): the string argument is fixed/read-only; the panel edits only the
- *     bits/chars and replaces the call span in place, refusing to write if the call text changed
- *     since the panel opened.
+ *   - EDIT (from the lightbulb, target.incomplete falsy): the string argument is fixed/read-only;
+ *     the panel edits only the bits/chars and replaces the call span in place, refusing to write
+ *     if the call text changed since the panel opened.
+ *   - COMPLETING (from the lightbulb, target.incomplete true — #649 gap closure): the target call
+ *     has no mask yet, so the string stays editable and required; the panel composes a whole call
+ *     and replaces the unfinished call's span, through the same staleness guard as EDIT.
  */
 import * as vscode from 'vscode';
-import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview } from './cvs-composer.js';
+import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview, findCvsCalls } from './cvs-composer.js';
 import { getNonce } from './webview-nonce.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
@@ -29,6 +32,8 @@ export interface CvsEditTarget {
     /** The call's own text at [callStart, callEnd) when the composer opened. */
     callText: string;
     trailingArgs: string[];
+    /** The target call has no mask yet — completing mode replaces the whole span with a new call. */
+    incomplete?: boolean;
 }
 
 export interface CvsPanelArg {
@@ -44,21 +49,31 @@ interface Selection {
     assignTo: string;
 }
 
-/** True when `target`'s captured call span still reads exactly `target.callText` in `currentLineText`. */
+/**
+ * True when `target`'s captured call span still reads exactly `target.callText` in
+ * `currentLineText` AND a CVS call still starts and ends at exactly that span. The second check
+ * catches an unterminated call the user kept typing (its span runs to the line end, so a growing
+ * call keeps the old text as a prefix and would otherwise pass the slice comparison alone).
+ */
 export function cvsCallStillMatches(currentLineText: string, target: CvsEditTarget): boolean {
-    return currentLineText.slice(target.callStart, target.callEnd) === target.callText;
+    if (currentLineText.slice(target.callStart, target.callEnd) !== target.callText) {
+        return false;
+    }
+    return findCvsCalls(currentLineText).some(c => c.callStart === target.callStart && c.callEnd === target.callEnd);
 }
 
 const STALE_CALL_TEXT = 'The CVS() call changed since the composer opened; nothing was applied.';
 
 export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: CvsPanelArg): void {
-    const editMode = !!arg?.target;
     const target = arg?.target;
+    const completing = !!target?.incomplete;
+    const editMode = !!target && !completing;
 
     // For a NEW statement, capture the target editor + position now (the webview steals focus).
+    // Completing mode also has no cursor-insert position: it replaces `target`'s captured span.
     let insertUri: vscode.Uri | undefined;
     let insertPosition: vscode.Position | undefined;
-    if (!editMode) {
+    if (!target) {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showInformationMessage('Open a BBj file first, then run the CVS() composer.');
@@ -71,18 +86,22 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
     const initial = arg?.initial ?? { str: 'a$', bits: [], chars: '' };
     const trailingArgs = target?.trailingArgs ?? [];
 
+    const title = completing ? 'Complete CVS() call' : (editMode ? 'Edit CVS()' : 'CVS() Composer');
     const panel = vscode.window.createWebviewPanel(
         'bbjCvsComposer',
-        editMode ? 'Edit CVS()' : 'CVS() Composer',
+        title,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
         { enableScripts: true, retainContextWhenHidden: true },
     );
     panel.webview.html = getHtml(panel.webview);
 
     // Single source of truth: the mask/compose/validate logic lives in the shared pure module,
-    // which the IntelliJ client reaches over the LS.
+    // which the IntelliJ client reaches over the LS. Completing mode passes editMode: false (the
+    // string is validated as required, same as a NEW call) but omits assignTo — the composed call
+    // replaces the whole unfinished call in place, never gets an `x$ = ` prefix of its own.
     const build = (sel: Selection) => cvsPreview({
-        str: sel.str, bits: sel.bits, chars: sel.chars, assignTo: sel.assignTo,
+        str: sel.str, bits: sel.bits, chars: sel.chars,
+        assignTo: completing ? undefined : sel.assignTo,
         trailingArgs, editMode,
     });
 
@@ -92,6 +111,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
                 panel.webview.postMessage({
                     type: 'init',
                     editMode,
+                    completing,
                     catalogs: { bits: CVS_BITS, charsTooltip: CVS_CHARS_TOOLTIP },
                     initial,
                 });
@@ -106,7 +126,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
                 const r = build(msg.payload);
                 if (!r.valid) break; // guard; the webview also disables the button
                 const edit = new vscode.WorkspaceEdit();
-                if (editMode && target) {
+                if (target) {
                     const document = vscode.workspace.textDocuments.find(d => d.uri.toString() === target.uri);
                     if (!document || !cvsCallStillMatches(document.lineAt(target.line).text, target)) {
                         vscode.window.showWarningMessage(STALE_CALL_TEXT);
@@ -219,6 +239,7 @@ function getHtml(webview: vscode.Webview): string {
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   let editMode = false;
+  let completing = false;
 
   function readForm() {
     const bits = Array.from(document.querySelectorAll('#bits input:checked')).map(c => Number(c.value));
@@ -238,12 +259,15 @@ function getHtml(webview: vscode.Webview): string {
     const m = e.data;
     if (m.type === 'init') {
       editMode = m.editMode;
-      $('heading').textContent = editMode ? 'Edit CVS()' : 'CVS() Composer';
+      completing = m.completing;
+      $('heading').textContent = completing ? 'Complete CVS() call' : (editMode ? 'Edit CVS()' : 'CVS() Composer');
       const init = m.initial;
       $('str').value = init.str;
       $('str').readOnly = editMode;
-      $('str-hint').textContent = editMode ? 'The string argument is kept verbatim.' : '';
-      if (editMode) {
+      $('str-hint').textContent = editMode
+        ? 'The string argument is kept verbatim.'
+        : (completing ? 'Composing replaces the unfinished CVS() call.' : '');
+      if (editMode || completing) {
         $('assignTo-row').classList.add('hidden');
       } else {
         $('assignTo').value = '';
