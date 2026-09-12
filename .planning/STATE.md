@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 90
 current_phase_name: Composer Robustness & IntelliJ Composer Performance
 status: executing
-stopped_at: Completed 90-05-PLAN.md
-last_updated: "2026-09-12T20:57:23.493Z"
+stopped_at: Completed 90-06-PLAN.md
+last_updated: "2026-09-12T21:07:12.800Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 90 execution started
-state_head: b198d7fb809f013a26dc9f440558cb235ca3346a
+state_head: 547b07fac9e303e533a9b04ffe996202e053e32c
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 58
-  completed_plans: 55
+  completed_plans: 56
   percent: 67
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 90 execution started
 
@@ -194,6 +194,7 @@ Last activity: 2026-09-12 — Phase 90 execution started
 | Phase 90 P03 | 25min | 2 tasks | 9 files |
 | Phase 90 P04 | 25min | 2 tasks | 5 files |
 | Phase 90 P05 | 20min | 3 tasks | 13 files |
+| Phase 90 P06 | 30min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -344,6 +345,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90]: 90-03: ComposerHandleCache is package-private and memoizes both the server proxy and catalogs, cleared on any BbjServerStatusListener.TOPIC status change and on any ComposerFlow launch failure — DISC-11 (#612): identity-checked invalidation guarantees a resolution started before a clear is never served after it; BbjComposerService.server(project) stays an unchanged static facade so BbjCompileAction/BbjRefreshJavaClassesAction need no edit
 - [Phase 90]: Task 1 added only MSGBOX_SOURCE to DEBOUNCED_DIALOG_SOURCES (not all three dialogs at once), matching the plan's per-task scope
 - [Phase 90]: 90-05: registerPanelMessageHandler ties every composer panel's message subscription to panel.onDidDispose instead of the extension context; a source-discovered test finds panel modules by scanning src/ for createWebviewPanel(, not a hard-coded list, so a future seventh composer is covered automatically
+- [Phase 90]: Phase 90: 90-06: AddWindowPreview/AddChildWindowPreview gain per-field error strings and valid, mirroring MsgboxPreview's precedent; errorText(String) reads each p.<field>Error exactly once so the source guard's per-field occurrence count holds; setOKActionEnabled(p.valid) replaces the unconditional enable in both dialogs' apply()
 
 ### Tech Debt
 
@@ -411,8 +413,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T20:57:23.170Z
-Stopped at: Completed 90-05-PLAN.md
+Last session: 2026-09-12T21:07:04.511Z
+Stopped at: Completed 90-06-PLAN.md
 Resume file: None
 
 Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
