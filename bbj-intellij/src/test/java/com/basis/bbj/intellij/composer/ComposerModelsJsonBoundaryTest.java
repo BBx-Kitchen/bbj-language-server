@@ -235,6 +235,31 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(1, result.trailingArgs.size());
         assertEquals(1, result.initial.flags.size());
         assertEquals(512L, result.initial.flags.get(0));
+        assertFalse(result.incomplete, "an envelope with no incomplete key must parse false, not null");
+    }
+
+    /** An unfinished call (DISC-08): {@code MSGBOX(} with no message typed yet. */
+    @Test
+    void anIncompleteMsgboxDecodeCallResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,"incomplete":true,"edit":{"callStart":4,"callEnd":11},"trailingArgs":[],
+              "initial":{"message":"","title":"","buttonSet":0,"icon":0,"defaultButton":0,"flags":[],
+                "customButtons":[]},"hasOptions":false
+            }}""";
+
+        MsgboxDecodeResult result = parse("bbj/composer/msgbox/decodeCall", MsgboxDecodeResult.class, envelope,
+            DecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertTrue(result.incomplete);
+        assertFalse(result.hasOptions);
+        assertNull(result.replace);
+        assertEquals(4, result.edit.callStart);
+        assertEquals(11, result.edit.callEnd);
+        assertEquals("", result.initial.message);
+        assertEquals(0, result.initial.flags.size());
+        assertEquals(0, result.initial.customButtons.size());
     }
 
     /** Compose-and-replace mode (#648): {@code replace} carries the original text and the banner. */

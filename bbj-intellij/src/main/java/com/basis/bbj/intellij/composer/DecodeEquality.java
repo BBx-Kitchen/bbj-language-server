@@ -47,10 +47,11 @@ public final class DecodeEquality {
     /**
      * True when both are null, false when exactly one is null, and otherwise a field-wise
      * comparison of {@code found}, the {@code edit} payload ({@code callStart}/{@code callEnd}), the
-     * top-level {@code trailingArgs}, and the whole {@code initial} payload ({@code message},
+     * top-level {@code trailingArgs}, the whole {@code initial} payload ({@code message},
      * {@code title}, {@code assignTo}, {@code buttonSet}, {@code icon}, {@code defaultButton},
      * {@code flags}, {@code customButtons}, {@code trailingArgs}, {@code editMode} and
-     * {@code useConstants}).
+     * {@code useConstants}), {@code hasOptions} and {@code incomplete} -- the last so a completion
+     * whose unfinished call grew or changed while the dialog was open can never pass the guard.
      */
     public static boolean sameMsgbox(MsgboxDecodeResult a, MsgboxDecodeResult b) {
         if (a == null || b == null) {
@@ -61,7 +62,8 @@ public final class DecodeEquality {
                 && Objects.equals(a.trailingArgs, b.trailingArgs)
                 && sameMsgboxInitial(a.initial, b.initial)
                 && sameMsgboxReplace(a.replace, b.replace)
-                && Objects.equals(a.hasOptions, b.hasOptions);
+                && Objects.equals(a.hasOptions, b.hasOptions)
+                && a.incomplete == b.incomplete;
     }
 
     private static boolean sameMsgboxReplace(MsgboxReplace a, MsgboxReplace b) {

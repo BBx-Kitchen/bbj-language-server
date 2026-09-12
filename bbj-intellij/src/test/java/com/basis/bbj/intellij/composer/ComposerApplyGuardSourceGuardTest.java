@@ -126,7 +126,8 @@ class ComposerApplyGuardSourceGuardTest {
         String text = readSource(LAUNCHER_SOURCE);
 
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameMsgbox"),
-                "the MSGBOX edit flow must reach the guard with sameMsgbox exactly once");
+                "the one MSGBOX call site must reach the guard with sameMsgbox exactly once, serving "
+                        + "edit-in-place, compose-and-replace and completing an unfinished call alike");
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameAddWindow"),
                 "the addWindow edit flow must reach the guard with sameAddWindow exactly once");
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameAddChildWindow"),
@@ -173,6 +174,35 @@ class ComposerApplyGuardSourceGuardTest {
                 "openCvs must route through CvsComposeMode.of exactly once");
         assertTrue(countOccurrences(openCvsBody, "COMPLETE_CALL") >= 1,
                 "openCvs must name COMPLETE_CALL at least once -- the completion branch must be present");
+    }
+
+    /**
+     * Scoped to just {@code openMsgbox}'s own method body: proves the completion path added
+     * alongside edit-in-place and compose-and-replace did not open a second write site, by
+     * isolating the exact text between that method's declaration and the next method's, then
+     * counting within that slice alone rather than the whole file.
+     */
+    @Test
+    void theMsgboxCompletionReusesTheSingleGuardedMsgboxReplacement() {
+        String text = withoutCommentLines(readSource(LAUNCHER_SOURCE));
+
+        int start = text.indexOf("private static void openMsgbox(");
+        assertTrue(start >= 0, "openMsgbox( method declaration not found -- has it been renamed?");
+        int end = text.indexOf("private static StaleEditGuard.DocumentView documentViewOf(", start);
+        assertTrue(end > start, "documentViewOf( method declaration not found after openMsgbox( -- has it moved?");
+        String openMsgboxBody = text.substring(start, end);
+
+        assertEquals(1, countOccurrences(openMsgboxBody, "applyIfUnchanged("),
+                "openMsgbox must reach the guard exactly once, for edit-in-place, compose-and-replace "
+                        + "and completion alike");
+        assertEquals(1, countOccurrences(openMsgboxBody, "replaceString("),
+                "openMsgbox must guard exactly one replacement write, for every replace mode");
+        assertEquals(1, countOccurrences(openMsgboxBody, "insertAtCaret("),
+                "openMsgbox's compose-new branch must still insert at the caret exactly once");
+        assertEquals(1, countOccurrences(openMsgboxBody, "MsgboxComposeMode.of("),
+                "openMsgbox must route through MsgboxComposeMode.of exactly once");
+        assertTrue(countOccurrences(openMsgboxBody, "COMPLETE_CALL") >= 1,
+                "openMsgbox must name COMPLETE_CALL at least once -- the completion branch must be present");
     }
 
     @Test

@@ -66,6 +66,7 @@ class DecodeEqualityTest {
         replace.banner = "Could not decode this options expression — composing will replace it.";
         decoded.replace = replace;
         decoded.hasOptions = true;
+        decoded.incomplete = false;
         return decoded;
     }
 
@@ -97,6 +98,32 @@ class DecodeEqualityTest {
             decoded.replace = replace;
         }
         decoded.hasOptions = src.hasOptions;
+        decoded.incomplete = src.incomplete;
+        return decoded;
+    }
+
+    /** An incomplete decode of an unfinished call -- no message/title typed yet beyond {@code message}. */
+    private static MsgboxDecodeResult baseIncompleteMsgbox(int callEnd, String message) {
+        MsgboxDecodeResult decoded = new MsgboxDecodeResult();
+        decoded.found = true;
+        decoded.incomplete = true;
+        MsgboxEdit edit = new MsgboxEdit();
+        edit.callStart = 4;
+        edit.callEnd = callEnd;
+        decoded.edit = edit;
+        decoded.trailingArgs = new ArrayList<>();
+        MsgboxPreviewInput initial = new MsgboxPreviewInput();
+        initial.message = message;
+        initial.title = "";
+        initial.buttonSet = 0;
+        initial.icon = 0;
+        initial.defaultButton = 0;
+        initial.flags = new ArrayList<>();
+        initial.customButtons = new ArrayList<>();
+        initial.trailingArgs = new ArrayList<>();
+        decoded.initial = initial;
+        decoded.replace = null;
+        decoded.hasOptions = false;
         return decoded;
     }
 
@@ -249,7 +276,8 @@ class DecodeEqualityTest {
                 d -> d.initial.useConstants = !d.initial.useConstants,
                 d -> d.replace.originalOptions = "mutated%",
                 d -> d.replace.banner = "mutated banner",
-                d -> d.hasOptions = !d.hasOptions);
+                d -> d.hasOptions = !d.hasOptions,
+                d -> d.incomplete = !d.incomplete);
 
         for (Consumer<MsgboxDecodeResult> mutator : mutators) {
             MsgboxDecodeResult a = baseMsgbox();
@@ -302,6 +330,22 @@ class DecodeEqualityTest {
         b.replace.originalOptions = "different%";
         assertFalse(DecodeEquality.sameMsgbox(a, b),
                 "a different replace.originalOptions must not match, even with everything else identical");
+    }
+
+    @Test
+    void twoIncompleteMsgboxDecodesOfTheSameUnfinishedCallMatch() {
+        MsgboxDecodeResult a = baseIncompleteMsgbox(11, "");
+        MsgboxDecodeResult b = baseIncompleteMsgbox(11, "");
+        assertTrue(DecodeEquality.sameMsgbox(a, b),
+                "two independently built incomplete decodes of the same unfinished call must match");
+    }
+
+    @Test
+    void anIncompleteMsgboxDecodeWhoseCallGrewDoesNotMatch() {
+        MsgboxDecodeResult before = baseIncompleteMsgbox(11, "");
+        MsgboxDecodeResult after = baseIncompleteMsgbox(16, "\"Hi\"");
+        assertFalse(DecodeEquality.sameMsgbox(before, after),
+                "an incomplete call whose span or message grew must not match the earlier decode");
     }
 
     @Test
