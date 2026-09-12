@@ -151,14 +151,15 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     @Test
     void composerServiceStartsTheServerBeforeResolvingTheLanguageServerProxy() {
         String text = readGuardedSource(COMPOSER_SERVICE_SOURCE);
-        String body = bodyOf(text, "public static @NotNull CompletableFuture<BbjComposerServer> server(@NotNull Project project)");
+        String body = bodyOf(text,
+            "private static @NotNull CompletableFuture<BbjComposerServer> resolveServer(@NotNull Project project)");
 
         int startIndex = body.indexOf(".start(");
         int getLanguageServerIndex = body.indexOf(".getLanguageServer(");
-        assertTrue(startIndex >= 0, ".start( not found in server(...)'s body");
-        assertTrue(getLanguageServerIndex >= 0, ".getLanguageServer( not found in server(...)'s body");
+        assertTrue(startIndex >= 0, ".start( not found in resolveServer(...)'s body");
+        assertTrue(getLanguageServerIndex >= 0, ".getLanguageServer( not found in resolveServer(...)'s body");
         assertTrue(startIndex < getLanguageServerIndex,
-            "server(...) must call the manager's start( before getLanguageServer(");
+            "resolveServer(...) must call the manager's start( before getLanguageServer(");
     }
 
     @Test

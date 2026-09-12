@@ -270,6 +270,9 @@
         <!-- Project-level java-interop health check service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjJavaInteropService"/>
 
+        <!-- Project-level composer server/catalogs handle cache (#612) -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.composer.BbjComposerService"/>
+
         <!-- Status bar widget -->
         <statusBarWidgetFactory
             id="BbjLanguageServerStatus"
