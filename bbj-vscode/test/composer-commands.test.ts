@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { composerHandlers, registerComposerRequests } from '../src/language/composer-commands';
+import { decodeMsgboxCall } from '../src/msgbox-composer';
 
 // Thin pass-through handlers: these tests assert the request layer faithfully re-exposes the pure
 // composer API (the arithmetic itself is covered by msgbox-composer / addwindow-composer tests).
@@ -245,6 +246,18 @@ describe('composer LS command layer (#433)', () => {
             selection: { bits: [], maskComma: '', maskDot: '', rawTail: 'ZZ' },
         }) as any;
         expect(invalidTailPreview.hexDigits).toBe(originalWithTail);
+    });
+
+    test('msgbox/decodeCall delegates to decodeMsgboxCall for literal, constant-sum and replace-mode lines (#648)', () => {
+        const cases: Array<{ line: string; character?: number }> = [
+            { line: '    ret! = MSGBOX("Are you sure?", 36, "Confirm")', character: undefined },
+            { line: 'r = MSGBOX("Hi", BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_ICON_QUESTION, "T")', character: undefined },
+            { line: 'r = MSGBOX("Hi", flags%, "T", "B1", TIM=5)', character: undefined },
+        ];
+        for (const { line, character } of cases) {
+            const viaHandler = call('bbj/composer/msgbox/decodeCall', { line, character });
+            expect(viaHandler).toEqual(decodeMsgboxCall(line, character));
+        }
     });
 
     test('registerComposerRequests wires every handler onto the connection', () => {

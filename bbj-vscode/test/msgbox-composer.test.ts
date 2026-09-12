@@ -3,7 +3,8 @@ import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
     stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
     splitButtonsAndTrailing, DEFAULT_STATE, resolvesToString, validateStringField, quoteAsStringLiteral,
-    msgboxPreview, msgboxConstantsExpr,
+    msgboxPreview, msgboxConstantsExpr, parseMsgboxOptionsSum, MSGBOX_REPLACE_BANNER_TEXT, decodeMsgboxCall,
+    BUTTON_SETS, ICONS, DEFAULT_BUTTONS,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -226,8 +227,10 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(parseMsgboxCallOnLine('MSGBOX()')!.optionInsertOffset).toBeUndefined();
     });
 
-    test('parse yields no exprRange for a non-literal expr', () => {
-        const info = parseMsgboxCallOnLine('MSGBOX("hi", 32+4)')!;
+    test('parse yields no exprRange for a non-literal, non-constant-sum expr', () => {
+        // `32+4` is now a recognized integer-literal sum (#648, D-10) — use an arithmetic
+        // operator the recognizer deliberately rejects to keep testing the "no exprRange" case.
+        const info = parseMsgboxCallOnLine('MSGBOX("hi", 32*4)')!;
         expect(info).toBeDefined();
         expect(info.exprValue).toBeUndefined();
         expect(info.exprRange).toBeUndefined();
@@ -252,5 +255,82 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(findMsgboxCallAt(line, line.indexOf(' else ') + 3)).toBeUndefined();
         // cursor before the first call (on the IF) -> no call
         expect(findMsgboxCallAt(line, 0)).toBeUndefined();
+    });
+});
+
+describe('MSGBOX options recognizer and shared decode (#648)', () => {
+    test('parseMsgboxOptionsSum accepts integer sums and BBjMsgBox constant sums, case-insensitively', () => {
+        expect(parseMsgboxOptionsSum('36')).toBe(36);
+        expect(parseMsgboxOptionsSum('4 + 32')).toBe(36);
+        expect(parseMsgboxOptionsSum('BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_ICON_QUESTION')).toBe(36);
+        expect(parseMsgboxOptionsSum('bbjmsgbox.msgbox_buttons_yes_no + 32')).toBe(36);
+    });
+
+    test('parseMsgboxOptionsSum returns undefined for anything outside the closed grammar', () => {
+        const rejected = [
+            'flags%', 'obj!.getFlags()', '(4+32)', '36-4', '4*9',
+            'BBjMsgBox.NOT_A_CONSTANT', 'Other.MSGBOX_ICON_STOP', '4++32', '+4', '', '   ',
+        ];
+        for (const text of rejected) {
+            expect(parseMsgboxOptionsSum(text)).toBeUndefined();
+        }
+    });
+
+    test('parseMsgboxOptionsSum round-trips every catalog combination of msgboxConstantsExpr', () => {
+        for (const b of BUTTON_SETS) {
+            for (const icon of ICONS) {
+                for (const def of DEFAULT_BUTTONS) {
+                    for (const flags of [[], [65536], [32768], [131072], [65536, 32768, 131072]]) {
+                        const state = stateFromSelection({ buttonSet: b.value, icon: icon.value, defaultButton: def.value, flags });
+                        expect(parseMsgboxOptionsSum(msgboxConstantsExpr(state))).toBe(encode(state));
+                    }
+                }
+            }
+        }
+    });
+
+    test('decodeMsgboxCall decodes an integer-literal call the same as before, with no replace', () => {
+        const line = 'r = MSGBOX("Hi", 36, "T")';
+        const r = decodeMsgboxCall(line, line.indexOf('36'));
+        expect(r.found).toBe(true);
+        expect(r.initial?.message).toBe('"Hi"');
+        expect(r.initial?.buttonSet).toBe(4);
+        expect(r.initial?.icon).toBe(32);
+        expect(line.slice(r.edit!.callStart, r.edit!.callEnd)).toBe('MSGBOX("Hi", 36, "T")');
+        expect(r.replace).toBeUndefined();
+    });
+
+    test('decodeMsgboxCall decodes a BBjMsgBox constant-sum call like a literal, with no replace', () => {
+        const line = 'r = MSGBOX("Hi", BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_ICON_QUESTION, "T")';
+        const r = decodeMsgboxCall(line);
+        expect(r.found).toBe(true);
+        expect(r.initial?.buttonSet).toBe(4);
+        expect(r.initial?.icon).toBe(32);
+        const callText = line.slice(r.edit!.callStart, r.edit!.callEnd);
+        expect(callText.startsWith('MSGBOX(')).toBe(true);
+        expect(callText.endsWith(')')).toBe(true);
+        expect(r.replace).toBeUndefined();
+    });
+
+    test('decodeMsgboxCall opens compose-and-replace mode for an undecodable options expression', () => {
+        const line = 'r = MSGBOX("Hi", flags%, "T", "B1", TIM=5)';
+        const r = decodeMsgboxCall(line);
+        expect(r.found).toBe(true);
+        const callText = line.slice(r.edit!.callStart, r.edit!.callEnd);
+        expect(callText.startsWith('MSGBOX(')).toBe(true);
+        expect(r.initial?.message).toBe('"Hi"');
+        expect(r.initial?.title).toBe('"T"');
+        expect(r.initial?.buttonSet).toBe(0);
+        expect(r.initial?.flags).toEqual([]);
+        expect(r.initial?.customButtons).toEqual([]);
+        expect(r.trailingArgs).toEqual(['"B1"', 'TIM=5']);
+        expect(r.replace).toEqual({ originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT });
+    });
+
+    test('decodeMsgboxCall keeps the existing add-options payload for a bare call, and not-found for no call', () => {
+        const bare = decodeMsgboxCall('MSGBOX("Hi")');
+        expect(bare.found).toBe(true);
+        expect(bare.replace).toBeUndefined();
+        expect(decodeMsgboxCall('x = foo(1, 2)')).toEqual({ found: false });
     });
 });
