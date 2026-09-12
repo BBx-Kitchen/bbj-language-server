@@ -39,7 +39,7 @@ public final class ComposerLensKinds {
 
     /**
      * The {@link ComposerLauncher.Kind} a cue's wire {@code kind} string routes to, or empty for
-     * a kind this plugin does not yet handle (e.g. {@code "cvs"}, until plan 89-12 wires CVS),
+     * a kind this plugin does not yet handle (e.g. {@code "cvs"}, until a CVS launcher kind exists),
      * an unrecognized string, {@code null} or blank.
      */
     public static Optional<ComposerLauncher.Kind> launcherKindOf(String wireKind) {
