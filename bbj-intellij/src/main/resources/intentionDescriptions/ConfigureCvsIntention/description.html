@@ -8,10 +8,17 @@ of integer literals; the string argument being converted is kept verbatim and sh
 Pressing OK replaces the call in place; Cancel changes nothing.
 </p>
 <p>
-A mask built from a variable or an expression cannot be edited in place -- the composer opens
-with the server's reason instead of a blank or guessed value. Available when the caret is inside
-such a call. The BBj language server must be running, because the composer decodes and re-encodes
-the call through it (#649).
+On a call that is still being typed -- <code>CVS(</code>, <code>CVS()</code> with the editor's
+auto-inserted closing parenthesis, <code>CVS(name$</code> or <code>CVS(name$)</code> -- the
+composer opens as <code>Complete CVS() call</code>. The string argument is prefilled and editable
+and there is no assignment field. Applying replaces the unfinished call with one complete
+<code>CVS(...)</code> call; nothing is written if the line changed meanwhile.
+</p>
+<p>
+A mask built from a variable or an expression, or one that uses undocumented bits, cannot be
+edited in place -- no dialog opens, and a notice shows the language server's reason instead.
+Available when the caret is inside such a call. The BBj language server must be running, because
+the composer decodes and re-encodes the call through it (#649).
 </p>
 </body>
 </html>

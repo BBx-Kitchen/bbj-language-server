@@ -48,6 +48,8 @@ public final class ConfigureCvsIntention implements IntentionAction {
         // the popup renders this summary itself, so it never falls back to the description resource
         return new IntentionPreviewInfo.Html(
                 "<p>Opens the BBj visual composer for the <code>CVS(...)</code> call under the "
-                        + "caret, prefilled when its mask is a sum of integer literals.</p>");
+                        + "caret. It is prefilled when the mask is a sum of integer literals, or "
+                        + "from the string argument when the call has no mask yet -- in that case "
+                        + "applying replaces the unfinished call.</p>");
     }
 }
