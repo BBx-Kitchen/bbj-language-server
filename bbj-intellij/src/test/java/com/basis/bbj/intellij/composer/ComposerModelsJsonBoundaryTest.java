@@ -303,6 +303,59 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(2L, result.eventMask);
         assertEquals("Child", result.render.title);
         assertTrue(result.render.badges.isEmpty());
+        // This envelope carries neither error keys nor valid -- the documented fail-closed default.
+        assertNull(result.idError);
+        assertFalse(result.valid);
+    }
+
+    @Test
+    void anAddChildWindowPreviewCarryingFieldErrorsParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "flags":1,"eventMask":null,"flagsHex":"$00000001$","eventHex":null,
+              "statement":"window!.addChildWindow(\\"101\\", 10, 10, 200, 150, \\"Child\\", $00000001$, sysgui!.getAvailableContext())",
+              "flagsSummary":"Border","eventSummary":"(default)",
+              "render":{"borderless":false,"recessed":false,"raised":false,"fieldset":false,
+                "hScroll":false,"vScroll":false,"invisible":false,"disabled":false,"docked":false,
+                "badges":[],"title":"Child"},
+              "idError":"Not a number — remove the quotes: 101","titleError":null,"valid":false
+            }}""";
+
+        AddChildWindowPreview result = parse(
+            "bbj/composer/addchildwindow/preview", AddChildWindowPreview.class, envelope,
+            AddChildWindowPreviewParams.class);
+
+        assertEquals("Not a number — remove the quotes: 101", result.idError);
+        assertFalse(result.valid);
+    }
+
+    @Test
+    void aValidAddChildWindowPreviewWithEveryErrorOmittedParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "flags":1,"eventMask":null,"flagsHex":"$00000001$","eventHex":null,
+              "statement":"child! = window!.addChildWindow(101, 10, 10, 200, 150, \\"Child\\", $00000001$, sysgui!.getAvailableContext())",
+              "flagsSummary":"Border","eventSummary":"(default)",
+              "render":{"borderless":false,"recessed":false,"raised":false,"fieldset":false,
+                "hScroll":false,"vScroll":false,"invisible":false,"disabled":false,"docked":false,
+                "badges":[],"title":"Child"},
+              "valid":true
+            }}""";
+
+        AddChildWindowPreview result = parse(
+            "bbj/composer/addchildwindow/preview", AddChildWindowPreview.class, envelope,
+            AddChildWindowPreviewParams.class);
+
+        assertTrue(result.valid);
+        assertNull(result.receiverError);
+        assertNull(result.windowError);
+        assertNull(result.idError);
+        assertNull(result.contextError);
+        assertNull(result.titleError);
+        assertNull(result.xError);
+        assertNull(result.yError);
+        assertNull(result.widthError);
+        assertNull(result.heightError);
     }
 
     @Test

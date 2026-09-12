@@ -25,6 +25,10 @@ class ComposerFieldValidationSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "AddWindowComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path ADD_CHILD_WINDOW_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "AddChildWindowComposerDialog.java")
+            .toAbsolutePath();
+
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
             fail("Guarded source file not found at " + path);
@@ -88,6 +92,28 @@ class ComposerFieldValidationSourceGuardTest {
         for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
             assertEquals(0, countOccurrences(text, fragment),
                     "AddWindowComposerDialog must hold no validation message of its own (\"" + fragment + "\")");
+        }
+    }
+
+    @Test
+    void theAddChildWindowDialogGatesOkOnTheServerVerdictAndRendersEveryFieldError() {
+        String text = withoutCommentLines(readSource(ADD_CHILD_WINDOW_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "setOKActionEnabled(p.valid)"),
+                "AddChildWindowComposerDialog must gate OK on the server's valid verdict exactly once");
+        assertEquals(0, countOccurrences(text, "setOKActionEnabled(true)"),
+                "AddChildWindowComposerDialog must never enable OK unconditionally");
+
+        for (String field : new String[]{
+                "p.receiverError", "p.windowError", "p.idError", "p.contextError", "p.titleError", "p.xError",
+                "p.yError", "p.widthError", "p.heightError"}) {
+            assertEquals(1, countOccurrences(text, field),
+                    "AddChildWindowComposerDialog must read " + field + " exactly once");
+        }
+
+        for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
+            assertEquals(0, countOccurrences(text, fragment),
+                    "AddChildWindowComposerDialog must hold no validation message of its own (\"" + fragment + "\")");
         }
     }
 }

@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -79,6 +80,15 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
     private final JBTextField statementField = new JBTextField();
     private final JBLabel flagsSummary = new JBLabel();
     private final JBLabel eventSummary = new JBLabel();
+    private final JBLabel receiverError = errorLabel();
+    private final JBLabel windowError = errorLabel();
+    private final JBLabel idError = errorLabel();
+    private final JBLabel contextError = errorLabel();
+    private final JBLabel titleError = errorLabel();
+    private final JBLabel xError = errorLabel();
+    private final JBLabel yError = errorLabel();
+    private final JBLabel widthError = errorLabel();
+    private final JBLabel heightError = errorLabel();
     private JPanel geometryPanel;
 
     private final boolean editMode;
@@ -163,15 +173,15 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         // Statement fields — create flow only; in edit mode we rewrite just the hex tokens in place.
         geometryPanel = new JPanel(new GridLayout(0, 4, JBUI.scale(6), JBUI.scale(4)));
         geometryPanel.setBorder(BorderFactory.createTitledBorder("Statement"));
-        geometryPanel.add(labeled("Assign to", receiver));
-        geometryPanel.add(labeled("Parent window expr", window));
-        geometryPanel.add(labeled("ID", id));
-        geometryPanel.add(labeled("Context expr", context));
-        geometryPanel.add(labeled("Title expr", title));
-        geometryPanel.add(labeled("x", x));
-        geometryPanel.add(labeled("y", y));
-        geometryPanel.add(labeled("width", width));
-        geometryPanel.add(labeled("height", height));
+        geometryPanel.add(labeledWithError("Assign to", receiver, receiverError));
+        geometryPanel.add(labeledWithError("Parent window expr", window, windowError));
+        geometryPanel.add(labeledWithError("ID", id, idError));
+        geometryPanel.add(labeledWithError("Context expr", context, contextError));
+        geometryPanel.add(labeledWithError("Title expr", title, titleError));
+        geometryPanel.add(labeledWithError("x", x, xError));
+        geometryPanel.add(labeledWithError("y", y, yError));
+        geometryPanel.add(labeledWithError("width", width, widthError));
+        geometryPanel.add(labeledWithError("height", height, heightError));
         geometryPanel.setVisible(!editMode);
         root.add(geometryPanel);
 
@@ -314,7 +324,21 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         flagsSummary.setText("flags = " + p.flagsHex + "   ·   " + p.flagsSummary);
         eventSummary.setText("event_mask = " + (p.eventHex == null ? "(unset)" : p.eventHex) + "   ·   " + p.eventSummary);
         schematic.setRender(p.render);
-        setOKActionEnabled(true);
+        receiverError.setText(errorText(p.receiverError));
+        windowError.setText(errorText(p.windowError));
+        idError.setText(errorText(p.idError));
+        contextError.setText(errorText(p.contextError));
+        titleError.setText(errorText(p.titleError));
+        xError.setText(errorText(p.xError));
+        yError.setText(errorText(p.yError));
+        widthError.setText(errorText(p.widthError));
+        heightError.setText(errorText(p.heightError));
+        setOKActionEnabled(p.valid);
+    }
+
+    /** {@code " "} keeps the error label's height stable, matching {@link MsgboxComposerDialog}. */
+    private static String errorText(String error) {
+        return error == null ? " " : error;
     }
 
     /** Prefill flag/event selections and title from a decoded call (edit-in-place). */
@@ -339,6 +363,22 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
         panel.add(new JBLabel(label), BorderLayout.NORTH);
         panel.add(field, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private static JBLabel errorLabel() {
+        JBLabel label = new JBLabel(" ");
+        label.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
+        label.setForeground(new Color(0xC0392B));
+        return label;
+    }
+
+    /** Like {@link #labeled(String, JComponent)}, with a red error label under the field (#623). */
+    private static JPanel labeledWithError(String label, JComponent field, JBLabel error) {
+        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
+        panel.add(new JBLabel(label), BorderLayout.NORTH);
+        panel.add(field, BorderLayout.CENTER);
+        panel.add(error, BorderLayout.SOUTH);
         return panel;
     }
 
