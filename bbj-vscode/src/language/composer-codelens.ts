@@ -1,19 +1,26 @@
 /**
  * `BBjComposerCodeLensProvider` — the server-side `textDocument/codeLens` source for composer
- * cues (#650): a plain-text `Compose addWindow` cue on every `addWindow(...)` call in code.
+ * cues (#650): a plain-text cue on every eligible composer call in code — `addWindow`, MSGBOX,
+ * addChildWindow, an editable CVS() call, and an editable in-code SETOPTS shape.
  *
  * The provider reads only the text and CST the document build already produced (Roadmap Success
  * Criterion 5): it calls no parser, no `DocumentBuilder` method and no workspace scan, and it
  * takes no caret or selection input, so a cue appears on every eligible call regardless of
  * where the cursor is.
  *
- * Applicability is decided entirely by the existing `findAddWindowCalls` detector — this module
- * adds no new addWindow pattern.
+ * Applicability is decided entirely by each composer's own existing detector/decoder —
+ * `findAddWindowCalls`, `findMsgboxCalls`, `findAddChildWindowCalls`, `findCvsCalls` plus
+ * `decodeCvsCall`, and (via the optional `decodeSetoptsInCode` scan-context member)
+ * `createDecodeInCodeHandler`. This module adds no new applicability rule of its own.
  */
 import { CstUtils, type LangiumDocument } from 'langium';
 import type { CodeLensProvider } from 'langium/lsp';
 import type { CodeLens } from 'vscode-languageserver';
 import { findAddWindowCalls } from '../addwindow-composer.js';
+import { findMsgboxCalls } from '../msgbox-composer.js';
+import { findAddChildWindowCalls } from '../addchildwindow-composer.js';
+import { findCvsCalls, decodeCvsCall } from '../cvs-composer.js';
+import { createDecodeInCodeHandler } from './setopts-in-code-request.js';
 import {
     COMPOSER_LENS_COMMAND, COMPOSER_LENS_TITLES,
     type ComposerLensKind, type ComposerLensTarget,
@@ -39,24 +46,79 @@ export interface ComposerLensScanContext {
     lines: string[];
     /** True when the offset at `line`/`character` is real code — false inside a comment or string. */
     isCode(line: number, character: number): boolean;
+    /**
+     * Decodes the in-code SETOPTS shape near `line`/`character` (the same request
+     * `createDecodeInCodeHandler` answers). Optional so a caller with no document-aware decoder
+     * (e.g. a plain unit test of the other kinds) can omit it entirely — no `setopts-in-code`
+     * candidate is ever produced without it.
+     */
+    decodeSetoptsInCode?(line: number, character: number): { found: boolean; editable: boolean };
 }
 
-/** Scan every line for addWindow calls in code, reusing the existing applicability detector. */
+/** Case-insensitive whole-word `SETOPTS` keyword — the only in-code shape this module scans for
+ * its own keyword occurrence; `IOR(`/`AND(` reassignments are reached only through the chain the
+ * keyword's own decode resolves, never scanned for a cue of their own. */
+const SETOPTS_KEYWORD = /\bSETOPTS\b/gi;
+
+/**
+ * Scan every line for every composer's calls/shapes in code, each decided entirely by that
+ * composer's own existing detector or decode function.
+ */
 export function collectComposerLensCandidates(ctx: ComposerLensScanContext): ComposerLensCandidate[] {
     const candidates: ComposerLensCandidate[] = [];
     for (let line = 0; line < ctx.lines.length; line++) {
-        const calls = findAddWindowCalls(ctx.lines[line]);
-        for (const call of calls) {
+        const lineText = ctx.lines[line];
+
+        for (const call of findAddWindowCalls(lineText)) {
             if (!ctx.isCode(line, call.callStart)) {
                 continue;
             }
-            candidates.push({
-                kind: 'addwindow',
-                line,
-                start: call.callStart,
-                end: call.callEnd,
-                character: call.callStart,
-            });
+            candidates.push({ kind: 'addwindow', line, start: call.callStart, end: call.callEnd, character: call.callStart });
+        }
+
+        for (const call of findMsgboxCalls(lineText)) {
+            if (!ctx.isCode(line, call.callStart)) {
+                continue;
+            }
+            candidates.push({ kind: 'msgbox', line, start: call.callStart, end: call.callEnd, character: call.callStart });
+        }
+
+        for (const call of findAddChildWindowCalls(lineText)) {
+            if (!ctx.isCode(line, call.callStart)) {
+                continue;
+            }
+            candidates.push({ kind: 'addchildwindow', line, start: call.callStart, end: call.callEnd, character: call.callStart });
+        }
+
+        for (const call of findCvsCalls(lineText)) {
+            if (!ctx.isCode(line, call.callStart)) {
+                continue;
+            }
+            const decoded = decodeCvsCall(lineText, call.callStart);
+            if (!decoded.found || !decoded.editable) {
+                continue;
+            }
+            candidates.push({ kind: 'cvs', line, start: call.callStart, end: call.callEnd, character: call.callStart });
+        }
+
+        if (ctx.decodeSetoptsInCode) {
+            SETOPTS_KEYWORD.lastIndex = 0;
+            let match: RegExpExecArray | null;
+            while ((match = SETOPTS_KEYWORD.exec(lineText)) !== null) {
+                const keywordStart = match.index;
+                const keywordEnd = keywordStart + match[0].length;
+                if (!ctx.isCode(line, keywordStart)) {
+                    continue;
+                }
+                const rest = lineText.slice(keywordEnd);
+                const leadingWs = /^\s*/.exec(rest)![0].length;
+                const character = leadingWs < rest.length ? keywordEnd + leadingWs : keywordStart;
+                const decoded = ctx.decodeSetoptsInCode(line, character);
+                if (!decoded.found || !decoded.editable) {
+                    continue;
+                }
+                candidates.push({ kind: 'setopts-in-code', line, start: keywordStart, end: keywordEnd, character });
+            }
         }
     }
     return candidates;
@@ -130,7 +192,17 @@ export class BBjComposerCodeLensProvider implements CodeLensProvider {
             return !NON_CODE_TOKEN_NAMES.has(leaf.tokenType.name);
         };
 
-        const candidates = collectComposerLensCandidates({ lines, isCode });
+        // Reads the already-built AST only — the same handler the `bbj/composer/setopts/decodeInCode`
+        // request uses, given a `documents` stand-in that resolves exactly this document.
+        const decodeInCode = createDecodeInCodeHandler({
+            documents: { getDocument: (uri) => (uri.toString() === document.uri.toString() ? document : undefined) },
+        });
+        const decodeSetoptsInCode = (line: number, character: number): { found: boolean; editable: boolean } => {
+            const result = decodeInCode({ uri: document.uri.toString(), line, character });
+            return { found: result.found, editable: result.editable };
+        };
+
+        const candidates = collectComposerLensCandidates({ lines, isCode, decodeSetoptsInCode });
         return toComposerCodeLenses(document.uri.toString(), candidates);
     }
 }
