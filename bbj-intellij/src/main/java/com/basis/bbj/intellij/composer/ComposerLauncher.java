@@ -284,7 +284,7 @@ public final class ComposerLauncher {
     }
 
     /**
-     * Opens the MSGBOX composer (#426/#433, #648, DISC-08), routed through
+     * Opens the MSGBOX composer (#426/#433, #648), routed through
      * {@link MsgboxComposeMode#of}: blank for compose-new, prefilled for edit-in-place on a
      * decodable call, prefilled with a compose-and-replace banner when the options expression could
      * not be decoded, or prefilled to complete an unfinished call the user is still typing -- every

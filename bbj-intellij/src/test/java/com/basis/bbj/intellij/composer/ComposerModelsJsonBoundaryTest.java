@@ -238,7 +238,7 @@ class ComposerModelsJsonBoundaryTest {
         assertFalse(result.incomplete, "an envelope with no incomplete key must parse false, not null");
     }
 
-    /** An unfinished call (DISC-08): {@code MSGBOX(} with no message typed yet. */
+    /** An unfinished call: {@code MSGBOX(} with no message typed yet. */
     @Test
     void anIncompleteMsgboxDecodeCallResponseParsesThroughTheLsp4jGson() {
         String envelope = """
