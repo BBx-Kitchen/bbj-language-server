@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 88
-current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
-status: executing
-stopped_at: "Completed 88-15-PLAN.md (gap-closure round 5, final: VS Code stale-edit guard ported from IntelliJ and wired into both SETOPTS-in-code edit-in-place writers; all 15/15 Phase 88 plans now summarized)"
-last_updated: "2026-09-11T16:22:00.000Z"
-last_activity: 2026-09-11
-last_activity_desc: Phase 88 execution complete — 88-15 closes the final gap-closure round
-state_head: 33e09f41db1bf0350b4e09df675cf4a9dc4310d5
+current_phase: 89
+current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
+status: planning
+stopped_at: Phase 88 complete, ready to plan Phase 89
+last_updated: "2026-09-12T05:20:01.936Z"
+last_activity: 2026-09-12
+last_activity_desc: Phase 88 complete, transitioned to Phase 89
+state_head: 02779b65270102e9c79a62cc136bb5ea7bc44ac6
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 34
   completed_plans: 34
-  percent: 45
+  percent: 56
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-07 (Phase 87 complete — UAT 2/2 hand checkpoints, DISC-04 closed; Phase 88 ready to plan)
+**Last Updated:** 2026-09-12 (Phase 88 complete — all 3 outstanding human_verification items confirmed live; Phase 89 ready to plan)
 
 ## Project Reference
 
@@ -28,22 +28,17 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 88 — SETOPTS-in-Code Hovers & Tri-State Composer
+**Current Focus:** Phase 89 — CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
 ---
 
 ## Current Position
 
-Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — HUMAN VERIFICATION NEEDED
-Plan: 15 of 15
-Status: All 15 plans executed and summarized; 88-VERIFICATION.md re-run after 88-15's own code-review
-fix (commit 1a6bdd42, CR-01 applyEdit success/failure discarded) — status: human_needed, no
-automated gaps. Three items staged for human verification in 88-LIVE-RETEST.md round two (Checks
-2-4): IntelliJ composer reachability, live mask-width, live VS Code observation of the 88-15
-stale-edit guard (Check 4, needs a rebuild past 1a6bdd42). Next: run those checks, then
-`/gsd-verify-work 88`.
-Last activity: 2026-09-11 — Re-verified phase goal after round-five gap closure (88-15) and its own
-code-review fix; corrected a stale DISC-05 REQUIREMENTS.md entry
+Phase: 89 — CVS() Composer, MSGBOX Expressions & Composer Discoverability
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-12 — Phase 88 complete (all 15 plans, 88-VERIFICATION.md status: passed),
+transitioned to Phase 89.
 
 ## Performance Metrics
 
@@ -299,6 +294,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: [Phase 88]: 88-13: rebuilt both distributables and proved this round's fixes ship (new shipped-bundle e2e assertion that composeTriState mask arguments are bare hex, never quoted; IntelliJ plugin jar proven to carry the new context-menu action + Java formatter + unchanged intention), corrected QA/FULL-TEST-CHECKLIST.md's now-invalid quoted hover sample syntax and added the IntelliJ context-menu row, rewrote 88-LIVE-RETEST.md as round two, and narrowed G-88-2/G-88-3's missing: lists to exactly the live-render residue -- both gaps stay status:failed pending the next human retest
 - [Phase 88]: [Phase 88]: 88-14 (gap-closure): decodeInCode's chain edit-in-place region is now anchored on the reassignment statements' own CST ranges (via traceOptsChain's new linkStatementNodes field) rather than origin/SETOPTS line arithmetic; every shape whose region cannot be expressed as a whole-line replace the chain owns outright (shared-line reassignment, comma-joined assignment, comment/unrelated-statement interleaving) fails closed with a new SetOptsNotEditableReason('shared-line') instead of an empty or inverted replace range -- DISC-05/DISC-06 marked complete
 - [Phase 88]: [Phase 88]: 88-15 (gap-closure round 5, final): setopts-stale-edit-guard.ts ports IntelliJ's StaleEditGuard/DecodeEquality contract to VS Code — applyIfUnchanged snapshots the target document's version, re-issues the identical decodeInCode request the panel was opened from (bounded by a 10s timeout), compares the whole fresh decode field-wise via sameSetOptsInCodeDecode, re-checks the version immediately before the write, and fails closed on every branch; both edit-in-place writers (setopts-tristate-webview.ts chain path, setopts-composer-webview.ts absolute-literal path) now route their applyEdit through it, while compose-new and every config.bbx caller stay unguarded since neither has a captured range that can go stale. All 15/15 Phase 88 plans now complete; three items remain human verification (IntelliJ composer reachability, live mask-width, live VS Code observation of this guard).
+- [Phase 88 UAT, closeout 2026-09-12]: All 3 outstanding human_verification items (IntelliJ Alt+Enter/context-menu reachability, live mask-width falsification against a real BBjServices, live VS Code observation of the 88-15 stale-edit guard) confirmed passing against a freshly rebuilt VS Code VSIX and bbj-intellij-0.1.0.zip (sha256 50ae9d74...) at HEAD f56c17e2. G-88-1/G-88-2/G-88-3 all resolved; 88-VERIFICATION.md status: passed; 88-UAT.md 9/9 pass. Filed GitHub issue #666 ("Improve the user experience and discoverability for SETOPTS handling") as a follow-up — during retest the tester noted it's not obvious how to create a new SETOPTS block or upgrade an existing one to a different format; needs a dedicated UX/flow review across both IDEs, out of scope for Phase 88. Notably overlaps Phase 89's own "Composer Discoverability" scope.
 
 ### Tech Debt
 
@@ -365,8 +361,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-11T17:10:00.000Z
-Stopped at: Re-verified Phase 88 after round-five gap closure (88-15) plus its own code-review fix (commit 1a6bdd42) — 88-VERIFICATION.md status: human_needed, no automated gaps
+Last session: 2026-09-12T05:20:00.000Z
+Stopped at: Phase 88 complete, ready to plan Phase 89
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
