@@ -1,20 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 88-setopts-in-code-hovers-tri-state-composer
 source: [88-VERIFICATION.md, 88-LIVE-RETEST.md]
 started: 2026-09-07T23:45:00Z
-updated: 2026-09-11T17:10:00Z
+updated: 2026-09-12T05:10:00Z
 ---
 
 ## Current Test
 
-number: 9
-name: Run 88-LIVE-RETEST.md round two, Checks 2-4 (IntelliJ reachability, live mask-width, and the new Check 4 — live observation of plan 88-15's stale-edit guard)
-expected: |
-  See 88-LIVE-RETEST.md for the full script. Checks 2 and 3 were staged before this session; Check 4
-  was added this session to cover plan 88-15's coverage item D9 (the VS Code stale-edit guard) and
-  needs a VS Code extension build newer than 1a6bdd42 — rebuild and reinstall before running it.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -116,14 +110,14 @@ expected: |
   editor-context-menu doors), Check 3 (live mask-width falsification against a real BBjServices),
   and Check 4 (live observation of plan 88-15's stale-edit guard, added this session — requires
   rebuilding/reinstalling the VS Code extension past commit 1a6bdd42 first).
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 9
-passed: 2
+passed: 3
 issues: 5
-pending: 1
+pending: 0
 skipped: 1
 blocked: 0
 
@@ -193,7 +187,9 @@ blocked: 0
 
 - gap_id: G-88-2
   truth: "Invoking the tri-state composer (Code Action in VS Code, Alt+Enter lightbulb in IntelliJ) on a SETOPTS-shaped chain offers an editable option list and applies the chosen changes."
-  status: failed
+  status: resolved
+  resolved_by: "live retest test 9 (round two), Check 2 — IntelliJ Alt+Enter and editor-context-menu entry points both open the composer against the rebuilt bbj-intellij-0.1.0.zip (sha256 50ae9d74...), confirmed 2026-09-12"
+  resolved_at: 2026-09-12
   reason: |
     User reported: how would I invoke it? In IntelliJ I just see a "Searching Content Actions..."
     popup hanging forever, in VSCode no idea, nothing happens.
@@ -279,7 +275,9 @@ blocked: 0
 
 - gap_id: G-88-3
   truth: "Every mask/hex literal the tri-state composer generates uses valid BBj program syntax: a bare $...$ hex-string literal — never a bare unquoted hex string (config.bbx-only syntax) and never a $...$ hex literal wrapped in an extra pair of double quotes (which makes BBj treat the $ delimiters as literal text instead of decoding the hex, corrupting the operand's byte length)."
-  status: failed
+  status: resolved
+  resolved_by: "live retest test 9 (round two), Check 3 — live mask-width falsification against a real BBjServices passed with the rebuilt VS Code extension (HEAD f56c17e2), confirmed 2026-09-12"
+  resolved_at: 2026-09-12
   reason: |
     Two manifestations found in live retest, both from the composer's mask-literal generation
     code path:
