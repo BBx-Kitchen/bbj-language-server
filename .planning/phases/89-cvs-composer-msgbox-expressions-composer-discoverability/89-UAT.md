@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 89-cvs-composer-msgbox-expressions-composer-discoverability
 source: [89-VERIFICATION.md]
 started: 2026-09-12T12:09:21Z
-updated: 2026-09-12T13:10:00Z
+updated: 2026-09-12T13:25:00Z
 ---
 
 ## Current Test
@@ -47,5 +47,22 @@ blocked: 0
   reason: "User reported: for an unfinished CVS I get an error: This CVS() call has no mask argument, so there is nothing to compose from - works fine on an existing one. But not while typing it up to CVS( and then pushing alt-enter"
   severity: major
   test: 3
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "Design gap, not a regression: an argument-less or unfinished CVS call (CVS(, CVS(), CVS(a$, CVS(a$,) decodes server-side as found/editable:false/missing-mask with no prefill (cvs-composer.ts:215-216), and IntelliJ openCvs turns every found-but-not-editable result into the error notice and returns (ComposerLauncher.java:654-660), while ConfigureCvsIntention.isAvailable only text-matches cvs( and so offers an intention guaranteed to fail. The plans specified missing-mask as not editable and the early return; D-14 only covered editing an existing call."
+  artifacts:
+    - path: "bbj-vscode/src/cvs-composer.ts"
+      issue: "lines 180-187, 215-216: missing-mask conflates an in-progress call with a complete call lacking a mask; the result carries no prefill or span to compose into"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java"
+      issue: "lines 654-660: every non-editable CVS decode ends in requestFailed; lines 699-714: the blank-composer path inserts at the caret, so reusing it would nest a call inside the partial CVS("
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureCvsIntention.java"
+      issue: "lines 30-32: availability is a text-only cvs( check, so the intention is offered on a call it cannot compose"
+    - path: "bbj-vscode/src/cvs-composer-ui.ts"
+      issue: "line 35: VS Code lightbulb drops non-editable results, so the same gap exists silently; bbj.composeCvs inserts at the cursor without decoding"
+    - path: "bbj-vscode/test/cvs-composer.test.ts, bbj-vscode/test/composer-codelens.test.ts, bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerApplyGuardSourceGuardTest.java"
+      issue: "pin current behaviour: closed CVS(a$) as missing-mask (129-131), no cue for it (168), and exact source-guard counts (6 applyIfUnchanged, 6 replaceString, 1 sameCvs, 2 cvsDecodeCall) that a fix will move"
+  missing:
+    - "Server: a distinct composable decode outcome for an argument-less/unfinished CVS call carrying prefill (string from args[0] if present, no bits, empty chars) and the call span; mirror the fields in the IntelliJ DTO, the JSON-boundary test and DecodeEquality.sameCvs; keep non-literal-mask and unknown-bits as hard stops; decide whether closed CVS(a$) joins this outcome"
+    - "IntelliJ openCvs: open CvsComposerDialog for the new outcome (assign-result field hidden) and replace the call span through StaleEditGuard + sameCvs, not insertAtCaret; handle an unterminated call whose span runs to end of line; update the source-guard counts"
+    - "VS Code: offer a lightbulb compose action for the new outcome that replaces the partial span, guarded by cvsCallStillMatches; decide cue visibility on half-typed lines and whether bbj.composeCvs becomes position-aware"
+    - "Tests for CVS(, CVS(), CVS(a$, CVS(a$, alongside the existing CVS(a$, n%) and CVS(a$, 256) cases; QA/FULL-TEST-CHECKLIST.md row 25 step for typing CVS( then Alt+Enter; update the intention description.html wording"
+    - "Consider the analogous MSGBOX( insert-at-caret nesting in the same plan"
+  debug_session: ".planning/debug/g-89-3-cvs-composer-unfinished-call.md"
