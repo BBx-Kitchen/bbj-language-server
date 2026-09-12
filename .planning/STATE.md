@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 status: executing
-stopped_at: Completed 89-05-PLAN.md
-last_updated: "2026-09-12T08:39:34.874Z"
+stopped_at: Completed 89-07-PLAN.md
+last_updated: "2026-09-12T08:59:29.606Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 40ed0fdfb2712522ee10dbde9ab9450c1225e314
+state_head: a22d5ac7d82303633eba751458d981f6616225d9
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 39
+  completed_plans: 40
   percent: 56
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
@@ -179,6 +179,7 @@ transitioned to Phase 89.
 | Phase 89 P03 | 17min | 2 tasks | 5 files |
 | Phase 89 P04 | 8min | 3 tasks | 11 files |
 | Phase 89 P05 | 14min | 2 tasks | 6 files |
+| Phase 89 P07 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -305,6 +306,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-03: cvs-composer.ts follows setopts-catalog.ts's catalog+compose+decode+preview shape; CVS_BITS 128 carries a BBj-specific detail and 1/2/16/32/128 are chars-customizable; decodeCvsCall recognizes only integer-literal +-sums as editable
 - [Phase 89]: 89-04: ComposerLensKinds/ComposerLensTarget/ComposerLauncher.launchAt/BbjOpenComposerAtAction wire LSP4IJ's bbj.openComposerAt Code Vision click to an EDT-pinned action that opens the exact composer at the cue's own position; a fromCue stale check renders staleDocument instead of falling through to compose-new
 - [Phase 89]: 89-05: cvsCallStillMatches is a plain string-slice comparison against the captured callText (no server re-decode); cvsPanelArgAt returns undefined for every not-editable verdict, so the lightbulb offers no action at all rather than a degraded compose-and-replace mode
+- [Phase 89]: 89-07: CVS() wire requests (decodeCall/preview) + cvs catalog land as thin pass-throughs; IntelliJ DTOs/interface methods/equality (sameCvs) pinned by contract/boundary/equality tests; MsgboxDecodeResult also gained hasOptions to match plan 89-02's deviation, with sameMsgbox extended to compare replace/hasOptions
 
 ### Tech Debt
 
@@ -371,8 +373,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T08:39:34.616Z
-Stopped at: Completed 89-05-PLAN.md
+Last session: 2026-09-12T08:59:29.336Z
+Stopped at: Completed 89-07-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
