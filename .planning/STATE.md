@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 90
 current_phase_name: Composer Robustness & IntelliJ Composer Performance
 status: executing
-stopped_at: Phase 90 context gathered
-last_updated: "2026-09-12T19:41:42.418Z"
+stopped_at: Completed 90-01-PLAN.md
+last_updated: "2026-09-12T20:03:03.056Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 89 complete, transitioned to Phase 90
-state_head: c797f3271bcc919c956f8c043923de05204b6cdd
+last_activity_desc: Phase 90 execution started
+state_head: fd0cdb71f6aaf528a6b3637615188bdf8b95830a
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 58
-  completed_plans: 50
+  completed_plans: 51
   percent: 67
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 ## Current Position
 
-Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — READY TO EXECUTE
-Plan: Not started
+Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-09-12 — Phase 89 complete, transitioned to Phase 90
+Last activity: 2026-09-12 — Phase 90 execution started
 
 ## Performance Metrics
 
@@ -189,6 +189,7 @@ Last activity: 2026-09-12 — Phase 89 complete, transitioned to Phase 90
 | Phase 89 P14 | 16min | 2 tasks | 7 files |
 | Phase 89 P15 | 15min | 3 tasks | 11 files |
 | Phase 89 P16 | 13min | 2 tasks | 3 files |
+| Phase 90 P01 | 45min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -334,6 +335,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-15: openCvs routes through CvsComposeMode.of and reuses the single existing guarded CVS write for both edit-in-place and completing an unfinished call, differing only in the write-command name; DecodeEquality.sameCvs now compares incomplete so a stale unfinished-call completion cannot pass the guard
 - [Phase 89]: 89-16: MSGBOX compose-new nesting recorded as a Phase 90 todo instead of copying the CVS fix; QA row 19/25 step 5 folds three sub-actions into one numbered step — Gap decision 7 scoped the MSGBOX fix out of Phase 89; it needs its own design (guarded replace + MSGBOX's replace/sameMsgbox/banner semantics)
 - [Phase 89 UAT, closeout 2026-09-12]: Round 1 passed 3/4 with gap G-89-3 (an unfinished `CVS(` call showed the not-editable notice in IntelliJ and nested a second call in VS Code), closed by gap-closure plans 89-14..16. Round 2 passed 2/2 by hand in both IDEs against artifacts rebuilt at `deb25b4a` (VSIX sha256 8111f522…, bbj-intellij-0.1.0.zip sha256 55b3f52f…; the zip needed `clean buildPlugin` because Gradle judged it up to date). 89-VERIFICATION.md status: passed; 89-VALIDATION.md nyquist-compliant; 89-SECURITY.md threats_open 0. DISC-01/02/03 (#650, #648, #649) closed.
+- [Phase 90]: MSGBOX unfinished-call decode/completing-mode mirrors CVS's 89-14 incomplete outcome but ported to MSGBOX's own replace/hasOptions field shape, not copied verbatim
 
 ### Tech Debt
 
@@ -401,9 +403,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T18:38:56.171Z
-Stopped at: Phase 90 context gathered
-Resume file: .planning/phases/90-composer-robustness-intellij-composer-performance/90-CONTEXT.md
+Last session: 2026-09-12T20:03:02.747Z
+Stopped at: Completed 90-01-PLAN.md
+Resume file: None
 
 Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
 phase directory or CONTEXT.md yet — start with `/gsd-discuss-phase 90`. Fold in the todo
