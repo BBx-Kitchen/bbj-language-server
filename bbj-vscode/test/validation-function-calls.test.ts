@@ -3,6 +3,7 @@ import { validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Program } from '../src/language/generated/ast.js';
 import { createBBjServices } from '../src/language/bbj-module.js';
+import { composeCvsCall } from '../src/cvs-composer.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /** Diagnostics produced by the builtin-function call check (#451). */
@@ -30,6 +31,7 @@ describe('builtin function call validation (#451)', () => {
         '? ADJN("2")',     // string literal to a numeric parameter
         '? ARGV()',        // too few arguments
         '? ARGV("TEST")',  // string literal to an int parameter
+        '? CVS("a", 1, "*", "b")', // too many arguments — CVS(str, mask, chars) is the max (#649)
     ])('flags %j', async (code) => {
         expect(await callIssues(code)).not.toEqual([]);
     });
@@ -41,8 +43,16 @@ describe('builtin function call validation (#451)', () => {
         '? AND("U","J")',
         '? ARGV(0)',
         '? ARGV(1,err=*next)',
+        '? CVS("  a  ", 3, "*")',        // chars argument (#649)
+        '? CVS("a", 1+4)',               // mask as a literal sum, no chars
+        '? CVS("a", 129, "*", ERR=100)', // chars + named ERR argument
     ])('accepts %j', async (code) => {
         expect(await callIssues(code)).toEqual([]);
+    });
+
+    test('composeCvsCall output validates cleanly (#649)', async () => {
+        const statement = composeCvsCall({ str: '"  a  "', mask: 129, chars: '"*"' });
+        expect(await callIssues('? ' + statement)).toEqual([]);
     });
 
     test('AND(3,8) flags both numeric literals against string parameters', async () => {
