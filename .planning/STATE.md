@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 90
 current_phase_name: Composer Robustness & IntelliJ Composer Performance
 status: executing
-stopped_at: Completed 90-04-PLAN.md
-last_updated: "2026-09-12T20:34:47.321Z"
+stopped_at: Completed 90-05-PLAN.md
+last_updated: "2026-09-12T20:57:23.493Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 90 execution started
-state_head: 4067a0b179de2f23ac857563ae20416fb7758dd6
+state_head: b198d7fb809f013a26dc9f440558cb235ca3346a
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 58
-  completed_plans: 54
+  completed_plans: 55
   percent: 67
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 90 execution started
 
@@ -193,6 +193,7 @@ Last activity: 2026-09-12 — Phase 90 execution started
 | Phase 90 P02 | 40min | 2 tasks | 8 files |
 | Phase 90 P03 | 25min | 2 tasks | 9 files |
 | Phase 90 P04 | 25min | 2 tasks | 5 files |
+| Phase 90 P05 | 20min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -342,6 +343,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90]: 90-02: validateNumericField lives in addwindow-composer.ts and is imported into addchildwindow-composer.ts for its id field; addwindowPreview/addchildwindowPreview compute per-field errors plus valid, skipped entirely in edit mode — Reuses the msgboxPreview per-field-error/valid template rather than re-inventing it; keeps structural-only fields (receiver/sysgui/window/context) unconstrained so valid expressions like BBjAPI().openSysGui("X0") are never rejected
 - [Phase 90]: 90-03: ComposerHandleCache is package-private and memoizes both the server proxy and catalogs, cleared on any BbjServerStatusListener.TOPIC status change and on any ComposerFlow launch failure — DISC-11 (#612): identity-checked invalidation guarantees a resolution started before a clear is never served after it; BbjComposerService.server(project) stays an unchanged static facade so BbjCompileAction/BbjRefreshJavaClassesAction need no edit
 - [Phase 90]: Task 1 added only MSGBOX_SOURCE to DEBOUNCED_DIALOG_SOURCES (not all three dialogs at once), matching the plan's per-task scope
+- [Phase 90]: 90-05: registerPanelMessageHandler ties every composer panel's message subscription to panel.onDidDispose instead of the extension context; a source-discovered test finds panel modules by scanning src/ for createWebviewPanel(, not a hard-coded list, so a future seventh composer is covered automatically
 
 ### Tech Debt
 
@@ -409,8 +411,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T20:34:46.982Z
-Stopped at: Completed 90-04-PLAN.md
+Last session: 2026-09-12T20:57:23.170Z
+Stopped at: Completed 90-05-PLAN.md
 Resume file: None
 
 Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
