@@ -6,7 +6,7 @@
 
 import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
-import { createConnection, ProposedFeatures } from 'vscode-languageserver/node';
+import { createConnection, ProposedFeatures, CodeLensRefreshRequest } from 'vscode-languageserver/node';
 import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -21,6 +21,7 @@ import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
 import { createConfigWatcher } from './config-watcher.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
+import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -88,10 +89,24 @@ startLanguageServer(shared);
 // bbj-code-action-handler.ts for the full rationale.
 registerBoundedCodeActionHandler(connection, shared, BBj);
 
+// Register AFTER startLanguageServer to override Langium's default codeLens handler
+// deliberately: the composer cue (#650) needs only text and CST, so waiting on Langium's default
+// IndexedReferences gate would delay every cue by the cold linking time, and the default handler
+// loads a client-supplied uri from disk via getOrCreateDocument. This handler answers within a
+// named budget, gated at DocumentState.Parsed, resolving documents in-memory only. See
+// composer-codelens-handler.ts for the full rationale.
+registerComposerCodeLensHandler(connection, shared, BBj);
+
 // Ask the client to re-request inlay hints, e.g. after Java classes (and the Javadoc-based
 // parameter names) arrived asynchronously. Clients without refresh support just ignore us.
 function refreshInlayHints() {
     connection.languages.inlayHint.refresh().catch(() => { /* client does not support refresh */ });
+}
+
+// Ask the client to re-request code lenses once the first build completes, so a composer-cue
+// request answered null during a cold start is re-issued by clients that support refresh.
+function refreshCodeLenses() {
+    connection.sendRequest(CodeLensRefreshRequest.type).catch(() => { /* client does not support refresh */ });
 }
 
 // Clears the Java classpath cache, reloads it from the current workspace settings, reloads
@@ -139,6 +154,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
     if (!workspaceInitialized) {
         workspaceInitialized = true;
         refreshInlayHints();
+        refreshCodeLenses();
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
         // Armed exactly once, here, after the first Validated build phase.
