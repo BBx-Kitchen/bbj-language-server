@@ -510,7 +510,21 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   3. A class that genuinely resolves never stalls for the full 30-second timeout or falls back to a stub because of LRU eviction racing its own cyclic resolution; the protected/pinned set returns to empty after a cancelled or timed-out resolution (research Pitfall 7).
   4. Two concurrent completion requests on two different open documents each honor their own cancellation token — cancelling one never affects the other (research Pitfall 8).
 
-**Plans**: TBD
+**Plans**: 6 plans (3 waves)
+**Wave 1**
+
+- [ ] 91-01-PLAN.md — `::file::Class` lookups read a path-keyed class index and PREFIX symbol collection prunes member bodies like the linker, pinned by work counters and a loose timing ratio (RESP-01)
+- [ ] 91-02-PLAN.md — Completion carries each request's cancellation token through AsyncLocalStorage and shares a token-free per-prefix lookup (RESP-04)
+- [ ] 91-03-PLAN.md — Three-state java-interop circuit breaker: one connect timeout and one popup per outage, uncached transport stubs, request-driven half-open recovery (RESP-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 91-04-PLAN.md — In-flight Phase-2 registry beside the LRU so a class evicted during its own cyclic resolution never stalls or degrades to a stub (RESP-03)
+- [ ] 91-05-PLAN.md — On breaker recovery, reload classpath and implicit imports and re-check open documents once, through a helper shared with Refresh Java Classes (RESP-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 91-06-PLAN.md — Whole-suite gate, both distributables rebuilt from the final tree, and the live outage-and-recovery check (RESP-01..04)
 
 ### Phase 92: Host-Side Hygiene & Focus Guards
 
