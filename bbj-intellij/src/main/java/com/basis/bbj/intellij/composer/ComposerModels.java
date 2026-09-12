@@ -281,6 +281,14 @@ public final class ComposerModels {
          * {@code initial}/{@code replace} alone cannot always distinguish these (#648).
          */
         public Boolean hasOptions;
+        /**
+         * True when the call has no message yet ({@code MSGBOX(}, {@code MSGBOX()}), or whose
+         * options slot is open but empty ({@code MSGBOX("Hi",}) -- a call the user is still
+         * typing, not one ready to edit. {@code edit}, {@code initial} and {@code trailingArgs}
+         * describe the call a composer completes in place; {@code replace} is never present
+         * alongside it, and {@code hasOptions} is false.
+         */
+        public boolean incomplete;
     }
 
     /** addWindow token ranges / insert offsets (line-relative) to rewrite in place. */

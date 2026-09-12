@@ -283,16 +283,25 @@ public final class ComposerLauncher {
         };
     }
 
+    /**
+     * Opens the MSGBOX composer (#426/#433, #648, DISC-08), routed through
+     * {@link MsgboxComposeMode#of}: blank for compose-new, prefilled for edit-in-place on a
+     * decodable call, prefilled with a compose-and-replace banner when the options expression could
+     * not be decoded, or prefilled to complete an unfinished call the user is still typing -- every
+     * replace mode (edit-in-place, compose-and-replace, completing) writes through the ONE guarded
+     * MSGBOX replacement below, differing only in the write-command name.
+     */
     private static void openMsgbox(Project project, Editor editor, BbjComposerServer server,
                                    MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line, int col) {
         if (catalogs == null) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.MSGBOX)), null);
             return;
         }
-        boolean edit = decoded != null && decoded.found;
-        MsgboxComposerDialog dialog = edit
-                ? new MsgboxComposerDialog(project, server, catalogs, decoded.initial, true, decoded.trailingArgs, decoded.replace)
-                : new MsgboxComposerDialog(project, server, catalogs, null, false, null, null);
+        MsgboxComposeMode mode = MsgboxComposeMode.of(decoded);
+        boolean replacing = mode != MsgboxComposeMode.COMPOSE_NEW;
+        MsgboxComposerDialog dialog = replacing
+                ? new MsgboxComposerDialog(project, server, catalogs, decoded.initial, mode, decoded.trailingArgs, decoded.replace)
+                : new MsgboxComposerDialog(project, server, catalogs, null, mode, null, null);
         if (!dialog.showAndGet()) {
             return;
         }
@@ -300,11 +309,12 @@ public final class ComposerLauncher {
         if (text == null || text.isEmpty()) {
             return;
         }
-        if (edit) {
+        if (replacing) {
             MsgboxEdit ed = decoded.edit;
+            String commandName = mode == MsgboxComposeMode.COMPLETE_CALL ? "Complete MSGBOX call" : "Configure MSGBOX";
             StaleEditGuard guard = new StaleEditGuard(
                     documentViewOf(editor),
-                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure MSGBOX", null, body),
+                    body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),
                     ComposerLauncher::onEdt,
                     notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.MSGBOX)),
                     StaleEditGuard.REDECODE_TIMEOUT_MILLIS);

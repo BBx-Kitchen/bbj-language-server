@@ -45,10 +45,13 @@ import java.util.function.Consumer;
 /**
  * Swing composer for {@code MSGBOX()} (#426/#433): pick icon / button set / default button / flags
  * and message/title, and the language server encodes the numeric {@code expr}, composes the
- * statement, and validates the string fields ({@code bbj/composer/msgbox/preview}). Create flow —
- * inserts a fresh {@code MSGBOX(...)} statement. Every input routes through {@link #scheduleRefresh()}
- * over the shared {@code PreviewDebouncer} seam, so a burst of typing sends one preview request per
- * settle point instead of one per keystroke (#611).
+ * statement, and validates the string fields ({@code bbj/composer/msgbox/preview}). Every input
+ * routes through {@link #scheduleRefresh()} over the shared {@code PreviewDebouncer} seam, so a
+ * burst of typing sends one preview request per settle point instead of one per keystroke (#611).
+ *
+ * <p>One constructor serves all four {@link MsgboxComposeMode} outcomes: a blank compose-new
+ * dialog that inserts a fresh statement at the caret, an edit-in-place or compose-and-replace
+ * dialog on an existing call, and a complete-the-call dialog on a call the user is still typing.</p>
  */
 public final class MsgboxComposerDialog extends DialogWrapper {
     private static final int CUSTOM_BUTTON_SET = 7;
@@ -58,6 +61,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final BbjComposerServer server;
     private final MsgboxCatalogs catalogs;
     private final boolean editMode;
+    private final boolean completing;
     private final ComposerModels.MsgboxPreviewInput initial;
     private final List<String> trailingArgs;
     @Nullable
@@ -89,16 +93,22 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private volatile String statement = "";
 
     public MsgboxComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
-                               @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs,
-                               @Nullable MsgboxReplace replace) {
+                               @Nullable ComposerModels.MsgboxPreviewInput initial, @NotNull MsgboxComposeMode mode,
+                               @Nullable List<String> trailingArgs, @Nullable MsgboxReplace replace) {
         super(project);
+        if (mode == MsgboxComposeMode.COMPOSE_NEW && initial != null) {
+            throw new IllegalArgumentException("MsgboxComposerDialog must never open COMPOSE_NEW with a non-null initial");
+        }
         this.project = project;
         this.server = server;
         this.catalogs = catalogs;
         this.initial = initial;
-        this.editMode = editMode;
+        this.editMode = mode == MsgboxComposeMode.EDIT_IN_PLACE || mode == MsgboxComposeMode.REPLACE_OPTIONS;
+        this.completing = mode == MsgboxComposeMode.COMPLETE_CALL;
         this.trailingArgs = trailingArgs;
-        this.replace = replace;
+        // A completion never shows the compose-and-replace banner -- the server never sends
+        // replace alongside incomplete, but this guards against it regardless.
+        this.replace = completing ? null : replace;
         this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
         this.flow = new ComposerFlow(
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
@@ -109,8 +119,8 @@ public final class MsgboxComposerDialog extends DialogWrapper {
                 PREVIEW_DEBOUNCE_MS,
                 runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
                 this::refresh);
-        setTitle(editMode ? "Configure MSGBOX" : "Compose MSGBOX");
-        setOKButtonText(editMode ? "Apply" : "Insert");
+        setTitle(editMode ? "Configure MSGBOX" : completing ? "Complete MSGBOX call" : "Compose MSGBOX");
+        setOKButtonText(editMode || completing ? "Apply" : "Insert");
         init();
         // Disable OK until the first preview round-trip resolves (#538): otherwise a fast/keyboard
         // accept landing before any preview arrives would keep OK enabled while apply() has never
@@ -155,7 +165,10 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         root.add(labeled("Title expression (optional)", titleField));
         root.add(titleError);
         assignToRow = labeled("Assign result to (optional)", assignTo);
-        assignToRow.setVisible(!editMode); // in edit mode the assignment lives outside the replaced call span
+        // In both replace modes (edit-in-place/compose-and-replace and completing an unfinished
+        // call) the assignment lives outside the replaced call span, so the row is visible only
+        // when composing new.
+        assignToRow.setVisible(!editMode && !completing);
         root.add(assignToRow);
 
         fillCombo(icon, catalogs.icons);
@@ -247,7 +260,9 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         MsgboxPreviewInput input = new MsgboxPreviewInput();
         input.message = message.getText();
         input.title = titleField.getText();
-        input.assignTo = assignTo.getText();
+        // Assignment lives outside the replaced call span in both replace modes; only compose-new
+        // reads it from the (visible) assign field.
+        input.assignTo = (!editMode && !completing) ? assignTo.getText() : null;
         input.buttonSet = value(buttonSet);
         input.icon = value(icon);
         input.defaultButton = value(defaultButton);
