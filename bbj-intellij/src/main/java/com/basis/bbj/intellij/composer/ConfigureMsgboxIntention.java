@@ -47,6 +47,7 @@ public final class ConfigureMsgboxIntention implements IntentionAction {
         // the popup renders this summary itself, so it never falls back to the description resource
         return new IntentionPreviewInfo.Html(
                 "<p>Opens the BBj visual composer for the <code>MSGBOX(...)</code> call under the "
-                        + "caret, prefilled from its current arguments.</p>");
+                        + "caret, prefilled from its current arguments. On a call still being typed, "
+                        + "it completes that call in place instead.</p>");
     }
 }

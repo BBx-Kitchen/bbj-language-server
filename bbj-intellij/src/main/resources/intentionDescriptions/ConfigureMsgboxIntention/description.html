@@ -8,6 +8,13 @@ title and any remaining arguments, and shows a live preview of the statement it 
 Pressing OK replaces the call in place; Cancel changes nothing.
 </p>
 <p>
+On a call that is still being typed -- <code>MSGBOX(</code>, <code>MSGBOX()</code> with the
+editor's auto-inserted closing parenthesis, or <code>MSGBOX("Hi",</code> -- the composer opens as
+<code>Complete MSGBOX call</code>. It is prefilled with what was already typed and has no
+assignment field. Applying replaces the unfinished call with one complete <code>MSGBOX(...)</code>
+call; nothing is written if the line changed meanwhile.
+</p>
+<p>
 Available when the caret is inside such a call. The BBj language server must be running,
 because the composer decodes and re-encodes the call through it (#426).
 </p>
