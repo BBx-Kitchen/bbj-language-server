@@ -1,4 +1,5 @@
 import { AstNode, AstNodeDescription, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
+import type { ServiceRegistry, TextDocumentProvider } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
@@ -11,7 +12,27 @@ import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 import { mergeDiagnostics, getCompilerTrigger } from './bbj-document-validator.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
+import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
+
+/**
+ * False for a uri whose open text document carries the `bbx-config` language id — regardless of
+ * its file extension, so a config file named `myconfig.bbj` is still excluded — and false for a
+ * uri with no registered services at all (mirrors Langium's own `ServiceRegistry.getServices`
+ * lookup, which checks the language-id map before falling back to file name/extension). True
+ * otherwise. Exported so `BBjDocumentBuilder.update`'s filter is unit-testable without a live
+ * document build.
+ */
+export function isBuildableDocumentUri(
+    uri: URI,
+    textDocuments: TextDocumentProvider | undefined,
+    serviceRegistry: ServiceRegistry,
+): boolean {
+    if (textDocuments?.get(uri)?.languageId === CONFIG_DOCUMENT_LANGUAGE_ID) {
+        return false;
+    }
+    return serviceRegistry.hasServices(uri);
+}
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
@@ -43,6 +64,22 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         super(services);
         this.wsManager = () => services.workspace.WorkspaceManager;
         this.fileSystemProvider = services.workspace.FileSystemProvider
+    }
+
+    /**
+     * Filters `changed` through {@link isBuildableDocumentUri} before handing it to Langium's own
+     * `update` (#650): a `bbx-config` document reaches this server only for its composer cue and
+     * must never be parsed, linked, indexed, validated or diagnosed as BBj source, and a uri with
+     * no registered services at all would otherwise throw during the parse phase. When the
+     * filtered `changed` list and `deleted` are both empty, this returns without calling the base
+     * method at all, so a config-only change never resets `currentState` or fires a build phase.
+     */
+    override async update(changed: URI[], deleted: URI[], cancelToken: CancellationToken = CancellationToken.None): Promise<void> {
+        const buildableChanged = changed.filter(uri => isBuildableDocumentUri(uri, this.textDocuments, this.serviceRegistry));
+        if (buildableChanged.length === 0 && deleted.length === 0) {
+            return;
+        }
+        await super.update(buildableChanged, deleted, cancelToken);
     }
 
     /**

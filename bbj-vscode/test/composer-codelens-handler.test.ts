@@ -30,6 +30,8 @@ function depsFor(overrides: Partial<ComposerCodeLensHandlerDeps>): ComposerCodeL
         waitForRequiredState: async () => undefined,
         getDocument: () => FAKE_DOCUMENT,
         getCodeLenses: async () => undefined,
+        getLanguageId: () => 'bbj',
+        getText: () => undefined,
         budgetMs: TEST_BUDGET_MS,
         ...overrides,
     };
@@ -117,6 +119,61 @@ describe('createBoundedComposerCodeLensHandler (#650)', () => {
 
     test('the exported budget constant is a positive, non-trivial number of milliseconds', () => {
         expect(COMPOSER_CODE_LENS_BUDGET_MS).toBeGreaterThan(1000);
+    });
+});
+
+describe('the bbx-config branch answers from raw text before any wait (#650)', () => {
+    const CONFIG_TEXT = 'PREFIX "/x/"\nSETOPTS 00000080\nsetopts\nSETOPTS zz junk\n';
+
+    test('a bbx-config document with recognizable SETOPTS lines returns exactly the matching cues without waiting', async () => {
+        let waitCalled = false;
+        const handler = createBoundedComposerCodeLensHandler(depsFor({
+            getLanguageId: () => 'bbx-config',
+            getText: () => CONFIG_TEXT,
+            waitForRequiredState: async () => { waitCalled = true; },
+        }));
+
+        const result = await handler(paramsFor(), CancellationToken.None);
+
+        expect(waitCalled).toBe(false);
+        expect(result).not.toBeNull();
+        expect(result).toHaveLength(2);
+        const lines = result!.map((lens) => lens.range.start.line);
+        expect(lines).toEqual([1, 2]);
+        for (const lens of result!) {
+            expect(lens.command?.title).toBe('Compose SETOPTS');
+            expect(lens.command?.arguments?.[0].kind).toBe('setopts-config');
+            expect(lens.range.start.character).toBe(0);
+        }
+    });
+
+    test('a bbx-config document with no text available returns null', async () => {
+        let waitCalled = false;
+        const handler = createBoundedComposerCodeLensHandler(depsFor({
+            getLanguageId: () => 'bbx-config',
+            getText: () => undefined,
+            waitForRequiredState: async () => { waitCalled = true; },
+        }));
+
+        const result = await handler(paramsFor(), CancellationToken.None);
+
+        expect(waitCalled).toBe(false);
+        expect(result).toBeNull();
+    });
+
+    test('a bbj document behaves exactly as before — the wait runs and the provider is consulted', async () => {
+        const lenses: CodeLens[] = [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }];
+        let waitCalled = false;
+        const handler = createBoundedComposerCodeLensHandler(depsFor({
+            getLanguageId: () => 'bbj',
+            waitForRequiredState: async () => { waitCalled = true; },
+            getCodeLenses: async () => lenses,
+        }));
+
+        const result = await handler(paramsFor(), CancellationToken.None);
+
+        expect(waitCalled).toBe(true);
+        expect(result).toBe(lenses);
     });
 });
 

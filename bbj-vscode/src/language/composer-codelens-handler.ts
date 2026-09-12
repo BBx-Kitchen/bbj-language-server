@@ -21,6 +21,8 @@ import { DocumentState, type LangiumDocument } from 'langium';
 import type { LangiumSharedServices } from 'langium/lsp';
 import { URI } from 'vscode-uri';
 import type { BBjServices } from './bbj-module.js';
+import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
+import { configComposerLenses } from './composer-codelens.js';
 
 /**
  * The longest a client's `textDocument/codeLens` request can be held by our reply. This is a
@@ -39,6 +41,10 @@ export interface ComposerCodeLensHandlerDeps {
     getDocument(uri: URI): LangiumDocument | undefined;
     /** Asks the language-specific provider for cues on the resolved document. */
     getCodeLenses(document: LangiumDocument, params: CodeLensParams, cancelToken: CancellationToken): Promise<CodeLens[] | undefined>;
+    /** The client-reported language id of the open document at `uri`, if any is open. */
+    getLanguageId(uri: URI): string | undefined;
+    /** The open document's current text at `uri`, if any is open. */
+    getText(uri: URI): string | undefined;
     /** Test-only override of {@link COMPOSER_CODE_LENS_BUDGET_MS}. */
     budgetMs?: number;
 }
@@ -49,19 +55,30 @@ type WaitOutcome = 'settled' | 'failed';
 /**
  * Build the bounded `textDocument/codeLens` handler.
  *
- * Races the state wait against the budget. On budget expiry it resolves with `null` and abandons
- * the wait — the wait's own promise is immediately reshaped into one that can never reject (a
- * settle maps to `'settled'`, any rejection maps to `'failed'`), so an eventual rejection from the
- * abandoned wait never surfaces later as an unhandled rejection. The timer is always cleared, on
- * every path. On settle it resolves the document from the in-memory store, returns `null` if
- * absent, and otherwise returns the provider's result or `null`. Every failure path returns
- * `null`; nothing throws out of this handler.
+ * A `bbx-config` document (#650) is answered immediately from its raw open text, before any wait
+ * — the config document reaches this server only for the composer cue and must never be parsed
+ * or linked as BBj source. `null` is returned when the document's text is not available (not
+ * open) rather than waiting on a document state a config document never reaches.
+ *
+ * Every other document races the state wait against the budget. On budget expiry it resolves with
+ * `null` and abandons the wait — the wait's own promise is immediately reshaped into one that can
+ * never reject (a settle maps to `'settled'`, any rejection maps to `'failed'`), so an eventual
+ * rejection from the abandoned wait never surfaces later as an unhandled rejection. The timer is
+ * always cleared, on every path. On settle it resolves the document from the in-memory store,
+ * returns `null` if absent, and otherwise returns the provider's result or `null`. Every failure
+ * path returns `null`; nothing throws out of this handler.
  */
 export function createBoundedComposerCodeLensHandler(
     deps: ComposerCodeLensHandlerDeps,
 ): (params: CodeLensParams, cancelToken: CancellationToken) => Promise<CodeLens[] | null> {
     return async (params: CodeLensParams, cancelToken: CancellationToken): Promise<CodeLens[] | null> => {
         const uri = URI.parse(params.textDocument.uri);
+
+        if (deps.getLanguageId(uri) === CONFIG_DOCUMENT_LANGUAGE_ID) {
+            const text = deps.getText(uri);
+            return text === undefined ? null : configComposerLenses(uri.toString(), text);
+        }
+
         const budgetMs = deps.budgetMs ?? COMPOSER_CODE_LENS_BUDGET_MS;
 
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -122,6 +139,8 @@ export function registerComposerCodeLensHandler(
             }
             return Promise.resolve(provider.provideCodeLens(document, params, cancelToken));
         },
+        getLanguageId: (uri) => shared.workspace.TextDocuments?.get(uri)?.languageId,
+        getText: (uri) => shared.workspace.TextDocuments?.get(uri)?.getText(),
     };
     connection.onCodeLens(createBoundedComposerCodeLensHandler(deps));
 }

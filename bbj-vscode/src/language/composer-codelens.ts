@@ -21,6 +21,7 @@ import { findMsgboxCalls } from '../msgbox-composer.js';
 import { findAddChildWindowCalls } from '../addchildwindow-composer.js';
 import { findCvsCalls, decodeCvsCall } from '../cvs-composer.js';
 import { createDecodeInCodeHandler } from './setopts-in-code-request.js';
+import { parseSetOptsLine } from '../setopts-catalog.js';
 import {
     COMPOSER_LENS_COMMAND, COMPOSER_LENS_TITLES,
     type ComposerLensKind, type ComposerLensTarget,
@@ -168,6 +169,24 @@ export function toComposerCodeLenses(uri: string, candidates: ComposerLensCandid
             },
         };
     });
+}
+
+/**
+ * The `setopts-config` cue source for a `bbx-config` document (#650): every line
+ * `parseSetOptsLine` (the config.bbx composer's own detector, re-hosted server-side) recognizes
+ * becomes a whole-line `Compose SETOPTS` cue at character 0. Called directly from raw text — a
+ * `bbx-config` document is never parsed or built, so there is no `LangiumDocument`/CST to read.
+ */
+export function configComposerLenses(uri: string, text: string): CodeLens[] {
+    const lines = text.split(/\r?\n/);
+    const candidates: ComposerLensCandidate[] = [];
+    for (let line = 0; line < lines.length; line++) {
+        if (!parseSetOptsLine(lines[line])) {
+            continue;
+        }
+        candidates.push({ kind: 'setopts-config', line, start: 0, end: lines[line].length, character: 0 });
+    }
+    return toComposerCodeLenses(uri, candidates);
 }
 
 /**
