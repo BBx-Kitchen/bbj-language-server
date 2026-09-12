@@ -64,21 +64,31 @@ interface FakePanel {
     dispose: ReturnType<typeof vi.fn>;
     onDidDispose: ReturnType<typeof vi.fn>;
 }
-function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown) => unknown) | undefined } {
+function createFakePanel(): {
+    panel: FakePanel;
+    getHandler: () => ((msg: unknown) => unknown) | undefined;
+    getDisposeListener: () => (() => void) | undefined;
+    messageSubscriptionDispose: ReturnType<typeof vi.fn>;
+} {
     let handler: ((msg: unknown) => unknown) | undefined;
+    let disposeListener: (() => void) | undefined;
+    const messageSubscriptionDispose = vi.fn();
     const panel: FakePanel = {
         webview: {
             html: '',
             postMessage: vi.fn(),
             onDidReceiveMessage: vi.fn((cb: (msg: unknown) => unknown) => {
                 handler = cb;
-                return { dispose: vi.fn() };
+                return { dispose: messageSubscriptionDispose };
             }),
         },
         dispose: vi.fn(),
-        onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDispose: vi.fn((cb: () => void) => {
+            disposeListener = cb;
+            return { dispose: vi.fn() };
+        }),
     };
-    return { panel, getHandler: () => handler };
+    return { panel, getHandler: () => handler, getDisposeListener: () => disposeListener, messageSubscriptionDispose };
 }
 
 function setActiveEditor(uri: string, line: number, character: number): void {
@@ -177,6 +187,32 @@ describe('addWindow panel refuses malformed fields (#623)', () => {
     });
 });
 
+describe('closing the addWindow panel disposes its message handler and leaves the extension context untouched (#530)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        activeTextEditor = undefined;
+    });
+
+    test('leaves fakeContext.subscriptions.length unchanged and disposes the message subscription exactly once on panel dispose', () => {
+        const localContext = { subscriptions: [] } as unknown as Parameters<typeof openAddWindowComposerPanel>[0];
+        const before = (localContext as unknown as { subscriptions: unknown[] }).subscriptions.length;
+        setActiveEditor('file:///a.bbj', 0, 0);
+        const { panel, getDisposeListener, messageSubscriptionDispose } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openAddWindowComposerPanel(localContext);
+
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
+        expect(panel.onDidDispose).toHaveBeenCalledTimes(1);
+        expect(messageSubscriptionDispose).not.toHaveBeenCalled();
+
+        getDisposeListener()!();
+
+        expect(messageSubscriptionDispose).toHaveBeenCalledTimes(1);
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
+    });
+});
+
 describe('addwindow-composer-webview.ts source carries the validation markup and guard (#623)', () => {
     const source = readFileSync(
         fileURLToPath(new URL('../src/addwindow-composer-webview.ts', import.meta.url)),
@@ -261,6 +297,32 @@ describe('addChildWindow panel refuses malformed fields (#623)', () => {
         const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
         expect(edit.replace).toHaveBeenCalledTimes(1);
         expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('closing the addChildWindow panel disposes its message handler and leaves the extension context untouched (#530)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        activeTextEditor = undefined;
+    });
+
+    test('leaves fakeContext.subscriptions.length unchanged and disposes the message subscription exactly once on panel dispose', () => {
+        const localContext = { subscriptions: [] } as unknown as Parameters<typeof openAddChildWindowComposerPanel>[0];
+        const before = (localContext as unknown as { subscriptions: unknown[] }).subscriptions.length;
+        setActiveEditor('file:///a.bbj', 0, 0);
+        const { panel, getDisposeListener, messageSubscriptionDispose } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openAddChildWindowComposerPanel(localContext);
+
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
+        expect(panel.onDidDispose).toHaveBeenCalledTimes(1);
+        expect(messageSubscriptionDispose).not.toHaveBeenCalled();
+
+        getDisposeListener()!();
+
+        expect(messageSubscriptionDispose).toHaveBeenCalledTimes(1);
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
     });
 });
 

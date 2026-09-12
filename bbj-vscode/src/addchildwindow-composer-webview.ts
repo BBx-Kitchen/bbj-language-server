@@ -22,6 +22,7 @@ import {
     CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, addchildwindowPreview,
 } from './addchildwindow-composer.js';
 import { getNonce } from './webview-nonce.js';
+import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddChildWindowEditTarget {
@@ -115,7 +116,7 @@ export function openAddChildWindowComposerPanel(context: vscode.ExtensionContext
         preservedEventBits: target?.preservedEventBits ?? 0,
     });
 
-    panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -146,7 +147,7 @@ export function openAddChildWindowComposerPanel(context: vscode.ExtensionContext
                 panel.dispose();
                 break;
         }
-    }, undefined, context.subscriptions);
+    });
 }
 
 /** EDIT mode: rewrite only the flags (and, if enabled, event_mask) hex tokens in place. */

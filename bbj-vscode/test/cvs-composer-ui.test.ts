@@ -95,21 +95,33 @@ function fakeRange(line: number, character: number): any {
 interface FakePanel {
     webview: { html: string; postMessage: ReturnType<typeof vi.fn>; onDidReceiveMessage: ReturnType<typeof vi.fn> };
     dispose: ReturnType<typeof vi.fn>;
+    onDidDispose: ReturnType<typeof vi.fn>;
 }
-function createFakePanel(): { panel: FakePanel; getHandler: () => ((msg: unknown) => unknown) | undefined } {
+function createFakePanel(): {
+    panel: FakePanel;
+    getHandler: () => ((msg: unknown) => unknown) | undefined;
+    getDisposeListener: () => (() => void) | undefined;
+    messageSubscriptionDispose: ReturnType<typeof vi.fn>;
+} {
     let handler: ((msg: unknown) => unknown) | undefined;
+    let disposeListener: (() => void) | undefined;
+    const messageSubscriptionDispose = vi.fn();
     const panel: FakePanel = {
         webview: {
             html: '',
             postMessage: vi.fn(),
             onDidReceiveMessage: vi.fn((cb: (msg: unknown) => unknown) => {
                 handler = cb;
-                return { dispose: vi.fn() };
+                return { dispose: messageSubscriptionDispose };
             }),
         },
         dispose: vi.fn(),
+        onDidDispose: vi.fn((cb: () => void) => {
+            disposeListener = cb;
+            return { dispose: vi.fn() };
+        }),
     };
-    return { panel, getHandler: () => handler };
+    return { panel, getHandler: () => handler, getDisposeListener: () => disposeListener, messageSubscriptionDispose };
 }
 
 describe('cvsPanelArgAt (#649)', () => {
@@ -493,6 +505,33 @@ describe('openCvsComposerPanel (#649)', () => {
         });
         const previewCall = panel.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'preview');
         expect(previewCall![0]).toEqual({ type: 'preview', ...expected });
+    });
+});
+
+describe('closing the CVS() panel disposes its message handler and leaves the extension context untouched (#530)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+        activeTextEditor = undefined;
+    });
+
+    test('leaves fakeContext.subscriptions.length unchanged and disposes the message subscription exactly once on panel dispose', () => {
+        const localContext = { subscriptions: [] } as unknown as Parameters<typeof openCvsComposerPanel>[0];
+        const before = (localContext as unknown as { subscriptions: unknown[] }).subscriptions.length;
+        activeTextEditor = { document: { uri: { toString: () => 'file:///a.bbj' } }, selection: { active: { line: 0, character: 0 } } };
+        const { panel, getDisposeListener, messageSubscriptionDispose } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        openCvsComposerPanel(localContext);
+
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
+        expect(panel.onDidDispose).toHaveBeenCalledTimes(1);
+        expect(messageSubscriptionDispose).not.toHaveBeenCalled();
+
+        getDisposeListener()!();
+
+        expect(messageSubscriptionDispose).toHaveBeenCalledTimes(1);
+        expect((localContext as unknown as { subscriptions: unknown[] }).subscriptions.length).toBe(before);
     });
 });
 

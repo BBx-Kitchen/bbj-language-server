@@ -22,6 +22,7 @@
 import * as vscode from 'vscode';
 import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview, findCvsCalls } from './cvs-composer.js';
 import { getNonce } from './webview-nonce.js';
+import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface CvsEditTarget {
@@ -105,7 +106,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
         trailingArgs, editMode,
     });
 
-    panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -146,7 +147,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
                 panel.dispose();
                 break;
         }
-    }, undefined, context.subscriptions);
+    });
 }
 
 function getHtml(webview: vscode.Webview): string {
