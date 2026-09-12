@@ -85,7 +85,6 @@ function fakeDocument(uri: string, lines: string[]) {
         lineAt: (line: number) => ({ text: lines[line] }),
     };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeRange(line: number, character: number): any {
     return { start: { line, character } };
 }
@@ -136,7 +135,6 @@ describe('cvsPanelArgAt (#649)', () => {
 describe('CVS lightbulb (#649)', () => {
     beforeEach(() => { vi.clearAllMocks(); });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function getProvider(): any {
         registerCvsComposer(fakeContext);
         const call = registerCodeActionsProviderMock.mock.calls[0];
@@ -344,17 +342,14 @@ describe('cvs-composer-webview.ts source assertions (#649)', () => {
 });
 
 describe('package.json manifest (#649)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const packageJson: any = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
     test('contributes.commands has the bbj.composeCvs entry', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const entry = packageJson.contributes.commands.find((c: any) => c.command === 'bbj.composeCvs');
         expect(entry).toEqual({ category: 'BBj', command: 'bbj.composeCvs', title: 'Compose CVS() (visual)…' });
     });
 
     test('menus["editor/context"] has an entry for bbj.composeCvs scoped to bbj files', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const entry = packageJson.contributes.menus['editor/context'].find((m: any) => m.command === 'bbj.composeCvs');
         expect(entry).toEqual({ command: 'bbj.composeCvs', when: 'editorLangId == bbj', group: '1_modification' });
     });

@@ -25,7 +25,7 @@ export function registerCvsComposer(context: vscode.ExtensionContext): void {
 /**
  * Build the `CvsPanelArg` and Code Action label for the CVS() call at `character` on `lineText`,
  * or `undefined` when there is none, or the call is present but not safely editable (a missing,
- * non-literal or undocumented-bit mask — D-14). Shared by the Code Action provider and any future
+ * non-literal or undocumented-bit mask, which gets no lightbulb action). Shared by the Code Action provider and any future
  * cue dispatcher so both entry points decode the same call the same way.
  */
 export function cvsPanelArgAt(

@@ -201,6 +201,11 @@
         "category": "BBj",
         "command": "bbj.composeSetoptsInCode",
         "title": "Compose SETOPTS in code (visual)…"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeCvs",
+        "title": "Compose CVS() (visual)…"
       }
     ],
     "keybindings": [
@@ -279,6 +284,11 @@
         },
         {
           "command": "bbj.composeSetoptsInCode",
+          "when": "editorLangId == bbj",
+          "group": "1_modification"
+        },
+        {
+          "command": "bbj.composeCvs",
           "when": "editorLangId == bbj",
           "group": "1_modification"
         }
@@ -658,6 +668,7 @@
     "onCommand:bbj.composeAddChildWindow",
     "onCommand:bbj.composeConfigSetopts",
     "onCommand:bbj.composeSetoptsInCode",
+    "onCommand:bbj.composeCvs",
     "onLanguage:bbx-config"
   ],
   "main": "./out/extension.cjs",
