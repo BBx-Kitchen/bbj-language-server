@@ -266,6 +266,21 @@ describe('openComposerAt', () => {
         expect(showInformationMessageMock).not.toHaveBeenCalled();
     });
 
+    test('cvs: a mask-less (incomplete) call opens the composer with cvsPanelArgAt(...).arg carrying incomplete: true, and shows no gone message', async () => {
+        const lineText = 'x$ = CVS(a$)';
+        textDocuments = [fakeDocument('file:///a.bbj', [lineText])];
+        const character = lineText.indexOf('CVS');
+        const target: ComposerLensTarget = { kind: 'cvs', uri: 'file:///a.bbj', line: 0, character };
+
+        await openComposerAt(fakeContext, target);
+
+        expect(openCvsComposerPanelMock).toHaveBeenCalledTimes(1);
+        const expected = cvsPanelArgAt('file:///a.bbj', 0, lineText, character);
+        expect(expected!.arg.target?.incomplete).toBe(true);
+        expect(openCvsComposerPanelMock.mock.calls[0][1]).toEqual(expected!.arg);
+        expect(showInformationMessageMock).not.toHaveBeenCalled();
+    });
+
     test('cvs: a line whose mask is no longer editable (non-literal) shows the gone message and opens no panel', async () => {
         textDocuments = [fakeDocument('file:///a.bbj', ['x$ = CVS(a$, n%)'])];
         const character = 'x$ = CVS(a$, n%)'.indexOf('CVS');

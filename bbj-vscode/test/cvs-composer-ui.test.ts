@@ -43,7 +43,10 @@ const {
 });
 
 let textDocuments: Array<{ uri: { toString(): string }; lineAt(line: number): { text: string } }> = [];
-let activeTextEditor: { document: { uri: { toString(): string } }; selection: { active: unknown } } | undefined;
+let activeTextEditor: {
+    document: { uri: { toString(): string }; lineAt?(line: number): { text: string } };
+    selection: { active: { line: number; character: number } };
+} | undefined;
 
 vi.mock('vscode', () => ({
     window: {
@@ -71,11 +74,11 @@ vi.mock('vscode', () => ({
     Uri: { parse: (s: string) => ({ toString: () => s, __uri: s }) },
 }));
 
-import { registerCvsComposer, cvsPanelArgAt } from '../src/cvs-composer-ui.js';
+import { registerCvsComposer, cvsPanelArgAt, runComposeCvsCommand } from '../src/cvs-composer-ui.js';
 import {
     openCvsComposerPanel, cvsCallStillMatches, type CvsEditTarget, type CvsPanelArg,
 } from '../src/cvs-composer-webview.js';
-import { cvsPreview } from '../src/cvs-composer.js';
+import { cvsPreview, CVS_NOT_EDITABLE_REASON_TEXT } from '../src/cvs-composer.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openCvsComposerPanel>[0];
 
@@ -191,6 +194,92 @@ describe('registerCvsComposer (#649)', () => {
         expect(registerCommandMock.mock.calls[0][0]).toBe('bbj.composeCvs');
         expect(registerCodeActionsProviderMock).toHaveBeenCalledTimes(1);
         expect(registerCodeActionsProviderMock.mock.calls[0][0]).toEqual({ language: 'bbj' });
+    });
+});
+
+describe('runComposeCvsCommand — position-aware bbj.composeCvs (#649)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        textDocuments = [];
+        activeTextEditor = undefined;
+    });
+
+    function setActiveEditor(uri: string, lines: string[], line: number, character: number) {
+        activeTextEditor = {
+            document: { uri: { toString: () => uri }, lineAt: (l: number) => ({ text: lines[l] }) },
+            selection: { active: { line, character } },
+        };
+    }
+
+    test('no argument on an unfinished call opens the complete-the-call panel — driven through the registered command handler', () => {
+        setActiveEditor('file:///a.bbj', ['a$ = CVS('], 0, 9);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        registerCvsComposer(fakeContext);
+        const handler = registerCommandMock.mock.calls[0][1] as (arg?: unknown) => void;
+        handler();
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete CVS() call');
+    });
+
+    test('a plain object without target/initial (e.g. a document URI) also decodes the cursor', () => {
+        setActiveEditor('file:///a.bbj', ['a$ = CVS('], 0, 9);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeCvsCommand(fakeContext, { toString: () => 'file:///a.bbj' });
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Complete CVS() call');
+    });
+
+    test('cursor inside an editable literal-sum call opens Edit CVS()', () => {
+        setActiveEditor('file:///a.bbj', ['x$ = CVS(a$, 1+4)'], 0, 10);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeCvsCommand(fakeContext);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Edit CVS()');
+    });
+
+    test('cursor inside a non-literal-mask call shows the server reason and opens no panel', () => {
+        setActiveEditor('file:///a.bbj', ['x$ = CVS(a$, n%)'], 0, 10);
+
+        runComposeCvsCommand(fakeContext);
+
+        expect(showInformationMessageMock).toHaveBeenCalledWith(CVS_NOT_EDITABLE_REASON_TEXT['non-literal-mask']);
+        expect(createWebviewPanelMock).not.toHaveBeenCalled();
+    });
+
+    test('cursor with no CVS call composes a NEW call at the cursor (unchanged)', () => {
+        setActiveEditor('file:///a.bbj', ['x$ = 1'], 0, 3);
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeCvsCommand(fakeContext);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('CVS() Composer');
+    });
+
+    test('a CvsPanelArg argument (the lightbulb\'s) opens that argument without reading the active editor', () => {
+        activeTextEditor = undefined; // proves the active editor is never consulted for this argument shape
+        const target: CvsEditTarget = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 17,
+            callText: 'CVS(a$, 1+4)', trailingArgs: [],
+        };
+        const arg: CvsPanelArg = { target, initial: { str: 'a$', bits: [1, 4], chars: '' } };
+        const { panel } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+
+        runComposeCvsCommand(fakeContext, arg);
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        expect(createWebviewPanelMock.mock.calls[0][1]).toBe('Edit CVS()');
     });
 });
 

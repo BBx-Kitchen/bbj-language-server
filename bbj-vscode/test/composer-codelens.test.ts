@@ -162,13 +162,20 @@ describe('BBjComposerCodeLensProvider — MSGBOX, addChildWindow, CVS and in-cod
         expect(lenses![0].command?.arguments?.[0].kind).toBe('cvs');
     });
 
-    test('a CVS() call with a variable mask, no mask, or a longer builtin name yields no cue', async () => {
+    test('a CVS() call with a variable mask, no mask, an unfinished call, or a longer builtin name yields no cue', async () => {
         const varMask = await lensesFor('x$ = CVS(a$, n%)\n');
         expect(varMask).toEqual([]);
         const noMask = await lensesFor('x$ = CVS(a$)\n');
         expect(noMask).toEqual([]);
         const longerName = await lensesFor('x$ = MYCVS(a$, 1)\n');
         expect(longerName).toEqual([]);
+
+        // Half-typed CVS() calls (the #649 gap closure's `incomplete` outcome) keep `editable:
+        // false`, so the existing found && editable gate already leaves them cue-free.
+        expect(await lensesFor('x$ = CVS(\n')).toEqual([]);
+        expect(await lensesFor('x$ = CVS()\n')).toEqual([]);
+        expect(await lensesFor('x$ = CVS(a$\n')).toEqual([]);
+        expect(await lensesFor('x$ = CVS(a$,\n')).toEqual([]);
     });
 
     test('an absolute SETOPTS statement yields one Compose SETOPTS cue at the argument\'s first character', async () => {
