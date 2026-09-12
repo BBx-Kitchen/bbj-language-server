@@ -134,6 +134,14 @@ public final class ComposerModels {
         public String title;
     }
 
+    /**
+     * Per-field error strings ({@code receiverError}, {@code sysguiError}, {@code titleError},
+     * {@code xError}, {@code yError}, {@code widthError}, {@code heightError}) are null when that
+     * field is fine, and always null in edit mode since the free-text fields are never validated
+     * there (#623). {@code valid} is false when any typed field is malformed, and always true in
+     * edit mode. A server that omits {@code valid} leaves this Java {@code boolean} at its default
+     * {@code false}, so OK stays disabled -- fails closed.
+     */
     public static final class AddWindowPreview {
         public long flags;
         public Long eventMask;
@@ -143,6 +151,14 @@ public final class ComposerModels {
         public String flagsSummary;
         public String eventSummary;
         public WindowRender render;
+        public String receiverError;
+        public String sysguiError;
+        public String titleError;
+        public String xError;
+        public String yError;
+        public String widthError;
+        public String heightError;
+        public boolean valid;
     }
 
     // ---- addChildWindow (#473) -------------------------------------------------------------------

@@ -162,6 +162,56 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(4294967295L, result.eventMask);
         assertEquals(1, result.render.badges.size());
         assertTrue(result.render.titleBar);
+        // This envelope carries neither error keys nor valid -- the documented fail-closed default.
+        assertNull(result.xError);
+        assertFalse(result.valid);
+    }
+
+    @Test
+    void anAddWindowPreviewCarryingFieldErrorsParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "flags":1,"eventMask":null,"flagsHex":"$00000001$","eventHex":null,
+              "statement":"sysgui!.addWindow(\\"10\\", 10, 400, 300, \\"Window\\", $00000001$)",
+              "flagsSummary":"Resizable","eventSummary":"(default)",
+              "render":{"titleBar":true,"closeBox":false,"minMax":false,"menuBar":false,"hScroll":false,
+                "vScroll":false,"border":false,"resizable":true,"disabled":false,"invisible":false,
+                "minimized":false,"maximized":false,"badges":[],"title":"Window"},
+              "xError":"Not a number — remove the quotes: 10","titleError":null,"valid":false
+            }}""";
+
+        AddWindowPreview result = parse("bbj/composer/addwindow/preview", AddWindowPreview.class, envelope,
+            AddWindowPreviewParams.class);
+
+        assertEquals("Not a number — remove the quotes: 10", result.xError);
+        assertNull(result.titleError);
+        assertFalse(result.valid);
+    }
+
+    @Test
+    void aValidAddWindowPreviewWithEveryErrorOmittedParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "flags":1,"eventMask":null,"flagsHex":"$00000001$","eventHex":null,
+              "statement":"win! = sysgui!.addWindow(10, 10, 400, 300, \\"Window\\", $00000001$)",
+              "flagsSummary":"Resizable","eventSummary":"(default)",
+              "render":{"titleBar":true,"closeBox":false,"minMax":false,"menuBar":false,"hScroll":false,
+                "vScroll":false,"border":false,"resizable":true,"disabled":false,"invisible":false,
+                "minimized":false,"maximized":false,"badges":[],"title":"Window"},
+              "valid":true
+            }}""";
+
+        AddWindowPreview result = parse("bbj/composer/addwindow/preview", AddWindowPreview.class, envelope,
+            AddWindowPreviewParams.class);
+
+        assertTrue(result.valid);
+        assertNull(result.receiverError);
+        assertNull(result.sysguiError);
+        assertNull(result.titleError);
+        assertNull(result.xError);
+        assertNull(result.yError);
+        assertNull(result.widthError);
+        assertNull(result.heightError);
     }
 
     @Test
