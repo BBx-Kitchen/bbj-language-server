@@ -19,6 +19,8 @@ import { msgboxPanelArgFromDecode } from './msgbox-composer-ui.js';
 import { openMsgboxComposerPanel } from './msgbox-composer-webview.js';
 import { cvsPanelArgAt } from './cvs-composer-ui.js';
 import { openCvsComposerPanel } from './cvs-composer-webview.js';
+import { setoptsConfigPanelArgAt } from './setopts-composer-ui.js';
+import { openSetOptsComposerPanel } from './setopts-composer-webview.js';
 
 /** Register the `bbj.openComposerAt` command a composer cue's click invokes. */
 export function registerComposerLensCommand(context: vscode.ExtensionContext): void {
@@ -31,8 +33,9 @@ export function registerComposerLensCommand(context: vscode.ExtensionContext): v
  * Dispatch a cue click to its composer, re-decoding the call from the document's CURRENT text at
  * click time so a stale cue degrades to {@link LENS_TARGET_GONE_TEXT} rather than editing the
  * wrong text. `setopts-in-code` delegates to `bbj.composeSetoptsInCode`, which re-decodes
- * server-side and routes to the right panel or reason message itself. The `setopts-config` kind
- * is not yet wired to a cue click and keeps the default message.
+ * server-side and routes to the right panel or reason message itself. `setopts-config` re-decodes
+ * the config-file line via `setoptsConfigPanelArgAt` — the same argument shape the SETOPTS Code
+ * Action builds — and opens the existing SETOPTS composer panel.
  */
 export async function openComposerAt(context: vscode.ExtensionContext, target: ComposerLensTarget): Promise<void> {
     const document = vscode.workspace.textDocuments.find((doc) => doc.uri.toString() === target.uri);
@@ -88,6 +91,15 @@ export async function openComposerAt(context: vscode.ExtensionContext, target: C
             await vscode.commands.executeCommand('bbj.composeSetoptsInCode', {
                 uri: target.uri, line: target.line, character: target.character,
             });
+            return;
+        }
+        case 'setopts-config': {
+            const arg = setoptsConfigPanelArgAt(target.uri, target.line, lineText);
+            if (!arg) {
+                vscode.window.showInformationMessage(LENS_TARGET_GONE_TEXT);
+                return;
+            }
+            openSetOptsComposerPanel(context, arg);
             return;
         }
         default:

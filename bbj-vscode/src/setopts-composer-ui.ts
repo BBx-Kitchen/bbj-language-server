@@ -1,12 +1,18 @@
 /**
  * VS Code UI for the config.bbx SETOPTS composer (#474).
  *
- * Thin client layer over the editor-agnostic ./setopts-catalog module. Three entry points, all
+ * Thin client layer over the editor-agnostic ./setopts-catalog module. Two entry points, both
  * scoped to the `bbx-config` language (config.bbx / config.min files):
- *   - CodeLens on every `SETOPTS <hex>` line -> open the composer on that line's vector.
- *   - RefactorRewrite Code Action on a SETOPTS line -> same.
+ *   - RefactorRewrite Code Action on a SETOPTS line -> open the composer on that line's vector.
  *   - Command "bbj.composeConfigSetopts" -> edit the file's existing SETOPTS line, or compose a
  *     NEW one at the cursor when the file has none.
+ *
+ * The always-visible SETOPTS cue for config files is now served by the language server's shared
+ * composer cue (#650): the language client's `documentSelector` includes the config-document
+ * language id, and the server answers `textDocument/codeLens` for it directly from raw text
+ * (`composer-codelens.ts`'s `configComposerLenses`). This module's own client-side
+ * `vscode.languages.registerCodeLensProvider` registration is retired so a SETOPTS line never
+ * shows two cues; this module keeps only the command and the Code Action.
  */
 import * as vscode from 'vscode';
 import { getActiveConfigPath, isActiveConfigPath } from './config-path-cache.js';
@@ -26,15 +32,20 @@ export function registerSetOptsComposer(context: vscode.ExtensionContext): void 
             new SetOptsCodeActionProvider(),
             { providedCodeActionKinds: [vscode.CodeActionKind.RefactorRewrite] },
         ),
-        vscode.languages.registerCodeLensProvider(BBX_CONFIG, new SetOptsCodeLensProvider()),
     );
 }
 
-/** The panel arg for a recognized SETOPTS line — shared by the lens, the action and the command. */
-function argForLine(document: vscode.TextDocument, line: number, info: SetOptsLineInfo): SetOptsPanelArg {
+/**
+ * The panel arg for a recognized SETOPTS line at `line`, decoded from `lineText` — shared by the
+ * server-side composer cue's click dispatch (`composer-lens-command.ts`), the Code Action and the
+ * active-editor command entry point, so all three build byte-identical arguments.
+ */
+export function setoptsConfigPanelArgAt(uri: string, line: number, lineText: string): SetOptsPanelArg | undefined {
+    const info = parseSetOptsLine(lineText);
+    if (!info) return undefined;
     return {
         target: {
-            uri: document.uri.toString(),
+            uri,
             line,
             hexRange: info.hexRange,
             insertOffset: info.insertOffset,
@@ -73,8 +84,8 @@ export function argForActiveEditor(): SetOptsPanelArg | undefined {
         );
     }
     for (let line = 0; line < editor.document.lineCount; line++) {
-        const info = parseSetOptsLine(editor.document.lineAt(line).text);
-        if (info) return argForLine(editor.document, line, info);
+        const arg = setoptsConfigPanelArgAt(editor.document.uri.toString(), line, editor.document.lineAt(line).text);
+        if (arg) return arg;
     }
     return {}; // NEW mode — insert at the cursor
 }
@@ -82,27 +93,16 @@ export function argForActiveEditor(): SetOptsPanelArg | undefined {
 class SetOptsCodeActionProvider implements vscode.CodeActionProvider {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] {
         const line = range.start.line;
-        const info = parseSetOptsLine(document.lineAt(line).text);
+        const lineText = document.lineAt(line).text;
+        const info = parseSetOptsLine(lineText);
         if (!info) return [];
         const label = lineLabel(info);
         const action = new vscode.CodeAction(label, vscode.CodeActionKind.RefactorRewrite);
-        action.command = { command: 'bbj.composeConfigSetopts', title: label, arguments: [argForLine(document, line, info)] };
+        action.command = {
+            command: 'bbj.composeConfigSetopts',
+            title: label,
+            arguments: [setoptsConfigPanelArgAt(document.uri.toString(), line, lineText)],
+        };
         return [action];
-    }
-}
-
-class SetOptsCodeLensProvider implements vscode.CodeLensProvider {
-    provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
-        const lenses: vscode.CodeLens[] = [];
-        for (let line = 0; line < document.lineCount; line++) {
-            const info = parseSetOptsLine(document.lineAt(line).text);
-            if (!info) continue;
-            const title = `$(settings-gear) ${lineLabel(info)}`;
-            lenses.push(new vscode.CodeLens(
-                new vscode.Range(line, 0, line, document.lineAt(line).text.length),
-                { command: 'bbj.composeConfigSetopts', title, arguments: [argForLine(document, line, info)] },
-            ));
-        }
-        return lenses;
     }
 }

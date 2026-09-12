@@ -35,6 +35,7 @@ import { canonicalizeConfigPath, samePath } from './language/config-path-resolve
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
+import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -631,7 +632,7 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): P
     }
 }
 
-const CONFIG_LANGUAGE_ID = 'bbx-config';
+const CONFIG_LANGUAGE_ID = CONFIG_DOCUMENT_LANGUAGE_ID;
 
 // Tracks the config path most recently associated as bbx-config. A setting change
 // releases exactly this document rather than re-deriving "the previous path" from the
@@ -1032,7 +1033,13 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'bbj' }],
+        // A config document reaches the server only for its composer cue (#650) — it is never
+        // parsed, linked, indexed, validated or diagnosed as BBj source; `BBjDocumentBuilder`'s
+        // own filter drops it before Langium's build.
+        documentSelector: [
+            { scheme: 'file', language: 'bbj' },
+            { scheme: 'file', language: CONFIG_DOCUMENT_LANGUAGE_ID },
+        ],
         synchronize: {
             // Notify the server about file changes to files contained in the workspace
             fileEvents: fileSystemWatcher,

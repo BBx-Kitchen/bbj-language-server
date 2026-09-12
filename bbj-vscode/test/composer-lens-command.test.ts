@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const {
     registerCommandMock, showInformationMessageMock, applyEditMock, executeCommandMock,
     openAddWindowComposerPanelMock, openAddChildWindowComposerPanelMock,
-    openMsgboxComposerPanelMock, openCvsComposerPanelMock,
+    openMsgboxComposerPanelMock, openCvsComposerPanelMock, openSetOptsComposerPanelMock,
 } = vi.hoisted(() => ({
     registerCommandMock: vi.fn(),
     showInformationMessageMock: vi.fn(),
@@ -21,6 +21,7 @@ const {
     openAddChildWindowComposerPanelMock: vi.fn(),
     openMsgboxComposerPanelMock: vi.fn(),
     openCvsComposerPanelMock: vi.fn(),
+    openSetOptsComposerPanelMock: vi.fn(),
 }));
 
 let textDocuments: Array<{ uri: { toString(): string }; lineCount: number; lineAt(line: number): { text: string } }> = [];
@@ -60,6 +61,10 @@ vi.mock('../src/cvs-composer-webview.js', () => ({
     openCvsComposerPanel: openCvsComposerPanelMock,
 }));
 
+vi.mock('../src/setopts-composer-webview.js', () => ({
+    openSetOptsComposerPanel: openSetOptsComposerPanelMock,
+}));
+
 import {
     registerComposerLensCommand, openComposerAt,
 } from '../src/composer-lens-command.js';
@@ -69,6 +74,7 @@ import { addChildWindowPanelArgAt } from '../src/addchildwindow-composer-ui.js';
 import { decodeMsgboxCall } from '../src/msgbox-composer.js';
 import { msgboxPanelArgFromDecode } from '../src/msgbox-composer-ui.js';
 import { cvsPanelArgAt } from '../src/cvs-composer-ui.js';
+import { setoptsConfigPanelArgAt } from '../src/setopts-composer-ui.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openComposerAt>[0];
 
@@ -145,16 +151,28 @@ describe('openComposerAt', () => {
         expect(openAddWindowComposerPanelMock).not.toHaveBeenCalled();
     });
 
-    test('the still-unwired setopts-config kind shows an information message naming its title and opens no panel', async () => {
-        textDocuments = [fakeDocument('file:///a.bbj', ['SETOPTS $01$'])];
-        const target: ComposerLensTarget = { kind: 'setopts-config', uri: 'file:///a.bbj', line: 0, character: 0 };
+    test('setopts-config: on an open config document whose line still carries a SETOPTS line, calls openSetOptsComposerPanel once with setoptsConfigPanelArgAt(...)', async () => {
+        const lineText = 'SETOPTS 00000080';
+        textDocuments = [fakeDocument('file:///config.bbx', [lineText])];
+        const target: ComposerLensTarget = { kind: 'setopts-config', uri: 'file:///config.bbx', line: 0, character: 0 };
 
         await openComposerAt(fakeContext, target);
 
-        expect(showInformationMessageMock).toHaveBeenCalledTimes(1);
-        expect(showInformationMessageMock.mock.calls[0][0]).toMatch(/Compose SETOPTS/);
-        expect(openAddWindowComposerPanelMock).not.toHaveBeenCalled();
+        expect(openSetOptsComposerPanelMock).toHaveBeenCalledTimes(1);
+        const expected = setoptsConfigPanelArgAt('file:///config.bbx', 0, lineText);
+        expect(openSetOptsComposerPanelMock.mock.calls[0][1]).toEqual(expected);
+        expect(showInformationMessageMock).not.toHaveBeenCalled();
         expect(executeCommandMock).not.toHaveBeenCalled();
+    });
+
+    test('setopts-config: a line no longer carrying a SETOPTS line shows the gone message and opens no panel', async () => {
+        textDocuments = [fakeDocument('file:///config.bbx', ['PREFIX "/x/"'])];
+        const target: ComposerLensTarget = { kind: 'setopts-config', uri: 'file:///config.bbx', line: 0, character: 0 };
+
+        await openComposerAt(fakeContext, target);
+
+        expect(showInformationMessageMock).toHaveBeenCalledWith(LENS_TARGET_GONE_TEXT);
+        expect(openSetOptsComposerPanelMock).not.toHaveBeenCalled();
     });
 
     test('msgbox: on a line with a MSGBOX call, calls openMsgboxComposerPanel once with msgboxPanelArgFromDecode(decodeMsgboxCall(...)).arg', async () => {
