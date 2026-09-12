@@ -40,6 +40,7 @@ import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 import { BBjCPLService } from './bbj-cpl-service.js';
+import { BBjComposerCodeLensProvider } from './composer-codelens.js';
 import { logger } from './logger.js';
 
 
@@ -104,6 +105,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         SignatureHelp: () => new BBjSignatureHelpProvider(),
         InlayHintProvider: (services) => new BBjInlayHintProvider(services),
         CodeActionProvider: (services) => new BBjCodeActionProvider(services),
+        CodeLensProvider: () => new BBjComposerCodeLensProvider(),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),

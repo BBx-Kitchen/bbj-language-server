@@ -28,7 +28,7 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
         const lens = lenses![0];
         expect(lens.command?.title).toBe('Compose addWindow');
         expect(lens.command?.command).toBe(COMPOSER_LENS_COMMAND);
-        const callStart = source.indexOf('sysgui!.addWindow');
+        const callStart = source.indexOf('addWindow');
         const callEnd = source.indexOf(')', callStart) + 1;
         expect(lens.range).toEqual({
             start: { line: 0, character: callStart },
