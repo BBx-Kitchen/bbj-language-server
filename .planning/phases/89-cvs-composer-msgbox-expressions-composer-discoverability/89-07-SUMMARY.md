@@ -173,3 +173,9 @@ None - no external service configuration required.
 ---
 *Phase: 89-cvs-composer-msgbox-expressions-composer-discoverability*
 *Completed: 2026-09-12*
+
+## Self-Check: PASSED
+- FOUND: bbj-vscode/src/language/composer-commands.ts, bbj-vscode/test/composer-commands.test.ts, bbj-intellij ComposerModels.java/BbjComposerServer.java/DecodeEquality.java and their tests (all on disk, edited in place)
+- FOUND: commit c3686bbd (Task 1), 95cb332c (Task 2), 7208cb8d (docs/SUMMARY)
+- Re-ran acceptance criteria for both tasks: `grep` checks for the two CVS request names, `@JsonRequest` count of 2, `sameCvs`/`replace` field presence — all pass
+- Re-ran plan `<verification>`: vitest composer-commands suite (18 passed), Gradle composer+concurrency suite (all green), `npm run lint` (clean), register check (no banned ids in the diff)
