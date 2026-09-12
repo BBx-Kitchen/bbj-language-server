@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 89
 current_phase_name: CVS() Composer, MSGBOX Expressions & Composer Discoverability
-status: executing
-stopped_at: Completed 89-12-PLAN.md
-last_updated: "2026-09-12T10:39:27.492Z"
+status: verifying
+stopped_at: Completed 89-13-PLAN.md
+last_updated: "2026-09-12T11:10:27.613Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 89 execution started
-state_head: 3ae52ed3ae7514f87c292d03dd2bc221a2006a07
+state_head: b0b9afe06d4ad7df3ce2ca4dad2482ad9f3ab914
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 47
-  completed_plans: 46
+  completed_plans: 47
   percent: 56
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 Phase: 89 (CVS() Composer, MSGBOX Expressions & Composer Discoverability) — EXECUTING
 Plan: 13 of 13
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12 — Phase 89 execution started
 transitioned to Phase 89.
 
@@ -186,6 +186,7 @@ transitioned to Phase 89.
 | Phase 89 P10 | 12min | 2 tasks | 8 files |
 | Phase 89 P11 | 25min | 2 tasks | 10 files |
 | Phase 89 P12 | 12min | 2 tasks | 5 files |
+| Phase 89 P13 | 28min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -322,6 +323,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-11: BBjDocumentBuilder.update returns without calling the base method at all when the filtered changed list and deleted are both empty, avoiding a currentState reset/build-phase fire for a config-only change
 - [Phase 89]: 89-11: setoptsConfigPanelArgAt is the single argument-building function shared by the Code Action, active-editor command and cue-click dispatch, replacing the former argForLine wrapper
 - [Phase 89]: 89-12: cvs mapped to ComposerLensKinds and BBx Config mapped to the server as bbx-config, re-pinning Phase 84's invariant as a two-mapping check; a pre-existing D-01 comment token on the touched BbjComposeSetoptsAction Javadoc line was dropped to satisfy this plan's own register-check regex
+- [Phase 89]: Phase 89 89-13: bbj-hover-handler.ts overrides textDocument/hover to answer a bbx-config document instantly, closing a real >6s hang where Langium's default hover handler awaited WorkspaceManager.ready before checking document state -- discovered live while proving the T-89-42 mitigation, the same class of hang the codeAction/codeLens overrides already closed; every other document's hover is delegated unchanged.
+- [Phase 89]: Phase 89 89-13: All 13 phase plans now summarized; DISC-01/02/03 (#650, #648, #649) marked Complete via the shared-ID gate. Both distributables rebuilt and reinstalled from the final tree, proven against the fixture over IPC (sha256-identical main.cjs in both bundles).
 
 ### Tech Debt
 
@@ -388,8 +391,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T10:39:27.264Z
-Stopped at: Completed 89-12-PLAN.md
+Last session: 2026-09-12T11:10:13.962Z
+Stopped at: Completed 89-13-PLAN.md
 Resume file: None
 
 Next: Phase 88 is fully executed. Run phase-level verification/UAT next — three items remain
