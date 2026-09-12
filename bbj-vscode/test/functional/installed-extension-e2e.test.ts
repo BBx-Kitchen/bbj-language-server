@@ -1090,6 +1090,58 @@ describe.skipIf(!installPresent)('new decode payloads on the installed bundle', 
         expect(closedWithoutMask.incomplete).toBe(true);
         expect(closedWithoutMask.initial?.str).toBe('name$');
     }, 30_000);
+
+    test('bbj/composer/msgbox/decodeCall on an unfinished call returns the incomplete outcome with the call span', async () => {
+        const unfinished = await connection.sendRequest('bbj/composer/msgbox/decodeCall', {
+            line: 'x = MSGBOX(',
+            character: 11,
+        }) as {
+            found?: boolean;
+            incomplete?: boolean;
+            edit?: { callStart?: number; callEnd?: number };
+            initial?: { message?: string };
+            replace?: unknown;
+            hasOptions?: boolean;
+        };
+        expect(unfinished.found, `stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
+        expect(unfinished.incomplete).toBe(true);
+        expect(unfinished.edit).toEqual({ callStart: 4, callEnd: 11 });
+        expect(unfinished.initial?.message).toBe('');
+        expect(unfinished.replace).toBeUndefined();
+        expect(unfinished.hasOptions).toBe(false);
+
+        const withMessage = await connection.sendRequest('bbj/composer/msgbox/decodeCall', {
+            line: 'x = MSGBOX("Hi",',
+            character: 16,
+        }) as { incomplete?: boolean; initial?: { message?: string } };
+        expect(withMessage.incomplete).toBe(true);
+        expect(withMessage.initial?.message).toBe('"Hi"');
+    }, 30_000);
+
+    test('bbj/composer/addwindow/preview reports a malformed field as invalid and blank fields as valid', async () => {
+        const baseInput = {
+            flags: [] as number[],
+            eventMaskEnabled: false,
+            eventMask: [] as number[],
+            receiver: '',
+            sysgui: '',
+            y: '',
+            width: '',
+            height: '',
+            title: '',
+        };
+        const malformed = await connection.sendRequest('bbj/composer/addwindow/preview', {
+            input: { ...baseInput, x: '"10"' },
+        }) as { valid?: boolean; xError?: string };
+        expect(malformed.valid, `stderr: ${stderr.join('') || '(empty)'}`).toBe(false);
+        expect(malformed.xError).toBe('Not a number — remove the quotes: 10');
+
+        const blank = await connection.sendRequest('bbj/composer/addwindow/preview', {
+            input: { ...baseInput, x: '' },
+        }) as { valid?: boolean; statement?: string };
+        expect(blank.valid).toBe(true);
+        expect(blank.statement).toBe('sysgui!.addWindow(0, 0, 0, 0, "", $00000000$)');
+    }, 30_000);
 });
 
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {
