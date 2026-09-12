@@ -33,3 +33,13 @@ It belongs with Phase 90 (Composer Robustness), next to its success criterion
 on re-resolving the MSGBOX target before an edit.
 
 Deliberately not fixed in Phase 89.
+
+## Resolution
+
+Fixed in Phase 90:
+- An unfinished MSGBOX call now decodes as a composable `incomplete` outcome
+  instead of `found: false`.
+- Every VS Code and IntelliJ entry point completes it in place through a
+  guarded replace (plans 90-01 and 90-07), so the call is filled in rather than
+  nested inside.
+- QA rows VS Code 22 and IntelliJ 28 cover it going forward.
