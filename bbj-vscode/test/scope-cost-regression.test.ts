@@ -1,4 +1,4 @@
-import { AstNodeDescription, FileSystemNode, FileSystemProvider, LangiumDocument, URI } from 'langium';
+import { AstNode, AstNodeDescription, FileSystemNode, FileSystemProvider, LangiumDocument, Stream, URI } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
@@ -91,6 +91,26 @@ function lookupScope(services: TestServices, use: Use): AstNodeDescription[] {
     return scope.getAllElements().toArray();
 }
 
+/** Parses and adds one more document to an already-built workspace, at an absolute path. */
+async function parseExtraFile(handle: WorkspaceHandle, absolutePath: string, text: string): Promise<LangiumDocument<Model>> {
+    const uri = `file://${absolutePath}`;
+    handle.files.set(URI.parse(uri).fsPath, text);
+    const parse = parseHelper<Model>(handle.services.BBj);
+    return await parse(text, { documentUri: uri, validation: false });
+}
+
+/**
+ * Invokes `BbjScopeProvider`'s private `getBBjClassesFromFile` directly (via cast), scoped
+ * to `handle.mainDoc`'s directory/prefixes, without needing a linked `Use` reference node.
+ */
+function lookupClassesForPath(handle: WorkspaceHandle, bbjFilePath: string, simpleName = true): AstNodeDescription[] {
+    const scopeProvider = handle.services.BBj.references.ScopeProvider as unknown as {
+        getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean): { getAllElements(): Stream<AstNodeDescription> };
+    };
+    const container = handle.mainDoc.parseResult.value;
+    return scopeProvider.getBBjClassesFromFile(container, bbjFilePath, simpleName).getAllElements().toArray();
+}
+
 /**
  * Runs `run` while counting every BbjClass description the shared IndexManager streams
  * or returns, whether through the (pre-#505) full-scan `allElements` or the (post-#505)
@@ -179,4 +199,72 @@ describe('scope lookup cost does not grow with workspace size (#505)', () => {
 
         expect(largeMs).toBeLessThanOrEqual(Math.max(smallMs * 8, smallMs + 150));
     }, 60000);
+});
+
+describe('path-keyed class index stays correct (#505)', () => {
+    test('a changed file is visible to the next lookup', async () => {
+        const handle = await createWorkspace(3);
+        const c1Uri = URI.parse('file:///virtual/project/lib/C1.bbj');
+        const renamedDoc = handle.services.shared.workspace.LangiumDocumentFactory
+            .fromString<Model>('class public C1Renamed\nclassend', c1Uri);
+        await handle.services.shared.workspace.IndexManager.updateContent(renamedDoc);
+
+        const result = lookupClassesForPath(handle, 'lib/C1.bbj');
+        expect(result.map(d => d.name)).toEqual(['C1Renamed']);
+    });
+
+    test('a removed file drops out and an added file appears', async () => {
+        const handle = await createWorkspace(3);
+        const c1Uri = URI.parse('file:///virtual/project/lib/C1.bbj');
+
+        handle.services.shared.workspace.IndexManager.remove(c1Uri);
+        expect(lookupClassesForPath(handle, 'lib/C1.bbj')).toEqual([]);
+
+        await parseExtraFile(handle, '/virtual/project/lib/Added.bbj', 'class public Added\nclassend');
+        const added = lookupClassesForPath(handle, 'lib/Added.bbj');
+        expect(added.map(d => d.name)).toEqual(['Added']);
+    });
+
+    test('candidates naming the same file count it once', async () => {
+        const handle = await createWorkspace(2, { prefixes: ['/virtual/project'] });
+
+        const result = lookupClassesForPath(handle, 'lib/C0.bbj');
+        expect(result.map(d => d.name)).toEqual(['C0']);
+    });
+
+    test('a missing file or a class-less file yields nothing', async () => {
+        const handle = await createWorkspace(1);
+        expect(lookupClassesForPath(handle, 'lib/Missing.bbj')).toEqual([]);
+
+        await parseExtraFile(handle, '/virtual/project/lib/Empty.bbj', 'x = 1');
+        expect(lookupClassesForPath(handle, 'lib/Empty.bbj')).toEqual([]);
+    });
+
+    test('case differences in the path still match', async () => {
+        const handle = await createWorkspace(1);
+        const result = lookupClassesForPath(handle, 'LIB/C0.BBJ');
+        expect(result.map(d => d.name)).toEqual(['C0']);
+    });
+
+    test('same-named classes from two candidate files keep the index order', async () => {
+        const handle = await createWorkspace(0, { prefixes: ['/virtual/prefix'] });
+
+        // Parsed in this order: the prefix document first, then the project document.
+        // Candidate order (current directory, then workspace roots, then prefixes) would
+        // put the project document first — the index must use insertion order instead.
+        const prefixDup = await parseExtraFile(handle, '/virtual/prefix/Dup.bbj', 'class public Dup\nclassend');
+        const projectDup = await parseExtraFile(handle, '/virtual/project/Dup.bbj', 'class public Dup\nclassend');
+
+        const result = lookupClassesForPath(handle, 'Dup.bbj');
+        expect(result.map(d => d.documentUri.toString())).toEqual([
+            prefixDup.uri.toString(),
+            projectDup.uri.toString(),
+        ]);
+    });
+
+    test('::path::Name lookups still rename descriptions', async () => {
+        const handle = await createWorkspace(1);
+        const result = lookupClassesForPath(handle, 'lib/C0.bbj', false);
+        expect(result.map(d => d.name)).toEqual(['::lib/C0.bbj::C0']);
+    });
 });

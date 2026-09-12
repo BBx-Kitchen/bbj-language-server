@@ -20,7 +20,7 @@ export class BBjIndexManager extends DefaultIndexManager {
 
     /**
      * Path-keyed view of every document's exported BbjClass descriptions, maintained
-     * incrementally in updateContent/removeContent (D-10, #505). Keyed by the document's
+     * incrementally in updateContent/removeContent (#505). Keyed by the document's
      * normalized, lowercased path; each entry maps document URI string to that document's
      * BbjClass descriptions, so two documents that happen to normalize to the same path
      * (should that ever occur) are both retained.
