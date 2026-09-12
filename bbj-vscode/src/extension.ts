@@ -20,6 +20,7 @@ import { registerAddWindowComposer } from './addwindow-composer-ui.js';
 import { registerAddChildWindowComposer } from './addchildwindow-composer-ui.js';
 import { registerSetOptsComposer } from './setopts-composer-ui.js';
 import { registerSetOptsInCodeComposer } from './setopts-in-code-ui.js';
+import { registerComposerLensCommand } from './composer-lens-command.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -677,6 +678,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerMsgboxComposer(context); // spike: visual MSGBOX composer (#426)
     registerAddWindowComposer(context); // spike: visual addWindow flags/event-mask composer (#430)
     registerAddChildWindowComposer(context); // visual addChildWindow flags/event-mask composer (#473)
+    registerComposerLensCommand(context); // click-through for server-side composer cues (#650)
     registerSetOptsComposer(context); // visual SETOPTS composer for config.bbx (#474)
     registerSetOptsInCodeComposer(context, (method, params) => client.sendRequest(method, params)); // in-code SETOPTS composer (#475, DISC-06)
     secretStorage = context.secrets;

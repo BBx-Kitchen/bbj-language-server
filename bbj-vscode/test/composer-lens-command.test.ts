@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
- * Unit coverage for `bbj.openComposerAt` (#650, plan 89-01 Task 3): the VS Code command a
- * composer cue click invokes. Modelled on `test/setopts-in-code-ui.test.ts`'s `vscode` mock
+ * Unit coverage for `bbj.openComposerAt` (#650): the VS Code command a composer cue click
+ * invokes. Modelled on `test/setopts-in-code-ui.test.ts`'s `vscode` mock
  * harness. `openAddWindowComposerPanel` from `./addwindow-composer-webview.js` is mocked so this
  * file only proves the routing/gone-target/no-edit behaviours, not the webview's own arithmetic
  * (that belongs to `test/addwindow-composer.test.ts`).

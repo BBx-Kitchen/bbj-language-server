@@ -24,39 +24,54 @@ export function registerAddWindowComposer(context: vscode.ExtensionContext): voi
     );
 }
 
+/**
+ * Build the `AddWindowPanelArg` and Code Action label for the addWindow call at `character` on
+ * `lineText`, or `undefined` if there is none. Shared by the Code Action provider and the
+ * composer-cue click command (`composer-lens-command.ts`) so both entry points decode the same
+ * call the same way.
+ */
+export function addWindowPanelArgAt(
+    uri: string, line: number, lineText: string, character: number,
+): { arg: AddWindowPanelArg; label: string } | undefined {
+    const info = findAddWindowCallAt(lineText, character);
+    if (!info) return undefined;
+
+    const flags = info.flagsValue ?? 0;
+    const eventMask = info.eventMaskValue ?? null;
+    const arg: AddWindowPanelArg = {
+        target: {
+            uri,
+            line,
+            flagsRange: info.flagsRange,
+            flagsInsertOffset: info.flagsInsertOffset,
+            eventMaskRange: info.eventMaskRange,
+            eventMaskInsertOffset: info.eventMaskInsertOffset,
+            preservedFlagBits: unknownBits(flags, WINDOW_FLAGS),
+            preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, EVENT_MASK_BITS),
+        },
+        initial: {
+            flags, eventMask,
+            // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
+            receiver: '', sysgui: 'sysgui!',
+            x: '', y: '', width: '', height: '',
+            title: titleArg(info.args),
+        },
+    };
+
+    const label = info.flagsValue !== undefined
+        ? `Configure window flags (${describeFlags(flags)})`
+        : 'Add window flags…';
+    return { arg, label };
+}
+
 class AddWindowCodeActionProvider implements vscode.CodeActionProvider {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] {
         const lineNo = range.start.line;
-        const info = findAddWindowCallAt(document.lineAt(lineNo).text, range.start.character);
-        if (!info) return [];
+        const result = addWindowPanelArgAt(document.uri.toString(), lineNo, document.lineAt(lineNo).text, range.start.character);
+        if (!result) return [];
 
-        const flags = info.flagsValue ?? 0;
-        const eventMask = info.eventMaskValue ?? null;
-        const arg: AddWindowPanelArg = {
-            target: {
-                uri: document.uri.toString(),
-                line: lineNo,
-                flagsRange: info.flagsRange,
-                flagsInsertOffset: info.flagsInsertOffset,
-                eventMaskRange: info.eventMaskRange,
-                eventMaskInsertOffset: info.eventMaskInsertOffset,
-                preservedFlagBits: unknownBits(flags, WINDOW_FLAGS),
-                preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, EVENT_MASK_BITS),
-            },
-            initial: {
-                flags, eventMask,
-                // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
-                receiver: '', sysgui: 'sysgui!',
-                x: '', y: '', width: '', height: '',
-                title: titleArg(info.args),
-            },
-        };
-
-        const label = info.flagsValue !== undefined
-            ? `Configure window flags (${describeFlags(flags)})`
-            : 'Add window flags…';
-        const action = new vscode.CodeAction(label, vscode.CodeActionKind.RefactorRewrite);
-        action.command = { command: 'bbj.composeAddWindow', title: label, arguments: [arg] };
+        const action = new vscode.CodeAction(result.label, vscode.CodeActionKind.RefactorRewrite);
+        action.command = { command: 'bbj.composeAddWindow', title: result.label, arguments: [result.arg] };
         return [action];
     }
 }
