@@ -39,12 +39,14 @@ class Lsp4ijImportAllowlistTest {
 
     /**
      * Deliberately hand-written -- see {@link #thisTestDoesNotDeriveTheAllowlistFromTheScan()}.
-     * Eleven files, each mapped to the simple vendor symbols it references.
+     * Twelve files, each mapped to the simple vendor symbols it references.
      */
     private static final Map<String, Set<String>> ALLOWLIST = Map.ofEntries(
         Map.entry("com/basis/bbj/intellij/actions/BbjRunActionBase.java", Set.of("ServerStatus")),
         Map.entry("com/basis/bbj/intellij/actions/BbjCompileAction.java", Set.of("ServerStatus")),
         Map.entry("com/basis/bbj/intellij/actions/BbjRefreshJavaClassesAction.java", Set.of("ServerStatus")),
+        Map.entry("com/basis/bbj/intellij/actions/BbjOpenComposerAtAction.java",
+            Set.of("LSPCommandAction", "LSPCommand", "CommandExecutor")),
         Map.entry("com/basis/bbj/intellij/lsp/BbjLanguageServer.java",
             Set.of("OSProcessStreamConnectionProvider")),
         Map.entry("com/basis/bbj/intellij/lsp/BbjLanguageClient.java",
@@ -168,7 +170,7 @@ class Lsp4ijImportAllowlistTest {
     }
 
     @Test
-    void theCouplingSurfaceIsExactlyTheElevenFilesInTheAllowlist() {
+    void theCouplingSurfaceIsExactlyTheTwelveFilesInTheAllowlist() {
         Map<String, Set<String>> scanned = scanMainSources();
 
         Set<String> unexpected = new HashSet<>(scanned.keySet());
@@ -246,6 +248,6 @@ class Lsp4ijImportAllowlistTest {
         // test's own source, never assembled from scanMainSources()'s return value. This test
         // exists only to document that invariant for the acceptance-criteria grep, since a purely
         // structural property cannot be asserted with a runtime check without contradicting itself.
-        assertEquals(11, ALLOWLIST.size());
+        assertEquals(12, ALLOWLIST.size());
     }
 }

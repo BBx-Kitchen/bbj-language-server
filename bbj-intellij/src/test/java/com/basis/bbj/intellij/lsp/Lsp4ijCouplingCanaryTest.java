@@ -1,6 +1,8 @@
 package com.basis.bbj.intellij.lsp;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.LanguageServerFactory;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
@@ -9,6 +11,9 @@ import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPCompletionFeature;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
+import com.redhat.devtools.lsp4ij.commands.CommandExecutor;
+import com.redhat.devtools.lsp4ij.commands.LSPCommand;
+import com.redhat.devtools.lsp4ij.commands.LSPCommandAction;
 import com.redhat.devtools.lsp4ij.server.OSProcessStreamConnectionProvider;
 import com.redhat.devtools.lsp4ij.server.StreamConnectionProvider;
 import org.eclipse.lsp4j.CompletionItem;
@@ -90,6 +95,40 @@ class Lsp4ijCouplingCanaryTest {
             "StreamConnectionProvider is now marked experimental -- re-audit this coupling");
         assertFalse(referencesAnnotation(OSProcessStreamConnectionProvider.class, EXPERIMENTAL_DESCRIPTOR),
             "OSProcessStreamConnectionProvider is now marked experimental -- re-audit this coupling");
+        // Measured directly against the pinned 0.21.0 jar's class files (#650): none of the three
+        // commands-package classes this plan couples to reference the experimental descriptor
+        // anywhere in their constant pool.
+        assertFalse(referencesAnnotation(LSPCommandAction.class, EXPERIMENTAL_DESCRIPTOR),
+            "LSPCommandAction is now marked experimental -- re-audit this coupling");
+        assertFalse(referencesAnnotation(LSPCommand.class, EXPERIMENTAL_DESCRIPTOR),
+            "LSPCommand is now marked experimental -- re-audit this coupling");
+        assertFalse(referencesAnnotation(CommandExecutor.class, EXPERIMENTAL_DESCRIPTOR),
+            "CommandExecutor is now marked experimental -- re-audit this coupling");
+    }
+
+    /**
+     * Pins the four LSP4IJ command-dispatch members {@link com.basis.bbj.intellij.actions.BbjOpenComposerAtAction}
+     * relies on (#650): {@code LSPCommandAction.commandPerformed} exists and is abstract,
+     * {@code getCommandPerformedThread} exists and is overridable (not final), {@code LSPCommand.getArgumentAt}
+     * exists, and {@code CommandExecutor.LSP_COMMAND} exists.
+     */
+    @Test
+    void theCommandDispatchMembersTheCueActionReliesOnStillExist() throws NoSuchMethodException, NoSuchFieldException {
+        Method commandPerformed = LSPCommandAction.class.getDeclaredMethod(
+            "commandPerformed", LSPCommand.class, AnActionEvent.class);
+        assertEquals(void.class, commandPerformed.getReturnType());
+        assertTrue(Modifier.isAbstract(commandPerformed.getModifiers()),
+            "commandPerformed must stay abstract -- the cue action's override must remain mandatory");
+
+        Method getCommandPerformedThread = LSPCommandAction.class.getDeclaredMethod("getCommandPerformedThread");
+        assertEquals(ActionUpdateThread.class, getCommandPerformedThread.getReturnType());
+        assertFalse(Modifier.isFinal(getCommandPerformedThread.getModifiers()),
+            "getCommandPerformedThread must stay overridable -- the cue action pins it to EDT (T-89-11)");
+
+        Method getArgumentAt = LSPCommand.class.getMethod("getArgumentAt", int.class, Class.class);
+        assertNotNull(getArgumentAt);
+
+        assertNotNull(CommandExecutor.class.getField("LSP_COMMAND"));
     }
 
     @Test

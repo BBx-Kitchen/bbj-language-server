@@ -97,6 +97,14 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
+        <!-- LSP4IJ's Code Vision bridge dispatches a composer cue click here by id (#650):
+             no add-to-group and no keyboard-shortcut, since this action is never invoked by a
+             menu or a keystroke, only by LSP4IJ's own command executor. -->
+        <action id="bbj.openComposerAt"
+                class="com.basis.bbj.intellij.actions.BbjOpenComposerAtAction"
+                text="Open BBj Composer at Cue"
+                description="Opens the BBj visual composer for the call a composer cue marks"/>
+
         <!-- BBj Compile Action -->
         <action id="bbj.compile"
                 class="com.basis.bbj.intellij.actions.BbjCompileAction"
