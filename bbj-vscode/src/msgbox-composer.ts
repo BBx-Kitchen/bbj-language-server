@@ -488,10 +488,19 @@ const MSGBOX_OPTIONS_FORBIDDEN_CHARS = /["()[\]\-*/]/;
 const MSGBOX_CONSTANT_TERM = /^bbjmsgbox\.([a-z_][a-z0-9_]*)$/i;
 
 /**
+ * Upper bound for a decodable options sum: `decode()`'s bitwise tests coerce their operand via
+ * `ToInt32`, which reduces modulo 2^32 — so a sum at or beyond this would silently wrap and could
+ * be misreported as using only documented bits. Rejecting it here, before any bitwise operator
+ * ever sees the value, keeps the "safely decodable" boundary exact.
+ */
+const MSGBOX_MAX_OPTIONS_SUM = 0xFFFFFFFF;
+
+/**
  * Parse a MSGBOX options expression as a `+`-sum of integer literals and/or `BBjMsgBox.*`
  * constant names (case-insensitive, optional whitespace around `+`), returning the equivalent
- * numeric value, or `undefined` when the text is not exactly that shape. This is a closed
- * reverse lookup over the catalogs above — never a general expression evaluator (#648).
+ * numeric value, or `undefined` when the text is not exactly that shape (including a sum too
+ * large to safely test with 32-bit bitwise operators). This is a closed reverse lookup over the
+ * catalogs above — never a general expression evaluator (#648).
  */
 export function parseMsgboxOptionsSum(text: string): number | undefined {
     const trimmed = text.trim();
@@ -506,17 +515,20 @@ export function parseMsgboxOptionsSum(text: string): number | undefined {
         }
         if (/^\d+$/.test(term)) {
             sum += parseInt(term, 10);
-            continue;
+        } else {
+            const match = MSGBOX_CONSTANT_TERM.exec(term);
+            if (!match) {
+                return undefined;
+            }
+            const value = MSGBOX_CONSTANT_VALUES.get(match[1].toUpperCase());
+            if (value === undefined) {
+                return undefined;
+            }
+            sum += value;
         }
-        const match = MSGBOX_CONSTANT_TERM.exec(term);
-        if (!match) {
+        if (sum > MSGBOX_MAX_OPTIONS_SUM) {
             return undefined;
         }
-        const value = MSGBOX_CONSTANT_VALUES.get(match[1].toUpperCase());
-        if (value === undefined) {
-            return undefined;
-        }
-        sum += value;
     }
     return sum;
 }
@@ -574,13 +586,15 @@ function buildCallInfo(line: string, callStart: number, open: number): MsgboxCal
     if (argRanges.length > 1) {
         const [a, b] = argRanges[1];
         info.optionsText = line.slice(a, b).trim();
-        // 2nd arg is a plain integer literal -> reconfigurable expr.
+        // 2nd arg is a plain integer literal -> reconfigurable expr, unless it's too large to
+        // safely test with 32-bit bitwise operators (`decode()`'s `&` coerces via ToInt32, which
+        // wraps at 2^32) — such a literal is left undecoded, same as an unrecognized expression.
         const numMatch = /^(\s*)(\d+)\s*$/.exec(line.slice(a, b));
-        if (numMatch) {
+        if (numMatch && Number(numMatch[2]) <= MSGBOX_MAX_OPTIONS_SUM) {
             const exprStart = a + numMatch[1].length;
             info.exprRange = [exprStart, exprStart + numMatch[2].length];
             info.exprValue = parseInt(numMatch[2], 10);
-        } else {
+        } else if (!numMatch) {
             // Not a bare integer literal -> try the closed `+`-sum of integers/BBjMsgBox
             // constants recognizer (#648). Anything else is left undecoded.
             const sum = parseMsgboxOptionsSum(info.optionsText);

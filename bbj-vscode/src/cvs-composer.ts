@@ -95,9 +95,18 @@ export function composeCvsCall(input: CvsComposeInput): string {
 // ---------------------------------------------------------------------------------------------
 
 /**
+ * Upper bound for a decodable literal sum: bitwise operators (`&`) coerce their operands via
+ * `ToInt32`, which reduces modulo 2^32 — so a sum at or beyond this would silently wrap and could
+ * be misreported as using only documented bits. Rejecting it here, before any bitwise operator
+ * ever sees the value, keeps the "safely decodable" boundary exact.
+ */
+const CVS_MAX_LITERAL_SUM = 0xFFFFFFFF;
+
+/**
  * Parse a `+`-sum of integer literals (e.g. `5`, `1 + 4`, `1+2+128`) to its base-10 sum. Anything
  * else — a named constant, a variable, java-interop, an arithmetic operator other than `+`, an
- * empty/malformed sum — yields `undefined`. Integer literals only.
+ * empty/malformed sum, or a sum too large to safely test with 32-bit bitwise operators — yields
+ * `undefined`. Integer literals only.
  */
 export function parseCvsLiteralSum(text: string): number | undefined {
     const t = text.trim();
@@ -108,6 +117,7 @@ export function parseCvsLiteralSum(text: string): number | undefined {
         const p = raw.trim();
         if (!/^[0-9]+$/.test(p)) return undefined;
         sum += parseInt(p, 10);
+        if (sum > CVS_MAX_LITERAL_SUM) return undefined;
     }
     return sum;
 }
@@ -211,7 +221,9 @@ export function decodeCvsCall(line: string, character?: number): CvsDecodeCallRe
         return { found: true, editable: false, reason: CVS_NOT_EDITABLE_REASON_TEXT['non-literal-mask'], edit };
     }
 
-    if ((sum & ~CVS_KNOWN_MASK) !== 0) {
+    // Guard the bitwise test itself too (belt-and-suspenders with parseCvsLiteralSum's own bound):
+    // `&` coerces via ToInt32 (mod 2^32), so anything at or beyond 2^32 must never reach it.
+    if (sum > CVS_MAX_LITERAL_SUM || (sum & ~CVS_KNOWN_MASK) !== 0) {
         return { found: true, editable: false, reason: CVS_NOT_EDITABLE_REASON_TEXT['unknown-bits'], edit };
     }
 

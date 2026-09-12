@@ -276,6 +276,13 @@ describe('MSGBOX options recognizer and shared decode (#648)', () => {
         }
     });
 
+    test('parseMsgboxOptionsSum rejects a sum at or beyond 2^32 — a single literal or a sum that crosses it', () => {
+        expect(parseMsgboxOptionsSum('4294967295')).toBe(4294967295); // 0xFFFFFFFF: right at the boundary, still fine
+        expect(parseMsgboxOptionsSum('4294967296')).toBeUndefined(); // 2^32: would wrap to 0 under ToInt32
+        expect(parseMsgboxOptionsSum('4294967300')).toBeUndefined(); // 2^32 + 4: would wrap to 4 under ToInt32
+        expect(parseMsgboxOptionsSum('4294967295 + 1')).toBeUndefined(); // crosses the boundary mid-sum
+    });
+
     test('parseMsgboxOptionsSum round-trips every catalog combination of msgboxConstantsExpr', () => {
         for (const b of BUTTON_SETS) {
             for (const icon of ICONS) {
@@ -325,6 +332,17 @@ describe('MSGBOX options recognizer and shared decode (#648)', () => {
         expect(r.initial?.customButtons).toEqual([]);
         expect(r.trailingArgs).toEqual(['"B1"', 'TIM=5']);
         expect(r.replace).toEqual({ originalOptions: 'flags%', banner: MSGBOX_REPLACE_BANNER_TEXT });
+    });
+
+    test('decodeMsgboxCall never silently wraps a beyond-2^32 bare integer literal into a small decoded state', () => {
+        // A bare integer literal takes a separate fast path in buildCallInfo (not
+        // parseMsgboxOptionsSum), so it needs its own bound check. 4294967296 + 4 == 2^32 + 4;
+        // naive `&` coercion via ToInt32 would wrap this to 4 and silently decode bogus flags
+        // instead of opening compose-and-replace mode for it.
+        const line = 'r = MSGBOX("Hi", 4294967300, "T")';
+        const r = decodeMsgboxCall(line);
+        expect(r.found).toBe(true);
+        expect(r.replace).toEqual({ originalOptions: '4294967300', banner: MSGBOX_REPLACE_BANNER_TEXT });
     });
 
     test('decodeMsgboxCall keeps the existing add-options payload for a bare call, and not-found for no call', () => {

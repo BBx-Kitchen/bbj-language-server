@@ -69,6 +69,13 @@ describe('CVS() composer logic (#649)', () => {
         expect(parseCvsLiteralSum('')).toBeUndefined();
     });
 
+    test('parseCvsLiteralSum rejects a sum at or beyond 2^32 — a single literal or a sum that crosses it', () => {
+        expect(parseCvsLiteralSum('4294967295')).toBe(4294967295); // 0xFFFFFFFF: right at the boundary, still fine
+        expect(parseCvsLiteralSum('4294967296')).toBeUndefined(); // 2^32: would wrap to 0 under ToInt32
+        expect(parseCvsLiteralSum('4294967300')).toBeUndefined(); // 2^32 + 4: would wrap to 4 under ToInt32
+        expect(parseCvsLiteralSum('4294967295 + 1')).toBeUndefined(); // crosses the boundary mid-sum
+    });
+
     // --- call location ---
 
     test('findCvsCalls finds every CVS(...) call in source order, case-insensitively', () => {
@@ -128,6 +135,16 @@ describe('CVS() composer logic (#649)', () => {
         expect(unknownBits.reason).toBe(CVS_NOT_EDITABLE_REASON_TEXT['unknown-bits']);
 
         expect(decodeCvsCall('x$ = 1 + 1')).toEqual({ found: false });
+    });
+
+    test('decodeCvsCall never silently wraps a beyond-2^32 literal into a small "editable" mask', () => {
+        // 4294967296 + 4 == 2^32 + 4; naive `& ~CVS_KNOWN_MASK` coercion via ToInt32 would wrap this
+        // to 4 and report bits: [4] as editable — it must instead be reported not-editable.
+        const result = decodeCvsCall('x$ = CVS(a$, 4294967300)');
+        expect(result.found).toBe(true);
+        expect(result.editable).toBe(false);
+        expect(result.reason).toBe(CVS_NOT_EDITABLE_REASON_TEXT['non-literal-mask']);
+        expect(result.initial).toBeUndefined();
     });
 
     // --- preview ---
