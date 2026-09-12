@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 90
 current_phase_name: Composer Robustness & IntelliJ Composer Performance
 status: executing
-stopped_at: Completed 90-01-PLAN.md
-last_updated: "2026-09-12T20:03:03.056Z"
+stopped_at: Completed 90-02-PLAN.md
+last_updated: "2026-09-12T20:13:27.838Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 90 execution started
-state_head: fd0cdb71f6aaf528a6b3637615188bdf8b95830a
+state_head: 7366b0f4a23359e0618b42f08e0a5a762df71832
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 58
-  completed_plans: 51
+  completed_plans: 52
   percent: 67
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 90 execution started
 
@@ -190,6 +190,7 @@ Last activity: 2026-09-12 — Phase 90 execution started
 | Phase 89 P15 | 15min | 3 tasks | 11 files |
 | Phase 89 P16 | 13min | 2 tasks | 3 files |
 | Phase 90 P01 | 45min | 3 tasks | 6 files |
+| Phase 90 P02 | 40min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -336,6 +337,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 89]: 89-16: MSGBOX compose-new nesting recorded as a Phase 90 todo instead of copying the CVS fix; QA row 19/25 step 5 folds three sub-actions into one numbered step — Gap decision 7 scoped the MSGBOX fix out of Phase 89; it needs its own design (guarded replace + MSGBOX's replace/sameMsgbox/banner semantics)
 - [Phase 89 UAT, closeout 2026-09-12]: Round 1 passed 3/4 with gap G-89-3 (an unfinished `CVS(` call showed the not-editable notice in IntelliJ and nested a second call in VS Code), closed by gap-closure plans 89-14..16. Round 2 passed 2/2 by hand in both IDEs against artifacts rebuilt at `deb25b4a` (VSIX sha256 8111f522…, bbj-intellij-0.1.0.zip sha256 55b3f52f…; the zip needed `clean buildPlugin` because Gradle judged it up to date). 89-VERIFICATION.md status: passed; 89-VALIDATION.md nyquist-compliant; 89-SECURITY.md threats_open 0. DISC-01/02/03 (#650, #648, #649) closed.
 - [Phase 90]: MSGBOX unfinished-call decode/completing-mode mirrors CVS's 89-14 incomplete outcome but ported to MSGBOX's own replace/hasOptions field shape, not copied verbatim
+- [Phase 90]: 90-02: validateNumericField lives in addwindow-composer.ts and is imported into addchildwindow-composer.ts for its id field; addwindowPreview/addchildwindowPreview compute per-field errors plus valid, skipped entirely in edit mode — Reuses the msgboxPreview per-field-error/valid template rather than re-inventing it; keeps structural-only fields (receiver/sysgui/window/context) unconstrained so valid expressions like BBjAPI().openSysGui("X0") are never rejected
 
 ### Tech Debt
 
@@ -403,8 +405,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T20:03:02.747Z
-Stopped at: Completed 90-01-PLAN.md
+Last session: 2026-09-12T20:13:27.535Z
+Stopped at: Completed 90-02-PLAN.md
 Resume file: None
 
 Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
