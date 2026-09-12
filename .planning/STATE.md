@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 90
 current_phase_name: Composer Robustness & IntelliJ Composer Performance
 status: executing
-stopped_at: Completed 90-06-PLAN.md
-last_updated: "2026-09-12T21:07:12.800Z"
+stopped_at: Completed 90-07-PLAN.md
+last_updated: "2026-09-12T21:19:54.969Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 90 execution started
-state_head: 547b07fac9e303e533a9b04ffe996202e053e32c
+state_head: 21ba97e0b02077f9124515b3e5e79908da17b4c8
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 58
-  completed_plans: 56
+  completed_plans: 57
   percent: 67
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 90 execution started
 
@@ -195,6 +195,7 @@ Last activity: 2026-09-12 — Phase 90 execution started
 | Phase 90 P04 | 25min | 2 tasks | 5 files |
 | Phase 90 P05 | 20min | 3 tasks | 13 files |
 | Phase 90 P06 | 30min | 2 tasks | 4 files |
+| Phase 90 P07 | 25min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -346,6 +347,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90]: Task 1 added only MSGBOX_SOURCE to DEBOUNCED_DIALOG_SOURCES (not all three dialogs at once), matching the plan's per-task scope
 - [Phase 90]: 90-05: registerPanelMessageHandler ties every composer panel's message subscription to panel.onDidDispose instead of the extension context; a source-discovered test finds panel modules by scanning src/ for createWebviewPanel(, not a hard-coded list, so a future seventh composer is covered automatically
 - [Phase 90]: Phase 90: 90-06: AddWindowPreview/AddChildWindowPreview gain per-field error strings and valid, mirroring MsgboxPreview's precedent; errorText(String) reads each p.<field>Error exactly once so the source guard's per-field occurrence count holds; setOKActionEnabled(p.valid) replaces the unconditional enable in both dialogs' apply()
+- [Phase 90]: 90-07: MsgboxComposeMode routes a MSGBOX decode to COMPOSE_NEW/EDIT_IN_PLACE/REPLACE_OPTIONS/COMPLETE_CALL, testing incomplete before replace so a decode the server never sends still completes the call rather than opening the compose-and-replace banner — Mirrors CvsComposeMode's incomplete-before-editable ordering
+- [Phase 90]: 90-07: openMsgbox keeps its single applyIfUnchanged/replaceString call site for edit-in-place, compose-and-replace and completing an unfinished call, differing only in the WriteCommandAction name — No second write site is ever acquired for the new completion mode
 
 ### Tech Debt
 
@@ -413,8 +416,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T21:07:04.511Z
-Stopped at: Completed 90-06-PLAN.md
+Last session: 2026-09-12T21:19:30.286Z
+Stopped at: Completed 90-07-PLAN.md
 Resume file: None
 
 Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
