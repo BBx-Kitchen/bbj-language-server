@@ -51,31 +51,35 @@ public final class ComposerFlow {
     }
 
     /**
-     * Composes {@code serverFuture -> composerCatalogs() -> decodeCall} into one chain and hands
-     * the result to {@code onDecoded} through the injected EDT executor. The whole composed chain
-     * shares a single bounded wait (the configured {@code waitMillis}), not one per stage: each
-     * {@code thenCompose} produces a brand-new dependent future owned by this chain, never the
-     * proxy's own future, so {@code orTimeout} can be applied directly to the composed result
-     * without a defensive {@link CompletableFuture#copy()} — timing out the chain never
-     * force-completes {@code serverFuture}, {@code composerCatalogs()}, or {@code decodeCall}'s own
-     * receiver. A per-stage timeout here would let three merely-slow (not hung) stages each burn
-     * close to the full wait, stacking up to roughly 3x the documented bound before anything
-     * surfaces; one deadline for the entire chain keeps the total wait within {@code waitMillis}
-     * regardless of how the time is distributed across stages. The returned future always completes
-     * normally — a failure is reported through the notifier from the single terminal handler, never
-     * thrown.
+     * Composes {@code handles.server() -> handles.catalogs(server) -> decodeCall} into one chain
+     * and hands the result to {@code onDecoded} through the injected EDT executor. Server and
+     * catalogs come from the per-project {@link ComposerHandleCache} (#612), so a second open in
+     * the same session performs neither round trip; {@code decodeCall} always runs, since its
+     * result depends on the caret line. The whole composed chain shares a single bounded wait (the
+     * configured {@code waitMillis}), not one per stage: each {@code thenCompose} produces a
+     * brand-new dependent future owned by this chain, never the cache's own future, so
+     * {@code orTimeout} can be applied directly to the composed result without a defensive
+     * {@link CompletableFuture#copy()} — timing out the chain never force-completes
+     * {@code handles}' server/catalogs futures or {@code decodeCall}'s own receiver. A per-stage
+     * timeout here would let three merely-slow (not hung) stages each burn close to the full wait,
+     * stacking up to roughly 3x the documented bound before anything surfaces; one deadline for the
+     * entire chain keeps the total wait within {@code waitMillis} regardless of how the time is
+     * distributed across stages. Any failure — a null stage or a thrown exception — clears
+     * {@code handles} before notifying, so the balloon Retry resolves from scratch rather than
+     * reusing a proxy that may already be dead. The returned future always completes normally — a
+     * failure is reported through the notifier from the single terminal handler, never thrown.
      */
     public <D> CompletableFuture<Void> launch(String kindLabel,
-            CompletableFuture<BbjComposerServer> serverFuture,
+            ComposerHandleCache handles,
             BiFunction<BbjComposerServer, ComposerCatalogs, CompletableFuture<D>> decodeCall,
             Decoded<D> onDecoded) {
 
-        CompletableFuture<Void> chain = serverFuture
+        CompletableFuture<Void> chain = handles.server()
                 .thenCompose(server -> {
                     if (server == null) {
                         throw new NotReadySignal();
                     }
-                    return server.composerCatalogs()
+                    return handles.catalogs(server)
                             .thenCompose(catalogs -> {
                                 if (catalogs == null) {
                                     throw new NotReadySignal();
@@ -88,6 +92,7 @@ public final class ComposerFlow {
         return chain.orTimeout(waitMillis, TimeUnit.MILLISECONDS)
                 .handle((ignoredResult, throwable) -> {
                     if (throwable != null) {
+                        handles.invalidate();
                         if (unwrap(throwable) instanceof NotReadySignal) {
                             notifier.accept(ComposerNotices.notReady(kindLabel));
                         } else {

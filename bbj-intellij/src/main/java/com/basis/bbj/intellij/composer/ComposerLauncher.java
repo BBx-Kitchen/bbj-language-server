@@ -174,10 +174,10 @@ public final class ComposerLauncher {
                 ComposerLauncher::onEdt,
                 notice -> ComposerNoticeRenderer.render(project, notice, () -> launchAt(project, editor, kind, line, col, fromCue)),
                 ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
-        CompletableFuture<BbjComposerServer> serverFuture = BbjComposerService.server(project);
+        ComposerHandleCache handles = BbjComposerService.handles(project);
 
         switch (kind) {
-            case MSGBOX -> flow.launch(labelOf(kind), serverFuture,
+            case MSGBOX -> flow.launch(labelOf(kind), handles,
                     (server, catalogs) -> server.msgboxDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> {
                         if (staleForCue(fromCue, decoded != null && decoded.found)) {
@@ -186,7 +186,7 @@ public final class ComposerLauncher {
                         }
                         openMsgbox(project, editor, server, catalogs.msgbox, decoded, line, col);
                     });
-            case ADDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+            case ADDWINDOW -> flow.launch(labelOf(kind), handles,
                     (server, catalogs) -> server.addWindowDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> {
                         if (staleForCue(fromCue, decoded != null && decoded.found)) {
@@ -195,7 +195,7 @@ public final class ComposerLauncher {
                         }
                         openAddWindow(project, editor, server, catalogs.addwindow, decoded, line, col);
                     });
-            case ADDCHILDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+            case ADDCHILDWINDOW -> flow.launch(labelOf(kind), handles,
                     (server, catalogs) -> server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> {
                         if (staleForCue(fromCue, decoded != null && decoded.found)) {
@@ -204,7 +204,7 @@ public final class ComposerLauncher {
                         }
                         openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line, col);
                     });
-            case SETOPTS -> flow.launch(labelOf(kind), serverFuture,
+            case SETOPTS -> flow.launch(labelOf(kind), handles,
                     (server, catalogs) -> server.setoptsDecodeCall(new SetoptsDecodeCallParams(lineText)),
                     (server, catalogs, decoded) -> {
                         if (staleForCue(fromCue, decoded != null && decoded.found)) {
@@ -224,7 +224,7 @@ public final class ComposerLauncher {
                     return;
                 }
                 String uri = uriOf(file);
-                flow.launch(labelOf(kind), serverFuture,
+                flow.launch(labelOf(kind), handles,
                         (server, catalogs) -> server.setoptsDecodeInCode(new SetoptsInCodeDecodeParams(uri, line, col)),
                         (server, catalogs, decoded) -> {
                             if (staleForCue(fromCue, decoded != null && decoded.found)) {
@@ -234,7 +234,7 @@ public final class ComposerLauncher {
                             openSetoptsInCode(project, editor, server, catalogs.setopts, decoded, line, col, uri);
                         });
             }
-            case CVS -> flow.launch(labelOf(kind), serverFuture,
+            case CVS -> flow.launch(labelOf(kind), handles,
                     (server, catalogs) -> server.cvsDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> {
                         if (staleForCue(fromCue, decoded != null && decoded.found)) {
