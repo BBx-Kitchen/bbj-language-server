@@ -1,11 +1,12 @@
 ---
 phase: 90-composer-robustness-intellij-composer-performance
 verified: 2026-09-12T22:15:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "In IntelliJ, against a plugin zip rebuilt from the final tree: type a burst in the MSGBOX, addWindow and addChildWindow dialogs and watch OK and the generated statement; type '\"10\"' into a numeric field; open a composer twice in the same session, then Restart Language Server and open it a third time."
     expected: "The preview updates once after typing stops (not once per keystroke), with OK re-enabled only then; the malformed field shows a red label under it and OK stays disabled until fixed; the second open is noticeably faster than the first; the composer still opens normally (no error balloon) after a language-server restart."
     why_human: "Swing timing, modal dialog layout and a live LSP4IJ server restart all need a running IntelliJ, which this devcontainer cannot drive headlessly. Staged as an end-of-phase human check in plan 90-08's <verify> block (QA rows IntelliJ 28-30)."

@@ -227,7 +227,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 - [x] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer (completed 2026-09-07)
 - [x] **Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer** - SETOPTS/IOR/AND lines in BBj code get decode hovers everywhere and a tri-state composer for the two safe shapes (completed 2026-09-12)
 - [x] **Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability** - Every composer gets a persistent visible cue in both IDEs; MSGBOX handles expression-valued options; CVS() gets a new visual composer (completed 2026-09-12)
-- [ ] **Phase 90: Composer Robustness & IntelliJ Composer Performance** - VS Code composers validate before applying and stop leaking listeners; IntelliJ composer dialogs debounce input and cache server/catalog handles
+- [x] **Phase 90: Composer Robustness & IntelliJ Composer Performance** - VS Code composers validate before applying and stop leaking listeners; IntelliJ composer dialogs debounce input and cache server/catalog handles (completed 2026-09-12)
 - [ ] **Phase 91: Language Server Responsiveness** - Scope resolution, Java class resolution, and completion cancellation stop scaling with workspace size or racing each other
 - [ ] **Phase 92: Host-Side Hygiene & Focus Guards** - Decompile, format, run commands, extension activation, and IntelliJ's status bar behave correctly under repeated use and edge conditions
 

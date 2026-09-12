@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 90
-current_phase_name: Composer Robustness & IntelliJ Composer Performance
-status: verifying
-stopped_at: Completed 90-08-PLAN.md
-last_updated: "2026-09-12T21:30:29.609Z"
+current_phase: 91
+current_phase_name: Language Server Responsiveness
+status: planning
+stopped_at: Phase 90 complete, ready to plan Phase 91
+last_updated: "2026-09-12T22:08:17.735Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 90 execution started
-state_head: 59f287c0ab471b8e4239e3624a57b9dca1709516
+last_activity_desc: Phase 90 complete, transitioned to Phase 91
+state_head: 16c4b93f2a1565c00d5df7f7b8717297ec619c67
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 58
   completed_plans: 58
-  percent: 67
+  percent: 78
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-12 (Phase 89 complete — UAT round 2 passed 2/2 after gap closure G-89-3; Phase 90 ready to discuss/plan)
+**Last Updated:** 2026-09-12 (Phase 90 complete — UAT passed 2/2 on the first round; Phase 91 ready to discuss/plan)
 
 ## Project Reference
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 90 — Composer Robustness & IntelliJ Composer Performance
+**Current Focus:** Phase 91 — Language Server Responsiveness
 
 ---
 
 ## Current Position
 
-Phase: 90 (Composer Robustness & IntelliJ Composer Performance) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-09-12 — Phase 90 execution started
+Phase: 91 — Language Server Responsiveness
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-12 — Phase 90 complete, transitioned to Phase 91
 
 ## Performance Metrics
 
@@ -351,6 +351,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90]: 90-07: MsgboxComposeMode routes a MSGBOX decode to COMPOSE_NEW/EDIT_IN_PLACE/REPLACE_OPTIONS/COMPLETE_CALL, testing incomplete before replace so a decode the server never sends still completes the call rather than opening the compose-and-replace banner — Mirrors CvsComposeMode's incomplete-before-editable ordering
 - [Phase 90]: 90-07: openMsgbox keeps its single applyIfUnchanged/replaceString call site for edit-in-place, compose-and-replace and completing an unfinished call, differing only in the WriteCommandAction name — No second write site is ever acquired for the new completion mode
 - [Phase 90]: 90-08: installed-bundle e2e proof + tracer-feedback-gate reuse, QA rows and MSGBOX-nesting todo closure
+- [Phase 90 UAT, closeout 2026-09-12]: Both human checks passed by hand on the first round — IntelliJ (MSGBOX/addWindow/addChildWindow debounce, per-field error labels with OK disabled, faster second open, composer still opens after Restart Language Server) and VS Code (unfinished `MSGBOX(` completion from cue/context menu/palette, stale-edit refusal beside the open panel, window-composer field errors) — against a VSIX (sha256 5505b2a3…) and bbj-intellij-0.1.0.zip rebuilt at `6e1efb2d`, after the CR-01 `seq` fix, with the bundled `main.cjs` byte-identical to the fresh build. 90-VERIFICATION.md status: passed; 90-VALIDATION.md nyquist-compliant (8 rows, 0 gaps; 203 vitest + 113 JUnit targeted tests green); 90-SECURITY.md threats_open 0 (24 threats, short-circuit path). DISC-07..11 (#623, #532, #530, #611, #612) closed.
 
 ### Tech Debt
 
@@ -407,7 +408,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 84] UI-review follow-ups (advisory, 84-UI-REVIEW.md, 19/24 — copywriting 2/4 is the weak pillar): the IntelliJ Settings label still reads "config.bbx Path:" (`BbjSettingsComponent.java:281`) after the phase removed filename-specific wording everywhere else; `Commands.cjs` carries two divergent "no config path" strings (`NO_CONFIG_PATH_MESSAGE` vs. the inline string in `openConfigFile`); IntelliJ has no SETOPTS discoverability affordance (no CodeLens/hint equivalent), which is what confused the UAT tester. Candidates for a quick task; the first two are string-only.
 - ⚠️ [Phase 85] Follow-ups (advisory, none blocked verification): (1) 85-REVIEW.md info findings left out of fix scope — IN-01 `pollQuiescence()`'s catch-all drops the pending notification with no retry; IN-02 the crash-triggered `requestRestart(CRASH_RESTART_DELAY_MS)` in `BbjServerService.updateStatus()` does not clear `pendingRestartReason`. (2) Four pre-existing defects found in the UAT cold-start log and filed as GitHub issues #659-#662 (java-interop nested-class double resolution, primitive/array lookups, `config.bbx` log wording — a one-line fix in `bbj-ws-manager.ts` — and logger format). (3) `85-VERIFICATION.md` `verified:` frontmatter still carries the original 03:00Z stamp; the close-out re-run is recorded in its trailing section.
 - ⚠️ [Phase 86] Two residual review risks from 86-05-REVIEW.md accepted as-is at the UAT checkpoint (Test 4), not fixed: WR-01 — `updateStatus()` passes `ExpectedStopGuard.classify()` a `previousStatus` that lags the true immediate predecessor by one broadcast (self-corrects for the single-hop sequence G-86-1's fix targets; a duplicate/echoed `stopped` broadcast would not self-correct). WR-02 — `doRestart()` has no exception handling around the new bounded wait; a thrown exception would leave the server stopped with no console explanation. Candidates for a quick task if either surfaces in practice.
-- ⚠️ [Phase 89] Gap-closure-round code review (89-REVIEW.md, 0 critical / 1 warning / 1 info) is unfixed, and UAT round 2 passed without it: WR-01 — the VS Code composer panel always labels its primary button "Insert", even when completing or editing a call; IN-01 — `runComposeCvsCommand` decodes the same call twice on the hard-stop path. The first-round review (CR-01, WR-01..03) was fully fixed (89-REVIEW-FIX.md). Candidates for `/gsd-code-review 89 --fix` or a quick task; rebuild both extensions after either lands. MSGBOX compose-new still nests inside an unfinished `MSGBOX(` call — Phase 90 todo filed by 89-16.
+- ⚠️ [Phase 89] Gap-closure-round code review (89-REVIEW.md, 0 critical / 1 warning / 1 info) is unfixed, and UAT round 2 passed without it: WR-01 — the VS Code composer panel always labels its primary button "Insert", even when completing or editing a call; IN-01 — `runComposeCvsCommand` decodes the same call twice on the hard-stop path. The first-round review (CR-01, WR-01..03) was fully fixed (89-REVIEW-FIX.md). Candidates for `/gsd-code-review 89 --fix` or a quick task; rebuild both extensions after either lands. The MSGBOX compose-new nesting todo filed by 89-16 was closed by Phase 90 (90-01, 90-07).
+- ⚠️ [Phase 90] Advisory (90-SECURITY.md T-90-11): the per-project `ComposerHandleCache` has no source guard forbidding a static map — the no-cross-project-leak control is structural only (instance field of a `projectService`). Quick-task candidate: add the guard assertion.
 
 ### Quick Tasks Completed
 
@@ -418,13 +420,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T21:30:29.253Z
-Stopped at: Completed 90-08-PLAN.md
+Last session: 2026-09-12T22:10:00Z
+Stopped at: Phase 90 complete, ready to plan Phase 91
 Resume file: None
 
-Next: Phase 90 (Composer Robustness & IntelliJ Composer Performance, DISC-07..11) has no
-phase directory or CONTEXT.md yet — start with `/gsd-discuss-phase 90`. Fold in the todo
-`2026-09-12-msgbox-compose-new-nests-inside-an-unfinished-msgbox-call.md` filed by 89-16.
+Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
+CONTEXT.md yet — start with `/gsd-discuss-phase 91`.
 
 ## Deferred Items
 
@@ -489,11 +490,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-12 after Phase 89 verify-work close-out (Phases 84-89 complete, 6/9; DISC-01..06 closed)*
+*State updated: 2026-09-12 after Phase 90 verify-work close-out (Phases 84-90 complete, 7/9; DISC-01..11 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-89 complete and verified; next: `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`
+- Phases 84-90 complete and verified; next: `/gsd-discuss-phase 91` or `/gsd-plan-phase 91`
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
