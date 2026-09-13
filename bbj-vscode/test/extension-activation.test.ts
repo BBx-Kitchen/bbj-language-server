@@ -200,4 +200,34 @@ describe('extension re-activation (#531)', () => {
         disposeSubscriptions(second);
         expect(registeredCommandIds.size).toBe(0);
     });
+
+    test('the formatting provider and every notification handler are disposed with the activation, alongside every command', () => {
+        (vscode.commands.registerCommand as ReturnType<typeof vi.fn>).mockClear();
+        (vscode.languages.registerDocumentFormattingEditProvider as ReturnType<typeof vi.fn>).mockClear();
+        onNotificationMock.mockClear();
+
+        const context = makeContext();
+        activate(context);
+
+        const commandResults = (vscode.commands.registerCommand as ReturnType<typeof vi.fn>).mock.results.map(r => r.value);
+        expect(commandResults.length).toBeGreaterThan(0);
+        for (const result of commandResults) {
+            expect(context.subscriptions).toContain(result);
+        }
+
+        const formatterMock = vscode.languages.registerDocumentFormattingEditProvider as ReturnType<typeof vi.fn>;
+        expect(formatterMock).toHaveBeenCalledTimes(1);
+        for (const result of formatterMock.mock.results.map(r => r.value)) {
+            expect(context.subscriptions).toContain(result);
+        }
+
+        expect(onNotificationMock.mock.calls.length).toBeGreaterThanOrEqual(3);
+        const notificationNames = onNotificationMock.mock.calls.map(c => c[0]);
+        expect(notificationNames).toContain('bbj/bbjcplAvailability');
+        for (const result of onNotificationMock.mock.results.map(r => r.value)) {
+            expect(context.subscriptions).toContain(result);
+        }
+
+        disposeSubscriptions(context);
+    });
 });

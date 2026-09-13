@@ -866,9 +866,11 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     }));
 
-    vscode.languages.registerDocumentFormattingEditProvider(
-        "bbj",
-        DocumentFormatter
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider(
+            "bbj",
+            DocumentFormatter
+        )
     );
 
     // Offer to decompile (or open read-only) when a tokenized/binary BBj program is
@@ -940,13 +942,15 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(bbjcplStatusBar);
 
     // Listen for BBjCPL availability notifications from the language server
-    client.onNotification('bbj/bbjcplAvailability', (params: { available: boolean }) => {
-        if (params.available) {
-            bbjcplStatusBar.hide();
-        } else {
-            bbjcplStatusBar.show();
-        }
-    });
+    context.subscriptions.push(
+        client.onNotification('bbj/bbjcplAvailability', (params: { available: boolean }) => {
+            if (params.available) {
+                bbjcplStatusBar.hide();
+            } else {
+                bbjcplStatusBar.show();
+            }
+        })
+    );
 
     // Config-reload status bar indicator (#486) — hidden by default, driven
     // entirely by onConfigRestartPhase via the restart gate above.
@@ -957,35 +961,39 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // The server already decided a restart is required (#486) — this handler never judges
     // relevance itself, it only logs and hands the request to the choke point above.
-    client.onNotification(CONFIG_RELOAD_METHOD, (params: ConfigReloadNotification) => {
-        outputChannel.appendLine(
-            `BBj config changed (${params.reason}): ${params.path ?? '(no path)'} — reloading language server.`
-        );
-        restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
-    });
+    context.subscriptions.push(
+        client.onNotification(CONFIG_RELOAD_METHOD, (params: ConfigReloadNotification) => {
+            outputChannel.appendLine(
+                `BBj config changed (${params.reason}): ${params.path ?? '(no path)'} — reloading language server.`
+            );
+            restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
+        })
+    );
 
     // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
     // throws and never blocks activation — a bad payload just means no cache update.
-    client.onNotification(RESOLVED_CONFIG_PATH_METHOD, (params: ResolvedConfigPathResult) => {
-        const previousActive = lastKnownActiveConfigPath;
-        setResolvedConfigPath(params);
-        if (params.path && !params.exists && shouldWarnOnce(params.path)) {
-            vscode.window.showWarningMessage(
-                `BBj config file not found or unreadable: ${params.path}. No prefixes were loaded.`
-            );
-        }
-        // This push always arrives after the local bbj.configPath settings-change listener has
-        // already fired and re-swept using the stale (pre-update) cache, so that listener's
-        // release is a no-op — this handler must release the previously-active path itself
-        // whenever the resolution actually changed, rather than relying on the settings listener
-        // to have done it (#485).
-        const newActive = getActiveConfigPath();
-        if (previousActive && (!newActive || !samePath(previousActive, newActive))) {
-            releaseConfigAssociation(previousActive);
-        }
-        // The first server answer may associate files that were already open before it arrived.
-        sweepOpenDocumentsForConfigAssociation();
-    });
+    context.subscriptions.push(
+        client.onNotification(RESOLVED_CONFIG_PATH_METHOD, (params: ResolvedConfigPathResult) => {
+            const previousActive = lastKnownActiveConfigPath;
+            setResolvedConfigPath(params);
+            if (params.path && !params.exists && shouldWarnOnce(params.path)) {
+                vscode.window.showWarningMessage(
+                    `BBj config file not found or unreadable: ${params.path}. No prefixes were loaded.`
+                );
+            }
+            // This push always arrives after the local bbj.configPath settings-change listener has
+            // already fired and re-swept using the stale (pre-update) cache, so that listener's
+            // release is a no-op — this handler must release the previously-active path itself
+            // whenever the resolution actually changed, rather than relying on the settings listener
+            // to have done it (#485).
+            const newActive = getActiveConfigPath();
+            if (previousActive && (!newActive || !samePath(previousActive, newActive))) {
+                releaseConfigAssociation(previousActive);
+            }
+            // The first server answer may associate files that were already open before it arrived.
+            sweepOpenDocumentsForConfigAssociation();
+        })
+    );
 
     // Apply bbx-config to the configured file on every classification trigger. A single
     // trigger (e.g. only at activation) silently regresses to the reopen/revert failure
