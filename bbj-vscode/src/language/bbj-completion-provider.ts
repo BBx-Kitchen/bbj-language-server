@@ -3,6 +3,7 @@ import type { FileSystemProvider, LangiumDocument, LangiumDocumentFactory } from
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, NextFeature } from "langium/lsp";
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams, TextEdit } from "vscode-languageserver";
 import { URI } from "vscode-uri";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
 import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isJavaTypeRef, isMethodDecl, isSimpleTypeRef, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
@@ -31,6 +32,18 @@ const AUTO_IMPORT_PREFIX_CACHE_SIZE = 20;
  */
 const AUTO_IMPORT_PREFIX_CACHE_TTL_MS = 2000;
 
+/**
+ * Holds the cancellation token of the completion request currently executing, scoped per request
+ * rather than per provider instance. `completionForCrossReference` is invoked deep inside the base
+ * provider's own completion algorithm without a cancellation token in its signature, so an instance
+ * field used to be the only way for it to reach the request's token — but a singleton provider
+ * serves every open document, and a second concurrent request on a different document would
+ * overwrite that field before the first request's async chain ever read it (issue #498).
+ * `AsyncLocalStorage` instead follows each request's own async continuation, so two concurrent
+ * requests each keep observing only their own token no matter how their awaits interleave.
+ */
+const completionRequestToken = new AsyncLocalStorage<CancellationToken | undefined>();
+
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     /** Minimum typed prefix before offering (potentially many) auto-import class suggestions. */
@@ -48,15 +61,6 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * reference is grammatically optional (see getCompletion).
      */
     protected dotTriggerActive = false;
-
-    /**
-     * The cancellation token for the completion request currently being served (P61-D2-013).
-     * `completionForCrossReference` is invoked deep inside the base provider's own completion
-     * algorithm without a cancellation token in its signature, so this instance field is how
-     * {@link completeAutoImportClasses} — called from there — still observes cancellation; it is
-     * set at the very start of {@link getCompletion} for every request.
-     */
-    protected activeCancelToken?: CancellationToken;
 
     /**
      * Prefix -> cached `findClassCandidatesByPrefix` lookup memoization for
@@ -99,7 +103,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         await super.completionForCrossReference(context, next, recording);
 
         if (!this.dotTriggerActive && this.isClassCrossReference(next.feature) && this.isTypeReferencePosition(context)) {
-            await this.completeAutoImportClasses(context, offered, acceptor, this.activeCancelToken);
+            await this.completeAutoImportClasses(context, offered, acceptor, completionRequestToken.getStore());
         }
     }
 
@@ -240,11 +244,23 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
-        // Threaded through to getFieldCompletion/getFilePathCompletion (direct parameter) and to
-        // completeAutoImportClasses (via this field — see its own doc comment) so a request the
-        // client has already superseded stops at the next await boundary instead of running to
-        // completion (P61-D2-013).
-        this.activeCancelToken = cancelToken;
+        // Enter per-request storage for the whole lifetime of this request (see
+        // completionRequestToken's own doc comment) so completeAutoImportClasses, reached deep
+        // inside the base provider's own completion algorithm, still observes this request's own
+        // token even while another concurrent request for a different document is in flight on
+        // this same singleton provider instance.
+        return completionRequestToken.run(cancelToken, () => this.computeCompletion(document, params, cancelToken));
+    }
+
+    /**
+     * The actual completion algorithm, run inside {@link completionRequestToken}'s per-request
+     * storage by {@link getCompletion}. `cancelToken` is threaded through to
+     * getFieldCompletion/getFilePathCompletion as a direct parameter, and reaches
+     * completeAutoImportClasses via a read of that per-request storage in
+     * completionForCrossReference, so a request the client has already superseded stops at the
+     * next await boundary instead of running to completion.
+     */
+    protected async computeCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
         if (params.context?.triggerCharacter === '#') {
             return this.getFieldCompletion(document, params, cancelToken);
         }

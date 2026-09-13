@@ -1,5 +1,6 @@
 
 import { AstUtils, EMPTY_SCOPE, EmptyFileSystem } from 'langium';
+import type { LangiumDocument } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
 import { CancellationToken, CancellationTokenSource, CompletionItemKind, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
@@ -851,6 +852,51 @@ classend
                 expect(findSpy).toHaveBeenCalledTimes(1);
             } finally {
                 findSpy.mockRestore();
+                interopSeam.resetCompleteClassIndex();
+            }
+        });
+    });
+
+    describe('concurrent completion requests keep their own cancellation (#498)', () => {
+        // getCompletion used to write the request's cancellation token onto a field on the
+        // singleton provider, so a second concurrent request for a different document could
+        // overwrite the first request's token before its own async chain ever read it. The
+        // per-prefix memoization cache had the same problem one layer down: the shared in-flight
+        // lookup it creates used to carry whichever caller's token created it, so cancelling that
+        // caller could reject the promise every other waiter for the same prefix was sharing. Both
+        // tests below prove neither happens any more.
+
+        async function parseAutoImportRequest(uri: string, text: string): Promise<{ doc: LangiumDocument; params: CompletionParams }> {
+            const doc = await parseHelper<Model>(bbjServices)(text, { documentUri: uri });
+            const params: CompletionParams = {
+                textDocument: { uri: doc.textDocument.uri },
+                position: doc.textDocument.positionAt(text.length),
+                context: { triggerKind: CompletionTriggerKind.Invoked }
+            };
+            return { doc, params };
+        }
+
+        test('cancelling the first of two concurrent requests on two documents leaves the second untouched', async () => {
+            interopSeam.seedCompleteClassIndex(['com.cancel498.CancelTokenMarker']);
+            try {
+                const { doc: docA, params: paramsA } = await parseAutoImportRequest(
+                    'file:///concurrent-token-a.bbj', 'x! = new CancelTokenMark');
+                const { doc: docB, params: paramsB } = await parseAutoImportRequest(
+                    'file:///concurrent-token-b.bbj', 'x! = new CancelTokenMark');
+                const sourceA = new CancellationTokenSource();
+                const sourceB = new CancellationTokenSource();
+
+                // Started in the same tick, in this order, before either token is cancelled.
+                const requestA = bbjServices.lsp.CompletionProvider!.getCompletion(docA, paramsA, sourceA.token);
+                const requestB = bbjServices.lsp.CompletionProvider!.getCompletion(docB, paramsB, sourceB.token);
+                sourceA.cancel();
+
+                const [listA, listB] = await Promise.all([requestA, requestB]);
+                expect((listA?.items ?? []).some(i => (i.detail ?? '').startsWith('Auto-import '))).toBe(false);
+                const itemB = (listB?.items ?? []).find(i => i.label === 'CancelTokenMarker');
+                expect(itemB).toBeDefined();
+                expect(itemB!.detail).toBe('Auto-import com.cancel498.CancelTokenMarker');
+            } finally {
                 interopSeam.resetCompleteClassIndex();
             }
         });
