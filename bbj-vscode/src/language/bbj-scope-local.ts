@@ -136,9 +136,24 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (externalDoc && isBBjClassMember(node)) {
                 if ((node as { visibility?: string }).visibility?.toLowerCase() !== 'private') {
                     await this.processNode(node, document, scopes);
+                    // The member's own signature nodes (field type, method return type, and each
+                    // parameter's type) are visited explicitly here because pruning below stops the
+                    // tree iterator from ever reaching them on its own. Without this, a
+                    // fully-qualified Java type used only in a member's signature would never be
+                    // proactively resolved, even though it is visible to (and usable by) consumers
+                    // outside this file.
+                    if (isFieldDecl(node) && node.type) {
+                        await this.processNode(node.type, document, scopes);
+                    }
                     if (isMethodDecl(node)) {
+                        if (node.returnType) {
+                            await this.processNode(node.returnType, document, scopes);
+                        }
                         for (const param of node.params) {
                             await this.processNode(param, document, scopes);
+                            if (param.type) {
+                                await this.processNode(param.type, document, scopes);
+                            }
                         }
                     }
                 }

@@ -399,3 +399,63 @@ describe('PREFIX symbol collection does not walk member bodies (#505)', () => {
         expect(largeMs).toBeLessThanOrEqual(Math.max(smallMs * 8, smallMs + 150));
     }, 60000);
 });
+
+describe('PREFIX member signature types stay preloaded despite body pruning (#505)', () => {
+    const PREFIX_DIR = '/virtual/prefix-sig';
+
+    /**
+     * A class whose public field type, public method return type, and public method parameter
+     * type each name a distinct fully-qualified Java class — plus a private member and a
+     * body-local declaration that each name their own distinct Java class, so the two groups
+     * are never confused with each other.
+     */
+    async function setupFixture() {
+        const files = new Map<string, string>();
+        const services = createBBjTestServices({ fileSystemProvider: () => new InMemoryFileSystemProvider(files) });
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: [PREFIX_DIR], classpath: [] };
+
+        const text = [
+            'class public SigExt',
+            '    field public java.util.List items!',
+            '    method public java.util.ArrayList pub(java.util.Map a!)',
+            '        declare java.util.Set bodyOnly!',
+            '    methodend',
+            '    method private java.util.HashSet priv(java.util.TreeMap b!)',
+            '    methodend',
+            'classend',
+        ].join('\n');
+
+        const uri = `file://${PREFIX_DIR}/SigExt.bbj`;
+        files.set(URI.parse(uri).fsPath, text);
+        const parse = parseHelper<Model>(services.BBj);
+        const doc = await parse(text, { documentUri: uri, validation: false });
+        expect(doc.parseResult.lexerErrors).toEqual([]);
+        expect(doc.parseResult.parserErrors).toEqual([]);
+        return { services, doc };
+    }
+
+    test('a signature type is preloaded while a body-local type stays pruned', async () => {
+        const { services, doc } = await setupFixture();
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const resolveSpy = vi.spyOn(javaInterop, 'resolveClassByName');
+
+        try {
+            await services.BBj.references.ScopeComputation.collectLocalSymbols(doc, CancellationToken.None);
+
+            const requested = resolveSpy.mock.calls.map(call => call[0]);
+            expect(requested).toContain('java.util.List');
+            expect(requested).toContain('java.util.ArrayList');
+            expect(requested).toContain('java.util.Map');
+            // Declared inside a pruned method body: never reached by the tree iterator.
+            expect(requested).not.toContain('java.util.Set');
+            // A private member's own signature is skipped entirely, matching the linker.
+            expect(requested).not.toContain('java.util.HashSet');
+            expect(requested).not.toContain('java.util.TreeMap');
+        } finally {
+            resolveSpy.mockRestore();
+        }
+    });
+});
