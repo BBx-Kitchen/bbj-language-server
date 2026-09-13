@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 91
 current_phase_name: Language Server Responsiveness
 status: executing
-stopped_at: Phase 91 context gathered
-last_updated: "2026-09-12T23:36:22.917Z"
+stopped_at: Completed 91-01-PLAN.md
+last_updated: "2026-09-13T00:00:11.355Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 90 complete, transitioned to Phase 91
-state_head: f2481ba812112058928247b03c705bc126539c81
+last_activity_desc: Phase 91 execution started
+state_head: aee1e0a95cceeac23bfa88daeb1164c4d3e0c678
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 64
-  completed_plans: 58
+  completed_plans: 59
   percent: 78
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 ## Current Position
 
-Phase: 91 (Language Server Responsiveness) — READY TO EXECUTE
-Plan: Not started
+Phase: 91 (Language Server Responsiveness) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-09-12 — Phase 90 complete, transitioned to Phase 91
+Last activity: 2026-09-12 — Phase 91 execution started
 
 ## Performance Metrics
 
@@ -197,6 +197,7 @@ Last activity: 2026-09-12 — Phase 90 complete, transitioned to Phase 91
 | Phase 90 P06 | 30min | 2 tasks | 4 files |
 | Phase 90 P07 | 25min | 3 tasks | 9 files |
 | Phase 90 P08 | 35min | 2 tasks | 3 files |
+| Phase 91 P01 | 21min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -352,6 +353,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90]: 90-07: openMsgbox keeps its single applyIfUnchanged/replaceString call site for edit-in-place, compose-and-replace and completing an unfinished call, differing only in the WriteCommandAction name — No second write site is ever acquired for the new completion mode
 - [Phase 90]: 90-08: installed-bundle e2e proof + tracer-feedback-gate reuse, QA rows and MSGBOX-nesting todo closure
 - [Phase 90 UAT, closeout 2026-09-12]: Both human checks passed by hand on the first round — IntelliJ (MSGBOX/addWindow/addChildWindow debounce, per-field error labels with OK disabled, faster second open, composer still opens after Restart Language Server) and VS Code (unfinished `MSGBOX(` completion from cue/context menu/palette, stale-edit refusal beside the open panel, window-composer field errors) — against a VSIX (sha256 5505b2a3…) and bbj-intellij-0.1.0.zip rebuilt at `6e1efb2d`, after the CR-01 `seq` fix, with the bundled `main.cjs` byte-identical to the fresh build. 90-VERIFICATION.md status: passed; 90-VALIDATION.md nyquist-compliant (8 rows, 0 gaps; 203 vitest + 113 JUnit targeted tests green); 90-SECURITY.md threats_open 0 (24 threats, short-circuit path). DISC-07..11 (#623, #532, #530, #611, #612) closed.
+- [Phase 91]: 91-01: path-keyed BbjClass index in BBjIndexManager (updateContent/removeContent) replaces the full-scan getBBjClassesFromFile; collectLocalSymbols mirrors bbj-linker.ts's external-document member-pruning rule so PREFIX symbol collection no longer walks method bodies (#505)
 
 ### Tech Debt
 
@@ -420,9 +422,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:24:07.914Z
-Stopped at: Phase 91 context gathered
-Resume file: .planning/phases/91-language-server-responsiveness/91-CONTEXT.md
+Last session: 2026-09-13T00:00:11.018Z
+Stopped at: Completed 91-01-PLAN.md
+Resume file: None
 
 Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
 CONTEXT.md yet — start with `/gsd-discuss-phase 91`.

@@ -510,10 +510,10 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   3. A class that genuinely resolves never stalls for the full 30-second timeout or falls back to a stub because of LRU eviction racing its own cyclic resolution; the protected/pinned set returns to empty after a cancelled or timed-out resolution (research Pitfall 7).
   4. Two concurrent completion requests on two different open documents each honor their own cancellation token — cancelling one never affects the other (research Pitfall 8).
 
-**Plans**: 6 plans (3 waves)
+**Plans**: 1/6 plans executed (3 waves)
 **Wave 1**
 
-- [ ] 91-01-PLAN.md — `::file::Class` lookups read a path-keyed class index and PREFIX symbol collection prunes member bodies like the linker, pinned by work counters and a loose timing ratio (RESP-01)
+- [x] 91-01-PLAN.md — `::file::Class` lookups read a path-keyed class index and PREFIX symbol collection prunes member bodies like the linker, pinned by work counters and a loose timing ratio (RESP-01)
 - [ ] 91-02-PLAN.md — Completion carries each request's cancellation token through AsyncLocalStorage and shares a token-free per-prefix lookup (RESP-04)
 - [ ] 91-03-PLAN.md — Three-state java-interop circuit breaker: one connect timeout and one popup per outage, uncached transport stubs, request-driven half-open recovery (RESP-02)
 
