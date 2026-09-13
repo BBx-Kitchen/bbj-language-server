@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 92
 current_phase_name: Host-Side Hygiene & Focus Guards
-status: executing
-stopped_at: Completed 92-05-PLAN.md
-last_updated: "2026-09-13T07:46:51.484Z"
+status: verifying
+stopped_at: Completed 92-06-PLAN.md
+last_updated: "2026-09-13T07:54:45.663Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 92 execution started
-state_head: e8193f7d73986f8916a7b19e5b1f2cf745c4febe
+state_head: 146b452de1a3bac5725df25c46ebf4bc73afb613
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 70
-  completed_plans: 69
+  completed_plans: 70
   percent: 89
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 
 Phase: 92 (Host-Side Hygiene & Focus Guards) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-13 — Phase 92 execution started
 
 ## Performance Metrics
@@ -208,6 +208,7 @@ Last activity: 2026-09-13 — Phase 92 execution started
 | Phase 92 P03 | 4min | 2 tasks | 5 files |
 | Phase 92 P04 | ~12min | 2 tasks | 3 files |
 | Phase 92 P05 | ~20min | 2 tasks | 2 files |
+| Phase 92 P06 | ~20min | 2 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -376,6 +377,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 92]: BbjFileVisibility mirrors BbjConfigPathService's static-helper-plus-thin-wrapper convention; both widgets delegate visibility to file.getFileType().getName(), never file extension, so config.bbx/config.min/a custom-named config file hide the widgets whatever their extension.
 - [Phase 92]: 92-04: delete-then-wait replaces the mtime gate for decompile freshness (D-01..D-04); delete target shares the wait's own path expression so it can never remove the input file — Coarse-mtime filesystems can produce a fresh .lst whose mtime reads earlier than the call start, causing the old mtime-gated wait to spin to timeout; deleting the leftover first makes any subsequently-appearing .lst provably fresh without a timestamp comparison
 - [Phase 92]: Every Disposable activate() creates directly (14 registerCommand calls, the formatting provider, all 3 client.onNotification handlers) is pushed onto context.subscriptions; the mocked harness's languages.registerCodeActionsProvider/registerCodeLensProvider also needed a real dispose() since setopts-in-code-ui.ts's unmocked registration runs through them every activate(). — Closes RESP-08 (#531): a second activate() re-registers cleanly after the first activation's subscriptions are disposed, proven by a mock that throws on a duplicate command id.
+- [Phase 92]: Phase 92 Plan 06: rebuilt VSIX and IntelliJ zip from final tree, both proven via sha256-pinned marker checks (VSIX warning count 1, plugin jar BbjFileVisibility count 2); IntelliJ buildPlugin's JUnit suite ran 865/0/0/0; whole vitest suite 1873 passed/0 failed, lint/register/boundary gates all green; D-13's live tab-switch check staged for UAT — No tracked source/test file was changed — this closing plan only proves and stages per its own prohibition
 
 ### Tech Debt
 
@@ -445,8 +447,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T07:46:51.148Z
-Stopped at: Completed 92-05-PLAN.md
+Last session: 2026-09-13T07:54:45.300Z
+Stopped at: Completed 92-06-PLAN.md
 Resume file: None
 
 Next: Phase 92 (Host-Side Hygiene & Focus Guards, RESP-05..09) has no phase directory or

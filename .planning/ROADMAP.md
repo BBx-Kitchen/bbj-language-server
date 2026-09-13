@@ -539,7 +539,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   4. Reactivating the VS Code extension in the same host (e.g., a window reload) does not double-register commands, providers, or notifications — every registration from the prior activation is disposed.
   5. IntelliJ's status-bar widgets show or hide immediately on a bare editor-tab switch, not only when the language-server status itself changes.
 
-**Plans**: 5/6 plans executed (3 waves)
+**Plans**: 6/6 plans executed (3 waves)
 **Wave 1**
 
 - [x] 92-01-PLAN.md — Seven run/compile/decompile commands resolve the target argument-first through a vscode-free resolver, reject non-BBj editors per their menu rule, and show one shared "No active BBj file" warning; web runs warn before any credential prompt (RESP-07)
@@ -553,7 +553,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 92-06-PLAN.md — Whole-suite and register gates, both distributables rebuilt from the final tree, and the live IntelliJ tab-switch check (RESP-05..09)
+- [x] 92-06-PLAN.md — Whole-suite and register gates, both distributables rebuilt from the final tree, and the live IntelliJ tab-switch check (RESP-05..09)
 
 **UI hint**: yes
 
