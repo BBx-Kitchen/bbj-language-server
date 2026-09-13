@@ -139,12 +139,86 @@ describe('target-resolution - Commands.cjs wiring (source guard)', () => {
         expect(body).toMatch(/showWarningMessage\(NO_ACTIVE_BBJ_FILE_MESSAGE\)/);
     });
 
-    test('the compile function resolves its target via runTargetOrWarn before calling getBBjHome', () => {
-        const body = extractBraceBlock(readCommandsSource(), 'compile: function');
+    test.each([
+        ['compile: function'],
+        ['run: function'],
+        ['const runWeb = ']
+    ])('%s resolves its target via runTargetOrWarn before calling getBBjHome', (marker) => {
+        const body = extractBraceBlock(readCommandsSource(), marker);
         const resolveIndex = body.indexOf('runTargetOrWarn(params)');
         const homeIndex = body.indexOf('getBBjHome()');
         expect(resolveIndex).toBeGreaterThan(-1);
         expect(homeIndex).toBeGreaterThan(-1);
         expect(resolveIndex).toBeLessThan(homeIndex);
+    });
+
+    test('const decompile = resolves its target via runTargetOrWarn before calling getBBjHome', () => {
+        // Not extracted via extractBraceBlock: the `options = {}` default parameter's
+        // own braces would be mistaken for the function body's opening brace.
+        const source = readCommandsSource();
+        const start = source.indexOf('const decompile = (params, options = {}) => {');
+        expect(start).toBeGreaterThan(-1);
+        const end = source.indexOf('const decompileInPlace', start);
+        expect(end).toBeGreaterThan(start);
+        const body = source.slice(start, end);
+        const resolveIndex = body.indexOf('runTargetOrWarn(params)');
+        const homeIndex = body.indexOf('getBBjHome()');
+        expect(resolveIndex).toBeGreaterThan(-1);
+        expect(homeIndex).toBeGreaterThan(-1);
+        expect(resolveIndex).toBeLessThan(homeIndex);
+    });
+
+    test('decompileTargetOrWarn resolves via resolveDecompileTarget and warns with the shared message when unresolved', () => {
+        const body = extractBraceBlock(readCommandsSource(), 'const decompileTargetOrWarn = ');
+        expect(body).toMatch(/resolveDecompileTarget\(/);
+        expect(body).toMatch(/showWarningMessage\(NO_ACTIVE_BBJ_FILE_MESSAGE\)/);
+    });
+
+    test.each([
+        ['decompileReplace: function'],
+        ['decompileReadonly: function']
+    ])('%s resolves its target via decompileTargetOrWarn', (marker) => {
+        const body = extractBraceBlock(readCommandsSource(), marker);
+        expect(body).toMatch(/decompileTargetOrWarn\(params\)/);
+    });
+
+    test('decompileReadonly resolves its target via decompileTargetOrWarn before calling getBBjHome', () => {
+        const body = extractBraceBlock(readCommandsSource(), 'decompileReadonly: function');
+        const resolveIndex = body.indexOf('decompileTargetOrWarn(params)');
+        const homeIndex = body.indexOf('getBBjHome()');
+        expect(resolveIndex).toBeGreaterThan(-1);
+        expect(homeIndex).toBeGreaterThan(-1);
+        expect(resolveIndex).toBeLessThan(homeIndex);
+    });
+
+    test('Commands.cjs contains no editor-first ternary and no resolveTargetFileName', () => {
+        const source = readCommandsSource();
+        expect(source).not.toMatch(/active\.document\.fileName\s*:\s*params\.fsPath/);
+        expect(source).not.toMatch(/resolveTargetFileName/);
+    });
+
+    test('the run function auto-save condition compares active.document.fileName to the resolved fileName', () => {
+        const body = extractBraceBlock(readCommandsSource(), 'run: function');
+        expect(body).toMatch(/AutoSaveUponRun\s*&&\s*active\s*&&\s*active\.document\.fileName\s*===\s*fileName/);
+    });
+});
+
+describe('target-resolution - extension.ts wiring (source guard)', () => {
+    test('extension.ts imports the target-resolution module', () => {
+        expect(readExtensionSource()).toMatch(/from\s+['"]\.\/Commands\/target-resolution\.js['"]/);
+    });
+
+    test.each([
+        ['"bbj.runBUI"'],
+        ['"bbj.runDWC"']
+    ])('the %s handler resolves the target before ensureValidToken, warns when unresolved, and passes { fsPath: target }', (marker) => {
+        const body = extractBraceBlock(readExtensionSource(), marker);
+        const resolveIndex = body.indexOf('resolveRunTarget(');
+        const ensureIndex = body.indexOf('ensureValidToken(');
+        expect(resolveIndex).toBeGreaterThan(-1);
+        expect(ensureIndex).toBeGreaterThan(-1);
+        expect(resolveIndex).toBeLessThan(ensureIndex);
+        expect(body).toMatch(/showWarningMessage\(NO_ACTIVE_BBJ_FILE_MESSAGE\)/);
+        expect(body).toMatch(/\{\s*fsPath:\s*target\s*\}/);
     });
 });

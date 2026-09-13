@@ -61,6 +61,9 @@ const getBBjHome = () => {
 }
 
 const runWeb = (params, client, credentials) => {
+  const fileName = runTargetOrWarn(params);
+  if (!fileName) return;
+
   const home = getBBjHome();
   if (!home) return;
 
@@ -89,8 +92,6 @@ const runWeb = (params, client, credentials) => {
   }
 
   const sscp = stripSentinel(vscode.workspace.getConfiguration("bbj").classpath);
-  const active = vscode.window.activeTextEditor;
-  const fileName = active ? active.document.fileName : params.fsPath;
   const workingDir = path.dirname(fileName);
   const programme = path.basename(fileName);
   const name = webConfig.apps.hasOwnProperty(programme)
@@ -170,25 +171,11 @@ const decompileTargetOrWarn = (params) => {
   return fileName;
 };
 
-/**
- * Resolve the target file for a decompile/denumber operation.
- * Prefers an explicit uri/params argument (needed for tokenized binary files,
- * which open in a non-text editor so `activeTextEditor` may be absent or wrong),
- * falling back to the active editor.
- */
-const resolveTargetFileName = (params) => {
-  if (params && params.fsPath) {
-    return params.fsPath;
-  }
-  const active = vscode.window.activeTextEditor;
-  return active ? active.document.fileName : undefined;
-};
-
 const decompile = (params, options = {}) => {
+  const fileName = runTargetOrWarn(params);
+  if (!fileName) return;
   const home = getBBjHome();
   if (!home) return;
-  const active = vscode.window.activeTextEditor;
-  const fileName = active ? active.document.fileName : params.fsPath;
   decompileInPlace(path.resolve(fileName), options);
 };
 
@@ -301,6 +288,9 @@ const Commands = {
   },
 
   run: function (params) {
+    const fileName = runTargetOrWarn(params);
+    if (!fileName) return;
+
     const home = getBBjHome();
     if (!home) return;
 
@@ -308,7 +298,6 @@ const Commands = {
     const sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
 
     const active = vscode.window.activeTextEditor;
-    const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
 
     // Use the language server's resolved config path (cached on this host), never a
@@ -343,7 +332,7 @@ const Commands = {
       });
     };
 
-    if (webConfig.AutoSaveUponRun && active) {
+    if (webConfig.AutoSaveUponRun && active && active.document.fileName === fileName) {
       active.document.save().then(runCommand);
     } else {
       runCommand();
@@ -416,7 +405,7 @@ const Commands = {
    * works for binary files that have no active text editor.
    */
   decompileReplace: function (params) {
-    const fileName = resolveTargetFileName(params);
+    const fileName = decompileTargetOrWarn(params);
     if (!fileName) return;
     decompileInPlace(path.resolve(fileName), { denumber: true });
   },
@@ -425,10 +414,10 @@ const Commands = {
    * view, leaving the original binary file untouched (issue #65).
    */
   decompileReadonly: function (params) {
+    const fileName = decompileTargetOrWarn(params);
+    if (!fileName) return;
     const home = getBBjHome();
     if (!home) return;
-    const fileName = resolveTargetFileName(params);
-    if (!fileName) return;
     const resolvedFileName = path.resolve(fileName);
 
     vscode.window.withProgress({

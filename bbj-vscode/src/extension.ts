@@ -36,6 +36,7 @@ import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './la
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
+import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -784,16 +785,26 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // BUI command with auto-prompt login and token validation
     vscode.commands.registerCommand("bbj.runBUI", async (params) => {
+        const target = resolveRunTarget(params?.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
+        if (!target) {
+            vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
+            return;
+        }
         const creds = await ensureValidToken(context);
         if (!creds) return; // User cancelled login
-        Commands.runBUI(params, creds);
+        Commands.runBUI({ fsPath: target }, creds);
     });
 
     // DWC command with auto-prompt login and token validation
     vscode.commands.registerCommand("bbj.runDWC", async (params) => {
+        const target = resolveRunTarget(params?.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
+        if (!target) {
+            vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
+            return;
+        }
         const creds = await ensureValidToken(context);
         if (!creds) return; // User cancelled login
-        Commands.runDWC(params, creds);
+        Commands.runDWC({ fsPath: target }, creds);
     });
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
