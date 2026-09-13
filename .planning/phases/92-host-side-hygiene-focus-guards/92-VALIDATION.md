@@ -3,10 +3,11 @@ phase: "92"
 slug: "host-side-hygiene-focus-guards"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-13"
+validated: "2026-09-13"
 ---
 
 # Phase 92 — Validation Strategy
@@ -42,14 +43,14 @@ Task IDs are assigned by the planner; rows below are seeded per requirement from
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 92-04-T1 | 92-04 | 2 | RESP-05 | T-92-09 | A fresh listing with an earlier-looking mtime resolves promptly; `decompileInPlace` clears the leftover before bbjlst (source guard in the same file) | unit + source-scan | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/decompile-io.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ | ⬜ pending |
-| 92-04-T2 | 92-04 | 2 | RESP-05 | T-92-10, T-92-11 | Stale listing removed before the wait (reworked P62-D2-011); undeletable leftover fails closed; a `.lst` input is never deleted | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/decompile-io.test.ts test/no-shell-command-construction.test.ts test/target-resolution.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ | ⬜ pending |
-| 92-02-T1, 92-02-T2 | 92-02 | 1 | RESP-06 | T-92-05, T-92-06 | Overlapping format requests with different content never share output; identical content shares the newest run; no entry leaks | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/document-formatter.test.ts test/no-shell-command-construction.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ (extend P62-D3-001 block) | ⬜ pending |
-| 92-01-T1, 92-01-T2 | 92-01 | 1 | RESP-07 | T-92-01, T-92-02, T-92-03 | No command acts on an undefined or non-BBj target; one shared warning; web runs warn before any credential prompt | unit (new pure module) + source-scan | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/target-resolution.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ❌ W0 (created in 92-01-T1) | ⬜ pending |
-| 92-05-T1, 92-05-T2 | 92-05 | 2 | RESP-08 | T-92-12, T-92-13, T-92-14 | Second `activate()` after disposal does not throw; every returned Disposable is in `context.subscriptions` | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/extension-activation.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ (extend) | ⬜ pending |
-| 92-03-T1 | 92-03 | 1 | RESP-09 | T-92-08 | Visibility by file type name: BBj shows; BBx Config, `.bbl` and non-BBj hide | unit | `/home/coder/repos/bbj-language-server/bbj-intellij/gradlew -p /home/coder/repos/bbj-language-server/bbj-intellij test --tests 'com.basis.bbj.intellij.ui.BbjFileVisibilityTest' --offline --console=plain -q` | ❌ W0 (created in 92-03-T1) | ⬜ pending |
-| 92-03-T2 | 92-03 | 1 | RESP-09 | T-92-07 | Both widgets subscribe `FILE_EDITOR_MANAGER` once on `messageBusConnection` and delegate to the shared decision | unit (source-guard) | `/home/coder/repos/bbj-language-server/bbj-intellij/gradlew -p /home/coder/repos/bbj-language-server/bbj-intellij test --tests 'com.basis.bbj.intellij.ui.BbjStatusBarWidgetSourceGuardTest' --offline --console=plain -q` | ❌ W0 (created in 92-03-T2) | ⬜ pending |
-| 92-06-T1, 92-06-T2 | 92-06 | 3 | RESP-05..09 | T-92-15, T-92-16 | Both rebuilt distributables carry the phase's code; whole suite, lint and register gates green | build + suite | `RUN_BBJ_TESTS=0 npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode test -- --maxWorkers=2` | ✅ | ⬜ pending |
+| 92-04-T1 | 92-04 | 2 | RESP-05 | T-92-09 | A fresh listing with an earlier-looking mtime resolves promptly; `decompileInPlace` clears the leftover before bbjlst (source guard in the same file) | unit + source-scan | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/decompile-io.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ | ✅ green |
+| 92-04-T2 | 92-04 | 2 | RESP-05 | T-92-10, T-92-11 | Stale listing removed before the wait (reworked P62-D2-011); undeletable leftover fails closed; a `.lst` input is never deleted | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/decompile-io.test.ts test/no-shell-command-construction.test.ts test/target-resolution.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ | ✅ green |
+| 92-02-T1, 92-02-T2 | 92-02 | 1 | RESP-06 | T-92-05, T-92-06 | Overlapping format requests with different content never share output; identical content shares the newest run; no entry leaks | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/document-formatter.test.ts test/no-shell-command-construction.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ (extend P62-D3-001 block) | ✅ green |
+| 92-01-T1, 92-01-T2 | 92-01 | 1 | RESP-07 | T-92-01, T-92-02, T-92-03 | No command acts on an undefined or non-BBj target; one shared warning; web runs warn before any credential prompt | unit (new pure module) + source-scan | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/target-resolution.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ (created in 92-01-T1) | ✅ green |
+| 92-05-T1, 92-05-T2 | 92-05 | 2 | RESP-08 | T-92-12, T-92-13, T-92-14 | Second `activate()` after disposal does not throw; every returned Disposable is in `context.subscriptions` | unit | `npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode exec -- vitest run test/extension-activation.test.ts --root /home/coder/repos/bbj-language-server/bbj-vscode` | ✅ (extend) | ✅ green |
+| 92-03-T1 | 92-03 | 1 | RESP-09 | T-92-08 | Visibility by file type name: BBj shows; BBx Config, `.bbl` and non-BBj hide | unit | `/home/coder/repos/bbj-language-server/bbj-intellij/gradlew -p /home/coder/repos/bbj-language-server/bbj-intellij test --tests 'com.basis.bbj.intellij.ui.BbjFileVisibilityTest' --offline --console=plain -q` | ✅ (created in 92-03-T1) | ✅ green |
+| 92-03-T2 | 92-03 | 1 | RESP-09 | T-92-07 | Both widgets subscribe `FILE_EDITOR_MANAGER` once on `messageBusConnection` and delegate to the shared decision | unit (source-guard) | `/home/coder/repos/bbj-language-server/bbj-intellij/gradlew -p /home/coder/repos/bbj-language-server/bbj-intellij test --tests 'com.basis.bbj.intellij.ui.BbjStatusBarWidgetSourceGuardTest' --offline --console=plain -q` | ✅ (created in 92-03-T2) | ✅ green |
+| 92-06-T1, 92-06-T2 | 92-06 | 3 | RESP-05..09 | T-92-15, T-92-16 | Both rebuilt distributables carry the phase's code; whole suite, lint and register gates green | build + suite | `RUN_BBJ_TESTS=0 npm --prefix /home/coder/repos/bbj-language-server/bbj-vscode test -- --maxWorkers=2` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -57,13 +58,13 @@ Task IDs are assigned by the planner; rows below are seeded per requirement from
 
 ## Wave 0 Requirements
 
-- [ ] `bbj-vscode/src/Commands/target-resolution.ts` (or equivalent) — vscode-free target resolution / language check / warning text (RESP-07)
-- [ ] `bbj-vscode/test/target-resolution.test.ts` — its unit tests (RESP-07)
-- [ ] `bbj-vscode/src/decompile-io.ts` — exported delete-leftover-lst helper (RESP-05)
-- [ ] Source-guard assertions that `Commands.cjs` calls the extracted helpers (RESP-05, RESP-07) — `Commands.cjs` cannot load under vitest
-- [ ] `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjFileVisibility.java` (or equivalent) — static file-type predicate (RESP-09)
-- [ ] `bbj-intellij/src/test/java/com/basis/bbj/intellij/ui/BbjFileVisibilityTest.java` (RESP-09)
-- [ ] `bbj-intellij/src/test/java/com/basis/bbj/intellij/ui/BbjStatusBarWidgetSourceGuardTest.java` (RESP-09)
+- [x] `bbj-vscode/src/Commands/target-resolution.ts` (or equivalent) — vscode-free target resolution / language check / warning text (RESP-07)
+- [x] `bbj-vscode/test/target-resolution.test.ts` — its unit tests (RESP-07)
+- [x] `bbj-vscode/src/decompile-io.ts` — exported delete-leftover-lst helper (RESP-05)
+- [x] Source-guard assertions that `Commands.cjs` calls the extracted helpers (RESP-05, RESP-07) — `Commands.cjs` cannot load under vitest
+- [x] `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjFileVisibility.java` (or equivalent) — static file-type predicate (RESP-09)
+- [x] `bbj-intellij/src/test/java/com/basis/bbj/intellij/ui/BbjFileVisibilityTest.java` (RESP-09)
+- [x] `bbj-intellij/src/test/java/com/basis/bbj/intellij/ui/BbjStatusBarWidgetSourceGuardTest.java` (RESP-09)
 
 ---
 
@@ -71,7 +72,7 @@ Task IDs are assigned by the planner; rows below are seeded per requirement from
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Widgets follow a bare tab switch in a live IDE | RESP-09 | Platform `FILE_EDITOR_MANAGER` delivery and status-bar repaint need a running IntelliJ | With the server started and no status change: BBj tab → non-BBj tab → `config.bbx` → BBj tab; widgets show/hide/hide/show immediately (plugin rebuilt from the final tree) |
+| Widgets follow a bare tab switch in a live IDE | RESP-09 | Platform `FILE_EDITOR_MANAGER` delivery and status-bar repaint need a running IntelliJ | With the server started and no status change: BBj tab → non-BBj tab → `config.bbx` → BBj tab; widgets show/hide/hide/show immediately (plugin rebuilt from the final tree) — **passed in 92-UAT.md on 2026-09-13** |
 
 *All other phase behaviors have automated verification; the automated seam test and source guard for RESP-09 remain required alongside this step.*
 
@@ -79,11 +80,23 @@ Task IDs are assigned by the planner; rows below are seeded per requirement from
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-13
+
+---
+
+## Validation Audit 2026-09-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Evidence: the five targeted vitest files (`target-resolution`, `document-formatter`, `decompile-io`, `extension-activation`, `no-shell-command-construction`) — 80/80 passed; `BbjFileVisibilityTest` (14) and `BbjStatusBarWidgetSourceGuardTest` (5) — 0 failures, reports newer than the last widget source change. Whole-suite row carries 92-06's run (1873 passed, 29 skipped, 0 failed; IntelliJ 865 tests, 0 failures).
