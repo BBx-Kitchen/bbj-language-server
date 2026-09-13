@@ -7,6 +7,7 @@ const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
 const { buildRunArgv, buildWebRunArgv, buildCompileArgv, buildDecompileArgv } = require("./process-args");
 const { runProcess, runProcessCallback, formatArgvForLog } = require("./process-runner");
 const { getActiveConfigPath, getResolvedConfigPath } = require("../config-path-cache");
+const { NO_ACTIVE_BBJ_FILE_MESSAGE, toActiveEditorSnapshot, resolveRunTarget, resolveDecompileTarget } = require("./target-resolution");
 
 // Shared output channel from extension.ts
 let outputChannel = null;
@@ -139,6 +140,34 @@ const runWeb = (params, client, credentials) => {
       return;
     }
   });
+};
+
+/**
+ * Resolves the target for Run, Run BUI, Run DWC, Compile and Denumber via
+ * target-resolution.js's resolveRunTarget (argument-first, then an active
+ * editor that passes the run/compile/denumber menus' own `when` check). Shows
+ * the shared "no active BBj file" warning and returns undefined when neither
+ * is available, so the caller can bail out instead of throwing (issue #512).
+ */
+const runTargetOrWarn = (params) => {
+  const fileName = resolveRunTarget(params && params.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
+  if (!fileName) {
+    vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
+  }
+  return fileName;
+};
+
+/**
+ * Same as runTargetOrWarn, but for Decompile (Replace) and Decompile
+ * (Read-only) via resolveDecompileTarget, whose active-editor fallback also
+ * accepts a `.bbjt` document (issue #512).
+ */
+const decompileTargetOrWarn = (params) => {
+  const fileName = resolveDecompileTarget(params && params.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
+  if (!fileName) {
+    vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
+  }
+  return fileName;
 };
 
 /**
@@ -330,11 +359,11 @@ const Commands = {
   },
 
   compile: function (params) {
+    const fileName = runTargetOrWarn(params);
+    if (!fileName) return;
+
     const home = getBBjHome();
     if (!home) return;
-
-    const active = vscode.window.activeTextEditor;
-    const fileName = active ? active.document.fileName : params.fsPath;
 
     // Read compiler configuration
     const config = vscode.workspace.getConfiguration('bbj');
