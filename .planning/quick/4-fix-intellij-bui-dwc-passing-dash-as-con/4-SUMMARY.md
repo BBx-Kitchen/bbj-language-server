@@ -10,10 +10,12 @@ dependency_graph:
   affects:
     - "bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java"
     - "bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java"
+
 tech_stack:
   added: []
   patterns:
     - "Conditional parameter passing for optional command line arguments"
+
 key_files:
   created: []
   modified:
@@ -24,6 +26,7 @@ key_files:
       role: "DWC run action with conditional configPath parameter"
       lines_modified: 4
 decisions:
+
   - summary: "Use isEmpty() check instead of null check for configPath"
     rationale: "getConfigPath() returns empty string (not null) when config path is not configured"
   - summary: "Match BbjRunGuiAction's conditional parameter pattern"
@@ -31,6 +34,10 @@ decisions:
 metrics:
   duration: 42
   completed: "2026-02-08"
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 4: Fix IntelliJ BUI/DWC Passing Empty String as Config Argument
@@ -44,6 +51,7 @@ Fixed a bug where IntelliJ's BUI and DWC run actions unconditionally passed the 
 ### Changes Made
 
 **Both BbjRunBuiAction.java and BbjRunDwcAction.java:**
+
 - Updated comment from `// Get config path` to `// Get config path - only add if configured (web.bbj handles absent ARGV(9) gracefully)`
 - Replaced unconditional `cmd.addParameter(configPath)` with conditional check:
   ```java
@@ -89,12 +97,14 @@ This ensures consistent behavior with VS Code (which handles empty configPath co
 ## Self-Check: PASSED
 
 Verified files exist:
+
 ```
 FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java
 FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java
 ```
 
 Verified commit exists:
+
 ```
 FOUND: 79f20a0
 ```

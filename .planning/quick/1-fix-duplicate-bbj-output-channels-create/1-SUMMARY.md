@@ -10,19 +10,26 @@ dependency_graph:
   affects:
     - bbj-vscode/src/Commands/Commands.cjs
     - bbj-vscode/src/extension.ts
+
 tech_stack:
   added: []
   patterns:
     - singleton-output-channel
+
 key_files:
   created: []
   modified:
     - bbj-vscode/src/Commands/Commands.cjs
     - bbj-vscode/src/extension.ts
+
 decisions: []
 metrics:
   duration_minutes: 1
   completed_date: 2026-02-08
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 1: Fix Duplicate BBj Output Channels
@@ -38,6 +45,7 @@ Fixed a bug where each BBj run command (GUI, BUI, DWC) created a new "BBj" outpu
 ### Task 1: Share output channel from extension.ts to Commands.cjs
 
 **Modified `bbj-vscode/src/Commands/Commands.cjs`:**
+
 - Added module-level `outputChannel` variable to store shared channel reference
 - Added `setOutputChannel(channel)` function to receive channel from extension
 - Replaced `vscode.window.createOutputChannel('BBj')` in `runWeb()` function (line 95) with `outputChannel.appendLine()`
@@ -46,10 +54,12 @@ Fixed a bug where each BBj run command (GUI, BUI, DWC) created a new "BBj" outpu
 - Added null check: `if (isDebug && outputChannel)` to safely handle cases where channel isn't set
 
 **Modified `bbj-vscode/src/extension.ts`:**
+
 - Called `(Commands as any).setOutputChannel(outputChannel)` immediately after creating the output channel on line 348
 - Reused existing TypeScript import pattern with type assertion to access CommonJS mixed exports
 
 **Commits:**
+
 - `0d2aa25`: fix(quick-1): eliminate duplicate BBj output channels
 
 ## Verification Results
@@ -68,12 +78,14 @@ None - plan executed exactly as written.
 **Pattern:** Singleton output channel shared via setter injection
 
 **Before:** Each debug-enabled run created new channel:
+
 ```js
 const out = vscode.window.createOutputChannel('BBj');
 out.appendLine(`${client} run: ${debugCmd}`);
 ```
 
 **After:** Uses shared channel passed from extension:
+
 ```js
 if (isDebug && outputChannel) {
   outputChannel.appendLine(`${client} run: ${debugCmd}`);
@@ -81,6 +93,7 @@ if (isDebug && outputChannel) {
 ```
 
 **Impact:**
+
 - No more duplicate "BBj" channels in output panel
 - All debug output consolidated in single channel
 - Consistent with existing EM login debug pattern (which already used the shared channel)
@@ -95,8 +108,10 @@ if (isDebug && outputChannel) {
 **Created files:** None required for this task
 
 **Modified files exist:**
+
 - FOUND: /Users/beff/_workspace/bbj-language-server/bbj-vscode/src/Commands/Commands.cjs
 - FOUND: /Users/beff/_workspace/bbj-language-server/bbj-vscode/src/extension.ts
 
 **Commits exist:**
+
 - FOUND: 0d2aa25 (fix(quick-1): eliminate duplicate BBj output channels)

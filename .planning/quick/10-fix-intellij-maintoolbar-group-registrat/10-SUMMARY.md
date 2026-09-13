@@ -3,10 +3,12 @@ phase: quick-10
 plan: 01
 subsystem: IntelliJ Plugin
 tags:
+
   - bug-fix
   - plugin-config
   - action-registration
   - intellij
+
 dependency_graph:
   requires: []
   provides:
@@ -15,12 +17,14 @@ dependency_graph:
     - "Keyboard shortcut alt+C for compile action"
   affects:
     - "bbj-intellij/src/main/resources/META-INF/plugin.xml"
+
 tech_stack:
   added: []
   patterns:
     - "IntelliJ Platform action group registration"
     - "EditorPopupMenu for context menu actions"
     - "ToolsMenu for discoverable tools"
+
 key_files:
   created: []
   modified:
@@ -31,6 +35,7 @@ key_files:
         - "Added EditorPopupMenu registration (after bbj.runDwc)"
         - "Added ToolsMenu registration (last position)"
         - "Added keyboard shortcut alt+C"
+
 decisions: []
 metrics:
   duration_seconds: 61
@@ -40,6 +45,10 @@ metrics:
   files_modified: 1
   lines_added: 3
   lines_removed: 1
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 10: Fix IntelliJ MainToolbar Group Registration
@@ -53,6 +62,7 @@ The IntelliJ plugin was throwing a PluginException on startup: `group with id "M
 ## What Was Built
 
 Fixed the compile action registration by:
+
 1. Removing the reference to the non-existent MainToolbar group
 2. Registering the action in EditorPopupMenu (editor right-click menu) positioned after the bbj.runDwc action
 3. Adding the action to ToolsMenu for additional discoverability
@@ -75,12 +85,15 @@ None - plan executed exactly as written.
 ## Task Completion
 
 ### Task 1: Move BbjCompileAction from MainToolbar to EditorPopupMenu
+
 **Status:** Complete
 **Commit:** 8c57712
 **Files Modified:**
+
 - bbj-intellij/src/main/resources/META-INF/plugin.xml
 
 **Changes:**
+
 - Changed comment from `<!-- BBj Compile Action (toolbar only) -->` to `<!-- BBj Compile Action -->`
 - Replaced `<add-to-group group-id="MainToolbar" anchor="before" relative-to-action="RunConfiguration"/>` with:
   - `<add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runDwc"/>`
@@ -88,6 +101,7 @@ None - plan executed exactly as written.
 - Added keyboard shortcut: `<keyboard-shortcut keymap="$default" first-keystroke="alt C"/>`
 
 **Verification:**
+
 - `grep "MainToolbar"` returns no matches (MainToolbar reference removed)
 - Plugin builds successfully with no group registration errors
 - `add-to-group` count: 9 total registrations (all using universally available groups)
@@ -97,20 +111,25 @@ None - plan executed exactly as written.
 **Files created:** None (modification only)
 
 **Files modified:**
+
 ```bash
 [ -f "bbj-intellij/src/main/resources/META-INF/plugin.xml" ] && echo "FOUND: bbj-intellij/src/main/resources/META-INF/plugin.xml" || echo "MISSING: bbj-intellij/src/main/resources/META-INF/plugin.xml"
 ```
+
 FOUND: bbj-intellij/src/main/resources/META-INF/plugin.xml
 
 **Commits:**
+
 ```bash
 git log --oneline --all | grep -q "8c57712" && echo "FOUND: 8c57712" || echo "MISSING: 8c57712"
 ```
+
 FOUND: 8c57712
 
 ## Impact
 
 **User-facing:**
+
 - IntelliJ plugin no longer throws PluginException on startup
 - Compile action is now accessible via:
   - Editor context menu (right-click on BBj file)
@@ -119,6 +138,7 @@ FOUND: 8c57712
 - Compile action appears alongside run actions in a consistent location
 
 **Technical:**
+
 - Eliminated dependency on MainToolbar group (not universally available)
 - Uses only standard IntelliJ Platform groups (EditorPopupMenu, ToolsMenu, ProjectViewPopupMenu)
 - Consistent with existing action registration patterns

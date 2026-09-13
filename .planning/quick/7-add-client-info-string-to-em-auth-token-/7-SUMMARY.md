@@ -16,6 +16,7 @@ key_files:
     - bbj-vscode/tools/em-login.bbj
     - bbj-vscode/src/extension.ts
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
+
 decisions: []
 metrics:
   duration_minutes: 1
@@ -23,6 +24,10 @@ metrics:
   files_modified: 3
   commits: 2
   completed_date: 2026-02-09
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 7: Add Client Info String to EM Auth Token
@@ -32,6 +37,7 @@ EM auth tokens now include client info identifying the OS and IDE (e.g. "MacOS V
 ## Tasks Completed
 
 ### Task 1: Add optional client info parameter to em-login.bbj
+
 - **Commit:** 449c605
 - **Files:** bbj-vscode/tools/em-login.bbj
 - **Changes:**
@@ -41,6 +47,7 @@ EM auth tokens now include client info identifying the OS and IDE (e.g. "MacOS V
   - Backward compatible: no 4th arg = empty payload as before
 
 ### Task 2: Pass client info string from VS Code and IntelliJ callers
+
 - **Commit:** 3f6aa1f
 - **Files:** bbj-vscode/src/extension.ts, bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
 - **Changes:**
@@ -51,6 +58,7 @@ EM auth tokens now include client info identifying the OS and IDE (e.g. "MacOS V
 ## Verification
 
 All verification criteria passed:
+
 - em-login.bbj reads 4th ARGV, puts "client" into payload HashMap when present
 - extension.ts builds emLoginCmd with platform + "VS Code" as 4th argument
 - BbjEMLoginAction.java adds platform + "IntelliJ IDE" as additional cmd parameter
@@ -59,6 +67,7 @@ All verification criteria passed:
 ## Success Criteria
 
 All success criteria met:
+
 - All three files updated
 - Client info string flows from IDE caller through em-login.bbj into the EM auth token payload
 - Backward compatible (no 4th arg = empty payload as before)
@@ -74,6 +83,7 @@ None - plan executed exactly as written.
 The client info string is passed from the IDE caller (VS Code or IntelliJ) to the em-login.bbj script, which puts it into the payload HashMap with the key "client". This payload is then passed to BBjAdminFactory.getAuthToken(), which includes it in the JWT token.
 
 Example client info strings:
+
 - "MacOS VS Code"
 - "Windows VS Code"
 - "Linux VS Code"
@@ -90,11 +100,13 @@ The 4th parameter is optional. If not provided, the BBj script's `ARGV(4,err=*ne
 Verifying all claimed files and commits exist.
 
 Files:
+
 - FOUND: bbj-vscode/tools/em-login.bbj
 - FOUND: bbj-vscode/src/extension.ts
 - FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
 
 Commits:
+
 - FOUND: 449c605
 - FOUND: 3f6aa1f
 

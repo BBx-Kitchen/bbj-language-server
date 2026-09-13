@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "G-88-2-composer-never-activates: Phase 88 tri-state SETOPTS composer (Code Action in VS Code, Alt+Enter intention in IntelliJ) never activates in either IDE per UAT"
 created: 2026-09-08T00:35:00Z
 updated: 2026-09-08T01:00:00Z
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: diagnosed
 ---
 
 ## Current Focus

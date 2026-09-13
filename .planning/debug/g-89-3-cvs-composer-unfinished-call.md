@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "g-89-3-cvs-composer-unfinished-call: In IntelliJ, pressing Alt+Enter on an unfinished CVS( call (typed only up to `CVS(`) shows the error 'This CVS() call has no mask argument, so there is nothing to compose from' instead of opening the CVS() composer. On an existing, complete CVS() call the composer opens fine."
 created: 2026-09-12T13:20:00Z
 updated: 2026-09-12T13:45:00Z
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: diagnosed
 ---
 
 ## Current Focus

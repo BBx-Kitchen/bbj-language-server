@@ -2,13 +2,27 @@
 
 ## What This Is
 
-A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
+A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run and compile commands (GUI/BUI/DWC), visual code composers (MSGBOX, addWindow/addChildWindow, CVS(), SETOPTS) with in-editor cues, and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
 ## Current State
+
+**v4.3 Polish & Quality shipped 2026-09-13** (override closeout: the milestone audit reported
+`tech_debt` with 25/25 requirements, 9/9 phases, complete integration and flows and no gaps;
+21 open artifacts were acknowledged at close). The 23 issues on GitHub milestone #5 are fixed
+in code: the configured config file is honored everywhere and hot-reloads without a manual
+restart, IntelliJ refreshes Java classes without a restart and auto-detects the interop port,
+every composer has a persistent cue in both IDEs with new SETOPTS-in-code and CVS()
+composers, composer writes are validated and stale-safe on both hosts, the language server no
+longer scales with workspace size or hangs on an unreachable interop peer, and host-side
+commands behave under repeated use and with no editor focused. Phases 84-91 are on
+`origin/main`; Phase 92 and the late validation/security docs (31 commits) are on local
+`main` only, and the milestone #5 issues stay open until that lands and a release ships.
+Phase artifacts for 84-92 are archived under `.planning/milestones/v4.3-phases/` (tracked, no
+embargo).
 
 **v4.2 IntelliJ Burn-down shipped 2026-09-06** (override closeout: all six phases verified
 and 20/20 requirements closed, but no milestone-level audit was run and eight artifacts were
@@ -34,41 +48,20 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Current Milestone: v4.3 Polish & Quality
+## Next Milestone Goals
 
-**Goal:** Weed out small inconveniences before the next release. Rule for inclusion: a BBj
-developer at the keyboard can notice the difference.
+Not yet defined — `/gsd-new-milestone` sets them. Candidates on record:
 
-Scope is exactly the 23 issues assigned to GitHub milestone #5 ("v4.3 Polish & Quality").
-Its description names the themes and the exclusions; this section mirrors it.
-
-**Target features:**
-- **Composer discoverability & coverage** — a visible cue for every composer in both IDEs
-  (#650), MSGBOX composer offered for expression-valued options (#648), a CVS() composer
-  (#649), a SETOPTS composer for `config.bbx` on IntelliJ over a shared LS command layer
-  (#633) and SETOPTS assistance inside BBj code with decode hovers and a tri-state composer
-  (#475); composer robustness on the VS Code side to match what v4.2 gave IntelliJ:
-  validated addWindow/addChildWindow inserts (#623), re-validated coordinates after the
-  MSGBOX wizard (#532), per-panel listener disposal (#530); IntelliJ dialogs debounce
-  preview round trips (#611) and cache the server handle and static catalogs (#612).
-- **Config changes without restart** — watch the resolved config file and reload on change
-  (#486), honor a custom-named/located config file everywhere and treat it as a config file
-  in the editor (#485), Refresh Java Classes on IntelliJ via a targeted request instead of a
-  server restart (#632), java-interop port auto-detection for every settings reader (#608).
-- **Responsiveness & hangs** — workspace-size-independent scope resolution and symbol
-  collection (#505), a reachability circuit breaker for the interop peer (#504), the LRU
-  eviction race (#497) and shared cancel token (#498) in the language server, the decompile
-  freshness hang on coarse-mtime filesystems (#500), the stale format replacement (#499),
-  commands invoked with no editor focused (#512), undisposed VS Code registrations (#531),
-  and IntelliJ status-bar widgets that follow editor-tab switches (#610).
-
-**Deferred (the milestone's stretch tier, not committed):** diagnostics and completion
-accuracy (#522, #561/#578, #577, #556, #527, #526, #466); IntelliJ parity users notice
-(#634, #631, #621, #587, #589); onboarding and docs (#476, #385, #595, #601, #108 follow-up).
-
-**Excluded by the milestone's own rule:** pure refactors, CI/dependency hygiene,
-test-coverage gaps and input-validation hardening — those belong in a separate hygiene
-milestone.
+- Land Phase 92 and the remaining local-only v4.3 commits on `origin/main`, cut a tagged
+  release, and close GitHub milestone #5 (the same release gates advisory publication, PROC-03).
+- The v4.3 stretch tier: diagnostics and completion accuracy (#522, #561/#578, #577, #556,
+  #527, #526, #466); IntelliJ parity users notice (#634, #631, #621, #587, #589); onboarding
+  and docs (#476, #385, #595, #601, #108 follow-up).
+- The separate hygiene milestone v4.3 excluded by rule — pure refactors, CI/dependency
+  hygiene, test-coverage gaps, input-validation hardening — plus v4.3's own tech debt
+  (MILESTONES.md).
+- Follow-ups filed during v4.3: SETOPTS block discoverability UX (#666) and the UAT-log
+  issues #659-#662.
 
 ## Requirements
 
@@ -253,40 +246,43 @@ milestone.
 - ✓ **COMP-02**: `StaleEditGuard` re-decodes the captured line against the live document and re-checks the modification stamp inside the write command; on any mismatch the edit aborts with a warning balloon and a "Reopen composer" action instead of rewriting the range, for all three composers (#567); the three composer intentions ship `intentionDescriptions/` resources and an `Html` preview so the lightbulb popup no longer throws (#433) — v4.2 Phase 82
 - ✓ **BUILD-04**: The Node download/extract/cache pipeline runs under plain JUnit 5 through the injected `NodeInstallPipeline` seam against four committed fixture archives on both platform branches (symlink-safe cleanup fixed), and the Phase 79 EDT paths gain their missing failure-path and banner-decision coverage (`BbjSettingsLookups` failure result, `NodeAvailability` seam); `./gradlew test` runs them green (#569) — v4.2 Phase 83
 - ✓ **BUILD-05**: Every LSP4IJ `@ApiStatus.Experimental` coupling point plus the `bbj/compile` surface is fenced by reflective signature canaries with class-file marker assertions, an eleven-file symbol-level import allowlist, override-site source guards, a cross-language `bbj/*` request-name contract test, composer DTO round trips and a version-pin test (#544; closes #554) — v4.2 Phase 83
-- ✓ **CFG-04**: Refresh Java Classes on IntelliJ completes without taking diagnostics, completion, hover or Structure View offline; a deliberate restart (Settings Apply, manual restart, config-reload, refresh fallback) is classified separately from a genuine crash, and overlapping stop/start cycles are structurally prevented (#632) — Phase 86
-- ✓ **CFG-05**: java-interop port is auto-detected for every reader of settings, not only the Settings dialog; an explicitly confirmed port 5008 is never silently overwritten by auto-detection (#608) — Phase 86
-- ✓ **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633) — Phase 87
-- ✓ **DISC-05**: Hovering a `SETOPTS` literal or an OPTS-derived `IOR`/`AND` line in BBj code shows which options it sets or clears (#475, decode tier) — Phase 88
-- ✓ **DISC-06**: Tri-state Set/Clear/Leave composer generates a SETOPTS read-modify-write block and edits the two statically safe shapes in place (#475, composer tiers) — Phase 88
-- ✓ **DISC-01**: Persistent, clickable composer cue on every MSGBOX, addWindow, addChildWindow, CVS and SETOPTS line in both IDEs, served as a bounded `textDocument/codeLens` gated at `DocumentState.Parsed` and rendered by LSP4IJ Code Vision in IntelliJ (#650) — Phase 89
-- ✓ **DISC-02**: MSGBOX composer offered for expression-valued options; a constant sum pre-fills it, any other expression opens compose-and-replace with a banner (#648) — Phase 89
-- ✓ **DISC-03**: Visual CVS() composer in both IDEs (bits 1-128 in ascending order, version-gated `chars`), edit-in-place for literal-mask calls, and completion of an unfinished `CVS(` call without nesting (#649) — Phase 89
-- ✓ **DISC-07**: Malformed free text in addWindow/addChildWindow composer fields is rejected before insert, with `valid` carried in the shared preview payload so both IDEs gate the same way (#623) — Phase 90
-- ✓ **DISC-08**: Edits made during the MSGBOX QuickPick wizard never corrupt unrelated text — the target call is re-resolved span-exact before the edit and the edit aborts on mismatch; an unfinished `MSGBOX(` completes in place without nesting (#532) — Phase 90
-- ✓ **DISC-09**: Opening and closing any VS Code composer repeatedly leaks no message-handler listeners (#530) — Phase 90
-- ✓ **DISC-10**: Typing in an IntelliJ composer dialog produces one preview round trip per settle point (#611) — Phase 90
-- ✓ **DISC-11**: Reopening an IntelliJ composer reuses the cached server proxy and catalogs; the cache clears on any language-server status change (#612) — Phase 90
-- ✓ **RESP-01**: `::file::Class` scope lookups and PREFIX symbol collection no longer scale with total workspace size — a path-keyed class index and linker-mirrored member-body pruning, pinned by work counters and a loose timing ratio on a synthetic 10-vs-250-file workspace (#505) — Phase 91
-- ✓ **RESP-02**: With java-interop unreachable, validation waits about one connect timeout in total and shows one popup per outage; a request-driven half-open probe recovers without `clearCache()`, reloading the classpath and implicit imports before one document re-check (#504) — Phase 91
-- ✓ **RESP-03**: A class evicted from the resolved-class LRU during its own cyclic resolution resolves to itself with no 30-second stall or stub; the in-flight registry drains after success, timeout, cancellation and `clearCache()` (#497) — Phase 91
-- ✓ **RESP-04**: Concurrent completion requests on different documents each honor their own cancellation token, and a cancelled request never rejects the shared per-prefix class lookup (#498) — Phase 91
-- ✓ **RESP-05**: Decompile deletes the leftover `<input>.lst` before bbjlst runs, so a fresh listing is accepted on coarse-mtime filesystems without any mtime comparison; an undeletable leftover fails closed and a `.lst` input is never deleted (#500) — Phase 92
-- ✓ **RESP-06**: A format request reuses an in-flight formatter run only when its document text is identical; different content spawns its own run, and an older run settling never evicts a newer entry (#499) — Phase 92
-- ✓ **RESP-07**: Run, Run BUI/DWC, Compile, Decompile and Denumber resolve their target argument-first through a vscode-free `target-resolution.ts`; with no runnable BBj editor they show one shared "No active BBj file" warning, and BUI/DWC warn before any EM credential prompt (#512) — Phase 92
-- ✓ **RESP-08**: Every `activate()` registration — 14 commands, the formatting provider and three notification handlers — is pushed onto `context.subscriptions`, so a second activation in the same host re-registers without `already exists` (#531) — Phase 92
-- ✓ **RESP-09**: IntelliJ's BBj and Java status-bar widgets follow editor selection changes and show only when a selected file's resolved file type is `BBj`, hiding for `BBx Config` and non-BBj tabs on the click itself (#610) — Phase 92
+- ✓ **CFG-01**: The configured config file, of any name and location, is honored by PREFIX and project-wide USE resolution, run and compile commands and the SETOPTS composer, through one shared `resolveConfigPath()` pushed to both hosts over `bbj/resolvedConfigPath` (#485) — v4.3 Phase 84
+- ✓ **CFG-02**: The configured config file gets config-file treatment regardless of filename — VS Code re-applies the `bbx-config` language on open, server push and setting change; IntelliJ gives it its own `BBx Config` file type through a `FileTypeOverrider` (#485) — v4.3 Phase 84
+- ✓ **CFG-03**: A change to the resolved config file's consumed content reloads the language server through a debounced, quiescence-gated push and one coalescing restart per host with a non-blocking status signal; SETOPTS-only writes never restart it (#486) — v4.3 Phase 85
+- ✓ **CFG-04**: Refresh Java Classes on IntelliJ completes without taking diagnostics, completion, hover or Structure View offline; a deliberate restart (Settings Apply, manual restart, config-reload, refresh fallback) is classified separately from a genuine crash, and overlapping stop/start cycles are structurally prevented (#632) — v4.3 Phase 86
+- ✓ **CFG-05**: java-interop port is auto-detected for every reader of settings, not only the Settings dialog; an explicitly confirmed port 5008 is never silently overwritten by auto-detection (#608) — v4.3 Phase 86
+- ✓ **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633) — v4.3 Phase 87
+- ✓ **DISC-05**: Hovering a `SETOPTS` literal or an OPTS-derived `IOR`/`AND` line in BBj code shows which options it sets or clears (#475, decode tier) — v4.3 Phase 88
+- ✓ **DISC-06**: Tri-state Set/Clear/Leave composer generates a SETOPTS read-modify-write block and edits the two statically safe shapes in place (#475, composer tiers) — v4.3 Phase 88
+- ✓ **DISC-01**: Persistent, clickable composer cue on every MSGBOX, addWindow, addChildWindow, CVS and SETOPTS line in both IDEs, served as a bounded `textDocument/codeLens` gated at `DocumentState.Parsed` and rendered by LSP4IJ Code Vision in IntelliJ (#650) — v4.3 Phase 89
+- ✓ **DISC-02**: MSGBOX composer offered for expression-valued options; a constant sum pre-fills it, any other expression opens compose-and-replace with a banner (#648) — v4.3 Phase 89
+- ✓ **DISC-03**: Visual CVS() composer in both IDEs (bits 1-128 in ascending order, version-gated `chars`), edit-in-place for literal-mask calls, and completion of an unfinished `CVS(` call without nesting (#649) — v4.3 Phase 89
+- ✓ **DISC-07**: Malformed free text in addWindow/addChildWindow composer fields is rejected before insert, with `valid` carried in the shared preview payload so both IDEs gate the same way (#623) — v4.3 Phase 90
+- ✓ **DISC-08**: Edits made during the MSGBOX QuickPick wizard never corrupt unrelated text — the target call is re-resolved span-exact before the edit and the edit aborts on mismatch; an unfinished `MSGBOX(` completes in place without nesting (#532) — v4.3 Phase 90
+- ✓ **DISC-09**: Opening and closing any VS Code composer repeatedly leaks no message-handler listeners (#530) — v4.3 Phase 90
+- ✓ **DISC-10**: Typing in an IntelliJ composer dialog produces one preview round trip per settle point (#611) — v4.3 Phase 90
+- ✓ **DISC-11**: Reopening an IntelliJ composer reuses the cached server proxy and catalogs; the cache clears on any language-server status change (#612) — v4.3 Phase 90
+- ✓ **RESP-01**: `::file::Class` scope lookups and PREFIX symbol collection no longer scale with total workspace size — a path-keyed class index and linker-mirrored member-body pruning, pinned by work counters and a loose timing ratio on a synthetic 10-vs-250-file workspace (#505) — v4.3 Phase 91
+- ✓ **RESP-02**: With java-interop unreachable, validation waits about one connect timeout in total and shows one popup per outage; a request-driven half-open probe recovers without `clearCache()`, reloading the classpath and implicit imports before one document re-check (#504) — v4.3 Phase 91
+- ✓ **RESP-03**: A class evicted from the resolved-class LRU during its own cyclic resolution resolves to itself with no 30-second stall or stub; the in-flight registry drains after success, timeout, cancellation and `clearCache()` (#497) — v4.3 Phase 91
+- ✓ **RESP-04**: Concurrent completion requests on different documents each honor their own cancellation token, and a cancelled request never rejects the shared per-prefix class lookup (#498) — v4.3 Phase 91
+- ✓ **RESP-05**: Decompile deletes the leftover `<input>.lst` before bbjlst runs, so a fresh listing is accepted on coarse-mtime filesystems without any mtime comparison; an undeletable leftover fails closed and a `.lst` input is never deleted (#500) — v4.3 Phase 92
+- ✓ **RESP-06**: A format request reuses an in-flight formatter run only when its document text is identical; different content spawns its own run, and an older run settling never evicts a newer entry (#499) — v4.3 Phase 92
+- ✓ **RESP-07**: Run, Run BUI/DWC, Compile, Decompile and Denumber resolve their target argument-first through a vscode-free `target-resolution.ts`; with no runnable BBj editor they show one shared "No active BBj file" warning, and BUI/DWC warn before any EM credential prompt (#512) — v4.3 Phase 92
+- ✓ **RESP-08**: Every `activate()` registration — 14 commands, the formatting provider and three notification handlers — is pushed onto `context.subscriptions`, so a second activation in the same host re-registers without `already exists` (#531) — v4.3 Phase 92
+- ✓ **RESP-09**: IntelliJ's BBj and Java status-bar widgets follow editor selection changes and show only when a selected file's resolved file type is `BBj`, hiding for `BBx Config` and non-BBj tabs on the click itself (#610) — v4.3 Phase 92
 
 ### Active
 
-v4.3 Polish & Quality (see REQUIREMENTS.md for the REQ-ID list):
-- [x] Composers are discoverable and cover MSGBOX-with-expressions, CVS() and SETOPTS in both IDEs; VS Code composer edits are validated, position-safe and leak-free; IntelliJ composer dialogs are debounced and cached — Phase 87 delivered the SETOPTS half (DISC-04: shared `bbj/composer/setopts/*` LSP layer, a native Swing `SetoptsComposerDialog` with debounced live preview, and the `BbjComposeSetoptsAction` context-menu entry); Phase 88 delivered DISC-05/06 (SETOPTS-in-code hovers and the tri-state composer); Phase 89 delivered DISC-01/02/03 (composer cues in both IDEs, MSGBOX expression options, the CVS() composer); Phase 90 delivered DISC-07..11 (addWindow/addChildWindow field validation in both IDEs, MSGBOX wizard target re-resolution and unfinished-call completion, panel listener cleanup, IntelliJ dialog debounce and a per-project handle/catalog cache)
-- [x] Config file changes (PREFIX, project-wide USE, custom config path) and Java class refreshes take effect without a manual language-server restart, and the configured file is treated as a config file in the editor — Phase 84 delivered the config-path half (CFG-01, CFG-02: one shared resolver, every consumer honors the configured file, config-file treatment in both IDEs); Phase 85 delivered the hot-reload half (CFG-03: server-side directory watch with a consumed-PREFIX relevance gate, quiescence-gated push, coalesced restart with a non-blocking status signal in both IDEs, SETOPTS writes structurally suppressed); Phase 86 delivered the interop refresh (CFG-04: targeted Refresh Java Classes request instead of a full restart, plus a deliberate-restart-vs-crash classification fix for a UAT-surfaced race) and the port-detection half (CFG-05)
-- [x] No language feature stalls on workspace size, an unreachable interop peer, a cache eviction race, a coarse-mtime filesystem or a missing editor focus; VS Code registrations and IntelliJ widgets clean up and follow the editor — Phase 91 delivered the language-server half (RESP-01..04: path-keyed scope index and PREFIX pruning, java-interop circuit breaker with request-driven recovery, in-flight resolution registry beside the LRU, per-request completion cancellation); Phase 92 delivered the host-side half (RESP-05..09: delete-then-wait decompile freshness, content-aware format sharing, one shared no-active-BBj-file target resolver, disposal of every activation registration, and file-type-driven IntelliJ status-bar visibility on tab switches)
+None — the next milestone's requirements are defined by `/gsd-new-milestone`. v4.3's 25
+requirements shipped and are listed under Validated above (archive:
+`.planning/milestones/v4.3-REQUIREMENTS.md`).
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
 - [ ] Live Windows attestation of Node.js auto-install (todo filed by Phase 83)
+- [ ] Land the 31 local-only v4.3 commits (Phase 92 source, late phase-87/88 validation and security docs) on `origin/main`
 
 ### Out of Scope
 
@@ -297,10 +293,13 @@ Carried over, maintainer-owned (not GSD phases):
 - BBjCPL static type checking (-t flag) — requires prefix/config setup; deferred to future milestone
 - BBjCPL pipe mode (stdin) — reduced JVM startup overhead; deferred to future milestone
 - BBjCPL diagnostic range correlation — mapping line errors to exact token ranges; deferred to future milestone
+- Decode-and-edit for every SETOPTS-in-code shape — the effective options vector is a runtime value; only the two statically safe shapes can be edited soundly (v4.3, #475)
+- General expression evaluation for MSGBOX/CVS options — would preview variables and method calls wrongly; only constant sums are decoded, anything else composes-and-replaces (v4.3)
+- A native IntelliJ `LineMarkerProvider` per composer — the plugin has no BBj PSI; composer cues come from the language server (v4.3)
 
 ## Context
 
-**Current state:** v4.3 Polish & Quality started 2026-09-06, scoped to the 23 issues on GitHub milestone #5; Phases 84-92 complete (Phase 92 — decompile freshness, format race, no-editor command guards, re-activation disposal, IntelliJ widget tab-switch visibility — verified 2026-09-13 with the live IntelliJ tab-switch UAT passing 1/1 on the first round); all nine v4.3 phases are done and the milestone is ready to close; 19 milestones shipped. v4.2 landed on `origin/main` via PR #651 (preview 0.12.28). Whole-suite vitest green at `numFailedTests: 0` (1,873 passed, 29 skipped); IntelliJ JUnit suite green (865 tests after Phase 92). All nine known advisory fixes merged; publication awaits a tagged release.
+**Current state:** v4.3 Polish & Quality shipped 2026-09-13 (Phases 84-92, 70 plans, 25/25 requirements); 20 milestones shipped. Phases 84-91 are on `origin/main`; Phase 92 and the late validation/security docs (31 commits) are on local `main` only. Whole-suite vitest green at `numFailedTests: 0` (1,873 passed, 29 skipped); IntelliJ JUnit suite 865 tests (504 at v4.3 start). v4.3 changed 232 files outside `.planning/` (+32,201 / −1,149). All nine known advisory fixes merged; publication awaits a tagged release. Next milestone not yet defined.
 
 **Tech stack:** Java 17, Gradle 8.14.5 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
@@ -321,12 +320,13 @@ Carried over, maintainer-owned (not GSD phases):
 - IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
 - FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment
 - Static method return type inference gap — String.valueOf(2) does not assign type to target variable
+- v4.3 audit tech debt: planning identifiers in 21 source/test files, accepted review risks (86-05 WR-01/WR-02, AR-88-12), duplicated SETOPTS initial-selection logic, `document-formatter.ts` import-time listeners, the `.lst` denumber input path — listed in MILESTONES.md
 
 ## Constraints
 
 - **Community Edition**: Plugin must work with IntelliJ Community Edition (rules out JetBrains native LSP API)
 - **Node.js dependency**: Language server requires Node.js runtime — auto-downloaded if not available
-- **Existing LS unchanged**: No modifications to the language server for IntelliJ support — IntelliJ adapts to what the LS provides
+- **Shared LS is the single authority**: features both IDEs need are added as host-neutral language-server requests (`bbj/compile`, `bbj/composer/*`, `bbj/resolvedConfigPath`, `bbj/refreshJavaClasses`), never reimplemented on the IntelliJ side
 - **Langium 4 new features deferred**: BNF syntax, AI features, etc. deferred to future milestones (v2.0 was clean upgrade only)
 
 ## Key Decisions
@@ -499,6 +499,8 @@ Carried over, maintainer-owned (not GSD phases):
 | An in-flight Phase-2 registry (plain `Map`) sits beside the bounded resolved-class LRU instead of pinning entries inside it; all three resolution fast paths consult it, and an identity-guarded `finally` drains it on every exit path | #497: eviction during a class's own cyclic resolution fell through to a refetch that stalled 30 s or degraded to a stub; a separate registry keeps the LRU's bound intact and lets `clearCache()` empty both without a late Phase 2 resurrecting a class from the old classpath | ✓ Good — v4.3 Phase 91; forced-eviction, chain-timeout, cancellation and clearCache drain tests green |
 | Completion cancellation travels through `node:async_hooks` `AsyncLocalStorage` per request instead of an instance field on the singleton provider, and the shared per-prefix class lookup is created with no caller's token; `::file::Class` lookups read a path-keyed index maintained in `updateContent`/`removeContent` | #498: two concurrent requests on the singleton overwrote each other's token, and the request that created the shared memo could reject it for every waiter. #505: every `::file::Class` lookup scanned the whole index, so cost grew with the workspace; PREFIX symbol collection now prunes member bodies exactly as the linker does for external documents | ✓ Good — v4.3 Phase 91; work-counter and two-document cancellation tests green |
 | Host-side commands and lifecycle decide from state they can prove: run/compile/decompile/denumber resolve argument-first through a vscode-free `target-resolution.ts` (active-editor fallback only for a runnable BBj document, one shared warning, resolved before any EM credential prompt); decompile deletes the leftover `<input>.lst` before bbjlst instead of comparing mtimes; format requests share an in-flight run only for identical text; every `activate()` registration is pushed onto `context.subscriptions`; IntelliJ's status-bar widgets decide visibility from the resolved file-type name on `FILE_EDITOR_MANAGER` selection changes | #512/#500/#499/#531/#610: `Commands.cjs` is CommonJS and cannot load under Vitest, so each decision moved into a pure module fenced by source guards; delete-then-wait makes freshness provable on coarse-mtime filesystems with no timestamp; a content-blind in-flight memo applied a stale run's output over interim edits; undisposed commands threw `already exists` on re-activation; file-type names rather than extensions keep `config.bbx` and custom-named config files hidden | ✓ Good — v4.3 Phase 92; IntelliJ tab-switch UAT passed 1/1 by hand 2026-09-13; 17/17 threats closed in 92-SECURITY.md; 92-VALIDATION.md nyquist-compliant (8 rows, 0 gaps) |
+| v4.3 closed as an override closeout after a milestone-level audit, with 21 open artifacts acknowledged | Close taken 2026-09-13. Unlike v4.1 and v4.2, `/gsd-audit-milestone` ran: status `tech_debt` with 25/25 requirements, 9/9 phases, 9/9 integration points, 7/7 flows and no gaps. The only open items were six debug sessions left at `diagnosed` after their gaps closed in phases 86/88/89 and 15 quick tasks from earlier milestones, so they were acknowledged rather than resolved | Applied — v4.3 archived 2026-09-13; tech debt listed in MILESTONES.md |
+| v4.3 phase artifacts archived on-tree (`milestones/v4.3-phases/`); no `v4.3` git tag; quick tasks not archived | Phases 84-92 close public issues and carry no advisory detail, so they are tracked like v4.2; repository tags stay release versions (`v0.12.x`), following the v4.2 precedent; the 16 `.planning/quick/` directories all predate v4.3 and would be misfiled under it | Applied — archive tracked; tag and quick-task archival skipped |
 
 ## Evolution
 
@@ -518,4 +520,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-13 after Phase 92*
+*Last updated: 2026-09-13 after v4.3 milestone*

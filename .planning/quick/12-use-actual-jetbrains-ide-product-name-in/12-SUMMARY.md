@@ -5,14 +5,19 @@ subsystem: intellij-plugin
 tags: [intellij-platform, application-names-info, em-auth]
 
 # Dependency graph
+
 requires:
+
   - phase: quick-11
     provides: "EM auth info-string format with IDE/platform/user"
 provides:
+
   - "Dynamic JetBrains IDE product name in EM auth info-string via ApplicationNamesInfo API"
+
 affects: [em-auth, intellij-plugin]
 
 # Tech tracking
+
 tech-stack:
   added: []
   patterns: ["Use ApplicationNamesInfo.getInstance().getFullProductName() for IDE product name"]
@@ -23,14 +28,21 @@ key-files:
     - "bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java"
 
 key-decisions:
+
   - "Used getFullProductName() over getProductName() to include edition info"
 
 patterns-established:
+
   - "ApplicationNamesInfo API: use getFullProductName() for user-facing IDE identification"
 
 # Metrics
+
 duration: 1min
 completed: 2026-02-16
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 12: Use Actual JetBrains IDE Product Name in EM Info-String
@@ -46,6 +58,7 @@ completed: 2026-02-16
 - **Files modified:** 1
 
 ## Accomplishments
+
 - Replaced hardcoded "IntelliJ" with dynamic product name from ApplicationNamesInfo API
 - EM auth info-string now reflects actual JetBrains IDE (e.g., "IntelliJ IDEA", "PyCharm", "WebStorm")
 - Compilation verified successfully
@@ -57,9 +70,11 @@ Each task was committed atomically:
 1. **Task 1: Use ApplicationNamesInfo for dynamic product name in EM info-string** - `587e826` (feat)
 
 ## Files Created/Modified
+
 - `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java` - Added ApplicationNamesInfo import and replaced hardcoded "IntelliJ" with getFullProductName() call
 
 ## Decisions Made
+
 - Used `getFullProductName()` (returns "IntelliJ IDEA", "PyCharm Professional Edition", etc.) over `getProductName()` (returns just "IDEA") or `getFullProductNameWithoutEdition()` -- most informative for EM token identification
 
 ## Deviations from Plan
@@ -67,12 +82,15 @@ Each task was committed atomically:
 None - plan executed exactly as written.
 
 ## Issues Encountered
+
 None
 
 ## User Setup Required
+
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - EM auth info-string now fully dynamic across all JetBrains IDEs
 - No follow-up work needed
 

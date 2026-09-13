@@ -3,6 +3,7 @@ phase: quick-5
 plan: 01
 subsystem: run-commands
 tags:
+
   - authentication
   - token-validation
   - jwt
@@ -10,6 +11,7 @@ tags:
   - dwc
   - vscode
   - intellij
+
 dependency_graph:
   requires: []
   provides:
@@ -18,6 +20,7 @@ dependency_graph:
   affects:
     - bbj-vscode/src/extension.ts
     - bbj-intellij BUI/DWC actions
+
 tech_stack:
   added:
     - em-validate-token.bbj
@@ -25,6 +28,7 @@ tech_stack:
     - jwt-payload-decode
     - base64url-decoding
     - server-side-validation
+
 key_files:
   created:
     - bbj-vscode/tools/em-validate-token.bbj
@@ -36,13 +40,20 @@ key_files:
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java
+
 decisions:
+
   - Two-tier validation: client-side JWT decode (fast path) + server-side BBjAdmin check (authoritative)
   - Automatic re-login flow on expired/invalid tokens (no manual intervention)
   - 525000 minute token duration for persistent logins
+
 metrics:
   duration: 252 seconds
   completed: 2026-02-09
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 5: Fix EM Token Expiration JWT Expiry Check
@@ -83,12 +94,14 @@ Fix EM token expiration handling by adding client-side JWT expiry checking and s
 Both IDEs decode JWT tokens locally to check expiration before making network calls:
 
 **TypeScript (VS Code):**
+
 - Split token by `.` (header.payload.signature)
 - Base64url-decode payload: replace `-` with `+`, `_` with `/`, decode as base64
 - Parse JSON, extract `exp` claim (Unix timestamp in seconds)
 - Compare against `Math.floor(Date.now() / 1000)`
 
 **Java (IntelliJ):**
+
 - Split token by `\\.`
 - Base64url-decode using `Base64.getUrlDecoder().decode()`
 - Regex pattern `"exp"\s*:\s*(\d+)` to extract exp claim (no JSON library needed)
@@ -99,6 +112,7 @@ Both implementations return `false` (not expired) on any parsing error, deferrin
 ### Server-Side Validation
 
 em-validate-token.bbj runs `BBjAdminFactory.getBBjAdmin(token)` to verify token against EM:
+
 - Prints "VALID" if token is accepted by EM
 - Prints "INVALID" if token is expired, revoked, or malformed
 - 10-second timeout in both IDEs to prevent hangs
@@ -106,6 +120,7 @@ em-validate-token.bbj runs `BBjAdminFactory.getBBjAdmin(token)` to verify token 
 ### Automatic Re-Login Flow
 
 When a token fails validation:
+
 1. Delete expired/invalid token from storage (SecretStorage in VS Code, PasswordSafe in IntelliJ)
 2. Show user-friendly message: "EM token expired or invalid. Login again?"
 3. Execute loginEM command automatically on user confirmation
@@ -151,11 +166,13 @@ None - plan executed exactly as written.
 ## Self-Check: PASSED
 
 **Created files exist:**
+
 ```
 FOUND: bbj-vscode/tools/em-validate-token.bbj
 ```
 
 **Commits exist:**
+
 ```
 FOUND: d9db651
 FOUND: 97bc7e7
@@ -163,13 +180,16 @@ FOUND: 3a17f15
 ```
 
 **Build verification:**
+
 - VS Code TypeScript: ✓ Compiled
 - IntelliJ Java: ✓ Compiled
 
 **Function presence:**
+
 - VS Code: isTokenExpired ✓, validateTokenServerSide ✓, ensureValidToken ✓
 - IntelliJ: isTokenExpired ✓, validateTokenServerSide ✓, getEmValidateBbjPath ✓
 
 **Usage verification:**
+
 - BUI/DWC commands in VS Code use ensureValidToken ✓
 - BUI/DWC actions in IntelliJ call isTokenExpired and validateTokenServerSide ✓

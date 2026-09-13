@@ -1,5 +1,114 @@
 # Project Milestones: BBj Language Server
 
+## v4.3 Polish & Quality (Shipped: 2026-09-13)
+
+**Closed 2026-09-13** as an override closeout. Unlike the v4.1 and v4.2 closes, a
+milestone-level audit ran (`milestones/v4.3-MILESTONE-AUDIT.md`, status `tech_debt`): 25/25
+requirements, 9/9 phases, 9/9 integration points and 7/7 end-to-end flows, every phase
+Nyquist-compliant and security-verified, no gaps. The close is an override only because the
+pre-close artifact scan found 21 open items, which were acknowledged rather than resolved
+(see Known verification overrides).
+
+**Where the code lives.** Phases 84-91 are on `origin/main`. Phase 92's source changes and
+the late phase-87/88 validation and security docs — 31 commits — are on local `main` only
+and have not been pushed. The phase archive under `.planning/milestones/v4.3-phases/` is
+tracked (no embargo, like v4.2). The 23 issues on GitHub milestone #5 are still open.
+
+**Delivered:** the papercut milestone — a BBj developer at the keyboard notices each fix.
+The configured config file, of any name and location, is honored by every consumer and
+treated as a config file in both IDEs, and edits to it reload the language server without a
+manual restart; IntelliJ refreshes Java classes without a restart and auto-detects the
+interop port everywhere. Every composer (MSGBOX, addWindow, addChildWindow, CVS, SETOPTS)
+has a persistent clickable cue in both IDEs, SETOPTS gets decode hovers and a tri-state
+composer inside BBj code, CVS() gets its own composer, and composer writes are validated,
+stale-safe and leak-free on both hosts. The language server no longer scales with workspace
+size or hangs on an unreachable interop peer, and host-side commands behave under repeated
+use and with no editor focused.
+
+**Phases completed:** 84-92 (9 phases, 70 plans, 174 tasks)
+
+| Phase | Name | Plans | Issues closed in code |
+|-------|------|-------|-----------------------|
+| 84 | Config Path Resolution & Discoverability Foundation | 6 | #485 |
+| 85 | Config Hot-Reload With Restart Coalescing | 5 | #486 |
+| 86 | IntelliJ Interop Settings & Targeted Refresh | 5 (86-05 closed UAT gap G-86-1) | #632, #608 |
+| 87 | Shared SETOPTS Composer Layer & IntelliJ Dialog | 3 | #633 |
+| 88 | SETOPTS-in-Code Hovers & Tri-State Composer | 15 (88-07..15: five gap-closure rounds for G-88-1/2/3, a verifier-found edit-range defect and a review-found stale-edit defect) | #475 |
+| 89 | CVS() Composer, MSGBOX Expressions & Composer Discoverability | 16 (89-14..16 closed UAT gap G-89-3) | #650, #648, #649 |
+| 90 | Composer Robustness & IntelliJ Composer Performance | 8 | #623, #532, #530, #611, #612 |
+| 91 | Language Server Responsiveness | 6 | #505, #504, #497, #498 |
+| 92 | Host-Side Hygiene & Focus Guards | 6 | #500, #499, #512, #531, #610 |
+
+**Key accomplishments:**
+
+- One `resolveConfigPath()` on the shared language server owns the config-file path and
+  pushes it to both hosts over `bbj/resolvedConfigPath`; every run, compile (`-c`), PREFIX
+  and composer consumer reads it, and a path-identity file-type decision (VS Code's
+  `bbx-config` language, IntelliJ's own `BBx Config` type through a `FileTypeOverrider`)
+  survives reopen, revert and live setting changes.
+- Config hot-reload is decided server-side by consumed-content relevance — a
+  directory-scoped debounced `fs.watch`, a build-quiescence gate and one coalescing restart
+  choke point per host (a `RestartGate` port in VS Code) — so a SETOPTS-only composer write
+  structurally cannot restart the server.
+- IntelliJ's Refresh Java Classes is a targeted `bbj/refreshJavaClasses` request instead of
+  a server restart; the interop port is auto-detected from `com.basis.languageServer.addr`
+  for every reader with explicit user intent preserved; a UAT-found overlapping stop/start
+  (G-86-1) was fixed with an expected-stop guard and a bounded stop barrier.
+- Composer coverage: a shared `bbj/composer/setopts/*` layer with an IntelliJ SETOPTS
+  dialog; decode hovers and a tri-state composer for SETOPTS/IOR/AND in BBj code behind one
+  hex-literal formatter per host and a bounded `textDocument/codeAction`; a new CVS()
+  composer; MSGBOX expression options; and one bounded server `textDocument/codeLens` cue
+  for all five composer kinds, rendered through LSP4IJ Code Vision in IntelliJ. Unfinished
+  `CVS(` and `MSGBOX(` calls complete in place instead of nesting.
+- Composer robustness on both hosts: VS Code validates addWindow/addChildWindow fields,
+  re-resolves MSGBOX targets span-exact before writing, carries IntelliJ's stale-edit guard
+  and disposes panel listeners with their panels; IntelliJ dialogs debounce previews through
+  one seam, show per-field server errors and reuse a per-project server/catalog cache
+  cleared on restart.
+- Language-server responsiveness: a path-keyed class index and linker-mirrored PREFIX
+  pruning, a request-driven java-interop circuit breaker whose recovery reloads the
+  classpath, an in-flight registry beside the resolved-class LRU, and per-request completion
+  cancellation through `AsyncLocalStorage`.
+- Host-side hygiene: one vscode-free target resolver with a shared "No active BBj file"
+  warning, delete-then-wait decompile freshness, content-aware format sharing, disposal of
+  every `activate()` registration, and IntelliJ status-bar widgets that follow tab switches
+  by file type. `vscode:prepublish` now rebuilds `out/`, and installed-bundle e2e tests
+  prove what actually ships.
+
+**Stats:** 526 commits between 2026-09-06 and 2026-09-13 (8 days); 232 files changed
+outside `.planning/`, +32,201 / −1,149 lines; vitest suite green at `numFailedTests: 0`
+(1,873 passed, 29 skipped at Phase 92); IntelliJ JUnit suite 865 tests (504 at milestone
+start). Hand UAT in running VS Code and IntelliJ every phase; UAT gaps G-86-1, G-88-1,
+G-88-2, G-88-3 and G-89-3 closed in-phase, plus two Phase 88 defects found by its verifier
+and code review.
+
+**Known verification overrides:** 21 newly acknowledged, 27 carried forward from a prior
+close (see STATE.md Deferred Items). The 21 are six debug sessions left at `diagnosed`
+although the gaps they diagnosed were closed in phases 86, 88 and 89, and 15 quick tasks
+from earlier milestones whose summaries carry no parseable status.
+
+### Known Gaps
+
+None against requirements. Tech debt carried from the audit:
+
+- Planning identifiers (D-xx, CR-/WR-/IN-, T-8x-, G-8x-) on 53 added lines across 21
+  source and test files, concentrated in phases 87-88.
+- Review risks accepted as-is: 86-05 WR-01 (status classification lags one broadcast) and
+  WR-02 (no exception handling around the bounded restart wait); AR-88-12 (tri-state panel
+  `composeTriState` calls without try/catch); 88 IN-01 (CSP nonce from `Math.random()`);
+  84 IN-02 (the `-c` injection is not exercised from an IntelliJ compiler-options UI, which
+  does not exist yet).
+- Duplicated SETOPTS initial-selection logic (`composer-commands.ts` vs
+  `setopts-composer-webview.ts`); `document-formatter.ts` import-time listeners not tied to
+  activation disposal; denumbering an input that is already `.lst` waits on
+  `<input>.lst.lst` (pre-existing, no todo filed).
+- Plan SUMMARY `requirements-completed` frontmatter never records RESP-01..04; their closure
+  rests on `91-VERIFICATION.md` and `91-UAT.md`.
+- No `v4.3` git tag, following the v4.2 precedent (repository tags are release versions).
+- `WINDOWS.md` entry 1 still blocks `/gsd-ship` under `windows_enforce` (outside v4.3 scope).
+
+---
+
 ## v4.2 IntelliJ Burn-down (Shipped: 2026-09-06)
 
 **Closed 2026-09-06** as an override closeout. All six phases (78-83) carry a `passed`

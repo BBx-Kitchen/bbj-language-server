@@ -19,6 +19,7 @@ key-files:
     - bbj-vscode/src/extension.ts
 
 decisions:
+
   - "Use 'channel' as parameter name to avoid shadowing module-level 'outputChannel' variable"
 
 metrics:
@@ -26,6 +27,10 @@ metrics:
   tasks: 1
   files-modified: 1
   completed: 2026-02-08
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 3: Fix Duplicate BBj Output Channel (LanguageClient)
@@ -74,6 +79,7 @@ None - plan executed exactly as written.
 **Before:** Two "BBj" output channels appeared in VS Code's output panel (one from extension.ts:347, one auto-created by LanguageClient)
 
 **After:** Only one "BBj" output channel appears, shared between:
+
 - Extension debug logging
 - Commands.cjs output (from Quick Task 1)
 - LanguageClient output
@@ -81,6 +87,7 @@ None - plan executed exactly as written.
 ## Technical Details
 
 **LanguageClientOptions type definition** (from vscode-languageclient/lib/common/client.d.ts:235):
+
 ```typescript
 export interface LanguageClientOptions {
     outputChannel?: OutputChannel;
@@ -95,9 +102,11 @@ When `outputChannel` is undefined, the LanguageClient constructor internally cal
 **Created files:** None
 
 **Modified files:**
+
 - ✅ FOUND: bbj-vscode/src/extension.ts
 
 **Commits:**
+
 - ✅ FOUND: 937abf7
 
 ## Next Steps

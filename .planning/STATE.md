@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.3
-milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 92
-status: completed
-stopped_at: Phase 92 complete — all phases complete
-last_updated: "2026-09-13T09:01:27.992Z"
+milestone_name: Polish & Quality (Phases 84-92) — SHIPPED 2026-09-13
+status: Awaiting next milestone
+stopped_at: v4.3 milestone complete and archived
+last_updated: "2026-09-13T10:38:57.346Z"
 last_activity: 2026-09-13
-last_activity_desc: Phase 92 complete
-state_head: 7c74103147d6f7dbb147f498c9b51833ed995328
+last_activity_desc: Milestone v4.3 completed and archived
+state_head: 2ff1da2049ac97ff6decb5b886a266e59496229b
 progress:
   total_phases: 9
   completed_phases: 9
   total_plans: 70
   completed_plans: 70
   percent: 100
+current_phase: 92
 ---
 
 # Project State: BBj Language Server
@@ -27,29 +27,36 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.3 Polish & Quality milestone close (all phases 84-92 complete)
+**Current Focus:** Planning the next milestone (v4.3 Polish & Quality shipped 2026-09-13)
 
 ---
 
 ## Current Position
 
-Phase: 92
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-13 — Phase 92 complete
+Phase: Milestone v4.3 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-13 — Milestone v4.3 completed and archived
 
 ## Performance Metrics
 
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 19
-**Phases completed:** 85
-**Plans completed:** 278
-**Days elapsed:** 217
-**Velocity:** ~1.2 plans/day (lifetime); v4.2 ran at ~8 plans/day over 3 days
+**Milestones shipped:** 20
+**Phases completed:** 94
+**Plans completed:** 348
+**Days elapsed:** 224
+**Velocity:** ~1.6 plans/day (lifetime); v4.3 ran at ~9 plans/day over 8 days
 
 ### Recent History
+
+**v4.3 (Shipped: 2026-09-13):**
+
+- Duration: 8 days
+- Phases: 9 (84-92)
+- Plans: 70 (174 tasks)
+- Key: all 23 GitHub milestone #5 issues fixed in code — config path honored everywhere with hot-reload, IntelliJ targeted Java refresh and port auto-detect, composer cues in both IDEs plus SETOPTS-in-code and CVS() composers, composer robustness on both hosts, language-server responsiveness (scope index, interop circuit breaker, LRU in-flight registry, per-request cancellation), host-side hygiene; milestone audit `tech_debt` with no gaps; override closeout (21 artifacts acknowledged); Phase 92 and late docs (31 commits) not yet on `origin/main`
 
 **v4.2 (Shipped: 2026-09-06):**
 
@@ -448,12 +455,11 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T09:02:00Z
-Stopped at: Phase 92 complete — all phases complete
+Last session: 2026-09-13
+Stopped at: v4.3 milestone complete and archived
 Resume file: None
 
-Next: all v4.3 phases (84-92) are complete and verified — close the milestone with
-`/gsd-complete-milestone v4.3`.
+Next: start the next milestone with `/gsd-new-milestone`.
 
 ## Deferred Items
 
@@ -461,6 +467,27 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_sessions | g-88-1-hover-no-decode | diagnosed (G-88-1 resolved in Phase 88) | 2026-09-13 | v4.3 |
+| debug_sessions | g-88-2-composer-never-activates | diagnosed (G-88-2 resolved in Phase 88) | 2026-09-13 | v4.3 |
+| debug_sessions | g-88-2-docker-pull-hang | diagnosed (resolved per 88-UAT) | 2026-09-13 | v4.3 |
+| debug_sessions | g-88-3-composer-mask-literal-quoting | diagnosed (G-88-3 resolved in Phase 88) | 2026-09-13 | v4.3 |
+| debug_sessions | g-89-3-cvs-composer-unfinished-call | diagnosed (G-89-3 fixed by 89-14..16) | 2026-09-13 | v4.3 |
+| debug_sessions | refresh-stream-closed | diagnosed (G-86-1 fixed by 86-05) | 2026-09-13 | v4.3 |
+| quick_tasks | 1-fix-duplicate-bbj-output-channels-create | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 2-fix-em-login-bbj-not-found-in-intellij-p | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 3-fix-duplicate-bbj-output-channel-ensure- | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 4-fix-intellij-bui-dwc-passing-dash-as-con | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 5-fix-em-token-expiration-jwt-expiry-check | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 6-fix-em-login-bbj-and-em-validate-token-b | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 7-add-client-info-string-to-em-auth-token- | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 8-fix-documentation-links-add-jetbrains-ma | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 9-automate-jetbrains-marketplace-publishin | missing | 2026-09-13 | v4.3 |
+| quick_tasks | 10-fix-intellij-maintoolbar-group-registrat | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 11-enhance-em-auth-token-info-string-change | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 12-use-actual-jetbrains-ide-product-name-in | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 13-fix-intellij-multi-instance-language-ser | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 14-fix-manual-release-workflow-pass-version | unknown | 2026-09-13 | v4.3 |
+| quick_tasks | 260329-oqw-pr-383-return-undefined-instead-of-empty | unknown | 2026-09-13 | v4.3 |
 | debug_sessions | compile-diagnostic-getmessage-nosuchmethoderror | diagnosed (fixed by 81-07) | 2026-09-06 | v4.2 |
 | debug_sessions | compile-error-response-message-could-not-be-parsed | diagnosed (fixed by 81-06) | 2026-09-06 | v4.2 |
 | debug_sessions | compile-output-directory-row-not-visible | diagnosed (fixed by 81-04) | 2026-09-06 | v4.2 |
@@ -513,17 +540,19 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v4.0 Stability and Quality | 60-69 | 62 | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | 2026-09-06 |
+| v4.3 Polish & Quality | 84-92 | 70 | 2026-09-13 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-13 after Phase 92 verify-work close-out (Phases 84-92 complete, 9/9; RESP-05..09 closed)*
+*State updated: 2026-09-13 after v4.3 milestone close (Phases 84-92 archived; 20 milestones shipped)*
 
 ## Operator Next Steps
 
-- Phases 84-92 complete and verified; next: `/gsd-complete-milestone v4.3` (optionally `/gsd-audit-milestone` first)
+- Start the next milestone with `/gsd-new-milestone`
+- Land the 31 local-only v4.3 commits (Phase 92 source, late phase-87/88 validation and security docs) on `origin/main`; GitHub milestone #5's 23 issues stay open until that lands and a release ships
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
-- Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
+- Carried forward: triage the UAT-log issues #659-#662 and the SETOPTS discoverability follow-up #666
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
 - v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)

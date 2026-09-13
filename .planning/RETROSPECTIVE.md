@@ -132,6 +132,86 @@
 
 ---
 
+## Milestone: v4.3 — Polish & Quality
+
+**Shipped:** 2026-09-13
+**Phases:** 9 (84-92) | **Plans:** 70 (174 tasks) | **Sessions:** not tracked
+
+### What Was Built
+- The configured config file, of any name and location, honored by every consumer through
+  one server-side resolver, treated as a config file in both IDEs, and hot-reloaded on a
+  relevant change without a manual restart (#485, #486).
+- IntelliJ's Refresh Java Classes as a targeted request instead of a restart, and
+  java-interop port auto-detection for every settings reader (#632, #608).
+- Composer discoverability and coverage: one server-side cue for all five composer kinds
+  (Code Vision in IntelliJ), a shared SETOPTS layer with an IntelliJ dialog, SETOPTS-in-code
+  hovers and a tri-state composer, a CVS() composer, MSGBOX expression options, and in-place
+  completion of unfinished calls (#650, #633, #475, #649, #648).
+- Composer robustness on both hosts: validated inserts, span-exact re-resolution,
+  stale-edit guards, panel listener disposal, debounced IntelliJ previews and a per-project
+  handle cache (#623, #532, #530, #611, #612).
+- Language-server responsiveness (path-keyed class index, interop circuit breaker, in-flight
+  registry beside the LRU, per-request completion cancellation) and host-side hygiene
+  (target resolver, decompile freshness, format race, activation disposal, status-bar tab
+  switches) (#505, #504, #497, #498, #500, #499, #512, #531, #610).
+
+### What Worked
+- Shared-server-first design: every new composer, decode and cue landed as a host-neutral
+  language-server request both IDEs consume, so VS Code and IntelliJ cannot disagree on
+  what is editable or how a mask is written; IntelliJ work stayed wire DTOs, dialogs and
+  contract tests.
+- Structural guarantees instead of timing windows: consumed-content relevance makes a
+  SETOPTS write unable to restart the server, an `incomplete` decode outcome makes a nested
+  call impossible, and bounded handlers gated at a document state replaced unbounded defaults.
+- Every phase ran the full gate set — verification, hand UAT in both IDEs, code review,
+  Nyquist validation and a security audit — and the milestone audit, skipped at the v4.1
+  and v4.2 closes, ran this time and found no gaps.
+- In-phase gap closure again: G-86-1, G-88-1/2/3 and G-89-3, plus a verifier-found
+  edit-range defect and a review-found stale-edit defect, all closed before their phases
+  were marked complete.
+
+### What Was Inefficient
+- Phase 88 took 15 plans across five gap-closure rounds for two requirements. Two rounds
+  traced to a stale, un-rebuilt VS Code extension install that shipped a pre-phase bundle
+  into UAT, which no source change could fix; `vscode:prepublish` now rebuilds `out/`, and
+  installed-bundle e2e tests plus a standing pre-UAT rebuild step guard against it.
+- Planning identifiers leaked into source and test comments again (53 added lines across 21
+  files, concentrated in phases 87-88) despite the v4.2 lesson; a prompt rule alone did not
+  stop it.
+- Bookkeeping drifted and only the milestone audit caught it: ROADMAP.md's progress table
+  and current-milestone block went stale, debug sessions stayed at `diagnosed` after their
+  gaps closed, and plan SUMMARY frontmatter never recorded RESP-01..04.
+- Code again reached `origin/main` late: Phases 84-91 were pushed during the milestone, but
+  Phase 92 and the late validation/security docs (31 commits) were still local at close.
+
+### Patterns Established
+- Installed-artifact proof before UAT: rebuild both distributables from the final tree,
+  assert the fixes from inside the shipped VSIX and zip (marker counts, sha256 digests), then
+  run hand UAT.
+- Decode verdicts shared over the wire (`incomplete`, not-editable with a named reason),
+  with the server as the sole authority on editability and every write re-checked against
+  the live document.
+- Bounded LSP handlers (`codeAction`, `codeLens`) with an explicit budget and the lowest
+  sufficient `DocumentState` gate instead of Langium's unbounded defaults.
+- Source-discovered lifecycle tests (scan for `createWebviewPanel(`) so a future composer is
+  covered without editing the test.
+
+### Key Lessons
+1. When a live UAT result contradicts the source, verify the installed artifact first; a
+   stale install cost Phase 88 two gap-closure rounds.
+2. A rule that recurs across milestones (no planning ids in source) needs a mechanical check
+   at commit or phase close; two milestones of prompt and memory rules did not hold.
+3. Keep ROADMAP, debug-session and SUMMARY bookkeeping current at each phase transition, or
+   run the milestone audit early enough to fix drift before the close.
+
+### Cost Observations
+- Model mix: not tracked
+- Sessions: not tracked
+- Notable: 70 plans in 8 days (~9 plans/day), the largest milestone by plan count on record;
+  Phase 88 alone was 15 plans (21% of the milestone).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -141,6 +221,7 @@
 | v4.0 | n/a | 10 | Review-and-hardening pass; artifacts held off `main` for the first time |
 | v4.1 | n/a | 8 | Advisory remediation under an embargo; override closeout with explicit Known Gaps |
 | v4.2 | n/a | 6 | Seam-plus-source-guard testing pattern; in-phase UAT gap-closure plans; fastest milestone (3 days) |
+| v4.3 | n/a | 9 | Shared-server-first composer layers; installed-artifact proof before UAT; milestone audit run again (no gaps) |
 
 ### Cumulative Quality
 
@@ -148,6 +229,7 @@
 |-----------|-------|----------|-------------------|
 | v4.1 | ~1,127 vitest + 96 JUnit | not measured at close | 0 new runtime dependencies |
 | v4.2 | ~1,127 vitest + 504 JUnit | not measured at close | 0 new runtime dependencies (LSP4IJ pin 0.19.0 → 0.21.0, Gradle 8.14.5) |
+| v4.3 | 1,873 vitest + 865 JUnit | not measured at close | 0 new runtime dependencies |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -157,4 +239,6 @@
 3. Hand UAT in a running IDE finds the gaps unit tests structurally cannot (v4.1 CR-02,
    v4.2 G-80-1/G-81-4/G-81-5/G-82-6); budget a UAT round per phase and close gaps in-phase.
 4. Rules for subagents (shell hygiene, identifier prohibitions, disclosure) must be in the
-   prompt or a hook — v4.1 and v4.2 both paid for relying on memory notes.
+   prompt or a hook — v4.1, v4.2 and v4.3 all paid for relying on memory notes.
+5. When a live UAT result contradicts the source, verify the installed artifact before
+   changing code — v4.3 Phase 88 spent two gap-closure rounds on a stale install.

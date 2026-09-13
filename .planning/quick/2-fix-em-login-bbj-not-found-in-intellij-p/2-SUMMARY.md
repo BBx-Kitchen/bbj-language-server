@@ -15,13 +15,20 @@ key_files:
   modified:
     - bbj-intellij/build.gradle.kts
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
+
 decisions:
+
   - "Mirrored web.bbj bundling pattern for em-login.bbj"
   - "Used lib/tools/ path prefix matching BbjRunActionBase pattern"
+
 metrics:
   tasks_completed: 2
   duration_minutes: 1
   completed_date: "2026-02-08"
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 2: Fix em-login.bbj not found in IntelliJ plugin
@@ -35,34 +42,42 @@ The IntelliJ plugin's "Login to Enterprise Manager" action failed because em-log
 ## Tasks Completed
 
 ### Task 1: Add em-login.bbj to Gradle build copy tasks
+
 **Status:** ✓ Complete
 **Commit:** 8d4e094
 
 **What was done:**
+
 - Added `include("em-login.bbj")` to `copyWebRunner` task alongside existing `include("web.bbj")`
 - Added `include("em-login.bbj")` to `prepareSandbox` task's tools copy block
 - File now bundled at `lib/tools/em-login.bbj` in plugin distribution
 
 **Files modified:**
+
 - bbj-intellij/build.gradle.kts
 
 **Verification:**
+
 - ✓ `./gradlew :bbj-intellij:processResources` succeeded
 - ✓ `bbj-intellij/build/resources/main/tools/em-login.bbj` exists alongside web.bbj
 
 ### Task 2: Fix em-login.bbj path resolution in BbjEMLoginAction
+
 **Status:** ✓ Complete
 **Commit:** 24804d4
 
 **What was done:**
+
 - Changed path resolution from `plugin.getPluginPath().resolve("tools/em-login.bbj")` to `plugin.getPluginPath().resolve("lib/tools/em-login.bbj")`
 - Removed intermediate `toolsDir` variable, using direct path resolution like `BbjRunActionBase.getWebBbjPath()`
 - Path now matches actual plugin bundle structure from prepareSandbox
 
 **Files modified:**
+
 - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
 
 **Verification:**
+
 - ✓ `./gradlew :bbj-intellij:compileJava` succeeded
 - ✓ Path resolves to `lib/tools/em-login.bbj` matching bundle structure
 - ✓ Consistent with how BbjRunActionBase resolves web.bbj
@@ -93,13 +108,16 @@ The fix ensures em-login.bbj is properly bundled and can be found at runtime by 
 **Created files:** None
 
 **Modified files:**
+
 - FOUND: bbj-intellij/build.gradle.kts
 - FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
 
 **Commits:**
+
 - FOUND: 8d4e094 (feat(quick-2): bundle em-login.bbj in IntelliJ plugin)
 - FOUND: 24804d4 (fix(quick-2): resolve em-login.bbj at correct plugin path)
 
 **Build verification:**
+
 - FOUND: bbj-intellij/build/resources/main/tools/em-login.bbj
 - FOUND: bbj-intellij/build/resources/main/tools/web.bbj

@@ -5,13 +5,17 @@ subsystem: infra
 tags: [github-actions, gradle, release-workflow, intellij, versioning]
 
 # Dependency graph
+
 requires: []
 provides:
+
   - Fixed manual-release workflow that correctly versions IntelliJ plugin during verify and publish
   - Fixed create-release job that now has git repo context for gh CLI
+
 affects: [release-automation]
 
 # Tech tracking
+
 tech-stack:
   added: []
   patterns:
@@ -24,6 +28,7 @@ key-files:
     - .github/workflows/manual-release.yml
 
 key-decisions:
+
   - "Pass -Pversion to verifyPlugin so compatibility check runs against the release artifact, not a default-versioned one"
   - "Pass -Pversion to publishPlugin to ensure JetBrains Marketplace receives the correct version instead of 0.1.0"
   - "Add actions/checkout@v4 as first step in create-release job — gh CLI requires git repo context to create releases"
@@ -31,8 +36,13 @@ key-decisions:
 patterns-established: []
 
 # Metrics
+
 duration: 3min
 completed: 2026-02-17
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 14: Fix Manual Release Workflow Pass Version Summary

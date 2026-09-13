@@ -17,7 +17,9 @@ key-files:
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageClient.java
     - bbj-intellij/src/main/resources/META-INF/plugin.xml
     - bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java
+
 decisions:
+
   - choice: "Delegate idle shutdown to LSP4IJ's native lastDocumentDisconnectedTimeout instead of custom grace period"
     rationale: "Custom LanguageServerManager.stop() calls conflict with LSP4IJ's per-project lifecycle management"
   - choice: "Clear crash state on manual restart to ensure restart always works"
@@ -29,6 +31,10 @@ metrics:
   completed: 2026-02-16T17:03:17Z
   tasks: 2
   commits: 1
+audit_acknowledged:
+  milestone: v4.3
+  at: 2026-09-13
+  status: unknown
 ---
 
 # Quick Task 13: Fix IntelliJ Multi-Instance Language Server
@@ -87,12 +93,14 @@ Fixed critical multi-instance issue where opening multiple IntelliJ project wind
    - Removed unused: `FileEditorManager`, `FileEditorManagerListener`, `MessageBusConnection`, `VirtualFile`
 
 **Files modified:**
+
 - `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java` (-104 lines)
 - `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageClient.java` (+4 lines)
 - `bbj-intellij/src/main/resources/META-INF/plugin.xml` (+1 line)
 - `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java` (-8 lines)
 
 **Verification:**
+
 - Build passes: `./gradlew build` succeeds
 - No grace period references remain (except in BbjJavaInteropService, which is unrelated)
 - plugin.xml contains `lastDocumentDisconnectedTimeout="30"`
@@ -105,6 +113,7 @@ Fixed critical multi-instance issue where opening multiple IntelliJ project wind
 **Status:** Approved (verification skipped, will test manually later)
 
 **Verification plan provided:**
+
 1. Multi-instance test: Open multiple IntelliJ windows with BBj projects, verify each gets independent language server
 2. Window closure test: Close one window, verify others continue running
 3. Manual restart test: Use Tools > Restart BBj Language Server, verify it works
@@ -114,6 +123,7 @@ Fixed critical multi-instance issue where opening multiple IntelliJ project wind
 ## Deviations from Plan
 
 None - plan executed exactly as written. All four investigation areas from the plan were addressed:
+
 1. LSP4IJ server extension configuration - Added `lastDocumentDisconnectedTimeout`
 2. Grace period conflicts - Removed custom grace period entirely
 3. Crash detection state corruption - Fixed by clearing crash state on manual restart
@@ -128,6 +138,7 @@ LSP4IJ maintains internal state for each language server instance. When `BbjServ
 ### LSP4IJ's Native Timeout
 
 By using `lastDocumentDisconnectedTimeout="30"`, LSP4IJ handles idle shutdown internally:
+
 - LSP4IJ tracks when the last document is closed for a server
 - After the timeout (30 seconds), LSP4IJ stops the server
 - This is recorded as an automatic stop, not user-initiated
@@ -137,6 +148,7 @@ By using `lastDocumentDisconnectedTimeout="30"`, LSP4IJ handles idle shutdown in
 ### Project Disposal Guards
 
 Added disposal checks prevent race conditions during project close:
+
 ```java
 if (project.isDisposed()) {
     return;
@@ -144,6 +156,7 @@ if (project.isDisposed()) {
 ```
 
 These guards are critical because:
+
 - Project services can receive callbacks during/after disposal
 - Accessing disposed project services throws exceptions
 - Multiple projects closing simultaneously could race on shared state
@@ -151,18 +164,21 @@ These guards are critical because:
 ## Impact
 
 **Fixes:**
+
 - Multiple IntelliJ project windows can now independently run BBj language server instances
 - Closing one window no longer affects other windows' language servers
 - Manual restart (Tools > Restart BBj Language Server) always works, never blocked by crash state
 - No more cross-project server interference
 
 **Code quality:**
+
 - Removed 104 lines of complex custom lifecycle management code
 - Delegated idle shutdown to LSP4IJ's proven implementation
 - Simplified status bar widget (no custom idle state)
 - Better aligned with LSP4IJ architecture patterns
 
 **Performance:**
+
 - Idle shutdown still works (30-second timeout preserved)
 - No functional regressions
 - Cleaner shutdown on project close (no redundant stop calls)
@@ -170,6 +186,7 @@ These guards are critical because:
 ## Self-Check
 
 ### Files exist
+
 ```
 FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java
 FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageClient.java
@@ -178,11 +195,13 @@ FOUND: bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.j
 ```
 
 ### Commits exist
+
 ```
 FOUND: 293fea5
 ```
 
 ### Verification checks
+
 ```
 PASSED: Build succeeds (./gradlew build)
 PASSED: No grace period references remain in BbjServerService.java
