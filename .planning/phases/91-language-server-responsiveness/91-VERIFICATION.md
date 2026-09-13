@@ -1,11 +1,12 @@
 ---
 phase: 91-language-server-responsiveness
 verified: 2026-09-13T02:00:00Z
-status: human_needed
+status: passed
 score: 4/4 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: |
       Rebuild both distributables from the final tree (HEAD d955379f, after the WR-01/WR-02
       review fixes — the 91-06 build evidence in the SUMMARY is from 3ca0bf51, pre-fix, so it

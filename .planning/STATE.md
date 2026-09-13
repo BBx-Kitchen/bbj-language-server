@@ -2,42 +2,42 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 91
-current_phase_name: Language Server Responsiveness
-status: verifying
-stopped_at: Phase 91 executed and verified (human_needed); live outage UAT pending
-last_updated: "2026-09-13T01:54:55.624Z"
-last_activity: 2026-09-12
-last_activity_desc: Phase 91 execution started
-state_head: d955379fa2b2339cd632fdd6347be34f6784fb18
+current_phase: 92
+current_phase_name: Host-Side Hygiene & Focus Guards
+status: planning
+stopped_at: Phase 91 complete, ready to plan Phase 92
+last_updated: "2026-09-13T05:46:30.942Z"
+last_activity: 2026-09-13
+last_activity_desc: Phase 91 complete, transitioned to Phase 92
+state_head: f3fa69fb2d0d1a3cd321eb4fb7ae942952485c4b
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 64
   completed_plans: 64
-  percent: 78
+  percent: 89
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-12 (Phase 90 complete — UAT passed 2/2 on the first round; Phase 91 ready to discuss/plan)
+**Last Updated:** 2026-09-13 (Phase 91 complete — live outage-and-recovery UAT passed 1/1 on the first round; Phase 92 ready to discuss/plan)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-12)
+See: .planning/PROJECT.md (updated 2026-09-13)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 91 — Language Server Responsiveness
+**Current Focus:** Phase 92 — Host-Side Hygiene & Focus Guards
 
 ---
 
 ## Current Position
 
-Phase: 91 (Language Server Responsiveness) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-12 — Phase 91 execution started
+Phase: 92 — Host-Side Hygiene & Focus Guards
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-13 — Phase 91 complete, transitioned to Phase 92
 
 ## Performance Metrics
 
@@ -365,6 +365,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 91]: Phase 91 Plan 04: an in-flight Phase-2 registry (_inFlightPhase2, plain Map) beside the resolvedClasses LRU stops eviction mid-cyclic-resolution from stalling or stubbing a class that resolves (#497); identity-guarded finally drains it after success/timeout/cancellation/clearCache
 - [Phase 91]: Phase 91 Plan 05: reloadClasspathAndRecheckDocuments takes Pick<...> service shapes so unit tests pass vi.fn() stand-ins directly; recheckAfterInteropRecovery logs failures via console.error only, never a popup, matching the no-notification-on-recovery requirement
 - [Phase 91]: Plan 91-06 rebuilt both distributables from HEAD 3ca0bf51 and confirmed the breaker marker (count 1) in each bundle; whole suite 1824 passed/29 skipped/0 failed, lint 0, register/gated-test/IntelliJ-diff checks all clean; REQUIREMENTS.md deliberately not edited here, RESP-01..04 marked complete by phase verification after the live D-14 check
+- [Phase 91 UAT, closeout 2026-09-13]: The single human check (live java-interop outage and recovery in VS Code: stop BBjServices, one "Failed to connect to the Java interop service" popup for the whole outage, no freeze, unresolved-class diagnostics on new `use`/`declare` lines; restart BBjServices, diagnostics clear after a caret move with no edit, popup or Refresh Java Classes) passed by hand on the first round against a VSIX (sha256 31ecff5a…) and bbj-intellij-0.1.0.zip (sha256 15b4c0a4…, `clean buildPlugin`) rebuilt at `e52e5e50`, after review fixes 2ca423ff/59befa50, with both bundled `main.cjs` byte-identical to the fresh build. The popup fires on the first edit that makes the server resolve a not-yet-cached Java class (a failed reconnect while the breaker is closed), never on the stop itself or on hover/caret moves. 91-VERIFICATION.md status: passed; 91-VALIDATION.md nyquist-compliant (14 tasks, 0 gaps; whole suite 1855 tests, 0 failed); 91-SECURITY.md threats_open 0 (21 threats, short-circuit path). RESP-01..04 (#505, #504, #497, #498) closed.
 
 ### Tech Debt
 
@@ -423,6 +424,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 86] Two residual review risks from 86-05-REVIEW.md accepted as-is at the UAT checkpoint (Test 4), not fixed: WR-01 — `updateStatus()` passes `ExpectedStopGuard.classify()` a `previousStatus` that lags the true immediate predecessor by one broadcast (self-corrects for the single-hop sequence G-86-1's fix targets; a duplicate/echoed `stopped` broadcast would not self-correct). WR-02 — `doRestart()` has no exception handling around the new bounded wait; a thrown exception would leave the server stopped with no console explanation. Candidates for a quick task if either surfaces in practice.
 - ⚠️ [Phase 89] Gap-closure-round code review (89-REVIEW.md, 0 critical / 1 warning / 1 info) is unfixed, and UAT round 2 passed without it: WR-01 — the VS Code composer panel always labels its primary button "Insert", even when completing or editing a call; IN-01 — `runComposeCvsCommand` decodes the same call twice on the hard-stop path. The first-round review (CR-01, WR-01..03) was fully fixed (89-REVIEW-FIX.md). Candidates for `/gsd-code-review 89 --fix` or a quick task; rebuild both extensions after either lands. The MSGBOX compose-new nesting todo filed by 89-16 was closed by Phase 90 (90-01, 90-07).
 - ⚠️ [Phase 90] Advisory (90-SECURITY.md T-90-11): the per-project `ComposerHandleCache` has no source guard forbidding a static map — the no-cross-project-leak control is structural only (instance field of a `projectService`). Quick-task candidate: add the guard assertion.
+- ⚠️ [Phase 91] Advisory, none blocked verification: (1) 91-REVIEW.md IN-01 left out of fix scope — `bbj-vscode/src/language/bbj-index-manager.ts` has no trailing newline (lint passes; one-character quick fix). (2) Interop recovery is request-driven by design (no background timer): after BBjServices returns, stale unresolved-class diagnostics clear on the next Java lookup, such as a caret move or edit, not on their own while the editor is idle.
 
 ### Quick Tasks Completed
 
@@ -433,12 +435,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T01:54:55.320Z
-Stopped at: Phase 91 executed and verified (human_needed); live outage UAT pending
-Resume file: .planning/phases/91-language-server-responsiveness/91-UAT.md
+Last session: 2026-09-13T05:46:30Z
+Stopped at: Phase 91 complete, ready to plan Phase 92
+Resume file: None
 
-Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
-CONTEXT.md yet — start with `/gsd-discuss-phase 91`.
+Next: Phase 92 (Host-Side Hygiene & Focus Guards, RESP-05..09) has no phase directory or
+CONTEXT.md yet — start with `/gsd-discuss-phase 92`.
 
 ## Deferred Items
 
@@ -503,11 +505,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-12 after Phase 90 verify-work close-out (Phases 84-90 complete, 7/9; DISC-01..11 closed)*
+*State updated: 2026-09-13 after Phase 91 verify-work close-out (Phases 84-91 complete, 8/9; RESP-01..04 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-90 complete and verified; next: `/gsd-discuss-phase 91` or `/gsd-plan-phase 91`
+- Phases 84-91 complete and verified; next: `/gsd-discuss-phase 92` or `/gsd-plan-phase 92` (last v4.3 phase)
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)

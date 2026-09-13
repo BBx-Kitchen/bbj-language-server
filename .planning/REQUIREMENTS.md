@@ -35,10 +35,10 @@ Committed scope. Each maps to exactly one roadmap phase.
 
 ### Responsiveness & hangs
 
-- [ ] **RESP-01**: User's scope resolution and symbol collection cost no longer scales with total workspace size, proven by a timing test on a synthetic multi-document workspace (#505)
-- [ ] **RESP-02**: User with an unreachable java-interop peer waits about one connect timeout in total, not one per unresolved class; the breaker resets on cache clear or Refresh Java Classes (#504)
-- [ ] **RESP-03**: User never gets a 30-second stall or a stub class for a class that genuinely resolves, caused by LRU eviction during that class's own cyclic resolution (#497)
-- [ ] **RESP-04**: User's concurrent completion requests on different documents each honor their own cancellation token (#498)
+- [x] **RESP-01**: User's scope resolution and symbol collection cost no longer scales with total workspace size, proven by a timing test on a synthetic multi-document workspace (#505)
+- [x] **RESP-02**: User with an unreachable java-interop peer waits about one connect timeout in total, not one per unresolved class; the breaker resets on cache clear or Refresh Java Classes (#504)
+- [x] **RESP-03**: User never gets a 30-second stall or a stub class for a class that genuinely resolves, caused by LRU eviction during that class's own cyclic resolution (#497)
+- [x] **RESP-04**: User's concurrent completion requests on different documents each honor their own cancellation token (#498)
 - [ ] **RESP-05**: User's decompile completes promptly on coarse-mtime filesystems and never spins the 20-second timeout on output that is already fresh (#500)
 - [ ] **RESP-06**: User's format request never applies content computed from an earlier in-flight request over interim edits (#499)
 - [ ] **RESP-07**: User invoking Run, Compile, Decompile or Denumber with no editor focused sees a graceful "no active BBj file" message instead of an error (#512)
@@ -110,10 +110,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CFG-03 | Phase 85 | Complete |
 | CFG-04 | Phase 86 | Complete |
 | CFG-05 | Phase 86 | Complete |
-| RESP-01 | Phase 91 | Pending |
-| RESP-02 | Phase 91 | Pending |
-| RESP-03 | Phase 91 | Pending |
-| RESP-04 | Phase 91 | Pending |
+| RESP-01 | Phase 91 | Complete |
+| RESP-02 | Phase 91 | Complete |
+| RESP-03 | Phase 91 | Complete |
+| RESP-04 | Phase 91 | Complete |
 | RESP-05 | Phase 92 | Pending |
 | RESP-06 | Phase 92 | Pending |
 | RESP-07 | Phase 92 | Pending |

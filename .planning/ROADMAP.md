@@ -228,7 +228,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 - [x] **Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer** - SETOPTS/IOR/AND lines in BBj code get decode hovers everywhere and a tri-state composer for the two safe shapes (completed 2026-09-12)
 - [x] **Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability** - Every composer gets a persistent visible cue in both IDEs; MSGBOX handles expression-valued options; CVS() gets a new visual composer (completed 2026-09-12)
 - [x] **Phase 90: Composer Robustness & IntelliJ Composer Performance** - VS Code composers validate before applying and stop leaking listeners; IntelliJ composer dialogs debounce input and cache server/catalog handles (completed 2026-09-12)
-- [ ] **Phase 91: Language Server Responsiveness** - Scope resolution, Java class resolution, and completion cancellation stop scaling with workspace size or racing each other
+- [x] **Phase 91: Language Server Responsiveness** - Scope resolution, Java class resolution, and completion cancellation stop scaling with workspace size or racing each other (completed 2026-09-13)
 - [ ] **Phase 92: Host-Side Hygiene & Focus Guards** - Decompile, format, run commands, extension activation, and IntelliJ's status bar behave correctly under repeated use and edge conditions
 
 ## Phase Details
@@ -577,12 +577,13 @@ and push-blocked until each advisory is published. Both asymmetries are intended
 artifacts (78-83) carry no advisory detail and are tracked normally.
 
 **Current milestone:** v4.3 Polish & Quality (Phases 84-92) — in progress, started 2026-09-06.
-25/25 v1 requirements mapped, 2/9 phases complete (Phase 84: 6/6 plans, UAT 8/8, verified
-2026-09-06; CFG-01 and CFG-02 closed. Phase 85: 5/5 plans, UAT 7/7 hand checkpoints, verified
-2026-09-07; CFG-03 closed). See `.planning/REQUIREMENTS.md` for the requirement list and
-`.planning/PROJECT.md` for scope. Next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`.
+25/25 v1 requirements mapped, 8/9 phases complete (Phases 84-91 verified 2026-09-06 to
+2026-09-13; CFG-01..05, DISC-01..11 and RESP-01..04 closed. Phase 91: 6/6 plans, live
+outage-and-recovery UAT 1/1, verified 2026-09-13). Phase 92 (RESP-05..09) remains. See
+`.planning/REQUIREMENTS.md` for the requirement list and `.planning/PROJECT.md` for scope.
+Next: `/gsd-discuss-phase 92` or `/gsd-plan-phase 92`.
 
 ---
 
-*Roadmap last updated: 2026-09-07 — Phase 85 complete (5/5 plans; CFG-03 closed).
-Next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`.*
+*Roadmap last updated: 2026-09-13 — Phase 91 complete (6/6 plans; RESP-01..04 closed).
+Next: `/gsd-discuss-phase 92` or `/gsd-plan-phase 92`.*
