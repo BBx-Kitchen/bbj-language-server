@@ -12,12 +12,16 @@
  */
 import { DocumentState, EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { describe, expect, test, vi } from 'vitest';
+import type { Connection } from 'vscode-languageserver';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { URI } from 'vscode-uri';
+import { initNotifications } from '../src/language/bbj-notifications.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { Model } from '../src/language/generated/ast.js';
+import { INTEROP_BREAKER_INITIAL_COOLDOWN_MS } from '../src/language/java-interop.js';
 import { reloadClasspathAndRecheckDocuments } from '../src/language/java-class-reload.js';
 import { createBBjTestServices } from './bbj-test-module.js';
+import { createFakePeerServices } from './fake-interop-peer.js';
 
 describe('Java class reload after interop recovery (#504)', () => {
     test('reloads the classpath, then implicit imports, then re-checks every file document once', async () => {
@@ -99,5 +103,55 @@ describe('Java class reload after interop recovery (#504)', () => {
         expect(loadClasspath).not.toHaveBeenCalled();
         expect(loadImplicitImports).toHaveBeenCalledTimes(1);
         expect(update).toHaveBeenCalledTimes(1);
+    });
+
+    describe('end to end through the fake interop peer', () => {
+        beforeEach(() => {
+            initNotifications({ window: { showErrorMessage: vi.fn() } } as unknown as Connection);
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            initNotifications(null as unknown as Connection);
+        });
+
+        test('an interop recovery re-checks documents exactly once', async () => {
+            const { shared, BBj, interop } = createFakePeerServices();
+            const parse = parseHelper<Model>(BBj);
+            await parse('x = 1', { documentUri: 'file:///reload/c.bbj', validation: false });
+
+            const workspaceManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+            const langiumDocuments = shared.workspace.LangiumDocuments;
+            const documentBuilder = shared.workspace.DocumentBuilder;
+
+            const update = vi.spyOn(documentBuilder, 'update').mockResolvedValue(undefined);
+
+            interop.onConnectionRecovered(() => reloadClasspathAndRecheckDocuments({
+                javaInterop: interop,
+                workspaceManager,
+                langiumDocuments,
+                documentBuilder
+            }));
+
+            vi.useFakeTimers();
+
+            interop.connectDelayMs = 0;
+            await interop.resolveClassByName('test.Down');
+            interop.peerUp = true;
+            await vi.advanceTimersByTimeAsync(INTEROP_BREAKER_INITIAL_COOLDOWN_MS);
+            await interop.resolveClassByName('test.Up');
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(update).toHaveBeenCalledTimes(1);
+
+            await interop.resolveClassByName('test.Again');
+            await vi.advanceTimersByTimeAsync(0);
+            expect(update).toHaveBeenCalledTimes(1);
+
+            interop.clearCache();
+            await interop.resolveClassByName('test.AfterClear');
+            await vi.advanceTimersByTimeAsync(0);
+            expect(update).toHaveBeenCalledTimes(1);
+        });
     });
 });
