@@ -136,20 +136,25 @@ describe('decompile-io', () => {
                 expect(freshContent.length).toBe(staleContent.length); // the coincidental-size premise
 
                 // A stale .lst already on disk before the wait starts, e.g. left over from a
-                // crashed prior decompile attempt against the same file. A real gap before the
-                // call starts is required so the stale write's mtime is unambiguously earlier
-                // than the call-start timestamp the fix captures — writing it in the same tick
-                // as the call would let filesystem mtime rounding coincidentally satisfy the
-                // mtime gate on the very first poll.
+                // crashed prior decompile attempt against the same file. It is the delete step
+                // below — not a timestamp — that guarantees this stale listing can never be
+                // observed by the wait: once removed, no size, however coincidentally matching,
+                // can be read from this path until the fresh run writes it.
                 fs.writeFileSync(lst, staleContent);
-                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                await deleteLeftoverLst(input);
+                expect(fs.existsSync(lst)).toBe(false);
 
                 const resultPromise = waitForDecompileOutput(input, { pollMs: 15, timeoutMs: 2000 });
-                // The fresh run's output lands well after two 15ms-spaced polls have already
-                // observed the stale file's settled size.
-                setTimeout(() => fs.writeFileSync(lst, freshContent), 45);
+                let freshWrittenAt = 0;
+                setTimeout(() => {
+                    fs.writeFileSync(lst, freshContent);
+                    freshWrittenAt = Date.now();
+                }, 45);
 
                 const result = await resultPromise;
+                const resolvedAt = Date.now();
+                expect(resolvedAt).toBeGreaterThanOrEqual(freshWrittenAt);
                 expect(result).toEqual({ sourcePath: lst, inPlace: false });
                 expect(fs.readFileSync(lst, 'utf8')).toBe(freshContent);
             });
@@ -168,6 +173,34 @@ describe('decompile-io', () => {
         test('resolves without error when no leftover exists', async () => {
             const input = path.join(dir, 'prog.bbj');
             await expect(deleteLeftoverLst(input)).resolves.toBeUndefined();
+        });
+
+        test('fails closed when the leftover cannot be removed, naming the path and reason', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            const lst = input + '.lst';
+            // A directory at the .lst path is a real, mock-free way to make unlink fail with a
+            // non-ENOENT error (EISDIR on Linux, EPERM on macOS/Windows).
+            fs.mkdirSync(lst);
+
+            await expect(deleteLeftoverLst(input)).rejects.toThrow(
+                new RegExp(`Could not remove the leftover.*${lst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+            );
+            expect(fs.existsSync(lst)).toBe(true);
+            expect(fs.statSync(lst).isDirectory()).toBe(true);
+        });
+
+        test('for a .lst input, removes only <input>.lst.lst and never the input file itself', async () => {
+            const input = path.join(dir, 'prog.lst');
+            const inputContent = '0010 rem x\n';
+            fs.writeFileSync(input, inputContent);
+            const leftover = input + '.lst'; // prog.lst.lst
+            fs.writeFileSync(leftover, 'stale listing');
+
+            await deleteLeftoverLst(input);
+
+            expect(fs.existsSync(leftover)).toBe(false);
+            expect(fs.existsSync(input)).toBe(true);
+            expect(fs.readFileSync(input, 'utf8')).toBe(inputContent);
         });
     });
 
