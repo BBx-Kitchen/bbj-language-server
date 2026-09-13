@@ -7,7 +7,8 @@
 import { AstUtils, isJSDoc, LangiumDocument, LangiumDocuments, Mutable, parseJSDoc } from 'langium';
 import { Socket } from 'net';
 import {
-    CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
+    CancellationToken, ConnectionError, createMessageConnection, ErrorCodes, MessageConnection, RequestType,
+    ResponseError, SocketMessageReader, SocketMessageWriter
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
@@ -38,6 +39,50 @@ export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
  * typical project's resolved classpath while still bounding steady-state memory growth.
  */
 export const RESOLVED_CLASSES_CACHE_LIMIT = 5000;
+
+/**
+ * Cooldown (ms) the breaker in {@link JavaInteropService.connect} applies after opening, before
+ * it lets a single half-open probe through (#504). No issue or research note pins these
+ * numbers; one connect-level failure opens the breaker, and the initial cooldown, backoff
+ * factor and cap below are a discretionary starting point.
+ */
+export const INTEROP_BREAKER_INITIAL_COOLDOWN_MS = 5_000;
+/** Multiplier applied to the cooldown after each failed half-open probe, capped below. */
+export const INTEROP_BREAKER_BACKOFF_FACTOR = 2;
+/** Upper bound on the breaker's cooldown after repeated failed probes. */
+export const INTEROP_BREAKER_MAX_COOLDOWN_MS = 30_000;
+
+/**
+ * Thrown for a connection-transport-level failure: the breaker short-circuiting, a failed
+ * connect, a resolution timeout, or a dropped in-flight request (#504). Distinguishes "the peer
+ * or transport is unavailable right now" from a genuine backend answer, so callers know which
+ * failure stubs are safe to cache — see {@link isInteropTransportFailure}.
+ */
+export class InteropTransportError extends Error {
+    constructor(message: string, public readonly originalError?: unknown) {
+        super(message);
+        this.name = 'InteropTransportError';
+    }
+}
+
+/**
+ * True for a transport-level failure that must never be cached as a genuine "class not found":
+ * an {@link InteropTransportError} (breaker short-circuit, failed connect, or a resolution
+ * timeout), a vscode-jsonrpc `ConnectionError`, or a `ResponseError` whose code is
+ * `ErrorCodes.PendingResponseRejected` (a dropped connection rejecting its in-flight requests).
+ */
+export function isInteropTransportFailure(error: unknown): boolean {
+    if (error instanceof InteropTransportError) {
+        return true;
+    }
+    if (error instanceof ConnectionError) {
+        return true;
+    }
+    if (error instanceof ResponseError && (error as ResponseError<unknown>).code === ErrorCodes.PendingResponseRejected) {
+        return true;
+    }
+    return false;
+}
 
 /**
  * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
@@ -115,6 +160,14 @@ export class JavaInteropService {
     private static readonly RESOLUTION_TIMEOUT_MS = 30_000;
     private interopHost: string = '127.0.0.1';
     private interopPort: number = 5008;
+    /** Three-state breaker guarding {@link connect} against a peer that is unreachable at the connect level (#504). */
+    private breakerState: 'closed' | 'open' | 'half-open' = 'closed';
+    /** `Date.now()` time at which the next lookup is let through as the single half-open probe. */
+    private breakerProbeDueAt = 0;
+    /** Cooldown (ms) applied the next time the breaker opens; grows on a failed probe and resets on a successful one. */
+    private breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
+    /** Bumped by clearCache() so a connect attempt started before the reset cannot change breaker state or report recovery. */
+    private breakerGeneration = 0;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -157,14 +210,55 @@ export class JavaInteropService {
         if (this.connection) {
             return this.connection;
         }
+        if (this.breakerState === 'open' && Date.now() < this.breakerProbeDueAt) {
+            this.throwCircuitOpen();
+        }
         if (this.connectingPromise) {
             return this.connectingPromise;
         }
-        this.connectingPromise = this.establishConnection();
+        const generation = this.breakerGeneration;
+        this.connectingPromise = this.establishConnection().then(
+            connection => {
+                this.onConnectAttemptSettled(generation, { success: true });
+                return connection;
+            },
+            e => {
+                const message = e instanceof Error ? e.message : String(e);
+                this.onConnectAttemptSettled(generation, { success: false, message });
+                throw new InteropTransportError(message, e);
+            }
+        );
         try {
             return await this.connectingPromise;
         } finally {
             this.connectingPromise = undefined;
+        }
+    }
+
+    /** Throws the short-circuit error used by every breaker-open code path, so its text exists in exactly one place. */
+    private throwCircuitOpen(): never {
+        throw new InteropTransportError('Java interop service unavailable (circuit open)');
+    }
+
+    /**
+     * Updates breaker state from a settled connect attempt. Ignored once `generation` no longer
+     * matches the current one — clearCache() bumped it, so this attempt started before the reset
+     * and must not change breaker state or report recovery.
+     */
+    private onConnectAttemptSettled(generation: number, outcome: { success: true } | { success: false; message: string }): void {
+        if (generation !== this.breakerGeneration) {
+            return;
+        }
+        if (outcome.success) {
+            this.breakerState = 'closed';
+        } else {
+            const wasClosed = this.breakerState === 'closed';
+            this.breakerState = 'open';
+            this.breakerProbeDueAt = Date.now() + this.breakerCooldownMs;
+            if (wasClosed) {
+                // The closed-to-open transition: exactly one popup per outage.
+                notifyJavaConnectionError(outcome.message);
+            }
         }
     }
 
@@ -178,12 +272,10 @@ export class JavaInteropService {
         try {
             socket = await this.createSocket();
         } catch (e) {
-            const detail = e instanceof Error ? e.message : String(e);
-            notifyJavaConnectionError(detail);
             console.error('Failed to connect to the Java service.', e);
             throw e;
         }
-        const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+        const connection = this.wrapSocket(socket);
         // Guard on identity: an old connection's close/error can be delivered after a newer
         // connect() already installed a healthy replacement, and an unguarded clear would drop
         // that live reference and force a spurious reconnect (P67-WR-02).
@@ -192,6 +284,15 @@ export class JavaInteropService {
         connection.listen();
         this.connection = connection;
         return connection;
+    }
+
+    /**
+     * Wraps a connected socket in a JSON-RPC message connection. Extracted from
+     * establishConnection() so a test double can swap in a scriptable fake peer while the real
+     * connect()/breaker logic around it runs unmodified.
+     */
+    protected wrapSocket(socket: Socket): MessageConnection {
+        return createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
     }
 
     /**
@@ -604,7 +705,7 @@ export class JavaInteropService {
             ]);
         } catch (e) {
             logger.warn(`Failed to resolve Java class '${className}': ${e}`);
-            return this.createStubClass(className);
+            return this.createStubClass(className, !isInteropTransportFailure(e));
         } finally {
             release();
         }
