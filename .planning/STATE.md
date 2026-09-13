@@ -5,11 +5,11 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 91
 current_phase_name: Language Server Responsiveness
 status: verifying
-stopped_at: Completed 91-06-PLAN.md
-last_updated: "2026-09-13T01:20:19.005Z"
+stopped_at: Phase 91 executed and verified (human_needed); live outage UAT pending
+last_updated: "2026-09-13T01:54:55.624Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 91 execution started
-state_head: 3ca0bf5124f40e1b88e7408781e7431a22b4e578
+state_head: d955379fa2b2339cd632fdd6347be34f6784fb18
 progress:
   total_phases: 9
   completed_phases: 7
@@ -433,9 +433,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T01:20:08.429Z
-Stopped at: Completed 91-06-PLAN.md
-Resume file: None
+Last session: 2026-09-13T01:54:55.320Z
+Stopped at: Phase 91 executed and verified (human_needed); live outage UAT pending
+Resume file: .planning/phases/91-language-server-responsiveness/91-UAT.md
 
 Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
 CONTEXT.md yet — start with `/gsd-discuss-phase 91`.
