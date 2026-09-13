@@ -510,7 +510,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
   3. A class that genuinely resolves never stalls for the full 30-second timeout or falls back to a stub because of LRU eviction racing its own cyclic resolution; the protected/pinned set returns to empty after a cancelled or timed-out resolution (research Pitfall 7).
   4. Two concurrent completion requests on two different open documents each honor their own cancellation token — cancelling one never affects the other (research Pitfall 8).
 
-**Plans**: 4/6 plans executed (3 waves)
+**Plans**: 5/6 plans executed (3 waves)
 **Wave 1**
 
 - [x] 91-01-PLAN.md — `::file::Class` lookups read a path-keyed class index and PREFIX symbol collection prunes member bodies like the linker, pinned by work counters and a loose timing ratio (RESP-01)
@@ -520,7 +520,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 91-04-PLAN.md — In-flight Phase-2 registry beside the LRU so a class evicted during its own cyclic resolution never stalls or degrades to a stub (RESP-03)
-- [ ] 91-05-PLAN.md — On breaker recovery, reload classpath and implicit imports and re-check open documents once, through a helper shared with Refresh Java Classes (RESP-02)
+- [x] 91-05-PLAN.md — On breaker recovery, reload classpath and implicit imports and re-check open documents once, through a helper shared with Refresh Java Classes (RESP-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

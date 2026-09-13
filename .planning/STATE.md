@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 91
 current_phase_name: Language Server Responsiveness
 status: executing
-stopped_at: Completed 91-04-PLAN.md
-last_updated: "2026-09-13T00:59:12.275Z"
+stopped_at: Completed 91-05-PLAN.md
+last_updated: "2026-09-13T01:08:50.431Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 91 execution started
-state_head: c0189087861b0aa63e7fbff66b9d58a8d962a05f
+state_head: f7397da0f56b82dbf99bd27793c32052788b55b8
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 64
-  completed_plans: 62
+  completed_plans: 63
   percent: 78
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 91 (Language Server Responsiveness) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 91 execution started
 
@@ -201,6 +201,7 @@ Last activity: 2026-09-12 — Phase 91 execution started
 | Phase 91 P02 | 12min | 2 tasks | 2 files |
 | Phase 91 P03 | ~35min | 3 tasks | 3 files |
 | Phase 91 P04 | ~25min | 2 tasks | 2 files |
+| Phase 91 P05 | ~20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -361,6 +362,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 91]: [Phase 91]: Phase 91 Plan 03: A three-state (closed/open/half-open) circuit breaker sits in front of java-interop's existing shared connect(), classifying only connect-level failures (never a post-connect request timeout) as trip-worthy; a generation counter bumped solely by clearCache() invalidates any in-flight connect attempt so a stale probe cannot report state after a reset.
 - [Phase 91]: [Phase 91]: Phase 91 Plan 03: Stub caching narrows to genuine backend not-found answers via isInteropTransportFailure(error), driving the existing createStubClass(className, cache) flag; ensureCompleteClassIndex's already-resolved fast path starts (never awaits) the half-open probe, the only way a no-edit candidate lookup can bring recovery; loadImplicitImports dedupes its simple-name copies so a recovery re-run never grows the synthetic classpath document.
 - [Phase 91]: Phase 91 Plan 04: an in-flight Phase-2 registry (_inFlightPhase2, plain Map) beside the resolvedClasses LRU stops eviction mid-cyclic-resolution from stalling or stubbing a class that resolves (#497); identity-guarded finally drains it after success/timeout/cancellation/clearCache
+- [Phase 91]: Phase 91 Plan 05: reloadClasspathAndRecheckDocuments takes Pick<...> service shapes so unit tests pass vi.fn() stand-ins directly; recheckAfterInteropRecovery logs failures via console.error only, never a popup, matching the no-notification-on-recovery requirement
 
 ### Tech Debt
 
@@ -429,8 +431,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T00:59:11.965Z
-Stopped at: Completed 91-04-PLAN.md
+Last session: 2026-09-13T01:08:50.124Z
+Stopped at: Completed 91-05-PLAN.md
 Resume file: None
 
 Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
