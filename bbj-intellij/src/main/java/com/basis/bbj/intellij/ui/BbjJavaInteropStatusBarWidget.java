@@ -4,9 +4,10 @@ import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.BbjSettingsConfigurable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
+import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.ui.components.JBLabel;
@@ -58,6 +59,15 @@ public final class BbjJavaInteropStatusBarWidget implements CustomStatusBarWidge
             this::updateStatus
         );
 
+        // Follow editor-tab switches so the widget shows/hides immediately, not only on the
+        // next server-status change (#610)
+        messageBusConnection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
+            @Override
+            public void selectionChanged(@NotNull FileEditorManagerEvent event) {
+                updateVisibility();
+            }
+        });
+
         // Initialize with current status
         updateStatus(BbjJavaInteropService.getInstance(project).getCurrentStatus());
     }
@@ -95,16 +105,7 @@ public final class BbjJavaInteropStatusBarWidget implements CustomStatusBarWidge
     }
 
     private void updateVisibility() {
-        VirtualFile[] files = FileEditorManager.getInstance(project).getSelectedFiles();
-        boolean hasBbjFile = false;
-        for (VirtualFile file : files) {
-            String ext = file.getExtension();
-            if (ext != null && (ext.equals("bbj") || ext.equals("bbl") || ext.equals("bbjt") || ext.equals("src"))) {
-                hasBbjFile = true;
-                break;
-            }
-        }
-        panel.setVisible(hasBbjFile);
+        panel.setVisible(BbjFileVisibility.showsForSelection(FileEditorManager.getInstance(project).getSelectedFiles()));
     }
 
     private void showPopupMenu(MouseEvent e) {
