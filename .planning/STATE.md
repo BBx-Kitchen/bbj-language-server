@@ -3,24 +3,23 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 92
-current_phase_name: Host-Side Hygiene & Focus Guards
-status: verifying
-stopped_at: Completed 92-06-PLAN.md
-last_updated: "2026-09-13T07:54:45.663Z"
+status: completed
+stopped_at: Phase 92 complete — all phases complete
+last_updated: "2026-09-13T09:01:27.992Z"
 last_activity: 2026-09-13
-last_activity_desc: Phase 92 execution started
-state_head: 146b452de1a3bac5725df25c46ebf4bc73afb613
+last_activity_desc: Phase 92 complete
+state_head: 7c74103147d6f7dbb147f498c9b51833ed995328
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 70
   completed_plans: 70
-  percent: 89
+  percent: 100
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-13 (Phase 91 complete — live outage-and-recovery UAT passed 1/1 on the first round; Phase 92 ready to discuss/plan)
+**Last Updated:** 2026-09-13 (Phase 92 complete — live IntelliJ tab-switch UAT passed 1/1 on the first round; all nine v4.3 phases done, milestone ready to close)
 
 ## Project Reference
 
@@ -28,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 92 — Host-Side Hygiene & Focus Guards
+**Current Focus:** v4.3 Polish & Quality milestone close (all phases 84-92 complete)
 
 ---
 
 ## Current Position
 
-Phase: 92 (Host-Side Hygiene & Focus Guards) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-13 — Phase 92 execution started
+Phase: 92
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-09-13 — Phase 92 complete
 
 ## Performance Metrics
 
@@ -378,6 +377,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 92]: 92-04: delete-then-wait replaces the mtime gate for decompile freshness (D-01..D-04); delete target shares the wait's own path expression so it can never remove the input file — Coarse-mtime filesystems can produce a fresh .lst whose mtime reads earlier than the call start, causing the old mtime-gated wait to spin to timeout; deleting the leftover first makes any subsequently-appearing .lst provably fresh without a timestamp comparison
 - [Phase 92]: Every Disposable activate() creates directly (14 registerCommand calls, the formatting provider, all 3 client.onNotification handlers) is pushed onto context.subscriptions; the mocked harness's languages.registerCodeActionsProvider/registerCodeLensProvider also needed a real dispose() since setopts-in-code-ui.ts's unmocked registration runs through them every activate(). — Closes RESP-08 (#531): a second activate() re-registers cleanly after the first activation's subscriptions are disposed, proven by a mock that throws on a duplicate command id.
 - [Phase 92]: Phase 92 Plan 06: rebuilt VSIX and IntelliJ zip from final tree, both proven via sha256-pinned marker checks (VSIX warning count 1, plugin jar BbjFileVisibility count 2); IntelliJ buildPlugin's JUnit suite ran 865/0/0/0; whole vitest suite 1873 passed/0 failed, lint/register/boundary gates all green; D-13's live tab-switch check staged for UAT — No tracked source/test file was changed — this closing plan only proves and stages per its own prohibition
+- [Phase 92 UAT, closeout 2026-09-13]: The single human check (IntelliJ status-bar widgets follow a bare editor-tab switch: `.bbj` → non-BBj → `config.bbx` → `.bbx` program → `.bbj`, each show/hide on the click itself with no server-status change) passed by hand on the first round against bbj-intellij-0.1.0.zip (sha256 5e57a632…, `clean buildPlugin`) and a VSIX built at 07:49 after the last source commit, with the bundled `main.cjs` byte-identical to the fresh build. 92-VERIFICATION.md status: passed; 92-VALIDATION.md nyquist-compliant (8 rows, 0 gaps; 80 targeted vitest + 19 JUnit tests green); 92-SECURITY.md threats_open 0 (17 threats, short-circuit path — register authored at plan time, ASVS level 1). RESP-05..09 (#500, #499, #512, #531, #610) closed; v4.3's nine phases are all complete.
 
 ### Tech Debt
 
@@ -437,6 +437,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 89] Gap-closure-round code review (89-REVIEW.md, 0 critical / 1 warning / 1 info) is unfixed, and UAT round 2 passed without it: WR-01 — the VS Code composer panel always labels its primary button "Insert", even when completing or editing a call; IN-01 — `runComposeCvsCommand` decodes the same call twice on the hard-stop path. The first-round review (CR-01, WR-01..03) was fully fixed (89-REVIEW-FIX.md). Candidates for `/gsd-code-review 89 --fix` or a quick task; rebuild both extensions after either lands. The MSGBOX compose-new nesting todo filed by 89-16 was closed by Phase 90 (90-01, 90-07).
 - ⚠️ [Phase 90] Advisory (90-SECURITY.md T-90-11): the per-project `ComposerHandleCache` has no source guard forbidding a static map — the no-cross-project-leak control is structural only (instance field of a `projectService`). Quick-task candidate: add the guard assertion.
 - ⚠️ [Phase 91] Advisory, none blocked verification: (1) 91-REVIEW.md IN-01 left out of fix scope — `bbj-vscode/src/language/bbj-index-manager.ts` has no trailing newline (lint passes; one-character quick fix). (2) Interop recovery is request-driven by design (no background timer): after BBjServices returns, stale unresolved-class diagnostics clear on the next Java lookup, such as a caret move or edit, not on their own while the editor is idle.
+- ⚠️ [Phase 92] Advisory, none blocked verification: denumbering an input that is already a `.lst` file still watches the unreachable `<input>.lst.lst` path — a pre-existing defect explicitly out of scope per 92-CONTEXT.md and recorded under "Discovered, Not Fixed" in 92-04-SUMMARY.md (the new delete step never touches the input itself). 92-REVIEW.md found 0 findings.
 
 ### Quick Tasks Completed
 
@@ -447,12 +448,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T07:54:45.300Z
-Stopped at: Completed 92-06-PLAN.md
+Last session: 2026-09-13T09:02:00Z
+Stopped at: Phase 92 complete — all phases complete
 Resume file: None
 
-Next: Phase 92 (Host-Side Hygiene & Focus Guards, RESP-05..09) has no phase directory or
-CONTEXT.md yet — start with `/gsd-discuss-phase 92`.
+Next: all v4.3 phases (84-92) are complete and verified — close the milestone with
+`/gsd-complete-milestone v4.3`.
 
 ## Deferred Items
 
@@ -517,11 +518,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-13 after Phase 91 verify-work close-out (Phases 84-91 complete, 8/9; RESP-01..04 closed)*
+*State updated: 2026-09-13 after Phase 92 verify-work close-out (Phases 84-92 complete, 9/9; RESP-05..09 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-91 complete and verified; next: `/gsd-discuss-phase 92` or `/gsd-plan-phase 92` (last v4.3 phase)
+- Phases 84-92 complete and verified; next: `/gsd-complete-milestone v4.3` (optionally `/gsd-audit-milestone` first)
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)

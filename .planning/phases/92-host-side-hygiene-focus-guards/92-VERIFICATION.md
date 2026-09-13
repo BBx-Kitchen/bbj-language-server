@@ -1,11 +1,12 @@
 ---
 phase: 92-host-side-hygiene-focus-guards
 verified: 2026-09-13T08:10:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "In IntelliJ, with the rebuilt plugin installed and the language server started, click through: .bbj tab -> non-BBj tab -> config.bbx tab -> .bbx program tab -> .bbj tab again, with no server-status change."
     expected: "Both status-bar widgets (BBj: ... and Java: ...) show for the .bbj tab, hide immediately for the non-BBj tab, stay hidden for config.bbx, show for the .bbx program, and show again for the .bbj tab — each change happening on the tab click itself."
     why_human: "Platform FILE_EDITOR_MANAGER delivery, FileTypeOverrider resolution for the real config.bbx, and status-bar repaint require a running IntelliJ IDE; no IntelliJ sandbox exists in this devcontainer. The automated seam test (BbjFileVisibilityTest) and source guard (BbjStatusBarWidgetSourceGuardTest) prove the decision logic and the wiring only (D-13)."

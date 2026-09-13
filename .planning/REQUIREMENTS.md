@@ -39,11 +39,11 @@ Committed scope. Each maps to exactly one roadmap phase.
 - [x] **RESP-02**: User with an unreachable java-interop peer waits about one connect timeout in total, not one per unresolved class; the breaker resets on cache clear or Refresh Java Classes (#504)
 - [x] **RESP-03**: User never gets a 30-second stall or a stub class for a class that genuinely resolves, caused by LRU eviction during that class's own cyclic resolution (#497)
 - [x] **RESP-04**: User's concurrent completion requests on different documents each honor their own cancellation token (#498)
-- [ ] **RESP-05**: User's decompile completes promptly on coarse-mtime filesystems and never spins the 20-second timeout on output that is already fresh (#500)
-- [ ] **RESP-06**: User's format request never applies content computed from an earlier in-flight request over interim edits (#499)
-- [ ] **RESP-07**: User invoking Run, Compile, Decompile or Denumber with no editor focused sees a graceful "no active BBj file" message instead of an error (#512)
-- [ ] **RESP-08**: User's VS Code extension survives a second activation in the same host: every command, provider and notification registration is disposed (#531)
-- [ ] **RESP-09**: User sees the IntelliJ status-bar widgets show and hide on a bare editor-tab switch, not only on a server-status change (#610)
+- [x] **RESP-05**: User's decompile completes promptly on coarse-mtime filesystems and never spins the 20-second timeout on output that is already fresh (#500)
+- [x] **RESP-06**: User's format request never applies content computed from an earlier in-flight request over interim edits (#499)
+- [x] **RESP-07**: User invoking Run, Compile, Decompile or Denumber with no editor focused sees a graceful "no active BBj file" message instead of an error (#512)
+- [x] **RESP-08**: User's VS Code extension survives a second activation in the same host: every command, provider and notification registration is disposed (#531)
+- [x] **RESP-09**: User sees the IntelliJ status-bar widgets show and hide on a bare editor-tab switch, not only on a server-status change (#610)
 
 ## v2 Requirements
 
@@ -114,11 +114,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RESP-02 | Phase 91 | Complete |
 | RESP-03 | Phase 91 | Complete |
 | RESP-04 | Phase 91 | Complete |
-| RESP-05 | Phase 92 | Pending |
-| RESP-06 | Phase 92 | Pending |
-| RESP-07 | Phase 92 | Pending |
-| RESP-08 | Phase 92 | Pending |
-| RESP-09 | Phase 92 | Pending |
+| RESP-05 | Phase 92 | Complete |
+| RESP-06 | Phase 92 | Complete |
+| RESP-07 | Phase 92 | Complete |
+| RESP-08 | Phase 92 | Complete |
+| RESP-09 | Phase 92 | Complete |
 
 **Coverage:**
 
