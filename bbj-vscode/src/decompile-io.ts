@@ -27,17 +27,38 @@ export async function isTokenizedFile(file: string): Promise<boolean> {
     }
 }
 
-interface SizeAndMtime {
+interface FileSize {
     size: number;
-    mtimeMs: number;
 }
 
-async function statSizeAndMtime(file: string): Promise<SizeAndMtime | undefined> {
+async function statSize(file: string): Promise<FileSize | undefined> {
     try {
         const stat = await fs.promises.stat(file);
-        return { size: stat.size, mtimeMs: stat.mtimeMs };
+        return { size: stat.size };
     } catch {
         return undefined;
+    }
+}
+
+/** Path of the `.lst` listing `bbjlst` writes for a given input. */
+function lstPathFor(inputPath: string): string {
+    return inputPath + '.lst';
+}
+
+/**
+ * Removes a leftover `<input>.lst` from an earlier decompile run before this run's
+ * bbjlst launches, so any listing that appears afterwards is provably this run's own
+ * output (issue #500). A missing leftover (ENOENT) is the normal case and resolves
+ * silently. Any other failure (permissions, a file lock) throws, so the caller must
+ * not proceed to run bbjlst on top of an un-removable stale listing.
+ */
+export async function deleteLeftoverLst(inputPath: string): Promise<void> {
+    const lstPath = lstPathFor(inputPath);
+    try {
+        await fs.promises.unlink(lstPath);
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+        throw new Error(`Could not remove the leftover "${lstPath}" from an earlier decompile: ${(err as Error).message || err}`, { cause: err });
     }
 }
 
@@ -66,23 +87,23 @@ export interface WaitOptions {
  * output is actually ready and reports where the decompiled source landed.
  *
  * When `<input>.lst` is used, it waits until the file's size settles across two
- * polls, AND the settled file was written at or after this call started — so a stale
- * `.lst` left on disk by an earlier (possibly crashed) run is never mistaken for fresh
- * output, even if it coincidentally matches the new run's final byte size. Rejects on
- * timeout.
+ * polls. Callers clear a leftover `<input>.lst` with `deleteLeftoverLst` before
+ * launching bbjlst, so any listing this wait observes is provably this run's own
+ * output — this function itself makes no freshness claim from a timestamp. Rejects
+ * on timeout.
  */
 export async function waitForDecompileOutput(inputPath: string, opts: WaitOptions = {}): Promise<DecompileOutput> {
     const { timeoutMs = 20000, pollMs = 150, canRewriteInPlace = false } = opts;
-    const lstPath = inputPath + '.lst';
+    const lstPath = lstPathFor(inputPath);
     const callStartMs = Date.now();
     const deadline = callStartMs + timeoutMs;
     let lastLstSize = -2;
     while (Date.now() < deadline) {
-        const lstStat = await statSizeAndMtime(lstPath);
+        const lstStat = await statSize(lstPath);
         if (lstStat) {
-            // `.lst` exists — wait until its size settles across two polls AND its mtime is at
-            // or after this call started, so a stale `.lst` of matching size is never accepted.
-            if (lstStat.size === lastLstSize && lstStat.mtimeMs >= callStartMs) {
+            // `.lst` exists — wait until its size settles across two polls. Freshness is
+            // guaranteed by the caller's deleteLeftoverLst, not by a timestamp here.
+            if (lstStat.size === lastLstSize) {
                 return { sourcePath: lstPath, inPlace: false };
             }
             lastLstSize = lstStat.size;

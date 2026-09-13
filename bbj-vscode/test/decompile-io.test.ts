@@ -2,9 +2,15 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { isTokenizedFile, waitForDecompileOutput } from '../src/decompile-io.js';
+import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst } from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
+
+const COMMANDS_CJS = path.join(__dirname, '..', 'src', 'Commands', 'Commands.cjs');
+
+function readCommandsSource(): string {
+    return fs.readFileSync(COMMANDS_CJS, 'utf-8');
+}
 
 describe('decompile-io', () => {
     let dir: string;
@@ -91,6 +97,22 @@ describe('decompile-io', () => {
             expect(fs.statSync(lst).size).toBe(bytes);
         });
 
+        test('a fresh listing with a coarse, earlier-looking mtime resolves promptly (no mtime gate)', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(input, MAGIC);
+            const lst = input + '.lst';
+            fs.writeFileSync(lst, '0010 print "hi"\n');
+            // Backdate the fresh listing's mtime to well before the call starts, simulating a
+            // coarse-mtime filesystem where a just-written file can read as "in the past".
+            const past = new Date(Date.now() - 10000);
+            fs.utimesSync(lst, past, past);
+
+            const start = Date.now();
+            const result = await waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 2000 });
+            expect(result).toEqual({ sourcePath: lst, inPlace: false });
+            expect(Date.now() - start).toBeLessThan(1000);
+        });
+
         describe('P62-D2-011: a stale .lst of matching size is never mistaken for fresh output', () => {
             // Committed under bbj-vscode/test/ (not a system temp directory), created and removed
             // per test — a stale-.lst race needs a fixture that already exists before the wait
@@ -131,6 +153,49 @@ describe('decompile-io', () => {
                 expect(result).toEqual({ sourcePath: lst, inPlace: false });
                 expect(fs.readFileSync(lst, 'utf8')).toBe(freshContent);
             });
+        });
+    });
+
+    describe('deleteLeftoverLst', () => {
+        test('removes an existing <input>.lst', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            const lst = input + '.lst';
+            fs.writeFileSync(lst, 'stale');
+            await deleteLeftoverLst(input);
+            expect(fs.existsSync(lst)).toBe(false);
+        });
+
+        test('resolves without error when no leftover exists', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            await expect(deleteLeftoverLst(input)).resolves.toBeUndefined();
+        });
+    });
+
+    describe('decompileInPlace wiring (source guard)', () => {
+        test('decompileInPlace awaits deleteLeftoverLst before execWithProgress, inside the try block', () => {
+            const source = readCommandsSource();
+            const start = source.indexOf('const decompileInPlace = (resolvedFileName, options = {}) => {');
+            expect(start).toBeGreaterThan(-1);
+            const end = source.indexOf('const Commands = {', start);
+            expect(end).toBeGreaterThan(start);
+            const body = source.slice(start, end);
+
+            const tryIndex = body.indexOf('try {');
+            const deleteIndex = body.indexOf('await deleteLeftoverLst(resolvedFileName)');
+            const execIndex = body.indexOf('execWithProgress(argv)');
+
+            expect(tryIndex).toBeGreaterThan(-1);
+            expect(deleteIndex).toBeGreaterThan(-1);
+            expect(execIndex).toBeGreaterThan(-1);
+            expect(deleteIndex).toBeGreaterThan(tryIndex);
+            expect(deleteIndex).toBeLessThan(execIndex);
+        });
+
+        test('Commands.cjs requires deleteLeftoverLst from decompile-io', () => {
+            const source = readCommandsSource();
+            const requireLine = source.match(/const \{[^}]*\} = require\("\.\.\/decompile-io"\);/);
+            expect(requireLine).not.toBeNull();
+            expect(requireLine![0]).toMatch(/deleteLeftoverLst/);
         });
     });
 });

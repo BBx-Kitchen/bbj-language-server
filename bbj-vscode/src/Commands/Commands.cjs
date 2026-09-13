@@ -40,7 +40,7 @@ const setOutputChannel = (channel) => {
  */
 const execWithProgress = (argv) => runProcess(argv);
 
-const { isTokenizedFile, waitForDecompileOutput } = require("../decompile-io");
+const { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst } = require("../decompile-io");
 
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
@@ -211,6 +211,7 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
       // Capture up-front whether the input is tokenized: only then can bbjlst
       // legitimately rewrite it in place (denumbering plain text always emits `.lst`).
       const wasTokenized = await isTokenizedFile(resolvedFileName);
+      await deleteLeftoverLst(resolvedFileName);
       await execWithProgress(argv);
 
       // bbjlst may return before its output is on disk, and may either produce
