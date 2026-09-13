@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 91
 current_phase_name: Language Server Responsiveness
 status: executing
-stopped_at: Completed 91-02-PLAN.md
-last_updated: "2026-09-13T00:14:16.755Z"
+stopped_at: Completed 91-03-PLAN.md
+last_updated: "2026-09-13T00:43:52.066Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 91 execution started
-state_head: 06058cfe335beba9dfcc5ce7cd4856fbfd14c236
+state_head: 151f8ba5285eaf53fde48ec8615f17a951a677e3
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 64
-  completed_plans: 60
+  completed_plans: 61
   percent: 78
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 91 (Language Server Responsiveness) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 91 execution started
 
@@ -199,6 +199,7 @@ Last activity: 2026-09-12 — Phase 91 execution started
 | Phase 90 P08 | 35min | 2 tasks | 3 files |
 | Phase 91 P01 | 21min | 3 tasks | 4 files |
 | Phase 91 P02 | 12min | 2 tasks | 2 files |
+| Phase 91 P03 | ~35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -356,6 +357,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 90 UAT, closeout 2026-09-12]: Both human checks passed by hand on the first round — IntelliJ (MSGBOX/addWindow/addChildWindow debounce, per-field error labels with OK disabled, faster second open, composer still opens after Restart Language Server) and VS Code (unfinished `MSGBOX(` completion from cue/context menu/palette, stale-edit refusal beside the open panel, window-composer field errors) — against a VSIX (sha256 5505b2a3…) and bbj-intellij-0.1.0.zip rebuilt at `6e1efb2d`, after the CR-01 `seq` fix, with the bundled `main.cjs` byte-identical to the fresh build. 90-VERIFICATION.md status: passed; 90-VALIDATION.md nyquist-compliant (8 rows, 0 gaps; 203 vitest + 113 JUnit targeted tests green); 90-SECURITY.md threats_open 0 (24 threats, short-circuit path). DISC-07..11 (#623, #532, #530, #611, #612) closed.
 - [Phase 91]: 91-01: path-keyed BbjClass index in BBjIndexManager (updateContent/removeContent) replaces the full-scan getBBjClassesFromFile; collectLocalSymbols mirrors bbj-linker.ts's external-document member-pruning rule so PREFIX symbol collection no longer walks method bodies (#505)
 - [Phase 91]: 91-02: completionRequestToken (node:async_hooks AsyncLocalStorage) replaces the activeCancelToken instance field so completionForCrossReference reads the request it is actually serving; findClassCandidatesByPrefixCached dropped its cancelToken parameter entirely so the shared per-prefix lookup can never be tied to one caller's token — closes both cancellation layers of #498
+- [Phase 91]: [Phase 91]: Phase 91 Plan 03: A three-state (closed/open/half-open) circuit breaker sits in front of java-interop's existing shared connect(), classifying only connect-level failures (never a post-connect request timeout) as trip-worthy; a generation counter bumped solely by clearCache() invalidates any in-flight connect attempt so a stale probe cannot report state after a reset.
+- [Phase 91]: [Phase 91]: Phase 91 Plan 03: Stub caching narrows to genuine backend not-found answers via isInteropTransportFailure(error), driving the existing createStubClass(className, cache) flag; ensureCompleteClassIndex's already-resolved fast path starts (never awaits) the half-open probe, the only way a no-edit candidate lookup can bring recovery; loadImplicitImports dedupes its simple-name copies so a recovery re-run never grows the synthetic classpath document.
 
 ### Tech Debt
 
@@ -424,8 +427,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T00:14:16.421Z
-Stopped at: Completed 91-02-PLAN.md
+Last session: 2026-09-13T00:43:32.835Z
+Stopped at: Completed 91-03-PLAN.md
 Resume file: None
 
 Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
