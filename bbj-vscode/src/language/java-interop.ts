@@ -793,7 +793,12 @@ export class JavaInteropService {
             ]);
         } catch (e) {
             logger.warn(`Failed to resolve Java class '${className}': ${e}`);
-            return this.createStubClass(className, !isInteropTransportFailure(e));
+            // A cancellation is a routine, frequent event (e.g. every keystroke cancels an
+            // in-flight completion/hover request) and carries no information about whether the
+            // class actually exists. Treat it the same as a transport failure so the stub is never
+            // cached, letting a later, uncancelled lookup resolve the class normally.
+            const cancelled = token?.isCancellationRequested === true;
+            return this.createStubClass(className, !(cancelled || isInteropTransportFailure(e)));
         } finally {
             release();
         }

@@ -417,6 +417,32 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
             }
         });
 
+        test('a class whose resolution is cancelled is not cached, so a later lookup resolves it', async () => {
+            vi.useFakeTimers();
+            try {
+                const service = createInteropService(services => new CyclicFakeInteropService(services)) as CyclicFakeInteropService;
+                await service.testConnect();
+
+                const cts = new CancellationTokenSource();
+                cts.cancel();
+
+                const cancelledResult = await service.testResolveClassByName('t.Cancelled', cts.token);
+                expect(cancelledResult.error).toBeDefined();
+                // A cancellation carries no information about whether the class exists, so it must
+                // never be cached as a permanent "not found" stub the way a genuine backend answer
+                // would be.
+                expect(service.getResolvedClass('t.Cancelled')).toBeUndefined();
+
+                service.dtos.set('t.Cancelled', () => minimalJavaClass('t.Cancelled', { packageName: 't' }));
+                const resolved = await service.testResolveClassByName('t.Cancelled');
+
+                expect(resolved.error).toBeUndefined();
+                expect(service.getResolvedClass('t.Cancelled')).toBe(resolved);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
         test('clearCache empties the registry and a late Phase 2 does not bring its class back', async () => {
             vi.useFakeTimers();
             try {
