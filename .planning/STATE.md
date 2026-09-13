@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 92
 current_phase_name: Host-Side Hygiene & Focus Guards
 status: executing
-stopped_at: Completed 92-03-PLAN.md
-last_updated: "2026-09-13T07:30:07.132Z"
+stopped_at: Completed 92-04-PLAN.md
+last_updated: "2026-09-13T07:37:02.346Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 92 execution started
-state_head: 52d8c0b5abfeacd9f0c945e5f52d08e839e5644a
+state_head: e1468e7d74d03360b6df25dd4b6a3c32f274b51b
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 70
-  completed_plans: 67
+  completed_plans: 68
   percent: 89
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 ## Current Position
 
 Phase: 92 (Host-Side Hygiene & Focus Guards) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-13 — Phase 92 execution started
 
@@ -206,6 +206,7 @@ Last activity: 2026-09-13 — Phase 92 execution started
 | Phase 92 P01 | 15min | 2 tasks | 4 files |
 | Phase 92 P02 | 5min | 2 tasks | 2 files |
 | Phase 92 P03 | 4min | 2 tasks | 5 files |
+| Phase 92 P04 | ~12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -372,6 +373,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 92]: 92-01: extracted a vscode-free target-resolution.ts module (resolveRunTarget/resolveDecompileTarget) so Commands.cjs's seven run/compile/decompile commands resolve argument-first with a language-aware active-editor fallback and one shared no-active-BBj-file warning — Commands.cjs is CommonJS and cannot load under Vitest, so the testable logic had to live in a pure module with Commands.cjs reduced to a source-guard-verified caller
 - [Phase 92]: Phase 92 Plan 02: inFlightFormats keys on { content, promise }; a request reuses the running formatter only when its own text matches the running text (D-08, issue #499); cleanup compares the stored entry's promise identity so an older run settling after a newer one cannot evict it. — Fixes the stale-format-replacement bug where a second format request during interim edits received the first run's output.
 - [Phase 92]: BbjFileVisibility mirrors BbjConfigPathService's static-helper-plus-thin-wrapper convention; both widgets delegate visibility to file.getFileType().getName(), never file extension, so config.bbx/config.min/a custom-named config file hide the widgets whatever their extension.
+- [Phase 92]: 92-04: delete-then-wait replaces the mtime gate for decompile freshness (D-01..D-04); delete target shares the wait's own path expression so it can never remove the input file — Coarse-mtime filesystems can produce a fresh .lst whose mtime reads earlier than the call start, causing the old mtime-gated wait to spin to timeout; deleting the leftover first makes any subsequently-appearing .lst provably fresh without a timestamp comparison
 
 ### Tech Debt
 
@@ -441,8 +443,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T07:30:06.785Z
-Stopped at: Completed 92-03-PLAN.md
+Last session: 2026-09-13T07:37:02.041Z
+Stopped at: Completed 92-04-PLAN.md
 Resume file: None
 
 Next: Phase 92 (Host-Side Hygiene & Focus Guards, RESP-05..09) has no phase directory or
