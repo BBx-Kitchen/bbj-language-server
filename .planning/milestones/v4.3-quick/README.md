@@ -1,0 +1,18 @@
+# Archived Quick Tasks
+
+- [1-fix-duplicate-bbj-output-channels-create](1-fix-duplicate-bbj-output-channels-create/1-SUMMARY.md)
+- [10-fix-intellij-maintoolbar-group-registrat](10-fix-intellij-maintoolbar-group-registrat/10-SUMMARY.md)
+- [11-enhance-em-auth-token-info-string-change](11-enhance-em-auth-token-info-string-change/11-SUMMARY.md)
+- [12-use-actual-jetbrains-ide-product-name-in](12-use-actual-jetbrains-ide-product-name-in/12-SUMMARY.md)
+- [13-fix-intellij-multi-instance-language-ser](13-fix-intellij-multi-instance-language-ser/13-SUMMARY.md)
+- [14-fix-manual-release-workflow-pass-version](14-fix-manual-release-workflow-pass-version/14-SUMMARY.md)
+- [2-fix-em-login-bbj-not-found-in-intellij-p](2-fix-em-login-bbj-not-found-in-intellij-p/2-SUMMARY.md)
+- [260329-oqw-pr-383-return-undefined-instead-of-empty](260329-oqw-pr-383-return-undefined-instead-of-empty/260329-oqw-SUMMARY.md)
+- [260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape](260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape/260820-hxg-SUMMARY.md)
+- [3-fix-duplicate-bbj-output-channel-ensure-](3-fix-duplicate-bbj-output-channel-ensure-/3-SUMMARY.md)
+- [4-fix-intellij-bui-dwc-passing-dash-as-con](4-fix-intellij-bui-dwc-passing-dash-as-con/4-SUMMARY.md)
+- [5-fix-em-token-expiration-jwt-expiry-check](5-fix-em-token-expiration-jwt-expiry-check/5-SUMMARY.md)
+- [6-fix-em-login-bbj-and-em-validate-token-b](6-fix-em-login-bbj-and-em-validate-token-b/6-SUMMARY.md)
+- [7-add-client-info-string-to-em-auth-token-](7-add-client-info-string-to-em-auth-token-/7-SUMMARY.md)
+- [8-fix-documentation-links-add-jetbrains-ma](8-fix-documentation-links-add-jetbrains-ma/8-SUMMARY.md)
+- [9-automate-jetbrains-marketplace-publishin](9-automate-jetbrains-marketplace-publishin/9-PLAN.md)
