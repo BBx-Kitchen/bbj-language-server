@@ -694,12 +694,12 @@ export function activate(context: vscode.ExtensionContext): void {
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as any).setOutputChannel(outputChannel);
-    vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
-    vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
-    vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager);
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.config", Commands.openConfigFile));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager));
 
     // Register EM login command
-    vscode.commands.registerCommand("bbj.loginEM", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.loginEM", async () => {
         const config = vscode.workspace.getConfiguration("bbj");
         const bbjHome = config.get<string>("home");
 
@@ -780,11 +780,11 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (error) {
             vscode.window.showErrorMessage(`EM login failed: ${error}`);
         }
-    });
-    vscode.commands.registerCommand("bbj.run", Commands.run);
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.run", Commands.run));
 
     // BUI command with auto-prompt login and token validation
-    vscode.commands.registerCommand("bbj.runBUI", async (params) => {
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.runBUI", async (params) => {
         const target = resolveRunTarget(params?.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
         if (!target) {
             vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
@@ -793,10 +793,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const creds = await ensureValidToken(context);
         if (!creds) return; // User cancelled login
         Commands.runBUI({ fsPath: target }, creds);
-    });
+    }));
 
     // DWC command with auto-prompt login and token validation
-    vscode.commands.registerCommand("bbj.runDWC", async (params) => {
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.runDWC", async (params) => {
         const target = resolveRunTarget(params?.fsPath, toActiveEditorSnapshot(vscode.window.activeTextEditor));
         if (!target) {
             vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
@@ -805,14 +805,14 @@ export function activate(context: vscode.ExtensionContext): void {
         const creds = await ensureValidToken(context);
         if (!creds) return; // User cancelled login
         Commands.runDWC({ fsPath: target }, creds);
-    });
-    vscode.commands.registerCommand("bbj.compile", Commands.compile);
-    vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
-    vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace);
-    vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly);
-    vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions);
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", Commands.denumber));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions));
 
-    vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
         if (!client) {
             vscode.window.showErrorMessage('BBj language server not running');
             return;
@@ -822,10 +822,10 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
         }
-    });
+    }));
 
     // Register command to show available classpath entries
-    vscode.commands.registerCommand("bbj.showClasspathEntries", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.showClasspathEntries", async () => {
         const config = vscode.workspace.getConfiguration("bbj");
         const bbjHome = config.get<string>("home");
 
@@ -864,7 +864,7 @@ export function activate(context: vscode.ExtensionContext): void {
             await config.update("classpath", selected.label, vscode.ConfigurationTarget.Workspace);
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
         }
-    });
+    }));
 
     vscode.languages.registerDocumentFormattingEditProvider(
         "bbj",

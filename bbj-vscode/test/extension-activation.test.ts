@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
  * Regression for P62-D2-004: extension.ts's startLanguageClient() calls client.start()
@@ -12,6 +12,11 @@ import { describe, expect, test, vi } from 'vitest';
  * rejection path without spinning up a real VS Code extension host, the composer
  * webviews, or the actual language server process.
  */
+
+const { registeredCommandIds, onNotificationMock } = vi.hoisted(() => ({
+    registeredCommandIds: new Set<string>(),
+    onNotificationMock: vi.fn(() => ({ dispose: vi.fn() })),
+}));
 
 const startMock = vi.fn();
 
@@ -33,13 +38,19 @@ vi.mock('vscode', () => {
             activeTextEditor: undefined,
         },
         commands: {
-            registerCommand: vi.fn(),
+            registerCommand: vi.fn((id: string, _handler: unknown) => {
+                if (registeredCommandIds.has(id)) {
+                    throw new Error(`command '${id}' already exists`);
+                }
+                registeredCommandIds.add(id);
+                return { dispose: () => { registeredCommandIds.delete(id); } };
+            }),
             executeCommand: vi.fn(),
         },
         languages: {
-            registerDocumentFormattingEditProvider: vi.fn(),
-            registerCodeActionsProvider: vi.fn(),
-            registerCodeLensProvider: vi.fn(),
+            registerDocumentFormattingEditProvider: vi.fn(() => disposable()),
+            registerCodeActionsProvider: vi.fn(() => disposable()),
+            registerCodeLensProvider: vi.fn(() => disposable()),
             onDidChangeDiagnostics: vi.fn(() => disposable()),
             getDiagnostics: vi.fn(() => []),
             setTextDocumentLanguage: vi.fn(),
@@ -71,7 +82,7 @@ vi.mock('vscode-languageclient/node', () => {
         outputChannel = { appendLine: vi.fn() };
         start = startMock;
         stop = vi.fn();
-        onNotification = vi.fn();
+        onNotification = onNotificationMock;
         constructor() { }
     }
     return { LanguageClient, TransportKind: { ipc: 1 } };
@@ -104,6 +115,29 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
 
 import * as vscode from 'vscode';
 import { activate } from '../src/extension.js';
+
+/** Fresh mock ExtensionContext — every activate() call must get its own, since disposal
+ *  and re-registration are tracked through each context's own `subscriptions` array. */
+function makeContext(): Parameters<typeof activate>[0] {
+    return {
+        subscriptions: [],
+        secrets: {},
+        asAbsolutePath: (p: string) => p,
+        extension: { packageJSON: { version: '0.0.0-test' } },
+    } as unknown as Parameters<typeof activate>[0];
+}
+
+function disposeSubscriptions(context: Parameters<typeof activate>[0]): void {
+    for (const sub of context.subscriptions as Array<{ dispose(): void }>) {
+        sub.dispose();
+    }
+}
+
+beforeEach(() => {
+    registeredCommandIds.clear();
+    startMock.mockReset();
+    startMock.mockImplementation(() => Promise.resolve());
+});
 
 describe('extension activation (P62-D2-004)', () => {
     test('a client.start() rejection is observed and surfaced, not left unhandled', async () => {
@@ -143,5 +177,27 @@ describe('extension activation (P62-D2-004)', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('extension re-activation (#531)', () => {
+    test('activating twice without disposing the first throws on a duplicate command id', () => {
+        activate(makeContext());
+
+        expect(() => activate(makeContext())).toThrow(/already exists/);
+    });
+
+    test('a second activation after disposing the first registers every command again without throwing', () => {
+        const first = makeContext();
+        activate(first);
+        disposeSubscriptions(first);
+        expect(registeredCommandIds.size).toBe(0);
+
+        const second = makeContext();
+        expect(() => activate(second)).not.toThrow();
+        expect(registeredCommandIds.size).toBeGreaterThan(0);
+
+        disposeSubscriptions(second);
+        expect(registeredCommandIds.size).toBe(0);
     });
 });
