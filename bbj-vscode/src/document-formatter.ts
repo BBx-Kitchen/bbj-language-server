@@ -9,12 +9,16 @@ import { verifyFormatterArtifacts, FORMATTER_TOOLS_DIR, type FormatterVerificati
 // receives, this map's tracked value and document.getText() are always the same content.
 const unsavedContentMap = new Map<string, string>();
 
-// One in-flight format Promise per document URI, so concurrent format requests for the same
-// document (e.g. "Save All", or a manual format racing format-on-save) share a single spawned
-// process instead of each starting its own `java` invocation. Entries are removed once the
-// shared promise settles, on both the resolve and reject paths, so a later request for the same
-// URI spawns again.
-const inFlightFormats = new Map<string, Promise<string>>();
+// One in-flight format run per document URI, shared only when the requesting text is identical
+// to the text that run was started with (issue #499): a request made after an interim edit must
+// never receive output formatted from older text, so it starts its own run against the current
+// text instead of reusing an older in-flight promise. Concurrent format requests for the same
+// document with identical content (e.g. "Save All", or a manual format racing format-on-save)
+// still share a single spawned process instead of each starting its own `java` invocation.
+// Entries are removed once their own run settles, on both the resolve and reject paths, but only
+// when the entry is still the current one for that URI, so an older run's settle cannot evict a
+// newer entry — a later request spawns again only once nothing is in flight for its own text.
+const inFlightFormats = new Map<string, { content: string; promise: Promise<string> }>();
 
 // A hash-mismatched artefact toasts once per extension-host
 // session, however many format-on-save invocations follow, so the constant format-on-save
@@ -54,12 +58,15 @@ export const DocumentFormatter = {
     const documentContent = unsavedContentMap.get(document.uri.toString()) || document.getText();
 
     const uriKey = document.uri.toString();
-    let formatPromise = inFlightFormats.get(uriKey);
-    if (!formatPromise) {
+    const inFlight = inFlightFormats.get(uriKey);
+    let formatPromise: Promise<string>;
+    if (inFlight && inFlight.content === documentContent) {
+      formatPromise = inFlight.promise;
+    } else {
       formatPromise = this.runFormatter(args, documentContent) as Promise<string>;
-      inFlightFormats.set(uriKey, formatPromise);
+      inFlightFormats.set(uriKey, { content: documentContent, promise: formatPromise });
       const clearInFlight = () => {
-        if (inFlightFormats.get(uriKey) === formatPromise) {
+        if (inFlightFormats.get(uriKey)?.promise === formatPromise) {
           inFlightFormats.delete(uriKey);
         }
       };

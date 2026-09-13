@@ -157,6 +157,33 @@ describe('DocumentFormatter', () => {
             DocumentFormatter.provideDocumentFormattingEdits(doc);
             expect(cp.spawn).toHaveBeenCalledTimes(2);
         });
+
+        test('a request made after an interim edit spawns its own run and applies only its own output (race, issue #499)', async () => {
+            const procs = spawnCollectingImpl();
+            const doc = makeDocument('/tmp/format-race-499.bbj', 'rem before');
+
+            const p1 = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            (vscodeMocked as any).__testState.onDidChangeTextDocument({
+                document: { uri: doc.uri, getText: () => 'rem after' },
+            });
+
+            const p2 = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(cp.spawn).toHaveBeenCalledTimes(2);
+            expect(procs[0].stdin.end).toHaveBeenCalledWith('rem before');
+            expect(procs[1].stdin.end).toHaveBeenCalledWith('rem after');
+
+            procs[1].stdout.emit('data', 'formatted after');
+            procs[1].emit('close', 0);
+
+            procs[0].stdout.emit('data', 'formatted before');
+            procs[0].emit('close', 0);
+
+            const [r1, r2] = await Promise.all([p1, p2]);
+            expect((r1 as any)[0].newText).toBe('formatted before');
+            expect((r2 as any)[0].newText).toBe('formatted after');
+        });
     });
 
     describe('P62-D5-006: full formatter coverage (test-is-the-fix, D-13)', () => {
