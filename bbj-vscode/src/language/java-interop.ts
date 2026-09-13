@@ -170,6 +170,8 @@ export class JavaInteropService {
     private breakerGeneration = 0;
     /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
     private readonly recoveryListeners: Array<() => void | Promise<void>> = [];
+    /** Simple-name copies already added by loadImplicitImports(), keyed by "package.simpleName", so re-running it adds no duplicate entry to the synthetic classpath document. */
+    private readonly implicitImportCopies = new Map<string, Mutable<JavaClass>>();
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -295,6 +297,18 @@ export class JavaInteropService {
     }
 
     /**
+     * Starts the single half-open probe, without awaiting it, when the breaker is open and its
+     * cooldown has elapsed. Used by callers that can answer from a local index and would
+     * otherwise never touch connect() again after an outage — a caret-driven lookup can then
+     * bring recovery with no edit. The outcome is handled entirely by onConnectAttemptSettled.
+     */
+    private probeIfDue(): void {
+        if (this.breakerState === 'open' && Date.now() >= this.breakerProbeDueAt) {
+            this.connect().catch(() => { /* handled by onConnectAttemptSettled */ });
+        }
+    }
+
+    /**
      * Opens a fresh socket and message connection, and registers `close`/`error` listeners that
      * drop {@link connection} so a peer disconnect forces the next {@link connect} call to
      * reconnect instead of handing back the dead reference (P61-D2-001).
@@ -401,7 +415,7 @@ export class JavaInteropService {
         requestPromise.catch(() => { /* surfaced to the caller via the race below */ });
         return Promise.race([
             requestPromise,
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Java class resolution timeout for ${className}`)), 10000))
+            new Promise<never>((_, reject) => setTimeout(() => reject(new InteropTransportError(`Java class resolution timeout for ${className}`)), 10000))
         ]);
     }
 
@@ -462,11 +476,21 @@ export class JavaInteropService {
 
                     if (pack !== 'java.sql') { // Not an implicit import but sql package preload.
                         // add as implicit Java package import
-                        const simpleNameCopy = { ...javaClass }
-                        simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
-                        simpleNameCopy.$containerIndex = this.classpath.classes.length;
-                        this.classpath.classes.push(simpleNameCopy);
-                        this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                        const simpleName = javaClass.name.replace(pack + '.', '')
+                        const copyKey = `${pack}.${simpleName}`;
+                        const existingCopy = this.implicitImportCopies.get(copyKey);
+                        if (existingCopy) {
+                            // Already added by an earlier run: reuse it instead of pushing a
+                            // second entry into the synthetic classpath document.
+                            this.resolvedClasses.set(simpleName, existingCopy);
+                        } else {
+                            const simpleNameCopy = { ...javaClass }
+                            simpleNameCopy.name = simpleName
+                            simpleNameCopy.$containerIndex = this.classpath.classes.length;
+                            this.classpath.classes.push(simpleNameCopy);
+                            this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                            this.implicitImportCopies.set(copyKey, simpleNameCopy);
+                        }
                     }
                 }))
             }))
@@ -534,6 +558,7 @@ export class JavaInteropService {
      */
     public async ensureCompleteClassIndex(token?: CancellationToken): Promise<boolean> {
         if (this.completeIndexResolved) {
+            this.probeIfDue();
             return this.completeClassIndex !== null;
         }
         try {
@@ -715,7 +740,7 @@ export class JavaInteropService {
     private async doResolveClassByName(className: string, token: CancellationToken | undefined, depth: number): Promise<JavaClass> {
         // Safeguard 4: timeout to prevent indefinitely stuck resolution chains
         const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Java class resolution chain timed out after ${JavaInteropService.RESOLUTION_TIMEOUT_MS}ms for '${className}'`)), JavaInteropService.RESOLUTION_TIMEOUT_MS)
+            setTimeout(() => reject(new InteropTransportError(`Java class resolution chain timed out after ${JavaInteropService.RESOLUTION_TIMEOUT_MS}ms for '${className}'`)), JavaInteropService.RESOLUTION_TIMEOUT_MS)
         );
 
         // Create a lock token scoped to this top-level resolution chain.
@@ -1032,6 +1057,9 @@ export class JavaInteropService {
         this.breakerState = 'closed';
         this.breakerProbeDueAt = 0;
         this.breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
+
+        // Clear implicit-import bookkeeping so a later loadImplicitImports() rebuilds it from scratch.
+        this.implicitImportCopies.clear();
 
         // Reset classpath document arrays
         this.classpath.packages = [];

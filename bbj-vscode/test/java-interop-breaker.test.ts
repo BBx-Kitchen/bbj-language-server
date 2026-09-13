@@ -13,9 +13,11 @@
  */
 import type { Connection } from 'vscode-languageserver';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { ConnectionError, ConnectionErrors, ErrorCodes, ResponseError } from 'vscode-jsonrpc/node.js';
 import { initNotifications } from '../src/language/bbj-notifications.js';
 import {
-    INTEROP_BREAKER_BACKOFF_FACTOR, INTEROP_BREAKER_INITIAL_COOLDOWN_MS, INTEROP_BREAKER_MAX_COOLDOWN_MS
+    INTEROP_BREAKER_BACKOFF_FACTOR, INTEROP_BREAKER_INITIAL_COOLDOWN_MS, INTEROP_BREAKER_MAX_COOLDOWN_MS,
+    InteropTransportError, isInteropTransportFailure
 } from '../src/language/java-interop.js';
 import { createFakePeerServices } from './fake-interop-peer.js';
 
@@ -201,5 +203,108 @@ describe('java-interop circuit breaker (#504)', () => {
 
         await interop.resolveClassByName('test.SecondOutage');
         expect(showErrorMessage).toHaveBeenCalledTimes(2);
+    });
+
+    test('a connected but slow peer does not trip the breaker', async () => {
+        const { interop } = createFakePeerServices();
+        interop.connectDelayMs = 0;
+        interop.peerUp = true;
+        interop.answerRequests = false;
+        vi.useFakeTimers();
+
+        const slowA = interop.resolveClassByName('test.SlowA');
+        await vi.advanceTimersByTimeAsync(10000);
+        const resultA = await slowA;
+        expect(resultA.error).toBeDefined();
+        expect(interop.getResolvedClass('test.SlowA')).toBeUndefined();
+
+        const slowBPromise = interop.resolveClassByName('test.SlowB');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(interop.sentRequests.some(
+            r => r.method === 'getClassInfo' && (r.params as { className: string }).className === 'test.SlowB'
+        )).toBe(true);
+
+        expect(interop.socketAttempts).toBe(1);
+        expect(showErrorMessage).not.toHaveBeenCalled();
+
+        // Let SlowB's own request timeout elapse so the test cleans up.
+        await vi.advanceTimersByTimeAsync(10000);
+        await slowBPromise;
+    });
+
+    test('transport failures are classified', () => {
+        expect(isInteropTransportFailure(new InteropTransportError('circuit open'))).toBe(true);
+        expect(isInteropTransportFailure(new ConnectionError(ConnectionErrors.Closed, 'Connection is closed.'))).toBe(true);
+        expect(isInteropTransportFailure(new ResponseError(ErrorCodes.PendingResponseRejected, 'x'))).toBe(true);
+        expect(isInteropTransportFailure(new ResponseError(-32603, 'internal'))).toBe(false);
+        expect(isInteropTransportFailure(new Error('boom'))).toBe(false);
+    });
+
+    test('a connection dropped mid-request returns an uncached stub', async () => {
+        const { interop } = createFakePeerServices();
+        interop.connectDelayMs = 0;
+        interop.peerUp = true;
+        interop.answerRequests = false;
+        vi.useFakeTimers();
+
+        const droppedPromise = interop.resolveClassByName('test.Dropped');
+        await vi.advanceTimersByTimeAsync(0);
+        interop.dropConnection();
+        await vi.advanceTimersByTimeAsync(0);
+
+        const dropped = await droppedPromise;
+        expect(dropped.error).toBeDefined();
+        expect(interop.getResolvedClass('test.Dropped')).toBeUndefined();
+
+        interop.peerUp = false;
+        const next = await interop.resolveClassByName('test.NextAfterDrop');
+        expect(next.error).toBeDefined();
+        expect(showErrorMessage).toHaveBeenCalledTimes(1);
+    });
+
+    test('a candidate lookup answered from the complete class index still starts the probe', async () => {
+        const { interop } = createFakePeerServices();
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        interop.seedCompleteClassIndex(['java.util.HashMap']);
+
+        await interop.resolveClassByName('test.OpenTheBreaker');
+        expect(showErrorMessage).toHaveBeenCalledTimes(1);
+
+        interop.peerUp = true;
+        const recovered = vi.fn();
+        interop.onConnectionRecovered(recovered);
+
+        await vi.advanceTimersByTimeAsync(INTEROP_BREAKER_INITIAL_COOLDOWN_MS);
+
+        const attemptsBefore = interop.socketAttempts;
+        const candidates = await interop.resolveClassCandidatesBySimpleName('HashMap');
+        expect(candidates).toEqual(['java.util.HashMap']);
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(interop.socketAttempts).toBe(attemptsBefore + 1);
+        expect(recovered).toHaveBeenCalledTimes(1);
+    });
+
+    test('implicit imports load again without clearCache and without duplicate classpath entries', async () => {
+        const { interop } = createFakePeerServices();
+        interop.connectDelayMs = 0;
+        interop.peerUp = true;
+        vi.useFakeTimers();
+
+        interop.packageClasses.set('java.lang', () => [
+            interop.classInfo('java.lang.Alpha'),
+            interop.classInfo('java.lang.Beta')
+        ]);
+
+        await interop.loadImplicitImports();
+        const firstCount = interop.classpathClassCount();
+
+        await interop.loadImplicitImports();
+        const secondCount = interop.classpathClassCount();
+
+        expect(secondCount).toBe(firstCount);
+        expect(interop.getResolvedClass('Alpha')).toBeDefined();
     });
 });
