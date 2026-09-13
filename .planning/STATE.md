@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 91
 current_phase_name: Language Server Responsiveness
 status: executing
-stopped_at: Completed 91-03-PLAN.md
-last_updated: "2026-09-13T00:43:52.066Z"
+stopped_at: Completed 91-04-PLAN.md
+last_updated: "2026-09-13T00:59:12.275Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 91 execution started
-state_head: 151f8ba5285eaf53fde48ec8615f17a951a677e3
+state_head: c0189087861b0aa63e7fbff66b9d58a8d962a05f
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 64
-  completed_plans: 61
+  completed_plans: 62
   percent: 78
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 ## Current Position
 
 Phase: 91 (Language Server Responsiveness) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-12 — Phase 91 execution started
 
@@ -200,6 +200,7 @@ Last activity: 2026-09-12 — Phase 91 execution started
 | Phase 91 P01 | 21min | 3 tasks | 4 files |
 | Phase 91 P02 | 12min | 2 tasks | 2 files |
 | Phase 91 P03 | ~35min | 3 tasks | 3 files |
+| Phase 91 P04 | ~25min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -359,6 +360,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 91]: 91-02: completionRequestToken (node:async_hooks AsyncLocalStorage) replaces the activeCancelToken instance field so completionForCrossReference reads the request it is actually serving; findClassCandidatesByPrefixCached dropped its cancelToken parameter entirely so the shared per-prefix lookup can never be tied to one caller's token — closes both cancellation layers of #498
 - [Phase 91]: [Phase 91]: Phase 91 Plan 03: A three-state (closed/open/half-open) circuit breaker sits in front of java-interop's existing shared connect(), classifying only connect-level failures (never a post-connect request timeout) as trip-worthy; a generation counter bumped solely by clearCache() invalidates any in-flight connect attempt so a stale probe cannot report state after a reset.
 - [Phase 91]: [Phase 91]: Phase 91 Plan 03: Stub caching narrows to genuine backend not-found answers via isInteropTransportFailure(error), driving the existing createStubClass(className, cache) flag; ensureCompleteClassIndex's already-resolved fast path starts (never awaits) the half-open probe, the only way a no-edit candidate lookup can bring recovery; loadImplicitImports dedupes its simple-name copies so a recovery re-run never grows the synthetic classpath document.
+- [Phase 91]: Phase 91 Plan 04: an in-flight Phase-2 registry (_inFlightPhase2, plain Map) beside the resolvedClasses LRU stops eviction mid-cyclic-resolution from stalling or stubbing a class that resolves (#497); identity-guarded finally drains it after success/timeout/cancellation/clearCache
 
 ### Tech Debt
 
@@ -427,8 +429,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T00:43:32.835Z
-Stopped at: Completed 91-03-PLAN.md
+Last session: 2026-09-13T00:59:11.965Z
+Stopped at: Completed 91-04-PLAN.md
 Resume file: None
 
 Next: Phase 91 (Language Server Responsiveness, RESP-01..04) has no phase directory or
