@@ -184,6 +184,57 @@ describe('DocumentFormatter', () => {
             expect((r1 as any)[0].newText).toBe('formatted before');
             expect((r2 as any)[0].newText).toBe('formatted after');
         });
+
+        test("a newer run's in-flight entry survives the older run settling, so identical follow-up requests keep sharing it", async () => {
+            const procs = spawnCollectingImpl();
+            const doc = makeDocument('/tmp/format-race-499-newer.bbj', 'rem a');
+
+            const pA = DocumentFormatter.provideDocumentFormattingEdits(doc);
+            (vscodeMocked as any).__testState.onDidChangeTextDocument({
+                document: { uri: doc.uri, getText: () => 'rem b' },
+            });
+            const pB = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(cp.spawn).toHaveBeenCalledTimes(2);
+
+            procs[0].stdout.emit('data', 'formatted a');
+            procs[0].emit('close', 0);
+            await pA;
+
+            const pC = DocumentFormatter.provideDocumentFormattingEdits(doc);
+            expect(cp.spawn).toHaveBeenCalledTimes(2);
+
+            procs[1].stdout.emit('data', 'formatted b');
+            procs[1].emit('close', 0);
+
+            const [rB, rC] = await Promise.all([pB, pC]);
+            expect((rB as any)[0].newText).toBe('formatted b');
+            expect((rC as any)[0].newText).toBe('formatted b');
+        });
+
+        test('after both runs of a different-content pair settle, one more request with the latest content spawns again', async () => {
+            const procs = spawnCollectingImpl();
+            const doc = makeDocument('/tmp/format-race-499-cleared.bbj', 'rem x');
+
+            const p1 = DocumentFormatter.provideDocumentFormattingEdits(doc);
+            (vscodeMocked as any).__testState.onDidChangeTextDocument({
+                document: { uri: doc.uri, getText: () => 'rem y' },
+            });
+            const p2 = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(cp.spawn).toHaveBeenCalledTimes(2);
+
+            procs[1].stdout.emit('data', 'formatted y');
+            procs[1].emit('close', 0);
+            await p2;
+
+            procs[0].stdout.emit('data', 'formatted x');
+            procs[0].emit('close', 0);
+            await p1;
+
+            DocumentFormatter.provideDocumentFormattingEdits(doc);
+            expect(cp.spawn).toHaveBeenCalledTimes(3);
+        });
     });
 
     describe('P62-D5-006: full formatter coverage (test-is-the-fix, D-13)', () => {
