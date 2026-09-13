@@ -17,7 +17,7 @@ import { createDefaultModule, createDefaultSharedModule, LangiumSharedServices, 
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
 import { describe, expect, test, vi } from 'vitest';
-import { CancellationToken, MessageConnection } from 'vscode-jsonrpc/node.js';
+import { CancellationToken, CancellationTokenSource, MessageConnection } from 'vscode-jsonrpc/node.js';
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../src/language/bbj-module.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/generated/module.js';
 import { registerValidationChecks } from '../src/language/bbj-validator.js';
@@ -92,31 +92,77 @@ class MockableJavaInteropService extends JavaInteropService {
     }
 }
 
-const TestModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
-    java: {
-        JavaInteropService: (services) => new MockableJavaInteropService(services)
-    }
-};
+/**
+ * A `MockableJavaInteropService` whose `resolvedClassesCacheLimit()` is forced to 3, its
+ * `getRawClass` is scriptable per class name via `dtos`, and its raw-fetch calls are counted —
+ * used to force an LRU eviction during a class's own cyclic Phase-2 resolution (#497).
+ */
+class CyclicFakeInteropService extends MockableJavaInteropService {
+    public readonly dtos = new Map<string, () => JavaClass>();
+    public readonly rawClassCalls = new Map<string, number>();
 
-function createServices(): { shared: LangiumSharedServices, BBj: BBjServices } {
+    protected override resolvedClassesCacheLimit(): number {
+        return 3;
+    }
+
+    protected override async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
+        this.rawClassCalls.set(className, (this.rawClassCalls.get(className) ?? 0) + 1);
+        const factory = this.dtos.get(className);
+        if (factory) {
+            return factory();
+        }
+        if (token?.isCancellationRequested) {
+            return Promise.reject(new Error('cancelled'));
+        }
+        return new Promise<JavaClass>((resolve, reject) => {
+            token?.onCancellationRequested(() => reject(new Error('cancelled')));
+            super.getRawClass(className, token).then(resolve, reject);
+        });
+    }
+
+    public testResolveClassByName(name: string, token?: CancellationToken): Promise<JavaClass> {
+        return this.resolveClassByName(name, token);
+    }
+
+    public testInFlightCount(): number {
+        return this.inFlightResolutionCount();
+    }
+}
+
+/**
+ * A `CyclicFakeInteropService` whose cache limit is unbounded (no eviction) — used to prove the
+ * in-flight registry drains after a chain timeout and after a cancellation (#497).
+ */
+class HangingMembersInteropService extends CyclicFakeInteropService {
+    protected override resolvedClassesCacheLimit(): number {
+        return RESOLVED_CLASSES_CACHE_LIMIT;
+    }
+}
+
+function createServices(javaInteropServiceFactory: (services: BBjServices) => MockableJavaInteropService = services => new MockableJavaInteropService(services)): { shared: LangiumSharedServices, BBj: BBjServices } {
     const shared = inject(
         createDefaultSharedModule(EmptyFileSystem),
         BBjGeneratedSharedModule,
         BBjSharedModule
     );
+    const testModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
+        java: {
+            JavaInteropService: (services) => javaInteropServiceFactory(services)
+        }
+    };
     const BBj = inject(
         createDefaultModule({ shared }),
         BBjGeneratedModule,
         BBjModule,
-        TestModule
+        testModule
     );
     shared.ServiceRegistry.register(BBj);
     registerValidationChecks(BBj);
     return { shared, BBj };
 }
 
-function createInteropService(): MockableJavaInteropService {
-    const { BBj } = createServices();
+function createInteropService(javaInteropServiceFactory?: (services: BBjServices) => MockableJavaInteropService): MockableJavaInteropService {
+    const { BBj } = createServices(javaInteropServiceFactory);
     return BBj.java.JavaInteropService as MockableJavaInteropService;
 }
 
@@ -257,6 +303,149 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
             expect(service.getResolvedClass('test.Class0')).toBeUndefined();
             // ...while the most recently resolved class is still present.
             expect(service.getResolvedClass(`test.Class${CACHE_LIMIT}`)).toBeDefined();
+        });
+    });
+
+    describe('a class evicted during its own cyclic resolution (#497)', () => {
+        test('resolves back to itself with no refetch, no stub and no stall', async () => {
+            vi.useFakeTimers();
+            try {
+                const service = createInteropService(services => new CyclicFakeInteropService(services)) as CyclicFakeInteropService;
+
+                const freshA = (): JavaClass => minimalJavaClass('t.A', {
+                    packageName: 't',
+                    fields: [{ $type: 'JavaField', name: 'b', type: 't.B' }] as unknown as JavaClass['fields']
+                });
+                const freshB = (): JavaClass => minimalJavaClass('t.B', {
+                    packageName: 't',
+                    fields: [
+                        { $type: 'JavaField', name: 'c1', type: 't.C1' },
+                        { $type: 'JavaField', name: 'c2', type: 't.C2' },
+                        { $type: 'JavaField', name: 'c3', type: 't.C3' },
+                        { $type: 'JavaField', name: 'a', type: 't.A' }
+                    ] as unknown as JavaClass['fields']
+                });
+                const freshLeaf = (name: string) => (): JavaClass => minimalJavaClass(name, { packageName: 't' });
+
+                service.dtos.set('t.B', freshB);
+                service.dtos.set('t.C1', freshLeaf('t.C1'));
+                service.dtos.set('t.C2', freshLeaf('t.C2'));
+                service.dtos.set('t.C3', freshLeaf('t.C3'));
+
+                let settled = false;
+                const resolution = service.testResolveClass(freshA()).then(result => {
+                    settled = true;
+                    return result;
+                });
+
+                await vi.advanceTimersByTimeAsync(100);
+
+                expect(settled).toBe(true);
+                const resolvedA = await resolution;
+                expect(service.rawClassCalls.get('t.A') ?? 0).toBe(0);
+
+                const bField = resolvedA.fields.find(f => f.name === 'b')!;
+                const resolvedB = bField.resolvedType!.ref as JavaClass;
+                const aField = resolvedB.fields.find(f => f.name === 'a')!;
+                expect(aField.resolvedType!.ref).toBe(resolvedA);
+                expect(resolvedA.error).toBeUndefined();
+                expect(service.testInFlightCount()).toBe(0);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        test('the registry drains after a chain timeout once the background resolution settles', async () => {
+            vi.useFakeTimers();
+            try {
+                const service = createInteropService(services => new HangingMembersInteropService(services)) as HangingMembersInteropService;
+
+                const freshT = (): JavaClass => minimalJavaClass('t.T', {
+                    packageName: 't',
+                    fields: [
+                        { $type: 'JavaField', name: 'h1', type: 't.H1' },
+                        { $type: 'JavaField', name: 'h2', type: 't.H2' },
+                        { $type: 'JavaField', name: 'h3', type: 't.H3' },
+                        { $type: 'JavaField', name: 'h4', type: 't.H4' }
+                    ] as unknown as JavaClass['fields']
+                });
+                service.dtos.set('t.T', freshT);
+                await service.testConnect();
+
+                const settlement = service.testResolveClassByName('t.T');
+
+                await vi.advanceTimersByTimeAsync(30000);
+                await settlement;
+                expect(service.testInFlightCount()).toBeGreaterThan(0);
+
+                await vi.advanceTimersByTimeAsync(15000);
+                expect(service.testInFlightCount()).toBe(0);
+                expect(service.getResolvedClass('t.T')?.error).toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        test('the registry drains after a cancellation', async () => {
+            vi.useFakeTimers();
+            try {
+                const service = createInteropService(services => new HangingMembersInteropService(services)) as HangingMembersInteropService;
+
+                const freshT = (): JavaClass => minimalJavaClass('t.T', {
+                    packageName: 't',
+                    fields: [
+                        { $type: 'JavaField', name: 'h1', type: 't.H1' },
+                        { $type: 'JavaField', name: 'h2', type: 't.H2' },
+                        { $type: 'JavaField', name: 'h3', type: 't.H3' },
+                        { $type: 'JavaField', name: 'h4', type: 't.H4' }
+                    ] as unknown as JavaClass['fields']
+                });
+                service.dtos.set('t.T', freshT);
+                await service.testConnect();
+
+                const cts = new CancellationTokenSource();
+                const settlement = service.testResolveClassByName('t.T', cts.token);
+
+                await vi.advanceTimersByTimeAsync(1000);
+                cts.cancel();
+                await vi.advanceTimersByTimeAsync(100);
+
+                await settlement;
+                expect(service.testInFlightCount()).toBe(0);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        test('clearCache empties the registry and a late Phase 2 does not bring its class back', async () => {
+            vi.useFakeTimers();
+            try {
+                const service = createInteropService(services => new HangingMembersInteropService(services)) as HangingMembersInteropService;
+
+                const freshT = (): JavaClass => minimalJavaClass('t.T', {
+                    packageName: 't',
+                    fields: [
+                        { $type: 'JavaField', name: 'h1', type: 't.H1' },
+                        { $type: 'JavaField', name: 'h2', type: 't.H2' },
+                        { $type: 'JavaField', name: 'h3', type: 't.H3' },
+                        { $type: 'JavaField', name: 'h4', type: 't.H4' }
+                    ] as unknown as JavaClass['fields']
+                });
+                service.dtos.set('t.T', freshT);
+                await service.testConnect();
+
+                void service.testResolveClassByName('t.T');
+                await vi.advanceTimersByTimeAsync(1000);
+
+                service.clearCache();
+                expect(service.testInFlightCount()).toBe(0);
+
+                await vi.advanceTimersByTimeAsync(45000);
+                expect(service.testInFlightCount()).toBe(0);
+                expect(service.getResolvedClass('t.T')).toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
         });
     });
 

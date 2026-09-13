@@ -145,8 +145,15 @@ export class JavaInteropService {
      * and the second silently overwrites/leaks the first.
      */
     private connectingPromise?: Promise<MessageConnection>;
-    private readonly _resolvedClasses = new LruMap<string, JavaClass>(RESOLVED_CLASSES_CACHE_LIMIT);
+    private readonly _resolvedClasses = new LruMap<string, JavaClass>(this.resolvedClassesCacheLimit());
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
+    /**
+     * Classes registered in {@link _resolvedClasses} whose async member-type resolution (Phase 2 of
+     * {@link resolveClass}) is still running (#497). Consulted by every fast path that would
+     * otherwise miss a class evicted from the LRU during its own cyclic resolution; cleared in
+     * {@link resolveClass}'s identity-guarded `finally` and by {@link clearCache}.
+     */
+    private readonly _inFlightPhase2: Map<string, JavaClass> = new Map();
     /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
     private lockQueue: Array<() => void> = [];
     private lockHeld = false;
@@ -192,6 +199,19 @@ export class JavaInteropService {
 
     private get resolvedClasses(): LruMap<string, JavaClass> {
         return this._resolvedClasses;
+    }
+
+    /**
+     * Test seam: the {@link _resolvedClasses} bound. Read during field initialization — before any
+     * subclass field exists — so an override must return a literal and read no subclass state.
+     */
+    protected resolvedClassesCacheLimit(): number {
+        return RESOLVED_CLASSES_CACHE_LIMIT;
+    }
+
+    /** Test seam: number of classes whose Phase 2 (async member-type resolution) is currently in flight. */
+    protected inFlightResolutionCount(): number {
+        return this._inFlightPhase2.size;
     }
 
     /**
@@ -709,6 +729,13 @@ export class JavaInteropService {
             return this.resolvedClasses.get(className)!;
         }
 
+        // A class the LRU evicted mid-Phase-2 of its own cyclic resolution (#497): return the
+        // same in-flight object instead of falling through to a redundant, timing-out refetch.
+        const inFlightClass = this._inFlightPhase2.get(className);
+        if (inFlightClass) {
+            return inFlightClass;
+        }
+
         // Safeguard 3: deduplicate — if another caller is already resolving this class, wait for it.
         // Also checked before the depth limit: the in-flight resolution owns the recursion budget.
         const pending = this._pendingResolutions.get(className);
@@ -751,6 +778,10 @@ export class JavaInteropService {
             // Double-check after acquiring lock
             if (this.resolvedClasses.has(className)) {
                 return this.resolvedClasses.get(className)!;
+            }
+            const inFlightClass = this._inFlightPhase2.get(className);
+            if (inFlightClass) {
+                return inFlightClass;
             }
             const javaClass: Mutable<JavaClass> = await Promise.race([
                 this.getRawClass(className, token),
@@ -811,6 +842,10 @@ export class JavaInteropService {
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
         }
+        const inFlightClass = this._inFlightPhase2.get(className);
+        if (inFlightClass) {
+            return inFlightClass;
+        }
 
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
@@ -864,76 +899,93 @@ export class JavaInteropService {
         // resolveClassByName() recursively — the fast-path check in resolveClassByName
         // and the re-entry guard in resolveClass both depend on this entry existing.
         this.resolvedClasses.set(className, javaClass);
+        // Beside the LRU: lets every fast path find this exact object while Phase 2 below is
+        // still running, even if the LRU evicts the resolvedClasses entry in the meantime (#497).
+        this._inFlightPhase2.set(className, javaClass);
 
         try {
-            // Phase 2 (async): resolve type references and populate documentation.
-            const documentation = await this.javadocProvider.getDocumentation(javaClass);
-            for (const field of javaClass.fields) {
-                field.resolvedType = {
-                    ref: await this.resolveClassByName(field.type, token, _depth + 1),
-                    $refText: field.type
-                };
-            }
-            // Overloads share a name, so a method's javadoc entry is found among the
-            // entries with its name and arity (see selectMethodDoc, #478/#481).
-            for (const method of javaClass.methods) {
-                const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
-                    m => m.name == method.name
-                        && m.params.length === method.parameters.length
-                ) : [];
-                const methodDoc = selectMethodDoc(methodDocs, method);
-                method.resolvedReturnType = {
-                    ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
-                    $refText: method.returnType
-                };
-                for (const [index, parameter] of method.parameters.entries()) {
-                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
-                    parameter.resolvedType = {
-                        ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
-                        $refText: parameter.type
+            try {
+                // Phase 2 (async): resolve type references and populate documentation.
+                const documentation = await this.javadocProvider.getDocumentation(javaClass);
+                for (const field of javaClass.fields) {
+                    field.resolvedType = {
+                        ref: await this.resolveClassByName(field.type, token, _depth + 1),
+                        $refText: field.type
                     };
-                    if (methodDoc) {
-                        parameter.realName = methodDoc.params[index]?.name
+                }
+                // Overloads share a name, so a method's javadoc entry is found among the
+                // entries with its name and arity (see selectMethodDoc, #478/#481).
+                for (const method of javaClass.methods) {
+                    const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
+                        m => m.name == method.name
+                            && m.params.length === method.parameters.length
+                    ) : [];
+                    const methodDoc = selectMethodDoc(methodDocs, method);
+                    method.resolvedReturnType = {
+                        ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
+                        $refText: method.returnType
+                    };
+                    for (const [index, parameter] of method.parameters.entries()) {
+                        (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
+                        parameter.resolvedType = {
+                            ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
+                            $refText: parameter.type
+                        };
+                        if (methodDoc) {
+                            parameter.realName = methodDoc.params[index]?.name
+                        }
                     }
+                    if (methodDoc?.docu) {
+                        const doc = methodDoc;
+                        // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
+                        const params = method.parameters.map((p, idx) => {
+                            const realName = doc.params[idx]?.name ?? p.name;
+                            return `${javaTypeAdjust(p.type)} ${realName}`;
+                        }).join(', ');
+                        const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
+                        const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
+                        (method as Mutable<JavaMethod>).docu = {
+                            $type: 'DocumentationInfo',
+                            $container: method,
+                            javadoc: tryParseJavaDoc(doc.docu!),
+                            signature: signature
+                        } as DocumentationInfo;
+                    }
+                    AstUtils.linkContentToContainer(method);
                 }
-                if (methodDoc?.docu) {
-                    const doc = methodDoc;
-                    // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
-                    const params = method.parameters.map((p, idx) => {
-                        const realName = doc.params[idx]?.name ?? p.name;
-                        return `${javaTypeAdjust(p.type)} ${realName}`;
-                    }).join(', ');
-                    const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
-                    const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
-                    (method as Mutable<JavaMethod>).docu = {
-                        $type: 'DocumentationInfo',
-                        $container: method,
-                        javadoc: tryParseJavaDoc(doc.docu!),
-                        signature: signature
-                    } as DocumentationInfo;
-                }
-                AstUtils.linkContentToContainer(method);
-            }
-            for (const constructor of javaClass.constructors) {
-                constructor.resolvedReturnType = {
-                    ref: await this.resolveClassByName(constructor.returnType, token, _depth + 1),
-                    $refText: constructor.returnType
-                };
-                for (const parameter of constructor.parameters) {
-                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
-                    parameter.resolvedType = {
-                        ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
-                        $refText: parameter.type
+                for (const constructor of javaClass.constructors) {
+                    constructor.resolvedReturnType = {
+                        ref: await this.resolveClassByName(constructor.returnType, token, _depth + 1),
+                        $refText: constructor.returnType
                     };
+                    for (const parameter of constructor.parameters) {
+                        (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
+                        parameter.resolvedType = {
+                            ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
+                            $refText: parameter.type
+                        };
+                    }
+                    AstUtils.linkContentToContainer(constructor);
                 }
-                AstUtils.linkContentToContainer(constructor);
+            } catch (e) {
+                // finish linking of the class even if it has an error
+                console.error(e)
             }
-        } catch (e) {
-            // finish linking of the class even if it has an error
-            console.error(e)
+            AstUtils.linkContentToContainer(javaClass);
+            return javaClass;
+        } finally {
+            // Only act while the registry still maps this name to this exact object: a later
+            // clearCache() or a newer resolution of the same class must not be disturbed by a
+            // stale Phase 2 settling after the fact (#497).
+            if (this._inFlightPhase2.get(className) === javaClass) {
+                if (!this.resolvedClasses.has(className)) {
+                    // The LRU evicted this class during its own Phase 2 — put it back so a later
+                    // lookup (before this registry entry is deleted below) still finds it.
+                    this.resolvedClasses.set(className, javaClass);
+                }
+                this._inFlightPhase2.delete(className);
+            }
         }
-        AstUtils.linkContentToContainer(javaClass);
-        return javaClass;
     }
 
     /**
@@ -1034,6 +1086,10 @@ export class JavaInteropService {
 
         // Clear in-flight resolution promises
         this._pendingResolutions.clear();
+
+        // Clear the in-flight Phase-2 registry (#497) so a class from a cleared classpath is
+        // never put back into the LRU by a Phase 2 that settles after this reset.
+        this._inFlightPhase2.clear();
 
         // Clear children-of-by-name map
         this.childrenOfByName.clear();
