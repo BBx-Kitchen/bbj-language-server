@@ -1,10 +1,11 @@
 ---
 phase: "87"
 slug: "shared-setopts-composer-layer-intellij-dialog"
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-07"
+validated: "2026-09-13"
 ---
 
 # Phase 87 — Validation Strategy
@@ -20,8 +21,8 @@ created: "2026-09-07"
 | **Framework (bbj-vscode)** | Vitest (existing pin) |
 | **Framework (bbj-intellij)** | JUnit 5 via Gradle `test` task (existing pin) |
 | **Config file** | `bbj-vscode/vitest.config.ts` (existing); `bbj-intellij/build.gradle.kts` `test {}` block (existing) |
-| **Quick run command (TS)** | `npx vitest run test/setopts-catalog.test.ts` |
-| **Quick run command (Java)** | `cd bbj-intellij && ./gradlew test --tests "com.basis.bbj.intellij.composer.*"` |
+| **Quick run command (TS)** | `cd bbj-vscode && npx vitest run test/composer-commands.test.ts test/config-hot-reload.test.ts test/setopts-catalog.test.ts` |
+| **Quick run command (Java)** | `cd bbj-intellij && ./gradlew test --offline --tests "com.basis.bbj.intellij.composer.*"` |
 | **Full suite command** | `npm test` (bbj-vscode); `cd bbj-intellij && ./gradlew test` (bbj-intellij) |
 | **Estimated runtime** | ~120 seconds (Gradle full suite dominates) |
 
@@ -40,39 +41,57 @@ created: "2026-09-07"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 87-01-01 | 01 | 1 | DISC-04 | T-87-01 | Composer handlers are pass-throughs to `setopts-catalog.ts`; no input reaches the write path unvalidated | unit | `npx vitest run test/composer-commands.test.ts` | ❌ W0 — no dedicated test file exists yet | ⬜ pending |
-| 87-01-02 | 01 | 1 | DISC-04 | — | New SETOPTS request names appear in the reflective + literal contract sets | integration | `cd bbj-intellij && ./gradlew test --tests "*.ComposerRequestContractTest"` | ✅ exists | ⬜ pending |
-| 87-01-03 | 01 | 1 | DISC-04 (SC3) | T-87-01 | New SETOPTS DTOs round-trip through LSP4IJ's real `MessageJsonHandler`, incl. an oversized-int negative control | unit | `cd bbj-intellij && ./gradlew test --tests "*.ComposerModelsJsonBoundaryTest"` | ✅ exists | ⬜ pending |
-| 87-02-01 | 02 | 2 | DISC-04 (SC4) | — | Launch chain composes through `ComposerFlow`; a hung/failed request surfaces exactly one reason-keyed balloon | unit | `cd bbj-intellij && ./gradlew test --tests "*.ComposerFlowTest"` | ✅ exists (extend `FakeComposerServer`) | ⬜ pending |
-| 87-02-02 | 02 | 2 | DISC-04 (SC2) | — | Applying an edit does not trigger a reload notification (regression) | unit | `npx vitest run test/config-hot-reload.test.ts` | ✅ exists | ⬜ pending |
-| 87-02-03 | 02 | 2 | DISC-04 (SC1) | T-87-03 | Dialog previews/composes/applies edits identically to VS Code for edit and compose-new modes; OK gated on `r.valid` | unit + source guard | new `BbjComposeSetoptsActionSourceGuardTest` (mirrors `BbjRefreshJavaClassesActionSourceGuardTest`) | ❌ W0 | ⬜ pending |
-
-*Task IDs above are provisional — the planner assigns final plan/task numbering; this map is the requirement→test contract Wave 0 must satisfy, not a fixed schedule.*
+| 87-01-01 | 01 | 1 | DISC-04 (SC3) | T-87-02, T-87-03 | `setopts/decodeCall` decodes an existing line / bare keyword, refuses what it cannot round-trip; `byte` wire key survives LSP4IJ's real Gson; request name on the contract | unit + integration | `npx vitest run test/composer-commands.test.ts`; `./gradlew test --tests "*.ComposerModelsJsonBoundaryTest" --tests "*.ComposerRequestContractTest"` | ✅ | ✅ green |
+| 87-01-02 | 01 | 1 | DISC-04 (SC3) | T-87-01 | `setopts/preview` starts from the original vector (never zero); `setopts` catalogs field carries 50 bits / 7 ordered byte groups | unit + integration | `npx vitest run test/composer-commands.test.ts`; `./gradlew test --tests "*.ComposerModelsJsonBoundaryTest"` | ✅ | ✅ green |
+| 87-01-03 | 01 | 1 | DISC-04 | T-87-11 | `DecodeEquality.sameSetopts` mismatches on any field, arrays compared element-wise | unit | `./gradlew test --tests "*.DecodeEqualityTest" --tests "*.ComposerApplyGuardSourceGuardTest"` | ✅ | ✅ green |
+| 87-02-01 | 02 | 2 | DISC-04 (SC4) | T-87-09 | `PreviewDebouncer` coalesces bursts via its own `cancel(pending)`, dispatches through the UI-thread hook | unit | `./gradlew test --tests "*.PreviewDebouncerTest"` | ✅ | ✅ green |
+| 87-02-02 | 02 | 2 | DISC-04 (SC1) | — | Dialog layout: one scroll pane, byte groups in catalog order (no sort), bits filtered by byte, BBj-annotated bits greyed with a `bbjDetail` tooltip | source guard | `./gradlew test --tests "*.SetoptsComposerDialogSourceGuardTest"` | ✅ (added by validation audit) | ✅ green |
+| 87-02-03 | 02 | 2 | DISC-04 (SC1, SC4) | T-87-06, T-87-07, T-87-08, T-87-10 | Raw-tail and mask validation run before any request and route through `previewUnavailable`; `SetoptsPreviewParams` always carries `originalHex`; observe/seq/once wiring and `scheduleRefresh()` OK-disable pinned | source guard | `./gradlew test --tests "*.SetoptsComposerDialogSourceGuardTest" --tests "*.ComposerDialogRefreshSourceGuardTest"` | ✅ | ✅ green |
+| 87-03-01 | 03 | 3 | DISC-04 (SC4) | T-87-11, T-87-12, T-87-15 | `Kind.SETOPTS` composes through `ComposerFlow`; edit path guarded by `StaleEditGuard` + `sameSetopts`; compose-new inserts at line start | source guard | `./gradlew test --tests "*.ComposerLauncherChainSourceGuardTest" --tests "*.ComposerApplyGuardSourceGuardTest"` | ✅ | ✅ green |
+| 87-03-02 | 03 | 3 | DISC-04 (SC1) | T-87-13 | `BbjComposeSetoptsAction` PSI-free, absent outside the resolved config file, no keystroke | source guard | `./gradlew test --tests "*.BbjComposeSetoptsActionSourceGuardTest"` | ✅ | ✅ green |
+| 87-03-03 | 03 | 3 | DISC-04 (SC2) | T-87-14 | SETOPTS composer write → zero reload notifications; PREFIX edit in same file → exactly one | unit | `npx vitest run test/config-hot-reload.test.ts` | ✅ | ✅ green |
+| review fix (OK disable) | 02 | — | DISC-04 (SC4) | T-87-08 | Every listener routes through `scheduleRefresh()`, which disables OK before triggering the debouncer | source guard + manual | `./gradlew test --tests "*.ComposerDialogRefreshSourceGuardTest"` (runtime timing: Manual-Only) | ✅ | ✅ green |
+| review fix (raw-tail label) | 02 | — | DISC-04 (SC1) | T-87-06 | Invalid raw tail writes its message to the field-level `rawTailError` label before disabling OK | source guard | `./gradlew test --tests "*.SetoptsComposerDialogSourceGuardTest"` | ✅ (added by validation audit) | ✅ green |
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `bbj-vscode/test/composer-commands.test.ts` — stubs for the new `bbj/composer/setopts/*` handler pass-through, or an explicit recorded decision that domain-module coverage (`setopts-catalog.test.ts`, already existing/untouched) plus the IntelliJ-side contract/boundary tests are sufficient (no TS handler test exists for the precedent msgbox/addWindow/addChildWindow handlers either)
-- [ ] `bbj-intellij/src/test/java/.../DecodeEqualityTest.java` — add a SETOPTS case to the existing comparator test
-- [ ] `bbj-intellij/src/test/java/.../BbjComposeSetoptsActionSourceGuardTest.java` — new file, mirrors `BbjRefreshJavaClassesActionSourceGuardTest`'s structural-pin pattern (config-file scoping, no restart path)
-- [ ] Confirm dialog-level test strategy: no dedicated `*ComposerDialogTest.java` exists for `MsgboxComposerDialog` either — coverage is `ComposerFlowTest` + `StaleEditGuardTest` + `DecodeEqualityTest` + source guards. Same precedent applies unless the plan explicitly deviates.
+- [x] `bbj-vscode/test/composer-commands.test.ts` — extended with `setopts/decodeCall`, `setopts/preview` and catalogs coverage
+- [x] `bbj-intellij/src/test/java/.../DecodeEqualityTest.java` — SETOPTS cases added
+- [x] `bbj-intellij/src/test/java/.../BbjComposeSetoptsActionSourceGuardTest.java` — created (7 tests)
+- [x] Dialog-level strategy confirmed: no headless-Swing harness; coverage is `ComposerFlowTest` + `ComposerDialogRefreshSourceGuardTest` + `DecodeEqualityTest` + `SetoptsComposerDialogSourceGuardTest` (source guards) plus the Manual-Only rows below
 
 ---
 
 ## Manual-Only Verifications
 
-*None identified — all phase behaviors have automated verification per the test map above (dialog UI is covered indirectly through `ComposerFlow`/`StaleEditGuard` unit seams, consistent with the existing msgbox/addWindow precedent; no manual QA checklist row is required beyond what the existing SETOPTS VS Code rows already cover).*
+| Behavior | Why Manual | Evidence |
+|----------|------------|----------|
+| Live-IDE end-to-end: context-menu visibility on existing and non-SETOPTS lines, live debounced preview, greyed options with tooltip, hex-only apply, whole-line compose-new, absent in `.bbj`, no server restart (QA/FULL-TEST-CHECKLIST.md IntelliJ row 18) | Needs a running IntelliJ + LSP4IJ session | 87-UAT.md test 1 — pass (2026-09-07) |
+| Rapid toggle-then-Apply inside the 300ms debounce window never commits a stale selection | Swing event-dispatch / button-enablement timing; no headless-Swing harness in this build | 87-UAT.md test 2 — pass (2026-09-07); structure pinned by `ComposerDialogRefreshSourceGuardTest` |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-09-13
+
+---
+
+## Validation Audit 2026-09-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 3 |
+| Resolved | 3 |
+| Escalated | 0 |
+
+Gaps were dialog layout, the client-side validation gate plus lossless original, and raw-tail label routing. All three had been verified only by grep or code reading during execution. They are now pinned by `SetoptsComposerDialogSourceGuardTest` (7 tests, green). Re-run on 2026-09-13: Vitest 3 files / 109 tests green; Gradle `com.basis.bbj.intellij.composer.*`, `PreviewDebouncerTest`, `BbjComposeSetoptsActionSourceGuardTest` green.
