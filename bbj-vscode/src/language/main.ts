@@ -23,6 +23,7 @@ import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
 import { registerConfigAwareHoverHandler } from './bbj-hover-handler.js';
+import { JavaClassReloadServices, reloadClasspathAndRecheckDocuments } from './java-class-reload.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -118,6 +119,16 @@ function refreshCodeLenses() {
     connection.sendRequest(CodeLensRefreshRequest.type).catch(() => { /* client does not support refresh */ });
 }
 
+// The narrow service slice java-class-reload.ts's shared helper needs, built once from the
+// services created above. Reused by both the explicit refresh path below and the interop
+// recovery path.
+const javaClassReloadServices: JavaClassReloadServices = {
+    javaInterop: BBj.java.JavaInteropService,
+    workspaceManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+    langiumDocuments: shared.workspace.LangiumDocuments,
+    documentBuilder: shared.workspace.DocumentBuilder
+};
+
 // Clears the Java classpath cache, reloads it from the current workspace settings, reloads
 // implicit imports, and re-validates every open document by resetting its build state — the
 // shared reload sequence used by both the explicit bbj/refreshJavaClasses request handler and an
@@ -128,29 +139,8 @@ async function reloadJavaClassesAndRevalidate(): Promise<void> {
     // Step 1: Clear all cached Java class data (includes disconnecting)
     javaInterop.clearCache();
 
-    // Step 2: Reload classpath from workspace settings
-    const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
-    const settings = wsManager.getSettings();
-    if (settings && settings.classpath.length > 0) {
-        await javaInterop.loadClasspath(settings.classpath);
-    }
-
-    // Step 3: Reload implicit imports
-    await javaInterop.loadImplicitImports();
-
-    // Step 4: Re-validate all open documents by resetting their state
-    const documents = shared.workspace.LangiumDocuments.all.toArray();
-    for (const doc of documents) {
-        if (doc.uri.scheme === 'file') {
-            doc.state = DocumentState.Parsed;
-        }
-    }
-    const docUris = documents
-        .filter(doc => doc.uri.scheme === 'file')
-        .map(doc => doc.uri);
-    if (docUris.length > 0) {
-        await shared.workspace.DocumentBuilder.update(docUris, []);
-    }
+    // Steps 2-4: reload classpath, reload implicit imports, re-check open documents once.
+    await reloadClasspathAndRecheckDocuments(javaClassReloadServices);
     refreshInlayHints();
 
     // Step 5: Send notification
@@ -159,6 +149,30 @@ async function reloadJavaClassesAndRevalidate(): Promise<void> {
 
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
+// Set when an interop recovery is reported before the first workspace build completes, so the
+// deferred re-check can run exactly once, right after that build, instead of being lost.
+let javaRecoveryPending = false;
+
+// Re-checks open documents after the interop breaker reports recovery, without clearCache() and
+// without a popup — the classpath and implicit imports reload first, since a reconnected peer is
+// a fresh backend instance with no memory of the custom classpath.
+async function recheckAfterInteropRecovery(): Promise<void> {
+    try {
+        await reloadClasspathAndRecheckDocuments(javaClassReloadServices);
+        refreshInlayHints();
+    } catch (error) {
+        console.error('Failed to re-check documents after the Java interop service recovered:', error);
+    }
+}
+
+BBj.java.JavaInteropService.onConnectionRecovered(() => {
+    if (!workspaceInitialized) {
+        javaRecoveryPending = true;
+        return;
+    }
+    return recheckAfterInteropRecovery();
+});
+
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
     if (!workspaceInitialized) {
         workspaceInitialized = true;
@@ -168,6 +182,10 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
         notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
         // Armed exactly once, here, after the first Validated build phase.
         configWatcher.start(wsManager.getResolvedConfigPath(), wsManager.getConsumedConfigSnapshot());
+        if (javaRecoveryPending) {
+            javaRecoveryPending = false;
+            void recheckAfterInteropRecovery();
+        }
     }
 });
 
