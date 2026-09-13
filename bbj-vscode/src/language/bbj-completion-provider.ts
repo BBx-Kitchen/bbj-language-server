@@ -146,7 +146,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (prefix.length < BBjCompletionProvider.AUTO_IMPORT_MIN_PREFIX) {
             return;
         }
-        const fqns = await this.findClassCandidatesByPrefixCached(prefix, cancelToken);
+        const fqns = await this.findClassCandidatesByPrefixCached(prefix);
         if (cancelToken?.isCancellationRequested) {
             return;
         }
@@ -173,13 +173,20 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     /**
-     * Memoizes {@link JavaInteropService.findClassCandidatesByPrefix} by lowercased prefix
-     * (P61-D3-004): typing continues to hit a fresh lookup per distinct prefix, but a repeated
-     * lookup for the *same* prefix within {@link AUTO_IMPORT_PREFIX_CACHE_TTL_MS} is served from
-     * cache instead of re-running the underlying scan. See {@link autoImportPrefixCache}'s own
-     * doc comment for the cache-key/invalidation rationale (T-67-04-02, T-67-04-04).
+     * Memoizes {@link JavaInteropService.findClassCandidatesByPrefix} by lowercased prefix:
+     * typing continues to hit a fresh lookup per distinct prefix, but a repeated lookup for the
+     * *same* prefix within {@link AUTO_IMPORT_PREFIX_CACHE_TTL_MS} is served from cache instead of
+     * re-running the underlying scan. See {@link autoImportPrefixCache}'s own doc comment for the
+     * cache-key/invalidation rationale.
+     *
+     * Takes no cancellation token: the underlying lookup this creates can be shared by several
+     * concurrent completion requests for the same prefix (see the in-flight-promise comment
+     * below), so it must not be tied to any one caller's token — cancelling the request that
+     * happens to create it must not reject the promise every other concurrent waiter is sharing
+     * (issue #498). Each waiter still checks its own token right after this call returns, in
+     * {@link completeAutoImportClasses}.
      */
-    protected findClassCandidatesByPrefixCached(prefix: string, cancelToken?: CancellationToken): Promise<string[]> {
+    protected findClassCandidatesByPrefixCached(prefix: string): Promise<string[]> {
         const key = prefix.toLowerCase();
         const now = Date.now();
         const cached = this.autoImportPrefixCache.get(key);
@@ -193,7 +200,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         // Set the in-flight promise into the cache synchronously, before awaiting it, so a
         // concurrent call for the same prefix (see this field's own doc comment) shares this
         // request instead of starting a duplicate one.
-        const promise = this.javaInterop.findClassCandidatesByPrefix(prefix, undefined, cancelToken);
+        const promise = this.javaInterop.findClassCandidatesByPrefix(prefix, undefined, undefined);
         this.autoImportPrefixCache.set(key, { promise, cachedAt: now });
         // A failed lookup must not poison the cache for the rest of the TTL window — drop it so
         // the next call retries instead of re-throwing a stale rejection.

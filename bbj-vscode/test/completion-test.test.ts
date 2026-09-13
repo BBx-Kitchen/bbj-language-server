@@ -900,5 +900,56 @@ classend
                 interopSeam.resetCompleteClassIndex();
             }
         });
+
+        test('a cancelled first request does not reject the per-prefix lookup a second request shares', async () => {
+            // Mirrors a JSON-RPC request cancelled by its token: the promise only rejects once the
+            // token it was actually given signals cancellation, never on a timer or on its own.
+            let release!: (fqns: string[]) => void;
+            const findSpy = vi.spyOn(bbjServices.java.JavaInteropService, 'findClassCandidatesByPrefix')
+                .mockImplementation((_prefix, _limit, token) => new Promise<string[]>((resolve, reject) => {
+                    release = resolve;
+                    token?.onCancellationRequested(() => reject(new Error('request cancelled')));
+                }));
+            const provider = bbjServices.lsp.CompletionProvider as unknown as {
+                findClassCandidatesByPrefixCached(prefix: string): Promise<string[]>;
+            };
+            const cachedSpy = vi.spyOn(provider, 'findClassCandidatesByPrefixCached');
+            try {
+                const { doc: docA, params: paramsA } = await parseAutoImportRequest(
+                    'file:///concurrent-memo-a.bbj', 'x! = new CancelMemoMark');
+                const { doc: docB, params: paramsB } = await parseAutoImportRequest(
+                    'file:///concurrent-memo-b.bbj', 'x! = new CancelMemoMark');
+                const sourceA = new CancellationTokenSource();
+                const sourceB = new CancellationTokenSource();
+
+                const requestA = bbjServices.lsp.CompletionProvider!.getCompletion(docA, paramsA, sourceA.token);
+                await vi.waitFor(() => expect(findSpy).toHaveBeenCalledTimes(1));
+                // Yield one macrotask so request A is parked on the shared lookup's promise before B starts.
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                const cachedCallsBeforeB = cachedSpy.mock.calls.length;
+                const requestB = bbjServices.lsp.CompletionProvider!.getCompletion(docB, paramsB, sourceB.token);
+                await vi.waitFor(() => expect(cachedSpy.mock.calls.length).toBeGreaterThan(cachedCallsBeforeB));
+
+                // B reached the memo for the same prefix without the underlying lookup running twice.
+                expect(findSpy).toHaveBeenCalledTimes(1);
+
+                sourceA.cancel();
+                release(['com.cancel498.CancelMemoMarker']);
+
+                const [resultA, resultB] = await Promise.allSettled([requestA, requestB]);
+                expect(resultA.status).toBe('fulfilled');
+                expect(resultB.status).toBe('fulfilled');
+                const listA = resultA.status === 'fulfilled' ? resultA.value : undefined;
+                const listB = resultB.status === 'fulfilled' ? resultB.value : undefined;
+                expect((listA?.items ?? []).some(i => (i.detail ?? '').startsWith('Auto-import '))).toBe(false);
+                const itemB = (listB?.items ?? []).find(i => i.label === 'CancelMemoMarker');
+                expect(itemB).toBeDefined();
+                expect(itemB!.detail).toBe('Auto-import com.cancel498.CancelMemoMarker');
+            } finally {
+                findSpy.mockRestore();
+                cachedSpy.mockRestore();
+            }
+        });
     });
 });
