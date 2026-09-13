@@ -168,6 +168,8 @@ export class JavaInteropService {
     private breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
     /** Bumped by clearCache() so a connect attempt started before the reset cannot change breaker state or report recovery. */
     private breakerGeneration = 0;
+    /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
+    private readonly recoveryListeners: Array<() => void | Promise<void>> = [];
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -210,21 +212,31 @@ export class JavaInteropService {
         if (this.connection) {
             return this.connection;
         }
-        if (this.breakerState === 'open' && Date.now() < this.breakerProbeDueAt) {
+        if (this.breakerState === 'open') {
+            if (Date.now() < this.breakerProbeDueAt) {
+                this.throwCircuitOpen();
+            }
+            // The cooldown elapsed: this call becomes the single half-open probe. A probe
+            // issued from inside a resolution holds the unchanged resolution lock for at most
+            // one connect attempt per cooldown window.
+            this.breakerState = 'half-open';
+        } else if (this.breakerState === 'half-open') {
+            // A probe is already in flight; every other caller short-circuits.
             this.throwCircuitOpen();
         }
         if (this.connectingPromise) {
             return this.connectingPromise;
         }
+        const isProbe = this.breakerState === 'half-open';
         const generation = this.breakerGeneration;
         this.connectingPromise = this.establishConnection().then(
             connection => {
-                this.onConnectAttemptSettled(generation, { success: true });
+                this.onConnectAttemptSettled(generation, isProbe, { success: true });
                 return connection;
             },
             e => {
                 const message = e instanceof Error ? e.message : String(e);
-                this.onConnectAttemptSettled(generation, { success: false, message });
+                this.onConnectAttemptSettled(generation, isProbe, { success: false, message });
                 throw new InteropTransportError(message, e);
             }
         );
@@ -245,21 +257,41 @@ export class JavaInteropService {
      * matches the current one — clearCache() bumped it, so this attempt started before the reset
      * and must not change breaker state or report recovery.
      */
-    private onConnectAttemptSettled(generation: number, outcome: { success: true } | { success: false; message: string }): void {
+    private onConnectAttemptSettled(generation: number, wasProbe: boolean, outcome: { success: true } | { success: false; message: string }): void {
         if (generation !== this.breakerGeneration) {
             return;
         }
         if (outcome.success) {
             this.breakerState = 'closed';
+            this.breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
+            if (wasProbe) {
+                this.fireRecoveryListeners();
+            }
         } else {
-            const wasClosed = this.breakerState === 'closed';
             this.breakerState = 'open';
             this.breakerProbeDueAt = Date.now() + this.breakerCooldownMs;
-            if (wasClosed) {
+            if (wasProbe) {
+                // A failed half-open probe backs off silently — no popup.
+                this.breakerCooldownMs = Math.min(this.breakerCooldownMs * INTEROP_BREAKER_BACKOFF_FACTOR, INTEROP_BREAKER_MAX_COOLDOWN_MS);
+            } else {
                 // The closed-to-open transition: exactly one popup per outage.
                 notifyJavaConnectionError(outcome.message);
             }
         }
+    }
+
+    private fireRecoveryListeners(): void {
+        for (const listener of this.recoveryListeners) {
+            Promise.resolve().then(() => listener()).catch(e => logger.error(`Java interop recovery listener failed: ${e}`));
+        }
+    }
+
+    /**
+     * Registers a listener fired once per half-open-to-closed transition — a probe succeeding
+     * after an outage. Never fired by clearCache().
+     */
+    public onConnectionRecovered(listener: () => void | Promise<void>): void {
+        this.recoveryListeners.push(listener);
     }
 
     /**
@@ -992,6 +1024,14 @@ export class JavaInteropService {
         this.lockQueue = [];
         this.lockHeld = false;
         this.currentLockToken = null;
+
+        // Reset the circuit breaker so the next lookup attempts a socket immediately, and bump
+        // the generation so a connect attempt started before this reset cannot report its
+        // outcome (#504).
+        this.breakerGeneration++;
+        this.breakerState = 'closed';
+        this.breakerProbeDueAt = 0;
+        this.breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
 
         // Reset classpath document arrays
         this.classpath.packages = [];
