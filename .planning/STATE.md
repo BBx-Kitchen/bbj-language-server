@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 92
 current_phase_name: Host-Side Hygiene & Focus Guards
 status: executing
-stopped_at: Completed 92-02-PLAN.md
-last_updated: "2026-09-13T07:24:46.423Z"
+stopped_at: Completed 92-03-PLAN.md
+last_updated: "2026-09-13T07:30:07.132Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 92 execution started
-state_head: dc9aa1530f7601371526a60a6c3314350178b19a
+state_head: 52d8c0b5abfeacd9f0c945e5f52d08e839e5644a
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 70
-  completed_plans: 66
+  completed_plans: 67
   percent: 89
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 ## Current Position
 
 Phase: 92 (Host-Side Hygiene & Focus Guards) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-13 — Phase 92 execution started
 
@@ -205,6 +205,7 @@ Last activity: 2026-09-13 — Phase 92 execution started
 | Phase 91 P06 | ~5min | 2 tasks | 0 files |
 | Phase 92 P01 | 15min | 2 tasks | 4 files |
 | Phase 92 P02 | 5min | 2 tasks | 2 files |
+| Phase 92 P03 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -370,6 +371,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 91 UAT, closeout 2026-09-13]: The single human check (live java-interop outage and recovery in VS Code: stop BBjServices, one "Failed to connect to the Java interop service" popup for the whole outage, no freeze, unresolved-class diagnostics on new `use`/`declare` lines; restart BBjServices, diagnostics clear after a caret move with no edit, popup or Refresh Java Classes) passed by hand on the first round against a VSIX (sha256 31ecff5a…) and bbj-intellij-0.1.0.zip (sha256 15b4c0a4…, `clean buildPlugin`) rebuilt at `e52e5e50`, after review fixes 2ca423ff/59befa50, with both bundled `main.cjs` byte-identical to the fresh build. The popup fires on the first edit that makes the server resolve a not-yet-cached Java class (a failed reconnect while the breaker is closed), never on the stop itself or on hover/caret moves. 91-VERIFICATION.md status: passed; 91-VALIDATION.md nyquist-compliant (14 tasks, 0 gaps; whole suite 1855 tests, 0 failed); 91-SECURITY.md threats_open 0 (21 threats, short-circuit path). RESP-01..04 (#505, #504, #497, #498) closed.
 - [Phase 92]: 92-01: extracted a vscode-free target-resolution.ts module (resolveRunTarget/resolveDecompileTarget) so Commands.cjs's seven run/compile/decompile commands resolve argument-first with a language-aware active-editor fallback and one shared no-active-BBj-file warning — Commands.cjs is CommonJS and cannot load under Vitest, so the testable logic had to live in a pure module with Commands.cjs reduced to a source-guard-verified caller
 - [Phase 92]: Phase 92 Plan 02: inFlightFormats keys on { content, promise }; a request reuses the running formatter only when its own text matches the running text (D-08, issue #499); cleanup compares the stored entry's promise identity so an older run settling after a newer one cannot evict it. — Fixes the stale-format-replacement bug where a second format request during interim edits received the first run's output.
+- [Phase 92]: BbjFileVisibility mirrors BbjConfigPathService's static-helper-plus-thin-wrapper convention; both widgets delegate visibility to file.getFileType().getName(), never file extension, so config.bbx/config.min/a custom-named config file hide the widgets whatever their extension.
 
 ### Tech Debt
 
@@ -439,8 +441,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-13T07:24:46.075Z
-Stopped at: Completed 92-02-PLAN.md
+Last session: 2026-09-13T07:30:06.785Z
+Stopped at: Completed 92-03-PLAN.md
 Resume file: None
 
 Next: Phase 92 (Host-Side Hygiene & Focus Guards, RESP-05..09) has no phase directory or
