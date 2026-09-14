@@ -632,7 +632,7 @@ InputVariable:
 ;
 
 VerifyOptions:
-    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* (',' elements+=LastVerifyOption)? RPAREN_NL
+    ':(' (elements+=VerifyOption (',' elements+=VerifyOption)* (',' elements+=LastVerifyOption)? | elements+=LastVerifyOption) RPAREN
 ;
 
 VerifyOption:
