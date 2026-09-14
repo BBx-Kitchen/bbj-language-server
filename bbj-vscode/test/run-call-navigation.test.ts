@@ -158,6 +158,99 @@ describe('RUN/CALL file target navigation (#663)', () => {
 
         expect(result ?? []).toHaveLength(0);
     });
+
+    test('hovering a resolved RUN file literal shows the resolved file-system path', async () => {
+        const doc = await parse(`RUN "lib/sub.bbj"`, {
+            documentUri: URI.file('/root/app/nav-hover-run.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"lib/sub.bbj"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('Program file:');
+        expect(value).toContain(URI.file('/root/lib/sub.bbj').fsPath);
+    });
+
+    test('hovering an unresolvable RUN file literal names the path as written', async () => {
+        const doc = await parse(`RUN "does-not-exist.bbj"`, {
+            documentUri: URI.file('/root/app/nav-hover-missing.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"does-not-exist.bbj"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('could not be resolved');
+        expect(value).toContain('does-not-exist.bbj');
+    });
+
+    test('hovering a CALL ::label literal shows only the program part', async () => {
+        const doc = await parse(`CALL "missing.bbj::setUp", A$`, {
+            documentUri: URI.file('/root/app/nav-hover-call.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"missing.bbj::setUp"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('missing.bbj');
+        expect(value).not.toContain('::setUp');
+    });
+
+    test('hovering an absolute POSIX RUN file literal shows the resolved file-system path', async () => {
+        const doc = await parse(`RUN "/opt/progs/abs.bbj"`, {
+            documentUri: URI.file('/root/app/nav-hover-abs.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"/opt/progs/abs.bbj"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain(URI.file('/opt/progs/abs.bbj').fsPath);
+    });
+
+    test('hovering the dynamic part of a RUN concatenation gives no "Program file" hover', async () => {
+        const doc = await parse(`A$ = "x.bbj"\nRUN "./"+A$`, {
+            documentUri: URI.file('/root/app/nav-hover-dynamic.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"./"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        if (hover) {
+            expect((hover.contents as { value: string }).value).not.toContain('Program file');
+        }
+    });
+
+    test('hovering an unresolvable path containing a backtick escapes the code span', async () => {
+        const doc = await parse('RUN "we`ird.bbj"', {
+            documentUri: URI.file('/root/app/nav-hover-backtick.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"we`ird.bbj"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('``we`ird.bbj``');
+    });
 });
 
 describe('RUN/CALL navigation without project context or warnings (#663)', () => {
@@ -189,5 +282,20 @@ describe('RUN/CALL navigation without project context or warnings (#663)', () =>
 
         expect(result).toHaveLength(1);
         expect(result![0].targetUri).toBe(URI.file('/loose/helper.bbj').toString());
+    });
+
+    test('hovering still shows the resolved path with no workspace folder and no PREFIX', async () => {
+        const doc = await parse(`RUN "helper.bbj"`, {
+            documentUri: URI.file('/loose/hover-main.bbj').toString(),
+            validation: true,
+        });
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionInside(doc, '"helper.bbj"');
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain(URI.file('/loose/helper.bbj').fsPath);
     });
 });
