@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 Phase: Milestone v4.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-13 — Milestone v4.3 completed and archived
+Last activity: 2026-09-14 - Completed quick task 260914-7tx: Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c))
 
 ## Performance Metrics
 
@@ -450,6 +450,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260914-7tx | Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c)) | 2026-09-14 | 082d02f8 | — | [260914-7tx-fix-667-input-verification-rules-accept-](./quick/260914-7tx-fix-667-input-verification-rules-accept-/) |
 
 ---
 
