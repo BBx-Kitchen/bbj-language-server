@@ -8,10 +8,11 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, Index
 import { basename, normalize, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BbjClass, BeginStatement, CallStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, RunStatement, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isStringLiteral, isSwitchStatement, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BbjClass, BeginStatement, CallStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, RunStatement, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSwitchStatement, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { getStaticRunCallTarget, hasRunCallProjectContext, resolveRunCallPath, type RunCallResolutionContext } from './run-call-target.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { registerVariableScopingChecks } from './validations/check-variable-scoping.js';
 import { registerFunctionCallChecks } from './validations/check-function-calls.js';
@@ -349,9 +350,10 @@ export class BBjValidator {
 
     /**
      * Flags a `RUN` or `CALL` whose target program file cannot be resolved on disk, when that
-     * target is given as a static string literal (issue #173). Resolution mirrors the USE/scope
-     * resolvers: the filename is searched relative to the current file's directory, each
-     * workspace/project root, and each PREFIX directory.
+     * target is given as a static string literal (issue #173). Resolution — searching relative
+     * to the current file's directory, each workspace/project root, each PREFIX directory, and
+     * absolute/drive-letter targets — lives in run-call-target.ts, shared with the hover and
+     * go-to-definition providers (issue #663).
      *
      * Only plain string literals are checked. A dynamic target — a variable or a concatenation such
      * as `RUN "./"+A$` — has an unknown value until runtime, so it is skipped to avoid false
@@ -362,43 +364,22 @@ export class BBjValidator {
     checkRunCallFileResolves(node: RunStatement | CallStatement, accept: ValidationAcceptor): void {
         if (!typeResolutionWarningsEnabled) return;
 
-        const fileid = node.fileid;
-        // Only static string literals carry a knowable path; skip variables/concatenations.
-        if (!isStringLiteral(fileid)) return;
-        // StringLiteral.value also covers HEX_STRING (`$0A$`); those are byte sequences, not paths.
-        if (!fileid.$cstNode?.text?.startsWith('"')) return;
+        const target = getStaticRunCallTarget(node);
+        if (!target) return;
 
-        // BBj accepts a `program::label` entry point in CALL; only the program part is a file path.
-        let cleanPath = fileid.value;
-        const labelIndex = cleanPath.indexOf('::');
-        if (labelIndex >= 0) {
-            cleanPath = cleanPath.substring(0, labelIndex);
-        }
-        cleanPath = cleanPath.trim();
-        if (cleanPath.length === 0) return;
-
-        const currentDocUri = AstUtils.getDocument(node).uri;
-        // parseSettings yields a single empty-string prefix when none is configured; drop those so
-        // they neither gate the check nor resolve against the process working directory.
-        const prefixes = (this.workspaceManager.getSettings()?.prefixes ?? []).filter(prefix => prefix.length > 0);
-        const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
+        const context: RunCallResolutionContext = {
+            langiumDocuments: this.langiumDocuments,
+            fileSystemProvider: this.fileSystemProvider,
+            workspaceManager: this.workspaceManager
+        };
         // Without any project context there is nothing authoritative to resolve against, so skip
         // rather than warn on every RUN/CALL in a stand-alone file.
-        if (workspaceRoots.length === 0 && prefixes.length === 0) return;
+        if (!hasRunCallProjectContext(context)) return;
 
-        const candidateUris = [
-            UriUtils.resolvePath(UriUtils.dirname(currentDocUri), cleanPath)
-        ]
-            .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, cleanPath)))
-            .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath))));
-
-        // A target resolves if it is an already-indexed workspace document (project files loaded
-        // into the workspace) or exists on disk (PREFIX programs are not eagerly loaded).
-        const resolved = candidateUris.some(uri =>
-            this.langiumDocuments.hasDocument(uri) || this.fileSystemProvider.existsSync(uri)
-        );
-        if (!resolved) {
-            accept('warning', `File '${cleanPath}' could not be resolved in the project directory or any PREFIX.`, {
+        const currentDocUri = AstUtils.getDocument(node).uri;
+        const resolvedUri = resolveRunCallPath(target.path, currentDocUri, context);
+        if (!resolvedUri) {
+            accept('warning', `File '${target.path}' could not be resolved in the project directory or any PREFIX.`, {
                 node,
                 property: 'fileid'
             });
