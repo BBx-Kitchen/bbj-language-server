@@ -3,7 +3,7 @@ import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -2189,6 +2189,24 @@ PRINT getResult$, isNew%, readData
         INPUTE (0,ERR=2000) C,R,M$,P$,A$:("end"=3000,LEN=1,5)
         `, { validation: true });
         expectNoParserLexerErrors(result);
+    });
+
+    test('INPUT verify list with numeric literal or expression #667', async () => {
+        const result = await parse(`
+        c=7
+        INPUT (0,err=*same)"Enter the number of the CD to open (empty to skip): ",pick:(c)
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+        const verifyOptions = AstUtils.streamAst(result.parseResult.value).filter(isVerifyOptions).toArray();
+        expect(verifyOptions).toHaveLength(1);
+        expect(verifyOptions[0].elements).toHaveLength(1);
+        const element = verifyOptions[0].elements[0];
+        expect(isLastVerifyOption(element)).toBeTruthy();
+        if (isLastVerifyOption(element)) {
+            expect(isSymbolRef(element.min)).toBeTruthy();
+            expect(element.max).toBeUndefined();
+        }
     });
 
     test('GRAM-01: endif followed by ;rem comment (#318)', async () => {
