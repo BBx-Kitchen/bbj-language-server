@@ -1,0 +1,15 @@
+rem Regression fixture for GitHub issue #667: INPUT verify lists must accept a
+rem lone numeric literal or expression, a lone LEN=min,max, and a verify list
+rem followed by further input items, not only string/hex-keyed options.
+c=7
+INPUT (0,err=*same)"Enter the number of the CD to open (empty to skip): ",pick:(c)
+a=1
+INPUT n:(4)
+INPUT n:(a+1)
+INPUT x$:(LEN=1,5)
+INPUT x$:("end"=done),y$
+INPUT n:(4),m
+ENTER n:(4)
+READ (1,ERR=done) a:(100),b$
+done:
+release

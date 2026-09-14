@@ -2209,6 +2209,140 @@ PRINT getResult$, isNew%, readData
         }
     });
 
+    test('INPUT verify list: bare final option and list followed by items #667', async () => {
+        function verifyOptionsElements(document: LangiumDocument, index: number) {
+            const list = AstUtils.streamAst(document.parseResult.value).filter(isVerifyOptions).toArray();
+            return list[index].elements;
+        }
+
+        const bareNumber = await parse(`
+        INPUT n:(4)
+        `, { validation: false });
+        expectNoParserLexerErrors(bareNumber);
+        const bareNumberElements = verifyOptionsElements(bareNumber, 0);
+        expect(bareNumberElements).toHaveLength(1);
+        expect(isLastVerifyOption(bareNumberElements[0])).toBeTruthy();
+        if (isLastVerifyOption(bareNumberElements[0])) {
+            expect(isNumberLiteral(bareNumberElements[0].min)).toBeTruthy();
+            expect(bareNumberElements[0].max).toBeUndefined();
+        }
+
+        const bareExpression = await parse(`
+        a=1
+        INPUT n:(a+1)
+        `, { validation: false });
+        expectNoParserLexerErrors(bareExpression);
+        const bareExpressionElements = verifyOptionsElements(bareExpression, 0);
+        expect(bareExpressionElements).toHaveLength(1);
+        expect(isLastVerifyOption(bareExpressionElements[0])).toBeTruthy();
+        if (isLastVerifyOption(bareExpressionElements[0])) {
+            expect(isBinaryExpression(bareExpressionElements[0].min)).toBeTruthy();
+        }
+
+        const bareLen = await parse(`
+        INPUT x$:(LEN=1,5)
+        `, { validation: false });
+        expectNoParserLexerErrors(bareLen);
+        const bareLenElements = verifyOptionsElements(bareLen, 0);
+        expect(bareLenElements).toHaveLength(1);
+        expect(isLastVerifyOption(bareLenElements[0])).toBeTruthy();
+        if (isLastVerifyOption(bareLenElements[0])) {
+            expect(bareLenElements[0].min).toBeDefined();
+            expect(bareLenElements[0].max).toBeDefined();
+        }
+
+        const enterBareNumber = await parse(`
+        ENTER n:(4)
+        `, { validation: false });
+        expectNoParserLexerErrors(enterBareNumber);
+
+        const readWithBareOption = await parse(`
+        READ (1,ERR=9500) a:(100),b$
+        `, { validation: false });
+        expectNoParserLexerErrors(readWithBareOption);
+
+        const keyedFollowedByItem = await parse(`
+        INPUT x$:("end"=3000),y$
+        `, { validation: false });
+        expectNoParserLexerErrors(keyedFollowedByItem);
+
+        const bareFollowedByItem = await parse(`
+        INPUT n:(4),m
+        `, { validation: false });
+        expectNoParserLexerErrors(bareFollowedByItem);
+
+        const twoVerifyLists = await parse(`
+        INPUT x$:(LEN=1,5),n:(-10.5),z$
+        `, { validation: false });
+        expectNoParserLexerErrors(twoVerifyLists);
+        const secondListElements = verifyOptionsElements(twoVerifyLists, 1);
+        expect(secondListElements).toHaveLength(1);
+        expect(isLastVerifyOption(secondListElements[0])).toBeTruthy();
+        if (isLastVerifyOption(secondListElements[0])) {
+            expect(isPrefixExpression(secondListElements[0].min)).toBeTruthy();
+        }
+
+        const bareFollowedBySemicolon = await parse(`
+        INPUT n:(4);print n
+        `, { validation: false });
+        expectNoParserLexerErrors(bareFollowedBySemicolon);
+    });
+
+    test('INPUT verify list: string and hex keyed options still parse as keyed #667', async () => {
+        function verifyOptionsElements(document: LangiumDocument, index: number) {
+            const list = AstUtils.streamAst(document.parseResult.value).filter(isVerifyOptions).toArray();
+            return list[index].elements;
+        }
+
+        const stringKeyed = await parse(`
+        INPUT x$:("Y"=lbl)
+        lbl:
+            PRINT "ok"
+        `, { validation: true });
+        expectNoParserLexerErrors(stringKeyed);
+        expectNoValidationErrors(stringKeyed);
+        const stringKeyedElements = verifyOptionsElements(stringKeyed, 0);
+        expect(stringKeyedElements).toHaveLength(1);
+        expect(isVerifyOption(stringKeyedElements[0])).toBeTruthy();
+        if (isVerifyOption(stringKeyedElements[0])) {
+            expect(isStringLiteral(stringKeyedElements[0].key)).toBeTruthy();
+            expect(isUserLabelRef(stringKeyedElements[0].lineref)).toBeTruthy();
+        }
+
+        const hexKeyed = await parse(`
+        INPUT x$:($AAFF00$=lbl)
+        lbl:
+            PRINT "ok"
+        `, { validation: true });
+        expectNoParserLexerErrors(hexKeyed);
+        expectNoValidationErrors(hexKeyed);
+        const hexKeyedElements = verifyOptionsElements(hexKeyed, 0);
+        expect(hexKeyedElements).toHaveLength(1);
+        expect(isVerifyOption(hexKeyedElements[0])).toBeTruthy();
+        if (isVerifyOption(hexKeyedElements[0])) {
+            expect(isStringLiteral(hexKeyedElements[0].key)).toBeTruthy();
+            expect(isUserLabelRef(hexKeyedElements[0].lineref)).toBeTruthy();
+        }
+
+        const twoKeyed = await parse(`
+        INPUT n:("FRED"=2100,"MARY"=3000)
+        `, { validation: false });
+        expectNoParserLexerErrors(twoKeyed);
+        const twoKeyedElements = verifyOptionsElements(twoKeyed, 0);
+        expect(twoKeyedElements).toHaveLength(2);
+        expect(isVerifyOption(twoKeyedElements[0])).toBeTruthy();
+        expect(isVerifyOption(twoKeyedElements[1])).toBeTruthy();
+
+        const keyedThenBare = await parse(`
+        INPUT n:("Q"=3000,99.99)
+        `, { validation: false });
+        expectNoParserLexerErrors(keyedThenBare);
+        const keyedThenBareElements = verifyOptionsElements(keyedThenBare, 0);
+        expect(keyedThenBareElements).toHaveLength(2);
+        expect(isVerifyOption(keyedThenBareElements[0])).toBeTruthy();
+        expect(isLastVerifyOption(keyedThenBareElements[1])).toBeTruthy();
+    });
+
     test('GRAM-01: endif followed by ;rem comment (#318)', async () => {
         const result = await parse(`
             if 1 > 0 then
