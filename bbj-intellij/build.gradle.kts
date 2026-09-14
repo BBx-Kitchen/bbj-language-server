@@ -34,7 +34,6 @@ dependencies {
         plugin("com.redhat.devtools.lsp4ij:0.21.0")
         pluginVerifier()
         zipSigner()
-        instrumentationTools()
     }
 
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
