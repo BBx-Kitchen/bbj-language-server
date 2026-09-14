@@ -61,7 +61,8 @@ Hover over elements to see:
 ### Go to Definition
 
 - `F12` or `Ctrl+Click` to jump to definitions
-- Works for classes, methods, variables, and labels
+- Works for classes, methods, variables, labels, and the program file named in a `RUN` or `CALL` statement
+- Hovering that file name shows its resolved file-system path
 - Supports cross-file navigation
 
 ### Find All References

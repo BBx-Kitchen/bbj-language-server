@@ -10,12 +10,15 @@ import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
 import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
+import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
+import type { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
     protected javadocProvider = JavadocProvider.getInstance();
     protected readonly commentProvider: CommentProvider;
     protected readonly typeInferer: TypeInferer;
+    private readonly runCallContext: RunCallResolutionContext;
 
     // Track reference context for inherited field detection
     private referenceCstNode?: CstNode;
@@ -25,6 +28,11 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         this.documentationProvider = services.documentation.DocumentationProvider;
         this.commentProvider = services.documentation.CommentProvider;
         this.typeInferer = services.types.Inferer;
+        this.runCallContext = {
+            langiumDocuments: services.shared.workspace.LangiumDocuments,
+            fileSystemProvider: services.shared.workspace.FileSystemProvider,
+            workspaceManager: services.shared.workspace.WorkspaceManager as BBjWorkspaceManager
+        };
     }
 
     override async getHoverContent(document: LangiumDocument, params: HoverParams): Promise<Hover | undefined> {
@@ -46,6 +54,16 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
                 if (shape) {
                     return { contents: { kind: 'markdown', value: setoptsHoverMarkdown(shape) } };
                 }
+            }
+            // RUN/CALL file literal (#663): a string literal has no declaration, so
+            // `References.findDeclarations` never reaches `getAstNodeHoverContent` for it —
+            // this branch must live here, before the declaration-resolution path, not inside
+            // that hook. Not gated on typeResolutionWarningsEnabled or project context: hover
+            // is a navigation aid, not a diagnostic.
+            const runCallTarget = findRunCallTargetAtLeaf(cstNode);
+            if (runCallTarget) {
+                const resolvedUri = resolveRunCallPath(runCallTarget.path, document.uri, this.runCallContext);
+                return { contents: { kind: 'markdown', value: runCallHoverMarkdown(runCallTarget.path, resolvedUri) } };
             }
             // Store reference context for inherited field detection
             this.referenceCstNode = cstNode;

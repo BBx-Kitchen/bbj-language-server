@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.3
-milestone_name: Polish & Quality (Phases 84-92) — SHIPPED 2026-09-13
 status: Awaiting next milestone
 stopped_at: v4.3 milestone complete and archived
-last_updated: "2026-09-13T10:38:57.346Z"
-last_activity: 2026-09-13
+last_updated: "2026-09-14T15:00:00.825Z"
+last_activity: 2026-09-14
 last_activity_desc: Milestone v4.3 completed and archived
-state_head: 2ff1da2049ac97ff6decb5b886a266e59496229b
+state_head: 0a7731ee8f8250c1b0c95eee76bce385cea48673
 progress:
   total_phases: 9
   completed_phases: 9
   total_plans: 70
   completed_plans: 70
   percent: 100
+milestone_name: Polish & Quality (Phases 84-92) — SHIPPED 2026-09-13
 current_phase: 92
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 Phase: Milestone v4.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-14 - Completed quick task 260914-7tx: Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c))
+Last activity: 2026-09-14 - Completed quick task 260914-l1o: Fix #663: RUN/CALL file targets — hover shows resolved path, Ctrl/Cmd-Click opens the program
 
 ## Performance Metrics
 
@@ -451,6 +451,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 260914-7tx | Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c)) | 2026-09-14 | 082d02f8 | — | [260914-7tx-fix-667-input-verification-rules-accept-](./quick/260914-7tx-fix-667-input-verification-rules-accept-/) |
+| 2 | Gradle 9 migration: land #652 (wrapper 9.7.1) + #654 (IntelliJ Platform plugin 2.18.1) via PR #669 — 9.7.1 checksums, drop instrumentationTools() | 2026-09-14 | 890e1125 | — | — |
+| 260914-l1o | Fix #663: RUN/CALL file targets — hover shows resolved path, Ctrl/Cmd-Click opens the program (shared resolver with #173 warning) | 2026-09-14 | f695aec4 | — | [260914-l1o-fix-663-run-and-call-file-targets-hover-](./quick/260914-l1o-fix-663-run-and-call-file-targets-hover-/) |
 
 ---
 

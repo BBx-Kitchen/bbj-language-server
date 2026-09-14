@@ -74,6 +74,7 @@ Works for:
 - Methods
 - Variables
 - Labels
+- Program files named in `RUN` and `CALL` statements, with hover showing the resolved path
 
 Supports cross-file navigation.
 
