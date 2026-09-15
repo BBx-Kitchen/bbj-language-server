@@ -37,7 +37,7 @@ describe('Javadoc tests', () => {
             }
             await javadocProvider.loadJavadocFile('test', URI.parse('file:///test.json'));
             // Assert that logger.error was called (delegates to console.error)
-            expect(console.error).toHaveBeenCalledWith("[error] Failed to load javadoc file, package name 'wrong.package.name' does not match file name file:///test.json");
+            expect(console.error).toHaveBeenCalledWith("Failed to load javadoc file, package name 'wrong.package.name' does not match file name file:///test.json");
         } finally {
             vi.restoreAllMocks();
         }
@@ -53,7 +53,7 @@ describe('Javadoc tests', () => {
                 }
             }
             await javadocProvider.loadJavadocFile('test', URI.parse('file:///test.json'));
-            expect(console.error).toHaveBeenCalledWith("[error] Failed to load javadoc file, package name 'wrong.package.name' does not match file name file:///test.json");
+            expect(console.error).toHaveBeenCalledWith("Failed to load javadoc file, package name 'wrong.package.name' does not match file name file:///test.json");
         } finally {
             vi.restoreAllMocks();
         }

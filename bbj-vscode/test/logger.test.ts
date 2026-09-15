@@ -29,7 +29,7 @@ describe('Logger', () => {
       expect(logSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
+      expect(errorSpy).toHaveBeenCalledWith('error message');
     });
 
     test('at WARN level, warn() and error() produce output', () => {
@@ -47,9 +47,9 @@ describe('Logger', () => {
 
       expect(logSpy).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledOnce();
-      expect(warnSpy).toHaveBeenCalledWith('[warn] warn message');
+      expect(warnSpy).toHaveBeenCalledWith('warn message');
       expect(errorSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
+      expect(errorSpy).toHaveBeenCalledWith('error message');
     });
 
     test('at INFO level, info/warn/error produce output, debug silent', () => {
@@ -66,7 +66,7 @@ describe('Logger', () => {
       logger.error('error message');
 
       expect(logSpy).toHaveBeenCalledOnce();
-      expect(logSpy).toHaveBeenCalledWith('[info] info message');
+      expect(logSpy).toHaveBeenCalledWith('info message');
       expect(warnSpy).toHaveBeenCalledOnce();
       expect(errorSpy).toHaveBeenCalledOnce();
     });
@@ -198,7 +198,7 @@ describe('Logger', () => {
 
       logger.setLevel(LogLevel.DEBUG);
 
-      expect(logSpy).toHaveBeenCalledWith('[info] Log level changed to DEBUG');
+      expect(logSpy).toHaveBeenCalledWith('Log level changed to DEBUG');
     });
 
     test('setLevel announces a DEBUG to WARN downgrade', () => {
@@ -210,16 +210,9 @@ describe('Logger', () => {
       logger.setLevel(LogLevel.WARN);
 
       expect(logSpy).toHaveBeenCalledTimes(1);
-      expect(logSpy).toHaveBeenCalledWith('[info] Log level changed to WARN');
+      expect(logSpy).toHaveBeenCalledWith('Log level changed to WARN');
     });
 
-    test('setLevel routes its announcement through info()', () => {
-      const infoSpy = vi.spyOn(logger, 'info');
-
-      logger.setLevel(LogLevel.INFO);
-
-      expect(infoSpy).toHaveBeenCalledWith('Log level changed to INFO');
-    });
   });
 
   describe('isDebug', () => {
@@ -241,7 +234,7 @@ describe('Logger', () => {
   });
 
   describe('output format', () => {
-    test('all log levels use a level prefix without a server-side timestamp', () => {
+    test('only debug output adds a prefix because the client provides other levels', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -255,9 +248,9 @@ describe('Logger', () => {
       logger.error('error message');
 
       expect(logSpy).toHaveBeenNthCalledWith(1, '[debug] test message');
-      expect(logSpy).toHaveBeenNthCalledWith(2, '[info] info message');
-      expect(warnSpy).toHaveBeenCalledWith('[warn] warn message');
-      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
+      expect(logSpy).toHaveBeenNthCalledWith(2, 'info message');
+      expect(warnSpy).toHaveBeenCalledWith('warn message');
+      expect(errorSpy).toHaveBeenCalledWith('error message');
     });
 
     test('scoped debug keeps the component tag without a server-side timestamp', () => {
@@ -355,7 +348,7 @@ describe('Logger', () => {
       logger.setLevel(LogLevel.ERROR);
       const errorSpy = vi.spyOn(console, 'error');
       logger.error('critical failure');
-      expect(errorSpy).toHaveBeenCalledWith('[error] critical failure');
+      expect(errorSpy).toHaveBeenCalledWith('critical failure');
       errorSpy.mockRestore();
     });
 

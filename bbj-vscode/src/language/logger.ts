@@ -18,9 +18,9 @@ function evaluateMessage(message: LogMessage): string {
   return typeof message === 'function' ? message() : message;
 }
 
-function formatMessage(level: string, message: LogMessage, component?: string): string {
+function formatDebugMessage(message: LogMessage, component?: string): string {
   const scope = component ? ` [${component}]` : '';
-  return `[${level}]${scope} ${evaluateMessage(message)}`;
+  return `[debug]${scope} ${evaluateMessage(message)}`;
 }
 
 const logger = {
@@ -40,32 +40,32 @@ const logger = {
 
   debug(message: LogMessage): void {
     if (currentLevel >= LogLevel.DEBUG) {
-      console.log(formatMessage('debug', message));
+      console.log(formatDebugMessage(message));
     }
   },
 
   info(message: LogMessage): void {
     if (currentLevel >= LogLevel.INFO) {
-      console.log(formatMessage('info', message));
+      console.log(evaluateMessage(message));
     }
   },
 
   warn(message: LogMessage): void {
     if (currentLevel >= LogLevel.WARN) {
-      console.warn(formatMessage('warn', message));
+      console.warn(evaluateMessage(message));
     }
   },
 
   error(message: LogMessage): void {
     // Always emit, regardless of level
-    console.error(formatMessage('error', message));
+    console.error(evaluateMessage(message));
   },
 
   scoped(component: string) {
     return {
       debug(message: LogMessage): void {
         if (currentLevel >= LogLevel.DEBUG) {
-          console.log(formatMessage('debug', message, component));
+          console.log(formatDebugMessage(message, component));
         }
       }
     };
