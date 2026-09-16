@@ -18,11 +18,20 @@ function evaluateMessage(message: LogMessage): string {
   return typeof message === 'function' ? message() : message;
 }
 
+function formatDebugMessage(message: LogMessage, component?: string): string {
+  const scope = component ? ` [${component}]` : '';
+  return `[debug]${scope} ${evaluateMessage(message)}`;
+}
+
 const logger = {
   setLevel(level: LogLevel): void {
     if (level === currentLevel) return;
+    const announcement = `Log level changed to ${LogLevel[level]}`;
+    const announceBeforeChange = level < currentLevel && currentLevel >= LogLevel.INFO;
+
+    if (announceBeforeChange) logger.info(announcement);
     currentLevel = level;
-    console.log(`Log level changed to ${LogLevel[level]}`);
+    if (!announceBeforeChange) logger.info(announcement);
   },
 
   isDebug(): boolean {
@@ -31,8 +40,7 @@ const logger = {
 
   debug(message: LogMessage): void {
     if (currentLevel >= LogLevel.DEBUG) {
-      const msg = evaluateMessage(message);
-      console.log(`[${new Date().toISOString()}] ${msg}`);
+      console.log(formatDebugMessage(message));
     }
   },
 
@@ -57,8 +65,7 @@ const logger = {
     return {
       debug(message: LogMessage): void {
         if (currentLevel >= LogLevel.DEBUG) {
-          const msg = evaluateMessage(message);
-          console.log(`[${new Date().toISOString()}] [${component}] ${msg}`);
+          console.log(formatDebugMessage(message, component));
         }
       }
     };

@@ -200,6 +200,19 @@ describe('Logger', () => {
 
       expect(logSpy).toHaveBeenCalledWith('Log level changed to DEBUG');
     });
+
+    test('setLevel announces a DEBUG to WARN downgrade', () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      logger.setLevel(LogLevel.DEBUG);
+      vi.clearAllMocks();
+
+      logger.setLevel(LogLevel.WARN);
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(logSpy).toHaveBeenCalledWith('Log level changed to WARN');
+    });
+
   });
 
   describe('isDebug', () => {
@@ -221,21 +234,7 @@ describe('Logger', () => {
   });
 
   describe('output format', () => {
-    test('debug messages include ISO timestamp', () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      logger.setLevel(LogLevel.DEBUG);
-      vi.clearAllMocks();
-
-      logger.debug('test message');
-
-      expect(logSpy).toHaveBeenCalledOnce();
-      const output = logSpy.mock.calls[0][0];
-      // Check for ISO 8601 timestamp format: [YYYY-MM-DDTHH:MM:SS.sssZ]
-      expect(output).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] test message$/);
-    });
-
-    test('info/warn/error messages are plain text (no timestamp, no prefix)', () => {
+    test('only debug output adds a prefix because the client provides other levels', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -243,16 +242,18 @@ describe('Logger', () => {
       logger.setLevel(LogLevel.DEBUG);
       vi.clearAllMocks();
 
+      logger.debug('test message');
       logger.info('info message');
       logger.warn('warn message');
       logger.error('error message');
 
-      expect(logSpy).toHaveBeenCalledWith('info message');
+      expect(logSpy).toHaveBeenNthCalledWith(1, '[debug] test message');
+      expect(logSpy).toHaveBeenNthCalledWith(2, 'info message');
       expect(warnSpy).toHaveBeenCalledWith('warn message');
       expect(errorSpy).toHaveBeenCalledWith('error message');
     });
 
-    test('scoped debug includes both timestamp and component tag', () => {
+    test('scoped debug keeps the component tag without a server-side timestamp', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const scopedLogger = logger.scoped('test-component');
 
@@ -263,8 +264,7 @@ describe('Logger', () => {
 
       expect(logSpy).toHaveBeenCalledOnce();
       const output = logSpy.mock.calls[0][0];
-      // Check for format: [timestamp] [component] message
-      expect(output).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[test-component\] test message$/);
+      expect(output).toBe('[debug] [test-component] test message');
     });
   });
 
