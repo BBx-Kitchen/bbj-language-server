@@ -3,8 +3,6 @@ package com.basis.bbj.intellij.actions;
 import com.intellij.credentialStore.CredentialAttributes;
 import com.intellij.credentialStore.CredentialAttributesKt;
 import com.intellij.credentialStore.Credentials;
-import com.intellij.credentialStore.PasswordSafeSettings;
-import com.intellij.credentialStore.ProviderType;
 import com.intellij.ide.passwordSafe.PasswordSafe;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
@@ -12,7 +10,6 @@ import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -90,6 +87,12 @@ public final class BbjEMTokenStore {
      *
      * <p>{@link TokenBackend#NATIVE_KEYCHAIN} never reaches this method (the policy filters it out
      * before calling the notifier), so it is a no-op here rather than a fourth message.
+     *
+     * <p>The {@link TokenBackend#KEEPASS_FILE} branch is retained as part of the policy's
+     * vocabulary, but the classification that feeds this method can no longer produce it: the
+     * public API {@link #resolveBackend()} now reads cannot distinguish an OS keychain from a
+     * file-backed store, so a persisted token classifies as the keychain and this branch stays
+     * unreachable in production.
      */
     private static void showBackendBalloon(TokenBackend backend) {
         String body;
@@ -134,36 +137,22 @@ public final class BbjEMTokenStore {
     /**
      * Classify the credential store PasswordSafe resolved to for this IDE.
      *
-     * <p>This is the only method in the plugin that names the platform's password-settings API. That
-     * API is marked internal on the pinned platform, so a breaking change to it has to fail here and
-     * nowhere else -- a source guard keeps it that way. Everything this method cannot positively
-     * identify as the native keychain becomes {@link TokenBackend#UNKNOWN}, which is warn-worthy: a
-     * detection failure that quietly passed as "keychain" would defeat the point of the notice (#552).
+     * <p>Classification reads the platform's public memory-only flag. A token that is not held
+     * memory-only is persisted by whichever credential store the IDE is configured with, and the
+     * public API cannot distinguish an OS keychain from a file-backed store, so a persisted token
+     * classifies as the keychain and raises no notice. Anything that fails classifies {@link
+     * TokenBackend#UNKNOWN}, which is warn-worthy: a silent detection failure presented as the
+     * keychain would defeat the point of the notice (#552).
      *
      * @return the resolved backend, or {@link TokenBackend#UNKNOWN} on any failure
      */
     static TokenBackend resolveBackend() {
         try {
-            PasswordSafeSettings settings =
-                ApplicationManager.getApplication().getService(PasswordSafeSettings.class);
-            if (settings == null) {
+            PasswordSafe instance = PasswordSafe.getInstance();
+            if (instance == null) {
                 return TokenBackend.UNKNOWN;
             }
-            ProviderType provider = settings.getProviderType();
-            if (provider == null) {
-                return TokenBackend.UNKNOWN;
-            }
-            switch (provider) {
-                case KEYCHAIN:
-                    return TokenBackend.NATIVE_KEYCHAIN;
-                case KEEPASS:
-                    return TokenBackend.KEEPASS_FILE;
-                case MEMORY_ONLY:
-                case DO_NOT_STORE:
-                    return TokenBackend.MEMORY_ONLY;
-                default:
-                    return TokenBackend.UNKNOWN;
-            }
+            return instance.isMemoryOnly() ? TokenBackend.MEMORY_ONLY : TokenBackend.NATIVE_KEYCHAIN;
         } catch (Throwable t) {
             return TokenBackend.UNKNOWN;
         }

@@ -64,3 +64,15 @@ jobs:
       - name: Build IntelliJ plugin
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin
+
+      # Runs the same gate as the release workflow, at the same failureLevel, so a
+      # verifier problem fails the PR that introduces it instead of surfacing for the
+      # first time during a Manual Release (#669 raised the IntelliJ Platform Gradle
+      # Plugin to 2.18.1; 2.15.0 had widened the default failureLevel to include
+      # internal and override-only API usages, which nothing outside the release
+      # workflow ran).
+      - name: Verify plugin compatibility
+        working-directory: bbj-intellij
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew verifyPlugin

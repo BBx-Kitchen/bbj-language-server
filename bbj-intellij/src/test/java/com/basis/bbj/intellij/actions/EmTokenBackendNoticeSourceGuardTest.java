@@ -16,11 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Proves, as a source property, that the internal {@code PasswordSafeSettings}/{@code ProviderType}
- * API (#552) is touched in exactly one place in the whole plugin -- {@code
- * BbjEMTokenStore.resolveBackend()} -- and nowhere else. The behavioural rule (once per distinct
- * non-keychain backend) is proven by {@link BackendNoticePolicyTest}, which deliberately cannot see
- * the platform API at all; this guard is the isolation half research Pitfall 7 asks for.
+ * Proves, as a source property, that the platform's internal password-settings service and its
+ * provider enum (#552) are absent from the whole plugin, and that the public replacement API is
+ * confined to {@code BbjEMTokenStore.resolveBackend()} and nowhere else. The behavioural rule (once
+ * per distinct non-keychain backend) is proven by {@link BackendNoticePolicyTest}, which
+ * deliberately cannot see the platform API at all; this guard is the isolation half research
+ * Pitfall 7 asks for.
  */
 class EmTokenBackendNoticeSourceGuardTest {
 
@@ -77,38 +78,43 @@ class EmTokenBackendNoticeSourceGuardTest {
     }
 
     @Test
-    void passwordSafeSettingsAppearsInExactlyOneMainSourceFile() {
+    void theInternalPasswordSettingsServiceIsAbsentFromMainSources() {
         List<Path> hits = mainSourceFilesContaining("PasswordSafeSettings");
-        assertEquals(1, hits.size(),
-                "PasswordSafeSettings must be referenced in exactly one file under src/main/java "
+        assertTrue(hits.isEmpty(),
+                "PasswordSafeSettings must not appear anywhere under src/main/java, including in a "
+                        + "comment -- the plugin verifier fails the release on any internal-API usage "
                         + "-- found in: " + hits);
-        assertTrue(hits.get(0).toString().replace('\\', '/').endsWith("actions/BbjEMTokenStore.java"),
-                "the sole reference to PasswordSafeSettings must be in actions/BbjEMTokenStore.java, "
-                        + "found in: " + hits.get(0));
     }
 
     @Test
-    void providerTypeAppearsInExactlyOneMainSourceFile() {
+    void theInternalProviderEnumIsAbsentFromMainSources() {
         List<Path> hits = mainSourceFilesContaining("ProviderType");
+        assertTrue(hits.isEmpty(),
+                "ProviderType must not appear anywhere under src/main/java, including in a comment "
+                        + "-- the plugin verifier fails the release on any internal-API usage "
+                        + "-- found in: " + hits);
+    }
+
+    @Test
+    void theBackendClassificationCallAppearsInExactlyOneMainSourceFile() {
+        List<Path> hits = mainSourceFilesContaining("isMemoryOnly");
         assertEquals(1, hits.size(),
-                "ProviderType must be referenced in exactly one file under src/main/java "
+                "isMemoryOnly must be referenced in exactly one file under src/main/java "
                         + "-- found in: " + hits);
         assertTrue(hits.get(0).toString().replace('\\', '/').endsWith("actions/BbjEMTokenStore.java"),
-                "the sole reference to ProviderType must be in actions/BbjEMTokenStore.java, "
+                "the sole reference to isMemoryOnly must be in actions/BbjEMTokenStore.java, "
                         + "found in: " + hits.get(0));
     }
 
     @Test
-    void internalApiOccursOnlyAfterTheResolveBackendDeclaration() {
+    void theBackendClassificationCallOccursOnlyInsideResolveBackend() {
         String text = readGuardedSource(TOKEN_STORE);
         int lastImportEnd = lastImportLineEnd(text);
         int resolveBackendDeclaration = text.indexOf("static TokenBackend resolveBackend()");
         assertTrue(resolveBackendDeclaration >= 0,
                 "resolveBackend() declaration not found in " + TOKEN_STORE);
 
-        assertAll("PasswordSafeSettings/ProviderType occur only inside resolveBackend()",
-                () -> assertNoOccurrenceBetween(text, "PasswordSafeSettings", lastImportEnd, resolveBackendDeclaration),
-                () -> assertNoOccurrenceBetween(text, "ProviderType", lastImportEnd, resolveBackendDeclaration));
+        assertNoOccurrenceBetween(text, "isMemoryOnly", lastImportEnd, resolveBackendDeclaration);
     }
 
     private static void assertNoOccurrenceBetween(String text, String literal, int from, int declarationIndex) {
@@ -187,8 +193,9 @@ class EmTokenBackendNoticeSourceGuardTest {
                 () -> assertTrue(countOccurrences(text, "resolveBackend") >= 3,
                         "resolveBackend must appear at least three times: the declaration plus the two "
                                 + "call sites in storeToken and getToken"),
-                () -> assertEquals(1, countOccurrences(text, "getProviderType()"),
-                        "getProviderType() must be read exactly once, inside resolveBackend()"));
+                () -> assertEquals(0, countOccurrences(text, "getProviderType()"),
+                        "getProviderType() is the platform's internal provider reader and must be "
+                                + "gone from the plugin's sources, and must stay gone"));
     }
 
     /**
