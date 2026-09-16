@@ -1,7 +1,8 @@
 ---
 id: SEED-002
-status: dormant
+status: agreed
 planted: 2026-09-16
+agreed: 2026-09-16
 planted_during: v4.3 (complete) / quick task 260916-9jy
 trigger_when: next time the release or preview workflows are touched, or right after the 0.16.0 release
 scope: small
@@ -75,6 +76,15 @@ restructure in two files; Part B is a cache step in three.
 - [[SEED-001]] — the internal-API fix for the same incident, implemented in quick task `260916-9jy`
 
 ## Notes
+
+**Agreed 2026-09-16.** Both parts are approved in principle and are to be scheduled as their own
+task — they were deliberately kept out of quick task `260916-9jy`, which folded in only the
+immediate mitigation (`verifyPlugin` in PR validation and preview).
+
+The version asymmetry left behind by the failed v0.15.0 release is explicitly **not** a concern to
+chase: the IntelliJ plugin simply picks up whatever version ships next, and no attempt should be
+made to reconcile 0.15.0 across the two marketplaces. Part A's value is preventing *future*
+half-published releases, not repairing that one.
 
 Deliberately not filed as a GitHub issue, consistent with the decision on [[SEED-001]]: internal
 detail, tracked here.
