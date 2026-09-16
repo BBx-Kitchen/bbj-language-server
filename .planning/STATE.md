@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 Phase: Milestone v4.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-14 - Completed quick task 260914-l1o: Fix #663: RUN/CALL file targets — hover shows resolved path, Ctrl/Cmd-Click opens the program
+Last activity: 2026-09-16 - Completed quick task 260916-7vf: Fix #671 stale OutputChannel and #672 spurious config-reload restarts
 
 ## Performance Metrics
 
@@ -453,6 +453,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 | 260914-7tx | Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c)) | 2026-09-14 | 082d02f8 | — | [260914-7tx-fix-667-input-verification-rules-accept-](./quick/260914-7tx-fix-667-input-verification-rules-accept-/) |
 | 2 | Gradle 9 migration: land #652 (wrapper 9.7.1) + #654 (IntelliJ Platform plugin 2.18.1) via PR #669 — 9.7.1 checksums, drop instrumentationTools() | 2026-09-14 | 890e1125 | — | — |
 | 260914-l1o | Fix #663: RUN/CALL file targets — hover shows resolved path, Ctrl/Cmd-Click opens the program (shared resolver with #173 warning) | 2026-09-14 | f695aec4 | — | [260914-l1o-fix-663-run-and-call-file-targets-hover-](./quick/260914-l1o-fix-663-run-and-call-file-targets-hover-/) |
+| 260916-7vf | Fix #671 ("Channel has been closed" — extension now owns the output channel so a restart cannot dispose it) + #672 (a transient unreadable config.bbx no longer restarts the language server) | 2026-09-16 | 3e5ecaa5 | — | [260916-7vf-fix-671-stale-outputchannel-and-672-spur](./quick/260916-7vf-fix-671-stale-outputchannel-and-672-spur/) |
 
 ---
 
