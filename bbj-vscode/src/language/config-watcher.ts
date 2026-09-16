@@ -52,6 +52,37 @@ export interface WatchHandle {
     close(): void;
 }
 
+/**
+ * The three outcomes reading the config file can have (#672). `absent` and `unreadable` are
+ * deliberately distinct, even though both mean "no content was read": `absent` (ENOENT/
+ * ENOTDIR) is a user action worth a reload — the file was genuinely deleted or its directory
+ * disappeared — while `unreadable` (a file lock, an antivirus scan, a permissions hiccup, a
+ * redirected-folder sync flap) is a transient condition that must change nothing: no snapshot
+ * move, no notification. Collapsing the two, as the legacy `string | null` `readFile` contract
+ * did, is exactly what caused a transient read failure to be misclassified as a deleted PREFIX
+ * line.
+ */
+export type ConfigReadResult =
+    | { kind: 'content'; contents: string }
+    | { kind: 'absent' }
+    | { kind: 'unreadable'; error: unknown };
+
+/**
+ * True only for the two error codes that mean the file (or its containing directory) is
+ * genuinely gone: `ENOENT` and `ENOTDIR`. Every other outcome — including an error with no
+ * `code` at all, or a thrown value that isn't even an `Error` — is classified `unreadable`
+ * rather than `absent`. This default-deny direction is deliberate: an errno this function has
+ * never heard of should err toward doing nothing (unreadable) rather than toward a spurious
+ * restart (absent).
+ */
+export function isAbsentReadError(err: unknown): boolean {
+    if (typeof err !== 'object' || err === null || !('code' in err)) {
+        return false;
+    }
+    const code = (err as NodeJS.ErrnoException).code;
+    return code === 'ENOENT' || code === 'ENOTDIR';
+}
+
 /** Injectable effects, defaulting to real Node/process behavior. */
 export interface ConfigWatcherDeps {
     /** Opens a non-recursive watch on `dir`. Defaults to `fs.watch(dir, { persistent: false }, ...)`. */
@@ -60,7 +91,20 @@ export interface ConfigWatcherDeps {
         onEvent: (eventType: string, filename: string | null) => void,
         onError: (err: unknown) => void
     ): WatchHandle;
-    /** Reads a file's contents, or `null` for a missing/unreadable file. Never throws. */
+    /**
+     * Reads the config file, classified into content / absent / unreadable (#672). Takes
+     * precedence over `readFile` below when both are supplied. Defaults to a reader built on
+     * `isAbsentReadError` — `main.ts` injects neither reader, so that default IS the
+     * production path.
+     */
+    readConfigFile?(path: string): ConfigReadResult;
+    /**
+     * The legacy reader: a file's contents, or `null` for ANY read failure — a missing file
+     * and an unreadable one are indistinguishable. Several already-committed tests
+     * (config-hot-reload.test.ts, config-hot-reload-wiring.test.ts) depend on exactly that
+     * meaning, so this dep's contract is kept as-is rather than repurposed; a caller that
+     * wants the finer three-way classification injects `readConfigFile` instead.
+     */
     readFile?(path: string): string | null;
     setTimer?(fn: () => void, ms: number): unknown;
     clearTimer?(handle: unknown): void;
@@ -88,12 +132,21 @@ function defaultWatchDirectory(
     return { close: () => watcher.close() };
 }
 
-function defaultReadFile(p: string): string | null {
+/** The production reader (#672): `main.ts` injects neither `readConfigFile` nor `readFile`. */
+function defaultReadConfigFile(p: string): ConfigReadResult {
     try {
-        return fs.readFileSync(p, 'utf-8');
-    } catch {
-        return null;
+        return { kind: 'content', contents: fs.readFileSync(p, 'utf-8') };
+    } catch (err) {
+        return isAbsentReadError(err) ? { kind: 'absent' } : { kind: 'unreadable', error: err };
     }
+}
+
+/** Adapts the legacy `string | null` dep, where `null` has always meant absent. */
+function adaptLegacyReadFile(legacyReadFile: NonNullable<ConfigWatcherDeps['readFile']>): (p: string) => ConfigReadResult {
+    return (p: string) => {
+        const contents = legacyReadFile(p);
+        return contents === null ? { kind: 'absent' } : { kind: 'content', contents };
+    };
 }
 
 /** The watcher's public surface. */
@@ -117,7 +170,11 @@ export interface ConfigWatcher {
  */
 export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher {
     const watchDirectory = deps.watchDirectory ?? defaultWatchDirectory;
-    const readFile = deps.readFile ?? defaultReadFile;
+    // Precedence (#672): an injected `readConfigFile` wins; otherwise an injected legacy
+    // `readFile` is adapted (null becomes absent, a string becomes content); otherwise the
+    // new default classifying reader.
+    const readConfigFile: (p: string) => ConfigReadResult =
+        deps.readConfigFile ?? (deps.readFile ? adaptLegacyReadFile(deps.readFile) : defaultReadConfigFile);
     const setTimer = deps.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
     const clearTimer = deps.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     const notify = deps.notify ?? notifyConfigReloadRequired;
@@ -255,7 +312,15 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
             if (!canonicalPath) {
                 return;
             }
-            const contents = readFile(canonicalPath);
+            const result = readConfigFile(canonicalPath);
+            if (result.kind === 'unreadable') {
+                // A transient read failure is not a deleted PREFIX line (#672): return before
+                // the snapshot moves and before any notification, so the identical bytes
+                // returning readable later produce no notification either.
+                warnOnce(`unreadable:${canonicalPath}`, `Config file ${canonicalPath} could not be read, leaving it unchanged for now: ${result.error}`);
+                return;
+            }
+            const contents = result.kind === 'content' ? result.contents : null;
             const next = consumedConfigSnapshot(contents);
             if (next === snapshot) {
                 return;
@@ -318,7 +383,14 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
                 // A settings change is a discrete user action, not a file-event burst — run
                 // the relevance gate immediately, no debounce.
                 try {
-                    const contents = readFile(resolved.path);
+                    const result = readConfigFile(resolved.path);
+                    if (result.kind === 'unreadable') {
+                        // Same rule as evaluate() (#672): the watch has already been re-armed
+                        // on the new directory above, so a later event re-evaluates naturally.
+                        warnOnce(`unreadable:${resolved.path}`, `Config file ${resolved.path} could not be read, leaving it unchanged for now: ${result.error}`);
+                        return;
+                    }
+                    const contents = result.kind === 'content' ? result.contents : null;
                     const next = consumedConfigSnapshot(contents);
                     if (next !== snapshot) {
                         snapshot = next;

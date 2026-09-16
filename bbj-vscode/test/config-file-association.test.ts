@@ -23,7 +23,7 @@ vi.mock('vscode', () => {
             showTextDocument: vi.fn(),
             createQuickPick: vi.fn(),
             createStatusBarItem: vi.fn(() => ({ text: '', tooltip: '', show: vi.fn(), hide: vi.fn(), dispose: vi.fn() })),
-            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn() })),
+            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn(), dispose: vi.fn() })),
             tabGroups: { all: [], onDidChangeTabs: vi.fn(() => disposable()) },
             onDidChangeActiveTextEditor: vi.fn(() => disposable()),
             activeTextEditor: undefined,
