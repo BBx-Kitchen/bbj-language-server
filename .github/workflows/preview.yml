@@ -98,6 +98,17 @@ jobs:
         with:
           min-wrapper-count: 1
 
+      # Verified at the version that is about to be published, with the same
+      # failureLevel as the release workflow, so a preview build cannot ship an
+      # artifact to the opt-in channel that the release gate would reject.
+      - name: Verify plugin compatibility
+        working-directory: bbj-intellij
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          ./gradlew verifyPlugin
+          -Pversion=${{ needs.publish-preview.outputs.version }}
+
       - name: Publish IntelliJ preview to JetBrains Marketplace
         working-directory: bbj-intellij
         env:
