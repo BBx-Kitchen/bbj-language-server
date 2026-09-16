@@ -169,6 +169,8 @@ const clientStopMock = vi.fn(() => Promise.resolve());
 const clientNeedsStopMock = vi.fn(() => true);
 const clientOnNotificationMock = vi.fn();
 const clientAppendLineMock = vi.fn();
+/** appendLine on the extension-owned channel (#671) — the reload handler must write here. */
+const channelAppendLineMock = vi.fn();
 
 vi.mock('vscode', () => {
     const disposable = () => ({ dispose: vi.fn() });
@@ -182,7 +184,7 @@ vi.mock('vscode', () => {
             showTextDocument: vi.fn(),
             createQuickPick: vi.fn(),
             createStatusBarItem: vi.fn(() => ({ text: '', tooltip: '', show: vi.fn(), hide: vi.fn(), dispose: vi.fn() })),
-            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn() })),
+            createOutputChannel: vi.fn(() => ({ appendLine: channelAppendLineMock, dispose: vi.fn() })),
             tabGroups: { all: [], onDidChangeTabs: vi.fn(() => disposable()) },
             onDidChangeActiveTextEditor: vi.fn(() => disposable()),
             activeTextEditor: undefined,
@@ -360,6 +362,7 @@ describe('config-reload status bar: the non-blocking signal and failure path', (
         clientNeedsStopMock.mockImplementation(() => true);
         clientOnNotificationMock.mockClear();
         clientAppendLineMock.mockClear();
+        channelAppendLineMock.mockClear();
         (vscode.window.createStatusBarItem as ReturnType<typeof vi.fn>).mockClear();
         (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mockClear();
         (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockClear();
@@ -448,11 +451,15 @@ describe('config-reload status bar: the non-blocking signal and failure path', (
         activateForTest();
         const handler = capturedHandler(CONFIG_RELOAD_METHOD);
         clientAppendLineMock.mockClear();
+        channelAppendLineMock.mockClear();
 
         handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
 
-        expect(clientAppendLineMock).toHaveBeenCalledTimes(1);
-        const line = clientAppendLineMock.mock.calls[0][0] as string;
+        // The handler writes to the extension-owned channel (#671), never to the
+        // language client's own channel getter.
+        expect(channelAppendLineMock).toHaveBeenCalledTimes(1);
+        expect(clientAppendLineMock).not.toHaveBeenCalled();
+        const line = channelAppendLineMock.mock.calls[0][0] as string;
         expect(line).toContain('/srv/config.bbx');
         expect(line).toContain('prefix-changed');
     });

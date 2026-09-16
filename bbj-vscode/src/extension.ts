@@ -42,13 +42,27 @@ import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
 let secretStorage: vscode.SecretStorage;
-let outputChannel: vscode.OutputChannel;
+let outputChannel: vscode.LogOutputChannel;
 let restartGate: RestartGate | undefined;
 let configReloadStatusBar: vscode.StatusBarItem;
 let configReloadAutoHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** How long the "config reloaded" confirmation stays visible before auto-hiding (#486). */
 const CONFIG_RELOAD_CONFIRMATION_HIDE_MS = 5000;
+
+/**
+ * A defensive write to the extension-owned output channel (#671): a write that throws must
+ * never abort its caller, since the config-reload handler's write sits immediately before
+ * restartGate?.request(...), and that request must always be reached even if a future write
+ * fails for some other reason.
+ */
+function appendOutputLine(message: string): void {
+    try {
+        outputChannel.appendLine(message);
+    } catch {
+        // Swallow — a broken write is not a reason to skip the restart request that follows.
+    }
+}
 
 /**
  * The reload's only user-facing signal (#486): a status-bar item that spins while the
@@ -686,8 +700,19 @@ export function activate(context: vscode.ExtensionContext): void {
     registerSetOptsComposer(context); // visual SETOPTS composer for config.bbx (#474)
     registerSetOptsInCodeComposer(context, (method, params) => client.sendRequest(method, params)); // in-code SETOPTS composer (#475, DISC-06)
     secretStorage = context.secrets;
-    client = startLanguageClient(context);
-    outputChannel = client.outputChannel;
+
+    // The extension owns this channel end-to-end (#671): creating it here — before the
+    // language client exists — and passing it into clientOptions.outputChannel below makes
+    // vscode-languageclient treat it as caller-owned, so client.stop() (the config-reload
+    // restart path) never disposes it out from under Commands.cjs. VS Code disposes it
+    // exactly once, through context.subscriptions.
+    // `{ log: true }` is required, not cosmetic: vscode-languageclient reads `.logLevel`
+    // immediately and later calls `.trace(...)` / `.onDidChangeLogLevel(...)` on whatever
+    // channel `clientOptions.outputChannel` supplies, which a plain OutputChannel lacks.
+    outputChannel = vscode.window.createOutputChannel('BBj', { log: true });
+    context.subscriptions.push(outputChannel);
+
+    client = startLanguageClient(context, outputChannel);
 
     // The choke point every VS Code restart must go through (#486): reuses this exact
     // client instance (stop then start) so its already-registered notification handlers
@@ -963,7 +988,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // relevance itself, it only logs and hands the request to the choke point above.
     context.subscriptions.push(
         client.onNotification(CONFIG_RELOAD_METHOD, (params: ConfigReloadNotification) => {
-            outputChannel.appendLine(
+            appendOutputLine(
                 `BBj config changed (${params.reason}): ${params.path ?? '(no path)'} — reloading language server.`
             );
             restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
@@ -1030,7 +1055,7 @@ export function deactivate(): Thenable<void> | undefined {
     return undefined;
 }
 
-function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
+function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vscode.LogOutputChannel): LanguageClient {
     const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
     // The debug options for the server
     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging.
@@ -1052,6 +1077,11 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
+        // Supplying our own channel here makes vscode-languageclient treat it as
+        // caller-owned (#671): its `_disposeOutputChannel` stays false, so `client.stop()` —
+        // the config-reload restart path — never disposes it and a restart can never leave
+        // a dead channel object behind.
+        outputChannel,
         // A config document reaches the server only for its composer cue (#650) — it is never
         // parsed, linked, indexed, validated or diagnosed as BBj source; `BBjDocumentBuilder`'s
         // own filter drops it before Langium's build.

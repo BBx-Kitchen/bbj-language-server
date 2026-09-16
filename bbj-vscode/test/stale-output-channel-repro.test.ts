@@ -1,35 +1,29 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
- * Reproduction for the "Channel has been closed" report (BBj 26.02 / VS Code 1.137):
- * the first Run As BBj Program works, every later run fails with that message, and only
- * restarting VS Code clears it.
+ * Coverage for the "Channel has been closed" fix (BBj 26.02 / VS Code 1.137): the first
+ * Run As BBj Program used to work while every later run failed with that message, and only
+ * restarting VS Code cleared it.
  *
  * "Channel has been closed" is a VS Code string, not a BBj one: it is thrown by
  * `src/vs/workbench/api/common/extHostOutput.ts` when an extension writes to an
  * OutputChannel that has already been disposed.
  *
- * The chain this file reproduces:
- *   1. `extension.ts` captures `client.outputChannel` once at activation and hands that
- *      same object to `Commands.setOutputChannel(...)`.
- *   2. Our `clientOptions` pass no `outputChannel`, so vscode-languageclient owns it
- *      (`_disposeOutputChannel = true`) and `stop()` disposes it via `cleanUpChannel()`.
- *   3. The config-reload restart gate calls `stop()` then `start()`, so the captured
- *      object is dead while `client.outputChannel` lazily creates a fresh one.
- *   4. Nothing ever re-hands the replacement over, so every later write throws.
+ * The fix is ownership (#671):
+ *   1. `activate()` creates the channel itself via `vscode.window.createOutputChannel(...)`
+ *      and hands that same object to `Commands.setOutputChannel(...)`.
+ *   2. That channel is also passed as `clientOptions.outputChannel`, so
+ *      vscode-languageclient treats it as caller-owned (`_disposeOutputChannel = false`)
+ *      and never disposes it through `cleanUpChannel()` when `stop()` runs.
+ *   3. The config-reload restart gate still calls `stop()` then `start()`, but the same
+ *      channel object survives every restart because nothing ever disposed it.
+ *   4. `activate()` pushes the channel onto `context.subscriptions`, so VS Code disposes it
+ *      exactly once when the extension itself deactivates.
  *
- * Note this is the ONLY disposal path: a server crash takes `cleanUp(ShutdownMode.Stop |
- * Restart)` (client.js:1464-1481), which never calls `cleanUpChannel()`. An explicit
- * `client.stop()` is required, and in this extension only the config-reload restart gate
- * issues one.
- *
- * These tests assert the CURRENT, BROKEN behaviour so the defect is pinned down. When the
- * fix lands, the `isDisposed` / call-count expectations below are the ones to invert.
- *
- * The existing suite could not catch this: `Commands.cjs` is CommonJS and cannot be loaded
- * under Vitest (see no-shell-command-construction.test.ts), so every test mocks it
- * wholesale, and the other reload tests give the mocked client an OutputChannel that never
- * disposes and a `stop()` that does nothing.
+ * The existing suite could not catch the original defect: `Commands.cjs` is CommonJS and
+ * cannot be loaded under Vitest (see no-shell-command-construction.test.ts), so every test
+ * mocks it wholesale, and the other reload tests give the mocked client an OutputChannel
+ * that never disposes and a `stop()` that does nothing.
  */
 
 interface FakeChannel {
@@ -68,6 +62,9 @@ const h = vi.hoisted(() => {
 
     return {
         createHostOutputChannel,
+        /** Every channel `vscode.window.createOutputChannel` handed out — the extension-owned ones. */
+        hostChannels: [] as ReturnType<typeof createHostOutputChannel>[],
+        /** Channels the fake LanguageClient created itself via its lazy getter — must stay empty. */
         createdChannels: [] as ReturnType<typeof createHostOutputChannel>[],
         clientStartMock: vi.fn(() => Promise.resolve()),
         clientStopMock: vi.fn(),
@@ -88,7 +85,11 @@ vi.mock('vscode', () => {
             showTextDocument: vi.fn(),
             createQuickPick: vi.fn(),
             createStatusBarItem: vi.fn(() => ({ text: '', tooltip: '', show: vi.fn(), hide: vi.fn(), dispose: vi.fn() })),
-            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn() })),
+            createOutputChannel: vi.fn((name: string) => {
+                const channel = h.createHostOutputChannel(name);
+                h.hostChannels.push(channel);
+                return channel;
+            }),
             tabGroups: { all: [], onDidChangeTabs: vi.fn(() => disposable()) },
             onDidChangeActiveTextEditor: vi.fn(() => disposable()),
             activeTextEditor: undefined,
@@ -127,33 +128,46 @@ vi.mock('vscode', () => {
 });
 
 /**
- * Models the real vscode-languageclient contract this bug depends on:
- * - the `outputChannel` getter lazily creates a channel when it has none (client.js:531-538)
- * - `stop()` disposes and clears it, because we pass no `outputChannel` in clientOptions
- *   so `_disposeOutputChannel` is true (client.js:461-462, 1262, 1299-1303)
+ * Models the real vscode-languageclient contract the fix depends on:
+ * - when `clientOptions.outputChannel` is supplied, that exact object is returned by the
+ *   `outputChannel` getter and `stop()` must never dispose it (client.js:461-462, 1262,
+ *   1299-1303: `_disposeOutputChannel` is false whenever the caller supplied a channel)
+ * - only when no channel was supplied does the getter lazily create one, and only that
+ *   self-created channel is disposed on `stop()`
  */
 vi.mock('vscode-languageclient/node', () => {
     class LanguageClient {
-        private _channel: ReturnType<typeof h.createHostOutputChannel> | undefined;
+        private readonly suppliedChannel: ReturnType<typeof h.createHostOutputChannel> | undefined;
+        private selfCreatedChannel: ReturnType<typeof h.createHostOutputChannel> | undefined;
+        constructor(
+            _id: string,
+            _name: string,
+            _serverOptions: unknown,
+            clientOptions: { outputChannel?: ReturnType<typeof h.createHostOutputChannel> },
+        ) {
+            this.suppliedChannel = clientOptions?.outputChannel;
+        }
         get outputChannel() {
-            if (!this._channel) {
-                this._channel = h.createHostOutputChannel('BBj');
-                h.createdChannels.push(this._channel);
+            if (this.suppliedChannel) {
+                return this.suppliedChannel;
             }
-            return this._channel;
+            if (!this.selfCreatedChannel) {
+                this.selfCreatedChannel = h.createHostOutputChannel('BBj');
+                h.createdChannels.push(this.selfCreatedChannel);
+            }
+            return this.selfCreatedChannel;
         }
         start = h.clientStartMock;
         needsStop = () => true;
         onNotification = h.clientOnNotificationMock;
         stop = () => {
             h.clientStopMock();
-            if (this._channel) {
-                this._channel.dispose();
-                this._channel = undefined;
+            if (!this.suppliedChannel && this.selfCreatedChannel) {
+                this.selfCreatedChannel.dispose();
+                this.selfCreatedChannel = undefined;
             }
             return Promise.resolve();
         };
-        constructor() { }
     }
     return { LanguageClient, TransportKind: { ipc: 1 } };
 });
@@ -185,7 +199,7 @@ import { activate } from '../src/extension.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from '../src/language/config-reload-notification.js';
 import { CONFIG_RELOAD_RESTART_DELAY_MS } from '../src/restart-gate.js';
 
-function activateForTest(): void {
+function activateForTest(): Parameters<typeof activate>[0] {
     const context = {
         subscriptions: [],
         secrets: {},
@@ -193,6 +207,7 @@ function activateForTest(): void {
         extension: { packageJSON: { version: '0.0.0-test' } },
     } as unknown as Parameters<typeof activate>[0];
     activate(context);
+    return context;
 }
 
 function capturedHandler(method: string): (params: ConfigReloadNotification) => void {
@@ -205,9 +220,10 @@ function capturedHandler(method: string): (params: ConfigReloadNotification) => 
 
 const RELOAD: ConfigReloadNotification = { path: '/opt/bbx/cfg/config.bbx', reason: 'prefix-changed' };
 
-describe('stale OutputChannel after a config-reload restart', () => {
+describe('the BBj output channel survives a config-reload restart (#671)', () => {
     beforeEach(() => {
         vi.useFakeTimers();
+        h.hostChannels.length = 0;
         h.createdChannels.length = 0;
         h.clientStartMock.mockClear();
         h.clientStopMock.mockClear();
@@ -218,28 +234,33 @@ describe('stale OutputChannel after a config-reload restart', () => {
         vi.useRealTimers();
     });
 
-    test('the restart disposes the very channel Commands holds, and the replacement is never handed over', async () => {
+    test('a restart never disposes the channel Commands holds, and the client never falls back to its own channel', async () => {
         activateForTest();
 
         expect(h.setOutputChannelMock).toHaveBeenCalledTimes(1);
         const handedToCommands = h.setOutputChannelMock.mock.calls[0][0] as FakeChannel;
         expect(handedToCommands.isDisposed).toBe(false);
+        // The object handed to Commands is the one vscode.window.createOutputChannel returned.
+        expect(h.hostChannels).toHaveLength(1);
+        expect(handedToCommands).toBe(h.hostChannels[0]);
 
         capturedHandler(CONFIG_RELOAD_METHOD)(RELOAD);
         await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
 
         expect(h.clientStopMock).toHaveBeenCalledTimes(1);
-        // client.stop() disposed it, and Commands.cjs still holds this exact object.
-        expect(handedToCommands.isDisposed).toBe(true);
+        // client.stop() must leave the extension-owned channel alone.
+        expect(handedToCommands.isDisposed).toBe(false);
         expect(h.setOutputChannelMock).toHaveBeenCalledTimes(1);
+        // The language client's own lazy channel getter must never have been used.
+        expect(h.createdChannels).toHaveLength(0);
 
         // This is the write Commands.run performs at Commands.cjs:323-324 before it
-        // launches BBj — so BBj is never launched and the user sees only this message.
+        // launches BBj — it must not throw after a restart.
         expect(() => handedToCommands.appendLine('GUI run: "/opt/bbx/bin/bbj" "-q"'))
-            .toThrowError('Channel has been closed');
+            .not.toThrow();
     });
 
-    test('the second reload throws inside the handler, so no further restart is ever requested', async () => {
+    test('a second reload does not throw out of the handler and produces a second restart', async () => {
         activateForTest();
         const handler = capturedHandler(CONFIG_RELOAD_METHOD);
 
@@ -247,11 +268,21 @@ describe('stale OutputChannel after a config-reload restart', () => {
         await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
         expect(h.clientStopMock).toHaveBeenCalledTimes(1);
 
-        // extension.ts:966 writes to the captured channel unguarded — no bbj.debug needed —
-        // and it sits *before* the restartGate.request(...) call on line 969.
-        expect(() => handler(RELOAD)).toThrowError('Channel has been closed');
+        expect(() => handler(RELOAD)).not.toThrow();
 
         await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
-        expect(h.clientStopMock).toHaveBeenCalledTimes(1);
+        expect(h.clientStopMock).toHaveBeenCalledTimes(2);
+    });
+
+    test('the channel is pushed onto context.subscriptions, so disposing activation disposes it exactly once', () => {
+        const context = activateForTest();
+        const handedToCommands = h.setOutputChannelMock.mock.calls[0][0] as FakeChannel;
+
+        expect(context.subscriptions).toContain(handedToCommands);
+
+        for (const sub of context.subscriptions as Array<{ dispose(): void } | undefined>) {
+            sub?.dispose();
+        }
+        expect(handedToCommands.isDisposed).toBe(true);
     });
 });
