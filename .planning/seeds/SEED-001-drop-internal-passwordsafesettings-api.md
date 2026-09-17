@@ -1,7 +1,9 @@
 ---
 id: SEED-001
-status: dormant
+status: implemented
 planted: 2026-09-16
+implemented: 2026-09-16
+implemented_by: quick task 260916-9jy (commit 1c80dfb1)
 planted_during: v4.3 (complete) / phase 92
 trigger_when: now — blocks the next Manual Release
 scope: small

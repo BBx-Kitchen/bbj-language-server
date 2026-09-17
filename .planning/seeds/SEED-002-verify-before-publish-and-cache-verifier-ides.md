@@ -1,8 +1,10 @@
 ---
 id: SEED-002
-status: agreed
+status: implemented
 planted: 2026-09-16
 agreed: 2026-09-16
+implemented: 2026-09-17
+implemented_by: quick task 260917-9ei (commit fa2c80bf)
 planted_during: v4.3 (complete) / quick task 260916-9jy
 trigger_when: next time the release or preview workflows are touched, or right after the 0.16.0 release
 scope: small
@@ -39,6 +41,25 @@ two artefacts out of step.
 `needs:`, with no publish, tag, or push happening before it is green.
 
 ### Part B — cache the plugin-verifier IDEs
+
+> **Correction (2026-09-17, established by measurement during `260917-9ei`).** The premise below is
+> wrong, and the numbers in it should not be reused. `Total amount of plugins and dependencies
+> downloaded: 210.18 MB` is printed by the Plugin Verifier and counts its own **plugin and
+> dependency** downloads, which land in `~/.pluginVerifier/loaded-plugins` (measured: 211 MB). It is
+> not the IDEs. The IDEs are resolved by **Gradle** into `~/.gradle/caches` and measure **4.9 GB
+> compressed** (841 MB – 1.21 GB per tarball) and **2.6 – 3.4 GB extracted each, ~14.6 GB total**,
+> against a **10 GB per-repository** GitHub Actions cache limit.
+>
+> Part B was therefore re-scoped and the re-scope was ratified by the user before implementation:
+> the verifier's plugin/dependency downloads **are** cached in all three `verifyPlugin` jobs; the IDE
+> distributions are deliberately **not** cached, because the tarballs alone would consume half the
+> repository's cache budget and evict everything else. `intellijPlatformIdesCacheEnabled=true` would
+> relocate the *extracted* ~14.6 GB and is strictly worse. The measurements are recorded in a comment
+> above each cache step so the rejected idea is not retried. Caching the IDEs, if ever wanted, needs a
+> different mechanism (a larger or self-hosted runner cache), not an `actions/cache` step.
+>
+> Consequence worth knowing: since the ~3 minutes was most likely dominated by the IDE fetch, the
+> implemented cache recovers a smaller slice of that time than this section originally assumed.
 
 `verifyPlugin` downloads the IDEs named by `pluginVerification { ides { recommended() } }`
 (`bbj-intellij/build.gradle.kts:86`). In run 35064112482 that was **210.18 MB across four IDEs**
@@ -88,3 +109,27 @@ half-published releases, not repairing that one.
 
 Deliberately not filed as a GitHub issue, consistent with the decision on [[SEED-001]]: internal
 detail, tracked here.
+
+## Outcome — closed 2026-09-17
+
+Both parts implemented by quick task `260917-9ei` (commit `fa2c80bf`); see
+`.planning/quick/260917-9ei-verify-before-publish-in-the-release-and/`.
+
+- **Part A — done as specified.** `manual-release.yml` is now `verify` → `publish-vscode` ∥
+  `publish-intellij` → `tag-release` → `create-release`; `preview.yml` is now `verify` →
+  `bump-version` → both publishes, plus a workflow-level `concurrency` group. One verification job
+  (VS Code build + test + package; IntelliJ build + test + `verifyPlugin`) gates every publish, tag
+  and push in both files, directly or transitively. Tagging and the GitHub release moved to the end,
+  so a failed run leaves no tag and the same version can be re-dispatched — the specific thing that
+  made v0.15.0 unrecoverable.
+- **Part B — implemented as re-scoped**, per the correction above.
+- The IDE set and `failureLevel` in `bbj-intellij/build.gradle.kts` were left untouched (the file is
+  byte-identical), honouring this seed's one-gate-everywhere rule.
+
+Verified statically, which is the ceiling here — publishing workflows cannot be exercised locally.
+Both workflow hygiene checkers report 0 findings, `workflow-secret-hygiene.test.ts` and
+`gradle-wrapper-hygiene.test.ts` pass (24 tests), and a job-graph check confirmed every publishing
+job transitively needs the single verification job and that neither `verify` job publishes. **The
+first real Manual Release is the true test.** One residual, accepted: the two publish jobs run in
+parallel, so one marketplace succeeding while the other fails still needs manual reconciliation —
+smaller than the previous failure mode, not zero.
