@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.3
-status: Awaiting next milestone
-stopped_at: v4.3 milestone complete and archived
-last_updated: "2026-09-14T15:00:00.825Z"
-last_activity: 2026-09-14
-last_activity_desc: Milestone v4.3 completed and archived
-state_head: 0a7731ee8f8250c1b0c95eee76bce385cea48673
+milestone: v4.4
+milestone_name: IntelliJ Focus
+status: planning
+last_updated: "2026-09-17T21:41:06.657Z"
+last_activity: 2026-09-17
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 70
-  completed_plans: 70
-  percent: 100
-milestone_name: Polish & Quality (Phases 84-92) — SHIPPED 2026-09-13
-current_phase: 92
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-13)
 
 ## Current Position
 
-Phase: Milestone v4.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-17 - Completed quick task 260917-9ei: SEED-002 — one verification job now gates every publish, tag and push in the release and preview workflows, and the plugin-verifier's downloads are cached (IDE distributions deliberately not, on measurement)
+Status: Defining requirements
+Last activity: 2026-09-17 — Milestone v4.4 started
 
 ## Performance Metrics
 

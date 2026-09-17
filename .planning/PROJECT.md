@@ -18,9 +18,9 @@ restart, IntelliJ refreshes Java classes without a restart and auto-detects the 
 every composer has a persistent cue in both IDEs with new SETOPTS-in-code and CVS()
 composers, composer writes are validated and stale-safe on both hosts, the language server no
 longer scales with workspace size or hangs on an unreachable interop peer, and host-side
-commands behave under repeated use and with no editor focused. Phases 84-91 are on
-`origin/main`; Phase 92 and the late validation/security docs (31 commits) are on local
-`main` only, and the milestone #5 issues stay open until that lands and a release ships.
+commands behave under repeated use and with no editor focused. All of phases 84-92 are now on
+`origin/main` — local `main` and `origin/main` are in sync (verified 2026-09-17) — and the
+milestone #5 issues stay open until a release ships.
 Phase artifacts for 84-92 are archived under `.planning/milestones/v4.3-phases/` (tracked, no
 embargo).
 
@@ -48,20 +48,38 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Next Milestone Goals
+## Current Milestone: v4.4 IntelliJ Focus
 
-Not yet defined — `/gsd-new-milestone` sets them. Candidates on record:
+**Goal:** Close every open issue on GitHub milestone #7 — eleven behaviour fixes and ten
+duplication consolidations in the IntelliJ plugin — settle the two outstanding Node.js questions,
+and ship the result as release 0.16.0.
 
-- Land Phase 92 and the remaining local-only v4.3 commits on `origin/main`, cut a tagged
-  release, and close GitHub milestone #5 (the same release gates advisory publication, PROC-03).
-- The v4.3 stretch tier: diagnostics and completion accuracy (#522, #561/#578, #577, #556,
-  #527, #526, #466); IntelliJ parity users notice (#634, #631, #621, #587, #589); onboarding
-  and docs (#476, #385, #595, #601, #108 follow-up).
-- The separate hygiene milestone v4.3 excluded by rule — pure refactors, CI/dependency
-  hygiene, test-coverage gaps, input-validation hardening — plus v4.3's own tech debt
-  (MILESTONES.md).
-- Follow-ups filed during v4.3: SETOPTS block discoverability UX (#666) and the UAT-log
-  issues #659-#662.
+**Target features:**
+
+- Eleven behaviour-affecting IntelliJ fixes: EDT `NullPointerException` guard on a malformed
+  catalogs response (#609), composer write validation (#607), TextMate bundle temp-directory
+  caching and cleanup (#613), the inert Color Scheme customization page (#621), EM login
+  temp-file cleanup on a process-launch failure (#590), the java-interop health check's
+  `project.isDisposed()` guard (#592), Node cache-vs-inaccessible diagnosis (#588), java-interop
+  poll visibility/focus gating (#593), java-interop peer-identity confirmation (#587),
+  `applyHexEdit` array length guard (#591), and EM Login action enablement (#589).
+- Ten duplication and placement consolidations, none of which changes behaviour: addWindow-family
+  dialog base (#630), BUI/DWC run-action base (#615), editor notification providers (#622),
+  status-bar widgets and their factories (#620), shared Swing helpers (#619),
+  `Configure*Intention` (#618), composer-launch actions (#616), plugin-tool-path resolution
+  (#614), EM token-validation relocation out of the run-action base (#617), and the java-interop
+  default port constant (#594).
+- A product decision on whether an unusable configured Node.js path should fall back to the
+  cached download, taken alongside #588 (same file, same diagnosis gap).
+- Live Windows attestation of Node.js auto-install, closing the major-severity todo carried
+  since v4.2.
+- Release 0.16.0 cut and published to both marketplaces, closing GitHub milestone #7. This is the
+  first real exercise of SEED-002's verify-before-publish gate.
+
+**Deferred candidates (not v4.4):** diagnostics and completion accuracy (#522, #561/#578, #577,
+#556, #527, #526, #466); the remaining IntelliJ parity items (#634, #631); onboarding and docs
+(#476, #385, #595, #601, #108 follow-up); SETOPTS block discoverability UX (#666); the UAT-log
+issues #659-#662; CI/dependency hygiene and v4.3's own tech debt (MILESTONES.md).
 
 ## Requirements
 
@@ -274,15 +292,15 @@ Not yet defined — `/gsd-new-milestone` sets them. Candidates on record:
 
 ### Active
 
-None — the next milestone's requirements are defined by `/gsd-new-milestone`. v4.3's 25
-requirements shipped and are listed under Validated above (archive:
-`.planning/milestones/v4.3-REQUIREMENTS.md`).
+Defined for milestone v4.4 in `.planning/REQUIREMENTS.md` — the 21 open issues on GitHub
+milestone #7, the Node.js cached-download fallback decision, the live Windows attestation, and
+the 0.16.0 release. v4.3's 25 requirements shipped and are listed under Validated above
+(archive: `.planning/milestones/v4.3-REQUIREMENTS.md`).
 
 Carried over, maintainer-owned (not GSD phases):
-- [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
+- [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03) — v4.4's 0.16.0 release is the candidate
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
-- [ ] Live Windows attestation of Node.js auto-install (todo filed by Phase 83)
-- [ ] Land the 31 local-only v4.3 commits (Phase 92 source, late phase-87/88 validation and security docs) on `origin/main`
+- ✓ Land the local-only v4.3 commits on `origin/main` — done; local `main` and `origin/main` in sync (verified 2026-09-17)
 
 ### Out of Scope
 
@@ -520,4 +538,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-13 after v4.3 milestone*
+*Last updated: 2026-09-17 after starting milestone v4.4 IntelliJ Focus*
