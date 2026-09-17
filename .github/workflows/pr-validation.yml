@@ -61,6 +61,27 @@ jobs:
         with:
           min-wrapper-count: 1
 
+      # Caches the IntelliJ Plugin Verifier's own plugin and dependency
+      # downloads (the 210.18 MB reported by run 35064112482), which land
+      # under ~/.pluginVerifier. The IDEs verifyPlugin checks against are
+      # deliberately NOT cached here: Gradle resolves them into
+      # ~/.gradle/caches at roughly 1 GB per tarball and 2.6-3.4 GB
+      # extracted per IDE, some 4.9 GB and ~14.6 GB respectively for the
+      # four recommended IDEs plus the compile platform, against this
+      # repository's 10 GB per-repository cache limit. The IDE set comes
+      # from `recommended()` and drifts over time, so the key hashes
+      # build.gradle.kts and falls back to the OS-scoped prefix: when the
+      # recommended set moves without a build-script change, the delta is
+      # re-downloaded rather than re-cached — an accepted trade for a
+      # bounded cache entry.
+      - name: Cache Plugin Verifier downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.pluginVerifier
+          key: pluginverifier-${{ runner.os }}-${{ hashFiles('bbj-intellij/build.gradle.kts') }}
+          restore-keys: |
+            pluginverifier-${{ runner.os }}-
+
       - name: Build IntelliJ plugin
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin

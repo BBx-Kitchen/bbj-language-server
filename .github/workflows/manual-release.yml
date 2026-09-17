@@ -1,4 +1,9 @@
 # .github/workflows/manual-release.yml
+# Verification runs once, up front: nothing publishes, tags or pushes until
+# the single `verify` job below is green. Run 35064112482 published to the
+# VS Code Marketplace and pushed a release commit and tag before the
+# IntelliJ side had verified, then failed at verifyPlugin — stranding the
+# version half-shipped.
 name: Manual Release
 
 on:
@@ -9,7 +14,7 @@ on:
         required: true
 
 jobs:
-  build-vscode:
+  verify:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ github.event.inputs.version }}
@@ -66,28 +71,17 @@ jobs:
           VERSION="$VERSION_INPUT"
           jq ".version = \"$VERSION\"" package.json > tmp && mv tmp package.json
 
-      - name: Commit and tag version
+      - name: Build
         working-directory: bbj-vscode
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION_INPUT: ${{ github.event.inputs.version }}
-        run: |
-          VERSION="$VERSION_INPUT"
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add package.json
-          git commit -m "Release version $VERSION"
-          git tag "v$VERSION"
-          git push origin main
-          git push origin "v$VERSION"
+        run: npm run build
 
-      - name: Package and publish to VS Code Marketplace
+      - name: Test
         working-directory: bbj-vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          npx vsce package
-          npx vsce publish -p $VSCE_PAT
+        run: npm run test
+
+      - name: Package VS Code extension
+        working-directory: bbj-vscode
+        run: npx vsce package
 
       - name: Upload language server
         uses: actions/upload-artifact@v4
@@ -103,9 +97,88 @@ jobs:
           path: bbj-vscode/*.vsix
           retention-days: 1
 
-  build-intellij:
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+        with:
+          min-wrapper-count: 1
+
+      # Caches the IntelliJ Plugin Verifier's own plugin and dependency
+      # downloads (the 210.18 MB reported by run 35064112482), which land
+      # under ~/.pluginVerifier. The IDEs verifyPlugin checks against are
+      # deliberately NOT cached here: Gradle resolves them into
+      # ~/.gradle/caches at roughly 1 GB per tarball and 2.6-3.4 GB
+      # extracted per IDE, some 4.9 GB and ~14.6 GB respectively for the
+      # four recommended IDEs plus the compile platform, against this
+      # repository's 10 GB per-repository cache limit. The IDE set comes
+      # from `recommended()` and drifts over time, so the key hashes
+      # build.gradle.kts and falls back to the OS-scoped prefix: when the
+      # recommended set moves without a build-script change, the delta is
+      # re-downloaded rather than re-cached — an accepted trade for a
+      # bounded cache entry.
+      - name: Cache Plugin Verifier downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.pluginVerifier
+          key: pluginverifier-${{ runner.os }}-${{ hashFiles('bbj-intellij/build.gradle.kts') }}
+          restore-keys: |
+            pluginverifier-${{ runner.os }}-
+
+      - name: Build IntelliJ plugin
+        working-directory: bbj-intellij
+        run: ./gradlew buildPlugin -Pversion=${{ github.event.inputs.version }}
+
+      - name: Verify plugin compatibility
+        working-directory: bbj-intellij
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew verifyPlugin -Pversion=${{ github.event.inputs.version }}
+
+      - name: Upload IntelliJ plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: intellij-plugin
+          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
+          retention-days: 1
+
+  publish-vscode:
     runs-on: ubuntu-latest
-    needs: build-vscode
+    needs: verify
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: bbj-vscode
+        run: npm ci
+
+      - name: Download VS Code extension
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+          path: ./artifacts
+
+      - name: Publish to VS Code Marketplace
+        working-directory: bbj-vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          VSIX="$(ls "$GITHUB_WORKSPACE"/artifacts/*.vsix)"
+          npx vsce publish --packagePath "$VSIX" -p "$VSCE_PAT"
+
+  publish-intellij:
+    runs-on: ubuntu-latest
+    needs: verify
 
     steps:
       - uses: actions/checkout@v4
@@ -127,32 +200,50 @@ jobs:
         with:
           min-wrapper-count: 1
 
-      - name: Build IntelliJ plugin
-        working-directory: bbj-intellij
-        run: ./gradlew buildPlugin -Pversion=${{ needs.build-vscode.outputs.version }}
-
-      - name: Verify plugin compatibility
-        working-directory: bbj-intellij
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew verifyPlugin -Pversion=${{ needs.build-vscode.outputs.version }}
-
       - name: Publish to JetBrains Marketplace
         working-directory: bbj-intellij
         env:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
-        run: ./gradlew publishPlugin -Pversion=${{ needs.build-vscode.outputs.version }} -PintellijPlatformPublishingToken="$JETBRAINS_MARKETPLACE_TOKEN"
+        run: ./gradlew publishPlugin -Pversion=${{ needs.verify.outputs.version }} -PintellijPlatformPublishingToken="$JETBRAINS_MARKETPLACE_TOKEN"
 
-      - name: Upload IntelliJ plugin
-        uses: actions/upload-artifact@v4
-        with:
-          name: intellij-plugin
-          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
-          retention-days: 1
+  tag-release:
+    runs-on: ubuntu-latest
+    needs: [verify, publish-vscode, publish-intellij]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tagging sits after both publishes, not between verification and
+      # publication: the v0.15.0 recovery was painful precisely because the
+      # tag already existed while the release had not completed, and this
+      # workflow's own version-input validation rejects a non-greater
+      # version, so the abandoned version could not simply be re-dispatched.
+      # With the tag last, a publish failure leaves no tag behind and the
+      # same version can be re-dispatched as-is. Residual, deliberately
+      # accepted case: publish-vscode and publish-intellij run in parallel,
+      # so if one marketplace succeeds and the other fails, this job never
+      # runs and the successful side must be reconciled by hand — strictly
+      # smaller than today's failure mode, where the tag and the push had
+      # already landed.
+      - name: Commit and tag version
+        working-directory: bbj-vscode
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_INPUT: ${{ needs.verify.outputs.version }}
+        run: |
+          VERSION="$VERSION_INPUT"
+          jq ".version = \"$VERSION\"" package.json > tmp && mv tmp package.json
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "Release version $VERSION"
+          git tag "v$VERSION"
+          git push origin main
+          git push origin "v$VERSION"
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-vscode, build-intellij]
+    needs: [verify, publish-vscode, publish-intellij, tag-release]
     permissions:
       contents: write
 
@@ -174,7 +265,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.build-vscode.outputs.version }}
+          VERSION: ${{ needs.verify.outputs.version }}
         run: |
           gh release create "v$VERSION" \
             --title "v$VERSION" \

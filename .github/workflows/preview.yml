@@ -7,8 +7,16 @@ on:
       - main
   workflow_dispatch:
 
+# The version bump is computed early in `verify` but now commits only after
+# publication in `bump-version`, so two overlapping pushes to main could
+# otherwise compute the same preview version and collide at `vsce publish`.
+# Serialising preview runs closes that window.
+concurrency:
+  group: publish-preview
+  cancel-in-progress: false
+
 jobs:
-  publish-preview:
+  verify:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -50,22 +58,17 @@ jobs:
           jq ".version = \"$NEW_VERSION\"" package.json > tmp && mv tmp package.json
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Commit version bump
+      - name: Build
         working-directory: bbj-vscode
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add package.json
-          git commit -m "Bump preview version"
-          git push
+        run: npm run build
 
-      - name: Package & Publish Preview
+      - name: Test
         working-directory: bbj-vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          npx vsce package
-          npx vsce publish --pre-release -p $VSCE_PAT
+        run: npm run test
+
+      - name: Package preview extension
+        working-directory: bbj-vscode
+        run: npx vsce package --pre-release
 
       - name: Upload language server
         uses: actions/upload-artifact@v4
@@ -74,9 +77,124 @@ jobs:
           path: bbj-vscode/out/language/main.cjs
           retention-days: 7
 
-  build-intellij:
+      - name: Upload VS Code extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: bbj-vscode/*.vsix
+          retention-days: 7
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+        with:
+          min-wrapper-count: 1
+
+      # Caches the IntelliJ Plugin Verifier's own plugin and dependency
+      # downloads (the 210.18 MB reported by run 35064112482), which land
+      # under ~/.pluginVerifier. The IDEs verifyPlugin checks against are
+      # deliberately NOT cached here: Gradle resolves them into
+      # ~/.gradle/caches at roughly 1 GB per tarball and 2.6-3.4 GB
+      # extracted per IDE, some 4.9 GB and ~14.6 GB respectively for the
+      # four recommended IDEs plus the compile platform, against this
+      # repository's 10 GB per-repository cache limit. The IDE set comes
+      # from `recommended()` and drifts over time, so the key hashes
+      # build.gradle.kts and falls back to the OS-scoped prefix: when the
+      # recommended set moves without a build-script change, the delta is
+      # re-downloaded rather than re-cached — an accepted trade for a
+      # bounded cache entry.
+      - name: Cache Plugin Verifier downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.pluginVerifier
+          key: pluginverifier-${{ runner.os }}-${{ hashFiles('bbj-intellij/build.gradle.kts') }}
+          restore-keys: |
+            pluginverifier-${{ runner.os }}-
+
+      - name: Build IntelliJ plugin
+        working-directory: bbj-intellij
+        run: ./gradlew buildPlugin -Pversion=${{ steps.bump.outputs.version }}
+
+      # Verified at the version that is about to be published, with the same
+      # failureLevel as the release workflow, so a preview build cannot ship an
+      # artifact to the opt-in channel that the release gate would reject.
+      - name: Verify plugin compatibility
+        working-directory: bbj-intellij
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          ./gradlew verifyPlugin
+          -Pversion=${{ steps.bump.outputs.version }}
+
+      - name: Upload IntelliJ plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbj-intellij-${{ steps.bump.outputs.version }}
+          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
+          retention-days: 7
+
+  bump-version:
     runs-on: ubuntu-latest
-    needs: publish-preview
+    needs: verify
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Landed ahead of the publishes rather than after them: if the bump
+      # commit never lands, the next preview run recomputes the same
+      # version and the marketplace rejects the duplicate, so the bump is
+      # the cheaper thing to land first — while still, per the gate rule,
+      # sitting behind verification.
+      - name: Commit version bump
+        working-directory: bbj-vscode
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          jq ".version = \"$VERSION\"" package.json > tmp && mv tmp package.json
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "Bump preview version"
+          git push
+
+  publish-vscode:
+    runs-on: ubuntu-latest
+    needs: [verify, bump-version]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: bbj-vscode
+        run: npm ci
+
+      - name: Download VS Code extension
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+          path: ./artifacts
+
+      - name: Publish preview to VS Code Marketplace
+        working-directory: bbj-vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          VSIX="$(ls "$GITHUB_WORKSPACE"/artifacts/*.vsix)"
+          npx vsce publish --pre-release --packagePath "$VSIX" -p "$VSCE_PAT"
+
+  publish-intellij:
+    runs-on: ubuntu-latest
+    needs: [verify, bump-version]
 
     steps:
       - uses: actions/checkout@v4
@@ -98,30 +216,12 @@ jobs:
         with:
           min-wrapper-count: 1
 
-      # Verified at the version that is about to be published, with the same
-      # failureLevel as the release workflow, so a preview build cannot ship an
-      # artifact to the opt-in channel that the release gate would reject.
-      - name: Verify plugin compatibility
-        working-directory: bbj-intellij
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          ./gradlew verifyPlugin
-          -Pversion=${{ needs.publish-preview.outputs.version }}
-
       - name: Publish IntelliJ preview to JetBrains Marketplace
         working-directory: bbj-intellij
         env:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
         run: >-
           ./gradlew publishPlugin
-          -Pversion=${{ needs.publish-preview.outputs.version }}
+          -Pversion=${{ needs.verify.outputs.version }}
           -PintellijChannel=preview
           -PintellijPlatformPublishingToken="$JETBRAINS_MARKETPLACE_TOKEN"
-
-      - name: Upload IntelliJ plugin
-        uses: actions/upload-artifact@v4
-        with:
-          name: bbj-intellij-${{ needs.publish-preview.outputs.version }}
-          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
-          retention-days: 7
