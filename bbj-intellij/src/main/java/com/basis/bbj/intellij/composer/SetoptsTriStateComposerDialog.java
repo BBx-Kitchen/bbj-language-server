@@ -262,7 +262,10 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
         selection = entries;
         blockPreview.setForeground(blockPreviewDefaultForeground);
         blockPreview.setText(blockText);
-        setOKActionEnabled(true);
+        // Fail-closed response integrity (#607): this dialog has no selection-level rejection rule
+        // of its own, but a malformed or partial composeTriState response must still leave Apply
+        // disabled rather than writing a composition that never actually arrived.
+        setOKActionEnabled(result.valid);
     }
 
     /**
