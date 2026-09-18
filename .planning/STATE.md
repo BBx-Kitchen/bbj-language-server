@@ -5,11 +5,11 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 94
 current_phase_name: EM Login & Run Action Consolidation
 status: planning
-stopped_at: Phase 93 complete, ready to plan Phase 94
-last_updated: "2026-09-18T19:48:15.519Z"
+stopped_at: Phase 94 context gathered
+last_updated: "2026-09-18T21:40:52.648Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 93 complete, transitioned to Phase 94
-state_head: e86b96c1c4da615a6770cb60cf7c2ec6bf0d576d
+state_head: de99a1d74129d3f38ee622ea8a30338a8dd45871
 progress:
   total_phases: 5
   completed_phases: 1
@@ -187,9 +187,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T19:48:00.000Z
-Stopped at: Phase 93 complete and verified (UAT 4/4, security 31/31), ready to plan Phase 94
-Resume file: None
+Last session: 2026-09-18T21:40:52.568Z
+Stopped at: Phase 94 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/94-em-login-run-action-consolidation/94-CONTEXT.md
 
 Next: `/gsd-discuss-phase 94` or `/gsd-plan-phase 94`.
 
