@@ -15,11 +15,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Pins structural invariants of {@link SetoptsComposerDialog} that no headless test in this build
  * can exercise at runtime: the layout (one scrollable panel, byte groups in catalog order, greyed
- * BBj-annotated bits), the client-side validation gate (both checks run before any request is
- * issued), the lossless-original contract (the captured original hex rides on every preview), and
- * the raw-tail error routing to its field-level label. Each assertion fails if a future change
- * sorts the groups, drops the grey-out, moves validation after the request, stops passing the
- * original, or stops writing the raw-tail message next to its field.
+ * BBj-annotated bits), the remaining client-side validation gate (the mask check runs before any
+ * request is issued -- the raw-tail check moved server-side, #607), the lossless-original
+ * contract (the captured original hex rides on every preview), and the raw-tail error routing to
+ * its field-level label from the server's own response. Each assertion fails if a future change
+ * sorts the groups, drops the grey-out, moves the mask check after the request, stops passing the
+ * original, or stops rendering the server's raw-tail message next to its field.
  */
 class SetoptsComposerDialogSourceGuardTest {
 
@@ -142,33 +143,45 @@ class SetoptsComposerDialogSourceGuardTest {
                 "a non-annotated bit must not be greyed");
     }
 
+    /**
+     * The raw-tail check moved server-side (#607); this now guards only the mask check that
+     * remains client-side. A later reader must not expect this test to cover the raw tail.
+     */
     @Test
-    void refreshMethodValidatesInputsBeforeIssuingAnyRequest() {
+    void refreshMethodValidatesTheMaskCharactersBeforeIssuingAnyRequest() {
         String refresh = blockAfter(readSource(), "private void refresh()");
 
-        int rawTailCheck = refresh.indexOf("if (!rawTail.matches(\"[0-9A-Fa-f]{0,");
         int maskCheck = refresh.indexOf("if (!isValidMaskChar(maskComma) || !isValidMaskChar(maskDot))");
         int seqIncrement = refresh.indexOf("seq.incrementAndGet()");
         int request = refresh.indexOf("server.setoptsPreview(");
 
-        assertTrue(rawTailCheck >= 0, "refresh() must validate the raw hex tail against the hex-digit pattern");
         assertTrue(maskCheck >= 0, "refresh() must validate both mask replacement characters");
         assertTrue(request >= 0, "refresh() must issue the preview request");
         assertTrue(seqIncrement >= 0, "refresh() must take a sequence number for the request it issues");
-        assertTrue(rawTailCheck < seqIncrement && maskCheck < seqIncrement,
-                "both validation checks must run before refresh() takes a sequence number");
+        assertTrue(maskCheck < seqIncrement,
+                "the mask check must run before refresh() takes a sequence number");
         assertTrue(seqIncrement < request, "the sequence number must be taken before the request is issued");
 
-        String rawTailBranch = blockAfter(refresh, "if (!rawTail.matches(");
         String maskBranch = blockAfter(refresh, "if (!isValidMaskChar(maskComma)");
-        for (String branch : new String[] {rawTailBranch, maskBranch}) {
-            int unavailable = branch.indexOf("previewUnavailable(");
-            int ret = branch.indexOf("return;");
-            assertTrue(unavailable >= 0 && ret > unavailable,
-                    "an invalid input must disable OK through previewUnavailable(...) and return without a request");
-            assertEquals(0, countOccurrences(branch, "server.setoptsPreview("),
-                    "an invalid input must never reach the language server");
-        }
+        int unavailable = maskBranch.indexOf("previewUnavailable(");
+        int ret = maskBranch.indexOf("return;");
+        assertTrue(unavailable >= 0 && ret > unavailable,
+                "an invalid mask character must disable OK through previewUnavailable(...) and return without a request");
+        assertEquals(0, countOccurrences(maskBranch, "server.setoptsPreview("),
+                "an invalid mask character must never reach the language server");
+    }
+
+    /**
+     * The deleted raw-tail rule (#607) must never return unnoticed: no digit-bound constant
+     * and no {@code .matches(} call may reappear anywhere in this file.
+     */
+    @Test
+    void theDeletedRawTailRuleCannotReturnUnnoticed() {
+        String text = readSource();
+        assertEquals(0, countOccurrences(text, "MAX_RAW_TAIL_DIGITS"),
+                "the deleted raw-tail digit-bound constant must not reappear");
+        assertEquals(0, countOccurrences(text, ".matches("),
+                "no .matches( call may reappear -- raw-tail validation is the server's job now");
     }
 
     @Test
@@ -191,21 +204,35 @@ class SetoptsComposerDialogSourceGuardTest {
                 "the preview must start from the captured original hex so unmodeled bytes and unknown bits survive");
     }
 
+    /**
+     * The raw-tail message now comes from the server's own response (#607), rendered inside
+     * {@code apply(SetoptsPreview)} rather than authored in Java. This replaces the prior guard,
+     * which described an ordering inside a branch that no longer exists -- patching it would have
+     * left a test that passed vacuously.
+     */
     @Test
-    void rawTailErrorLabelIsClearedThenSetBeforePreviewUnavailable() {
-        String refresh = blockAfter(readSource(), "private void refresh()");
+    void applyRendersTheServersRawTailErrorAndTheLabelIsNeverAssignedAMessageLiteral() {
+        String text = readSource();
+        String apply = blockAfter(text, "private void apply(SetoptsPreview p)");
 
-        int clear = refresh.indexOf("rawTailError.setText(\" \")");
-        int rawTailCheck = refresh.indexOf("if (!rawTail.matches(");
-        assertTrue(clear >= 0 && clear < rawTailCheck,
-                "the raw-tail error label must be cleared before the raw tail is validated");
+        assertEquals(1, countOccurrences(apply, "rawTailError.setText(p.rawTailError"),
+                "apply(SetoptsPreview) must render the server's rawTailError exactly once");
 
-        String branch = blockAfter(refresh, "if (!rawTail.matches(");
-        int set = branch.indexOf("rawTailError.setText(");
-        int unavailable = branch.indexOf("previewUnavailable(");
-        assertTrue(set >= 0 && unavailable > set,
-                "an invalid raw tail must write its message to the field-level label before disabling OK");
-        assertEquals(0, countOccurrences(branch, "rawTailError.setText(\" \")"),
-                "the invalid-raw-tail branch must write a real message, not blank the label");
+        // The only string literal the raw-tail label may ever be set from is the single-space
+        // placeholder that keeps the label's height stable when there is no message (matching the
+        // null-to-space convention the other dialogs use) -- never an author-written message.
+        int index = 0;
+        while ((index = text.indexOf("rawTailError.setText(", index)) != -1) {
+            int parenStart = index + "rawTailError.setText(".length();
+            if (text.startsWith("\" \")", parenStart)) {
+                // the single-space placeholder embedded in the null-check ternary -- allowed
+            } else if (text.startsWith("p.rawTailError", parenStart)) {
+                // rendering the server's message -- allowed
+            } else {
+                fail("rawTailError.setText( must only ever render p.rawTailError or the \" \" placeholder, "
+                        + "never an author-written message literal");
+            }
+            index = parenStart;
+        }
     }
 }

@@ -34,6 +34,19 @@ class ComposerFieldValidationSourceGuardTest {
             "AddWindowFamilyComposerDialogBase.java")
             .toAbsolutePath();
 
+    private static final Path SETOPTS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "SetoptsComposerDialog.java")
+            .toAbsolutePath();
+
+    private static final Path SETOPTS_TRISTATE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "SetoptsTriStateComposerDialog.java")
+            .toAbsolutePath();
+
+    /** The four dialogs pinned by this class as gating OK on a server verdict of their own. */
+    private static final java.util.List<Path> FOUR_GATED_DIALOG_SOURCES = java.util.List.of(
+            ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, SETOPTS_TRISTATE_SOURCE);
+
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
             fail("Guarded source file not found at " + path);
@@ -135,6 +148,64 @@ class ComposerFieldValidationSourceGuardTest {
         for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
             assertEquals(0, countOccurrences(text, fragment),
                     "AddWindowFamilyComposerDialogBase must hold no validation message of its own (\"" + fragment + "\")");
+        }
+    }
+
+    /**
+     * Widens the server-owns-validation convention to the SETOPTS dialog (#607): the raw-tail
+     * hex rule that used to live here in Java was deleted, and OK now gates on the server's own
+     * verdict field exactly the way the addWindow-family dialogs already do.
+     */
+    @Test
+    void theSetoptsDialogGatesOkOnTheServerVerdictAndHoldsNoValidationRuleOfItsOwn() {
+        String text = withoutCommentLines(readSource(SETOPTS_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "setOKActionEnabled(p.valid)"),
+                "SetoptsComposerDialog must gate OK on the server's valid verdict exactly once");
+        assertEquals(0, countOccurrences(text, "setOKActionEnabled(true)"),
+                "SetoptsComposerDialog must never enable OK unconditionally");
+
+        for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
+            assertEquals(0, countOccurrences(text, fragment),
+                    "SetoptsComposerDialog must hold no validation message of its own (\"" + fragment + "\")");
+        }
+    }
+
+    /**
+     * Widens the server-owns-validation convention to the tri-state SETOPTS-in-code dialog (#607):
+     * it never had a selection-level rejection rule of its own, but OK must still gate on the
+     * composeTriState response's own fail-closed verdict field rather than enabling unconditionally.
+     */
+    @Test
+    void theSetoptsTriStateDialogGatesOkOnTheServerVerdictAndHoldsNoValidationRuleOfItsOwn() {
+        String text = withoutCommentLines(readSource(SETOPTS_TRISTATE_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "setOKActionEnabled(result.valid)"),
+                "SetoptsTriStateComposerDialog must gate OK on the response's valid verdict exactly once");
+        assertEquals(0, countOccurrences(text, "setOKActionEnabled(true)"),
+                "SetoptsTriStateComposerDialog must never enable OK unconditionally");
+
+        for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
+            assertEquals(0, countOccurrences(text, fragment),
+                    "SetoptsTriStateComposerDialog must hold no validation message of its own (\"" + fragment + "\")");
+        }
+    }
+
+    /**
+     * A negative sweep across all four dialogs this class pins: neither a hand-written
+     * character-class regex (the shape a client-side hex/digit rule would use) nor a bare
+     * {@code .matches(} call may appear anywhere in any of them. This is the rule that just moved
+     * server-side for SETOPTS (#607) and it must never creep back into any of the four -- not
+     * just the one it was deleted from.
+     */
+    @Test
+    void noneOfTheFourGatedDialogsReintroducesAClientSideCharacterClassValidationRule() {
+        for (Path source : FOUR_GATED_DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, ".matches("),
+                    source.getFileName() + " must never call .matches( -- validation is the server's job");
+            assertEquals(0, countOccurrences(text, "\"[0-9"),
+                    source.getFileName() + " must never hold a hand-written character-class regex literal");
         }
     }
 }

@@ -207,7 +207,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
      * afterwards; never call this method from a listener body directly (D-09).
      */
     private void refresh() {
-        // The raw hex tail is no longer validated here (#607, D-08): it is read and passed through
+        // The raw hex tail is no longer validated here (#607): it is read and passed through
         // unconditionally, and the language server's own verdict comes back on the preview response
         // for apply(SetoptsPreview) to gate OK and render.
         String rawTail = rawTailField.getText();
