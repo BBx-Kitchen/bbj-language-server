@@ -2,8 +2,10 @@ package com.basis.bbj.intellij.composer;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 
@@ -14,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Behavioural coverage of the three {@link ComposerNotices} factories: wording, severity, remedy
+ * Behavioural coverage of the four {@link ComposerNotices} factories: wording, severity, remedy
  * action id, and the throwable-to-detail conversion (#538). Every case is chosen by a throwable's
  * type or a machine-readable reason, never by reading its message text — the discipline
  * {@link #noNoticeIsChosenByReadingMessageProse()} pins directly.
@@ -60,16 +62,43 @@ class ComposerNoticesTest {
     }
 
     @Test
-    void everyReasonHasADistinctSeverityAndOnlyTheStaleOneHasARemedy() {
+    void theMalformedEditNoticeIsAWarningThatSaysNothingWasChangedAndOffersNoRemedy() {
+        ComposerNotices.Notice notice = ComposerNotices.malformedEdit("MSGBOX");
+
+        assertEquals(ComposerNotices.Reason.MALFORMED_EDIT, notice.reason);
+        assertEquals(ComposerNotices.Severity.WARNING, notice.severity);
+        assertEquals("MSGBOX not updated", notice.title);
+        assertTrue(notice.body.contains("Nothing was changed."),
+                "the user must be told plainly that nothing was changed");
+        assertNull(notice.remedyActionId, "a malformed edit range offers no remedy action");
+    }
+
+    @Test
+    void everyReasonHasItsOwnPinnedSeverityAndOnlyTheStaleOneHasARemedy() {
         ComposerNotices.Notice notReady = ComposerNotices.notReady("MSGBOX");
         ComposerNotices.Notice requestFailed = ComposerNotices.requestFailed("MSGBOX", "detail");
         ComposerNotices.Notice staleDocument = ComposerNotices.staleDocument("MSGBOX");
+        ComposerNotices.Notice malformedEdit = ComposerNotices.malformedEdit("MSGBOX");
 
-        EnumSet<ComposerNotices.Severity> severities = EnumSet.of(
-                notReady.severity, requestFailed.severity, staleDocument.severity);
-        assertEquals(3, severities.size(), "no two of the three reasons may share a severity");
+        // An explicit per-reason table, not a distinctness count: MALFORMED_EDIT deliberately
+        // shares Severity.WARNING with STALE_DOCUMENT, which a size-based uniqueness check cannot
+        // express once a fourth reason exists.
+        Map<ComposerNotices.Reason, ComposerNotices.Severity> expectedSeverities = new EnumMap<>(ComposerNotices.Reason.class);
+        expectedSeverities.put(ComposerNotices.Reason.NOT_READY, ComposerNotices.Severity.INFORMATION);
+        expectedSeverities.put(ComposerNotices.Reason.REQUEST_FAILED, ComposerNotices.Severity.ERROR);
+        expectedSeverities.put(ComposerNotices.Reason.STALE_DOCUMENT, ComposerNotices.Severity.WARNING);
+        expectedSeverities.put(ComposerNotices.Reason.MALFORMED_EDIT, ComposerNotices.Severity.WARNING);
+        assertEquals(EnumSet.allOf(ComposerNotices.Reason.class), expectedSeverities.keySet(),
+                "the severity table must cover every declared Reason -- a fifth reason added later "
+                        + "must fail this test loudly rather than slip through uncovered");
 
-        long remedyCount = List.of(notReady, requestFailed, staleDocument).stream()
+        List<ComposerNotices.Notice> notices = List.of(notReady, requestFailed, staleDocument, malformedEdit);
+        for (ComposerNotices.Notice notice : notices) {
+            assertEquals(expectedSeverities.get(notice.reason), notice.severity,
+                    notice.reason + " must render at its pinned severity");
+        }
+
+        long remedyCount = notices.stream()
                 .filter(n -> n.remedyActionId != null)
                 .count();
         assertEquals(1, remedyCount, "exactly one notice (STALE_DOCUMENT) may carry a remedy action");

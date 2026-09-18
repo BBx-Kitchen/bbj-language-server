@@ -432,6 +432,12 @@ public final class ComposerLauncher {
             ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(kindLabel), null);
             return;
         }
+        // Same rule for the event-mask range: a null eventMaskRange falls through to the
+        // eventMaskInsertOffset branch unchanged, only a wrong-length array aborts (#591).
+        if (eventHex != null && ed.eventMaskRange != null && !ComposerEditRanges.isUsable(ed.eventMaskRange)) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(kindLabel), null);
+            return;
+        }
         StaleEditGuard guard = new StaleEditGuard(
                 documentViewOf(editor),
                 body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),
@@ -489,6 +495,12 @@ public final class ComposerLauncher {
                 return;
             }
             SetoptsEdit ed = decoded.edit;
+            // A null hexRange falls through to the insertOffset branch unchanged; only a
+            // present-but-wrong-length array is malformed (#591).
+            if (ed.hexRange != null && !ComposerEditRanges.isUsable(ed.hexRange)) {
+                ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS)), null);
+                return;
+            }
             StaleEditGuard guard = new StaleEditGuard(
                     documentViewOf(editor),
                     body -> WriteCommandAction.runWriteCommandAction(project, "Configure SETOPTS", null, body),
@@ -585,6 +597,12 @@ public final class ComposerLauncher {
         // until the first preview resolves, so hex should never still be empty here.
         String hex = dialog.getHexDigits();
         if (hex == null || hex.isEmpty()) {
+            return;
+        }
+        // This path has no insert-offset fallback -- the write below is unconditional, so a
+        // missing or wrong-length hexRange must abort here rather than index out of bounds (#591).
+        if (!ComposerEditRanges.isUsable(ed.hexRange)) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
             return;
         }
         StaleEditGuard guard = new StaleEditGuard(
