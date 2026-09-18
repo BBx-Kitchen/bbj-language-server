@@ -12,14 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins every language-server-supplied edit range in {@code ComposerLauncher.java} to the one
- * shared {@link ComposerEditRanges#isUsable(int[])} predicate (#591): each of the four call sites
- * (the addWindow-family flags range, its event-mask range, SETOPTS's hex range, and the SETOPTS-in-
- * code absolute-literal hex range) checks through the shared predicate, the check runs before the
- * write command is entered, and no call site re-derives the length rule inline. A failure here means
- * one of those regressed -- a check was removed, moved after the write command starts, or a length
- * comparison was written by hand instead of routed through the one shared definition -- each of
- * which reopens the crash this predicate exists to close.
+ * Pins every language-server-supplied edit range and line number in {@code ComposerLauncher.java}
+ * to their one shared {@link ComposerEditRanges} predicates (#591): each of the four range-array
+ * call sites (the addWindow-family flags range, its event-mask range, SETOPTS's hex range, and the
+ * SETOPTS-in-code absolute-literal hex range) checks through {@code isUsable(int[])}, and the two
+ * SETOPTS-in-code line-bound call sites check through {@code isUsableLine}/{@code
+ * isUsableLineRegion}; every check runs before the write command is entered, and no call site
+ * re-derives its rule inline. A failure here means one of those regressed -- a check was removed,
+ * moved after the write command starts, or a bound was written by hand instead of routed through
+ * the shared definition -- each of which reopens the crash these predicates exist to close.
  *
  * <p>Carries its own private copies of every helper, deliberately never a shared test utility, so a
  * single bad edit can never weaken every source guard in this package at once.</p>
@@ -104,14 +105,16 @@ class ComposerLauncherRangeGuardSourceGuardTest {
 
     @Test
     void everyRangeSiteInTheWholeFileReachesTheSharedPredicateAndTheSharedNotice() {
-        String text = readSource(LAUNCHER_SOURCE);
+        String text = withoutCommentLines(readSource(LAUNCHER_SOURCE));
 
         assertEquals(4, countOccurrences(text, "ComposerEditRanges.isUsable("),
                 "exactly four language-server-supplied range arrays are checked: the addWindow-family "
                         + "flags range, its event-mask range, SETOPTS's hex range, and the SETOPTS-in-code "
                         + "absolute-literal hex range");
-        assertEquals(4, countOccurrences(text, "ComposerNotices.malformedEdit("),
-                "each of the four checked range sites must render its own malformed-edit notice on abort");
+        assertEquals(6, countOccurrences(text, "ComposerNotices.malformedEdit("),
+                "six abort sites now render this notice: the four range-array sites above, plus the "
+                        + "two SETOPTS-in-code line-bound sites (the absolute edit's line, and the chain "
+                        + "edit's start/end line region)");
     }
 
     @Test

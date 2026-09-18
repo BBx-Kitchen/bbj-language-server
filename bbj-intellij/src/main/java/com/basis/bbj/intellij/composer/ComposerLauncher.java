@@ -605,6 +605,14 @@ public final class ComposerLauncher {
             ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
             return;
         }
+        // A malformed or version-skewed response naming a line outside the live document must
+        // abort here too, before the write command is entered -- otherwise the dereference below
+        // throws uncaught on the EDT (#591).
+        int lineCount = editor.getDocument().getLineCount();
+        if (!ComposerEditRanges.isUsableLine(ed.line, lineCount)) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
+            return;
+        }
         StaleEditGuard guard = new StaleEditGuard(
                 documentViewOf(editor),
                 body -> WriteCommandAction.runWriteCommandAction(project, "Configure SETOPTS", null, body),
@@ -647,6 +655,14 @@ public final class ComposerLauncher {
         }
         String text = dialog.getBlockText();
         if (text == null) {
+            return;
+        }
+        // Both endpoints of the reassignment region come from the same untrusted response; a
+        // malformed or descending region must abort here, before the write command is entered
+        // (#591).
+        int lineCount = editor.getDocument().getLineCount();
+        if (!ComposerEditRanges.isUsableLineRegion(chain.startLine, chain.endLine, lineCount)) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
             return;
         }
         StaleEditGuard guard = new StaleEditGuard(
