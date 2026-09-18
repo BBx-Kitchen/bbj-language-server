@@ -12,18 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Source-guard fence for {@link BbjComposeCvsAction} (#649), modelled on
- * {@link BbjComposeSetoptsInCodeActionSourceGuardTest}'s structural-pin convention. Pins: the
- * action launches {@code Kind.CVS} through {@code ComposerLauncher.launch} exactly once;
- * presence-scoping uses the enabled-and-visible call and never the enabled-only one; the action
- * uses the background update thread; the action does no Java-side CVS mask parsing of its own
- * (the decode is the server's job); and {@code plugin.xml} registers the id, points it at this
- * class, puts it in the editor popup menu and binds no keystroke.
+ * Source-guard fence for {@link BbjComposeCvsAction} (#649), re-pointed for the base-plus-subclass
+ * shape (#616): the launch call, the presence gate and the background update thread now live on
+ * {@link BbjComposeActionBase}, so this guard asserts them there and adds a delegation pin proving
+ * the subclass actually extends the base and supplies its own {@code Kind.CVS}. Modelled on the
+ * base-aware guard pattern in {@code EmTokenTrustWindowSourceGuardTest} and the abstract-declaration
+ * edge case in {@code OffEdtDispatchSourceGuardTest}.
  */
 class BbjComposeCvsActionSourceGuardTest {
 
     private static final Path GUARDED_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", "BbjComposeCvsAction.java")
+            .toAbsolutePath();
+
+    private static final Path BASE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", "BbjComposeActionBase.java")
             .toAbsolutePath();
 
     private static final Path PLUGIN_XML = Paths.get(
@@ -67,44 +70,82 @@ class BbjComposeCvsActionSourceGuardTest {
         return count;
     }
 
-    @Test
-    void theActionLaunchesTheCvsKindExactlyOnceThroughComposerLauncher() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
-
-        assertEquals(1, countOccurrences(text, "ComposerLauncher.launch(project, editor, ComposerLauncher.Kind.CVS)"),
-                "the action must launch ComposerLauncher.launch(project, editor, ComposerLauncher.Kind.CVS) exactly once");
+    /** Extracts a brace-balanced method body starting from the first '{' after {@code signatureFragment}. */
+    private static String extractMethodBody(String text, String signatureFragment) {
+        int sigIndex = text.indexOf(signatureFragment);
+        assertTrue(sigIndex >= 0, "method signature not found: " + signatureFragment);
+        int braceStart = text.indexOf('{', sigIndex);
+        assertTrue(braceStart >= 0, "opening brace not found for: " + signatureFragment);
+        int depth = 0;
+        for (int i = braceStart; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(braceStart, i + 1);
+                }
+            }
+        }
+        fail("unbalanced braces for: " + signatureFragment);
+        return "";
     }
 
     @Test
-    void theActionIsScopedByPresenceNotByADisabledButVisibleState() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theBaseLaunchesThroughComposerLauncherWithTheSubclassKindExactlyOnce() {
+        String body = stripComments(
+                extractMethodBody(readSource(BASE_SOURCE), "public final void actionPerformed("));
+
+        assertEquals(1, countOccurrences(body, "ComposerLauncher.launch(project, editor, kind())"),
+                "the base's actionPerformed body must launch ComposerLauncher.launch(project, editor, kind()) exactly once");
+    }
+
+    @Test
+    void theBaseIsScopedByPresenceNotByADisabledButVisibleState() {
+        String text = stripComments(readSource(BASE_SOURCE));
 
         assertEquals(1, countOccurrences(text, "setEnabledAndVisible("),
-                "exactly one setEnabledAndVisible( call -- the entry must be absent entirely "
-                        + "outside a BBj source file, not merely disabled");
+                "the base must call setEnabledAndVisible( exactly once -- the entry must be absent "
+                        + "entirely when unavailable, not merely disabled");
         assertEquals(0, countOccurrences(text, "setEnabled("),
                 "the disabled-but-visible presentation call must never be used -- an unavailable "
                         + "action must vanish from the Editor Popup Menu, not grey out");
     }
 
     @Test
-    void theActionDoesNoJavaSideCvsMaskParsing() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theActionAndBaseDoNoJavaSideCvsMaskParsing() {
+        String subclassText = stripComments(readSource(GUARDED_SOURCE));
+        String baseText = stripComments(readSource(BASE_SOURCE));
 
-        assertEquals(0, countOccurrences(text, "Pattern.compile("),
-                "the action must never parse a CVS() mask in Java -- the decode decision belongs "
+        assertEquals(0, countOccurrences(subclassText, "Pattern.compile("),
+                "the subclass must never parse a CVS() mask in Java -- the decode decision belongs "
                         + "to the server's cvsDecodeCall request");
-        assertEquals(0, countOccurrences(text, "Integer.parseInt("),
-                "the action must perform no mask-parsing of its own");
+        assertEquals(0, countOccurrences(subclassText, "Integer.parseInt("),
+                "the subclass must perform no mask-parsing of its own");
+        assertEquals(0, countOccurrences(baseText, "Pattern.compile("),
+                "the base must never parse a CVS() mask in Java either");
+        assertEquals(0, countOccurrences(baseText, "Integer.parseInt("),
+                "the base must perform no mask-parsing of its own");
     }
 
     @Test
-    void theActionUsesTheActionUpdateThreadBackgroundConstant() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theBaseUsesTheActionUpdateThreadBackgroundConstant() {
+        String text = stripComments(readSource(BASE_SOURCE));
 
         assertTrue(text.contains("ActionUpdateThread.BGT"),
-                "the action must declare the background update thread, matching every other "
+                "the base must declare the background update thread, matching every other "
                         + "composer entry point");
+    }
+
+    @Test
+    void theActionDelegatesToTheBaseWithItsOwnKind() {
+        String text = stripComments(readSource(GUARDED_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "extends BbjComposeActionBase"),
+                "BbjComposeCvsAction.java must extend BbjComposeActionBase exactly once");
+        assertEquals(1, countOccurrences(text, "ComposerLauncher.Kind.CVS"),
+                "BbjComposeCvsAction.java must reference ComposerLauncher.Kind.CVS exactly once");
     }
 
     @Test
