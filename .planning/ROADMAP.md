@@ -295,7 +295,7 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
   4. The addWindow-family dialogs, the `Configure*Intention` classes, the composer-launch actions, and `clip`/`labeled`/`setEnabledRecursive` each have exactly one definition in the source tree — a fix to any of those shapes is written once.
   5. Every composer a user can reach — MSGBOX, addWindow, addChildWindow, CVS, SETOPTS, SETOPTS-in-code — behaves identically after the consolidation: same dialogs, same lightbulb and context-menu entries, same cue click-through, same written output, evidenced by the whole IntelliJ JUnit suite plus one hand UAT round covering all six kinds.
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans executed
 
 Plans:
 **Wave 1**
@@ -313,7 +313,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 93-07-PLAN.md — COMP-09: launch-action base plus six thin no-arg subclasses (wave 3)
-- [ ] 93-08-PLAN.md — COMP-04: both SETOPTS dialogs gate OK on the server verdict; client-side rule deleted (wave 3)
+- [x] 93-08-PLAN.md — COMP-04: both SETOPTS dialogs gate OK on the server verdict; client-side rule deleted (wave 3)
 
 **UI hint**: yes
 

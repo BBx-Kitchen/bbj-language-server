@@ -17,7 +17,7 @@ forcing those files to be edited and hand-UAT'd twice.
 ### Composer
 
 - [x] **COMP-03**: A malformed or partial `bbj/composer/catalogs` response opens the composer with the same graceful "not ready" message a fully-null response already gets, instead of an "IDE Internal Error" balloon from an EDT `NullPointerException` (#609)
-- [ ] **COMP-04**: Text typed into a composer dialog that would break BBj statement syntax is rejected or escaped before it is written into the developer's live source file (#607)
+- [x] **COMP-04**: Text typed into a composer dialog that would break BBj statement syntax is rejected or escaped before it is written into the developer's live source file (#607)
 - [x] **COMP-05**: `applyHexEdit` fails gracefully rather than throwing `ArrayIndexOutOfBoundsException` when `flagsRange`/`eventMaskRange` do not carry exactly two elements (#591)
 - [x] **COMP-06**: The addWindow and addChildWindow composer dialogs share one base, so a fix to the shared addWindow-family flow is written once instead of hand-applied to two files (#630)
 - [x] **COMP-07**: `clip`, `labeled` and `setEnabledRecursive` exist exactly once in a shared home rather than duplicated across the schematic panels and dialogs (#619)
@@ -92,7 +92,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | COMP-03 | Phase 93 | Complete |
-| COMP-04 | Phase 93 | Pending |
+| COMP-04 | Phase 93 | Complete |
 | COMP-05 | Phase 93 | Complete |
 | COMP-06 | Phase 93 | Complete |
 | COMP-07 | Phase 93 | Complete |
