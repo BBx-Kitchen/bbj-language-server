@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 93
 current_phase_name: Composer Robustness & Consolidation
 status: executing
-stopped_at: Completed 93-06-PLAN.md
-last_updated: "2026-09-18T09:59:05.633Z"
+stopped_at: Completed 93-07-PLAN.md
+last_updated: "2026-09-18T10:10:04.692Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 93 execution started
-state_head: ef7a3879e503760d0e2644f87688e7bd01942eef
+state_head: 1f1fc6ef5ff30966a2009c4ec063b87d407d5cbe
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 ## Current Position
 
 Phase: 93 (Composer Robustness & Consolidation) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 93 execution started
 
@@ -89,6 +89,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 93 P04 | 5min | 3 tasks | 8 files |
 | Phase 93 P05 | 15min | 3 tasks | 4 files |
 | Phase 93 P06 | 40min | 3 tasks | 6 files |
+| Phase 93 P07 | 10min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 93]: openSetoptsInCode is the single catalogs-shape gate for both SETOPTS-in-code dialogs; the three downstream dispatch methods carry no redundant check
 - [Phase 93]: Carried the addGroupedChecks tooltip branch unconditionally on the base after verifying against the addWindow catalog source that it is dead code there (COMP-06)
 - [Phase 93]: prefill(...)'s title-setting statement stays in each subclass constructor (title is subclass-owned), keeping the base to a single refresh() abstract hook (COMP-06)
+- [Phase 93]: BbjComposeActionBase.isAvailableFor(...) is a regular overridable method defaulting to true, not an abstract hook -- unlike ComposerIntentionBase's getText()/isAvailable(), four of six action subclasses share the literal default gate, so only kind() stays the abstract, compile-time-checked hook
+- [Phase 93]: COMP-09 shipped as abstract BbjComposeActionBase + 6 thin no-arg BbjCompose*Action subclasses (deviation from #616's 'single data-driven registration' wording, per D-06) -- an AnAction could read its own id via ActionManager.getId(this), but that would turn a renamed/mistyped action id into a silent click-time no-op instead of a compile error; close #616 as done with this reasoning
 
 ### Tech Debt
 
@@ -179,8 +182,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T09:59:05.603Z
-Stopped at: Completed 93-06-PLAN.md
+Last session: 2026-09-18T10:10:04.660Z
+Stopped at: Completed 93-07-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.

@@ -22,7 +22,7 @@ forcing those files to be edited and hand-UAT'd twice.
 - [x] **COMP-06**: The addWindow and addChildWindow composer dialogs share one base, so a fix to the shared addWindow-family flow is written once instead of hand-applied to two files (#630)
 - [x] **COMP-07**: `clip`, `labeled` and `setEnabledRecursive` exist exactly once in a shared home rather than duplicated across the schematic panels and dialogs (#619)
 - [x] **COMP-08**: The three `Configure*Intention` classes become one data-driven registration parameterised by display string, `Kind` and keyword (#618)
-- [ ] **COMP-09**: The three composer-launch actions become one data-driven registration parameterised by `Kind` (#616)
+- [x] **COMP-09**: The three composer-launch actions become one data-driven registration parameterised by `Kind` (#616)
 
 ### Enterprise Manager and Run Actions
 
@@ -97,7 +97,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | COMP-06 | Phase 93 | Complete |
 | COMP-07 | Phase 93 | Complete |
 | COMP-08 | Phase 93 | Complete |
-| COMP-09 | Phase 93 | Pending |
+| COMP-09 | Phase 93 | Complete |
 | EM-01 | Phase 94 | Pending |
 | EM-02 | Phase 94 | Pending |
 | EM-03 | Phase 94 | Pending |
