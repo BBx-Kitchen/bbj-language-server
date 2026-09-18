@@ -1,10 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.4
-milestone_name: IntelliJ Focus
+milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
+current_phase: 93
+current_phase_name: first of v4.4's five phases
 status: planning
-last_updated: "2026-09-17T22:10:00.000Z"
+stopped_at: Phase 93 context gathered
+last_updated: "2026-09-18T07:39:56.681Z"
 last_activity: 2026-09-17
+last_activity_desc: v4.4 roadmap created (Phases 93-97)
+state_head: 7f161334572773ad0d54b5f1b688c77a5236beea
 progress:
   total_phases: 5
   completed_phases: 0
@@ -155,9 +160,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-17
-Stopped at: v4.4 roadmap created — ROADMAP.md, STATE.md and REQUIREMENTS.md traceability written
-Resume file: None
+Last session: 2026-09-18T07:39:56.658Z
+Stopped at: Phase 93 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/93-composer-robustness-consolidation/93-CONTEXT.md
 
 Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
 
