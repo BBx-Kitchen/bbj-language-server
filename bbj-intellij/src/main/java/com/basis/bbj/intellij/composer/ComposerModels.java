@@ -413,13 +413,21 @@ public final class ComposerModels {
         public long mask;
     }
 
-    /** Result of {@code bbj/composer/setopts/preview} — the full recomputed line for one selection. */
+    /**
+     * Result of {@code bbj/composer/setopts/preview} — the full recomputed line for one selection.
+     * {@code valid} defaults {@code false} when a response arrives with no {@code valid} key (a
+     * malformed or partial response), matching {@link AddWindowPreview}'s own fail-closed
+     * convention: a Java primitive {@code boolean} Gson never sees stays {@code false}, so the
+     * write is refused rather than permitted.
+     */
     public static final class SetoptsPreview {
         public String hexDigits;
         public String line;
         public String summary;
         public boolean maskInputsEnabled;
         public List<SetoptsUnknownBits> unknownByBytes;
+        public boolean valid;
+        public String rawTailError;
     }
 
     /**
@@ -529,10 +537,14 @@ public final class ComposerModels {
         }
     }
 
-    /** Result of {@code bbj/composer/setopts/composeTriState} — the composed block's text and lines. */
+    /**
+     * Result of {@code bbj/composer/setopts/composeTriState} — the composed block's text and
+     * lines, plus the same fail-closed {@code valid} default {@link SetoptsPreview} documents.
+     */
     public static final class SetoptsComposeTriStateResult {
         public String text;
         public List<String> lines;
+        public boolean valid;
     }
 
     // ---- CVS() (#649) ------------------------------------------------------------------------------

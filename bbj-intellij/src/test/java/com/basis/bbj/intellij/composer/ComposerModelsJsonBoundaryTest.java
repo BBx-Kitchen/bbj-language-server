@@ -431,7 +431,7 @@ class ComposerModelsJsonBoundaryTest {
             {"jsonrpc":"2.0","id":"1","result":{
               "hexDigits":"08004020000000","line":"SETOPTS 08004020000000",
               "summary":"Byte 1: Console mode in public programs","maskInputsEnabled":true,
-              "unknownByBytes":[{"byte":7,"mask":16}]
+              "unknownByBytes":[{"byte":7,"mask":16}],"valid":true
             }}""";
 
         SetoptsPreview result = parse(
@@ -440,6 +440,41 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals("08004020000000", result.hexDigits);
         assertTrue(result.maskInputsEnabled);
         assertEquals(7, result.unknownByBytes.get(0).byteNo);
+        assertTrue(result.valid);
+        assertNull(result.rawTailError);
+    }
+
+    @Test
+    void aSetoptsPreviewCarryingAnInvalidRawTailParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "hexDigits":"08004020000000","line":"SETOPTS 08004020000000",
+              "summary":"Byte 1: Console mode in public programs","maskInputsEnabled":false,
+              "unknownByBytes":[],"valid":false,"rawTailError":"must be 0-9 or A-F, up to 14 digits"
+            }}""";
+
+        SetoptsPreview result = parse(
+            "bbj/composer/setopts/preview", SetoptsPreview.class, envelope, SetoptsPreviewParams.class);
+
+        assertFalse(result.valid);
+        assertEquals("must be 0-9 or A-F, up to 14 digits", result.rawTailError);
+    }
+
+    /** An envelope with neither `valid` nor `rawTailError` -- the documented fail-closed default. */
+    @Test
+    void aSetoptsPreviewResponseWithNoValidKeyParsesFailClosed() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "hexDigits":"08004020000000","line":"SETOPTS 08004020000000",
+              "summary":"Byte 1: Console mode in public programs","maskInputsEnabled":false,
+              "unknownByBytes":[]
+            }}""";
+
+        SetoptsPreview result = parse(
+            "bbj/composer/setopts/preview", SetoptsPreview.class, envelope, SetoptsPreviewParams.class);
+
+        assertFalse(result.valid);
+        assertNull(result.rawTailError);
     }
 
     /**
@@ -659,7 +694,7 @@ class ComposerModelsJsonBoundaryTest {
         String envelope = """
             {"jsonrpc":"2.0","id":"1","result":{
               "text":"opts$=OPTS\\nopts$=opts$ IOR $00000008$\\nSETOPTS opts$",
-              "lines":["opts$=OPTS","opts$=opts$ IOR $00000008$","SETOPTS opts$"]
+              "lines":["opts$=OPTS","opts$=opts$ IOR $00000008$","SETOPTS opts$"],"valid":true
             }}""";
 
         SetoptsComposeTriStateResult result = parse(
@@ -669,6 +704,22 @@ class ComposerModelsJsonBoundaryTest {
         assertEquals(3, result.lines.size());
         assertEquals("SETOPTS opts$", result.lines.get(2));
         assertTrue(result.text.contains("SETOPTS opts$"));
+        assertTrue(result.valid);
+    }
+
+    /** An envelope with no `valid` key -- the same fail-closed default {@link SetoptsPreview} documents. */
+    @Test
+    void aComposeTriStateResponseWithNoValidKeyParsesFailClosed() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "text":"","lines":[]
+            }}""";
+
+        SetoptsComposeTriStateResult result = parse(
+            "bbj/composer/setopts/composeTriState", SetoptsComposeTriStateResult.class, envelope,
+            SetoptsComposeTriStateParams.class);
+
+        assertFalse(result.valid);
     }
 
     /**

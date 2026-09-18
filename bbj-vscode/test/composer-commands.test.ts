@@ -270,6 +270,16 @@ describe('composer LS command layer (#433)', () => {
             selection: { bits: [], maskComma: '', maskDot: '', rawTail: 'ZZ' },
         }) as any;
         expect(invalidTailPreview.hexDigits).toBe(originalWithTail);
+        expect(invalidTailPreview.valid).toBe(false);
+        expect(invalidTailPreview.rawTailError).toBe('must be 0-9 or A-F, up to 14 digits');
+
+        // a valid raw-tail entry carries a valid: true verdict through the handler (#607)
+        const validTailPreview = call('bbj/composer/setopts/preview', {
+            original: originalWithTail,
+            selection: { bits: [], maskComma: '', maskDot: '', rawTail: '11223344556677' },
+        }) as any;
+        expect(validTailPreview.valid).toBe(true);
+        expect(validTailPreview.rawTailError).toBeUndefined();
     });
 
     test('msgbox/decodeCall delegates to decodeMsgboxCall for literal, constant-sum and replace-mode lines (#648)', () => {
