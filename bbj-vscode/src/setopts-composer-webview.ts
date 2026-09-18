@@ -195,6 +195,7 @@ function getHtml(webview: vscode.Webview): string {
   .char-input { width: 2.2em; text-align: center; }
   #raw-tail { width: 12em; text-transform: uppercase; }
   .note { font-size: 0.78em; opacity: 0.65; }
+  .note.error { color: var(--vscode-errorForeground, #f14c4c); opacity: 1; min-height: 1em; display: block; }
   .preview { margin: 10px 0 4px; }
   pre {
     background: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-panel-border);
@@ -232,6 +233,7 @@ function getHtml(webview: vscode.Webview): string {
       <label for="raw-tail">Raw hex</label><input type="text" id="raw-tail" maxlength="14" spellcheck="false">
       <span class="note">Passed through untouched; leave empty to end the vector at byte 9.</span>
     </div>
+    <div class="row"><span class="note error" id="raw-tail-error"></span></div>
   </fieldset>
 
   <div class="preview">
@@ -324,6 +326,8 @@ function getHtml(webview: vscode.Webview): string {
       $('mask-comma').disabled = !m.maskInputsEnabled;
       $('mask-dot').disabled = !m.maskInputsEnabled;
       $('mask-note').style.display = m.maskInputsEnabled ? 'none' : '';
+      $('raw-tail-error').textContent = m.rawTailError || '';
+      $('apply').disabled = !m.valid;
     }
   });
 

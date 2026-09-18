@@ -50,6 +50,14 @@ export const MASK_REPLACEMENT_BIT = { byte: 3, mask: 0x02 } as const;
 /** Bytes 10–16 are reserved / application use — the composer passes them through as raw hex. */
 export const FIRST_RAW_BYTE = 10;
 export const MAX_BYTES = 16;
+/** Bytes 10–16 is 7 bytes, i.e. 14 hex digits — the raw tail's outer length bound. */
+export const MAX_RAW_TAIL_DIGITS = 14;
+/**
+ * The one definition of the raw-tail validity rule (#607): case-insensitive hex, 0–14 digits.
+ * Matches the empty string, so clearing the field is always valid. `setoptsPreview` is the only
+ * evaluator — no client re-derives this pattern.
+ */
+const RAW_TAIL_PATTERN = /^[0-9A-Fa-f]{0,14}$/;
 
 /**
  * The documented option bits, in byte/descending-bit order. PRO/5 wording condensed; `bbj`
@@ -334,6 +342,10 @@ export interface SetOptsPreview {
     maskInputsEnabled: boolean;
     /** Non-catalog bits present per byte, so the UI can flag what it preserves. */
     unknownByBytes: Array<{ byte: number; mask: number }>;
+    /** Whether this selection is safe to write (#607) — every host gates its Apply/OK on this. */
+    valid: boolean;
+    /** The field-scoped message when the raw tail is the reason `valid` is false; absent otherwise. */
+    rawTailError?: string;
 }
 
 /**
@@ -354,7 +366,10 @@ export function setoptsPreview(original: SetOptsVector | undefined, sel: SetOpts
         if (sel.maskComma !== maskChar(v, MASK_COMMA_BYTE)) setMaskChar(v, MASK_COMMA_BYTE, sel.maskComma);
         if (sel.maskDot !== maskChar(v, MASK_DOT_BYTE)) setMaskChar(v, MASK_DOT_BYTE, sel.maskDot);
     }
-    if (/^[0-9A-Fa-f]*$/.test(sel.rawTail) && sel.rawTail !== rawTail(v)) {
+    // Evaluated once — the same boolean gates whether the tail is applied below AND is returned
+    // as `valid`, so the rule can never disagree with itself between the two uses.
+    const rawTailValid = RAW_TAIL_PATTERN.test(sel.rawTail);
+    if (rawTailValid && sel.rawTail !== rawTail(v)) {
         setRawTail(v, sel.rawTail);
     }
     return {
@@ -365,6 +380,8 @@ export function setoptsPreview(original: SetOptsVector | undefined, sel: SetOpts
         unknownByBytes: Object.keys(BYTE_GROUPS).map(Number)
             .map(byte => ({ byte, mask: unknownBitsInByte(v, byte) }))
             .filter(u => u.mask !== 0),
+        valid: rawTailValid,
+        rawTailError: rawTailValid ? undefined : `must be 0-9 or A-F, up to ${MAX_RAW_TAIL_DIGITS} digits`,
     };
 }
 

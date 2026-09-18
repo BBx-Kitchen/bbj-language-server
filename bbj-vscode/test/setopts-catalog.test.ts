@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-    BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, MAX_BYTES, SETOPTS_BITS,
+    BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, MAX_BYTES, MAX_RAW_TAIL_DIGITS, SETOPTS_BITS,
     SETOPTS_IN_CODE_DEFAULT_VAR,
     bbjHexLiteral, composeSetOptsBlock, composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector,
     encodeVector, emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector,
@@ -300,6 +300,42 @@ describe('setoptsPreview (the round-trip contract)', () => {
         expect(fresh.hexDigits).toBe('00000000');
         const grown = setoptsPreview(undefined, { ...noSelection, bits: [{ byte: 9, mask: 0x20 }] });
         expect(grown.hexDigits).toBe('000000000000000020');
+    });
+
+    test('a valid tail yields valid: true and no rawTailError (#607)', () => {
+        const preview = setoptsPreview(undefined, { ...noSelection, rawTail: 'AB12CD' });
+        expect(preview.valid).toBe(true);
+        expect(preview.rawTailError).toBeUndefined();
+    });
+
+    test('an empty tail is valid: true — clearing the field must never block Apply', () => {
+        const preview = setoptsPreview(undefined, { ...noSelection, rawTail: '' });
+        expect(preview.valid).toBe(true);
+        expect(preview.rawTailError).toBeUndefined();
+    });
+
+    test('a non-hex tail is valid: false, carries the field-scoped message, and leaves hexDigits untouched', () => {
+        const original = `${'0'.repeat(18)}11223344556677`;
+        const v = parseVector(original)!;
+        const preview = setoptsPreview(v, { ...selectionFor(v), rawTail: 'ZZ' });
+        expect(preview.valid).toBe(false);
+        expect(preview.rawTailError).toBe('must be 0-9 or A-F, up to 14 digits');
+        expect(preview.hexDigits).toBe(original);
+    });
+
+    test('a 15-digit all-hex tail is valid: false — the length bound moved server-side', () => {
+        const preview = setoptsPreview(undefined, { ...noSelection, rawTail: '1'.repeat(MAX_RAW_TAIL_DIGITS + 1) });
+        expect(preview.valid).toBe(false);
+    });
+
+    test('a 14-digit tail is valid: true — the boundary is inclusive', () => {
+        const preview = setoptsPreview(undefined, { ...noSelection, rawTail: '1'.repeat(MAX_RAW_TAIL_DIGITS) });
+        expect(preview.valid).toBe(true);
+    });
+
+    test('a lower-case tail is valid: true — the rule is case-insensitive', () => {
+        const preview = setoptsPreview(undefined, { ...noSelection, rawTail: 'aabb' });
+        expect(preview.valid).toBe(true);
     });
 });
 
