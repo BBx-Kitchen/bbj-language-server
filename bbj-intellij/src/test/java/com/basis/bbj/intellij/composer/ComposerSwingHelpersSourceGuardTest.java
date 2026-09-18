@@ -24,6 +24,8 @@ class ComposerSwingHelpersSourceGuardTest {
 
     private static final Path SWING_HELPERS_SOURCE = composerSource("ComposerSwingHelpers.java");
 
+    private static final Path ADD_WINDOW_FAMILY_BASE = composerSource("AddWindowFamilyComposerDialogBase.java");
+
     private static final Path MSGBOX_DIALOG = composerSource("MsgboxComposerDialog.java");
     private static final Path ADD_WINDOW_DIALOG = composerSource("AddWindowComposerDialog.java");
     private static final Path ADD_CHILD_WINDOW_DIALOG = composerSource("AddChildWindowComposerDialog.java");
@@ -188,8 +190,17 @@ class ComposerSwingHelpersSourceGuardTest {
             String text = readSource(source);
             assertTrue(countOccurrences(text, "ComposerSwingHelpers.labeledWithError(") >= 1,
                     source.getFileName() + " must call ComposerSwingHelpers.labeledWithError( at least once");
-            assertEquals(1, countOccurrences(text, "ComposerSwingHelpers.setEnabledRecursive("),
-                    source.getFileName() + " must call ComposerSwingHelpers.setEnabledRecursive( exactly once");
+        }
+
+        // setEnabledRecursive( is called from updateEventEnabled(), which both addWindow-family
+        // dialogs now inherit from AddWindowFamilyComposerDialogBase (#630) rather than declaring
+        // their own copy, so the call site lives on the shared base instead of either subclass file.
+        assertEquals(1, countOccurrences(readSource(ADD_WINDOW_FAMILY_BASE), "ComposerSwingHelpers.setEnabledRecursive("),
+                "AddWindowFamilyComposerDialogBase.java must call ComposerSwingHelpers.setEnabledRecursive( exactly once");
+        for (Path source : List.of(ADD_WINDOW_DIALOG, ADD_CHILD_WINDOW_DIALOG)) {
+            assertEquals(0, countOccurrences(readSource(source), "ComposerSwingHelpers.setEnabledRecursive("),
+                    source.getFileName() + " must no longer call ComposerSwingHelpers.setEnabledRecursive( directly -- "
+                            + "it is inherited via updateEventEnabled() on the shared base");
         }
     }
 

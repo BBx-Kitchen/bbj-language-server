@@ -4,14 +4,7 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewInput;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowCatalogs;
-import com.basis.bbj.intellij.composer.ComposerModels.CatalogItem;
-import com.basis.bbj.intellij.concurrency.AlarmScheduler;
-import com.basis.bbj.intellij.concurrency.PreviewDebouncer;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.DialogWrapper;
-import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
@@ -30,41 +23,17 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 /**
  * Swing composer for {@code BBjWindow::addChildWindow} flags + event_mask (#473). Renders grouped
  * flag checkboxes and an opt-in event-mask section; the language server computes the hex, the
  * statement, and the schematic ({@code bbj/composer/addchildwindow/preview}) so no flag logic
  * lives here. Create flow inserts a fresh statement; edit flow rewrites the hex tokens in place.
- * Every input routes through {@link #scheduleRefresh()} over the shared {@code PreviewDebouncer}
- * seam, so a burst of typing sends one preview request per settle point instead of one per
- * keystroke (#611).
+ * Every input routes through the inherited {@code scheduleRefresh()} over the shared
+ * {@code PreviewDebouncer} seam ({@link AddWindowFamilyComposerDialogBase}, #630), so a burst of
+ * typing sends one preview request per settle point instead of one per keystroke (#611).
  */
-public final class AddChildWindowComposerDialog extends DialogWrapper {
-    private static final long PREVIEW_DEBOUNCE_MS = 300L;
-
-    private final Project project;
-    private final BbjComposerServer server;
-    private final AddWindowCatalogs catalogs;
-    private final AtomicInteger seq = new AtomicInteger();
-    private final ComposerFlow flow;
-    private final Consumer<ComposerNotices.Notice> balloonOnce;
-    private final PreviewDebouncer previewDebouncer;
-
-    private final Map<Long, JBCheckBox> flagChecks = new LinkedHashMap<>();
-    private final Map<Long, JBCheckBox> eventChecks = new LinkedHashMap<>();
-    private final JBCheckBox eventEnabled = new JBCheckBox("Configure event mask (default: unset)");
-    private JPanel eventPanel;
+public final class AddChildWindowComposerDialog extends AddWindowFamilyComposerDialogBase {
 
     private final JBTextField receiver = new JBTextField("child!");
     private final JBTextField window = new JBTextField("window!");
@@ -77,9 +46,6 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
     private final JBTextField height = new JBTextField("150");
 
     private final ChildWindowSchematicPanel schematic = new ChildWindowSchematicPanel();
-    private final JBTextField statementField = new JBTextField();
-    private final JBLabel flagsSummary = new JBLabel();
-    private final JBLabel eventSummary = new JBLabel();
     private final JBLabel receiverError = ComposerSwingHelpers.errorLabel();
     private final JBLabel windowError = ComposerSwingHelpers.errorLabel();
     private final JBLabel idError = ComposerSwingHelpers.errorLabel();
@@ -89,17 +55,7 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
     private final JBLabel yError = ComposerSwingHelpers.errorLabel();
     private final JBLabel widthError = ComposerSwingHelpers.errorLabel();
     private final JBLabel heightError = ComposerSwingHelpers.errorLabel();
-    private JPanel geometryPanel;
     private Color flagsSummaryDefaultForeground;
-
-    private final boolean editMode;
-    private final ComposerModels.AddWindowInitial initial;
-    private final long preservedFlagBits;
-    private final long preservedEventBits;
-
-    private volatile String statement = "";
-    private volatile String flagsHex = "";
-    private volatile String eventHex;
 
     /** Create flow. */
     public AddChildWindowComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs) {
@@ -110,24 +66,7 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
     public AddChildWindowComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs,
                                         @Nullable ComposerModels.AddWindowInitial initial, boolean editMode,
                                         long preservedFlagBits, long preservedEventBits) {
-        super(project);
-        this.project = project;
-        this.server = server;
-        this.catalogs = catalogs;
-        this.initial = initial;
-        this.editMode = editMode;
-        this.preservedFlagBits = preservedFlagBits;
-        this.preservedEventBits = preservedEventBits;
-        this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
-        this.flow = new ComposerFlow(
-                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
-                balloonOnce,
-                ComposerFlow.REFRESH_TIMEOUT_MILLIS);
-        this.previewDebouncer = new PreviewDebouncer(
-                new AlarmScheduler(getDisposable()),
-                PREVIEW_DEBOUNCE_MS,
-                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
-                this::refresh);
+        super(project, server, catalogs, initial, editMode, preservedFlagBits, preservedEventBits);
         setTitle(editMode ? "Configure child window flags" : "Compose addChildWindow");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
@@ -137,20 +76,14 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         setOKActionEnabled(false);
         if (initial != null) {
             prefill(initial);
+            if (initial.title != null) {
+                title.setText(initial.title); // kept for the preview even though the geometry panel is hidden
+            }
         } else {
             // Create: default to Keyboard navigation ($00010000$), the most common child-window mask.
             preselect(0x00010000L);
         }
         refresh();
-    }
-
-    private void preselect(long... bits) {
-        for (long bit : bits) {
-            JBCheckBox cb = flagChecks.get(bit);
-            if (cb != null) {
-                cb.setSelected(true);
-            }
-        }
     }
 
     @Override
@@ -217,57 +150,10 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         return scroll;
     }
 
-    private void updateEventEnabled() {
-        ComposerSwingHelpers.setEnabledRecursive(eventPanel, eventEnabled.isSelected());
-    }
-
-    /** Add checkboxes to `parent`, one titled sub-panel per catalog group (in catalog order). */
-    private void addGroupedChecks(JPanel parent, List<CatalogItem> items, Map<Long, JBCheckBox> into) {
-        String currentGroup = null;
-        JPanel groupPanel = null;
-        for (CatalogItem it : items) {
-            if (!Objects.equals(it.group, currentGroup)) {
-                currentGroup = it.group;
-                groupPanel = new JPanel(new GridLayout(0, 2, JBUI.scale(8), 0));
-                if (currentGroup != null) {
-                    groupPanel.setBorder(BorderFactory.createTitledBorder(currentGroup));
-                }
-                parent.add(groupPanel);
-            }
-            JBCheckBox cb = new JBCheckBox(it.label);
-            if (it.detail != null) {
-                cb.setToolTipText(it.detail);
-            }
-            cb.addActionListener(e -> scheduleRefresh());
-            into.put(it.value, cb);
-            groupPanel.add(cb);
-        }
-    }
-
-    private List<Long> selected(Map<Long, JBCheckBox> checks) {
-        List<Long> out = new ArrayList<>();
-        for (Map.Entry<Long, JBCheckBox> e : checks.entrySet()) {
-            if (e.getValue().isSelected()) {
-                out.add(e.getKey());
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Every checkbox/field listener calls this instead of {@link #refresh()} directly: it disables
-     * OK synchronously the instant a new preview is scheduled, and it is re-enabled only when the
-     * debounced preview resolves.
-     */
-    private void scheduleRefresh() {
-        setOKActionEnabled(false);
-        seq.incrementAndGet(); // invalidate any response already in flight before this keystroke
-        previewDebouncer.trigger();
-    }
-
-    /** No listener calls this directly -- every listener routes through {@link #scheduleRefresh()}.
+    /** No listener calls this directly -- every listener routes through the inherited {@code scheduleRefresh()}.
      * Build the current selection, ask the LS for a preview, and update the UI on the EDT. */
-    private void refresh() {
+    @Override
+    protected void refresh() {
         AddChildWindowPreviewInput input = new AddChildWindowPreviewInput();
         input.flags = selected(flagChecks);
         input.eventMaskEnabled = eventEnabled.isSelected();
@@ -300,16 +186,6 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
                 });
     }
 
-    /**
-     * A refresh request failed (or completed with no preview) while this dialog's sequence is still
-     * current: label the flags summary stale and refuse OK so it can never be accepted (#538).
-     * Cleared the next time {@link #apply(AddChildWindowPreview)} runs after a successful preview.
-     */
-    private void previewUnavailable(String reason) {
-        ComposerSwingHelpers.previewUnavailable(flagsSummary, reason);
-        setOKActionEnabled(false);
-    }
-
     private void apply(AddChildWindowPreview p) {
         statement = p.statement;
         flagsHex = p.flagsHex;
@@ -329,54 +205,5 @@ public final class AddChildWindowComposerDialog extends DialogWrapper {
         widthError.setText(errorText(p.widthError));
         heightError.setText(errorText(p.heightError));
         setOKActionEnabled(p.valid);
-    }
-
-    /** {@code " "} keeps the error label's height stable, matching {@link MsgboxComposerDialog}. */
-    private static String errorText(String error) {
-        return error == null ? " " : error;
-    }
-
-    /** Prefill flag/event selections and title from a decoded call (edit-in-place). */
-    private void prefill(ComposerModels.AddWindowInitial in) {
-        setSelected(flagChecks, in.flags);
-        setSelected(eventChecks, in.eventMask);
-        eventEnabled.setSelected(in.eventMaskEnabled);
-        updateEventEnabled();
-        if (in.title != null) {
-            title.setText(in.title); // kept for the preview even though the geometry panel is hidden
-        }
-    }
-
-    private static void setSelected(Map<Long, JBCheckBox> checks, List<Long> values) {
-        List<Long> on = values == null ? List.of() : values;
-        for (Map.Entry<Long, JBCheckBox> e : checks.entrySet()) {
-            e.getValue().setSelected(on.contains(e.getKey()));
-        }
-    }
-
-    /** The composed statement to insert (create flow); valid after the dialog is accepted. */
-    public @NotNull String getStatement() {
-        return statement;
-    }
-
-    /** The `$flags$` hex token (edit flow: replace the existing flags literal with this). */
-    public @NotNull String getFlagsHex() {
-        return flagsHex;
-    }
-
-    /** The `$event_mask$` hex token, or null when the event mask is unset. */
-    public @Nullable String getEventHex() {
-        return eventHex;
-    }
-
-    public boolean isEventEnabled() {
-        return eventEnabled.isSelected();
-    }
-
-    /** Small DocumentListener that runs one callback on any change. */
-    private record SimpleDocumentListener(Runnable onChange) implements DocumentListener {
-        @Override public void insertUpdate(DocumentEvent e) { onChange.run(); }
-        @Override public void removeUpdate(DocumentEvent e) { onChange.run(); }
-        @Override public void changedUpdate(DocumentEvent e) { onChange.run(); }
     }
 }
