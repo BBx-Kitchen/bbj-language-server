@@ -1,9 +1,9 @@
 ---
-status: testing
+status: complete
 phase: 93-composer-robustness-consolidation
 source: [93-VERIFICATION.md]
 started: 2026-09-18T11:45:00Z
-updated: 2026-09-18T11:45:00Z
+updated: 2026-09-18T13:40:00Z
 ---
 
 ## Setup Required Before Test 1
@@ -26,39 +26,41 @@ Automated half already satisfied: `./gradlew test --rerun` → **983 tests, 0 fa
 
 ## Current Test
 
-number: 1
-name: Success criterion #5 — all six composer kinds via all three entry points
-expected: |
-  No visible change to any dialog's fields, labels, default selections, or the BBj statement/block
-  written into the source file, across all six composer kinds and both consolidated
-  dialog/intention/action families.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
 ### 1. Success criterion #5 — all six composer kinds via all three entry points
 expected: Open MSGBOX, addWindow, addChildWindow, CVS, SETOPTS, and SETOPTS-in-code composers via all three entry points each (lightbulb intention, editor context-menu action, composer cue click-through). Confirm identical dialogs, defaults, and generated statements to before this phase's consolidation. No visible change to any dialog's fields, labels, default selections, or the BBj statement/block written into the source file.
-result: [pending]
+result: pass
 
 ### 2. Theme-aware error colour in Light and Darcula
 expected: Open a composer dialog in both the Light and Darcula IntelliJ themes. Error text renders in the theme-aware error colour (`NamedColorUtil.getErrorForeground()`), and a stalled preview also renders in that same colour instead of default gray. These are two deliberate colour changes introduced by plan 93-01 — a visible change is the correct outcome here, not a regression.
-result: [pending]
+result: pass
 
 ### 3. SETOPTS raw-hex field validation message
 expected: Type a non-hex character into `SetoptsComposerDialog`'s raw-hex field. The same field-scoped error message appears next to the field and Apply/OK is refused. Message text is byte-identical to the deleted Java copy's wording ("must be 0-9 or A-F, up to 14 digits"); Apply/OK stays disabled until the field is corrected.
-result: [pending]
+result: pass
 
 ### 4. addWindow / addChildWindow parity after base extraction
 expected: Open both addWindow and addChildWindow composers in create and edit mode. Both still open, preview, and write exactly as before the `AddWindowFamilyComposerDialogBase` extraction (93-06), with no change to any label, default value, or generated statement.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 4
-passed: 0
+passed: 4
 issues: 0
-pending: 4
+pending: 0
 skipped: 0
 blocked: 0
+
+## Deferred Follow-Ups
+
+- test: 4
+  idea: "Observed incidentally during test 4, unrelated to this phase's scope: in config.bbx the
+    'Configure SETOPTS' cue link above the SETOPTS line disappears after switching to another
+    editor tab and coming back. Cue is not re-rendered on editor re-activation."
+  deferred_at: 2026-09-18
 
 ## Gaps
