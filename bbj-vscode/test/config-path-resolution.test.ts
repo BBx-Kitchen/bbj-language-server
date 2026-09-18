@@ -21,6 +21,7 @@ import {
 } from '../src/language/resolved-config-path-request.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import type { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { logger, LogLevel } from '../src/language/logger.js';
 
 /**
  * End-to-end and unit coverage for the one shared answer to "which file is the BBj config
@@ -332,6 +333,28 @@ describe('initializeWorkspace reads PREFIX through the resolver', () => {
         expect(resolved.path).not.toBe(linkConfigFile);
     });
 
+    test('a custom-named config file is described generically in the load log', async () => {
+        const configDir = makeTmpDir();
+        const customConfigFile = path.join(configDir, 'barista.cfg');
+        fs.writeFileSync(customConfigFile, 'PREFIX "/custom-prefix/"\n');
+        const resolvedConfigFile = fs.realpathSync.native(customConfigFile);
+        const infoSpy = vi.spyOn(logger, 'info');
+        logger.setLevel(LogLevel.INFO);
+
+        try {
+            const wsManager = createRealFsWorkspaceManager();
+            wsManager.setConfigPath(customConfigFile);
+
+            await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+
+            expect(infoSpy).toHaveBeenCalledWith(`Loaded config file from resolved path: ${resolvedConfigFile}`);
+            expect(infoSpy).not.toHaveBeenCalledWith(expect.stringContaining('Loaded config.bbx'));
+        } finally {
+            logger.setLevel(LogLevel.WARN);
+            infoSpy.mockRestore();
+        }
+    });
+
     test('no configured path and a BBj home whose cfg/config.bbx exists: PREFIX is read from the same file the resolver names', async () => {
         const tmpHome = makeTmpDir();
         fs.mkdirSync(path.join(tmpHome, 'cfg'), { recursive: true });
@@ -351,17 +374,24 @@ describe('initializeWorkspace reads PREFIX through the resolver', () => {
     test('a configured path that does not exist: no prefixes load, and getResolvedConfigPath reports exists:false with a problem naming the path', async () => {
         const configDir = makeTmpDir();
         const missingConfig = path.join(configDir, 'missing-config.bbx');
+        const warnSpy = vi.spyOn(logger, 'warn');
 
-        const wsManager = createRealFsWorkspaceManager();
-        wsManager.setConfigPath(missingConfig);
+        try {
+            const wsManager = createRealFsWorkspaceManager();
+            wsManager.setConfigPath(missingConfig);
 
-        await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+            await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
 
-        const settings = wsManager.getSettings();
-        expect(settings?.prefixes.filter(Boolean)).toEqual([]);
-        const resolved = wsManager.getResolvedConfigPath();
-        expect(resolved.exists).toBe(false);
-        expect(resolved.problem).toContain(path.normalize(missingConfig));
+            const settings = wsManager.getSettings();
+            expect(settings?.prefixes.filter(Boolean)).toEqual([]);
+            const resolved = wsManager.getResolvedConfigPath();
+            expect(resolved.exists).toBe(false);
+            expect(resolved.problem).toContain(path.normalize(missingConfig));
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to load config file'));
+            expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Failed to load config.bbx'));
+        } finally {
+            warnSpy.mockRestore();
+        }
     });
 
     test('neither setting: no prefixes load, and getResolvedConfigPath reports source none', async () => {
