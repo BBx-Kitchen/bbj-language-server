@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 93
 current_phase_name: Composer Robustness & Consolidation
 status: executing
-stopped_at: Completed 93-01-PLAN.md
-last_updated: "2026-09-18T09:03:32.391Z"
+stopped_at: Completed 93-02-PLAN.md
+last_updated: "2026-09-18T09:12:40.125Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 93 execution started
-state_head: 326f8f105cdce697c5f2a9c0b0e8699247ca4670
+state_head: 0860d19499d0166975bdbead464a2dfb94df535b
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 ## Current Position
 
 Phase: 93 (Composer Robustness & Consolidation) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 93 execution started
 
@@ -84,6 +84,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 93 P01 | 25min | 3 tasks | 12 files |
+| Phase 93 P02 | 35min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,7 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 92]: `BbjFileVisibility` mirrors `BbjConfigPathService`'s static-helper-plus-thin-wrapper convention; widget visibility reads `file.getFileType().getName()`, never the extension — the shape IOP-05's widget base must keep.
 - [Phase 83]: LSP4IJ coupling is fenced by signature canaries, class-file marker assertions and an eleven-file symbol-level import allowlist that fails on drift anywhere in `src/main/java`.
 - [Phase 93]: NamedColorUtil.getErrorForeground() confirmed against the 2024.2 platform jar; clip() reconciled to the cached-FontMetrics variant; setOKActionEnabled(false) stays local to each dialog's wrapper, never moved into the shared helper
+- [Phase 93]: SETOPTS raw-tail validity rule moved server-side (MAX_RAW_TAIL_DIGITS=14, single RAW_TAIL_PATTERN regex); valid/rawTailError on SetOptsPreview and valid on the composeTriState result reach both hosts, fail-closed on a missing key
 
 ### Tech Debt
 
@@ -166,8 +168,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T09:03:32.361Z
-Stopped at: Completed 93-01-PLAN.md
+Last session: 2026-09-18T09:12:40.095Z
+Stopped at: Completed 93-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
