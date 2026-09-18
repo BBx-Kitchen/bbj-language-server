@@ -148,24 +148,81 @@ class ComposerLauncherRangeGuardSourceGuardTest {
     }
 
     @Test
+    void theOpenSetoptsInCodeAbsoluteBodyChecksTheLineBoundExactlyOnce() {
+        String body = extractMethodBody(
+                withoutCommentLines(readSource(LAUNCHER_SOURCE)), "private static void openSetoptsInCodeAbsolute(");
+
+        assertEquals(1, countOccurrences(body, "ComposerEditRanges.isUsableLine("),
+                "openSetoptsInCodeAbsolute must check ed.line against the live document exactly once, or "
+                        + "the crash this guard exists to close reopens on a malformed line number");
+        assertEquals(1, countOccurrences(body, "getLineCount()"),
+                "the document's line count must be read exactly once and handed to the shared predicate, "
+                        + "never recomputed per comparison");
+    }
+
+    @Test
+    void theOpenSetoptsInCodeChainBodyChecksTheLineRegionBoundExactlyOnce() {
+        String body = extractMethodBody(
+                withoutCommentLines(readSource(LAUNCHER_SOURCE)), "private static void openSetoptsInCodeChain(");
+
+        assertEquals(1, countOccurrences(body, "ComposerEditRanges.isUsableLineRegion("),
+                "openSetoptsInCodeChain must check chain.startLine/chain.endLine against the live "
+                        + "document exactly once, or the crash this guard exists to close reopens on a "
+                        + "malformed or descending region");
+        assertEquals(1, countOccurrences(body, "getLineCount()"),
+                "the document's line count must be read exactly once and handed to the shared predicate, "
+                        + "never recomputed per comparison");
+    }
+
+    @Test
+    void theLineBoundAbortsRenderTheMalformedEditNoticeInBothGuardedMethods() {
+        String absoluteBody = extractMethodBody(
+                withoutCommentLines(readSource(LAUNCHER_SOURCE)), "private static void openSetoptsInCodeAbsolute(");
+        String chainBody = extractMethodBody(
+                withoutCommentLines(readSource(LAUNCHER_SOURCE)), "private static void openSetoptsInCodeChain(");
+
+        assertEquals(2, countOccurrences(absoluteBody, "ComposerNotices.malformedEdit("),
+                "openSetoptsInCodeAbsolute has two abort paths -- the pre-existing hexRange guard and "
+                        + "the line-bound guard -- and each must render its own malformed-edit notice "
+                        + "rather than returning silently");
+        assertEquals(1, countOccurrences(chainBody, "ComposerNotices.malformedEdit("),
+                "openSetoptsInCodeChain has one abort path -- the line-region guard -- and it must "
+                        + "render the malformed-edit notice rather than returning silently");
+    }
+
+    @Test
     void theRangeCheckPrecedesTheWriteCommandInEveryGuardedMethod() {
         String text = readSource(LAUNCHER_SOURCE);
 
         assertOrderedBeforeWriteCommand(
-                extractMethodBody(text, "private static <D> void applyHexEdit("), "applyHexEdit");
+                extractMethodBody(text, "private static <D> void applyHexEdit("), "applyHexEdit",
+                "ComposerEditRanges.isUsable(");
         assertOrderedBeforeWriteCommand(
-                extractMethodBody(text, "private static void openSetopts("), "openSetopts");
+                extractMethodBody(text, "private static void openSetopts("), "openSetopts",
+                "ComposerEditRanges.isUsable(");
         assertOrderedBeforeWriteCommand(
-                extractMethodBody(text, "private static void openSetoptsInCodeAbsolute("), "openSetoptsInCodeAbsolute");
+                extractMethodBody(text, "private static void openSetoptsInCodeAbsolute("), "openSetoptsInCodeAbsolute",
+                "ComposerEditRanges.isUsable(");
+        assertOrderedBeforeWriteCommand(
+                extractMethodBody(text, "private static void openSetoptsInCodeAbsolute("), "openSetoptsInCodeAbsolute",
+                "ComposerEditRanges.isUsableLine(");
+        assertOrderedBeforeWriteCommand(
+                extractMethodBody(text, "private static void openSetoptsInCodeChain("), "openSetoptsInCodeChain",
+                "ComposerEditRanges.isUsableLineRegion(");
     }
 
-    private static void assertOrderedBeforeWriteCommand(String methodBody, String methodName) {
-        int firstCheck = methodBody.indexOf("ComposerEditRanges.isUsable(");
+    /**
+     * @param predicateLiteral the guard call whose first occurrence must precede the write command
+     *     in {@code methodBody} -- generalized (rather than hardcoded to the array predicate) so
+     *     this one helper pins every guard's ordering, array-length and line-bound alike.
+     */
+    private static void assertOrderedBeforeWriteCommand(String methodBody, String methodName, String predicateLiteral) {
+        int firstCheck = methodBody.indexOf(predicateLiteral);
         int firstGuardConstruction = methodBody.indexOf("new StaleEditGuard(");
         assertTrue(firstCheck >= 0 && firstGuardConstruction >= 0 && firstCheck < firstGuardConstruction,
-                methodName + " must check its range(s) before constructing the StaleEditGuard that "
-                        + "enters the write command -- the abort must happen outside the write, so nothing "
-                        + "is written and no partial edit is left behind");
+                methodName + " must check its bound via " + predicateLiteral + " before constructing the "
+                        + "StaleEditGuard that enters the write command -- the abort must happen outside "
+                        + "the write, so nothing is written and no partial edit is left behind");
     }
 
     @Test
