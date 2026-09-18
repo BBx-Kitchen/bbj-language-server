@@ -1,11 +1,8 @@
 package com.basis.bbj.intellij.composer;
 
-import com.intellij.codeInsight.intention.IntentionAction;
-import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,16 +11,11 @@ import org.jetbrains.annotations.Nullable;
  * opens the visual composer prefilled from the current call and rewrites its flag/event_mask hex in
  * place (#473).
  */
-public final class ConfigureAddChildWindowIntention implements IntentionAction {
+public final class ConfigureAddChildWindowIntention extends ComposerIntentionBase {
 
     @Override
     public @NotNull String getText() {
         return "Configure child window flags…";
-    }
-
-    @Override
-    public @NotNull String getFamilyName() {
-        return "BBj visual composer";
     }
 
     @Override
@@ -32,22 +24,13 @@ public final class ConfigureAddChildWindowIntention implements IntentionAction {
     }
 
     @Override
-    public void invoke(@NotNull Project project, @Nullable Editor editor, @Nullable PsiFile file) throws IncorrectOperationException {
-        if (editor != null) {
-            ComposerLauncher.launch(project, editor, ComposerLauncher.Kind.ADDCHILDWINDOW);
-        }
+    protected ComposerLauncher.Kind kind() {
+        return ComposerLauncher.Kind.ADDCHILDWINDOW;
     }
 
     @Override
-    public boolean startInWriteAction() {
-        return false;
-    }
-
-    @Override
-    public @NotNull IntentionPreviewInfo generatePreview(@NotNull Project project, @NotNull Editor editor, @NotNull PsiFile file) {
-        // the popup renders this summary itself, so it never falls back to the description resource
-        return new IntentionPreviewInfo.Html(
-                "<p>Opens the BBj visual composer for the <code>addChildWindow(...)</code> call under "
-                        + "the caret, prefilled from its current flag and event-mask arguments.</p>");
+    protected String previewHtml() {
+        return "<p>Opens the BBj visual composer for the <code>addChildWindow(...)</code> call under "
+                + "the caret, prefilled from its current flag and event-mask arguments.</p>";
     }
 }
