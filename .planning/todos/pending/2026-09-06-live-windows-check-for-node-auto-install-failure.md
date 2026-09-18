@@ -3,6 +3,7 @@ created: 2026-09-06T07:58:10.000Z
 title: Live Windows check for the Node.js auto-install failure
 area: intellij-node-download
 severity: major
+resolves_phase: 96
 files:
 
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/NodeInstallPipeline.java

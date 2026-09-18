@@ -3,6 +3,7 @@ created: 2026-09-06T09:00:00.000Z
 title: A configured-but-unusable Node.js path suppresses the cached-download fallback
 area: intellij-node-download
 severity: minor
+resolves_phase: 96
 files:
 
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/NodeAvailability.java
