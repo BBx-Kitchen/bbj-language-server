@@ -21,7 +21,8 @@
 - ✅ **v4.0 Stability and Quality** — Phases 60-69 (shipped 2026-08-20; artifacts held off `main` by decision — see MILESTONES.md)
 - ✅ **v4.1 Security Advisory Remediation** — Phases 70-77 (shipped 2026-09-03; artifacts archived off `main` under an embargo — see MILESTONES.md)
 - ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; landed on `origin/main` via PR #651 — see MILESTONES.md)
-- ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; Phase 92 not yet on `origin/main` — see MILESTONES.md)
+- ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
+- 🔷 **v4.4 IntelliJ Focus** — Phases 93-97 (in progress, started 2026-09-17)
 
 ## Phases
 
@@ -231,10 +232,142 @@ via PR #651 (MILESTONES.md).
 Full phase detail: `.planning/milestones/v4.3-ROADMAP.md`; requirements and audit in
 `.planning/milestones/v4.3-REQUIREMENTS.md` and `.planning/milestones/v4.3-MILESTONE-AUDIT.md`;
 phase artifacts under `.planning/milestones/v4.3-phases/` (tracked — no embargo). Override
-closeout: audit `tech_debt` with no gaps, 21 artifacts acknowledged; Phase 92 and the late
-validation/security docs not yet on `origin/main` (MILESTONES.md).
+closeout: audit `tech_debt` with no gaps, 21 artifacts acknowledged. All nine phases are on
+`origin/main` as of 2026-09-17 (MILESTONES.md).
 
 </details>
+
+### 🔷 v4.4 IntelliJ Focus (Phases 93-97) — IN PROGRESS
+
+Scope is the 25 requirements in `.planning/REQUIREMENTS.md`, derived from the 21 open issues on
+GitHub milestone #7 (all `PRIO 3` + `intellij`), the two Node.js todos carried since v4.2, and the
+0.16.0 release. Every issue in this milestone lives in `bbj-intellij/src/main/java/...`; the
+shared language server is untouched except as a consumer.
+
+**Phase shape — behaviour fixes and consolidations ride together.** Eleven of the 21 issues
+describe a real failure scenario; ten are explicitly code-shape findings that must change no
+observable behaviour. Each of the four subsystem phases carries both kinds for its own subsystem,
+exactly as REQUIREMENTS.md grouped them. The alternative shape — a fixes half followed by a
+refactors half — would edit `composer/`, `actions/`, `ui/` and the platform classes twice and
+demand two hand-UAT rounds over the same dialogs. That cost is paid in wall-clock human time, not
+CI time, because this repo has no live IntelliJ UI test coverage in CI. The risk that shape would
+buy back — a consolidation quietly regressing a fix that shipped beside it — is contained by
+ordering *inside* each phase instead:
+
+- A consolidation lands **before** a behaviour fix when it creates the single home that fix must
+  be written into — COMP-06's addWindow-family base before COMP-04's field validation; PLAT-03's
+  notification-provider base before PLAT-04's provider-side diagnosis change.
+- A consolidation lands **after** when the fix changes the very shape being consolidated —
+  IOP-05's widget base after IOP-02/IOP-03 change what the widgets poll and report; EM-04's shared
+  BUI/DWC run flow after EM-03 moves token validation out of that base.
+
+Either way each file is edited once per concern, and each phase ends with one UAT round.
+
+**Verification per phase** follows the v4.2/v4.3 pattern: plain-Java seams under plain JUnit 5,
+whole-file source-guard tests for wiring only a live IDE could exercise, `./gradlew test` green
+across the whole IntelliJ suite (865 tests at v4.3 close), and a hand UAT round in a running IDE
+built from that phase's final tree — both distributables rebuilt first. For the ten
+no-behaviour-change issues, that suite plus that UAT round *is* the regression evidence; no
+observable delta is the thing being verified.
+
+**On the UI hints below:** the annotated phases touch IntelliJ Swing chrome (composer dialogs,
+status-bar widgets, the Color Scheme page). `workflow.ui_phase` is disabled for this project and
+no phase here has or needs a UI-SPEC; the hints are informational only.
+
+- [ ] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each
+- [ ] **Phase 94: EM Login & Run Action Consolidation** - EM login cleans up after a failed launch and enables like its siblings; the BUI/DWC run flow, its token validation and its tool-script paths each live in exactly one place
+- [ ] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base
+- [ ] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows
+- [ ] **Phase 97: Release 0.16.0 & Milestone Close** - 0.16.0 published to both marketplaces behind one verification gate, with GitHub milestone #7 closed
+
+## Phase Details
+
+### Phase 93: Composer Robustness & Consolidation
+
+**Goal**: The composer surface never raises an IDE-internal error and never writes syntax-breaking text into a developer's source file, and its duplicated dialogs, intentions, launch actions and Swing helpers each exist exactly once.
+**Depends on**: Nothing (first phase of v4.4; `composer/` plus the six `actions/BbjCompose*Action` classes are file-disjoint from every other phase in this milestone)
+**Requirements**: COMP-03 (#609), COMP-04 (#607), COMP-05 (#591), COMP-06 (#630), COMP-07 (#619), COMP-08 (#618), COMP-09 (#616)
+**Success Criteria** (what must be TRUE):
+
+  1. Opening a composer while `bbj/composer/catalogs` answers with a malformed or partial response shows the same graceful "not ready" message a fully-null response already gets — no "IDE Internal Error" balloon, no EDT `NullPointerException` in `idea.log`.
+  2. Text typed into a composer dialog field that would break BBj statement syntax is rejected or escaped before the write, so whatever the composer puts into the live source file still parses.
+  3. A `flagsRange` or `eventMaskRange` that does not carry exactly two elements aborts the edit with a named notice instead of throwing `ArrayIndexOutOfBoundsException`.
+  4. The addWindow-family dialogs, the `Configure*Intention` classes, the composer-launch actions, and `clip`/`labeled`/`setEnabledRecursive` each have exactly one definition in the source tree — a fix to any of those shapes is written once.
+  5. Every composer a user can reach — MSGBOX, addWindow, addChildWindow, CVS, SETOPTS, SETOPTS-in-code — behaves identically after the consolidation: same dialogs, same lightbulb and context-menu entries, same cue click-through, same written output, evidenced by the whole IntelliJ JUnit suite plus one hand UAT round covering all six kinds.
+
+**Plans**: TBD
+**UI hint**: yes
+
+*Ordering note:* COMP-06's shared addWindow-family base lands before COMP-04's dialog-side validation so the validation is written once; COMP-03 and COMP-05 (both on the launch/apply path) land before COMP-09 consolidates the launch actions over that path.
+
+### Phase 94: EM Login & Run Action Consolidation
+
+**Goal**: EM login leaves nothing behind when a launch fails and enables itself like its sibling actions, and the BUI/DWC run flow, its server-side token validation and its bundled tool-script paths each live in exactly one place.
+**Depends on**: Nothing technically (touches `actions/BbjRunActionBase`, `BbjEMLoginAction`, `BbjEMTokenStore` and the BUI/DWC actions — disjoint from Phase 93's files). Scheduled after Phase 93 so EM-02's enablement alignment is measured against the post-consolidation action shape.
+**Requirements**: EM-01 (#590), EM-02 (#589), EM-03 (#617), EM-04 (#615), EM-05 (#614)
+**Success Criteria** (what must be TRUE):
+
+  1. When the process launch inside EM login throws, the login temp file is still deleted — no partially-written login output, possibly carrying a token fragment, is left on disk.
+  2. "Login to Enterprise Manager" is enabled and greyed out in exactly the states its ten sibling actions are, with its enablement computed off the EDT under `ActionUpdateThread.BGT`.
+  3. Server-side EM token validation is reachable from the EM-token lifecycle class rather than the run-action base, and a BUI or DWC launch still validates its token exactly as before — including the five-minute trust window.
+  4. Running a BBj file as BUI and as DWC still launches correctly from toolbar, menu and keyboard shortcut, with the two actions differing only in their BUI/DWC-specific literals.
+  5. `web.bbj`, `em-validate.bbj` and `em-login.bbj` all resolve through one shared helper, and every consumer still finds its script inside an installed plugin (not only in a dev sandbox).
+
+**Plans**: TBD
+
+*Ordering note:* EM-03 lands before EM-04 — both edit `BbjRunActionBase`, and removing the misplaced token-validation responsibility first means the shared BUI/DWC flow is built on the already-clean base instead of being refactored twice. EM-05 also retires the duplicated plugin-bundle path resolution flagged as advisory in `79-REVIEW` IN-02.
+
+### Phase 95: java-interop Status Accuracy & Widget Consolidation
+
+**Goal**: The java-interop status the IDE reports is true and cheap — no disposed-project crash, no perpetual background poll, no "Connected" earned by a bare TCP handshake — and the port default and status-bar widget shape each have exactly one definition.
+**Depends on**: Nothing (touches `ui/BbjJavaInteropService`, both status-bar widgets and their factories, and `BbjSettings`/`BbjSettingsComponent`/`BbjSettingsConfigurable` — file-disjoint from Phases 93 and 94)
+**Requirements**: IOP-01 (#592), IOP-02 (#593), IOP-03 (#587), IOP-04 (#594), IOP-05 (#620)
+**Success Criteria** (what must be TRUE):
+
+  1. Closing a project while a java-interop health check is in flight produces no exception — the in-flight check never reaches `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies.
+  2. With no BBj file open, or with the IDE window in the background, the java-interop poll stops re-arming instead of probing every 5 seconds for the life of the project, and it resumes when a BBj file is focused again.
+  3. The status bar reads "Java: Connected" only when the listening peer is confirmed to be java-interop; a foreign process squatting on the configured port does not produce a Connected status.
+  4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
+  5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
+
+**Plans**: TBD
+**UI hint**: yes
+
+*Ordering note:* IOP-05's widget base is extracted after IOP-02 and IOP-03 change what the widgets poll and report, so the base is taken from the final widget shape rather than refactored twice. IOP-03's peer confirmation must not reintroduce a blocking probe on the EDT (v4.2 EDT-01 convention).
+
+### Phase 96: Platform Integration & Node.js Diagnosis
+
+**Goal**: The plugin's platform-integration surfaces stop wasting resources and stop misleading — a reused TextMate bundle directory, no inert settings page, one notification-provider base — and a developer without a usable Node.js is shown the real diagnosis, with the auto-install path finally attested on real Windows.
+**Depends on**: Nothing for the code (TextMate bundle provider, Color Settings page, the three editor notification providers, `BbjNodeDownloader`/`NodeAvailability` — file-disjoint from Phases 93-95). PLAT-06 additionally needs a real Windows machine and is attested against this phase's own build.
+**Requirements**: PLAT-01 (#613), PLAT-02 (#621), PLAT-03 (#622), PLAT-04 (#588), PLAT-05 (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`), PLAT-06 (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`)
+**Success Criteria** (what must be TRUE):
+
+  1. A second IDE launch reuses the cached TextMate bundle directory instead of allocating a fresh temp directory and re-copying its five files, and directories abandoned by earlier launches are cleaned up rather than accumulating.
+  2. Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the page is gone from Settings entirely, so it cannot mislead.
+  3. The three editor notification providers share one base carrying the file-type guard and panel construction, and each banner still appears and disappears in exactly the conditions it did before.
+  4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
+  5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
+
+**Plans**: TBD
+**UI hint**: yes
+
+*Ordering note:* PLAT-03's base lands before PLAT-04 changes `BbjMissingNodeNotificationProvider`, so the banner change is written into the shared base once. PLAT-06 is attested last, against a build that already carries PLAT-04 and PLAT-05 — attesting the old code would force a re-attestation. Criterion 5 is a human attestation, not a test: no Linux-hosted run can close it, which is exactly why it has been carried since v4.2. It does not gate REL-02 (it is not one of milestone #7's 21 issues), but leaving it open would carry the major-severity gap into a third milestone.
+
+### Phase 97: Release 0.16.0 & Milestone Close
+
+**Goal**: Everything Phases 93-96 delivered ships as release 0.16.0 to both marketplaces through a single verification gate, and GitHub milestone #7 closes behind it.
+**Depends on**: Phases 93, 94, 95, 96 (the release ships their code; each phase's commits must be on `origin/main` first)
+**Requirements**: REL-01, REL-02
+**Success Criteria** (what must be TRUE):
+
+  1. One verification job — IntelliJ build + test + `verifyPlugin`, VS Code build + test — runs green before anything is published, tagged or pushed; no publish job starts ahead of it.
+  2. Version 0.16.0 is live on both the VS Code Marketplace and the JetBrains Marketplace, with tag `v0.16.0` and a GitHub Release present: no half-released version and no orphaned tag, the failure mode that made v0.15.0 unrecoverable.
+  3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
+  4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
+
+**Plans**: TBD
+
+*Note:* This is the first real exercise of the verify-before-publish gate implemented by quick task `260917-9ei` (SEED-002); its own closeout records that "the first real Manual Release is the true test", and that the two publish jobs still run in parallel, so one marketplace succeeding while the other fails needs manual reconciliation. A tagged release is also the maintainer's trigger for the v4.1 advisory publication decision (PROC-03) — maintainer-owned, not a phase deliverable. Reconciling the half-released 0.15.0 is explicitly out of scope.
 
 ## Progress
 
@@ -260,6 +393,7 @@ validation/security docs not yet on `origin/main` (MILESTONES.md).
 | v4.1 Security Advisory Remediation | 70-77 | 37 | Complete | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
 | v4.3 Polish & Quality | 84-92 | 70 | Complete | 2026-09-13 |
+| v4.4 IntelliJ Focus | 93-97 | TBD | In progress | - |
 
 **Total:** 20 milestones shipped, 94 phases complete, 348 plans shipped.
 
@@ -270,10 +404,13 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's and
 v4.3's artifacts (78-92) carry no advisory detail and are tracked normally.
 
-**Current milestone:** none — v4.3 Polish & Quality shipped 2026-09-13. Next:
-`/gsd-new-milestone`.
+**Current milestone:** v4.4 IntelliJ Focus (Phases 93-97) — in progress, started 2026-09-17.
+25/25 requirements mapped, 0/5 phases complete. Scope is GitHub milestone #7's 21 IntelliJ
+issues, the two carried Node.js todos, and the 0.16.0 release. See `.planning/REQUIREMENTS.md`
+for the requirement list and `.planning/PROJECT.md` for scope.
+Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
 
 ---
 
-*Roadmap last updated: 2026-09-13 — v4.3 Polish & Quality archived (Phases 84-92, 70 plans).
-Next: `/gsd-new-milestone`.*
+*Roadmap last updated: 2026-09-17 — v4.4 IntelliJ Focus roadmapped (Phases 93-97, 25/25
+requirements mapped, no orphans). Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.*

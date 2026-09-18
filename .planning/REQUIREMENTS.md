@@ -91,37 +91,43 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-03 | TBD | Pending |
-| COMP-04 | TBD | Pending |
-| COMP-05 | TBD | Pending |
-| COMP-06 | TBD | Pending |
-| COMP-07 | TBD | Pending |
-| COMP-08 | TBD | Pending |
-| COMP-09 | TBD | Pending |
-| EM-01 | TBD | Pending |
-| EM-02 | TBD | Pending |
-| EM-03 | TBD | Pending |
-| EM-04 | TBD | Pending |
-| EM-05 | TBD | Pending |
-| IOP-01 | TBD | Pending |
-| IOP-02 | TBD | Pending |
-| IOP-03 | TBD | Pending |
-| IOP-04 | TBD | Pending |
-| IOP-05 | TBD | Pending |
-| PLAT-01 | TBD | Pending |
-| PLAT-02 | TBD | Pending |
-| PLAT-03 | TBD | Pending |
-| PLAT-04 | TBD | Pending |
-| PLAT-05 | TBD | Pending |
-| PLAT-06 | TBD | Pending |
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
+| COMP-03 | Phase 93 | Pending |
+| COMP-04 | Phase 93 | Pending |
+| COMP-05 | Phase 93 | Pending |
+| COMP-06 | Phase 93 | Pending |
+| COMP-07 | Phase 93 | Pending |
+| COMP-08 | Phase 93 | Pending |
+| COMP-09 | Phase 93 | Pending |
+| EM-01 | Phase 94 | Pending |
+| EM-02 | Phase 94 | Pending |
+| EM-03 | Phase 94 | Pending |
+| EM-04 | Phase 94 | Pending |
+| EM-05 | Phase 94 | Pending |
+| IOP-01 | Phase 95 | Pending |
+| IOP-02 | Phase 95 | Pending |
+| IOP-03 | Phase 95 | Pending |
+| IOP-04 | Phase 95 | Pending |
+| IOP-05 | Phase 95 | Pending |
+| PLAT-01 | Phase 96 | Pending |
+| PLAT-02 | Phase 96 | Pending |
+| PLAT-03 | Phase 96 | Pending |
+| PLAT-04 | Phase 96 | Pending |
+| PLAT-05 | Phase 96 | Pending |
+| PLAT-06 | Phase 96 | Pending |
+| REL-01 | Phase 97 | Pending |
+| REL-02 | Phase 97 | Pending |
 
 **Coverage:**
 - v4.4 requirements: 25 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25 ✓
+- Unmapped: 0
+- Duplicated across phases: 0
+
+Phase boundaries follow the subsystem grouping above: Phase 93 Composer (7), Phase 94 Enterprise
+Manager and Run Actions (5), Phase 95 java-interop Status and Settings (5), Phase 96 Platform
+Integration and Node.js (6), Phase 97 Release (2). Full phase detail, per-phase success criteria
+and the fix-versus-consolidation ordering rule are in `.planning/ROADMAP.md`.
 
 ---
 *Requirements defined: 2026-09-17*
-*Last updated: 2026-09-17 after milestone v4.4 definition*
+*Last updated: 2026-09-17 after v4.4 roadmap creation — all 25 requirements mapped to Phases 93-97*
