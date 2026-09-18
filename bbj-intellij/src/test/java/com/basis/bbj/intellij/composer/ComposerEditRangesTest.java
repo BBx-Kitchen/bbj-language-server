@@ -42,4 +42,47 @@ class ComposerEditRangesTest {
     void aDescendingTwoElementRangeIsStillUsableBecauseOrderingIsTheDocumentsProblemNotThisPredicates() {
         assertTrue(ComposerEditRanges.isUsable(new int[]{9, 4}));
     }
+
+    @Test
+    void aLineWithinTheDocumentIsUsable() {
+        assertTrue(ComposerEditRanges.isUsableLine(0, 10));
+        assertTrue(ComposerEditRanges.isUsableLine(9, 10));
+    }
+
+    @Test
+    void aLineOutsideTheDocumentIsNotUsable() {
+        assertFalse(ComposerEditRanges.isUsableLine(-1, 10));
+        assertFalse(ComposerEditRanges.isUsableLine(10, 10));
+        assertFalse(ComposerEditRanges.isUsableLine(11, 10));
+    }
+
+    @Test
+    void aZeroLineDocumentAcceptsNoLineAtAll() {
+        assertFalse(ComposerEditRanges.isUsableLine(0, 0));
+    }
+
+    @Test
+    void anAscendingLineRegionIsUsable() {
+        assertTrue(ComposerEditRanges.isUsableLineRegion(2, 5, 10));
+    }
+
+    @Test
+    void anEqualLineRegionIsUsableBecauseItIsTheDocumentedInsertionCase() {
+        assertTrue(ComposerEditRanges.isUsableLineRegion(5, 5, 10));
+    }
+
+    @Test
+    void aDescendingLineRegionIsNotUsableEvenWhenBothLinesAreIndividuallyInRange() {
+        assertFalse(ComposerEditRanges.isUsableLineRegion(5, 2, 10));
+    }
+
+    @Test
+    void aLineRegionEndingExactlyAtTheLineCountIsNotUsable() {
+        assertFalse(ComposerEditRanges.isUsableLineRegion(0, 10, 10));
+    }
+
+    @Test
+    void aLineRegionStartingBeforeTheFirstLineIsNotUsable() {
+        assertFalse(ComposerEditRanges.isUsableLineRegion(-1, 5, 10));
+    }
 }
