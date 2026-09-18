@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
-current_phase: 93
-current_phase_name: Composer Robustness & Consolidation
-status: executing
-stopped_at: Completed 93-09-PLAN.md
-last_updated: "2026-09-18T11:29:30.882Z"
+current_phase: 94
+current_phase_name: EM Login & Run Action Consolidation
+status: planning
+stopped_at: Phase 93 complete, ready to plan Phase 94
+last_updated: "2026-09-18T19:48:15.519Z"
 last_activity: 2026-09-18
-last_activity_desc: Phase 93 execution started
-state_head: 469c3dc1bf333144aefccee12cdd3f3052a928fb
+last_activity_desc: Phase 93 complete, transitioned to Phase 94
+state_head: e86b96c1c4da615a6770cb60cf7c2ec6bf0d576d
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
   completed_plans: 9
-  percent: 0
+  percent: 20
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-17 (v4.4 roadmapped — Phases 93-97, 25/25 requirements mapped, no orphans)
+**Last Updated:** 2026-09-18 (Phase 93 complete — 9/9 plans, UAT 4/4, 31/31 threats closed)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-17)
+See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 93 — Composer Robustness & Consolidation
+**Current Focus:** Phase 94 — EM Login & Run Action Consolidation
 
 ---
 
 ## Current Position
 
-Phase: 93 (Composer Robustness & Consolidation) — EXECUTING
-Plan: 2 of 9
-Status: Ready to execute
-Last activity: 2026-09-18 — Phase 93 execution started
+Phase: 94 — EM Login & Run Action Consolidation
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-18 — Phase 93 complete, transitioned to Phase 94
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████████████████] 9/9 plans (100%)
 
 ## Performance Metrics
 
@@ -187,11 +187,11 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T11:29:21.184Z
-Stopped at: Completed 93-09-PLAN.md
+Last session: 2026-09-18T19:48:00.000Z
+Stopped at: Phase 93 complete and verified (UAT 4/4, security 31/31), ready to plan Phase 94
 Resume file: None
 
-Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
+Next: `/gsd-discuss-phase 94` or `/gsd-plan-phase 94`.
 
 ## Deferred Items
 

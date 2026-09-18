@@ -274,7 +274,7 @@ observable delta is the thing being verified.
 status-bar widgets, the Color Scheme page). `workflow.ui_phase` is disabled for this project and
 no phase here has or needs a UI-SPEC; the hints are informational only.
 
-- [ ] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each
+- [x] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each (completed 2026-09-18)
 - [ ] **Phase 94: EM Login & Run Action Consolidation** - EM login cleans up after a failed launch and enables like its siblings; the BUI/DWC run flow, its token validation and its tool-script paths each live in exactly one place
 - [ ] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base
 - [ ] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows
