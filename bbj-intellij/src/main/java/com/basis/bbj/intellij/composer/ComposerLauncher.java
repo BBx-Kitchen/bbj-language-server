@@ -353,7 +353,7 @@ public final class ComposerLauncher {
 
     private static void openAddWindow(Project project, Editor editor, BbjComposerServer server,
                                       AddWindowCatalogs catalogs, AddWindowDecodeResult decoded, int line, int col) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDWINDOW)), null);
             return;
         }
@@ -374,7 +374,7 @@ public final class ComposerLauncher {
 
     private static void openAddChildWindow(Project project, Editor editor, BbjComposerServer server,
                                            AddWindowCatalogs catalogs, AddChildWindowDecodeResult decoded, int line, int col) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDCHILDWINDOW)), null);
             return;
         }
@@ -476,7 +476,7 @@ public final class ComposerLauncher {
      */
     private static void openSetopts(Project project, Editor editor, BbjComposerServer server,
                                     SetoptsCatalogs catalogs, SetoptsDecodeResult decoded, int line, int col) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.SETOPTS)), null);
             return;
         }
@@ -544,7 +544,7 @@ public final class ComposerLauncher {
     private static void openSetoptsInCode(Project project, Editor editor, BbjComposerServer server,
                                           SetoptsCatalogs catalogs, SetoptsInCodeDecodeResult decoded,
                                           int line, int col, String uri) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.SETOPTS_IN_CODE)), null);
             return;
         }
@@ -682,7 +682,7 @@ public final class ComposerLauncher {
      */
     private static void openCvs(Project project, Editor editor, BbjComposerServer server,
                                 CvsCatalogs catalogs, CvsDecodeResult decoded, int line, int col) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.CVS)), null);
             return;
         }
