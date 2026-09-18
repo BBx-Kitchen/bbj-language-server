@@ -295,14 +295,14 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
   4. The addWindow-family dialogs, the `Configure*Intention` classes, the composer-launch actions, and `clip`/`labeled`/`setEnabledRecursive` each have exactly one definition in the source tree — a fix to any of those shapes is written once.
   5. Every composer a user can reach — MSGBOX, addWindow, addChildWindow, CVS, SETOPTS, SETOPTS-in-code — behaves identically after the consolidation: same dialogs, same lightbulb and context-menu entries, same cue click-through, same written output, evidenced by the whole IntelliJ JUnit suite plus one hand UAT round covering all six kinds.
 
-**Plans**: 2/8 plans executed
+**Plans**: 3/8 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 93-01-PLAN.md — COMP-07: one shared Swing-helper home for `clip`/`labeled`/`labeledWithError`/`errorLabel`/`setEnabledRecursive`/the stalled-preview label, with theme-aware error colour (wave 1)
 - [x] 93-02-PLAN.md — COMP-04: SETOPTS `valid` + `rawTailError` computed server-side and consumed by the VS Code webview (wave 1)
-- [ ] 93-03-PLAN.md — COMP-05: length guards on every LS-supplied range array plus the new `MALFORMED_EDIT` notice (wave 1)
+- [x] 93-03-PLAN.md — COMP-05: length guards on every LS-supplied range array plus the new `MALFORMED_EDIT` notice (wave 1)
 - [ ] 93-04-PLAN.md — COMP-08: abstract intention base plus five thin no-arg subclasses (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
