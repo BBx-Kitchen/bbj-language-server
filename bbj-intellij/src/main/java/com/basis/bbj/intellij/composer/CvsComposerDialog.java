@@ -119,16 +119,16 @@ public final class CvsComposerDialog extends DialogWrapper {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 
         statementField.setEditable(false);
-        root.add(labeled("Generated statement", statementField));
+        root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(summary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
 
         expressionField.setEditable(!editMode);
-        root.add(labeled(editMode ? "String expression (kept verbatim)" : "String expression", expressionField));
+        root.add(ComposerSwingHelpers.labeled(editMode ? "String expression (kept verbatim)" : "String expression", expressionField));
         root.add(strError);
 
-        assignToRow = labeled("Assign result to (optional)", assignTo);
+        assignToRow = ComposerSwingHelpers.labeled("Assign result to (optional)", assignTo);
         // In both replace modes (edit-in-place and completing an unfinished call) any assignment
         // sits outside the replaced call span, so the row is visible only when composing new.
         assignToRow.setVisible(!editMode && !completing);
@@ -259,13 +259,6 @@ public final class CvsComposerDialog extends DialogWrapper {
         label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         label.setForeground(new Color(0xC0392B));
         return label;
-    }
-
-    private static JPanel labeled(String label, JComponent field) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        return panel;
     }
 
     /** The composed CVS() statement (edit flow: replace the existing call span with this). */

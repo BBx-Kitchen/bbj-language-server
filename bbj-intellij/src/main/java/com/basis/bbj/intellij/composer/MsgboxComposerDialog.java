@@ -31,7 +31,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -146,7 +145,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
             root.add(banner);
             JBTextField originalOptionsField = new JBTextField(replace.originalOptions);
             originalOptionsField.setEditable(false);
-            root.add(labeled("Original options expression", originalOptionsField));
+            root.add(ComposerSwingHelpers.labeled("Original options expression", originalOptionsField));
             root.add(Box.createVerticalStrut(JBUI.scale(8)));
         }
 
@@ -155,16 +154,16 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         root.add(preview);
 
         statementField.setEditable(false);
-        root.add(labeled("Generated statement", statementField));
+        root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(summary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
 
-        root.add(labeled("Message expression", message));
+        root.add(ComposerSwingHelpers.labeled("Message expression", message));
         root.add(messageError);
-        root.add(labeled("Title expression (optional)", titleField));
+        root.add(ComposerSwingHelpers.labeled("Title expression (optional)", titleField));
         root.add(titleError);
-        assignToRow = labeled("Assign result to (optional)", assignTo);
+        assignToRow = ComposerSwingHelpers.labeled("Assign result to (optional)", assignTo);
         // In both replace modes (edit-in-place/compose-and-replace and completing an unfinished
         // call) the assignment lives outside the replaced call span, so the row is visible only
         // when composing new.
@@ -175,9 +174,9 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         fillCombo(buttonSet, catalogs.buttonSets);
         fillCombo(defaultButton, catalogs.defaultButtons);
         JPanel combos = new JPanel(new GridLayout(0, 3, JBUI.scale(6), JBUI.scale(4)));
-        combos.add(labeled("Icon", icon));
-        combos.add(labeled("Buttons", buttonSet));
-        combos.add(labeled("Default button", defaultButton));
+        combos.add(ComposerSwingHelpers.labeled("Icon", icon));
+        combos.add(ComposerSwingHelpers.labeled("Buttons", buttonSet));
+        combos.add(ComposerSwingHelpers.labeled("Default button", defaultButton));
         root.add(combos);
 
         // Custom button labels — only meaningful for the "Custom" button set.
@@ -340,13 +339,6 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         label.setForeground(new Color(0xC0392B));
         return label;
-    }
-
-    private static JPanel labeled(String label, JComponent field) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        return panel;
     }
 
     public @NotNull String getStatement() {

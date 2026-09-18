@@ -158,7 +158,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         root.add(preview);
 
         statementField.setEditable(false);
-        root.add(labeled("Generated statement", statementField));
+        root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         flagsSummary.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
         eventSummary.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
         root.add(flagsSummary);
@@ -346,13 +346,6 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         }
     }
 
-    private static JPanel labeled(String label, JComponent field) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        return panel;
-    }
-
     private static JBLabel errorLabel() {
         JBLabel label = new JBLabel(" ");
         label.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
@@ -360,7 +353,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         return label;
     }
 
-    /** Like {@link #labeled(String, JComponent)}, with a red error label under the field (#623). */
+    /** Like {@link ComposerSwingHelpers#labeled(String, JComponent)}, with a red error label under the field (#623). */
     private static JPanel labeledWithError(String label, JComponent field, JBLabel error) {
         JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
         panel.add(new JBLabel(label), BorderLayout.NORTH);

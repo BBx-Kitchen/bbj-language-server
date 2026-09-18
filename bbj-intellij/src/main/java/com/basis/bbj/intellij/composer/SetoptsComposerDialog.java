@@ -30,7 +30,6 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.ArrayList;
@@ -115,7 +114,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
 
         // Preview region — outside the scroll pane so it is always visible (D-07).
         resultingLine.setEditable(false);
-        root.add(labeled("Resulting line", resultingLine));
+        root.add(ComposerSwingHelpers.labeled("Resulting line", resultingLine));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(summary);
         preservedLabel.setComponentStyle(UIUtil.ComponentStyle.SMALL);
@@ -153,14 +152,14 @@ public final class SetoptsComposerDialog extends DialogWrapper {
 
         JPanel maskPanel = new JPanel(new GridLayout(0, 2, JBUI.scale(6), JBUI.scale(4)));
         maskPanel.setBorder(BorderFactory.createTitledBorder("Mask replacement characters (bytes 5-6)"));
-        maskPanel.add(labeled("\",\" becomes", maskCommaField));
-        maskPanel.add(labeled("\".\" becomes", maskDotField));
+        maskPanel.add(ComposerSwingHelpers.labeled("\",\" becomes", maskCommaField));
+        maskPanel.add(ComposerSwingHelpers.labeled("\".\" becomes", maskDotField));
         form.add(maskPanel);
 
         JPanel rawTailPanel = new JPanel();
         rawTailPanel.setLayout(new BoxLayout(rawTailPanel, BoxLayout.Y_AXIS));
         rawTailPanel.setBorder(BorderFactory.createTitledBorder("Reserved / application bytes 10-16"));
-        rawTailPanel.add(labeled("Raw hex", rawTailField));
+        rawTailPanel.add(ComposerSwingHelpers.labeled("Raw hex", rawTailField));
         rawTailPanel.add(rawTailError);
         form.add(rawTailPanel);
 
@@ -313,13 +312,6 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         label.setForeground(new Color(0xC0392B));
         return label;
-    }
-
-    private static JPanel labeled(String label, JComponent field) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        return panel;
     }
 
     /** The composed hex digits (edit flow: replace the existing hex token with this). */

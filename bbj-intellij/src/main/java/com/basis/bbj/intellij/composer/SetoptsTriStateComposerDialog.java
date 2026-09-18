@@ -28,7 +28,6 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
-import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,7 +112,7 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
         blockPreview.setEditable(false);
         blockPreview.setRows(6);
         blockPreview.setLineWrap(false);
-        root.add(labeled("Generated block", new JBScrollPane(blockPreview)));
+        root.add(ComposerSwingHelpers.labeled("Generated block", new JBScrollPane(blockPreview)));
         preservedLabel.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(preservedLabel);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
@@ -260,13 +259,6 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
         selection = entries;
         blockPreview.setText(blockText);
         setOKActionEnabled(true);
-    }
-
-    private static JPanel labeled(String label, JComponent field) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        return panel;
     }
 
     /**
