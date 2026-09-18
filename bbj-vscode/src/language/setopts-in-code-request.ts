@@ -106,6 +106,8 @@ export interface SetOptsComposeTriStateParams {
 export interface SetOptsComposeTriStateResult {
     lines: string[];
     text: string;
+    /** Fail-closed response-integrity verdict; mirrors `ComposeSetOptsBlockResult.valid` (#607). */
+    valid: boolean;
 }
 
 /**

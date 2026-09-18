@@ -509,6 +509,24 @@ describe('composeSetOptsBlock', () => {
         const second = composeSetOptsBlock({ selection });
         expect(second.text).toBe(first.text);
     });
+
+    test('a mixed Set/Clear/Leave selection in "block" scope is valid: true (#607)', () => {
+        const selection = selectionOf([
+            { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
+            { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
+        ]);
+        expect(composeSetOptsBlock({ selection }).valid).toBe(true);
+    });
+
+    test('an all-Leave selection in "block" scope is valid: true — not a rejection rule', () => {
+        expect(composeSetOptsBlock({ selection: selectionOf([]) }).valid).toBe(true);
+    });
+
+    test('an all-Leave selection in "reassignments" scope is valid: true with empty text — a real "clear my overrides" operation, not an error', () => {
+        const result = composeSetOptsBlock({ selection: selectionOf([]), scope: 'reassignments' });
+        expect(result.valid).toBe(true);
+        expect(result.text).toBe('');
+    });
 });
 
 describe('triStateFromChainEffect', () => {

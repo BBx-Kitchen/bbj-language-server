@@ -461,6 +461,14 @@ export interface ComposeSetOptsBlockInput {
 export interface ComposeSetOptsBlockResult {
     lines: string[];
     text: string;
+    /**
+     * Fail-closed response-integrity verdict (#607) — true whenever the server actually produced
+     * a composition, absent-or-false only for a malformed/partial response. NOT a selection-level
+     * rejection rule: an all-Leave selection is a legitimate composition in both scopes (including
+     * the `'reassignments'` empty-text case — "clear my overrides" is a real operation) and stays
+     * `valid: true`. Mirrors the AddWindow preview's `valid` semantics.
+     */
+    valid: boolean;
 }
 
 /**
@@ -496,7 +504,7 @@ export function composeSetOptsBlock(input: ComposeSetOptsBlockInput): ComposeSet
         ? reassignments
         : [`${variable}=OPTS`, ...reassignments, `SETOPTS ${variable}`];
     const indented = lines.map(l => `${indent}${l}`);
-    return { lines: indented, text: indented.join('\n') };
+    return { lines: indented, text: indented.join('\n'), valid: true };
 }
 
 /**
