@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 93
-current_phase_name: composer-robustness-consolidation
+current_phase_name: Composer Robustness & Consolidation
 status: executing
-stopped_at: Completed 93-08-PLAN.md
-last_updated: "2026-09-18T11:15:31.434Z"
+stopped_at: Completed 93-09-PLAN.md
+last_updated: "2026-09-18T11:29:30.882Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 93 execution started
-state_head: a9b820e199a2717fc8de475e16cb45fe467582e9
+state_head: 469c3dc1bf333144aefccee12cdd3f3052a928fb
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 
 ## Current Position
 
-Phase: 93 (composer-robustness-consolidation) — READY TO EXECUTE
-Plan: 8 of 8
+Phase: 93 (Composer Robustness & Consolidation) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 93 execution started
 
@@ -91,6 +91,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 93 P06 | 40min | 3 tasks | 6 files |
 | Phase 93 P07 | 10min | 3 tasks | 11 files |
 | Phase 93 P08 | 20 min | 3 tasks | 4 files |
+| Phase 93 P09 | 9min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 93]: BbjComposeActionBase.isAvailableFor(...) is a regular overridable method defaulting to true, not an abstract hook -- unlike ComposerIntentionBase's getText()/isAvailable(), four of six action subclasses share the literal default gate, so only kind() stays the abstract, compile-time-checked hook
 - [Phase 93]: COMP-09 shipped as abstract BbjComposeActionBase + 6 thin no-arg BbjCompose*Action subclasses (deviation from #616's 'single data-driven registration' wording, per D-06) -- an AnAction could read its own id via ActionManager.getId(this), but that would turn a renamed/mistyped action id into a silent click-time no-op instead of a compile error; close #616 as done with this reasoning
 - [Phase 93]: Both SETOPTS composer dialogs now gate OK/Apply on the language server's valid verdict; the last client-side validation rule in the composer surface (SetoptsComposerDialog's Java hex regex) is deleted. No second validation gate was added at ComposerLauncher's write path, per D-09 -- #607 closes on the dialog-side verdict plus the launcher's existing empty-value guards.
+- [Phase 93]: Line-bound accepted band is strictly [0, lineCount) for ed.line/chain.startLine/chain.endLine, not the 93-REVIEW.md sketch's chain.endLine > lineCount (which still permits endLine == lineCount). — getLineStartOffset(int) throws IndexOutOfBoundsException on exactly that boundary value; the sketch's form would have shipped a guard that still crashes on the one value it claims to close.
+- [Phase 93]: Both new SETOPTS-in-code line-bound aborts reuse ComposerNotices.malformedEdit(...) -- no new Reason or Severity added. — Same failure class as the existing hexRange/flagsRange/eventMaskRange guards (D-10 from 93-CONTEXT.md); a malformed range and a malformed line number are one user-visible failure class.
 
 ### Tech Debt
 
@@ -184,8 +187,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T10:18:48.411Z
-Stopped at: Completed 93-08-PLAN.md
+Last session: 2026-09-18T11:29:21.184Z
+Stopped at: Completed 93-09-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
