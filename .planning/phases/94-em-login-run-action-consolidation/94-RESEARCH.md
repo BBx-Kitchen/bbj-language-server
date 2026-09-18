@@ -682,7 +682,11 @@ this is purely internal code organization.
 
 **If this table is empty:** N/A — two low-risk assumptions logged above; both are implementation-detail choices within CONTEXT.md's explicitly delegated discretion, not open questions about behavior.
 
-## Open Questions
+## Discretion Areas (with recommendations) — RESOLVED
+
+Neither item below is an open research gap. Both are Claude's Discretion grants in CONTEXT.md, both
+carry a recommendation, and both were resolved when the phase plans were written — the resolution
+taken is recorded inline under each.
 
 1. **Exact class/package names for the two new EM-03/EM-05 classes**
    - What we know: CONTEXT.md explicitly delegates naming to Claude's discretion; the
@@ -696,6 +700,10 @@ this is purely internal code organization.
      Node/interop detection; name it something like `BbjToolScriptResolver` to parallel
      `BbjNodeVersionCache`/`BbjInteropPortCache`'s naming convention. Final call is the planner's/
      executor's per CONTEXT.md's explicit discretion grant.
+   - RESOLVED: the recommendation was taken. The EM-05 helper is `BbjToolScriptResolver` in
+     `com.basis.bbj.intellij.actions` (plan 01), and the EM-03 class is `EmTokenValidator` in the
+     same package, beside `BbjEMTokenStore` and `TokenValidationCache` (plan 02). Both names and
+     packages are fixed by the plans; no question remains open.
 
 2. **Whether EM-02's guard should assert `setEnabledAndVisible` argument shape, or just presence**
    - What we know: The five other `update()`-overriding actions all end in
@@ -709,6 +717,10 @@ this is purely internal code organization.
      `setEnabled(` call (the greying-out anti-pattern D-02 explicitly rejects), rather than
      pinning the exact boolean expression — this is the least brittle formulation that still
      enforces D-02's substance.
+   - RESOLVED: the recommendation was taken. `EmLoginEnablementSourceGuardTest` (plan 03, Task 1)
+     asserts presence of `setEnabledAndVisible(` and file-wide absence of a bare `setEnabled(`, and
+     explicitly does not pin the boolean expression — the plan states that pinning it is brittle to
+     variable naming and is not what the requirement is about.
 
 ## Environment Availability
 
