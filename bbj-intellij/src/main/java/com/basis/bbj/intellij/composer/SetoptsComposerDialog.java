@@ -48,7 +48,6 @@ import java.util.function.Consumer;
 public final class SetoptsComposerDialog extends DialogWrapper {
 
     private static final long PREVIEW_DEBOUNCE_MS = 300L;
-    private static final int MAX_RAW_TAIL_DIGITS = 14;
 
     private final Project project;
     private final BbjComposerServer server;
@@ -208,18 +207,10 @@ public final class SetoptsComposerDialog extends DialogWrapper {
      * afterwards; never call this method from a listener body directly (D-09).
      */
     private void refresh() {
-        // Cleared up front so a since-fixed raw-tail value never leaves a stale message next to the
-        // field while a *different* validation failure (e.g. the mask fields, below) is reported on
-        // the dialog-wide summary line instead (WR-01).
-        rawTailError.setText(" ");
+        // The raw hex tail is no longer validated here (#607, D-08): it is read and passed through
+        // unconditionally, and the language server's own verdict comes back on the preview response
+        // for apply(SetoptsPreview) to gate OK and render.
         String rawTail = rawTailField.getText();
-        if (!rawTail.matches("[0-9A-Fa-f]{0," + MAX_RAW_TAIL_DIGITS + "}")) {
-            // Field-scoped message goes next to the field it describes; the summary line gets a
-            // short pointer so OK stays disabled and the dialog-wide status still reads as invalid.
-            rawTailError.setText("must be 0-9 or A-F, up to " + MAX_RAW_TAIL_DIGITS + " digits");
-            previewUnavailable("raw hex is invalid");
-            return;
-        }
         String maskComma = maskCommaField.getText();
         String maskDot = maskDotField.getText();
         if (!isValidMaskChar(maskComma) || !isValidMaskChar(maskDot)) {
@@ -289,8 +280,10 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         preservedLabel.setText(unknownBitsText(p.unknownByBytes));
         maskCommaField.setEnabled(p.maskInputsEnabled);
         maskDotField.setEnabled(p.maskInputsEnabled);
-        rawTailError.setText(" ");
-        setOKActionEnabled(true);
+        // " " keeps the label's height stable when there is no message, matching the null-to-space
+        // convention the other dialogs use for per-field errors (#607).
+        rawTailError.setText(p.rawTailError == null ? " " : p.rawTailError);
+        setOKActionEnabled(p.valid);
     }
 
     private static String unknownBitsText(List<SetoptsUnknownBits> unknownByBytes) {
