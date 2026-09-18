@@ -64,7 +64,7 @@ public final class MsgboxSchematicPanel extends JPanel {
         g.fillRect(x + 1, y + titleH - JBUI.scale(6), w - 2, JBUI.scale(6));
         g.setColor(fg);
         String title = render.title == null || render.title.isEmpty() ? "(no title)" : render.title;
-        g.drawString(clip(g, title, w - JBUI.scale(20)), x + JBUI.scale(8), y + JBUI.scale(15));
+        g.drawString(ComposerSwingHelpers.clip(g, title, w - JBUI.scale(20)), x + JBUI.scale(8), y + JBUI.scale(15));
 
         // Body: icon + message
         int bodyTop = y + titleH + JBUI.scale(10);
@@ -116,7 +116,7 @@ public final class MsgboxSchematicPanel extends JPanel {
             }
             g.setColor(isDefault ? JBColor.namedColor("Button.default.foreground", Color.WHITE) : fg);
             int tw = fm.stringWidth(buttons.get(i));
-            g.drawString(clip(g, buttons.get(i), widths[i] - JBUI.scale(6)),
+            g.drawString(ComposerSwingHelpers.clip(g, buttons.get(i), widths[i] - JBUI.scale(6)),
                     bx + (widths[i] - Math.min(tw, widths[i] - JBUI.scale(6))) / 2, top + JBUI.scale(15));
             bx += widths[i] + gap;
         }
@@ -161,20 +161,5 @@ public final class MsgboxSchematicPanel extends JPanel {
             lines.add(line.toString());
         }
         return lines;
-    }
-
-    private static String clip(Graphics2D g, String s, int maxWidth) {
-        FontMetrics fm = g.getFontMetrics();
-        if (fm.stringWidth(s) <= maxWidth) {
-            return s;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            if (fm.stringWidth(sb.toString() + s.charAt(i) + "…") > maxWidth) {
-                break;
-            }
-            sb.append(s.charAt(i));
-        }
-        return sb + "…";
     }
 }

@@ -74,6 +74,7 @@ public final class CvsComposerDialog extends DialogWrapper {
 
     private Color charsFieldDefaultForeground;
     private Color charsLabelDefaultForeground;
+    private Color summaryDefaultForeground;
 
     private volatile String statement = "";
 
@@ -121,6 +122,7 @@ public final class CvsComposerDialog extends DialogWrapper {
         statementField.setEditable(false);
         root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
+        summaryDefaultForeground = summary.getForeground();
         root.add(summary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
 
@@ -236,13 +238,14 @@ public final class CvsComposerDialog extends DialogWrapper {
      * next time {@link #apply(CvsPreview)} runs after a successful preview.
      */
     private void previewUnavailable(String reason) {
-        summary.setText("Preview unavailable — " + reason);
+        ComposerSwingHelpers.previewUnavailable(summary, reason);
         setOKActionEnabled(false);
     }
 
     private void apply(CvsPreview p) {
         statement = p.statement;
         statementField.setText(p.statement);
+        summary.setForeground(summaryDefaultForeground);
         summary.setText(p.summary);
         strError.setText(p.strError == null ? " " : p.strError);
         charsError.setText(p.charsError == null ? " " : p.charsError);

@@ -30,6 +30,7 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
     private final JBTextField maskDotField = new JBTextField();
     private final JBTextField rawTailField = new JBTextField();
     private final JBLabel rawTailError = ComposerSwingHelpers.errorLabel();
+    private Color summaryDefaultForeground;
 
     private volatile String hexDigits = "";
     private volatile String line = "";
@@ -115,6 +117,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         resultingLine.setEditable(false);
         root.add(ComposerSwingHelpers.labeled("Resulting line", resultingLine));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
+        summaryDefaultForeground = summary.getForeground();
         root.add(summary);
         preservedLabel.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(preservedLabel);
@@ -273,7 +276,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
      * successful preview.
      */
     private void previewUnavailable(String reason) {
-        summary.setText("Preview unavailable — " + reason);
+        ComposerSwingHelpers.previewUnavailable(summary, reason);
         setOKActionEnabled(false);
     }
 
@@ -281,6 +284,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         hexDigits = p.hexDigits;
         line = p.line;
         resultingLine.setText(p.line);
+        summary.setForeground(summaryDefaultForeground);
         summary.setText(p.hexDigits.length() / 2 + " byte(s)  ·  " + p.summary);
         preservedLabel.setText(unknownBitsText(p.unknownByBytes));
         maskCommaField.setEnabled(p.maskInputsEnabled);

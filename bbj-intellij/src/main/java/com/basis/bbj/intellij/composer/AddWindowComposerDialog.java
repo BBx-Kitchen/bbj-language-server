@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -84,6 +85,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
     private final JBLabel widthError = ComposerSwingHelpers.errorLabel();
     private final JBLabel heightError = ComposerSwingHelpers.errorLabel();
     private JPanel geometryPanel;
+    private Color flagsSummaryDefaultForeground;
 
     private final boolean editMode;
     private final ComposerModels.AddWindowInitial initial;
@@ -160,6 +162,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         flagsSummary.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
         eventSummary.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
+        flagsSummaryDefaultForeground = flagsSummary.getForeground();
         root.add(flagsSummary);
         root.add(eventSummary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
@@ -291,7 +294,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
      * Cleared the next time {@link #apply(AddWindowPreview)} runs after a successful preview.
      */
     private void previewUnavailable(String reason) {
-        flagsSummary.setText("Preview unavailable — " + reason);
+        ComposerSwingHelpers.previewUnavailable(flagsSummary, reason);
         setOKActionEnabled(false);
     }
 
@@ -300,6 +303,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         flagsHex = p.flagsHex;
         eventHex = p.eventHex;
         statementField.setText(p.statement);
+        flagsSummary.setForeground(flagsSummaryDefaultForeground);
         flagsSummary.setText("flags = " + p.flagsHex + "   ·   " + p.flagsSummary);
         eventSummary.setText("event_mask = " + (p.eventHex == null ? "(unset)" : p.eventHex) + "   ·   " + p.eventSummary);
         schematic.setRender(p.render);

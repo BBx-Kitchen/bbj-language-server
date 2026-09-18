@@ -115,7 +115,7 @@ public final class ChildWindowSchematicPanel extends JPanel {
         if (render.fieldset) {
             // Groupbox-style legend: the title on the top border.
             String legend = render.title == null || render.title.isEmpty() ? "(no title)" : render.title;
-            legend = clip(g, legend, cw - JBUI.scale(24));
+            legend = ComposerSwingHelpers.clip(g, legend, cw - JBUI.scale(24));
             int tw = g.getFontMetrics().stringWidth(legend);
             int tx = cx + JBUI.scale(10);
             g.setColor(bodyBg);
@@ -140,20 +140,5 @@ public final class ChildWindowSchematicPanel extends JPanel {
             g.fillRect(cx + 1, cy + ch - sh - 1, cw - 2, sh);
         }
         g.dispose();
-    }
-
-    private static String clip(Graphics2D g, String s, int maxWidth) {
-        if (g.getFontMetrics().stringWidth(s) <= maxWidth) {
-            return s;
-        }
-        String ell = "…";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            if (g.getFontMetrics().stringWidth(sb.toString() + s.charAt(i) + ell) > maxWidth) {
-                break;
-            }
-            sb.append(s.charAt(i));
-        }
-        return sb + ell;
     }
 }

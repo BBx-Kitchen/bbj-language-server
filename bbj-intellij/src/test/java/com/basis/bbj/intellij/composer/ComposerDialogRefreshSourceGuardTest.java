@@ -55,6 +55,10 @@ class ComposerDialogRefreshSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "ComposerFlow.java")
             .toAbsolutePath();
 
+    private static final Path SWING_HELPERS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "ComposerSwingHelpers.java")
+            .toAbsolutePath();
+
     private static final Path BUILD_GRADLE_KTS = Paths.get("build.gradle.kts").toAbsolutePath();
 
     /** One entry per composer dialog so a seventh composer added later is a one-line addition. */
@@ -88,6 +92,28 @@ class ComposerDialogRefreshSourceGuardTest {
         UncheckedIOExceptionForTest(Path resolved, IOException cause) {
             super("Failed to read " + resolved, cause);
         }
+    }
+
+    /** Extracts a brace-balanced method body starting from the first '{' after {@code signatureFragment}. */
+    private static String extractMethodBody(String text, String signatureFragment) {
+        int sigIndex = text.indexOf(signatureFragment);
+        assertTrue(sigIndex >= 0, "method signature not found: " + signatureFragment);
+        int braceStart = text.indexOf('{', sigIndex);
+        assertTrue(braceStart >= 0, "opening brace not found for: " + signatureFragment);
+        int depth = 0;
+        for (int i = braceStart; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(braceStart, i + 1);
+                }
+            }
+        }
+        fail("unbalanced braces for: " + signatureFragment);
+        return "";
     }
 
     private static int countOccurrences(String text, String literal) {
@@ -141,10 +167,18 @@ class ComposerDialogRefreshSourceGuardTest {
 
     @Test
     void eachDialogLabelsAFailureOnAFailedPreviewExactlyOnce() {
+        String helpersBody = extractMethodBody(
+                withoutCommentLines(readSource(SWING_HELPERS_SOURCE)), "previewUnavailableText(");
+        assertEquals(1, countOccurrences(helpersBody, "Preview unavailable — "),
+                "the shared previewUnavailableText( body must carry the \"Preview unavailable\" prefix exactly once");
+
         for (Path source : DIALOG_SOURCES) {
-            String text = readSource(source);
-            assertEquals(1, countOccurrences(text, "Preview unavailable — "),
-                    source.getFileName() + " must show the \"Preview unavailable\" label exactly once");
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "Preview unavailable — "),
+                    source.getFileName() + " must no longer carry the \"Preview unavailable\" prefix "
+                            + "literal itself -- it lives in the shared home now");
+            assertEquals(1, countOccurrences(text, "ComposerSwingHelpers.previewUnavailable("),
+                    source.getFileName() + " must delegate to ComposerSwingHelpers.previewUnavailable( exactly once");
         }
     }
 

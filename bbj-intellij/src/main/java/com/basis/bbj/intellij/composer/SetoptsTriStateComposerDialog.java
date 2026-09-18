@@ -28,6 +28,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import java.awt.Color;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,7 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
     private final JBTextArea blockPreview = new JBTextArea();
     private final JBLabel preservedLabel = new JBLabel(
             "Options left Leave, and any bit outside this catalog, are left untouched by the generated lines.");
+    private Color blockPreviewDefaultForeground;
 
     private volatile String blockText = "";
     private volatile List<SetoptsTriStateEntry> selection = List.of();
@@ -112,6 +114,7 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
         blockPreview.setEditable(false);
         blockPreview.setRows(6);
         blockPreview.setLineWrap(false);
+        blockPreviewDefaultForeground = blockPreview.getForeground();
         root.add(ComposerSwingHelpers.labeled("Generated block", new JBScrollPane(blockPreview)));
         preservedLabel.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         root.add(preservedLabel);
@@ -250,13 +253,14 @@ public final class SetoptsTriStateComposerDialog extends DialogWrapper {
      * successful preview.
      */
     private void previewUnavailable(String reason) {
-        blockPreview.setText("Preview unavailable — " + reason);
+        ComposerSwingHelpers.previewUnavailable(blockPreview, reason);
         setOKActionEnabled(false);
     }
 
     private void apply(SetoptsComposeTriStateResult result, List<SetoptsTriStateEntry> entries) {
         blockText = result.text == null ? "" : result.text;
         selection = entries;
+        blockPreview.setForeground(blockPreviewDefaultForeground);
         blockPreview.setText(blockText);
         setOKActionEnabled(true);
     }

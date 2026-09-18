@@ -31,6 +31,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final JBLabel messageError = ComposerSwingHelpers.errorLabel();
     private final JBLabel titleError = ComposerSwingHelpers.errorLabel();
     private final JBLabel customError = ComposerSwingHelpers.errorLabel();
+    private Color summaryDefaultForeground;
 
     private volatile String statement = "";
 
@@ -155,6 +157,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         statementField.setEditable(false);
         root.add(ComposerSwingHelpers.labeled("Generated statement", statementField));
         summary.setComponentStyle(UIUtil.ComponentStyle.SMALL);
+        summaryDefaultForeground = summary.getForeground();
         root.add(summary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
 
@@ -296,13 +299,14 @@ public final class MsgboxComposerDialog extends DialogWrapper {
      * the next time {@link #apply(MsgboxPreview)} runs after a successful preview.
      */
     private void previewUnavailable(String reason) {
-        summary.setText("Preview unavailable — " + reason);
+        ComposerSwingHelpers.previewUnavailable(summary, reason);
         setOKActionEnabled(false);
     }
 
     private void apply(MsgboxPreview p) {
         statement = p.statement;
         statementField.setText(p.statement);
+        summary.setForeground(summaryDefaultForeground);
         summary.setText("expr = " + p.expr + "   ·   " + p.summary);
         messageError.setText(p.messageError == null ? " " : p.messageError);
         titleError.setText(p.titleError == null ? " " : p.titleError);

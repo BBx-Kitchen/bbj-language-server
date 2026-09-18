@@ -223,6 +223,33 @@ class ComposerSwingHelpersSourceGuardTest {
     }
 
     @Test
+    void clipIsDeclaredExactlyOnceInTheSharedHomeAndZeroTimesInAnyPanel() {
+        String helpersText = withoutCommentLines(readSource(SWING_HELPERS_SOURCE));
+        assertEquals(1, countOccurrences(helpersText, "String clip("),
+                "ComposerSwingHelpers.java must declare clip( exactly once");
+        assertEquals(1, countOccurrences(helpersText, "FontMetrics fm"),
+                "ComposerSwingHelpers.java's clip( must cache FontMetrics into a local variable exactly once");
+
+        for (Path source : SCHEMATIC_PANEL_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "private static String clip("),
+                    source.getFileName() + " must not declare its own private clip( -- "
+                            + "it must reach the shared ComposerSwingHelpers.clip( instead");
+            assertTrue(countOccurrences(text, "ComposerSwingHelpers.clip(") >= 1,
+                    source.getFileName() + " must call ComposerSwingHelpers.clip( at least once");
+        }
+    }
+
+    @Test
+    void previewUnavailableIsDeclaredExactlyOnceForEachOfTheTwoTargetTypes() {
+        String text = withoutCommentLines(readSource(SWING_HELPERS_SOURCE));
+        assertEquals(1, countOccurrences(text, "void previewUnavailable(JBLabel target, String reason)"),
+                "ComposerSwingHelpers.java must declare the JBLabel previewUnavailable overload exactly once");
+        assertEquals(1, countOccurrences(text, "void previewUnavailable(JBTextArea target, String reason)"),
+                "ComposerSwingHelpers.java must declare the JBTextArea previewUnavailable overload exactly once");
+    }
+
+    @Test
     void noPlatformTestFrameworkCreptIn() {
         String buildText = withoutCommentLines(readSource(BUILD_GRADLE_KTS));
         assertEquals(0, countOccurrences(buildText, "TestFrameworkType"),

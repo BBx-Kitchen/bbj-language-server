@@ -71,7 +71,7 @@ public final class WindowSchematicPanel extends JPanel {
             g.fillRect(x + 1, y + titleH - JBUI.scale(6), w - 2, JBUI.scale(6)); // square off the bottom
             g.setColor(fg);
             String title = render.title == null || render.title.isEmpty() ? "(no title)" : render.title;
-            g.drawString(clip(g, title, w - JBUI.scale(70)), x + JBUI.scale(8), y + JBUI.scale(15));
+            g.drawString(ComposerSwingHelpers.clip(g, title, w - JBUI.scale(70)), x + JBUI.scale(8), y + JBUI.scale(15));
 
             // Title-bar buttons, right-aligned: [– □] then [×]
             int bx = x + w - JBUI.scale(18);
@@ -113,20 +113,5 @@ public final class WindowSchematicPanel extends JPanel {
             g.drawString("◢", x + w - JBUI.scale(14), y + h - JBUI.scale(4));
         }
         g.dispose();
-    }
-
-    private static String clip(Graphics2D g, String s, int maxWidth) {
-        if (g.getFontMetrics().stringWidth(s) <= maxWidth) {
-            return s;
-        }
-        String ell = "…";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            if (g.getFontMetrics().stringWidth(sb.toString() + s.charAt(i) + ell) > maxWidth) {
-                break;
-            }
-            sb.append(s.charAt(i));
-        }
-        return sb + ell;
     }
 }
