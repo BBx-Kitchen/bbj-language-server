@@ -293,7 +293,7 @@ public final class ComposerLauncher {
      */
     private static void openMsgbox(Project project, Editor editor, BbjComposerServer server,
                                    MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line, int col) {
-        if (catalogs == null) {
+        if (catalogs == null || !ComposerCatalogsCheck.isUsable(catalogs)) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.MSGBOX)), null);
             return;
         }
