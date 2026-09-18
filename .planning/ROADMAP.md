@@ -298,12 +298,20 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
 **Plans**: 8 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 93-01-PLAN.md — COMP-07: one shared Swing-helper home for `clip`/`labeled`/`labeledWithError`/`errorLabel`/`setEnabledRecursive`/the stalled-preview label, with theme-aware error colour (wave 1)
 - [ ] 93-02-PLAN.md — COMP-04: SETOPTS `valid` + `rawTailError` computed server-side and consumed by the VS Code webview (wave 1)
 - [ ] 93-03-PLAN.md — COMP-05: length guards on every LS-supplied range array plus the new `MALFORMED_EDIT` notice (wave 1)
 - [ ] 93-04-PLAN.md — COMP-08: abstract intention base plus five thin no-arg subclasses (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 93-05-PLAN.md — COMP-03: malformed-catalogs shape gate across all six composer kinds (wave 2)
 - [ ] 93-06-PLAN.md — COMP-06: shared addWindow-family dialog base under both addWindow dialogs (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 93-07-PLAN.md — COMP-09: launch-action base plus six thin no-arg subclasses (wave 3)
 - [ ] 93-08-PLAN.md — COMP-04: both SETOPTS dialogs gate OK on the server verdict; client-side rule deleted (wave 3)
 
