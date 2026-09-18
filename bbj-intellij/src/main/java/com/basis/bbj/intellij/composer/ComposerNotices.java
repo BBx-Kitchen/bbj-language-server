@@ -16,8 +16,8 @@ public final class ComposerNotices {
 
     private ComposerNotices() {}
 
-    /** The three failure classes this and later composer plans surface. */
-    public enum Reason { NOT_READY, REQUEST_FAILED, STALE_DOCUMENT }
+    /** The four failure classes this and later composer plans surface. */
+    public enum Reason { NOT_READY, REQUEST_FAILED, STALE_DOCUMENT, MALFORMED_EDIT }
 
     /** Balloon severity, mapped 1:1 to {@code NotificationType} by the renderer. */
     public enum Severity { INFORMATION, WARNING, ERROR }
@@ -60,6 +60,19 @@ public final class ComposerNotices {
         return new Notice(Reason.STALE_DOCUMENT, kindLabel + " not updated",
                 "The line changed while the composer was open. Nothing was changed.",
                 Severity.WARNING, REOPEN_COMPOSER);
+    }
+
+    /**
+     * A language-server-supplied edit range did not carry exactly two elements (#591): the write
+     * was aborted before any document mutation was attempted. Shares {@code Severity.WARNING} with
+     * {@code STALE_DOCUMENT} by design -- both classes are "nothing changed, try again", not an
+     * outright failure -- and offers no remedy action, since re-decoding on the caller's own retry
+     * path (as {@code STALE_DOCUMENT} does) would just reach the same malformed payload again.
+     */
+    public static Notice malformedEdit(String kindLabel) {
+        return new Notice(Reason.MALFORMED_EDIT, kindLabel + " not updated",
+                "The language server sent an unusable edit range. Nothing was changed.",
+                Severity.WARNING, null);
     }
 
     /**

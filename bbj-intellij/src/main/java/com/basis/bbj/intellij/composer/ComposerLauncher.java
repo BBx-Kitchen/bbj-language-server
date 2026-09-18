@@ -426,6 +426,12 @@ public final class ComposerLauncher {
         if (flagsHex == null || flagsHex.isEmpty()) {
             return;
         }
+        // A null flagsRange still means "no token to rewrite here, use the insert offset instead"
+        // and must fall through unchanged; only a present-but-wrong-length array is malformed (#591).
+        if (ed.flagsRange != null && !ComposerEditRanges.isUsable(ed.flagsRange)) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(kindLabel), null);
+            return;
+        }
         StaleEditGuard guard = new StaleEditGuard(
                 documentViewOf(editor),
                 body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),
