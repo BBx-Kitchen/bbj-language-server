@@ -339,9 +339,17 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 94-01-PLAN.md — EM-05: one `BbjToolScriptResolver` behind an injected plugin-path seam, retiring the three duplicated tool-script lookups (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 94-02-PLAN.md — EM-03: `EmTokenValidator` beside the EM-token lifecycle, with the argv and trust-window guards re-pointed (wave 2)
 - [ ] 94-03-PLAN.md — EM-02 + EM-01: the login enablement gate under `ActionUpdateThread.BGT`, and a first pin for the temp-file cleanup scope (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 94-04-PLAN.md — EM-04 closed on cited evidence, plus the phase regression gate and an installable build for UAT (wave 3)
 
 *Ordering note:* EM-03 lands before EM-04 — both edit `BbjRunActionBase`, and removing the misplaced token-validation responsibility first means the shared BUI/DWC flow is built on the already-clean base instead of being refactored twice. EM-05 also retires the duplicated plugin-bundle path resolution flagged as advisory in `79-REVIEW` IN-02.
