@@ -232,31 +232,6 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Returns the path to the bundled web.bbj runner script.
-     * This file is bundled at lib/tools/web.bbj relative to the plugin installation.
-     *
-     * @return absolute path to web.bbj, or null if not found
-     */
-    @Nullable
-    protected String getWebBbjPath() {
-        try {
-            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManager.getInstance().findEnabledPlugin(
-                com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj")
-            );
-            if (plugin == null) {
-                return null;
-            }
-            java.nio.file.Path webBbjPath = plugin.getPluginPath().resolve("lib/tools/web.bbj");
-            if (!java.nio.file.Files.exists(webBbjPath)) {
-                return null;
-            }
-            return webBbjPath.toString();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Returns the path to the bundled em-validate-token.bbj script.
      * This file is bundled at lib/tools/em-validate-token.bbj relative to the plugin installation.
      *
@@ -450,7 +425,7 @@ public abstract class BbjRunActionBase extends AnAction {
         String bbjPath = getBbjExecutablePath();
 
         // Get web.bbj path
-        String webBbjPath = getWebBbjPath();
+        String webBbjPath = BbjToolScriptResolver.SESSION.resolveToolScript("web.bbj");
         if (webBbjPath == null) {
             logError(project, "web.bbj runner not found in plugin bundle");
             return null;
