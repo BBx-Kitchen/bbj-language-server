@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 93
 current_phase_name: Composer Robustness & Consolidation
 status: executing
-stopped_at: Completed 93-05-PLAN.md
-last_updated: "2026-09-18T09:43:47.629Z"
+stopped_at: Completed 93-06-PLAN.md
+last_updated: "2026-09-18T09:59:05.633Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 93 execution started
-state_head: a25a0a88b3d8dce21481de9879a4e5fe2608fd41
+state_head: ef7a3879e503760d0e2644f87688e7bd01942eef
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 ## Current Position
 
 Phase: 93 (Composer Robustness & Consolidation) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 93 execution started
 
@@ -88,6 +88,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 93 P03 | 20min | 3 tasks | 6 files |
 | Phase 93 P04 | 5min | 3 tasks | 8 files |
 | Phase 93 P05 | 15min | 3 tasks | 4 files |
+| Phase 93 P06 | 40min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 93]: COMP-08 shipped as abstract ComposerIntentionBase + 5 thin no-arg Configure*Intention subclasses (platform-forced deviation from #618's 'single data-driven registration' wording -- IntelliJ's <intentionAction> extension point instantiates only via a no-arg constructor with no registration identity, so one class cannot vary text/Kind/keyword); close #618 as done with this reasoning, not as partially implemented
 - [Phase 93]: ComposerCatalogsCheck reuses ComposerNotices.notReady (never MALFORMED_EDIT) -- a malformed catalogs payload and a malformed edit range are different failure classes
 - [Phase 93]: openSetoptsInCode is the single catalogs-shape gate for both SETOPTS-in-code dialogs; the three downstream dispatch methods carry no redundant check
+- [Phase 93]: Carried the addGroupedChecks tooltip branch unconditionally on the base after verifying against the addWindow catalog source that it is dead code there (COMP-06)
+- [Phase 93]: prefill(...)'s title-setting statement stays in each subclass constructor (title is subclass-owned), keeping the base to a single refresh() abstract hook (COMP-06)
 
 ### Tech Debt
 
@@ -176,8 +179,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-18T09:43:47.595Z
-Stopped at: Completed 93-05-PLAN.md
+Last session: 2026-09-18T09:59:05.603Z
+Stopped at: Completed 93-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 93` or `/gsd-plan-phase 93`.
