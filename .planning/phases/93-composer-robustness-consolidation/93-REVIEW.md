@@ -1,6 +1,6 @@
 ---
 phase: 93-composer-robustness-consolidation
-reviewed: 2026-09-18T10:30:48Z
+reviewed: 2026-09-18T00:00:00Z
 depth: standard
 files_reviewed: 51
 files_reviewed_list:
@@ -56,97 +56,179 @@ files_reviewed_list:
   - bbj-vscode/test/composer-commands.test.ts
   - bbj-vscode/test/setopts-catalog.test.ts
 findings:
-  critical: 1
-  warning: 2
-  info: 1
-  total: 4
+  critical: 0
+  warning: 4
+  info: 2
+  total: 6
 status: issues_found
 ---
 
 # Phase 93: Code Review Report
 
-**Reviewed:** 2026-09-18T10:30:48Z
+**Reviewed:** 2026-09-18T00:00:00Z
 **Depth:** standard
 **Files Reviewed:** 51
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the full phase 93 file set: the robustness guards (`ComposerEditRanges`, `ComposerCatalogsCheck`, the `MALFORMED_EDIT` notice, and the SETOPTS raw-tail validation move to the language server), and the four base-class extractions (`ComposerSwingHelpers`, `ComposerIntentionBase`, `AddWindowFamilyComposerDialogBase`, `BbjComposeActionBase`).
+This phase consolidates the IntelliJ composer actions/intentions/dialogs onto shared bases
+(`BbjComposeActionBase`, `ComposerIntentionBase`, `AddWindowFamilyComposerDialogBase`,
+`ComposerSwingHelpers`) and hardens two known crash paths: catalogs-payload shape
+(`ComposerCatalogsCheck`, #609) and edit-range/line-bound validation
+(`ComposerEditRanges`, #591). I traced every consolidation boundary and every new guard
+back to its call sites in `ComposerLauncher.java`.
 
-The consolidation work is clean: the addWindow/addChildWindow debounce wiring, sequence-counter discipline, and OK-gating in `AddWindowFamilyComposerDialogBase` are byte-for-byte equivalent to what each dialog carried before, and every extracted helper in `ComposerSwingHelpers`/`ComposerIntentionBase`/`BbjComposeActionBase` is reached identically by every subclass. The `valid` fail-closed contract for `SetoptsComposerDialog`/`SetoptsTriStateComposerDialog` is correct and well-tested: both fields are primitive Java `boolean`s, so an absent `valid` key in a malformed/partial JSON-RPC response defaults to `false` and OK stays disabled (confirmed against `ComposerModelsJsonBoundaryTest`'s two fail-closed round-trip tests).
+The previously reported CR-01 (unchecked server-supplied line numbers reaching
+`Document.getLineStartOffset(int)` in `openSetoptsInCodeAbsolute`/`openSetoptsInCodeChain`)
+is genuinely fixed: `ComposerEditRanges.isUsableLine`/`isUsableLineRegion` use a strict
+`< lineCount` bound, both guards run before `StaleEditGuard` is constructed (i.e. before
+the write command is entered), and the test suite (`ComposerEditRangesTest`,
+`ComposerLauncherRangeGuardSourceGuardTest`) pins the ordering and the boundary correctly
+(`endLine == lineCount` is rejected, matching real `Document` semantics). I did not find a
+way to make the fixed call sites throw.
 
-The one real gap is in the new robustness work itself: `ComposerLauncher.java`'s SETOPTS-in-code dispatch validates the character-range array (`hexRange`) for the `absolute` edit shape with the new `ComposerEditRanges` guard, but the sibling `chain` edit shape — decoded from the exact same `SetoptsInCodeDecodeResult` response, in the same method family, in the same diff — passes its `absolute.line` / `chain.startLine` / `chain.endLine` integers straight into `Document.getLineStartOffset(...)` with no bounds check at all. A malformed or version-skewed language-server response that names a line outside the current document throws an uncaught `IndexOutOfBoundsException` instead of the `MALFORMED_EDIT` notice this same phase built for exactly this failure class.
+However, the `#591` "malformed edit range" defense is incomplete in two ways that are
+directly adjacent to the code this phase touched: `ComposerEditRanges.isUsable(int[])`
+deliberately does not check that `range[0] <= range[1]`, and every array-shaped range this
+phase gates (`flagsRange`, `eventMaskRange`, SETOPTS's `hexRange`) is written to the
+document with no other ordering check downstream — so a version-skewed or buggy language
+server that sends a reversed range still crashes the write, which is exactly the failure
+mode this guard exists to close. Separately, the two `int`-typed line fields the new
+line-bound guards protect (`SetoptsInCodeAbsoluteEdit.line`, `SetoptsInCodeChainEdit.startLine/endLine`)
+are Java primitives Gson defaults to `0` when a field is omitted from the wire payload —
+`isUsableLine(0, lineCount)` is `true` for any non-empty document, so an incomplete
+response silently edits line 0 instead of being rejected as malformed.
 
-## Critical Issues
-
-### CR-01: `chain.startLine`/`chain.endLine`/`absolute.line` are dereferenced with no document-bounds check, unlike the sibling `hexRange` this same phase guarded
-
-**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:619` and `:663-664`
-
-**Issue:** `openSetoptsInCodeAbsolute` and `openSetoptsInCodeChain` both consume fields from the same `SetoptsInCodeDecodeResult` the phase's own diff (see `git diff c5525e5c..HEAD`) added a `ComposerEditRanges.isUsable(ed.hexRange)` guard for, just a few lines above each usage:
-
-```java
-// openSetoptsInCodeAbsolute (line 619) — ed.line is never range-checked:
-int ls = doc.getLineStartOffset(ed.line);
-doc.replaceString(ls + ed.hexRange[0], ls + ed.hexRange[1], BbjHexLiteral.of(hex));
-
-// openSetoptsInCodeChain (lines 663-664) — chain.startLine/endLine are never range-checked:
-int startOffset = doc.getLineStartOffset(chain.startLine);
-int endOffset = doc.getLineStartOffset(chain.endLine);
-```
-
-`Document.getLineStartOffset(int)` throws `IndexOutOfBoundsException` for a line number `< 0` or `>= getLineCount()`. Nothing between the decode response arriving and this call validates `ed.line`, `chain.startLine`, or `chain.endLine` against the live document's current line count — the only validation this phase added for the neighboring `absolute.hexRange` field (`ComposerEditRanges.isUsable(ed.hexRange)`, added two lines above the `ed.line` dereference at line 619) does not cover the line-number fields at all.
-
-This is exactly the failure class the phase's own stated goal names ("guard malformed language-server payloads so the IDE never raises an internal error") and the class `ComposerLauncherRangeGuardSourceGuardTest`/`ComposerNotices.malformedEdit` exist to close for every *other* range in this file — but it was not extended to these two line-number fields. `StaleEditGuard.applyIfUnchanged`'s re-decode-and-compare step does not help here: if a buggy or version-skewed server deterministically returns the same out-of-range line number on both the initial decode and the guard's re-decode, the values compare equal (not stale) and the crash still happens inside the write-command body.
-
-**Fix:** Add a document-line-count bound check before every one of these three dereferences, mirroring the `ComposerEditRanges`/`ComposerNotices.malformedEdit` pattern already established for `hexRange`:
-
-```java
-// openSetoptsInCodeAbsolute, before constructing the guard:
-if (ed.line < 0 || ed.line >= editor.getDocument().getLineCount()) {
-    ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
-    return;
-}
-
-// openSetoptsInCodeChain, before constructing the guard:
-int lineCount = editor.getDocument().getLineCount();
-if (chain.startLine < 0 || chain.endLine < chain.startLine || chain.endLine > lineCount) {
-    ComposerNoticeRenderer.render(project, ComposerNotices.malformedEdit(labelOf(Kind.SETOPTS_IN_CODE)), null);
-    return;
-}
-```
+The three items the prior review deliberately deferred (`decoded.edit` dereferenced
+without a null check; `createComposeTriStateHandler` not validating `params.selection`;
+the webview's silent no-op on a target with neither `hexRange` nor `insertOffset`) are
+still present, unchanged, and still pre-existing/deferred rather than regressions of this
+phase — re-confirmed below for completeness.
 
 ## Warnings
 
-### WR-01: `decoded.edit` is dereferenced with no null check across every edit-in-place path
+### WR-01: `ComposerEditRanges.isUsable(int[])` never validates range ordering, so a reversed range still crashes the write
 
-**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:313, 363, 384, 390, 403, 485, 497, 709`
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerEditRanges.java:16-23`
+**Issue:** `isUsable(int[] range)` only checks `range != null && range.length == 2` — the
+javadoc explicitly disclaims checking `range[0] <= range[1]` ("that is the document's
+problem, not this predicate's"), and `ComposerEditRangesTest.aDescendingTwoElementRangeIsStillUsableBecauseOrderingIsTheDocumentsProblemNotThisPredicates`
+pins `isUsable(new int[]{9, 4})` as `true`. But nothing downstream ever validates
+ordering before the write: `applyHexEdit` (`ComposerLauncher.java:451-461`) builds
+`new Op(ls + ed.flagsRange[0], ls + ed.flagsRange[1], flagsHex)` directly from the
+unordered array and later calls `doc.replaceString(op.start, op.end, op.text)`
+(`ComposerLauncher.java:465-467`); `openSetopts` (`ComposerLauncher.java:517-529`) does the
+same with `ed.hexRange`; `openSetoptsInCodeAbsolute` (`ComposerLauncher.java:604-607, 633`)
+does the same with `ed.hexRange` for the absolute-literal edit. IntelliJ's
+`Document.replaceString(start, end, text)` throws when `end < start`, so a version-skewed
+or buggy language server response with a reversed range still crashes the write inside a
+`WriteCommandAction` — the exact class of failure `ComposerEditRanges` (#591) was
+introduced to close, left half-closed for the array-shaped ranges (the line-region
+predicate, `isUsableLineRegion`, does enforce `endLine >= startLine` and is not affected).
+**Fix:**
+```java
+public static boolean isUsable(int[] range) {
+    return range != null && range.length == 2 && range[0] <= range[1];
+}
+```
+Update `ComposerEditRangesTest`'s descending-range test to expect `false` (its own rationale
+sentence — "ordering is the document's problem" — is the thing to revisit, not preserve).
 
-**Issue:** Every `open*` method that reaches an edit-in-place branch (`boolean edit = decoded != null && decoded.found;` or the MSGBOX/CVS equivalent) immediately dereferences `decoded.edit.preservedFlagBits`, `decoded.edit.hexDigits`, etc., with no check that `decoded.edit` itself is non-null. The TypeScript decode handlers are documented to always pair `found: true` with a populated `edit`, but nothing on the Java side enforces that contract — a malformed response with `found: true` and `edit: null` throws a `NullPointerException` at the first field access, on the EDT, inside the same file this phase is actively hardening against exactly this class of malformed-payload crash. This is pre-existing code, not introduced by this phase's diff, but it sits in the same methods the phase modified and is the same risk class as CR-01.
+### WR-02: Gson defaults an omitted `int` line field to `0`, which the new line-bound guards accept as valid
 
-**Fix:** Add a `decoded.edit == null` check alongside each existing `decoded.found` check (or generalize `ComposerEditRanges`/`ComposerCatalogsCheck`'s "usable" pattern to a shared `decoded != null && decoded.found && decoded.edit != null` helper reused by every `open*` method), rendering `ComposerNotices.malformedEdit(...)` on failure rather than letting the NPE propagate.
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerModels.java:470-474,477-482`
+**Issue:** `SetoptsInCodeAbsoluteEdit.line`, `SetoptsInCodeChainEdit.startLine` and
+`SetoptsInCodeChainEdit.endLine` are primitive `int` fields. When a version-skewed or
+malformed `bbj/composer/setopts/decodeInCode` response omits one of these keys, Gson
+silently leaves the field at its default, `0` — a value indistinguishable from an
+explicit, legitimate `line: 0`. `ComposerEditRanges.isUsableLine(0, lineCount)`
+(`ComposerEditRanges.java:34-36`) is `true` for any document with at least one line, so
+the very guards this phase added at `ComposerLauncher.java:611-615` (absolute) and
+`ComposerLauncher.java:663-667` (chain) cannot detect this malformed-input shape: instead
+of aborting with `ComposerNotices.malformedEdit(...)`, the code proceeds to rewrite line 0
+of the user's file — silently editing the wrong location rather than failing closed, which
+is worse than the crash the guard was built to prevent. This is a real gap in an otherwise
+carefully "fail-closed" family (contrast with `AddWindowPreview.valid`, a `boolean` whose
+missing-key default of `false` is documented and tested as intentionally fail-closed).
+**Fix:** Make the wire fields boxed (`Integer`) so "absent" is representable and distinct
+from `0`, and treat `null` as immediately malformed in `ComposerLauncher` before calling
+`ComposerEditRanges.isUsableLine`/`isUsableLineRegion` — or, more centrally, extend
+`ComposerCatalogsCheck`-style shape validation to the decode-result DTOs themselves.
 
-### WR-02: `composeTriState`'s handler performs no defensive validation of its own request params
+### WR-03 (re-confirmed, pre-existing — deferred by design): `decoded.edit` dereferenced with no null check
 
-**File:** `bbj-vscode/src/language/setopts-in-code-request.ts:360-362`
-
-**Issue:** `createComposeTriStateHandler()` is a bare pass-through: `(params) => composeSetOptsBlock(params)`. `composeSetOptsBlock` immediately does `input.selection.entries.find(...)` with no guard for `input.selection` being absent — unlike `createDecodeInCodeHandler`, which is careful to return `NOT_FOUND` rather than throw on every malformed input it can reach (missing document, unresolvable leaf, undetected shape). A malformed/incompatible client request (e.g. a future or buggy IDE build that omits `selection`) throws inside the LSP request handler instead of degrading gracefully the way its sibling handler in the same file does. This is lower severity than CR-01/WR-01 because it is client→server (a well-behaved client already always sends `selection`), not the server→client malformed-payload direction the phase's stated threat model targets, but it is an inconsistency within the same file/module this phase touched.
-
-**Fix:** Either validate `params.selection` shape before calling `composeSetOptsBlock` (mirroring `createDecodeInCodeHandler`'s defensive style), or document explicitly why this handler is exempt from the module's own established convention.
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java` (e.g. lines 313, 390-394, 403-407, 497, 725)
+**Issue:** Every edit-in-place branch dereferences `decoded.edit` (e.g.
+`MsgboxEdit ed = decoded.edit;`, `decoded.edit.preservedFlagBits`) immediately after
+checking `decoded.found`, with no null check on `edit` itself. A response with
+`found: true` but a missing/null `edit` object (a version-skewed or buggy server) throws
+`NullPointerException` on the EDT rather than surfacing `ComposerNotices.malformedEdit(...)`.
+This is unchanged from before this phase and was explicitly deferred by the prior review
+(WR-01) as pre-existing debt, not a phase-93 regression. Confirmed still present, still
+unaddressed by this phase's `ComposerCatalogsCheck`/`ComposerEditRanges` work (both of
+which validate catalogs and ranges, but not the presence of the `edit` object that carries
+those ranges).
+**Fix:** Add a `decoded.edit == null` guard alongside the existing `found`/`editable`
+checks in each `open*` method, rendering `ComposerNotices.malformedEdit(...)` on failure,
+matching the pattern already used for `ComposerEditRanges.isUsable(...)`.
 
 ## Info
 
-### IN-01: `setopts-composer-webview.ts`'s `apply` branch silently no-ops on a `target` with neither `hexRange` nor `insertOffset`
+### IN-01 (re-confirmed, pre-existing — deferred by design): `createComposeTriStateHandler` never validates `params.selection`
 
-**File:** `bbj-vscode/src/setopts-composer-webview.ts:111-126`
+**File:** `bbj-vscode/src/language/setopts-in-code-request.ts:360-362`
+**Issue:** `createComposeTriStateHandler()` returns `(params) => composeSetOptsBlock(params)`
+with no validation that `params.selection` (or `params.selection.entries`) is present.
+`composeSetOptsBlock` immediately does `input.selection.entries.find(...)` inside a loop
+over `SETOPTS_BITS` (`bbj-vscode/src/setopts-catalog.ts:488-491`), so a malformed
+`bbj/composer/setopts/composeTriState` request (missing `selection`) throws a
+`TypeError` out of the LSP request handler. Confirmed unchanged from the prior review's
+WR-02, deliberately deferred there as pre-existing.
+**Fix:** Validate `params?.selection?.entries` is an array before delegating, returning a
+fail-closed `{ lines: [], text: '', valid: false }` on a malformed request, mirroring the
+`valid: false` fail-closed convention already documented on `SetoptsPreview`/`AddWindowPreview`.
 
-**Issue:** In the `'apply'` message handler, when `target` is present but carries neither `target.hexRange` nor `target.insertOffset` (a shape decodeCall is not expected to produce, but nothing enforces that at this boundary), the code builds an empty `WorkspaceEdit`, applies it (a no-op), and disposes the panel — the same "quietly do nothing" outcome IntelliJ's `MALFORMED_EDIT` notice (added by this phase) was built to make visible to the user instead. This is a pre-existing gap (not introduced by this phase's diff to this file, which only added the `hexSyntax`/`bbjHexLiteral` branch), and VS Code's `SetOptsStaleEditGuard` already covers the staleness half of this scenario, so this is flagged for awareness rather than as a blocking defect.
+### IN-02 (re-confirmed, pre-existing — deferred by design): webview silently no-ops on a target with neither `hexRange` nor `insertOffset`
 
-**Fix:** Optional — if a future pass wants IDE parity, surface a warning notification (or reuse the existing stale-document messaging path) when `target` carries neither field, matching IntelliJ's new `MALFORMED_EDIT` treatment.
+**File:** `bbj-vscode/src/setopts-composer-webview.ts:107-131`
+**Issue:** In the `'apply'` message handler, when `target` is present but carries neither
+`target.hexRange` nor `target.insertOffset`, neither `if` branch executes, so `edit`
+remains an empty `WorkspaceEdit`; `vscode.workspace.applyEdit(edit)` is called with no
+edits, `panel.dispose()` runs, and the user sees the panel simply close with no error and
+no document change. Confirmed unchanged from the prior review's IN-01, deliberately
+deferred there.
+**Fix:** Add an explicit `else` branch that surfaces a "nothing to update" notice
+(mirroring `ComposerNotices.malformedEdit`'s Java-side convention) instead of silently
+closing.
+
+### IN-03: Inconsistent robustness across this phase's own "source guard" test helpers
+
+**File:** e.g. `bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerLauncherRangeGuardSourceGuardTest.java:84-104` vs. `bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/SetoptsComposerDialogSourceGuardTest.java:74-100`
+**Issue:** Most of the new/updated "source guard" tests in this phase extract a
+brace-balanced method body with a naive counter (`extractMethodBody`) that increments/
+decrements depth on every `{`/`}` character in the raw source text, including inside
+string and character literals and (in several classes) inside comments not yet stripped.
+`SetoptsComposerDialogSourceGuardTest`'s own `blockAfter` helper is quote-aware (skips
+braces inside `"…"`/`'…'` literals) specifically because a regex literal such as
+`"[0-9A-F]{0,14}"` would otherwise desynchronize the brace count. The other guard classes
+reviewed here (`ComposerLauncherRangeGuardSourceGuardTest`, `ComposerCatalogsShapeSourceGuardTest`,
+`ComposerIntentionBaseSourceGuardTest`, `BbjComposeActionBaseSourceGuardTest`,
+`AddWindowFamilyComposerDialogBaseSourceGuardTest`) use the naive counter against
+`ComposerLauncher.java` and other files that do contain brace characters inside string
+literals and Javadoc prose elsewhere in the same files, so their extraction is one string
+literal away from silently mis-scoping the body it asserts against (asserting inside the
+wrong span, or failing to find the closing brace at all). None of the specific extractions
+exercised in this phase currently hit such a literal, so no test is presently broken by
+this — but the inconsistency between the two techniques in the same package is worth
+converging on the quote-aware one everywhere these count-based assertions are load-bearing.
+**Fix:** Factor the quote-aware `blockAfter`/`extractMethodBody` variant into one shared
+test-only helper (already tolerated by this codebase's own convention of "no shared test
+utility, so a bad edit can't weaken every guard at once" — a `protected`/`static` copy
+duplicated file-to-file is fine; the goal is only that every copy uses the safer algorithm).
 
 ---
 
-_Reviewed: 2026-09-18T10:30:48Z_
+_Reviewed: 2026-09-18T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
