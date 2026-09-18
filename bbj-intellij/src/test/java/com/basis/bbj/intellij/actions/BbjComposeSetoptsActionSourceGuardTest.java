@@ -13,17 +13,21 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Source-guard fence for {@link com.basis.bbj.intellij.actions.BbjComposeSetoptsAction} (#633),
- * mirroring {@code BbjRefreshJavaClassesActionSourceGuardTest}'s structural-pin convention. Pins
- * seven properties none of D-01/D-02/D-04's guarantees are otherwise observable by a single manual
- * click: the availability predicate reaches {@code BbjConfigPathService} with no argument, the
- * action is scoped by presence (not a disabled-but-visible state), it touches no PSI type and does
- * no Java-side SETOPTS parsing, it targets exactly one launcher kind, it reaches no restart entry
- * point, and its {@code plugin.xml} registration exists with no default keystroke.
+ * re-pointed for the base-plus-subclass shape (#616): the presence gate, background update thread
+ * and no-PSI/no-parsing/no-restart invariants now cover {@link BbjComposeActionBase} as well as
+ * this subclass, since the launch call and default gate now live on the base. The subclass keeps
+ * only its own {@code isAvailableFor(...)} override reaching {@code BbjConfigPathService}, and a
+ * delegation pin proves it actually extends the base and supplies {@code Kind.SETOPTS}. Modelled
+ * on the base-aware guard pattern in {@code EmTokenTrustWindowSourceGuardTest}.
  */
 class BbjComposeSetoptsActionSourceGuardTest {
 
     private static final Path GUARDED_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", "BbjComposeSetoptsAction.java")
+            .toAbsolutePath();
+
+    private static final Path BASE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", "BbjComposeActionBase.java")
             .toAbsolutePath();
 
     private static final Path PLUGIN_XML = Paths.get(
@@ -78,59 +82,82 @@ class BbjComposeSetoptsActionSourceGuardTest {
     }
 
     @Test
-    void theActionIsScopedByPresenceNotByADisabledButVisibleState() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theBaseIsScopedByPresenceNotByADisabledButVisibleState() {
+        String text = stripComments(readSource(BASE_SOURCE));
 
         assertEquals(1, countOccurrences(text, "setEnabledAndVisible("),
-                "exactly one setEnabledAndVisible( call -- D-02 requires the entry to be absent "
-                        + "entirely outside a config file, not merely disabled");
+                "the base must call setEnabledAndVisible( exactly once -- D-02 requires the entry "
+                        + "to be absent entirely outside a config file, not merely disabled");
         assertEquals(0, countOccurrences(text, "setEnabled("),
                 "the disabled-but-visible presentation call must never be used -- an unavailable "
                         + "action must vanish from the Editor Popup Menu, not grey out");
     }
 
     @Test
-    void theActionTouchesNoPsiType() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theActionAndBaseTouchNoPsiType() {
+        String subclassText = stripComments(readSource(GUARDED_SOURCE));
+        String baseText = stripComments(readSource(BASE_SOURCE));
 
-        assertEquals(0, countOccurrences(text, "com.intellij.psi"),
+        assertEquals(0, countOccurrences(subclassText, "com.intellij.psi"),
                 "the action must stay PSI-free (D-01) -- config.bbx has no parser to consult");
-        assertEquals(0, countOccurrences(text, "Psi"),
+        assertEquals(0, countOccurrences(subclassText, "Psi"),
                 "no PSI-named type may appear anywhere in the action source (D-01)");
+        assertEquals(0, countOccurrences(baseText, "com.intellij.psi"),
+                "the base must stay PSI-free too");
+        assertEquals(0, countOccurrences(baseText, "Psi"),
+                "no PSI-named type may appear anywhere in the base source either");
     }
 
     @Test
-    void theActionDoesNoJavaSideSetoptsParsing() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theActionAndBaseDoNoJavaSideSetoptsParsing() {
+        String subclassText = stripComments(readSource(GUARDED_SOURCE));
+        String baseText = stripComments(readSource(BASE_SOURCE));
 
-        assertEquals(0, countOccurrences(text, "\"SETOPTS\""),
+        assertEquals(0, countOccurrences(subclassText, "\"SETOPTS\""),
                 "the SETOPTS keyword literal must never be matched in Java -- the line decision "
                         + "belongs to the server's decodeCall request");
-        assertEquals(0, countOccurrences(text, "parseSetOptsLine("),
+        assertEquals(0, countOccurrences(subclassText, "parseSetOptsLine("),
                 "the action must never call the domain module's line parser directly");
-        assertEquals(0, countOccurrences(text, "Integer.parseInt("),
+        assertEquals(0, countOccurrences(subclassText, "Integer.parseInt("),
                 "the action must perform no hex-parsing of its own");
+        assertEquals(0, countOccurrences(baseText, "\"SETOPTS\""),
+                "the base must never match the SETOPTS keyword literal either");
+        assertEquals(0, countOccurrences(baseText, "parseSetOptsLine("),
+                "the base must never call the domain module's line parser directly");
+        assertEquals(0, countOccurrences(baseText, "Integer.parseInt("),
+                "the base must perform no hex-parsing of its own");
     }
 
     @Test
-    void theLaunchTargetIsExactlyOneComposerKind() {
+    void theActionDelegatesToTheBaseWithItsOwnKindAndAvailability() {
         String text = stripComments(readSource(GUARDED_SOURCE));
 
+        assertEquals(1, countOccurrences(text, "extends BbjComposeActionBase"),
+                "BbjComposeSetoptsAction.java must extend BbjComposeActionBase exactly once");
         assertEquals(1, countOccurrences(text, "ComposerLauncher.Kind.SETOPTS"),
-                "the action must launch exactly Kind.SETOPTS, exactly once");
+                "the action must reference exactly one Kind.SETOPTS -- launched exactly once");
+        assertEquals(1, countOccurrences(text, "isAvailableFor("),
+                "the action must declare its own isAvailableFor(...) override exactly once");
     }
 
     @Test
-    void theActionReachesNoRestartEntryPoint() {
-        String text = stripComments(readSource(GUARDED_SOURCE));
+    void theActionAndBaseReachNoRestartEntryPoint() {
+        String subclassText = stripComments(readSource(GUARDED_SOURCE));
+        String baseText = stripComments(readSource(BASE_SOURCE));
 
-        assertEquals(0, countOccurrences(text, "requestRestart("),
+        assertEquals(0, countOccurrences(subclassText, "requestRestart("),
                 "the action must never trigger a restart -- editing config.bbx through the composer "
                         + "must not be indistinguishable from a manual restart request");
-        assertEquals(0, countOccurrences(text, "scheduleRestart("),
+        assertEquals(0, countOccurrences(subclassText, "scheduleRestart("),
                 "the action must never schedule a coalesced restart either");
-        assertEquals(0, countOccurrences(text, "LanguageServerManager"),
+        assertEquals(0, countOccurrences(subclassText, "LanguageServerManager"),
                 "the action must never reach LSP4IJ's server manager directly");
+        assertEquals(0, countOccurrences(baseText, "requestRestart("),
+                "the base must never trigger a restart either");
+        assertEquals(0, countOccurrences(baseText, "scheduleRestart("),
+                "the base must never schedule a coalesced restart either");
+        assertEquals(0, countOccurrences(baseText, "LanguageServerManager"),
+                "the base must never reach LSP4IJ's server manager directly");
     }
 
     @Test

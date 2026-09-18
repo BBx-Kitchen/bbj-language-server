@@ -2,15 +2,11 @@ package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.composer.ComposerLauncher;
 import com.basis.bbj.intellij.config.BbjConfigPathService;
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Editor action: a second, non-intention door into the tri-state SETOPTS-in-code composer (#475).
@@ -28,16 +24,11 @@ import org.jetbrains.annotations.NotNull;
  * points cannot drift in behaviour. This additional trigger can be layered on without touching
  * the request/DTO surface either entry point relies on.
  */
-public final class BbjComposeSetoptsInCodeAction extends AnAction {
+public final class BbjComposeSetoptsInCodeAction extends BbjComposeActionBase {
 
     @Override
-    public void actionPerformed(@NotNull AnActionEvent e) {
-        Project project = e.getProject();
-        Editor editor = e.getData(CommonDataKeys.EDITOR);
-        if (project == null || editor == null) {
-            return;
-        }
-        ComposerLauncher.launch(project, editor, ComposerLauncher.Kind.SETOPTS_IN_CODE);
+    protected ComposerLauncher.Kind kind() {
+        return ComposerLauncher.Kind.SETOPTS_IN_CODE;
     }
 
     /**
@@ -46,19 +37,9 @@ public final class BbjComposeSetoptsInCodeAction extends AnAction {
      * per {@link SetoptsInCodeActionAvailability}.
      */
     @Override
-    public void update(@NotNull AnActionEvent e) {
-        Project project = e.getProject();
-        Editor editor = e.getData(CommonDataKeys.EDITOR);
-        VirtualFile file = editor != null ? FileDocumentManager.getInstance().getFile(editor.getDocument()) : null;
+    protected boolean isAvailableFor(@NotNull Project project, @NotNull Editor editor, @Nullable VirtualFile file) {
         boolean isConfigFile = BbjConfigPathService.getInstance().isConfigFile(file);
         String extension = file != null ? file.getExtension() : null;
-        e.getPresentation().setEnabledAndVisible(
-                project != null && editor != null
-                        && SetoptsInCodeActionAvailability.isAvailable(extension, isConfigFile));
-    }
-
-    @Override
-    public @NotNull ActionUpdateThread getActionUpdateThread() {
-        return ActionUpdateThread.BGT;
+        return SetoptsInCodeActionAvailability.isAvailable(extension, isConfigFile);
     }
 }

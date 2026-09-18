@@ -2,15 +2,11 @@ package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.composer.ComposerLauncher;
 import com.basis.bbj.intellij.config.BbjConfigPathService;
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Editor action: open the visual SETOPTS composer for the resolved config file (#633). PSI-free by
@@ -23,16 +19,11 @@ import org.jetbrains.annotations.NotNull;
  * opens it in compose-new mode targeting the caret. This action binds no default keystroke in this
  * phase (D-04).
  */
-public final class BbjComposeSetoptsAction extends AnAction {
+public final class BbjComposeSetoptsAction extends BbjComposeActionBase {
 
     @Override
-    public void actionPerformed(@NotNull AnActionEvent e) {
-        Project project = e.getProject();
-        Editor editor = e.getData(CommonDataKeys.EDITOR);
-        if (project == null || editor == null) {
-            return;
-        }
-        ComposerLauncher.launch(project, editor, ComposerLauncher.Kind.SETOPTS);
+    protected ComposerLauncher.Kind kind() {
+        return ComposerLauncher.Kind.SETOPTS;
     }
 
     /**
@@ -41,16 +32,7 @@ public final class BbjComposeSetoptsAction extends AnAction {
      * caret's line text -- the edit-vs-compose-new decision happens at launch, server-side.
      */
     @Override
-    public void update(@NotNull AnActionEvent e) {
-        Project project = e.getProject();
-        Editor editor = e.getData(CommonDataKeys.EDITOR);
-        VirtualFile file = editor != null ? FileDocumentManager.getInstance().getFile(editor.getDocument()) : null;
-        e.getPresentation().setEnabledAndVisible(
-                project != null && editor != null && BbjConfigPathService.getInstance().isConfigFile(file));
-    }
-
-    @Override
-    public @NotNull ActionUpdateThread getActionUpdateThread() {
-        return ActionUpdateThread.BGT;
+    protected boolean isAvailableFor(@NotNull Project project, @NotNull Editor editor, @Nullable VirtualFile file) {
+        return BbjConfigPathService.getInstance().isConfigFile(file);
     }
 }
