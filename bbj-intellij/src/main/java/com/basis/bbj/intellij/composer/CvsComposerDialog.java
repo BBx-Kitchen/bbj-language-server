@@ -63,12 +63,12 @@ public final class CvsComposerDialog extends DialogWrapper {
     private final List<CheckboxRow> checkboxRows = new ArrayList<>();
 
     private final JBTextField expressionField = new JBTextField();
-    private final JBLabel strError = errorLabel();
+    private final JBLabel strError = ComposerSwingHelpers.errorLabel();
     private JPanel assignToRow;
     private final JBTextField assignTo = new JBTextField();
     private final JBLabel charsFieldLabel = new JBLabel("Replacement characters");
     private final JBTextField charsField = new JBTextField();
-    private final JBLabel charsError = errorLabel();
+    private final JBLabel charsError = ComposerSwingHelpers.errorLabel();
     private final JBTextField statementField = new JBTextField();
     private final JBLabel summary = new JBLabel();
 
@@ -252,13 +252,6 @@ public final class CvsComposerDialog extends DialogWrapper {
         charsField.setForeground(p.charsEnabled ? charsFieldDefaultForeground : UIUtil.getInactiveTextColor());
         charsFieldLabel.setForeground(p.charsEnabled ? charsLabelDefaultForeground : UIUtil.getInactiveTextColor());
         setOKActionEnabled(p.valid);
-    }
-
-    private static JBLabel errorLabel() {
-        JBLabel label = new JBLabel(" ");
-        label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
-        label.setForeground(new Color(0xC0392B));
-        return label;
     }
 
     /** The composed CVS() statement (edit flow: replace the existing call span with this). */

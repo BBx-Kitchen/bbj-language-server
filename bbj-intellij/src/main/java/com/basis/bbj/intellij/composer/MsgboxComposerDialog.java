@@ -31,7 +31,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
@@ -85,9 +84,9 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final MsgboxSchematicPanel schematic = new MsgboxSchematicPanel();
     private final JBTextField statementField = new JBTextField();
     private final JBLabel summary = new JBLabel();
-    private final JBLabel messageError = errorLabel();
-    private final JBLabel titleError = errorLabel();
-    private final JBLabel customError = errorLabel();
+    private final JBLabel messageError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel titleError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel customError = ComposerSwingHelpers.errorLabel();
 
     private volatile String statement = "";
 
@@ -332,13 +331,6 @@ public final class MsgboxComposerDialog extends DialogWrapper {
             combo.addItem(it);
         }
         combo.setRenderer(SimpleListCellRenderer.create("", it -> it.label + "  (" + it.value + ")"));
-    }
-
-    private static JBLabel errorLabel() {
-        JBLabel label = new JBLabel(" ");
-        label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
-        label.setForeground(new Color(0xC0392B));
-        return label;
     }
 
     public @NotNull String getStatement() {

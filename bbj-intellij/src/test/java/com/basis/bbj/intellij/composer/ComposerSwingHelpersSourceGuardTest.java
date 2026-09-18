@@ -36,7 +36,18 @@ class ComposerSwingHelpersSourceGuardTest {
             MSGBOX_DIALOG, ADD_WINDOW_DIALOG, ADD_CHILD_WINDOW_DIALOG, SETOPTS_DIALOG,
             SETOPTS_TRISTATE_DIALOG, CVS_DIALOG);
 
+    private static final Path MSGBOX_SCHEMATIC_PANEL = composerSource("MsgboxSchematicPanel.java");
+    private static final Path WINDOW_SCHEMATIC_PANEL = composerSource("WindowSchematicPanel.java");
+    private static final Path CHILD_WINDOW_SCHEMATIC_PANEL = composerSource("ChildWindowSchematicPanel.java");
+
+    /** One entry per schematic panel, for sweeps that must cover panels as well as dialogs. */
+    private static final List<Path> SCHEMATIC_PANEL_SOURCES = List.of(
+            MSGBOX_SCHEMATIC_PANEL, WINDOW_SCHEMATIC_PANEL, CHILD_WINDOW_SCHEMATIC_PANEL);
+
     private static final Path BUILD_GRADLE_KTS = Paths.get("build.gradle.kts").toAbsolutePath();
+
+    /** The pre-consolidation hardcoded error-red color construction every errorLabel() copy carried. */
+    private static final String HARDCODED_ERROR_RED = "new Color(0xC0392B)";
 
     private static Path composerSource(String fileName) {
         return Paths.get(
@@ -59,6 +70,28 @@ class ComposerSwingHelpersSourceGuardTest {
         UncheckedIOExceptionForTest(Path resolved, IOException cause) {
             super("Failed to read " + resolved, cause);
         }
+    }
+
+    /** Extracts a brace-balanced method body starting from the first '{' after {@code signatureFragment}. */
+    private static String extractMethodBody(String text, String signatureFragment) {
+        int sigIndex = text.indexOf(signatureFragment);
+        assertTrue(sigIndex >= 0, "method signature not found: " + signatureFragment);
+        int braceStart = text.indexOf('{', sigIndex);
+        assertTrue(braceStart >= 0, "opening brace not found for: " + signatureFragment);
+        int depth = 0;
+        for (int i = braceStart; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(braceStart, i + 1);
+                }
+            }
+        }
+        fail("unbalanced braces for: " + signatureFragment);
+        return "";
     }
 
     private static int countOccurrences(String text, String literal) {
@@ -112,6 +145,81 @@ class ComposerSwingHelpersSourceGuardTest {
             assertTrue(countOccurrences(text, "ComposerSwingHelpers.labeled(") >= 1,
                     source.getFileName() + " must call ComposerSwingHelpers.labeled( at least once");
         }
+    }
+
+    @Test
+    void errorForegroundErrorLabelLabeledWithErrorAndSetEnabledRecursiveAreDeclaredExactlyOnceInTheSharedHome() {
+        String text = withoutCommentLines(readSource(SWING_HELPERS_SOURCE));
+        assertEquals(1, countOccurrences(text, "Color errorForeground("),
+                "ComposerSwingHelpers.java must declare errorForeground( exactly once");
+        assertEquals(1, countOccurrences(text, "JBLabel errorLabel("),
+                "ComposerSwingHelpers.java must declare errorLabel( exactly once");
+        assertEquals(1, countOccurrences(text, "JPanel labeledWithError("),
+                "ComposerSwingHelpers.java must declare labeledWithError( exactly once");
+        assertEquals(1, countOccurrences(text, "void setEnabledRecursive("),
+                "ComposerSwingHelpers.java must declare setEnabledRecursive( exactly once");
+    }
+
+    @Test
+    void noDialogDeclaresItsOwnPrivateErrorLabelLabeledWithErrorOrSetEnabledRecursive() {
+        for (Path source : DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "private static JBLabel errorLabel("),
+                    source.getFileName() + " must not declare its own private errorLabel(");
+            assertEquals(0, countOccurrences(text, "private static JPanel labeledWithError("),
+                    source.getFileName() + " must not declare its own private labeledWithError(");
+            assertEquals(0, countOccurrences(text, "private static void setEnabledRecursive("),
+                    source.getFileName() + " must not declare its own private setEnabledRecursive(");
+        }
+    }
+
+    @Test
+    void everyErrorLabelDialogCallsTheSharedErrorLabelHelper() {
+        for (Path source : List.of(MSGBOX_DIALOG, ADD_WINDOW_DIALOG, ADD_CHILD_WINDOW_DIALOG, SETOPTS_DIALOG, CVS_DIALOG)) {
+            String text = readSource(source);
+            assertTrue(countOccurrences(text, "ComposerSwingHelpers.errorLabel(") >= 1,
+                    source.getFileName() + " must call ComposerSwingHelpers.errorLabel( at least once");
+        }
+    }
+
+    @Test
+    void bothAddWindowFamilyDialogsCallTheSharedLabeledWithErrorAndSetEnabledRecursiveHelpers() {
+        for (Path source : List.of(ADD_WINDOW_DIALOG, ADD_CHILD_WINDOW_DIALOG)) {
+            String text = readSource(source);
+            assertTrue(countOccurrences(text, "ComposerSwingHelpers.labeledWithError(") >= 1,
+                    source.getFileName() + " must call ComposerSwingHelpers.labeledWithError( at least once");
+            assertEquals(1, countOccurrences(text, "ComposerSwingHelpers.setEnabledRecursive("),
+                    source.getFileName() + " must call ComposerSwingHelpers.setEnabledRecursive( exactly once");
+        }
+    }
+
+    @Test
+    void errorForegroundCallsTheThemeAwareColorLookupExactlyOnce() {
+        String body = extractMethodBody(withoutCommentLines(readSource(SWING_HELPERS_SOURCE)), "Color errorForeground(");
+        assertEquals(1, countOccurrences(body, "NamedColorUtil.getErrorForeground()"),
+                "errorForeground() must call the theme-aware color lookup exactly once");
+    }
+
+    @Test
+    void noDialogOrPanelStillConstructsTheOldHardcodedErrorRed() {
+        for (Path source : DIALOG_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, HARDCODED_ERROR_RED),
+                    source.getFileName() + " must no longer construct the old hardcoded error-red color -- "
+                            + "the shared errorForeground() lookup replaces it");
+        }
+        for (Path source : SCHEMATIC_PANEL_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, HARDCODED_ERROR_RED),
+                    source.getFileName() + " must never have constructed the old hardcoded error-red color");
+        }
+    }
+
+    @Test
+    void theSharedHomeNeverUsesTheFullyQualifiedUiUtilComponentStyleForm() {
+        String text = withoutCommentLines(readSource(SWING_HELPERS_SOURCE));
+        assertEquals(0, countOccurrences(text, "com.intellij.util.ui.UIUtil.ComponentStyle"),
+                "ComposerSwingHelpers.java must use the imported UIUtil form, not the fully-qualified one");
     }
 
     @Test

@@ -30,7 +30,6 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +69,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
     private final JBTextField maskCommaField = new JBTextField();
     private final JBTextField maskDotField = new JBTextField();
     private final JBTextField rawTailField = new JBTextField();
-    private final JBLabel rawTailError = errorLabel();
+    private final JBLabel rawTailError = ComposerSwingHelpers.errorLabel();
 
     private volatile String hexDigits = "";
     private volatile String line = "";
@@ -305,13 +304,6 @@ public final class SetoptsComposerDialog extends DialogWrapper {
                     .append(String.format("%02X", u.mask)).append('$');
         }
         return sb.toString();
-    }
-
-    private static JBLabel errorLabel() {
-        JBLabel label = new JBLabel(" ");
-        label.setComponentStyle(UIUtil.ComponentStyle.SMALL);
-        label.setForeground(new Color(0xC0392B));
-        return label;
     }
 
     /** The composed hex digits (edit flow: replace the existing hex token with this). */

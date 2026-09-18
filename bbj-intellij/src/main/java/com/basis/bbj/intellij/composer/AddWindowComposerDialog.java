@@ -26,7 +26,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -77,13 +76,13 @@ public final class AddWindowComposerDialog extends DialogWrapper {
     private final JBTextField statementField = new JBTextField();
     private final JBLabel flagsSummary = new JBLabel();
     private final JBLabel eventSummary = new JBLabel();
-    private final JBLabel receiverError = errorLabel();
-    private final JBLabel sysguiError = errorLabel();
-    private final JBLabel titleError = errorLabel();
-    private final JBLabel xError = errorLabel();
-    private final JBLabel yError = errorLabel();
-    private final JBLabel widthError = errorLabel();
-    private final JBLabel heightError = errorLabel();
+    private final JBLabel receiverError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel sysguiError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel titleError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel xError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel yError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel widthError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel heightError = ComposerSwingHelpers.errorLabel();
     private JPanel geometryPanel;
 
     private final boolean editMode;
@@ -168,13 +167,13 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         // Statement fields — create flow only; in edit mode we rewrite just the hex tokens in place.
         geometryPanel = new JPanel(new GridLayout(0, 4, JBUI.scale(6), JBUI.scale(4)));
         geometryPanel.setBorder(BorderFactory.createTitledBorder("Statement"));
-        geometryPanel.add(labeledWithError("Assign to", receiver, receiverError));
-        geometryPanel.add(labeledWithError("SysGui expr", sysgui, sysguiError));
-        geometryPanel.add(labeledWithError("Title expr", title, titleError));
-        geometryPanel.add(labeledWithError("x", x, xError));
-        geometryPanel.add(labeledWithError("y", y, yError));
-        geometryPanel.add(labeledWithError("width", width, widthError));
-        geometryPanel.add(labeledWithError("height", height, heightError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("Assign to", receiver, receiverError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("SysGui expr", sysgui, sysguiError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("Title expr", title, titleError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("x", x, xError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("y", y, yError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("width", width, widthError));
+        geometryPanel.add(ComposerSwingHelpers.labeledWithError("height", height, heightError));
         geometryPanel.setVisible(!editMode);
         root.add(geometryPanel);
 
@@ -209,16 +208,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
     }
 
     private void updateEventEnabled() {
-        setEnabledRecursive(eventPanel, eventEnabled.isSelected());
-    }
-
-    private static void setEnabledRecursive(JComponent c, boolean enabled) {
-        c.setEnabled(enabled);
-        for (java.awt.Component child : c.getComponents()) {
-            if (child instanceof JComponent) {
-                setEnabledRecursive((JComponent) child, enabled);
-            }
-        }
+        ComposerSwingHelpers.setEnabledRecursive(eventPanel, eventEnabled.isSelected());
     }
 
     /** Add checkboxes to `parent`, one titled sub-panel per catalog group (in catalog order). */
@@ -344,22 +334,6 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         for (Map.Entry<Long, JBCheckBox> e : checks.entrySet()) {
             e.getValue().setSelected(on.contains(e.getKey()));
         }
-    }
-
-    private static JBLabel errorLabel() {
-        JBLabel label = new JBLabel(" ");
-        label.setComponentStyle(com.intellij.util.ui.UIUtil.ComponentStyle.SMALL);
-        label.setForeground(new Color(0xC0392B));
-        return label;
-    }
-
-    /** Like {@link ComposerSwingHelpers#labeled(String, JComponent)}, with a red error label under the field (#623). */
-    private static JPanel labeledWithError(String label, JComponent field, JBLabel error) {
-        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
-        panel.add(new JBLabel(label), BorderLayout.NORTH);
-        panel.add(field, BorderLayout.CENTER);
-        panel.add(error, BorderLayout.SOUTH);
-        return panel;
     }
 
     /** The composed statement to insert (create flow); valid after the dialog is accepted. */
