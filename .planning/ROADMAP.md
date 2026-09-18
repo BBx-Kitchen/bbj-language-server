@@ -295,7 +295,18 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
   4. The addWindow-family dialogs, the `Configure*Intention` classes, the composer-launch actions, and `clip`/`labeled`/`setEnabledRecursive` each have exactly one definition in the source tree — a fix to any of those shapes is written once.
   5. Every composer a user can reach — MSGBOX, addWindow, addChildWindow, CVS, SETOPTS, SETOPTS-in-code — behaves identically after the consolidation: same dialogs, same lightbulb and context-menu entries, same cue click-through, same written output, evidenced by the whole IntelliJ JUnit suite plus one hand UAT round covering all six kinds.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 93-01-PLAN.md — COMP-07: one shared Swing-helper home for `clip`/`labeled`/`labeledWithError`/`errorLabel`/`setEnabledRecursive`/the stalled-preview label, with theme-aware error colour (wave 1)
+- [ ] 93-02-PLAN.md — COMP-04: SETOPTS `valid` + `rawTailError` computed server-side and consumed by the VS Code webview (wave 1)
+- [ ] 93-03-PLAN.md — COMP-05: length guards on every LS-supplied range array plus the new `MALFORMED_EDIT` notice (wave 1)
+- [ ] 93-04-PLAN.md — COMP-08: abstract intention base plus five thin no-arg subclasses (wave 1)
+- [ ] 93-05-PLAN.md — COMP-03: malformed-catalogs shape gate across all six composer kinds (wave 2)
+- [ ] 93-06-PLAN.md — COMP-06: shared addWindow-family dialog base under both addWindow dialogs (wave 2)
+- [ ] 93-07-PLAN.md — COMP-09: launch-action base plus six thin no-arg subclasses (wave 3)
+- [ ] 93-08-PLAN.md — COMP-04: both SETOPTS dialogs gate OK on the server verdict; client-side rule deleted (wave 3)
+
 **UI hint**: yes
 
 *Ordering note:* COMP-06's shared addWindow-family base lands before COMP-04's dialog-side validation so the validation is written once; COMP-03 and COMP-05 (both on the launch/apply path) land before COMP-09 consolidates the launch actions over that path.
