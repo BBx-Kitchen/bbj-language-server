@@ -5,12 +5,10 @@ import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.CapturingProcessHandler;
 import com.intellij.execution.process.ProcessOutput;
-import com.intellij.ide.plugins.PluginManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import org.jetbrains.annotations.NotNull;
@@ -77,7 +75,7 @@ public final class BbjEMLoginAction extends AnAction {
         if (password == null) return false;
 
         // Find em-login.bbj in plugin bundle
-        String emLoginPath = getEMLoginBbjPath();
+        String emLoginPath = BbjToolScriptResolver.SESSION.resolveToolScript("em-login.bbj");
         if (emLoginPath == null) {
             showErrorOnEdt(
                 "em-login.bbj not found in plugin bundle",
@@ -215,21 +213,5 @@ public final class BbjEMLoginAction extends AnAction {
     /** Shows a modal info dialog on the EDT, blocking the calling (pooled) thread until dismissed. */
     private static void showInfoOnEdt(String message, String title) {
         ApplicationManager.getApplication().invokeAndWait(() -> Messages.showInfoMessage(message, title));
-    }
-
-    /**
-     * Gets the path to em-login.bbj from the plugin bundle.
-     * Uses the same pattern as BbjRunActionBase.getWebBbjPath().
-     */
-    private static String getEMLoginBbjPath() {
-        try {
-            var pluginId = PluginId.getId("com.basis.bbj");
-            var plugin = PluginManager.getInstance().findEnabledPlugin(pluginId);
-            if (plugin == null) return null;
-            Path emLogin = plugin.getPluginPath().resolve("lib/tools/em-login.bbj");
-            return Files.exists(emLogin) ? emLogin.toString() : null;
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

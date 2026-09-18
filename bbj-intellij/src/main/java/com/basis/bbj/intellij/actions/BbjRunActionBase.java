@@ -232,30 +232,6 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Returns the path to the bundled em-validate-token.bbj script.
-     * This file is bundled at lib/tools/em-validate-token.bbj relative to the plugin installation.
-     *
-     * @return absolute path to em-validate-token.bbj, or null if not found
-     */
-    @Nullable
-    private String getEmValidateBbjPath() {
-        try {
-            com.intellij.openapi.extensions.PluginId pluginId = com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj");
-            if (pluginId == null) {
-                return null;
-            }
-            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManager.getInstance().findEnabledPlugin(pluginId);
-            if (plugin == null) {
-                return null;
-            }
-            java.nio.file.Path emValidatePath = plugin.getPluginPath().resolve("lib/tools/em-validate-token.bbj");
-            return java.nio.file.Files.exists(emValidatePath) ? emValidatePath.toString() : null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Validate a token server-side against EM by running em-validate-token.bbj.
      * Returns true if token is valid, false otherwise.
      *
@@ -270,7 +246,7 @@ public abstract class BbjRunActionBase extends AnAction {
                 return false;
             }
 
-            String emValidatePath = getEmValidateBbjPath();
+            String emValidatePath = BbjToolScriptResolver.SESSION.resolveToolScript("em-validate-token.bbj");
             if (emValidatePath == null) {
                 return false;
             }
