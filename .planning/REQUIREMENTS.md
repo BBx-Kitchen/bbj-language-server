@@ -30,7 +30,7 @@ forcing those files to be edited and hand-UAT'd twice.
 - [ ] **EM-02**: "Login to Enterprise Manager" gates its enablement on project and server-readiness state and declares `ActionUpdateThread.BGT`, matching its ten sibling actions (#589)
 - [ ] **EM-03**: EM server-side token validation lives alongside the rest of the EM-token lifecycle, not inside the run-action base class (#617)
 - [ ] **EM-04**: `BbjRunBuiAction` and `BbjRunDwcAction` share the run flow through the base class, differing only in their BUI/DWC-specific literals (#615)
-- [ ] **EM-05**: Plugin-bundled tool script paths (`web.bbj`, `em-validate.bbj`, `em-login.bbj`) resolve through one shared helper instead of three near-identical methods across two files (#614)
+- [x] **EM-05**: Plugin-bundled tool script paths (`web.bbj`, `em-validate.bbj`, `em-login.bbj`) resolve through one shared helper instead of three near-identical methods across two files (#614)
 
 ### java-interop Status and Settings
 
@@ -102,7 +102,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EM-02 | Phase 94 | Pending |
 | EM-03 | Phase 94 | Pending |
 | EM-04 | Phase 94 | Pending |
-| EM-05 | Phase 94 | Pending |
+| EM-05 | Phase 94 | Complete |
 | IOP-01 | Phase 95 | Pending |
 | IOP-02 | Phase 95 | Pending |
 | IOP-03 | Phase 95 | Pending |

@@ -336,12 +336,12 @@ Plans:
   4. Running a BBj file as BUI and as DWC still launches correctly from toolbar, menu and keyboard shortcut, with the two actions differing only in their BUI/DWC-specific literals.
   5. `web.bbj`, `em-validate.bbj` and `em-login.bbj` all resolve through one shared helper, and every consumer still finds its script inside an installed plugin (not only in a dev sandbox).
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 94-01-PLAN.md — EM-05: one `BbjToolScriptResolver` behind an injected plugin-path seam, retiring the three duplicated tool-script lookups (wave 1)
+- [x] 94-01-PLAN.md — EM-05: one `BbjToolScriptResolver` behind an injected plugin-path seam, retiring the three duplicated tool-script lookups (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
