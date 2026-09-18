@@ -23,6 +23,13 @@ import static org.junit.jupiter.api.Assertions.fail;
  * started raising a balloon per keystroke instead of one per dialog session -- and this guard
  * fails the build for it instead of letting a user discover it as a silently-accepted stale
  * statement.
+ *
+ * <p>{@code AddWindowComposerDialog} and {@code AddChildWindowComposerDialog} now share the
+ * preview seam, the debounce wiring and the sequence-counter discipline through
+ * {@code AddWindowFamilyComposerDialogBase} (#630) rather than each carrying its own copy, so the
+ * literals this class pins for those two dialogs are split across the base (checked once, for
+ * both dialogs together) and each subclass file, instead of appearing once per subclass file as
+ * they still do for the other four dialogs.
  */
 class ComposerDialogRefreshSourceGuardTest {
 
@@ -36,6 +43,11 @@ class ComposerDialogRefreshSourceGuardTest {
 
     private static final Path ADD_CHILD_WINDOW_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "AddChildWindowComposerDialog.java")
+            .toAbsolutePath();
+
+    private static final Path ADD_WINDOW_FAMILY_BASE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "AddWindowFamilyComposerDialogBase.java")
             .toAbsolutePath();
 
     private static final Path SETOPTS_SOURCE = Paths.get(
@@ -65,17 +77,21 @@ class ComposerDialogRefreshSourceGuardTest {
     private static final List<Path> DIALOG_SOURCES = List.of(
             MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
+    /** Every dialog source plus the shared addWindow-family base, for sweeps that must cover both. */
+    private static final List<Path> ALL_SOURCES_INCLUDING_BASE = List.of(
+            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE,
+            ADD_WINDOW_FAMILY_BASE_SOURCE);
+
+    /** The two addWindow-family dialogs whose shared seam now lives on {@link #ADD_WINDOW_FAMILY_BASE_SOURCE}. */
+    private static final List<Path> ADD_WINDOW_FAMILY_SOURCES = List.of(ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE);
+
     /**
-     * Every composer dialog's live preview is coalesced through the one shared
-     * {@code PreviewDebouncer} seam, so every dialog disables OK a third time -- synchronously,
-     * the instant a new preview is scheduled -- rather than only on the constructor's initial
-     * disable and a later failed preview. {@code MsgboxComposerDialog}, {@code AddWindowComposerDialog}
-     * and {@code AddChildWindowComposerDialog} route through the same {@code scheduleRefresh()}
-     * shape that {@code SetoptsComposerDialog}, {@code SetoptsTriStateComposerDialog} and
-     * {@code CvsComposerDialog} already established, so all six carry the third disable.
+     * The four dialogs that still own their debounce seam directly in their own file --
+     * {@code AddWindowComposerDialog} and {@code AddChildWindowComposerDialog} moved theirs onto
+     * {@link #ADD_WINDOW_FAMILY_BASE_SOURCE} (#630) and are asserted separately below.
      */
-    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(
-            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
+    private static final List<Path> OTHER_DEBOUNCED_DIALOG_SOURCES = List.of(
+            MSGBOX_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE, CVS_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
@@ -144,7 +160,7 @@ class ComposerDialogRefreshSourceGuardTest {
 
     @Test
     void noDialogObservesOnlyTheSuccessSideOfItsPreviewRequestAnyMore() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : ALL_SOURCES_INCLUDING_BASE) {
             String text = withoutCommentLines(readSource(source));
             assertEquals(0, countOccurrences(text, "thenAccept("),
                     source.getFileName() + " must not chain a bare thenAccept( on its preview request -- "
@@ -172,7 +188,7 @@ class ComposerDialogRefreshSourceGuardTest {
         assertEquals(1, countOccurrences(helpersBody, "Preview unavailable — "),
                 "the shared previewUnavailableText( body must carry the \"Preview unavailable\" prefix exactly once");
 
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = withoutCommentLines(readSource(source));
             assertEquals(0, countOccurrences(text, "Preview unavailable — "),
                     source.getFileName() + " must no longer carry the \"Preview unavailable\" prefix "
@@ -180,6 +196,23 @@ class ComposerDialogRefreshSourceGuardTest {
             assertEquals(1, countOccurrences(text, "ComposerSwingHelpers.previewUnavailable("),
                     source.getFileName() + " must delegate to ComposerSwingHelpers.previewUnavailable( exactly once");
         }
+
+        // AddWindow-family: the previewUnavailable(String) wrapper that delegates to
+        // ComposerSwingHelpers.previewUnavailable( moved onto the shared base (#630), so each
+        // subclass now carries zero occurrences and the base carries exactly one.
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "Preview unavailable — "),
+                    source.getFileName() + " must never carry the \"Preview unavailable\" prefix literal itself");
+            assertEquals(0, countOccurrences(text, "ComposerSwingHelpers.previewUnavailable("),
+                    source.getFileName() + " must delegate through the inherited previewUnavailable(String) "
+                            + "wrapper on the base, not call ComposerSwingHelpers directly");
+        }
+        String baseText = withoutCommentLines(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE));
+        assertEquals(0, countOccurrences(baseText, "Preview unavailable — "),
+                "AddWindowFamilyComposerDialogBase.java must never carry the \"Preview unavailable\" prefix literal itself");
+        assertEquals(1, countOccurrences(baseText, "ComposerSwingHelpers.previewUnavailable("),
+                "AddWindowFamilyComposerDialogBase.java must delegate to ComposerSwingHelpers.previewUnavailable( exactly once");
     }
 
     /**
@@ -195,24 +228,41 @@ class ComposerDialogRefreshSourceGuardTest {
      * SETOPTS and the tri-state SETOPTS-in-code dialog carry a third occurrence (CR-01): unlike
      * the other dialogs, their live-preview refresh is coalesced through {@code PreviewDebouncer}'s
      * fixed 300ms trailing-edge delay, so a click landing inside that window would otherwise still
-     * see the previous, now-superseded preview's OK-enabled state. Both disable OK synchronously
-     * the instant a new preview is scheduled (not only on eventual success/failure), so every
-     * dialog's minimum expected count of 2 still holds and {@link #DEBOUNCED_DIALOG_SOURCES} alone
-     * are allowed a third.
+     * see the previous, now-superseded preview's OK-enabled state. Every debounced dialog disables
+     * OK synchronously the instant a new preview is scheduled (not only on eventual
+     * success/failure), so every dialog's minimum expected count of 2 still holds and every
+     * debounced dialog is allowed a third.
+     * <p>
+     * For the addWindow-family two, the three disables split across two files: the base's
+     * {@code scheduleRefresh()} and {@code previewUnavailable(String)} each carry one, and the
+     * subclass's own constructor carries the up-front one -- so the total across the subclass file
+     * plus the base must equal three, rather than three appearing in one file.
      */
     @Test
     void eachDialogDisablesOkBeforeItsFirstPreviewRoundTripAndOnAnyLaterFailure() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = readSource(source);
-            boolean debounced = DEBOUNCED_DIALOG_SOURCES.contains(source);
-            int expected = debounced ? 3 : 2;
-            assertEquals(expected, countOccurrences(text, "setOKActionEnabled(false)"),
-                    debounced
-                            ? source.getFileName() + " must disable OK three times: once up front before "
-                                    + "the constructor's first preview round-trip, once the instant a new "
-                                    + "preview is scheduled (CR-01), once on a later failed preview"
-                            : source.getFileName() + " must disable OK twice: once up front before the "
-                                    + "constructor's first preview round-trip, once on a later failed preview");
+            assertEquals(3, countOccurrences(text, "setOKActionEnabled(false)"),
+                    source.getFileName() + " must disable OK three times: once up front before "
+                            + "the constructor's first preview round-trip, once the instant a new "
+                            + "preview is scheduled (CR-01), once on a later failed preview");
+
+            int firstDisable = text.indexOf("setOKActionEnabled(false)");
+            int firstRefreshCall = text.indexOf("refresh();");
+            assertTrue(firstDisable >= 0 && firstRefreshCall >= 0 && firstDisable < firstRefreshCall,
+                    source.getFileName() + " must disable OK before the constructor's own first "
+                            + "refresh() call -- otherwise OK is clickable during the async window "
+                            + "before any preview has ever resolved");
+        }
+
+        int baseDisables = countOccurrences(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE), "setOKActionEnabled(false)");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = readSource(source);
+            int subclassDisables = countOccurrences(text, "setOKActionEnabled(false)");
+            assertEquals(3, subclassDisables + baseDisables,
+                    source.getFileName() + " plus AddWindowFamilyComposerDialogBase.java together must disable "
+                            + "OK three times: once up front in the subclass constructor, once (on the base) the "
+                            + "instant a new preview is scheduled, once (on the base) on a later failed preview");
 
             int firstDisable = text.indexOf("setOKActionEnabled(false)");
             int firstRefreshCall = text.indexOf("refresh();");
@@ -231,10 +281,14 @@ class ComposerDialogRefreshSourceGuardTest {
      * {@code previewDebouncer.trigger()} itself must still appear exactly once (inside the helper).
      * {@code CvsComposerDialog} reuses the exact same debounce seam {@code SetoptsComposerDialog}
      * established, so it carries the same helper (#649).
+     * <p>
+     * For the addWindow-family two, {@code scheduleRefresh()} is declared on the shared base, not
+     * per subclass, so {@code previewDebouncer.trigger()} lives there once and each subclass file
+     * carries zero occurrences.
      */
     @Test
     void debouncedDialogsRouteEveryListenerThroughTheOkDisablingScheduleHelperRatherThanTriggeringTheDebouncerDirectly() {
-        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = withoutCommentLines(readSource(source));
             assertTrue(text.contains("private void scheduleRefresh()"),
                     source.getFileName() + " must declare a scheduleRefresh() helper that disables OK "
@@ -247,6 +301,25 @@ class ComposerDialogRefreshSourceGuardTest {
                             + "reference -- every trigger must go through scheduleRefresh() so OK is "
                             + "disabled first");
         }
+
+        String baseText = withoutCommentLines(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE));
+        assertTrue(baseText.contains("protected void scheduleRefresh()"),
+                "AddWindowFamilyComposerDialogBase.java must declare the shared scheduleRefresh() helper "
+                        + "that disables OK and triggers the debouncer");
+        assertEquals(1, countOccurrences(baseText, "previewDebouncer.trigger()"),
+                "AddWindowFamilyComposerDialogBase.java previewDebouncer.trigger() must be called from "
+                        + "exactly one place -- inside scheduleRefresh()");
+        assertEquals(0, countOccurrences(baseText, "previewDebouncer::trigger"),
+                "AddWindowFamilyComposerDialogBase.java must never pass previewDebouncer::trigger as a "
+                        + "method reference");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "private void scheduleRefresh()"),
+                    source.getFileName() + " must not re-declare scheduleRefresh() -- it is inherited from the base");
+            assertEquals(0, countOccurrences(text, "previewDebouncer.trigger()"),
+                    source.getFileName() + " must never call previewDebouncer.trigger() directly -- "
+                            + "it is reached only through the inherited scheduleRefresh()");
+        }
     }
 
     /**
@@ -254,10 +327,15 @@ class ComposerDialogRefreshSourceGuardTest {
      * scheduler instance, one debouncer instance, and no bespoke {@code Alarm} of its own. A dialog
      * that drifted from this shape (a different delay, a second scheduler, or a raw {@code Alarm})
      * would defeat the purpose of sharing one seam across all six dialogs.
+     * <p>
+     * For the addWindow-family two, this seam construction now lives entirely on the shared base
+     * (#630), so each subclass file must carry zero occurrences of every seam-construction literal
+     * and the base must carry exactly one of each. {@code new Alarm(} stays forbidden everywhere,
+     * including the base.
      */
     @Test
     void everyDebouncedDialogSharesTheOneDebounceSeamWithTheSameDelay() {
-        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = withoutCommentLines(readSource(source));
             assertEquals(1, countOccurrences(text, "PREVIEW_DEBOUNCE_MS = 300L"),
                     source.getFileName() + " must declare exactly one PREVIEW_DEBOUNCE_MS = 300L");
@@ -269,16 +347,41 @@ class ComposerDialogRefreshSourceGuardTest {
                     source.getFileName() + " must not create a bespoke Alarm of its own -- "
                             + "AlarmScheduler is the only Alarm owner");
         }
+
+        String baseText = withoutCommentLines(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE));
+        assertEquals(1, countOccurrences(baseText, "PREVIEW_DEBOUNCE_MS = 300L"),
+                "AddWindowFamilyComposerDialogBase.java must declare exactly one PREVIEW_DEBOUNCE_MS = 300L");
+        assertEquals(1, countOccurrences(baseText, "new AlarmScheduler(getDisposable())"),
+                "AddWindowFamilyComposerDialogBase.java must build exactly one AlarmScheduler over its own disposable");
+        assertEquals(1, countOccurrences(baseText, "new PreviewDebouncer("),
+                "AddWindowFamilyComposerDialogBase.java must build exactly one PreviewDebouncer");
+        assertEquals(0, countOccurrences(baseText, "new Alarm("),
+                "AddWindowFamilyComposerDialogBase.java must not create a bespoke Alarm of its own");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "PREVIEW_DEBOUNCE_MS"),
+                    source.getFileName() + " must not re-declare PREVIEW_DEBOUNCE_MS -- it is inherited from the base");
+            assertEquals(0, countOccurrences(text, "new AlarmScheduler("),
+                    source.getFileName() + " must not build its own AlarmScheduler -- it is inherited from the base");
+            assertEquals(0, countOccurrences(text, "new PreviewDebouncer("),
+                    source.getFileName() + " must not build its own PreviewDebouncer -- it is inherited from the base");
+            assertEquals(0, countOccurrences(text, "new Alarm("),
+                    source.getFileName() + " must not create a bespoke Alarm of its own");
+        }
     }
 
     /**
      * A debounced dialog listener that called {@code refresh()} directly would bypass the OK-disable
      * that {@code scheduleRefresh()} exists to guarantee, reopening the stale-apply window this guard
      * closes elsewhere. Only the debouncer's own action reference may name {@code refresh}.
+     * <p>
+     * For the addWindow-family two, {@code this::refresh} is now referenced on the shared base
+     * (inside its {@code PreviewDebouncer} construction), so each subclass file carries zero
+     * occurrences; {@code -> refresh()} stays forbidden everywhere, including the base.
      */
     @Test
     void noDebouncedDialogListenerRefreshesDirectly() {
-        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = withoutCommentLines(readSource(source));
             assertEquals(1, countOccurrences(text, "this::refresh"),
                     source.getFileName() + " must reference refresh() exactly once -- as the "
@@ -287,34 +390,64 @@ class ComposerDialogRefreshSourceGuardTest {
                     source.getFileName() + " no listener may call refresh() directly -- every "
                             + "listener must route through scheduleRefresh()");
         }
+
+        String baseText = withoutCommentLines(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE));
+        assertEquals(1, countOccurrences(baseText, "this::refresh"),
+                "AddWindowFamilyComposerDialogBase.java must reference refresh() exactly once -- as the "
+                        + "PreviewDebouncer's own action");
+        assertEquals(0, countOccurrences(baseText, "-> refresh()"),
+                "AddWindowFamilyComposerDialogBase.java must never call refresh() directly from a listener");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = withoutCommentLines(readSource(source));
+            assertEquals(0, countOccurrences(text, "this::refresh"),
+                    source.getFileName() + " must not reference refresh() directly -- the "
+                            + "PreviewDebouncer holding it is built on the base");
+            assertEquals(0, countOccurrences(text, "-> refresh()"),
+                    source.getFileName() + " no listener may call refresh() directly");
+        }
     }
 
     @Test
     void eachDialogRateLimitsItsBalloonToOnePerDialogSession() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = readSource(source);
             assertEquals(1, countOccurrences(text, "ComposerFlow.once("),
                     source.getFileName() + " must wrap its notifier in exactly one ComposerFlow.once( -- "
                             + "one balloon allowance per dialog instance");
         }
+
+        assertEquals(1, countOccurrences(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE), "ComposerFlow.once("),
+                "AddWindowFamilyComposerDialogBase.java must wrap its notifier in exactly one ComposerFlow.once(");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            assertEquals(0, countOccurrences(readSource(source), "ComposerFlow.once("),
+                    source.getFileName() + " must not build its own balloon allowance -- it is inherited from the base");
+        }
     }
 
     @Test
     void eachDialogChecksItsSequenceOnBothTheSuccessAndTheFailurePath() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = readSource(source);
-            boolean debounced = DEBOUNCED_DIALOG_SOURCES.contains(source);
-            int expectedIncrements = debounced ? 2 : 1;
-            assertEquals(expectedIncrements, countOccurrences(text, "seq.incrementAndGet()"),
-                    debounced
-                            ? source.getFileName() + " must take a sequence number twice: once in "
-                                    + "scheduleRefresh() to invalidate any response already in flight "
-                                    + "before the latest keystroke, once in refresh() for its own request"
-                            : source.getFileName() + " must take exactly one sequence number per refresh");
+            assertEquals(2, countOccurrences(text, "seq.incrementAndGet()"),
+                    source.getFileName() + " must take a sequence number twice: once in "
+                            + "scheduleRefresh() to invalidate any response already in flight "
+                            + "before the latest keystroke, once in refresh() for its own request");
             assertEquals(2, countOccurrences(text, "mySeq == seq.get()"),
                     source.getFileName() + " must check the sequence on both the success path and the "
                             + "failure path -- that is what makes a superseded failure as harmless as a "
                             + "superseded success");
+        }
+
+        // AddWindow-family: scheduleRefresh()'s increment lives on the shared base; refresh()'s own
+        // increment and both mySeq == seq.get() checks stay in the subclass.
+        assertEquals(1, countOccurrences(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE), "seq.incrementAndGet()"),
+                "AddWindowFamilyComposerDialogBase.java must take exactly one sequence number, in scheduleRefresh()");
+        for (Path source : ADD_WINDOW_FAMILY_SOURCES) {
+            String text = readSource(source);
+            assertEquals(1, countOccurrences(text, "seq.incrementAndGet()"),
+                    source.getFileName() + " must take exactly one sequence number, in its own refresh()");
+            assertEquals(2, countOccurrences(text, "mySeq == seq.get()"),
+                    source.getFileName() + " must check the sequence on both the success path and the failure path");
         }
     }
 
@@ -330,7 +463,7 @@ class ComposerDialogRefreshSourceGuardTest {
     @Test
     void eachDebouncedDialogsScheduleRefreshAdvancesTheSequenceNumberBeforeTriggeringTheDebouncer() {
         String marker = "private void scheduleRefresh() {";
-        for (Path source : DEBOUNCED_DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = readSource(source);
             int start = text.indexOf(marker);
             assertTrue(start >= 0, source.getFileName() + " must declare a scheduleRefresh() method");
@@ -342,6 +475,16 @@ class ComposerDialogRefreshSourceGuardTest {
                             + "response already in flight before this keystroke can never be mistaken "
                             + "for current once the debounced refresh() actually fires");
         }
+
+        String baseMarker = "protected void scheduleRefresh() {";
+        String baseText = readSource(ADD_WINDOW_FAMILY_BASE_SOURCE);
+        int start = baseText.indexOf(baseMarker);
+        assertTrue(start >= 0, "AddWindowFamilyComposerDialogBase.java must declare a scheduleRefresh() method");
+        int end = baseText.indexOf('}', start);
+        assertTrue(end > start, "AddWindowFamilyComposerDialogBase.java scheduleRefresh() must be closed");
+        String body = baseText.substring(start, end);
+        assertTrue(body.contains("seq.incrementAndGet()"),
+                "AddWindowFamilyComposerDialogBase.java scheduleRefresh() must call seq.incrementAndGet()");
     }
 
     @Test
@@ -356,14 +499,21 @@ class ComposerDialogRefreshSourceGuardTest {
         }
     }
 
+    /**
+     * For the four dialogs that still own their seam directly, {@code ModalityState.any()} keeps
+     * appearing in their own file. For the addWindow-family two, the seam -- and every
+     * {@code ModalityState.any()} reference in it -- now lives entirely on the shared base.
+     */
     @Test
     void eachDialogUpdatesItsUiThroughTheDialogsExistingModality() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : OTHER_DEBOUNCED_DIALOG_SOURCES) {
             String text = readSource(source);
             assertTrue(countOccurrences(text, "ModalityState.any()") >= 1,
                     source.getFileName() + " must keep updating through ModalityState.any() -- the "
                             + "dialog's own modality must not change");
         }
+        assertTrue(countOccurrences(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE), "ModalityState.any()") >= 1,
+                "AddWindowFamilyComposerDialogBase.java must keep updating through ModalityState.any()");
     }
 
     @Test
@@ -382,11 +532,13 @@ class ComposerDialogRefreshSourceGuardTest {
      * {@link ComposerNoticeRenderer#render}'s {@code @NotNull Project} parameter (via
      * {@code balloonOnce}), so the constructor's own {@code project} parameter must carry a matching
      * {@code @NotNull}, never {@code @Nullable} -- a mismatched {@code @Nullable} would let a future
-     * null-project construction throw inside the notifier instead of failing at the call site.
+     * null-project construction throw inside the notifier instead of failing at the call site. The
+     * addWindow-family two wire {@code project} on the shared base's constructor rather than their
+     * own; both their own constructors and the base's constructor are swept below.
      */
     @Test
     void eachDialogConstructorRequiresANonNullProjectMatchingTheRendererContract() {
-        for (Path source : DIALOG_SOURCES) {
+        for (Path source : ALL_SOURCES_INCLUDING_BASE) {
             String text = readSource(source);
             assertEquals(0, countOccurrences(text, "@Nullable Project project"),
                     source.getFileName() + " must never declare its project parameter @Nullable -- "

@@ -29,6 +29,11 @@ class ComposerFieldValidationSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "AddChildWindowComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path ADD_WINDOW_FAMILY_BASE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "AddWindowFamilyComposerDialogBase.java")
+            .toAbsolutePath();
+
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
             fail("Guarded source file not found at " + path);
@@ -114,6 +119,22 @@ class ComposerFieldValidationSourceGuardTest {
         for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
             assertEquals(0, countOccurrences(text, fragment),
                     "AddChildWindowComposerDialog must hold no validation message of its own (\"" + fragment + "\")");
+        }
+    }
+
+    /**
+     * The addWindow-family shared base (#630) carries no {@code apply(...)} of its own -- the
+     * server-verdict gate and every per-field error read stay in each subclass -- but a
+     * client-authored validation message could still hide on the base's shared methods
+     * ({@code prefill}, {@code addGroupedChecks}, ...), so the same forbidden-fragment sweep
+     * applies there too.
+     */
+    @Test
+    void theSharedAddWindowFamilyBaseHoldsNoValidationMessageOfItsOwn() {
+        String text = withoutCommentLines(readSource(ADD_WINDOW_FAMILY_BASE_SOURCE));
+        for (String fragment : new String[]{"Not a number", "Not a string", "Unterminated", "Unbalanced"}) {
+            assertEquals(0, countOccurrences(text, fragment),
+                    "AddWindowFamilyComposerDialogBase must hold no validation message of its own (\"" + fragment + "\")");
         }
     }
 }
