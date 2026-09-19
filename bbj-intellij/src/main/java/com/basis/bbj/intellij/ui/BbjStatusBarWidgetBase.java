@@ -84,7 +84,7 @@ public abstract class BbjStatusBarWidgetBase<S> implements CustomStatusBarWidget
      * messageBusConnection}, wired to {@link #updateStatus(Object)}. Keeps the per-subclass
      * subscription count at exactly one.
      */
-    protected abstract void subscribeToStatusTopic(@NotNull MessageBusConnection connection);
+    protected abstract void subscribeToStatusTopic(@NotNull MessageBusConnection messageBusConnection);
 
     /** The status to render immediately on construction, before any topic event arrives. */
     protected abstract S currentStatus();
@@ -93,7 +93,7 @@ public abstract class BbjStatusBarWidgetBase<S> implements CustomStatusBarWidget
 
     protected abstract String textFor(S status);
 
-    /** D-14's hook -- every subclass renders a tooltip, ending the prior asymmetry. */
+    /** Every subclass renders a tooltip through this hook, ending the prior asymmetry. */
     protected abstract String tooltipFor(S status, String text);
 
     protected abstract void addPopupItems(JPopupMenu popup);
@@ -126,8 +126,8 @@ public abstract class BbjStatusBarWidgetBase<S> implements CustomStatusBarWidget
     }
 
     /**
-     * D-15: the shared "Open Settings" popup item, unified on the exact-class form so it cannot
-     * break if the configurable's display name changes. Subclasses call this from within their
+     * The shared "Open Settings" popup item, unified on the exact-class form so it cannot break
+     * if the configurable's display name changes. Subclasses call this from within their
      * {@link #addPopupItems(JPopupMenu)} implementation at the position the item belongs.
      */
     protected final void addOpenSettingsItem(JPopupMenu popup) {

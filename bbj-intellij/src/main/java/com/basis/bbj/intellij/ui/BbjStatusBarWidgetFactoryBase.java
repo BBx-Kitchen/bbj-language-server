@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
  * registration: the IntelliJ {@code statusBarWidgetFactory} extension point instantiates by
  * {@code implementation=} through a no-arg constructor, so a constructor-parameterised factory
  * could not be registered there, and a data-driven shape would turn a mistyped id into a runtime
- * no-op instead of a compile error (D-13).
+ * no-op instead of a compile error.
  */
 public abstract class BbjStatusBarWidgetFactoryBase implements StatusBarWidgetFactory {
 

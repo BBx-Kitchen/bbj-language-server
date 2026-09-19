@@ -26,8 +26,8 @@ public final class BbjJavaInteropStatusBarWidget extends BbjStatusBarWidgetBase<
     }
 
     @Override
-    protected void subscribeToStatusTopic(@NotNull MessageBusConnection connection) {
-        connection.subscribe(BbjJavaInteropService.BbjJavaInteropStatusListener.TOPIC, this::updateStatus);
+    protected void subscribeToStatusTopic(@NotNull MessageBusConnection messageBusConnection) {
+        messageBusConnection.subscribe(BbjJavaInteropService.BbjJavaInteropStatusListener.TOPIC, this::updateStatus);
     }
 
     @Override
@@ -66,7 +66,7 @@ public final class BbjJavaInteropStatusBarWidget extends BbjStatusBarWidgetBase<
 
     @Override
     protected String tooltipFor(BbjJavaInteropService.InteropStatus status, String text) {
-        // Gives the Java widget a tooltip it has never had (D-14) -- intended, declared at UAT.
+        // Gives the Java widget a tooltip it has never had -- intended, declared at UAT.
         return InteropStatusPresentation.tooltip(status.name());
     }
 

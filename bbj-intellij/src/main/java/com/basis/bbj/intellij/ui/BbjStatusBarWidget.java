@@ -28,8 +28,8 @@ public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatu
     }
 
     @Override
-    protected void subscribeToStatusTopic(@NotNull MessageBusConnection connection) {
-        connection.subscribe(BbjServerService.BbjServerStatusListener.TOPIC, this::updateStatus);
+    protected void subscribeToStatusTopic(@NotNull MessageBusConnection messageBusConnection) {
+        messageBusConnection.subscribe(BbjServerService.BbjServerStatusListener.TOPIC, this::updateStatus);
     }
 
     @Override

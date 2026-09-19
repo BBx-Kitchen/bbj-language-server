@@ -14,11 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Source-guard fence for the two status-bar widgets: both must subscribe {@code
- * FileEditorManagerListener.FILE_EDITOR_MANAGER} on their existing {@code messageBusConnection},
- * route {@code selectionChanged} to {@code updateVisibility()}, and decide visibility exclusively
- * through the shared {@link BbjFileVisibility} predicate -- never by re-deriving an extension
- * list (#610).
+ * Source-guard fence for the consolidated status-bar widgets. The shared members --
+ * the {@code FILE_EDITOR_MANAGER} subscription, {@code selectionChanged}, {@code
+ * updateVisibility()}'s delegation to {@link BbjFileVisibility}, and {@code
+ * messageBusConnection.disconnect()} -- now live in {@link BbjStatusBarWidgetBase} and are pinned
+ * there, inside their extracted method bodies rather than merely somewhere in the file. Each
+ * subclass keeps a delegation pin -- exactly one {@code messageBusConnection.subscribe(} for its
+ * own status topic -- and the negative assertions against re-deriving visibility from a file
+ * extension sweep both subclasses and the base at full breadth (#610).
  */
 class BbjStatusBarWidgetSourceGuardTest {
 
@@ -27,6 +30,9 @@ class BbjStatusBarWidgetSourceGuardTest {
             .toAbsolutePath();
     private static final Path BBJ_JAVA_INTEROP_STATUS_BAR_WIDGET_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "ui", "BbjJavaInteropStatusBarWidget.java")
+            .toAbsolutePath();
+    private static final Path BBJ_STATUS_BAR_WIDGET_BASE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "ui", "BbjStatusBarWidgetBase.java")
             .toAbsolutePath();
     private static final Path BBJ_FILE_VISIBILITY_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "ui", "BbjFileVisibility.java")
@@ -59,38 +65,78 @@ class BbjStatusBarWidgetSourceGuardTest {
         return count;
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"BbjStatusBarWidget", "BbjJavaInteropStatusBarWidget"})
-    void widgetSubscribesFileEditorManagerExactlyOnceOnMessageBusConnection(String simpleName) {
-        String text = readSource(sourceFor(simpleName));
-        assertEquals(1, countOccurrences(text, "FileEditorManagerListener.FILE_EDITOR_MANAGER"),
-                simpleName + " must subscribe FILE_EDITOR_MANAGER exactly once");
-        assertEquals(2, countOccurrences(text, "messageBusConnection.subscribe("),
-                simpleName + " must carry exactly two subscriptions on the shared messageBusConnection "
-                        + "(server/interop status plus FILE_EDITOR_MANAGER)");
-        assertEquals(1, countOccurrences(text, "selectionChanged("),
-                simpleName + " must implement selectionChanged exactly once");
-        assertEquals(1, countOccurrences(text, "BbjFileVisibility.showsForSelection("),
-                simpleName + " must delegate visibility to the shared decision exactly once");
-        assertEquals(0, countOccurrences(text, "getExtension("),
-                simpleName + " must not re-derive visibility by file extension");
-        assertEquals(0, countOccurrences(text, "\"bbl\""),
-                simpleName + " must not hard-code the bbl extension");
-        assertEquals(1, countOccurrences(text, "messageBusConnection.disconnect()"),
-                simpleName + "'s dispose() must disconnect the single shared connection exactly once");
+    /**
+     * The substring of {@code text} bounded by {@code startMarker} (inclusive) and the next
+     * occurrence of {@code endMarker} after it (exclusive) -- the index-slice technique this
+     * phase's other guards use to assert a token lives inside a specific extracted method body
+     * rather than merely somewhere in the file.
+     */
+    private static String sliceBetween(String text, String startMarker, String endMarker) {
+        int start = text.indexOf(startMarker);
+        assertTrue(start >= 0, "expected to find \"" + startMarker + "\"");
+        int end = text.indexOf(endMarker, start + startMarker.length());
+        assertTrue(end >= 0, "expected to find \"" + endMarker + "\" after \"" + startMarker + "\"");
+        return text.substring(start, end);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"BbjStatusBarWidget", "BbjJavaInteropStatusBarWidget"})
-    void selectionChangedCallsUpdateVisibilityBeforeItsClosingBrace(String simpleName) {
+    void subclassCarriesExactlyOneOwnTopicSubscriptionAndExtendsTheBase(String simpleName) {
         String text = readSource(sourceFor(simpleName));
-        int selectionChangedIndex = text.indexOf("selectionChanged(");
-        assertTrue(selectionChangedIndex >= 0, simpleName + " must implement selectionChanged");
-        int closingBrace = text.indexOf("}", selectionChangedIndex);
-        assertTrue(closingBrace >= 0, simpleName + "'s selectionChanged must have a closing brace");
-        String body = text.substring(selectionChangedIndex, closingBrace);
+        assertEquals(1, countOccurrences(text, "messageBusConnection.subscribe("),
+                simpleName + " must carry exactly one subscription -- its own status topic, made "
+                        + "through subscribeToStatusTopic; the FILE_EDITOR_MANAGER subscription "
+                        + "moved to the base");
+        assertTrue(text.contains("extends BbjStatusBarWidgetBase"),
+                simpleName + " must extend the shared base");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"BbjStatusBarWidget", "BbjJavaInteropStatusBarWidget", "BbjStatusBarWidgetBase"})
+    void widgetSourceNeverReDerivesVisibilityByExtension(String simpleName) {
+        String text = readSource(sourceForOrBase(simpleName));
+        assertEquals(0, countOccurrences(text, "getExtension("),
+                simpleName + " must not re-derive visibility by file extension");
+        assertEquals(0, countOccurrences(text, "\"bbl\""),
+                simpleName + " must not hard-code the bbl extension");
+    }
+
+    @Test
+    void baseConstructorSubscribesFileEditorManagerExactlyOnceAndRoutesSelectionChangedToUpdateVisibility() {
+        String text = readSource(BBJ_STATUS_BAR_WIDGET_BASE_SOURCE);
+        String constructorRegion = sliceBetween(text,
+                "protected BbjStatusBarWidgetBase(", "protected abstract String widgetId();");
+        assertEquals(1, countOccurrences(constructorRegion, "FileEditorManagerListener.FILE_EDITOR_MANAGER"),
+                "the base constructor must subscribe FILE_EDITOR_MANAGER exactly once");
+        assertEquals(1, countOccurrences(constructorRegion, "selectionChanged("),
+                "the base constructor must implement selectionChanged exactly once");
+
+        int selectionChangedIndex = constructorRegion.indexOf("selectionChanged(");
+        assertTrue(selectionChangedIndex >= 0, "the base must implement selectionChanged");
+        int closingBrace = constructorRegion.indexOf("}", selectionChangedIndex);
+        assertTrue(closingBrace >= 0, "the base's selectionChanged must have a closing brace");
+        String body = constructorRegion.substring(selectionChangedIndex, closingBrace);
         assertTrue(body.contains("updateVisibility()"),
-                simpleName + "'s selectionChanged must call updateVisibility()");
+                "the base's selectionChanged must call updateVisibility()");
+    }
+
+    @Test
+    void baseUpdateVisibilityDelegatesToSharedPredicateExactlyOnce() {
+        String text = readSource(BBJ_STATUS_BAR_WIDGET_BASE_SOURCE);
+        String updateVisibilityRegion = sliceBetween(text,
+                "private void updateVisibility()", "private void showPopupMenu(");
+        assertEquals(1, countOccurrences(updateVisibilityRegion, "BbjFileVisibility.showsForSelection("),
+                "the base's updateVisibility() must delegate to the shared decision exactly once");
+    }
+
+    @Test
+    void baseDisposeDisconnectsTheSharedConnectionExactlyOnce() {
+        String text = readSource(BBJ_STATUS_BAR_WIDGET_BASE_SOURCE);
+        int disposeIndex = text.indexOf("public void dispose() {");
+        assertTrue(disposeIndex >= 0, "the base must implement dispose()");
+        String disposeRegion = text.substring(disposeIndex);
+        assertEquals(1, countOccurrences(disposeRegion, "messageBusConnection.disconnect()"),
+                "the base's dispose() must disconnect the single shared connection exactly once");
     }
 
     @Test
@@ -106,5 +152,12 @@ class BbjStatusBarWidgetSourceGuardTest {
         return "BbjJavaInteropStatusBarWidget".equals(simpleName)
                 ? BBJ_JAVA_INTEROP_STATUS_BAR_WIDGET_SOURCE
                 : BBJ_STATUS_BAR_WIDGET_SOURCE;
+    }
+
+    private static Path sourceForOrBase(String simpleName) {
+        if ("BbjStatusBarWidgetBase".equals(simpleName)) {
+            return BBJ_STATUS_BAR_WIDGET_BASE_SOURCE;
+        }
+        return sourceFor(simpleName);
     }
 }
