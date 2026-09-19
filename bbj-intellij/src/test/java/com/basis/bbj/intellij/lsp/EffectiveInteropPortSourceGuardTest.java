@@ -6,6 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,6 +43,16 @@ class EffectiveInteropPortSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "ui",
             "BbjJavaInteropService.java")
             .toAbsolutePath();
+
+    private static final Path BBJ_INTEROP_PORT_DETECTOR_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "BbjInteropPortDetector.java")
+            .toAbsolutePath();
+
+    /** The whole {@code src/main/java} tree, scanned by {@link #exactlyOnePortLiteralSurvivesTreeWide()}. */
+    private static final Path MAIN_SOURCE_ROOT = Paths.get("src", "main", "java").toAbsolutePath();
+
+    /** The default java-interop port (#594) -- must survive exactly once, comment-stripped, tree-wide. */
+    private static final String PORT_LITERAL = "5008";
 
     /** The detector's now-deleted substring-matching entry point; must appear nowhere. */
     private static final String REMOVED_DETECTOR_METHOD = "detectJavaInteropPort";
@@ -149,5 +164,56 @@ class EffectiveInteropPortSourceGuardTest {
         assertTrue(accessorIndex >= 0, "public int getEffectiveJavaInteropPort( must be present");
         assertTrue(classIndex < accessorIndex,
                 "sanity anchor: the class declaration must precede the accessor's declaration");
+    }
+
+    /**
+     * Pins the single-occurrence invariant tree-wide (#594): after comment-stripping, the raw port
+     * literal {@code 5008} must appear exactly once across all of {@code src/main/java}, and that
+     * one occurrence must live in {@link com.basis.bbj.intellij.BbjInteropPortDetector}'s {@code
+     * DEFAULT_PORT} declaration -- nowhere else. A later hand-edit reintroducing the literal into
+     * any other file (re-drifting the UI placeholder, the persisted default, or the
+     * changed-from-default check away from the shared constant) fails this test.
+     *
+     * <p>Includes an anti-vacuity control: {@code BbjInteropPortDetector.java}'s own stripped
+     * source must independently contain exactly one occurrence. Without this, a comment-stripping
+     * regex that over-matches and swallows the detector's own {@code DEFAULT_PORT = 5008;} line
+     * would make the tree-wide assertion below pass vacuously at a total of zero rather than one.
+     */
+    @Test
+    void exactlyOnePortLiteralSurvivesTreeWide() {
+        Map<String, Integer> perFileCounts = new LinkedHashMap<>();
+        try (Stream<Path> walk = Files.walk(MAIN_SOURCE_ROOT)) {
+            List<Path> javaFiles = walk
+                    .filter(p -> p.toString().endsWith(".java"))
+                    .collect(Collectors.toList());
+            for (Path file : javaFiles) {
+                String stripped = stripComments(readSource(file));
+                int count = countOccurrences(stripped, PORT_LITERAL);
+                if (count > 0) {
+                    perFileCounts.put(MAIN_SOURCE_ROOT.relativize(file).toString().replace('\\', '/'), count);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOExceptionForTest(MAIN_SOURCE_ROOT, e);
+        }
+
+        int total = perFileCounts.values().stream().mapToInt(Integer::intValue).sum();
+        assertEquals(1, total,
+                "exactly one raw port literal (\"" + PORT_LITERAL + "\") must survive comment-stripping "
+                        + "across src/main/java -- per-file counts: " + perFileCounts);
+        assertEquals(1, perFileCounts.size(),
+                "exactly one file may carry the surviving literal -- per-file counts: " + perFileCounts);
+        String survivingFile = perFileCounts.keySet().iterator().next();
+        assertTrue(survivingFile.endsWith("BbjInteropPortDetector.java"),
+                "the sole surviving raw port literal must live in BbjInteropPortDetector.java, not "
+                        + survivingFile + " -- per-file counts: " + perFileCounts);
+
+        // Anti-vacuity control: guard against an over-matching stripComments() regex.
+        String detectorStripped = stripComments(readSource(BBJ_INTEROP_PORT_DETECTOR_SOURCE));
+        assertEquals(1, countOccurrences(detectorStripped, PORT_LITERAL),
+                "BbjInteropPortDetector.java's own comment-stripped source must contain exactly one "
+                        + "occurrence of \"" + PORT_LITERAL + "\" -- a count other than 1 here means the "
+                        + "comment-stripping regex is over- or under-matching, so the tree-wide "
+                        + "assertion above cannot be trusted");
     }
 }
