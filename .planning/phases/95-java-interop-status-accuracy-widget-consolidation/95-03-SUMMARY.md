@@ -126,6 +126,30 @@ None - no external service configuration required.
 - This was the last plan in Phase 95's IOP-04 line of work; Phase 95's remaining requirements (IOP-01/02/03/05) were addressed in 95-01 and 95-02.
 - No blockers for Phase 96 (`node-runtime-platform-consolidation`). Note for Phase 96 discussion (carried from 95-CONTEXT.md, not new here): 95-01 edited `BbjJavaInteropNotificationProvider.java`, one of the three editor notification providers Phase 96's PLAT-03 (#622) consolidates — the ROADMAP's "file-disjoint" claim for Phase 96 is false, as already flagged.
 
+## Self-Check: PASSED
+
+Re-verified after the fact (no source re-touched, no test suite re-run — only existence/history
+checks): this SUMMARY.md (`95-03-SUMMARY.md`) and both modified source files
+(`BbjSettings.java`, `BbjSettingsComponent.java`) are present on disk. All three commit hashes
+claimed above (`37a77f2a`, `cf09274c`, `4dd138ee`) are present via
+`git log --oneline --all`, with subjects matching this SUMMARY's Task Commits table
+(`feat(95-03): re-point the last raw java-interop port literals at DEFAULT_PORT`,
+`test(95-03): pin the tree-wide single-occurrence port-literal guard`,
+`docs(95-03): complete java-interop port constant consolidation plan`). `git status --short` on
+`BbjHomeDetector.java` (the falsification-edit target) shows no pending changes, confirming the
+byte-identical restoration documented above held through the rest of this plan's execution. Both
+re-pointed files (`BbjSettings.java:30`; `BbjSettingsComponent.java:189,461,466`) still show zero
+raw `5008` occurrences and reference `BbjInteropPortDetector.DEFAULT_PORT` instead. Task 1's
+targeted tests (`InteropPortSettingsTest`, `BbjInteropPortDetectorTest`,
+`InteropPortPresentationTest`, `BbjSettingsLoadStateTest`, `EffectiveInteropPortSourceGuardTest`)
+and the whole-suite `./gradlew test --rerun-tasks` run were both observed green during execution
+(not re-run for this attestation, per the coordinator's explicit instruction not to re-run the
+suite for this documentation-only repair). Task 2's falsification — the throwaway
+`5008` literal in `BbjHomeDetector.java`, the guard observed RED, the `git checkout --`
+restoration, and sha256 match (`99b7d89c...`) before and after — was performed and witnessed
+directly during execution, not merely asserted. No acceptance criterion from `95-03-PLAN.md`'s
+two tasks was left unmet.
+
 ---
 *Phase: 95-java-interop-status-accuracy-widget-consolidation*
 *Completed: 2026-09-19*
