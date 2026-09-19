@@ -355,7 +355,12 @@ public abstract class BbjRunActionBase extends AnAction {
         String programme = fileName;
 
         // Working directory is the file's parent directory
-        String workingDir = file.getParent().getPath();
+        VirtualFile parent = file.getParent();
+        if (parent == null) {
+            logError(project, "Cannot determine working directory for " + file.getName());
+            return null;
+        }
+        String workingDir = parent.getPath();
 
         // Get token from PasswordSafe, auto-prompt login if not stored
         String token = BbjEMTokenStore.getToken();
