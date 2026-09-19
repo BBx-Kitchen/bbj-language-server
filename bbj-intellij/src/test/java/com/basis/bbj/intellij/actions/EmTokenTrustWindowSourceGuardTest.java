@@ -30,6 +30,7 @@ class EmTokenTrustWindowSourceGuardTest {
     private static final Path RUN_ACTION_BASE = guardedActionSource("BbjRunActionBase.java");
     private static final Path TOKEN_STORE = guardedActionSource("BbjEMTokenStore.java");
     private static final Path TOKEN_VALIDATION_CACHE = guardedActionSource("TokenValidationCache.java");
+    private static final Path EM_TOKEN_VALIDATOR = guardedActionSource("EmTokenValidator.java");
 
     private static final String REPROMPT_LITERAL = "EM token expired or invalid. Login again?";
 
@@ -111,40 +112,49 @@ class EmTokenTrustWindowSourceGuardTest {
     @Test
     void theSharedWebRunHelperCallsValidateTokenTrustedExactlyOnce() {
         String body = sharedWebRunHelperBody();
-        assertEquals(1, countOccurrences(body, "validateTokenTrusted(project, token)"),
-                "buildWebRunCommandLine must call validateTokenTrusted(project, token) exactly once");
+        assertEquals(1, countOccurrences(body, "validateTokenTrusted(bbjPath, emValidatePath, token)"),
+                "buildWebRunCommandLine must call validateTokenTrusted(bbjPath, emValidatePath, token) exactly once");
     }
 
     @Test
     void theExpiryCheckPrecedesTheTrustedValidationInTheSharedWebRunHelper() {
         String body = sharedWebRunHelperBody();
         int expiryIndex = body.indexOf("isTokenExpired(token)");
-        int trustedIndex = body.indexOf("validateTokenTrusted(project, token)");
+        int trustedIndex = body.indexOf("validateTokenTrusted(bbjPath, emValidatePath, token)");
         assertTrue(expiryIndex >= 0 && trustedIndex >= 0 && expiryIndex < trustedIndex,
-                "buildWebRunCommandLine must run isTokenExpired(token) before validateTokenTrusted(project, token) -- "
-                        + "the fail-closed expiry gate from 80-01 must still run first");
+                "buildWebRunCommandLine must run isTokenExpired(token) before "
+                        + "validateTokenTrusted(bbjPath, emValidatePath, token) -- the fail-closed expiry gate must still run first");
     }
 
     @Test
     void theTrustedValidationPrecedesTheRepromptInTheSharedWebRunHelper() {
         String body = sharedWebRunHelperBody();
-        int trustedIndex = body.indexOf("validateTokenTrusted(project, token)");
+        int trustedIndex = body.indexOf("validateTokenTrusted(bbjPath, emValidatePath, token)");
         int repromptIndex = body.indexOf(REPROMPT_LITERAL);
         assertTrue(trustedIndex >= 0 && repromptIndex >= 0 && trustedIndex < repromptIndex,
-                "buildWebRunCommandLine must run validateTokenTrusted(project, token) before the re-prompt literal");
+                "buildWebRunCommandLine must run validateTokenTrusted(bbjPath, emValidatePath, token) before the re-prompt literal");
     }
 
     @Test
-    void theBaseClassDeclaresValidateTokenTrustedAfterValidateTokenServerSide() {
-        String text = readGuardedSource(RUN_ACTION_BASE);
-        assertEquals(1, countOccurrences(text, "protected boolean validateTokenServerSide("),
-                "BbjRunActionBase.java must declare validateTokenServerSide exactly once");
+    void theValidatorDeclaresValidateTokenTrustedAfterValidateTokenServerSide() {
+        String text = readGuardedSource(EM_TOKEN_VALIDATOR);
+        assertEquals(1, countOccurrences(text, "public boolean validateTokenServerSide("),
+                "EmTokenValidator.java must declare validateTokenServerSide exactly once");
         assertEquals(1, countOccurrences(text, "TokenValidationCache.SESSION.validateThrough("),
-                "BbjRunActionBase.java must call TokenValidationCache.SESSION.validateThrough( exactly once");
+                "EmTokenValidator.java must call TokenValidationCache.SESSION.validateThrough( exactly once");
         int serverSideIndex = text.indexOf("validateTokenServerSide(");
         int trustedIndex = text.indexOf("validateTokenTrusted(");
         assertTrue(serverSideIndex >= 0 && trustedIndex >= 0 && trustedIndex > serverSideIndex,
                 "validateTokenTrusted must be declared after validateTokenServerSide, so the pair reads as one unit");
+    }
+
+    @Test
+    void theRunActionBaseDeclaresNeitherValidationMethod() {
+        String text = readGuardedSource(RUN_ACTION_BASE);
+        assertEquals(0, countOccurrences(text, "boolean validateTokenServerSide("),
+                "BbjRunActionBase.java must no longer declare validateTokenServerSide -- it moved to EmTokenValidator.java");
+        assertEquals(0, countOccurrences(text, "boolean validateTokenTrusted("),
+                "BbjRunActionBase.java must no longer declare validateTokenTrusted -- it moved to EmTokenValidator.java");
     }
 
     @Test
