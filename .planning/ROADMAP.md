@@ -336,7 +336,7 @@ Plans:
   4. Running a BBj file as BUI and as DWC still launches correctly from toolbar, menu and keyboard shortcut, with the two actions differing only in their BUI/DWC-specific literals.
   5. `web.bbj`, `em-validate.bbj` and `em-login.bbj` all resolve through one shared helper, and every consumer still finds its script inside an installed plugin (not only in a dev sandbox).
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -350,7 +350,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 94-04-PLAN.md — EM-04 closed on cited evidence, plus the phase regression gate and an installable build for UAT (wave 3)
+- [x] 94-04-PLAN.md — EM-04 closed on cited evidence, plus the phase regression gate and an installable build for UAT (wave 3)
 
 *Ordering note:* EM-03 lands before EM-04 — both edit `BbjRunActionBase`, and removing the misplaced token-validation responsibility first means the shared BUI/DWC flow is built on the already-clean base instead of being refactored twice. EM-05 also retires the duplicated plugin-bundle path resolution flagged as advisory in `79-REVIEW` IN-02.
 

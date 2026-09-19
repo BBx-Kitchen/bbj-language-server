@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 94
 current_phase_name: EM Login & Run Action Consolidation
 status: executing
-stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-09-19T07:24:47.526Z"
+stopped_at: Completed 94-04-PLAN.md
+last_updated: "2026-09-19T07:33:20.434Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 94 execution started
-state_head: 8533ff3080efbbd33dba82c00bf21799e33da361
+state_head: b23d68afc973cd2cd5d3f8e1425a5051c35d37fe
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 20
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 ## Current Position
 
 Phase: 94 (EM Login & Run Action Consolidation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-19 — Phase 94 execution started
 
@@ -95,6 +95,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 94 P01 | 20min | 2 tasks | 4 files |
 | Phase 94 P02 | 14min | 3 tasks | 5 files |
 | Phase 94 P03 | 20min | 2 tasks | 3 files |
+| Phase 94 P04 | 12min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 94]: Confirmed by inspection that after moving validateTokenServerSide/validateTokenTrusted out of BbjRunActionBase, the first BbjProcessSecretEnv.Invocation declaration and first withEnvironment( call remaining in the file are both buildWebRunCommandLine's own invocation variable, so BbjSecretArgvSourceGuardTest's pre-existing data-flow assertion continues to hold with no code change.
 - [Phase 94]: [Phase 94] BbjEMLoginAction's update() gate reads e.getProject() != null only -- no ServerStatus, no BBj Home -- since EM login never talks to the language server and must keep firing the BBj-Home dialog for new users.
 - [Phase 94]: [Phase 94] EM-01's temp-file cleanup needed no production change (already fixed by 06eb1a7c); EmLoginTempFileCleanupSourceGuardTest pins the ordering with four indexOf assertions, proven to fail on a deliberately narrowed scope via a throwaway helper (to keep the falsification edit compiling) and restored byte-identical before re-verifying.
+- [Phase 94]: EM-04 closed on cited evidence (commit 6a55b854 + two named guards) as verified-already-true, not newly implemented; no third guard added — The invariant was already pinned twice before this plan began; a third assertion of the same fact adds nothing
+- [Phase 94]: Whole-suite gate run with --rerun-tasks rather than plain test, to avoid a Task :test UP-TO-DATE no-op masking a stale green — Gradle's incremental build would otherwise silently skip re-executing tests against this phase's final edits
 
 ### Tech Debt
 
@@ -193,8 +196,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T07:24:47.440Z
-Stopped at: Completed 94-03-PLAN.md
+Last session: 2026-09-19T07:33:20.363Z
+Stopped at: Completed 94-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 94` or `/gsd-plan-phase 94`.
