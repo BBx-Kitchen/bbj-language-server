@@ -1,10 +1,13 @@
 ---
 phase: 94-em-login-run-action-consolidation
-verified: 2026-09-19T00:00:00Z
+verified: 2026-09-19T14:05:56Z
 status: passed
 score: 12/12 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+re_verified: true
+re_verification_reason: "Post-closure code-review fix (WR-01, commit 46dc128c) landed after the initial verification; scan ranges, line citations and suite evidence re-stamped to cover it"
+covers_commit_range: 5535b0db~1..46dc128c
 human_verification:
 
   - test: "EM login enablement/visibility: install the built distributable, open Tools menu with a project open, then with all projects closed"
@@ -29,9 +32,12 @@ human_verification:
 **Phase Goal:** EM login leaves nothing behind when a launch fails and enables itself like its
 sibling actions, and the BUI/DWC run flow, its server-side token validation and its bundled
 tool-script paths each live in exactly one place.
-**Verified:** 2026-09-19
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Verified:** 2026-09-19T14:05:56Z
+**Status:** passed
+**Re-verification:** Yes — re-stamped to cover post-closure code-review fix `46dc128c` (see
+"Post-Verification Fixes" below). The initial pass closed at `human_needed`; the five UAT items
+were subsequently executed and passed (`94-UAT.md`, 5 passed / 0 issues), which is what moved
+this report to `passed`.
 
 ## Goal Achievement
 
@@ -48,9 +54,9 @@ tool-script paths each live in exactly one place.
 | 7 | `EmTokenValidator` preserves null-tolerance and fail-closed behavior at its new parameterized boundary | VERIFIED | `EmTokenValidatorTest` (read in full) covers null-BBj-path, null-script-path, throwing-runner, and non-VALID-sentinel cases, each asserting zero/expected runner invocations; re-ran targeted — passed. |
 | 8 | Every guard assertion disturbed by the EM-03 relocation was re-pointed with equal-or-greater assertion count, none weakened (D-08) | VERIFIED | Read `BbjSecretArgvSourceGuardTest.java` and `EmTokenTrustWindowSourceGuardTest.java` in full: `OWNER_ONLY_FILE_CALLERS` replaces the base with `EmTokenValidator` (not merely extended), `ALL_GUARDED_ACTION_FILES` gains the validator alongside base and login action, both GHSA advisory identifiers still present, and a new zero-declarations-in-base assertion was added rather than any assertion removed. Both guard files re-ran targeted — passed. |
 | 9 | Concurrency/interruption edge for `BbjToolScriptResolver` (EM-05): stateless, no shared mutable state, nothing to race on | VERIFIED | Direct source read confirms the class holds only a `private final PluginPathResolver` reference set once at construction and no other mutable field — no cache map, no shared state between calls, so no concurrency test is needed to prove independence of concurrent callers. |
-| 10 | No planning identifier (EM-xx, D-xx, plan numbers, C-xx, CR-xx) leaked into any source or test file | VERIFIED | `git diff` across all phase-94 commits (`5535b0db~1..51b62968`) for `bbj-intellij/*.java`, grepped for `EM-0[0-9]`, `D-0[0-9]`, `C-[0-9]+`, `CR-[0-9]+`, `plan 0[0-9]` in added lines — zero matches. GitHub issue numbers (#589, #590, #614, #615, #617) appear as permitted. |
-| 11 | No debt markers (TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER) introduced in phase-94 diff | VERIFIED | `git diff` across the same commit range grepped for these markers in added lines — zero matches. |
-| 12 | Phase diff confined to `bbj-intellij/` and `.planning/`; whole suite green from the final tree; installable distributable built from that tree | VERIFIED | `git diff --stat 5535b0db~1 51b62968` shows all 17 changed files under `.planning/` or `bbj-intellij/`. Targeted re-run of all six new/re-pointed guard and unit test classes passed (`BUILD SUCCESSFUL`, 18 tasks). Relying on the orchestrator's independently-verified full-suite run (114 suites, 1004 tests, 0 failures, 0 errors, 0 skipped, `--rerun-tasks`) as established fact. `bbj-intellij-0.1.0.zip` (1,202,440 bytes) confirmed present at `bbj-intellij/build/distributions/`, containing all three bundled tool scripts via direct `unzip -l` inspection. |
+| 10 | No planning identifier (EM-xx, D-xx, plan numbers, C-xx, CR-xx) leaked into any source or test file | VERIFIED | `git diff` across all phase-94 commits (`5535b0db~1..46dc128c`, extended from the originally cited `..51b62968` to include the post-closure fix) for `bbj-intellij/*.java`, grepped for `EM-0[0-9]`, `D-0[0-9]`, `C-[0-9]+`, `CR-[0-9]+`, `WR-[0-9]+`, `IN-[0-9]+`, `plan 0[0-9]` in added lines — zero matches. The fix commit `46dc128c` was re-scanned separately with the same patterns (review identifiers `WR-`/`IN-` added, since that commit originates from a code review) — zero matches. GitHub issue numbers (#589, #590, #614, #615, #617) appear as permitted. |
+| 11 | No debt markers (TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER) introduced in phase-94 diff | VERIFIED | `git diff` across the same commit range (`5535b0db~1..46dc128c`) grepped for these markers in added lines — zero matches, including a separate re-scan of fix commit `46dc128c`. |
+| 12 | Phase diff confined to `bbj-intellij/` and `.planning/`; whole suite green from the final tree; installable distributable built from that tree | VERIFIED | `git diff --name-only 5535b0db~1 46dc128c` (extended range, 23 changed files) filtered for anything outside `.planning/` or `bbj-intellij/` returns nothing — still fully confined after the post-closure fix, which touched exactly one file (`BbjRunActionBase.java`, +4 lines). Targeted re-run of all six new/re-pointed guard and unit test classes passed (`BUILD SUCCESSFUL`, 18 tasks). Relying on the orchestrator's independently-verified full-suite run (114 suites, 1004 tests, 0 failures, 0 errors, 0 skipped, `--rerun-tasks`) as established fact. `bbj-intellij-0.1.0.zip` (1,202,440 bytes) confirmed present at `bbj-intellij/build/distributions/`, containing all three bundled tool scripts via direct `unzip -l` inspection. |
 
 **Score:** 12/12 truths verified (0 present, behavior-unverified)
 
@@ -69,9 +75,10 @@ tool-script paths each live in exactly one place.
 
 | From | To | Via | Status | Details |
 |------|----|----|--------|---------|
-| `BbjRunActionBase.buildWebRunCommandLine` | `BbjToolScriptResolver.SESSION` | `resolveToolScript("web.bbj")` / `resolveToolScript("em-validate-token.bbj")` | WIRED | Both calls present and read directly (lines 338, 388) |
+| `BbjRunActionBase.buildWebRunCommandLine` | `BbjToolScriptResolver.SESSION` | `resolveToolScript("web.bbj")` / `resolveToolScript("em-validate-token.bbj")` | WIRED | Both calls present and read directly (lines 338, 393 — re-read after fix `46dc128c`; the `em-validate-token.bbj` call shifted from the originally cited line 388) |
+| `BbjRunActionBase.buildWebRunCommandLine` | `logError` + early return | `emValidatePath == null` guard | WIRED | Lines 394-397, added by fix `46dc128c`; mirrors the sibling `web.bbj` guard at 339-342 so a missing bundled script aborts distinctly instead of masquerading as an invalid token |
 | `BbjEMLoginAction.performLogin` | `BbjToolScriptResolver.SESSION` | `resolveToolScript("em-login.bbj")` | WIRED | Present (line 98), original null-check/dialog preserved |
-| `BbjRunActionBase.buildWebRunCommandLine` | `EmTokenValidator.SESSION` | `validateTokenTrusted(bbjPath, emValidatePath, token)` | WIRED | Present (line 389), exactly once, confirmed by guard |
+| `BbjRunActionBase.buildWebRunCommandLine` | `EmTokenValidator.SESSION` | `validateTokenTrusted(bbjPath, emValidatePath, token)` | WIRED | Present (line 398 after fix `46dc128c`; originally cited as 389), exactly once, confirmed by guard — now reachable only with a non-null `emValidatePath` |
 | `BbjToolScriptResolver.resolveToolScript` relative path | `build.gradle.kts` `prepareSandbox` `into(...)` target | `lib/tools/` | WIRED | Both read directly: `root.resolve("lib/tools/" + scriptName)` matches `into("${pluginName.get()}/lib/tools")` |
 | `BbjRunBuiAction`/`BbjRunDwcAction` | `BbjRunActionBase.buildWebRunCommandLine` | delegation with client-type literal | WIRED | Both subclasses read in full, single delegating call each |
 
@@ -89,7 +96,7 @@ No orphaned requirements — all five phase-94 requirement IDs declared across t
 
 ### Anti-Patterns Found
 
-None. Full phase-94 diff (`5535b0db~1..51b62968`, `bbj-intellij/*.java`) scanned for TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER and for planning-identifier leakage (`EM-0[0-9]`, `D-0[0-9]`, `C-[0-9]+`, `CR-[0-9]+`, `plan 0[0-9]`) in added lines — zero matches in both scans. GitHub issue numbers appear as permitted.
+None. Full phase-94 diff (`5535b0db~1..46dc128c`, `bbj-intellij/*.java`) scanned for TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER and for planning-identifier leakage (`EM-0[0-9]`, `D-0[0-9]`, `C-[0-9]+`, `CR-[0-9]+`, `WR-[0-9]+`, `IN-[0-9]+`, `plan 0[0-9]`) in added lines — zero matches in both scans, re-run at re-stamp time over the extended range including fix `46dc128c`. GitHub issue numbers appear as permitted.
 
 ### Behavioral Spot-Checks
 
@@ -124,11 +131,58 @@ directly during this verification. All five requirement IDs (EM-01 through EM-05
 with cited evidence. The two known/pre-recorded wording deviations (ROADMAP criterion 2's "greyed
 out" vs. the implemented hide-not-grey behavior; criterion 5's "em-validate.bbj" vs. the real
 `em-validate-token.bbj`) were verified against their corrected forms, per the task brief's
-pre-recorded deviations. Status is `human_needed` solely because five UAT items require a running
-IDE and cannot be verified by static analysis or unit tests — this is expected for an IntelliJ
-plugin phase with no live UI test harness in CI.
+pre-recorded deviations. The initial pass closed at `human_needed` solely because five UAT items
+require a running IDE and cannot be verified by static analysis or unit tests — expected for an
+IntelliJ plugin phase with no live UI test harness in CI. Those five items were subsequently
+executed and passed (`94-UAT.md`, 5 passed / 0 issues), moving this report to `passed`.
+
+One defect was found after closure by a later code-review round and fixed in `46dc128c`; it is
+recorded under "Post-Verification Fixes" below, and the scan ranges, line citations and suite
+evidence above have been re-stamped to cover it. No gap remains open.
+
+## Post-Verification Fixes
+
+One defect was found *after* this phase was marked complete and transitioned to phase 95
+(`487c404a`), by the code-review round recorded in `94-REVIEW.md` (2026-09-19T12:39Z). It is
+documented here so this report reflects the phase's final shipped state rather than its state at
+closure.
+
+| Finding | Severity | Commit | Status |
+|---------|----------|--------|--------|
+| WR-01 — a missing `em-validate-token.bbj` in the plugin bundle was indistinguishable from an invalid token, and could loop the user through login indefinitely | Warning | `46dc128c` | FIXED |
+
+**Defect:** `buildWebRunCommandLine` resolved `em-validate-token.bbj` but never null-checked the
+result, unlike its sibling `web.bbj` guard. A `null` fell through to
+`EmTokenValidator.validateTokenTrusted`, which fails closed and returns `false` — the same value a
+genuinely expired token produces. The code then deleted the *valid* stored token and re-prompted
+login. Because login runs a different script (`em-login.bbj`), a fresh login could succeed and mint
+a token that failed the same broken check again, with no user-visible indication that the real
+cause was a broken or incomplete plugin installation.
+
+**Fix:** explicit `emValidatePath == null` check with a distinct
+`logError(project, "em-validate-token.bbj not found in plugin bundle")` and early return
+(`BbjRunActionBase.java:394-397`), matching the established `logError(...); return null;` idiom
+used by the method's sibling guards.
+
+**Verification of the fix:** diff re-read directly against the working tree (+4 lines, single file,
+control flow otherwise untouched); full `bbj-intellij` Gradle suite re-run from the post-fix tree
+(`./gradlew test` → `BUILD SUCCESSFUL`, 114 test classes, 0 failures / 0 errors); planning-identifier
+and debt-marker scans re-run over the fix commit — zero matches. Full fix record in
+`94-REVIEW-FIX.md`.
+
+**Impact on the human-verification items above:** none of the five UAT items were re-executed after
+the fix, because the guard is unreachable in a correctly-built plugin — `bbj-intellij-0.1.0.zip` was
+already confirmed to bundle all three tool scripts (Truth 5), so the new branch cannot be entered by
+a correctly-installed distributable. The fix changes only the failure presentation for a *broken*
+installation. UAT item 4 (token lifecycle) remains the closest adjacent scenario and its recorded
+pass is unaffected, since it exercised the non-null path that behaves exactly as before.
+
+**Not fixed (Info-tier, out of scope for the `critical_warning` fix scope):** IN-01 unread
+`ProcessOutput` from the EM login launch; IN-02 broad `catch (Exception ignored)` around
+`toRealPath()`; IN-03 source-guard test scaffolding duplicated across four test classes. All three
+are documented in `94-REVIEW.md` and carried in `94-REVIEW-FIX.md` as skipped.
 
 ---
 
-*Verified: 2026-09-19*
-*Verifier: Claude (gsd-verifier)*
+*Verified: 2026-09-19T00:00:00Z (initial) · re-stamped 2026-09-19T14:05:56Z to cover fix `46dc128c`*
+*Verifier: Claude (gsd-verifier) · re-stamp: Claude (orchestrator, /gsd-code-review 94 --fix)*
