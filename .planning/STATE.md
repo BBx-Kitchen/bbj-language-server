@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 95
 current_phase_name: java-interop Status Accuracy & Widget Consolidation
 status: executing
-stopped_at: Completed 95-01-PLAN.md
-last_updated: "2026-09-19T17:11:23.032Z"
+stopped_at: Completed 95-02-PLAN.md
+last_updated: "2026-09-19T17:25:42.775Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 95 execution started
-state_head: a1037a96ee1846227badb3dfaa6612c4cb0d504b
+state_head: 5fd91563bee5c74082da8382e30533995c1b2c12
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 40
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 95 (java-interop Status Accuracy & Widget Consolidation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-19 — Phase 95 execution started
 
@@ -97,6 +97,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 94 P03 | 20min | 2 tasks | 3 files |
 | Phase 94 P04 | 12min | 2 tasks | 1 files |
 | Phase 95 P01 | 15min | 3 tasks | 9 files |
+| Phase 95 P02 | 12min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,9 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 95]: InteropProbeClient uses an explicit ExecutorService for the client-role LSP4J Launcher.Builder chain (setExecutorService with newCachedThreadPool, shutdownNow in finally), per RESEARCH.md assumption A1's pre-execution spike -- no re-spike needed in 95-01
 - [Phase 95]: Wrong-peer wording fixed: status label 'Java: Wrong peer', tooltip names the port-collision situation, banner points at the port setting instead of telling the user to start BBjServices
 - [Phase 95]: Phase 96 PLAT-03 file-disjointness correction: 95-01 edited BbjJavaInteropNotificationProvider.java, one of the three editor notification providers PLAT-03 (#622) consolidates -- ROADMAP's Phase 96 file-disjoint claim is now false
+- [Phase 95]: No third volatile field for server-started state -- checkConnection() passes a literal true (invariant: it only runs while a server-started-gated request is pending), refreshSelectionGate() reads BbjServerService.getCurrentStatus() live on the EDT; keeps the field count at exactly two (bbjFileSelected, gateWasOpen)
+- [Phase 95]: BbjFileVisibility and showsForFileTypeNames widened from package-private to public so the interop-package InteropPollPolicyTest can feed the empty-selection edge case through the real predicate; showsForSelection stays package-private
+- [Phase 95]: BbjJavaInteropServiceDisposalSourceGuardTest's pinned isDisposed() count widened from two to three (new startup invokeLater guard) -- Task 2 explicitly requires the third guard, which necessarily changes the count the 95-01 guard pins
 
 ### Tech Debt
 
@@ -200,8 +204,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T17:11:16.874Z
-Stopped at: Completed 95-01-PLAN.md
+Last session: 2026-09-19T17:25:42.662Z
+Stopped at: Completed 95-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

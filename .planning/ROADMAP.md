@@ -367,7 +367,7 @@ Plans:
   4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
   5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -376,7 +376,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 95-02-PLAN.md — IOP-02: selection-gated poll, silent pause, immediate check on gate-open, and a live CHECKING state (wave 2)
+- [x] 95-02-PLAN.md — IOP-02: selection-gated poll, silent pause, immediate check on gate-open, and a live CHECKING state (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
