@@ -111,12 +111,9 @@ status: complete
 
 ## Task Commits
 
-Each task was committed atomically:
+1. **Task 1 (evidence) + Task 2 (gate/build)** - `8c63fa36` (docs)
 
-1. **Task 1: Confirm and record the BUI/DWC consolidation evidence** - see commit hash in the final commit list below (docs)
-2. **Task 2: Phase regression gate and an installable build for UAT** - see commit hash in the final commit list below (docs)
-
-_This plan writes no production code — both task commits are documentation-only (`docs(94-04): ...`), each recording that task's verification/build evidence into this SUMMARY._
+_This plan writes no production code. Both tasks' verification/build work (the guard runs, the subclass diff confirmation, the whole-suite run, and the plugin build) was completed before this SUMMARY was authored, so both tasks land in one documentation-only commit rather than two artificially split commits over the same file — there is no separable per-task production diff to atomically commit._
 
 ## Files Created/Modified
 
