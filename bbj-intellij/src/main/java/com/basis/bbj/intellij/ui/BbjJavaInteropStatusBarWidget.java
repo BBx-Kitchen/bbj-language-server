@@ -2,6 +2,7 @@ package com.basis.bbj.intellij.ui;
 
 import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.BbjSettingsConfigurable;
+import com.basis.bbj.intellij.interop.InteropStatusPresentation;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
@@ -89,6 +90,10 @@ public final class BbjJavaInteropStatusBarWidget implements CustomStatusBarWidge
                 case CHECKING:
                     icon = BbjIcons.INTEROP_DISCONNECTED;
                     text = "Java: Checking...";
+                    break;
+                case WRONG_PEER:
+                    icon = BbjIcons.INTEROP_DISCONNECTED;
+                    text = InteropStatusPresentation.statusText(status.name());
                     break;
                 default:
                     icon = BbjIcons.INTEROP_DISCONNECTED;

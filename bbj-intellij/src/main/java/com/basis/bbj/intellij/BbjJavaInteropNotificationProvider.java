@@ -1,5 +1,6 @@
 package com.basis.bbj.intellij;
 
+import com.basis.bbj.intellij.interop.InteropStatusPresentation;
 import com.basis.bbj.intellij.ui.BbjJavaInteropService;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.project.DumbAware;
@@ -44,10 +45,15 @@ public final class BbjJavaInteropNotificationProvider
             return null;
         }
 
+        String bannerText = InteropStatusPresentation.bannerText(currentStatus.name());
+        if (bannerText == null) {
+            return null;
+        }
+
         return fileEditor -> {
             EditorNotificationPanel panel = new EditorNotificationPanel(
                     fileEditor, EditorNotificationPanel.Status.Warning);
-            panel.setText("Start BBjServices for Java completions");
+            panel.setText(bannerText);
             panel.createActionLabel("Open Settings", () ->
                     ShowSettingsUtil.getInstance()
                             .showSettingsDialog(project, BbjSettingsConfigurable.class));
