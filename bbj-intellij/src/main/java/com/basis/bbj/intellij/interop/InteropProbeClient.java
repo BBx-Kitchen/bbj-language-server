@@ -7,10 +7,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -46,8 +48,22 @@ public final class InteropProbeClient {
      */
     public static Verdict probe(String host, int port, int connectTimeoutMs, int responseTimeoutMs) {
         Socket socket = new Socket();
+
+        InetSocketAddress address;
         try {
-            socket.connect(new InetSocketAddress(host, port), connectTimeoutMs);
+            // DNS resolution happens here, off-thread and bounded by connectTimeoutMs, rather than
+            // inside `new InetSocketAddress(host, port)` on this thread: that constructor performs
+            // the lookup unbounded, before socket.connect()'s own timeout starts applying, so a
+            // misconfigured/unreachable javaInteropHost could otherwise stall a single poll tick far
+            // past the documented TCP_TIMEOUT_MS + RESPONSE_TIMEOUT_MS budget.
+            address = resolveAddress(host, port, connectTimeoutMs);
+        } catch (IOException e) {
+            closeQuietly(socket);
+            return Verdict.UNREACHABLE;
+        }
+
+        try {
+            socket.connect(address, connectTimeoutMs);
         } catch (IOException e) {
             closeQuietly(socket);
             return Verdict.UNREACHABLE;
@@ -80,6 +96,37 @@ public final class InteropProbeClient {
             }
             executor.shutdownNow();
             closeQuietly(socket);
+        }
+    }
+
+    /** Daemon threads only -- a resolution that never unblocks must not keep the JVM alive. */
+    private static final ThreadFactory DAEMON_THREAD_FACTORY = runnable -> {
+        Thread thread = new Thread(runnable, "interop-probe-dns-resolver");
+        thread.setDaemon(true);
+        return thread;
+    };
+
+    /**
+     * Resolves {@code host:port} off-thread, bounded by {@code timeoutMs}. Unlike {@code new
+     * InetSocketAddress(host, port)} called directly on the caller's thread, this cannot stall the
+     * caller past {@code timeoutMs} -- a hung/slow DNS server that never answers leaves an orphaned
+     * daemon thread behind instead of blocking the poll tick.
+     */
+    private static InetSocketAddress resolveAddress(String host, int port, int timeoutMs) throws IOException {
+        ExecutorService resolver = Executors.newSingleThreadExecutor(DAEMON_THREAD_FACTORY);
+        try {
+            return CompletableFuture.supplyAsync(() -> new InetSocketAddress(host, port), resolver)
+                    .get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            throw new IOException("DNS resolution for " + host + " did not complete within "
+                    + timeoutMs + "ms", e);
+        } catch (ExecutionException e) {
+            throw new IOException("DNS resolution failed for " + host, e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while resolving " + host, e);
+        } finally {
+            resolver.shutdownNow();
         }
     }
 
