@@ -4,17 +4,17 @@ milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 95
 current_phase_name: java-interop Status Accuracy & Widget Consolidation
-status: executing
-stopped_at: Completed 95-03-PLAN.md
-last_updated: "2026-09-19T17:33:52.665Z"
+status: verifying
+stopped_at: Completed 95-04-PLAN.md (phase 95 complete, all 4 plans)
+last_updated: "2026-09-19T17:45:00.774Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 95 execution started
-state_head: cf09274c36d1a2775ac556d23a2ef5204d3fdf96
+state_head: 83557d4407a369aa09623c523f4c09936c124194
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 40
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 Phase: 95 (java-interop Status Accuracy & Widget Consolidation) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-19 — Phase 95 execution started
 
 Progress: [████████████████████] 13/13 plans ([████░░░░░░] 40%)
@@ -99,6 +99,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 95 P01 | 15min | 3 tasks | 9 files |
 | Phase 95 P02 | 12min | 3 tasks | 6 files |
 | Phase 95 P03 | 10min | 2 tasks | 3 files |
+| Phase 95 P04 | 9min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 95]: BbjFileVisibility and showsForFileTypeNames widened from package-private to public so the interop-package InteropPollPolicyTest can feed the empty-selection edge case through the real predicate; showsForSelection stays package-private
 - [Phase 95]: BbjJavaInteropServiceDisposalSourceGuardTest's pinned isDisposed() count widened from two to three (new startup invokeLater guard) -- Task 2 explicitly requires the third guard, which necessarily changes the count the 95-01 guard pins
 - [Phase 95]: Closed #594 as done on D-11 reasoning (BbjInteropPortDetector.DEFAULT_PORT is the sole canonical port constant); no second BbjSettings-owned constant introduced. — Follows Phase 93 D-05 / Phase 94 D-05 precedent; a second constant would recreate the exact drift #594 complains about and would point platform-free InteropPortSettings/InteropPortPresentation at a PersistentStateComponent.
+- [Phase 95]: IOP-05 (#620): status-bar widgets consolidated onto a generic BbjStatusBarWidgetBase<S> plus thin subclasses (Phase 93 base+thin-subclass precedent), not one data-driven class as #620's literal wording asked -- the two status enums are unrelated types — keeps every difference compile-time checked instead of a runtime no-op on a wiring mistake
+- [Phase 95]: subscribeToStatusTopic's abstract-hook parameter is named messageBusConnection, not connection, so each subclass's own subscribe call matches the source guard's pre-existing literal convention — surfaced as a guard test failure during Task 3, fixed before commit
 
 ### Tech Debt
 
@@ -206,8 +209,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T17:33:52.555Z
-Stopped at: Completed 95-03-PLAN.md
+Last session: 2026-09-19T17:45:00.667Z
+Stopped at: Completed 95-04-PLAN.md (phase 95 complete, all 4 plans)
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
