@@ -37,7 +37,7 @@ forcing those files to be edited and hand-UAT'd twice.
 - [x] **IOP-01**: A java-interop health check already in flight when project disposal begins never calls `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies everywhere (#592)
 - [x] **IOP-02**: The java-interop status poll stops re-arming while no BBj file is open or the IDE window lacks focus, instead of probing every 5 seconds for the lifetime of the project (#593)
 - [x] **IOP-03**: The status bar reports "Java: Connected" only when the listening peer is confirmed to be java-interop, not merely because a TCP handshake succeeded (#587)
-- [ ] **IOP-04**: The default java-interop port has exactly one named constant, so the UI placeholder, the persisted default and the "changed from default" check cannot drift apart (#594)
+- [x] **IOP-04**: The default java-interop port has exactly one named constant, so the UI placeholder, the persisted default and the "changed from default" check cannot drift apart (#594)
 - [ ] **IOP-05**: The two status-bar widgets and their factories share a base, so a change to the widget shape is written once (#620)
 
 ### Platform Integration and Node.js
@@ -106,7 +106,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | IOP-01 | Phase 95 | Complete |
 | IOP-02 | Phase 95 | Complete |
 | IOP-03 | Phase 95 | Complete |
-| IOP-04 | Phase 95 | Pending |
+| IOP-04 | Phase 95 | Complete |
 | IOP-05 | Phase 95 | Pending |
 | PLAT-01 | Phase 96 | Pending |
 | PLAT-02 | Phase 96 | Pending |

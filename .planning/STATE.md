@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 95
 current_phase_name: java-interop Status Accuracy & Widget Consolidation
 status: executing
-stopped_at: Completed 95-02-PLAN.md
-last_updated: "2026-09-19T17:25:42.775Z"
+stopped_at: Completed 95-03-PLAN.md
+last_updated: "2026-09-19T17:33:52.665Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 95 execution started
-state_head: 5fd91563bee5c74082da8382e30533995c1b2c12
+state_head: cf09274c36d1a2775ac556d23a2ef5204d3fdf96
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 40
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 95 (java-interop Status Accuracy & Widget Consolidation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-19 — Phase 95 execution started
 
@@ -98,6 +98,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 94 P04 | 12min | 2 tasks | 1 files |
 | Phase 95 P01 | 15min | 3 tasks | 9 files |
 | Phase 95 P02 | 12min | 3 tasks | 6 files |
+| Phase 95 P03 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 95]: No third volatile field for server-started state -- checkConnection() passes a literal true (invariant: it only runs while a server-started-gated request is pending), refreshSelectionGate() reads BbjServerService.getCurrentStatus() live on the EDT; keeps the field count at exactly two (bbjFileSelected, gateWasOpen)
 - [Phase 95]: BbjFileVisibility and showsForFileTypeNames widened from package-private to public so the interop-package InteropPollPolicyTest can feed the empty-selection edge case through the real predicate; showsForSelection stays package-private
 - [Phase 95]: BbjJavaInteropServiceDisposalSourceGuardTest's pinned isDisposed() count widened from two to three (new startup invokeLater guard) -- Task 2 explicitly requires the third guard, which necessarily changes the count the 95-01 guard pins
+- [Phase 95]: Closed #594 as done on D-11 reasoning (BbjInteropPortDetector.DEFAULT_PORT is the sole canonical port constant); no second BbjSettings-owned constant introduced. — Follows Phase 93 D-05 / Phase 94 D-05 precedent; a second constant would recreate the exact drift #594 complains about and would point platform-free InteropPortSettings/InteropPortPresentation at a PersistentStateComponent.
 
 ### Tech Debt
 
@@ -204,8 +206,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T17:25:42.662Z
-Stopped at: Completed 95-02-PLAN.md
+Last session: 2026-09-19T17:33:52.555Z
+Stopped at: Completed 95-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

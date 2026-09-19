@@ -367,7 +367,7 @@ Plans:
   4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
   5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -380,7 +380,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 95-03-PLAN.md — IOP-04: one named port constant, pinned by a single-occurrence source guard (wave 3)
+- [x] 95-03-PLAN.md — IOP-04: one named port constant, pinned by a single-occurrence source guard (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
