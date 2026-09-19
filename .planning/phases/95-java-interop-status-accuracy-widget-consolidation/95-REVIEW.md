@@ -32,6 +32,17 @@ findings:
   info: 2
   total: 7
 status: issues_found
+fixed_at: 2026-09-19T00:00:00Z
+fix_scope: critical_warning
+resolution:
+  CR-01: fixed (with WR-01, commit 501be102)
+  WR-01: fixed (with CR-01, commit 501be102)
+  WR-02: fixed (commit 67272961)
+  WR-03: fixed (commit 2be18aa9)
+  WR-04: fixed (commit f8d83fd8)
+  IN-01: not_fixed (deliberately out of scope for this pass)
+  IN-02: not_fixed (deliberately out of scope for this pass)
+resolution_status: partial_by_design
 ---
 
 # Phase 95: Code Review Report
@@ -40,6 +51,10 @@ status: issues_found
 **Depth:** standard
 **Files Reviewed:** 22
 **Status:** issues_found
+**Fix pass:** All Critical and Warning findings (CR-01, WR-01, WR-02, WR-03, WR-04) fixed and
+committed (`501be102`, `67272961`, `2be18aa9`, `f8d83fd8`); whole `bbj-intellij` suite green under
+`./gradlew test --rerun-tasks` (1040 tests, 0 failures, 0 errors). IN-01 and IN-02 deliberately left
+unfixed -- out of scope for this pass. See per-finding **Resolution:** notes below.
 
 ## Summary
 
@@ -138,6 +153,12 @@ overwritten by a straggling probe, and `REARM` can no longer fire once the serve
 stopped. (See WR-01 below for the related `currentStatus` synchronization gap this finding also
 exposes.)
 
+**Resolution:** Fixed together with WR-01 in commit `501be102`. `checkConnection()` now re-reads
+`BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started` at its tail
+(matching `refreshSelectionGate()`), gates `updateStatus(newStatus)` on that fresh read, and passes
+it to `InteropPollPolicy.decide(...)` instead of a hardcoded `true`. The false "true by
+construction" comment was removed.
+
 ## Warnings
 
 ### WR-01: `currentStatus` / `firstCheckCompleted` are written cross-thread without `volatile` or locking
@@ -157,6 +178,15 @@ edge. This is a genuine JMM visibility/write-race gap, and CR-01 shows it is not
 thread (e.g. always via `ApplicationManager.getApplication().invokeLater(...)`, as `broadcastStatus`
 already does for the message-bus publish).
 
+**Resolution:** Fixed together with CR-01 in commit `501be102`. Marked `currentStatus` (now
+`private volatile InteropStatus`) and `firstCheckCompleted` (`private volatile boolean`) volatile.
+`disconnectedSince` was left as a plain field -- it is only ever read/written from the pooled poll
+thread, never from the EDT. Marking `firstCheckCompleted` volatile raised
+`BbjJavaInteropPollGateSourceGuardTest.gateFlagsStayVolatile()`'s expected `"private volatile
+boolean"` count from 2 to 3; that assertion was updated deliberately (reasoning recorded in the
+commit message and in the test's own comment) since the guard exists to catch the keyword being
+dropped, not to cap how many fields carry it.
+
 ### WR-02: Interop host resolution has no timeout, so a misconfigured host can stall the poll well past the documented 1s+2s budget
 
 **File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/interop/InteropProbeClient.java:47-54`
@@ -171,6 +201,11 @@ server), a single poll tick can block far longer than 5s, delaying every subsequ
 **Fix:** Resolve the address off-thread with its own bounded timeout (e.g. via
 `CompletableFuture.supplyAsync(() -> new InetSocketAddress(host, port)).get(connectTimeoutMs,
 MILLISECONDS)`), or document/enforce that `javaInteropHost` must be an IP literal.
+
+**Resolution:** Fixed in commit `67272961`. Added a `resolveAddress()` helper that runs the
+`InetSocketAddress` construction on a dedicated single-thread executor (daemon thread factory) and
+bounds it with `CompletableFuture.supplyAsync(...).get(connectTimeoutMs, MILLISECONDS)`; a timeout
+or resolution failure is treated as `Verdict.UNREACHABLE`, same as a failed connect.
 
 ### WR-03: `InteropProbeClient` does not wait for its per-call executor to actually terminate
 
@@ -188,6 +223,10 @@ while polling is active.
 **Fix:** Either call `executor.awaitTermination(...)` with a small bound after `closeQuietly()`
 (logging if it times out), or use a single shared, reusable `ExecutorService` for the class instead of
 allocating one per call.
+
+**Resolution:** Fixed in commit `2be18aa9`. Added a bounded `executor.awaitTermination(500ms)` call
+after `closeQuietly(socket)`, so `probe()` only returns once the listener thread has actually
+exited (or the small bound is hit).
 
 ### WR-04: `BbjJavaInteropStatusBarWidget.textFor()` only partially adopts the new shared presentation seam
 
@@ -214,6 +253,9 @@ behavioral bug yet, but the two copies can now drift silently — a future edit 
 **Fix:** Delegate the whole switch to `InteropStatusPresentation.statusText(status.name())`, matching
 what `tooltipFor()` already does one method below.
 
+**Resolution:** Fixed in commit `f8d83fd8`. `textFor()` now delegates the whole switch to
+`InteropStatusPresentation.statusText(status.name())`.
+
 ## Info
 
 ### IN-01: Redundant CONNECTED/CHECKING guard in the notification provider
@@ -225,6 +267,9 @@ what `tooltipFor()` already does one method below.
 `CHECKING`). The two checks say the same thing twice.
 **Fix:** Drop the explicit status comparison and rely solely on the `bannerText == null` check that
 follows it.
+
+**Resolution:** Not fixed -- deliberately out of scope for this fix pass (Info-tier findings were
+excluded; `fix_scope: critical_warning`).
 
 ### IN-02: Likely-unreachable `ResponseErrorException` catch clause
 
@@ -239,6 +284,9 @@ of the multi-catch is dead code in this call shape (harmless here, since both ar
 **Fix:** Either drop `ResponseErrorException` from the catch list (it is already covered via
 `ExecutionException`'s cause chain) or add a short comment noting it is a defensive/future-proofing
 catch rather than a currently-reachable one.
+
+**Resolution:** Not fixed -- deliberately out of scope for this fix pass (Info-tier findings were
+excluded; `fix_scope: critical_warning`).
 
 ---
 
