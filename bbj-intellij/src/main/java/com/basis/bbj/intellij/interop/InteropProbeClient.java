@@ -95,7 +95,25 @@ public final class InteropProbeClient {
                 listening.cancel(true);
             }
             executor.shutdownNow();
+            // Thread.interrupt() (above) cannot unblock a thread parked in a blocking Socket read
+            // (LSP4J's StreamMessageProducer uses blocking I/O) -- closeQuietly() below is what
+            // actually forces that read to fail. awaitTermination() here confirms the listener
+            // thread has actually exited before probe() returns, rather than trusting the ordering
+            // to hold forever; a bound this small never adds meaningful latency to a tick that has
+            // already closed the socket.
             closeQuietly(socket);
+            awaitTerminationQuietly(executor);
+        }
+    }
+
+    /** Small bound: closeQuietly() above has already force-unblocked the listener thread. */
+    private static final long EXECUTOR_TERMINATION_TIMEOUT_MS = 500;
+
+    private static void awaitTerminationQuietly(ExecutorService executor) {
+        try {
+            executor.awaitTermination(EXECUTOR_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
