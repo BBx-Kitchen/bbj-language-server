@@ -5,6 +5,7 @@ import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.CapturingProcessHandler;
 import com.intellij.execution.process.ProcessOutput;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
@@ -38,6 +39,25 @@ public final class BbjEMLoginAction extends AnAction {
         // credential/result dialogs are individually routed back to the EDT (see
         // showErrorOnEdt/showInfoOnEdt/promptUsername/promptPassword below).
         ApplicationManager.getApplication().executeOnPooledThread(() -> performLogin(project));
+    }
+
+    /**
+     * Gates on the presence of a project alone -- nothing else. EM login authenticates by
+     * running the bundled login script through the BBj interpreter directly and never talks
+     * to the language server, so a language-server-readiness gate would remove the ability to
+     * log in whenever the server is stopped or crashed, an outcome no user would predict.
+     * BBj Home is a genuine hard prerequisite (see {@link #performLogin}), but this gate does
+     * not read it either: hiding the item there would silently swallow the one dialog that
+     * tells a new user what to configure, and a hidden menu item teaches nothing.
+     */
+    @Override
+    public void update(@NotNull AnActionEvent e) {
+        e.getPresentation().setEnabledAndVisible(e.getProject() != null);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 
     /**
