@@ -18,12 +18,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8: this guard is what keeps the environment-
  * channel fix from silently regressing back to a secret-bearing {@code addParameter}
- * call. Covers all secret-bearing call sites: {@code BbjRunActionBase.java} hosts two of
- * them directly -- the JWT validate path (highest-frequency exposure — plan 01) in
- * {@code validateTokenServerSide}, and the BUI/DWC web-run path (plan 02) in the shared
- * {@code buildWebRunCommandLine} helper both {@code BbjRunBuiAction.java} and {@code
- * BbjRunDwcAction.java} now delegate to rather than duplicating; {@code
- * BbjEMLoginAction.java} (EM login) is the fourth.
+ * call. Covers all secret-bearing call sites: the JWT validate path (highest-frequency
+ * exposure) lives in {@code EmTokenValidator.java}; the BUI/DWC web-run path lives in
+ * {@code BbjRunActionBase.java}'s shared {@code buildWebRunCommandLine} helper, which both
+ * {@code BbjRunBuiAction.java} and {@code BbjRunDwcAction.java} delegate to rather than
+ * duplicating; {@code BbjEMLoginAction.java} (EM login) is the third.
  */
 class BbjSecretArgvSourceGuardTest {
 
@@ -31,6 +30,7 @@ class BbjSecretArgvSourceGuardTest {
     private static final Path EM_LOGIN_ACTION = guardedActionSource("BbjEMLoginAction.java");
     private static final Path RUN_BUI_ACTION = guardedActionSource("BbjRunBuiAction.java");
     private static final Path RUN_DWC_ACTION = guardedActionSource("BbjRunDwcAction.java");
+    private static final Path EM_TOKEN_VALIDATOR = guardedActionSource("EmTokenValidator.java");
 
     private static final Path BBJ_PROCESS_SECRET_ENV = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "lsp", "BbjProcessSecretEnv.java")
@@ -49,12 +49,18 @@ class BbjSecretArgvSourceGuardTest {
      * {@link #theWebRunHelperCallsWithEnvironmentAndReferencesBbjProcessSecretEnv()} and
      * {@link #theWebRunHelperPassesTheInvocationsEnvironmentMapToWithEnvironment()}, with
      * {@link #buiAndDwcActionsDelegateToTheSharedWebRunHelper()} pinning the delegation itself.
+     * {@code EmTokenValidator.java} is included here directly -- its own runner builds an
+     * {@code Invocation} and applies its environment map for the JWT validate path.
      */
     private static final List<Path> ALL_GUARDED_ACTION_FILES =
-            List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION);
+            List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, EM_TOKEN_VALIDATOR);
 
-    /** {@code createOwnerOnlyFile} must precede process-handler construction in these two. */
-    private static final List<Path> OWNER_ONLY_FILE_CALLERS = List.of(EM_LOGIN_ACTION, RUN_ACTION_BASE);
+    /**
+     * {@code createOwnerOnlyFile} must precede process-handler construction in these two.
+     * {@code BbjRunActionBase.java} no longer calls either -- its JWT validate path moved to
+     * {@code EmTokenValidator.java}, which replaces it in this list.
+     */
+    private static final List<Path> OWNER_ONLY_FILE_CALLERS = List.of(EM_LOGIN_ACTION, EM_TOKEN_VALIDATOR);
 
     private static Path guardedActionSource(String fileName) {
         return Paths.get(
@@ -119,8 +125,8 @@ class BbjSecretArgvSourceGuardTest {
     }
 
     @Test
-    void allFourGuardedActionFilesArePresent() {
-        for (Path source : List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION)) {
+    void allFiveGuardedActionFilesArePresent() {
+        for (Path source : List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION, EM_TOKEN_VALIDATOR)) {
             if (!Files.exists(source)) {
                 fail("Guarded source file not found at " + source);
             }
@@ -128,9 +134,9 @@ class BbjSecretArgvSourceGuardTest {
     }
 
     @Test
-    void noneOfTheFourFilesRetainsASecretBearingParameterCall() {
+    void noneOfTheFiveFilesRetainsASecretBearingParameterCall() {
         assertAll("secret-bearing addParameter calls",
-                List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION).stream().map(source -> () -> {
+                List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION, EM_TOKEN_VALIDATOR).stream().map(source -> () -> {
                     String text = readGuardedSource(source);
                     assertEquals(0, countOccurrences(text, "addParameter(username)"),
                             source + " must not call addParameter(username) — "
@@ -145,7 +151,7 @@ class BbjSecretArgvSourceGuardTest {
     }
 
     @Test
-    void theRemainingTwoDirectCallSitesCallWithEnvironmentAndReferenceBbjProcessSecretEnv() {
+    void theThreeDirectCallSitesCallWithEnvironmentAndReferenceBbjProcessSecretEnv() {
         assertAll("withEnvironment/BbjProcessSecretEnv presence",
                 ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
                     String text = readGuardedSource(source);
@@ -186,9 +192,9 @@ class BbjSecretArgvSourceGuardTest {
         return body;
     }
 
-    /** Same CR-01 fix as {@link #theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap()}, across both direct call sites. */
+    /** Same data-flow fix as {@link #theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap()}, across all three direct call sites. */
     @Test
-    void bothDirectCallSitesPassTheInvocationsEnvironmentMapToWithEnvironment() {
+    void allDirectCallSitesPassTheInvocationsEnvironmentMapToWithEnvironment() {
         assertAll("withEnvironment( argument is the Invocation's own environment() map",
                 ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
                     String text = readGuardedSource(source);
