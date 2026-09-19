@@ -1,11 +1,12 @@
 ---
 phase: 94-em-login-run-action-consolidation
 verified: 2026-09-19T00:00:00Z
-status: human_needed
+status: passed
 score: 12/12 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "EM login enablement/visibility: install the built distributable, open Tools menu with a project open, then with all projects closed"
     expected: "Item present with a project open; absent (hidden, not greyed) with no project open — the phase's one intended user-visible change"
     why_human: "Action-presentation rendering in a running IDE; source guards prove the code shape (setEnabledAndVisible, project-only gate) but not what the Tools menu actually renders"
