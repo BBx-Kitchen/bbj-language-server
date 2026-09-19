@@ -57,7 +57,7 @@ public abstract class BbjRunActionBase extends AnAction {
 
         // Build the command line and launch it off EDT to avoid UI freezing.
         // buildCommandLine() (subclass responsibility) may perform blocking EM token
-        // server-side validation (validateTokenServerSide, up to 10s) and/or EM login
+        // server-side validation (EmTokenValidator, up to 10s) and/or EM login
         // (BbjEMLoginAction.performLogin, up to 15s) -- both are synchronous network I/O
         // and must not run on the EDT (CR-02). validateBeforeRun() also performs
         // blocking filesystem existence/executable checks, so it is run here too rather
@@ -232,72 +232,6 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Validate a token server-side against EM by running em-validate-token.bbj.
-     * Returns true if token is valid, false otherwise.
-     *
-     * @param project the current project
-     * @param token the JWT token to validate
-     * @return true if valid, false otherwise
-     */
-    protected boolean validateTokenServerSide(@NotNull Project project, @NotNull String token) {
-        try {
-            String bbjPath = getBbjExecutablePath();
-            if (bbjPath == null) {
-                return false;
-            }
-
-            String emValidatePath = BbjToolScriptResolver.SESSION.resolveToolScript("em-validate-token.bbj");
-            if (emValidatePath == null) {
-                return false;
-            }
-
-            // Create temp file for BBj output, owner-only for its whole life
-            Path tmpFile = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-validate-", ".tmp");
-            try {
-                // Build command: bbj -q em-validate-token.bbj - <tmpFile>; the token
-                // travels on the environment (BbjProcessSecretEnv), never as a parameter.
-                BbjProcessSecretEnv.Invocation invocation =
-                        BbjProcessSecretEnv.emValidateToken(emValidatePath, token, tmpFile.toString());
-                GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
-                cmd.addParameters(invocation.parameters());
-                cmd.withEnvironment(invocation.environment());
-
-                // Execute with 10s timeout
-                com.intellij.execution.process.CapturingProcessHandler handler =
-                    new com.intellij.execution.process.CapturingProcessHandler(cmd);
-                com.intellij.execution.process.ProcessOutput output = handler.runProcess(10000);
-
-                // Read result from temp file
-                String result = Files.readString(tmpFile).trim();
-
-                // Return true only if output is "VALID"
-                return "VALID".equals(result);
-            } finally {
-                try { Files.deleteIfExists(tmpFile); } catch (Exception ignored) {}
-            }
-        } catch (Exception e) {
-            // On any error, consider token invalid
-            return false;
-        }
-    }
-
-    /**
-     * Validate a token against EM, consulting the trust-window cache first (#542). Within
-     * {@link TokenValidationCache#TRUST_WINDOW_MS} of a prior successful validation for the
-     * same token, this returns true without spawning the server-side subprocess at all;
-     * otherwise it delegates to {@link #validateTokenServerSide} and records success into the
-     * cache. Callers must still run the client-side expiry check first -- this method makes no
-     * expiry decision of its own.
-     *
-     * @param project the current project
-     * @param token   the JWT token to validate
-     * @return true if trusted or freshly validated, false otherwise
-     */
-    protected boolean validateTokenTrusted(@NotNull Project project, @NotNull String token) {
-        return TokenValidationCache.SESSION.validateThrough(token, () -> validateTokenServerSide(project, token));
-    }
-
-    /**
      * Returns the resolved config path argument, formatted for the BBj command line.
      *
      * The value comes from {@link BbjConfigPathService#activeConfigPath()} rather than the raw
@@ -451,7 +385,8 @@ public abstract class BbjRunActionBase extends AnAction {
 
         // Server-side validation now runs only outside the trust window (#542); a call inside
         // the window is a hit and skips the subprocess entirely.
-        if (token != null && !validateTokenTrusted(project, token)) {
+        String emValidatePath = BbjToolScriptResolver.SESSION.resolveToolScript("em-validate-token.bbj");
+        if (token != null && !EmTokenValidator.SESSION.validateTokenTrusted(bbjPath, emValidatePath, token)) {
             BbjEMTokenStore.deleteToken();
             token = null;
         }
