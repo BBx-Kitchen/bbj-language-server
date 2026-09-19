@@ -172,6 +172,12 @@ None - no external service configuration required.
 - Phase 96 discussion must confirm the PLAT-03 file-disjointness correction recorded above before that phase is planned.
 - `#587` and `#592` are closable per this plan's stated intent (#587 with its acceptance criteria recorded as too narrow, not met as written) -- actual GitHub issue closure is a maintainer action, not automated here.
 
+## Self-Check: PASSED
+
+All 6 created source/test files and the SUMMARY.md itself verified present on disk via `[ -f ]`; all
+4 commit hashes (`ae27bf39`, `830ae173`, `6039f021`, `a1037a96`) verified present via `git log
+--oneline --all`.
+
 ---
 *Phase: 95-java-interop-status-accuracy-widget-consolidation*
 *Completed: 2026-09-19*
