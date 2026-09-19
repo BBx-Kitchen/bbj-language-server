@@ -336,7 +336,7 @@ Plans:
   4. Running a BBj file as BUI and as DWC still launches correctly from toolbar, menu and keyboard shortcut, with the two actions differing only in their BUI/DWC-specific literals.
   5. `web.bbj`, `em-validate.bbj` and `em-login.bbj` all resolve through one shared helper, and every consumer still finds its script inside an installed plugin (not only in a dev sandbox).
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -346,7 +346,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 94-02-PLAN.md — EM-03: `EmTokenValidator` beside the EM-token lifecycle, with the argv and trust-window guards re-pointed (wave 2)
-- [ ] 94-03-PLAN.md — EM-02 + EM-01: the login enablement gate under `ActionUpdateThread.BGT`, and a first pin for the temp-file cleanup scope (wave 2)
+- [x] 94-03-PLAN.md — EM-02 + EM-01: the login enablement gate under `ActionUpdateThread.BGT`, and a first pin for the temp-file cleanup scope (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

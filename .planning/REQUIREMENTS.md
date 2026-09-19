@@ -26,8 +26,8 @@ forcing those files to be edited and hand-UAT'd twice.
 
 ### Enterprise Manager and Run Actions
 
-- [ ] **EM-01**: An EM login temp file is deleted even when the process launch that precedes the cleanup block throws, so no partially-written login output (possibly containing a token fragment) is left on disk (#590)
-- [ ] **EM-02**: "Login to Enterprise Manager" gates its enablement on project and server-readiness state and declares `ActionUpdateThread.BGT`, matching its ten sibling actions (#589)
+- [x] **EM-01**: An EM login temp file is deleted even when the process launch that precedes the cleanup block throws, so no partially-written login output (possibly containing a token fragment) is left on disk (#590)
+- [x] **EM-02**: "Login to Enterprise Manager" gates its enablement on project and server-readiness state and declares `ActionUpdateThread.BGT`, matching its ten sibling actions (#589)
 - [x] **EM-03**: EM server-side token validation lives alongside the rest of the EM-token lifecycle, not inside the run-action base class (#617)
 - [ ] **EM-04**: `BbjRunBuiAction` and `BbjRunDwcAction` share the run flow through the base class, differing only in their BUI/DWC-specific literals (#615)
 - [x] **EM-05**: Plugin-bundled tool script paths (`web.bbj`, `em-validate.bbj`, `em-login.bbj`) resolve through one shared helper instead of three near-identical methods across two files (#614)
@@ -98,8 +98,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | COMP-07 | Phase 93 | Complete |
 | COMP-08 | Phase 93 | Complete |
 | COMP-09 | Phase 93 | Complete |
-| EM-01 | Phase 94 | Pending |
-| EM-02 | Phase 94 | Pending |
+| EM-01 | Phase 94 | Complete |
+| EM-02 | Phase 94 | Complete |
 | EM-03 | Phase 94 | Complete |
 | EM-04 | Phase 94 | Pending |
 | EM-05 | Phase 94 | Complete |

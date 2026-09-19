@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 94
 current_phase_name: EM Login & Run Action Consolidation
 status: executing
-stopped_at: Completed 94-02-PLAN.md
-last_updated: "2026-09-19T07:14:22.300Z"
+stopped_at: Completed 94-03-PLAN.md
+last_updated: "2026-09-19T07:24:47.526Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 94 execution started
-state_head: 80a8a1b72a251abd5ade84b24ec1a5d5a24a00fe
+state_head: 8533ff3080efbbd33dba82c00bf21799e33da361
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 20
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 ## Current Position
 
 Phase: 94 (EM Login & Run Action Consolidation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-19 — Phase 94 execution started
 
@@ -94,6 +94,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 93 P09 | 9min | 3 tasks | 4 files |
 | Phase 94 P01 | 20min | 2 tasks | 4 files |
 | Phase 94 P02 | 14min | 3 tasks | 5 files |
+| Phase 94 P03 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 93]: Line-bound accepted band is strictly [0, lineCount) for ed.line/chain.startLine/chain.endLine, not the 93-REVIEW.md sketch's chain.endLine > lineCount (which still permits endLine == lineCount). — getLineStartOffset(int) throws IndexOutOfBoundsException on exactly that boundary value; the sketch's form would have shipped a guard that still crashes on the one value it claims to close.
 - [Phase 93]: Both new SETOPTS-in-code line-bound aborts reuse ComposerNotices.malformedEdit(...) -- no new Reason or Severity added. — Same failure class as the existing hexRange/flagsRange/eventMaskRange guards (D-10 from 93-CONTEXT.md); a malformed range and a malformed line number are one user-visible failure class.
 - [Phase 94]: Confirmed by inspection that after moving validateTokenServerSide/validateTokenTrusted out of BbjRunActionBase, the first BbjProcessSecretEnv.Invocation declaration and first withEnvironment( call remaining in the file are both buildWebRunCommandLine's own invocation variable, so BbjSecretArgvSourceGuardTest's pre-existing data-flow assertion continues to hold with no code change.
+- [Phase 94]: [Phase 94] BbjEMLoginAction's update() gate reads e.getProject() != null only -- no ServerStatus, no BBj Home -- since EM login never talks to the language server and must keep firing the BBj-Home dialog for new users.
+- [Phase 94]: [Phase 94] EM-01's temp-file cleanup needed no production change (already fixed by 06eb1a7c); EmLoginTempFileCleanupSourceGuardTest pins the ordering with four indexOf assertions, proven to fail on a deliberately narrowed scope via a throwaway helper (to keep the falsification edit compiling) and restored byte-identical before re-verifying.
 
 ### Tech Debt
 
@@ -190,8 +193,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T07:14:22.219Z
-Stopped at: Completed 94-02-PLAN.md
+Last session: 2026-09-19T07:24:47.440Z
+Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 94` or `/gsd-plan-phase 94`.
