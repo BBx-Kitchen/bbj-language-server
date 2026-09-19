@@ -107,13 +107,23 @@ class EmLoginTempFileCleanupSourceGuardTest {
     void theCreationPrecedesTheLaunchTry() {
         String body = performLoginBody();
         int creationIndex = body.indexOf(CREATION_LITERAL);
-        // The launch's opening `try` is the first one following the creation call -- a
-        // regression that re-narrows the cleanup scope does so by moving this `try` below the
-        // subprocess call, which is exactly what this ordering check would catch.
-        int launchTryIndex = body.indexOf("try {", creationIndex);
+        int runProcessIndex = body.indexOf(RUN_PROCESS_LITERAL);
+
+        // Located independently of creationIndex: the nearest `try {` at or before the
+        // subprocess run is the launch's own opening brace. Chaining this search off
+        // creationIndex instead (as an earlier version of this test did) made the final
+        // assertion incapable of failing -- indexOf(str, fromIndex) can only return an index
+        // >= fromIndex, so any `try {` anywhere after the creation call would satisfy it,
+        // including one belonging to a merged block that swallowed the creation call itself.
+        // Anchoring to the subprocess run instead means a regression that moves the creation
+        // call inside the launch's existing `try` (collapsing the two blocks) pushes
+        // creationIndex past this launchTryIndex, and the ordering assertion below genuinely
+        // fails.
+        int launchTryIndex = body.lastIndexOf("try {", runProcessIndex);
 
         assertTrue(creationIndex >= 0, CREATION_LITERAL + " is not present in performLogin's body");
-        assertTrue(launchTryIndex >= 0, "no `try {` follows the owner-only creation in performLogin's body");
+        assertTrue(runProcessIndex >= 0, RUN_PROCESS_LITERAL + " is not present in performLogin's body");
+        assertTrue(launchTryIndex >= 0, "no `try {` precedes the subprocess run in performLogin's body");
         assertTrue(creationIndex < launchTryIndex,
                 "the owner-only creation must precede the launch's opening `try`");
     }
