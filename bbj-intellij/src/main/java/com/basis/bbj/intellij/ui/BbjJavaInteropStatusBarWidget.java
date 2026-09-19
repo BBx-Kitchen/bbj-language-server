@@ -50,18 +50,11 @@ public final class BbjJavaInteropStatusBarWidget extends BbjStatusBarWidgetBase<
 
     @Override
     protected String textFor(BbjJavaInteropService.InteropStatus status) {
-        switch (status) {
-            case CONNECTED:
-                return "Java: Connected";
-            case DISCONNECTED:
-                return "Java: Disconnected";
-            case CHECKING:
-                return "Java: Checking...";
-            case WRONG_PEER:
-                return InteropStatusPresentation.statusText(status.name());
-            default:
-                return "Java: Unknown";
-        }
+        // Delegate the whole switch to the shared presentation seam, matching what tooltipFor()
+        // already does below -- CONNECTED/DISCONNECTED/CHECKING used to duplicate
+        // InteropStatusPresentation.statusText()'s own labels independently, which let the two
+        // copies drift silently.
+        return InteropStatusPresentation.statusText(status.name());
     }
 
     @Override
