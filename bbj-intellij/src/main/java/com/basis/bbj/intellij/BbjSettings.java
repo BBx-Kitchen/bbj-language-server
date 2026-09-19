@@ -27,7 +27,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String classpathEntry = "";
         public String logLevel = "Info";  // Default: Info. Options: Error, Warn, Info, Debug
         public String javaInteropHost = "localhost";  // Default: localhost (resolves to 127.0.0.1)
-        public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
+        public int javaInteropPort = BbjInteropPortDetector.DEFAULT_PORT;  // Default: shared with BbjInteropPortDetector.DEFAULT_PORT
         public boolean javaInteropPortAutoDetect = true;  // Default: true; this flag, not the numeric value, records whether the port was chosen by the user
         public boolean javaInteropSettingsMigrated = false;  // Default: false; set true once the one-time upgrade inference below has run, so it never re-derives the flag from a later, unrelated port value
         public String configPath = "";  // Default: empty (uses {bbjHome}/cfg/config.bbx)

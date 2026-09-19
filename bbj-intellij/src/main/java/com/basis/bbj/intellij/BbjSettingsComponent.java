@@ -186,13 +186,13 @@ public class BbjSettingsComponent {
 
         // --- Java Interop Port field ---
         javaInteropPortField = new JBTextField();
-        javaInteropPortField.setText("5008");
+        javaInteropPortField.setText(String.valueOf(BbjInteropPortDetector.DEFAULT_PORT));
 
         new ComponentValidator(parentDisposable)
             .withValidator(() -> {
                 String text = javaInteropPortField.getText().trim();
                 if (text.isEmpty()) {
-                    return null; // Empty is valid, will use default 5008
+                    return null; // Empty is valid, will use the shared default
                 }
                 try {
                     int port = Integer.parseInt(text);
@@ -458,12 +458,12 @@ public class BbjSettingsComponent {
     public int getJavaInteropPort() {
         String text = javaInteropPortField.getText().trim();
         if (text.isEmpty()) {
-            return 5008; // Default when empty
+            return BbjInteropPortDetector.DEFAULT_PORT; // Default when empty
         }
         try {
             return Integer.parseInt(text);
         } catch (NumberFormatException e) {
-            return 5008; // Default when invalid
+            return BbjInteropPortDetector.DEFAULT_PORT; // Default when invalid
         }
     }
 
