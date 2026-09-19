@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
-current_phase: 95
-current_phase_name: java-interop Status Accuracy & Widget Consolidation
-status: verifying
-stopped_at: Completed 95-04-PLAN.md (phase 95 complete, all 4 plans)
-last_updated: "2026-09-19T17:45:00.774Z"
+current_phase: 96
+current_phase_name: Platform Integration & Node.js Diagnosis
+status: planning
+stopped_at: Phase 95 complete, ready to plan Phase 96
+last_updated: "2026-09-19T18:55:11.103Z"
 last_activity: 2026-09-19
-last_activity_desc: Phase 95 execution started
-state_head: 83557d4407a369aa09623c523f4c09936c124194
+last_activity_desc: Phase 95 complete, transitioned to Phase 96
+state_head: 0475ae6b37e1a258d8ab9a1f149e97dd63625c95
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
   completed_plans: 17
-  percent: 40
+  percent: 60
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 ## Current Position
 
-Phase: 95 (java-interop Status Accuracy & Widget Consolidation) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-09-19 — Phase 95 execution started
+Phase: 96 — Platform Integration & Node.js Diagnosis
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-19 — Phase 95 complete, transitioned to Phase 96
 
 Progress: [████████████████████] 13/13 plans ([████░░░░░░] 40%)
 
@@ -210,7 +210,7 @@ decisions and the ones that bear directly on v4.4's files:
 ## Session Continuity
 
 Last session: 2026-09-19T17:45:00.667Z
-Stopped at: Completed 95-04-PLAN.md (phase 95 complete, all 4 plans)
+Stopped at: Phase 95 complete, ready to plan Phase 96
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

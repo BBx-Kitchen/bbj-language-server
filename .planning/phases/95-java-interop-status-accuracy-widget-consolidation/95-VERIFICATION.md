@@ -1,10 +1,16 @@
 ---
 phase: 95-java-interop-status-accuracy-widget-consolidation
 verified: 2026-09-19T18:30:00Z
-status: gaps_found
-score: 4/5 roadmap criteria fully verified at the code level; 1 criterion partially met (deliberate, documented scope narrowing)
+status: passed
+score: 5/5 roadmap criteria met after criterion 2 was corrected to its delivered scope; 1 override applied
 behavior_unverified: 3
-overrides_applied: 0
+overrides_applied: 1
+override:
+  - gap: "ROADMAP criterion 2 / IOP-02 (#593) — the window-focus clause of a compound OR criterion"
+    decided_by: maintainer
+    decided: 2026-09-19
+    decision: "Accepted. IOP-02 closes on cited reasoning rather than as originally written, following this phase's own D-11 (#594) and the Phase 93 D-05 / Phase 94 D-05 precedent. REQUIREMENTS.md and ROADMAP criterion 2 were corrected to the delivered scope (editor-selection gating). Window-focus gating remains deferred per 95-CONTEXT.md's Deferred Ideas entry, which names ApplicationActivationListener as the route if the overnight poll ever proves to matter. Accepted cost: an IDE left open on a BBj file overnight still polls every 5s."
+    audit_note: "The gaps entry below is retained verbatim as the record of what was overridden — it is history, not an open gap."
 gaps:
   - truth: "ROADMAP criterion 2 (IOP-02/#593), focus-gating clause: 'With no BBj file open, or with the IDE window in the background, the java-interop poll stops re-arming ... and it resumes when a BBj file is focused again.'"
     status: partial

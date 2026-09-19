@@ -276,7 +276,7 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
 
 - [x] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each (completed 2026-09-18)
 - [x] **Phase 94: EM Login & Run Action Consolidation** - EM login cleans up after a failed launch and enables like its siblings; the BUI/DWC run flow, its token validation and its tool-script paths each live in exactly one place (completed 2026-09-19)
-- [ ] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base
+- [x] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base (completed 2026-09-19)
 - [ ] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows
 - [ ] **Phase 97: Release 0.16.0 & Milestone Close** - 0.16.0 published to both marketplaces behind one verification gate, with GitHub milestone #7 closed
 
@@ -362,7 +362,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
   1. Closing a project while a java-interop health check is in flight produces no exception — the in-flight check never reaches `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies.
-  2. With no BBj file open, or with the IDE window in the background, the java-interop poll stops re-arming instead of probing every 5 seconds for the life of the project, and it resumes when a BBj file is focused again.
+  2. With no BBj file selected, the java-interop poll stops re-arming instead of probing every 5 seconds for the life of the project, and it resumes when a BBj file is selected again. (Window-focus gating deliberately deferred — D-06; accepted cost: an IDE left open on a BBj file overnight still polls.)
   3. The status bar reads "Java: Connected" only when the listening peer is confirmed to be java-interop; a foreign process squatting on the configured port does not produce a Connected status.
   4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
   5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
