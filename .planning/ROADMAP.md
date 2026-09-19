@@ -367,10 +367,28 @@ Plans:
   4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
   5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 95-01-PLAN.md — IOP-03 + IOP-01: an LSP4J peer-confirmation probe wired end-to-end, with both disposal guards (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 95-02-PLAN.md — IOP-02: selection-gated poll, silent pause, immediate check on gate-open, and a live CHECKING state (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 95-03-PLAN.md — IOP-04: one named port constant, pinned by a single-occurrence source guard (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 95-04-PLAN.md — IOP-05: one widget base and one factory base, guards re-pointed, plugin built for UAT (wave 4)
+
 **UI hint**: yes
 
-*Ordering note:* IOP-05's widget base is extracted after IOP-02 and IOP-03 change what the widgets poll and report, so the base is taken from the final widget shape rather than refactored twice. IOP-03's peer confirmation must not reintroduce a blocking probe on the EDT (v4.2 EDT-01 convention).
+*Ordering note:* IOP-05's widget base is extracted after IOP-02 and IOP-03 change what the widgets poll and report, so the base is taken from the final widget shape rather than refactored twice. IOP-03's peer confirmation must not reintroduce a blocking probe on the EDT (v4.2 EDT-01 convention). IOP-01 rides in Wave 1 rather than a later one because IOP-03 widens the in-flight window from a ~1s connect to a ~3s connect-plus-request, and both changes edit the same method. Waves are sequential rather than parallel: every plan's gate runs the same Gradle module, and `EffectiveInteropPortSourceGuardTest` (edited in Wave 3) asserts against `BbjJavaInteropService.java` (rewritten in Waves 1-2), so concurrent execution would race that guard against an in-progress rewrite.
 
 ### Phase 96: Platform Integration & Node.js Diagnosis
 
