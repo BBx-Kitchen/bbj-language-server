@@ -391,6 +391,10 @@ public abstract class BbjRunActionBase extends AnAction {
         // Server-side validation now runs only outside the trust window (#542); a call inside
         // the window is a hit and skips the subprocess entirely.
         String emValidatePath = BbjToolScriptResolver.SESSION.resolveToolScript("em-validate-token.bbj");
+        if (emValidatePath == null) {
+            logError(project, "em-validate-token.bbj not found in plugin bundle");
+            return null;
+        }
         if (token != null && !EmTokenValidator.SESSION.validateTokenTrusted(bbjPath, emValidatePath, token)) {
             BbjEMTokenStore.deleteToken();
             token = null;
