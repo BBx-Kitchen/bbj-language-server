@@ -66,11 +66,19 @@ class BbjJavaInteropPollGateSourceGuardTest {
 
     @Test
     void gateFlagsStayVolatile() {
+        // Widened from 2 to 3: firstCheckCompleted joined bbjFileSelected/gateWasOpen as a
+        // volatile boolean once checkConnection()'s pooled-thread writes were shown to race the
+        // EDT server-status-listener callback (the cross-thread status/first-check race that also
+        // drove checkConnection()'s serverStarted re-read). This assertion exists to catch the
+        // volatile keyword being silently DROPPED from any of the three fields, not to cap how
+        // many fields may carry it -- raising the expected count here is the intended outcome of
+        // fixing that race, not a guard weakening.
         String text = stripComments(readSource(BBJ_JAVA_INTEROP_SERVICE_SOURCE));
-        assertEquals(2, countOccurrences(text, "private volatile boolean"),
-                "BbjJavaInteropService must declare exactly two volatile boolean fields -- "
-                        + "bbjFileSelected and gateWasOpen -- so the EDT-write/pooled-thread-read "
-                        + "split cannot silently lose its volatile keyword");
+        assertEquals(3, countOccurrences(text, "private volatile boolean"),
+                "BbjJavaInteropService must declare exactly three volatile boolean fields -- "
+                        + "bbjFileSelected, gateWasOpen, and firstCheckCompleted -- so none of "
+                        + "their EDT-write/pooled-thread-read splits can silently lose the "
+                        + "volatile keyword");
     }
 
     @Test

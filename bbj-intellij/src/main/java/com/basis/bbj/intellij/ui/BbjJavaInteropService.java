@@ -64,9 +64,12 @@ public final class BbjJavaInteropService implements Disposable {
 
     private final Project project;
     private final Alarm checkAlarm;
-    private InteropStatus currentStatus = InteropStatus.DISCONNECTED;
-    private long disconnectedSince = 0;  // timestamp for grace period
-    private boolean firstCheckCompleted = false; // suppress banner until first check runs
+    // volatile: written from checkConnection()'s pooled thread AND directly from the EDT
+    // server-status-listener callback (the stopped/stopping branch below); read from
+    // getCurrentStatus()/isFirstCheckCompleted(), whose callers are not guaranteed to be the EDT.
+    private volatile InteropStatus currentStatus = InteropStatus.DISCONNECTED;
+    private long disconnectedSince = 0;  // timestamp for grace period; pooled-thread-only, no cross-thread read
+    private volatile boolean firstCheckCompleted = false; // suppress banner until first check runs
     private static final int CHECK_INTERVAL_MS = 5000;  // check every 5s
     private static final long GRACE_PERIOD_MS = 2000;   // 2s grace before broadcasting disconnect
     private static final int TCP_TIMEOUT_MS = 1000;     // 1s TCP connect timeout
@@ -262,15 +265,24 @@ public final class BbjJavaInteropService implements Disposable {
         // Mark first check as completed
         firstCheckCompleted = true;
 
-        // Update status and broadcast if changed
-        updateStatus(newStatus);
+        // Re-read the live server status instead of assuming "true by construction": this probe
+        // can take up to TCP_TIMEOUT_MS + RESPONSE_TIMEOUT_MS (1s + 2s) to return, and the language
+        // server can stop while it is in flight. stopChecking() (checkAlarm.cancelAllRequests())
+        // only cancels *pending* Alarm requests -- it cannot abort a tick that has already started
+        // running -- so a straggling probe must neither resurrect a stale status over the
+        // DISCONNECTED the stop handler already wrote, nor re-arm a poll loop the stop handler
+        // already told to stop.
+        boolean serverStarted =
+                BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started;
+        if (serverStarted) {
+            // Update status and broadcast if changed
+            updateStatus(newStatus);
+        }
 
-        // Re-arm, pause, or leave the cadence alone depending on the poll gate (#593). serverStarted
-        // is true by construction here: this tick only runs because a REARM or CHECK_NOW decision
-        // scheduled it, and both are gated on the server being started -- stopChecking() cancels
-        // every pending request the instant the server stops or stops stopping.
+        // Re-arm, pause, or leave the cadence alone depending on the poll gate (#593) and the
+        // freshly re-read server status.
         applyDecision(InteropPollPolicy.decide(InteropPollPolicy.Trigger.TICK_COMPLETED,
-                bbjFileSelected, gateWasOpen, true));
+                bbjFileSelected, gateWasOpen, serverStarted));
     }
 
     /**
