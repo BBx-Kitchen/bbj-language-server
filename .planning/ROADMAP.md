@@ -403,7 +403,25 @@ Plans:
   4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
   5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 96-01-PLAN.md — PLAT-02: the inert Color Scheme page and its registration are deleted, and the docs stop pointing at them (wave 1)
+- [ ] 96-02-PLAN.md — PLAT-01: TextMate bundle reused from a stable version-keyed directory, with a gated sweep of abandoned ones (wave 1)
+- [ ] 96-03-PLAN.md — PLAT-06: exact Windows zip-entry match and guarded temp cleanup, so the attestation reports real causes (wave 1)
+- [ ] 96-04-PLAN.md — PLAT-03: one notification base under all four providers; the crash banner's extension guard replaced (wave 1)
+- [ ] 96-05-PLAN.md — PLAT-04/05: version gate and cache-unavailable reason inside the resolver, plus the NodePresentation seam (wave 1)
+
+**Wave 2** *(blocked on 96-04 and 96-05)*
+
+- [ ] 96-06-PLAN.md — PLAT-04/05: the banner routes through the unified engine; the superseded availability seam is retired (wave 2)
+
+**Wave 3** *(blocked on every other plan — attested against the phase-final build)*
+
+- [ ] 96-07-PLAN.md — PLAT-06: both distributables built from the final tree, Node.js auto-install attested by hand on real Windows (wave 3)
+
 **UI hint**: yes
 
 *Ordering note:* PLAT-03's base lands before PLAT-04 changes `BbjMissingNodeNotificationProvider`, so the banner change is written into the shared base once. PLAT-06 is attested last, against a build that already carries PLAT-04 and PLAT-05 — attesting the old code would force a re-attestation. Criterion 5 is a human attestation, not a test: no Linux-hosted run can close it, which is exactly why it has been carried since v4.2. It does not gate REL-02 (it is not one of milestone #7's 21 issues), but leaving it open would carry the major-severity gap into a third milestone.
