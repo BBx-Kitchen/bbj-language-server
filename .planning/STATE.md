@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Phase 98 context gathered
-last_updated: "2026-09-20T21:19:28.673Z"
+stopped_at: Completed 98-01-PLAN.md
+last_updated: "2026-09-20T21:33:14.849Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: fe3d8f2973f3d934645f020d35af45eba6b62b5b
+state_head: 81e1f3764c61239704668170d694276966cd6751
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 98
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-09-20 — Phase 98 execution started
 
 ### v4.5 milestone map
@@ -91,6 +91,12 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 - Plans: 25 (74 tasks)
 - Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; landed on `origin/main` via PR #651
 
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 98 P01 | 12min | 3 tasks | 5 files |
+
 ## Accumulated Context
 
 ### Active Constraints
@@ -122,6 +128,8 @@ decisions:
 - [v4.5, roadmap]: new diagnostics from the compiler's parser are errors, like the compiler's own.
 - [v4.5, roadmap]: phase order is A2 first (98), then list A by file count (99, 100) with the long-tail triage after the named groups, then the endpoint (101) and its client (102, 103), then the closing measurement (104).
 - [v4.5, roadmap]: CONF-01 is mapped once, to Phase 98; Phases 99 and 100 repeat the regression-file rule in their own success criteria rather than re-owning the requirement.
+- [Phase 98]: TABLE_DATA lexer pattern: lookbehind for TABLE+whitespace, negative lookahead rejecting a following operator/bracket char, body excludes CR/LF/semicolon — Keeps table as an ordinary identifier in table = 5 / x = table + 1 while giving the statement-leading form new opaque rest-of-line meaning; verified via probe with no narrowing needed
+- [Phase 98]: TableStatement grammar rule carries no embedded LabelDecl — A leading label already works via the existing isStandaloneStatement mechanism (a statement immediately following a LabelDecl is not required to have a line break before it); confirmed via probe
 
 ### Tech Debt
 
@@ -170,9 +178,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-20T20:28:21.368Z
-Stopped at: Phase 98 context gathered
-Resume file: .planning/phases/98-line-break-validation-false-alarms-a2/98-CONTEXT.md
+Last session: 2026-09-20T21:33:14.819Z
+Stopped at: Completed 98-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
 

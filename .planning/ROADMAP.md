@@ -325,12 +325,12 @@ files describe behaviour and use word lists only.
   4. The conflicting-`DECLARE` check and the two `METHODRET` checks ("declares a return type but has no METHODRET returning a value", "is declared void and must not return a value") report no error on code `bbjcpl` accepts; they may still warn. One deliberate exception stays an error: two declarations of one name inside a single method body whose types both resolve and are unrelated.
   5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/conformance/` that the example-files test parses with zero errors and validates with zero error-severity diagnostics (linking excluded) — the CONF-01 convention Phases 99 and 100 then follow.
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 98-01-PLAN.md — tracer: the CONF-01 conformance-regression harness, proven end-to-end on the `TABLE` statement (wave 1)
+- [x] 98-01-PLAN.md — tracer: the CONF-01 conformance-regression harness, proven end-to-end on the `TABLE` statement (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -493,7 +493,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 98. Line-Break & Validation False Alarms (A2) | 0/TBD | Not started | - |
+| 98. Line-Break & Validation False Alarms (A2) | 1/6 | Not started |  |
 | 99. Parser Gaps — the Largest Groups | 0/TBD | Not started | - |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 0/TBD | Not started | - |
 | 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |
