@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 96-platform-integration-node-js-diagnosis
 source: [96-01-SUMMARY.md, 96-02-SUMMARY.md, 96-03-SUMMARY.md, 96-04-SUMMARY.md, 96-05-SUMMARY.md, 96-06-SUMMARY.md, 96-07-SUMMARY.md]
 started: 2026-09-20T10:58:33Z
@@ -205,5 +205,17 @@ blocked: 0
   reason: "User reported: with an old node.js configured in the path, I don't get offered to download the suitable one. The popup only suggests to \"Configue node.js\" . In our configuration dialog it's not obvious that I can simply remove the path, then restart and let our automatic do its job. The config dialog should somehow offer that next to the statement where it says \"Version too old: ....\""
   severity: major
   test: 2
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "Two independent causes. (1) BbjLanguageServer's start-failure notification hardcodes a single 'Configure Node.js Path' action and receives only resolution.failureMessage(), so it never consults NodePresentation.bannerActions(resolution) -- the reason-specific action seam was wired into the editor banner only. (2) BbjSettingsComponent's too-old branch sets only 'Version too old (minimum: 22), detected: ...' with no recovery hint, and nodeJsField is the one path field without an empty-text hint."
+  artifacts:
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java"
+      issue: "notifyUnresolvedNodePath (lines ~94-123) builds a configure-only popup from a message string; the Resolution is discarded at the call site"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java"
+      issue: "line ~366 too-old label carries no recovery hint; nodeJsField (lines ~113-117) has no getEmptyText() hint unlike its sibling fields"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/NodeExecutableResolver.java"
+      issue: "failureMessage() (lines ~157-158, ~276-279) only says 'Configure a ... path', never mentions the download"
+  missing:
+    - "Pass the Resolution to the start-failure notification and build its actions from NodePresentation.bannerActions(resolution), reusing the banner's id-to-action mapping (inherits the cache-inaccessible Download exclusion)"
+    - "Extend the 'Version too old' label with a sentence saying clearing the field lets the plugin detect or download a suitable Node.js; optionally add an empty-text hint on nodeJsField"
+    - "New tests: a guard that the popup's actions derive from NodePresentation.bannerActions rather than a literal, and a source guard on the settings label text"
+    - "Re-UAT blind spot: confirm the editor banner shows all three actions in the too-old-configured state"
+  debug_session: .planning/debug/g-96-2-too-old-node-no-download-offer.md
