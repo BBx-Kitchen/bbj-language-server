@@ -48,6 +48,13 @@ class BbjServerServiceRestartSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "ui", "BbjServerService.java")
             .toAbsolutePath();
 
+    /**
+     * The stop call site, matched without its closing parenthesis so the guards below stay pinned
+     * to the call's position while its options argument remains visible to the dedicated test that
+     * asserts what those options are.
+     */
+    private static final String MANAGER_STOP_CALL = "manager.stop(SERVER_ID,";
+
     private static final Path ALARM_SCHEDULER = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij",
             "concurrency", "AlarmScheduler.java")
@@ -161,20 +168,50 @@ class BbjServerServiceRestartSourceGuardTest {
     void doRestartArmsTheGuardBeforeRequestingTheStop() {
         String text = readGuardedSource(SERVER_SERVICE);
         int armIndex = text.indexOf("expectedStop.arm(");
-        int stopIndex = text.indexOf("manager.stop(SERVER_ID)");
+        int stopIndex = text.indexOf(MANAGER_STOP_CALL);
         assertTrue(armIndex >= 0, "expectedStop.arm( is not present in BbjServerService.java");
-        assertTrue(stopIndex >= 0, "manager.stop(SERVER_ID) is not present in BbjServerService.java");
+        assertTrue(stopIndex >= 0, MANAGER_STOP_CALL + " is not present in BbjServerService.java");
         assertTrue(armIndex < stopIndex, "the guard must be armed before the stop is requested");
     }
 
     @Test
     void doRestartRequestsTheStopBeforeTheBoundedWait() {
         String text = readGuardedSource(SERVER_SERVICE);
-        int stopIndex = text.indexOf("manager.stop(SERVER_ID)");
+        int stopIndex = text.indexOf(MANAGER_STOP_CALL);
         int waitIndex = text.indexOf("BoundedWait.until(");
-        assertTrue(stopIndex >= 0, "manager.stop(SERVER_ID) is not present in BbjServerService.java");
+        assertTrue(stopIndex >= 0, MANAGER_STOP_CALL + " is not present in BbjServerService.java");
         assertTrue(waitIndex >= 0, "BoundedWait.until( is not present in BbjServerService.java");
         assertTrue(stopIndex < waitIndex, "the stop must be requested before the bounded wait");
+    }
+
+    /**
+     * The stop must never be requested through the one-argument {@code stop(String)} convenience.
+     * That overload passes {@code StopOptions.DEFAULT}, which carries {@code willDisable=true} and
+     * therefore disables the server definition as well as stopping it — and the matching start only
+     * re-enables it as a side effect of restarting an already-registered wrapper. A restart that
+     * loses that race leaves the definition disabled, every later start silently filtered out, and
+     * no cure short of an IDE restart, because the enabled flag is a plain in-memory field.
+     */
+    @Test
+    void theStopIsRequestedWithoutDisablingTheServerDefinition() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        assertEquals(0, countOccurrences(text, "manager.stop(SERVER_ID)"),
+                "the one-argument stop also disables the server definition and must not be used");
+        assertEquals(1, countOccurrences(text, "setWillDisable(false)"),
+                "the stop must explicitly opt out of disabling the server definition, exactly once");
+    }
+
+    /**
+     * The start must be unconditional. A stop that throws (or a bounded wait that is interrupted)
+     * must not be able to end a restart with the server left down and no further trigger.
+     */
+    @Test
+    void theStartRunsEvenWhenTheStopFails() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int finallyIndex = text.indexOf("} finally {", text.indexOf(MANAGER_STOP_CALL));
+        int startIndex = text.indexOf("manager.start(SERVER_ID)");
+        assertTrue(finallyIndex >= 0, "the stop in doRestart must be wrapped in a try/finally");
+        assertTrue(startIndex > finallyIndex, "the start must sit inside that finally block");
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
@@ -36,6 +37,13 @@ import org.jetbrains.annotations.Nullable;
  * restart via a {@link RestartGate}.
  */
 public final class BbjServerService implements Disposable {
+
+    /**
+     * The platform logger, so the server's lifecycle is readable in {@code idea.log} on a user's
+     * machine. The lifecycle of this server is otherwise invisible from outside: a start that never
+     * happens looks exactly like a start that happened and failed.
+     */
+    private static final Logger LOG = Logger.getInstance(BbjServerService.class);
 
     private final Project project;
     private ServerStatus currentStatus = ServerStatus.stopped;
@@ -137,6 +145,9 @@ public final class BbjServerService implements Disposable {
 
         ExpectedStopGuard.StopKind stopKind =
             expectedStop.classify(status.name(), previousStatus.name(), System.currentTimeMillis());
+
+        LOG.info("BBj language server status: " + previousStatus + " -> " + status
+            + " (classified as " + stopKind + ")");
 
         if (stopKind == ExpectedStopGuard.StopKind.CRASH) {
             // This is a crash
@@ -246,6 +257,9 @@ public final class BbjServerService implements Disposable {
         if (!scheduled) {
             logToConsole("A language server restart is already in progress; ignoring the additional request",
                 ConsoleViewContentType.SYSTEM_OUTPUT);
+            LOG.info("A BBj language server restart is already in flight; dropped the additional request");
+        } else {
+            LOG.info("Scheduled a BBj language server restart in " + delayMs + " ms");
         }
     }
 
@@ -259,28 +273,54 @@ public final class BbjServerService implements Disposable {
      * reported status is the only completion signal available: after requesting the stop, this
      * method waits (bounded) for that status to report the server down before requesting the
      * start, so the two phases of one restart cannot overlap.
+     *
+     * <p>The stop is requested with {@code willDisable(false)} rather than through the
+     * one-argument {@code stop(String)} convenience. That convenience passes {@code
+     * StopOptions.DEFAULT}, whose {@code willDisable} flag is {@code true}: it does not merely stop
+     * the server, it <em>disables the server definition</em> — either by calling {@code
+     * stopAndDisable()} on a running wrapper, or, when no wrapper is currently registered, by
+     * calling {@code setEnabled(false)} on the definition outright. The subsequent start only ever
+     * re-enables the definition as a side effect of restarting an already-registered wrapper, so on
+     * any path where no wrapper is registered — or where anything throws between the stop and the
+     * start — the definition would stay disabled. A disabled definition is filtered out of every
+     * later start attempt, so no process is ever spawned again, nothing is logged, and the only
+     * cure is restarting the IDE, because the enabled flag is a plain in-memory field. A restart
+     * must never revoke the capability it is about to exercise, so this asks for a plain stop.
+     *
+     * <p>For the same reason the start is requested from a {@code finally}: a restart that cannot
+     * complete its stop must still attempt its start rather than leaving the server down with no
+     * further trigger.
      */
     private void doRestart() {
         clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
         ServerStatus statusBeforeStop = manager.getServerStatus(SERVER_ID);
+        LOG.info("Restarting the BBj language server; status before the stop: " + statusBeforeStop);
         if (statusBeforeStop == ServerStatus.started
                 || statusBeforeStop == ServerStatus.starting
                 || statusBeforeStop == ServerStatus.stopping) {
             expectedStop.arm(System.currentTimeMillis());
         }
-        manager.stop(SERVER_ID);
-        boolean stoppedInTime = BoundedWait.until(
-            () -> isServerObservedDown(manager.getServerStatus(SERVER_ID)),
-            STOP_WAIT_TIMEOUT_MS,
-            STOP_WAIT_POLL_MS,
-            System::currentTimeMillis,
-            BoundedWait.SLEEPING);
-        if (!stoppedInTime) {
-            logToConsole("Timed out waiting for the language server to stop; starting anyway",
-                ConsoleViewContentType.SYSTEM_OUTPUT);
+        try {
+            manager.stop(SERVER_ID, new LanguageServerManager.StopOptions().setWillDisable(false));
+            boolean stoppedInTime = BoundedWait.until(
+                () -> isServerObservedDown(manager.getServerStatus(SERVER_ID)),
+                STOP_WAIT_TIMEOUT_MS,
+                STOP_WAIT_POLL_MS,
+                System::currentTimeMillis,
+                BoundedWait.SLEEPING);
+            if (!stoppedInTime) {
+                logToConsole("Timed out waiting for the language server to stop; starting anyway",
+                    ConsoleViewContentType.SYSTEM_OUTPUT);
+                LOG.warn("Timed out after " + STOP_WAIT_TIMEOUT_MS + " ms waiting for the BBj language"
+                    + " server to stop; starting anyway. Last reported status: "
+                    + manager.getServerStatus(SERVER_ID));
+            }
+        } finally {
+            LOG.info("Starting the BBj language server; status before the start: "
+                + manager.getServerStatus(SERVER_ID));
+            manager.start(SERVER_ID);
         }
-        manager.start(SERVER_ID);
     }
 
     /**

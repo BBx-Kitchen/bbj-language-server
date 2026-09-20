@@ -154,4 +154,50 @@ class BbjSettingsFailureStateSourceGuardTest {
         assertEquals(0, countOccurrences(applyNodeLookupBody, "Checking Node.js version…"),
                 "the pending label must live only in the document listener, never in the apply sink");
     }
+
+    /**
+     * The recovery sentence must live in the below-minimum branch specifically, immediately after
+     * the version-report literal, not merely somewhere in the file (a sentence moved to another
+     * branch, to a tooltip, or dropped entirely all fail this).
+     */
+    @Test
+    void theBelowMinimumBranchNamesTheClearFieldRecoveryRightAfterTheVersionReport() {
+        String text = readGuardedSource(COMPONENT_SOURCE);
+        String body = bodyOf(text, "private void applyNodeLookup(BbjSettingsLookups.NodeLookup lookup) {");
+
+        int versionReportIndex = body.indexOf("Version too old (minimum: 22), detected: ");
+        assertTrue(versionReportIndex >= 0, "the version-report literal was not found");
+        int statementEndIndex = body.indexOf(";", versionReportIndex);
+        assertTrue(statementEndIndex >= 0, "the below-minimum setText statement has no terminator");
+        String statementSlice = body.substring(versionReportIndex, statementEndIndex);
+
+        assertEquals(1, countOccurrences(statementSlice, "clear this field to auto-detect or download Node.js 22+"),
+                "the recovery phrase must occur exactly once, right after the version report");
+    }
+
+    /**
+     * The Node.js path field carries an empty-text hint like its siblings, positioned between the
+     * field's own construction and the version label's construction so it is pinned to that field
+     * specifically rather than to whichever field happens to be edited next. No total
+     * {@code getEmptyText()} count is asserted here -- that would couple this guard to three
+     * unrelated sibling fields and go red on an unrelated addition.
+     */
+    @Test
+    void theNodeJsFieldCarriesAnEmptyTextHintBetweenItsConstructionAndTheVersionLabel() {
+        String text = readGuardedSource(COMPONENT_SOURCE);
+
+        int fieldConstructionIndex = text.indexOf("nodeJsField = new TextFieldWithBrowseButton();");
+        int versionLabelConstructionIndex = text.indexOf("nodeVersionLabel = new JBLabel(\" \");");
+        assertTrue(fieldConstructionIndex >= 0, "nodeJsField construction was not found");
+        assertTrue(versionLabelConstructionIndex >= 0, "nodeVersionLabel construction was not found");
+
+        String hintLiteral = "Leave empty to auto-detect or download Node.js 22+";
+        assertEquals(1, countOccurrences(text, hintLiteral),
+                "the empty-text hint must occur exactly once");
+
+        int hintIndex = text.indexOf(hintLiteral);
+        assertTrue(fieldConstructionIndex < hintIndex && hintIndex < versionLabelConstructionIndex,
+                "the empty-text hint must be positioned between the nodeJsField and nodeVersionLabel "
+                        + "constructions");
+    }
 }

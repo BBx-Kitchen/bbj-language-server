@@ -1,18 +1,20 @@
 package com.basis.bbj.intellij.ui;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.interop.InteropPollPolicy;
+import com.basis.bbj.intellij.interop.InteropProbeClient;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
+import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.Alarm;
+import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.messages.Topic;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 
 /**
  * Project-level service that monitors BBjServices java-interop availability via TCP health checks.
@@ -25,6 +27,15 @@ import java.net.Socket;
  * <p>
  * This is for UI STATUS DISPLAY only - the plugin does not manage the LS-to-java-interop connection.
  * The plugin passes config via initializationOptions and the server connects on its own.
+ * <p>
+ * The poll only re-arms while a BBj file is selected (#593): {@link #bbjFileSelected} and {@link
+ * #gateWasOpen} are written only from the EDT (the {@code FILE_EDITOR_MANAGER} selection callback
+ * and the constructor's startup {@code invokeLater} lambda) and read only from the pooled-thread
+ * poll callback ({@link #checkConnection()}), published through a {@code volatile} field --
+ * mirroring {@code BbjServerService.pendingRestartReason}'s EDT-write / background-read split.
+ * Every re-arm, pause, and immediate-check decision routes through {@link InteropPollPolicy#decide}
+ * and is applied in the single {@link #applyDecision} method, so no path can cancel the alarm
+ * without a matching path that can re-arm it.
  */
 public final class BbjJavaInteropService implements Disposable {
 
@@ -32,9 +43,10 @@ public final class BbjJavaInteropService implements Disposable {
      * Java-interop connection states.
      */
     public enum InteropStatus {
-        CONNECTED,    // TCP connection successful
+        CONNECTED,    // TCP connection successful and getTopLevelPackages confirmed the peer
         DISCONNECTED, // TCP connection failed (after grace period)
-        CHECKING      // Currently checking connection
+        CHECKING,     // Currently checking connection
+        WRONG_PEER    // Something is listening on the configured port, but it is not java-interop
     }
 
     /**
@@ -52,23 +64,34 @@ public final class BbjJavaInteropService implements Disposable {
 
     private final Project project;
     private final Alarm checkAlarm;
-    private InteropStatus currentStatus = InteropStatus.DISCONNECTED;
-    private long disconnectedSince = 0;  // timestamp for grace period
-    private boolean firstCheckCompleted = false; // suppress banner until first check runs
+    // volatile: written from checkConnection()'s pooled thread AND directly from the EDT
+    // server-status-listener callback (the stopped/stopping branch below); read from
+    // getCurrentStatus()/isFirstCheckCompleted(), whose callers are not guaranteed to be the EDT.
+    private volatile InteropStatus currentStatus = InteropStatus.DISCONNECTED;
+    private long disconnectedSince = 0;  // timestamp for grace period; pooled-thread-only, no cross-thread read
+    private volatile boolean firstCheckCompleted = false; // suppress banner until first check runs
     private static final int CHECK_INTERVAL_MS = 5000;  // check every 5s
     private static final long GRACE_PERIOD_MS = 2000;   // 2s grace before broadcasting disconnect
     private static final int TCP_TIMEOUT_MS = 1000;     // 1s TCP connect timeout
+    private static final int RESPONSE_TIMEOUT_MS = 2000; // 2s JSON-RPC response timeout; 1s+2s stays inside CHECK_INTERVAL_MS
+
+    /** Whether a BBj file is currently selected. EDT-write, pooled-thread-read (#593). */
+    private volatile boolean bbjFileSelected;
+    /** {@link #bbjFileSelected} as of the previous selection event. EDT-write, pooled-thread-read. */
+    private volatile boolean gateWasOpen;
 
     public BbjJavaInteropService(@NotNull Project project) {
         this.project = project;
         this.checkAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
 
+        MessageBusConnection connection = project.getMessageBus().connect(this);
+
         // Subscribe to language server status changes
-        project.getMessageBus().connect(this).subscribe(
+        connection.subscribe(
             BbjServerService.BbjServerStatusListener.TOPIC,
             status -> {
                 if (status == ServerStatus.started) {
-                    startChecking();
+                    handleServerStarted();
                 } else if (status == ServerStatus.stopped || status == ServerStatus.stopping) {
                     stopChecking();
                     updateStatus(InteropStatus.DISCONNECTED);
@@ -76,9 +99,26 @@ public final class BbjJavaInteropService implements Disposable {
             }
         );
 
+        // Follow editor-tab switches so the poll gate opens/closes immediately (#593)
+        connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
+            @Override
+            public void selectionChanged(@NotNull FileEditorManagerEvent event) {
+                refreshSelectionGate();
+            }
+        });
+
+        // Seed the gate once at startup, so a project opened with a BBj file already selected
+        // starts with an open gate rather than waiting for the first tab switch.
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            refreshSelectionGate();
+        });
+
         // If language server is already running, start health checks immediately
         if (BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started) {
-            startChecking();
+            handleServerStarted();
         }
     }
 
@@ -111,10 +151,74 @@ public final class BbjJavaInteropService implements Disposable {
     }
 
     /**
-     * Check TCP connection to java-interop on host:port.
-     * Implements grace period to avoid flashing UI on transient disconnects.
+     * The language server just reached {@code started}: ask the poll-gate policy whether to fire
+     * an immediate check (#593). The sole call site for the {@code SERVER_STARTED} trigger --
+     * both the status-change subscription and the constructor's already-running check route
+     * through here, so {@link InteropPollPolicy#decide} is called exactly once for this trigger.
+     * {@code serverStarted} is {@code true} by construction: this method only runs because the
+     * server just reached {@code started}.
+     */
+    private void handleServerStarted() {
+        applyDecision(InteropPollPolicy.decide(InteropPollPolicy.Trigger.SERVER_STARTED,
+                bbjFileSelected, gateWasOpen, true));
+    }
+
+    /**
+     * Reads the editor's current selection and updates the poll gate (#593). Must run on the EDT
+     * -- {@code FileEditorManager.getSelectedFiles()} is EDT-affine -- so the only two callers are
+     * the {@code FILE_EDITOR_MANAGER} selection callback and the constructor's startup {@code
+     * invokeLater} lambda; the pooled-thread poll path never calls this. The server-started flag
+     * is read live from {@code BbjServerService} rather than cached, since this method already
+     * runs only on the EDT.
+     */
+    private void refreshSelectionGate() {
+        boolean nowOpen = BbjFileVisibility.showsForSelection(
+                FileEditorManager.getInstance(project).getSelectedFiles());
+        gateWasOpen = bbjFileSelected;
+        bbjFileSelected = nowOpen;
+        boolean serverStarted =
+                BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started;
+        applyDecision(InteropPollPolicy.decide(InteropPollPolicy.Trigger.SELECTION_CHANGED,
+                bbjFileSelected, gateWasOpen, serverStarted));
+    }
+
+    /**
+     * The single place that acts on an {@link InteropPollPolicy.Decision}. CHECK_NOW fires an
+     * immediate check and resumes the cadence (since {@link #checkConnection()} ends by re-arming);
+     * REARM schedules the next check at the normal interval; PAUSE cancels pending work and
+     * changes no state -- it must not touch {@link #currentStatus} or broadcast, since pausing is
+     * not a status change; NO_CHANGE does nothing.
+     */
+    private void applyDecision(InteropPollPolicy.Decision decision) {
+        switch (decision) {
+            case CHECK_NOW -> {
+                checkAlarm.cancelAllRequests();
+                checkAlarm.addRequest(this::checkConnection, 0);
+            }
+            case REARM -> scheduleNextCheck();
+            case PAUSE -> checkAlarm.cancelAllRequests();
+            case NO_CHANGE -> {
+                // Leave the running cadence exactly as it is.
+            }
+        }
+    }
+
+    /**
+     * Confirm the java-interop peer at host:port via a real getTopLevelPackages JSON-RPC round
+     * trip (#587) -- a bare TCP handshake alone no longer earns CONNECTED. Implements grace
+     * period to avoid flashing UI on transient disconnects.
      */
     private void checkConnection() {
+        if (project.isDisposed()) {
+            return;
+        }
+
+        // Captured before CHECKING is assigned below -- the grace-period branches below need the
+        // status as of the *previous* tick, and currentStatus itself becomes CHECKING for the
+        // duration of this probe.
+        InteropStatus previousStatus = currentStatus;
+        updateStatus(InteropStatus.CHECKING);
+
         // Read host and port from settings at check time (not cached - user may change them);
         // reading the effective-port accessor on each tick is what lets a BBj.properties change
         // show up on the next tick without a file watcher.
@@ -125,40 +229,60 @@ public final class BbjJavaInteropService implements Disposable {
             host = "localhost";
         }
 
-        InteropStatus newStatus;
-        try {
-            // Attempt TCP connection with timeout
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(host, port), TCP_TIMEOUT_MS);
-                // Connection successful
-                newStatus = InteropStatus.CONNECTED;
-                disconnectedSince = 0;  // Clear grace period
-            }
-        } catch (IOException e) {
-            // Connection failed
-            long now = System.currentTimeMillis();
+        InteropProbeClient.Verdict verdict =
+                InteropProbeClient.probe(host, port, TCP_TIMEOUT_MS, RESPONSE_TIMEOUT_MS);
 
-            if (disconnectedSince == 0) {
-                // First failure - enter grace period
-                disconnectedSince = now;
-                newStatus = currentStatus; // Keep previous status during grace
-            } else if (now - disconnectedSince > GRACE_PERIOD_MS) {
-                // Grace period expired - mark as disconnected
-                newStatus = InteropStatus.DISCONNECTED;
-            } else {
-                // Still in grace period - keep previous status
-                newStatus = currentStatus;
+        InteropStatus newStatus = switch (verdict) {
+            case CONFIRMED -> {
+                // Confirmed peer
+                disconnectedSince = 0;  // Clear grace period
+                yield InteropStatus.CONNECTED;
             }
-        }
+            case WRONG_PEER -> {
+                // The peer answered the socket but not the protocol -- not a transient connect
+                // failure, so the grace period does not apply to it.
+                disconnectedSince = 0;
+                yield InteropStatus.WRONG_PEER;
+            }
+            case UNREACHABLE -> {
+                // Connection failed
+                long now = System.currentTimeMillis();
+
+                if (disconnectedSince == 0) {
+                    // First failure - enter grace period
+                    disconnectedSince = now;
+                    yield previousStatus; // Keep previous status during grace
+                } else if (now - disconnectedSince > GRACE_PERIOD_MS) {
+                    // Grace period expired - mark as disconnected
+                    yield InteropStatus.DISCONNECTED;
+                } else {
+                    // Still in grace period - keep previous status
+                    yield previousStatus;
+                }
+            }
+        };
 
         // Mark first check as completed
         firstCheckCompleted = true;
 
-        // Update status and broadcast if changed
-        updateStatus(newStatus);
+        // Re-read the live server status instead of assuming "true by construction": this probe
+        // can take up to TCP_TIMEOUT_MS + RESPONSE_TIMEOUT_MS (1s + 2s) to return, and the language
+        // server can stop while it is in flight. stopChecking() (checkAlarm.cancelAllRequests())
+        // only cancels *pending* Alarm requests -- it cannot abort a tick that has already started
+        // running -- so a straggling probe must neither resurrect a stale status over the
+        // DISCONNECTED the stop handler already wrote, nor re-arm a poll loop the stop handler
+        // already told to stop.
+        boolean serverStarted =
+                BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started;
+        if (serverStarted) {
+            // Update status and broadcast if changed
+            updateStatus(newStatus);
+        }
 
-        // Schedule next check
-        scheduleNextCheck();
+        // Re-arm, pause, or leave the cadence alone depending on the poll gate (#593) and the
+        // freshly re-read server status.
+        applyDecision(InteropPollPolicy.decide(InteropPollPolicy.Trigger.TICK_COMPLETED,
+                bbjFileSelected, gateWasOpen, serverStarted));
     }
 
     /**
@@ -176,6 +300,10 @@ public final class BbjJavaInteropService implements Disposable {
      */
     private void broadcastStatus(@NotNull InteropStatus status) {
         ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+
             project.getMessageBus()
                 .syncPublisher(BbjJavaInteropStatusListener.TOPIC)
                 .statusChanged(status);

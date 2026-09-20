@@ -50,10 +50,10 @@ public final class BbjNodeDetector {
     }
 
     /**
-     * Checks if the given version string represents Node.js >= 18.
+     * Checks if the given version string represents Node.js >= 22.
      *
      * @param version version string starting with "v" (e.g., "v22.22.0")
-     * @return true if major version is at least 18
+     * @return true if major version is at least 22
      */
     public static boolean meetsMinimumVersion(@Nullable String version) {
         if (version == null || !version.startsWith("v")) {
@@ -62,7 +62,7 @@ public final class BbjNodeDetector {
         try {
             String[] parts = version.substring(1).split("\\.");
             int major = Integer.parseInt(parts[0]);
-            return major >= 18;
+            return major >= 22;
         } catch (NumberFormatException e) {
             return false;
         }

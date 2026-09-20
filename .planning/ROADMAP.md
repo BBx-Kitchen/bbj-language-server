@@ -276,8 +276,8 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
 
 - [x] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each (completed 2026-09-18)
 - [x] **Phase 94: EM Login & Run Action Consolidation** - EM login cleans up after a failed launch and enables like its siblings; the BUI/DWC run flow, its token validation and its tool-script paths each live in exactly one place (completed 2026-09-19)
-- [ ] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base
-- [ ] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows
+- [x] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base (completed 2026-09-19)
+- [x] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows (completed 2026-09-20)
 - [ ] **Phase 97: Release 0.16.0 & Milestone Close** - 0.16.0 published to both marketplaces behind one verification gate, with GitHub milestone #7 closed
 
 ## Phase Details
@@ -362,15 +362,33 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
   1. Closing a project while a java-interop health check is in flight produces no exception — the in-flight check never reaches `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies.
-  2. With no BBj file open, or with the IDE window in the background, the java-interop poll stops re-arming instead of probing every 5 seconds for the life of the project, and it resumes when a BBj file is focused again.
+  2. With no BBj file selected, the java-interop poll stops re-arming instead of probing every 5 seconds for the life of the project, and it resumes when a BBj file is selected again. (Window-focus gating deliberately deferred — D-06; accepted cost: an IDE left open on a BBj file overnight still polls.)
   3. The status bar reads "Java: Connected" only when the listening peer is confirmed to be java-interop; a foreign process squatting on the configured port does not produce a Connected status.
   4. The UI placeholder, the persisted default and the "changed from default" check for the java-interop port all read one named constant, so they cannot drift apart.
   5. Both status-bar widgets and their factories share one base, and both still show, hide, update and tooltip exactly as they did — including hiding for `BBx Config` and non-BBj tabs on the click itself (v4.3 RESP-09).
 
-**Plans**: TBD
+**Plans**: 4/4 plans executed
+
+Plans:
+**Wave 1**
+
+- [x] 95-01-PLAN.md — IOP-03 + IOP-01: an LSP4J peer-confirmation probe wired end-to-end, with both disposal guards (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 95-02-PLAN.md — IOP-02: selection-gated poll, silent pause, immediate check on gate-open, and a live CHECKING state (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 95-03-PLAN.md — IOP-04: one named port constant, pinned by a single-occurrence source guard (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 95-04-PLAN.md — IOP-05: one widget base and one factory base, guards re-pointed, plugin built for UAT (wave 4)
+
 **UI hint**: yes
 
-*Ordering note:* IOP-05's widget base is extracted after IOP-02 and IOP-03 change what the widgets poll and report, so the base is taken from the final widget shape rather than refactored twice. IOP-03's peer confirmation must not reintroduce a blocking probe on the EDT (v4.2 EDT-01 convention).
+*Ordering note:* IOP-05's widget base is extracted after IOP-02 and IOP-03 change what the widgets poll and report, so the base is taken from the final widget shape rather than refactored twice. IOP-03's peer confirmation must not reintroduce a blocking probe on the EDT (v4.2 EDT-01 convention). IOP-01 rides in Wave 1 rather than a later one because IOP-03 widens the in-flight window from a ~1s connect to a ~3s connect-plus-request, and both changes edit the same method. Waves are sequential rather than parallel: every plan's gate runs the same Gradle module, and `EffectiveInteropPortSourceGuardTest` (edited in Wave 3) asserts against `BbjJavaInteropService.java` (rewritten in Waves 1-2), so concurrent execution would race that guard against an in-progress rewrite.
 
 ### Phase 96: Platform Integration & Node.js Diagnosis
 
@@ -385,7 +403,29 @@ Plans:
   4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
   5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
 
-**Plans**: TBD
+**Plans**: 8/8 plans executed (96-08 closed UAT gap G-96-2)
+
+Plans:
+**Wave 1**
+
+- [x] 96-01-PLAN.md — PLAT-02: the inert Color Scheme page and its registration are deleted, and the docs stop pointing at them (wave 1)
+- [x] 96-02-PLAN.md — PLAT-01: TextMate bundle reused from a stable version-keyed directory, with a gated sweep of abandoned ones (wave 1)
+- [x] 96-03-PLAN.md — PLAT-06: exact Windows zip-entry match and guarded temp cleanup, so the attestation reports real causes (wave 1)
+- [x] 96-04-PLAN.md — PLAT-03: one notification base under all four providers; the crash banner's extension guard replaced (wave 1)
+- [x] 96-05-PLAN.md — PLAT-04/05: version gate and cache-unavailable reason inside the resolver, plus the NodePresentation seam (wave 1)
+
+**Wave 2** *(blocked on 96-04 and 96-05)*
+
+- [x] 96-06-PLAN.md — PLAT-04/05: the banner routes through the unified engine; the superseded availability seam is retired (wave 2)
+
+**Wave 3** *(blocked on every other plan — attested against the phase-final build)*
+
+- [x] 96-07-PLAN.md — PLAT-06: both distributables built from the final tree, Node.js auto-install attested by hand on real Windows (wave 3)
+
+**Wave 4** *(gap closure — blocked on 96-05, 96-06 and 96-07)*
+
+- [x] 96-08-PLAN.md — G-96-2: the start-failure notification takes its actions from the reason-driven seam, and the settings dialog names the clear-the-field recovery (wave 4)
+
 **UI hint**: yes
 
 *Ordering note:* PLAT-03's base lands before PLAT-04 changes `BbjMissingNodeNotificationProvider`, so the banner change is written into the shared base once. PLAT-06 is attested last, against a build that already carries PLAT-04 and PLAT-05 — attesting the old code would force a re-attestation. Criterion 5 is a human attestation, not a test: no Linux-hosted run can close it, which is exactly why it has been carried since v4.2. It does not gate REL-02 (it is not one of milestone #7's 21 issues), but leaving it open would carry the major-severity gap into a third milestone.
@@ -402,7 +442,46 @@ Plans:
   3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
   4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
 
-**Plans**: TBD
+**Plans**: 5/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
+
+Plans:
+**Wave 1**
+
+- [x] 97-01-PLAN.md — folded todo: the server status feed moves to the client-features hook so a lost connection reaches crash detection; allowlist entry, coupling canary, source guards (wave 1)
+- [x] 97-03-PLAN.md — folded todos: issue447 capability test accepts either backend shape, gradle-wrapper-hygiene close-out, time-boxed linking-interop investigation (wave 1)
+
+**Wave 2** *(blocked on 97-01)*
+
+- [x] 97-02-PLAN.md — folded todo: the status log and the crash classifier receive the real from-state — pinning test, maintainer decision, then the fix (wave 2)
+- [x] 97-04-PLAN.md — folded todos: no-op `bbj/bbjcplAvailability` handler; determinate progress before the first Node.js download fraction (wave 2)
+
+**Wave 3** *(blocked on every code-wave plan)*
+
+- [x] 97-05-PLAN.md — REL-01: both suites green on the final tree, register check, both distributables built and hashed, crash-detection hand UAT (wave 3)
+
+**Wave 4** *(blocked on 97-05)*
+
+- [ ] 97-06-PLAN.md — REL-01: branch synced with `origin/main` without a version regression, one landing PR, maintainer review and squash merge (wave 4)
+
+**Wave 5** *(blocked on 97-06)*
+
+- [ ] 97-07-PLAN.md — REL-01: reconciliation runbook, green Preview run, maintainer preview hand check in both IDEs (wave 5)
+
+**Wave 6** *(blocked on 97-07)*
+
+- [ ] 97-08-PLAN.md — REL-01: precondition report, maintainer dispatches Manual Release 0.16.0, run watched and release evidence recorded (wave 6)
+
+**Wave 7** *(blocked on 97-08)*
+
+- [ ] 97-09-PLAN.md — REL-01: curated release notes drafted, approved, applied (wave 7)
+
+**Wave 8** *(blocked on 97-09)*
+
+- [ ] 97-10-PLAN.md — REL-01: pre-filled smoke checklist, maintainer smoke of the released artifacts, verdict tied to their hashes (wave 8)
+
+**Wave 9** *(blocked on 97-10)*
+
+- [ ] 97-11-PLAN.md — REL-02: 21 closing comments drafted and approved, issues closed one at a time, milestone #7 closed, folded todos moved to completed (wave 9)
 
 *Note:* This is the first real exercise of the verify-before-publish gate implemented by quick task `260917-9ei` (SEED-002); its own closeout records that "the first real Manual Release is the true test", and that the two publish jobs still run in parallel, so one marketplace succeeding while the other fails needs manual reconciliation. A tagged release is also the maintainer's trigger for the v4.1 advisory publication decision (PROC-03) — maintainer-owned, not a phase deliverable. Reconciling the half-released 0.15.0 is explicitly out of scope.
 

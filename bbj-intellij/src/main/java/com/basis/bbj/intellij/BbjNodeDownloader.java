@@ -56,6 +56,22 @@ public final class BbjNodeDownloader {
     }
 
     /**
+     * Whether the plugin's Node.js cache directory itself can be created/accessed. A null
+     * {@link #getCachedNodePath()} is ambiguous between "nothing downloaded yet" and "the
+     * directory itself is unreachable" -- only this accessor's caller can tell those two apart,
+     * since {@link #getCachedNodePath()} swallows the distinguishing {@link IOException} to keep
+     * its own contract unchanged for its two existing production callers.
+     */
+    public static boolean isNodeDataDirectoryAccessible() {
+        try {
+            getNodeDataDirectory();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
      * Downloads Node.js asynchronously in the background.
      * Shows progress notification and calls onComplete callback when finished.
      *
@@ -79,6 +95,10 @@ public final class BbjNodeDownloader {
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
                     NodeInstallPipeline pipeline = productionPipeline();
+                    // The indicator must leave indeterminate mode before a fraction is meaningful --
+                    // the platform logs an exception when a fraction is reported while it is still
+                    // indeterminate.
+                    indicator.setIndeterminate(false);
                     pipeline.install(
                             (text, fraction) -> {
                                 indicator.setText(text);

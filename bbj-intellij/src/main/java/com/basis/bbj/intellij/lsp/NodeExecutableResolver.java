@@ -5,6 +5,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Decides which of three candidate Node.js executable values, if any, should be used
@@ -32,7 +34,19 @@ public final class NodeExecutableResolver {
         NOT_ABSOLUTE,
         MISSING,
         NOT_A_FILE,
-        NOT_EXECUTABLE
+        NOT_EXECUTABLE,
+        /** {@code versionOf} returned a version and it failed {@code meetsMinimum}. */
+        BELOW_MINIMUM_VERSION,
+        /**
+         * {@code versionOf} returned {@code null} -- the version could not be determined at all,
+         * which is distinct from determining a version and finding it too old. This must never be
+         * treated as permissive: an unverifiable Node still does not start the language server,
+         * it is simply labelled honestly and left retryable rather than being folded into {@link
+         * #BELOW_MINIMUM_VERSION}, which would misreport an unprobeable binary as a known-too-old
+         * one.
+         */
+        VERSION_UNKNOWN,
+        CACHE_UNAVAILABLE
     }
 
     /**
@@ -147,24 +161,50 @@ public final class NodeExecutableResolver {
     }
 
     /**
-     * The whole decision: the configured, detected and cached candidates are tried in that
-     * order. Each non-blank candidate runs the same five-step validation core, and the first
-     * one to pass is returned; a rejected candidate does not stop resolution, it falls through
-     * to the next branch and its rejection is retained.
+     * The whole decision, performing no minimum-version gating: the configured, detected and
+     * cached candidates are tried in that order against the five-step structural validation core
+     * (parses, absolute, exists, regular file, executable) only. Documented delegator to {@link
+     * #resolve(String, String, String, boolean, PathProbe, Function, Predicate)} with permissive
+     * defaults -- the cache directory treated as accessible, no version resolved, and every
+     * version accepted -- kept so every pre-existing caller of this four-argument signature keeps
+     * its current, no-version-gating behavior unchanged.
      */
     public static Resolution resolve(String configuredPath, String detectedPath, String cachedPath,
                                       PathProbe probe) {
+        return resolve(configuredPath, detectedPath, cachedPath, true, probe,
+                path -> null, version -> true);
+    }
+
+    /**
+     * The whole decision: the configured, detected and cached candidates are tried in that
+     * order. Each non-blank candidate runs the same six-step validation core, and the first one
+     * to pass is returned; a rejected candidate does not stop resolution, it falls through to the
+     * next branch and its rejection is retained. {@code versionOf} and {@code meetsMinimum} back
+     * the sixth (version) step; {@code cacheDirectoryAccessible} distinguishes "the cache
+     * directory could not be checked" from "nothing is cached there" for the {@code CACHED}
+     * branch.
+     */
+    public static Resolution resolve(String configuredPath, String detectedPath, String cachedPath,
+                                      boolean cacheDirectoryAccessible, PathProbe probe,
+                                      Function<String, String> versionOf, Predicate<String> meetsMinimum) {
         List<Rejected> rejections = new ArrayList<>();
 
-        String accepted = validate(Source.SETTINGS, configuredPath, probe, rejections);
+        String accepted = validate(Source.SETTINGS, configuredPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.SETTINGS, rejections);
         }
-        accepted = validate(Source.DETECTED, detectedPath, probe, rejections);
+        accepted = validate(Source.DETECTED, detectedPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.DETECTED, rejections);
         }
-        accepted = validate(Source.CACHED, cachedPath, probe, rejections);
+        if (!cacheDirectoryAccessible) {
+            // The cache directory itself could not be checked -- record this directly rather
+            // than letting a null cachedPath slip through validate()'s blank-candidate skip,
+            // which would silently record nothing and read identically to "nothing cached".
+            rejections.add(new Rejected(Source.CACHED, Reason.CACHE_UNAVAILABLE, ""));
+            return Resolution.unresolved(rejections);
+        }
+        accepted = validate(Source.CACHED, cachedPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.CACHED, rejections);
         }
@@ -172,13 +212,23 @@ public final class NodeExecutableResolver {
     }
 
     /**
-     * Runs the five-step validation core against one candidate: it parses as a path, it is
-     * absolute, it exists, it is a regular file, it is executable. A blank candidate is absent
-     * and is skipped without recording anything; the first unsatisfied step on a non-blank
-     * candidate is recorded as a {@link Rejected}. Returns the candidate unchanged when every
-     * step passes, else {@code null}.
+     * Runs the six-step validation core against one candidate: it parses as a path, it is
+     * absolute, it exists, it is a regular file, it is executable, and it meets the minimum
+     * supported Node.js version. A blank candidate is absent and is skipped without recording
+     * anything; the first unsatisfied step on a non-blank candidate is recorded as a
+     * {@link Rejected}. Returns the candidate unchanged when every step passes, else {@code null}.
+     *
+     * <p>{@code meetsMinimum} is still the sole gate on whether the version step rejects at all --
+     * the four-argument overload's permissive {@code version -> true} must keep accepting a
+     * {@code null} version exactly as before. Only when {@code meetsMinimum} actually rejects does
+     * this method distinguish why: {@code versionOf} returning {@code null} means the version could
+     * not be determined at all, recorded as {@link Reason#VERSION_UNKNOWN}; a non-null version that
+     * still fails {@code meetsMinimum} is recorded as {@link Reason#BELOW_MINIMUM_VERSION}. Both are
+     * still rejections -- an unverifiable Node is fail-closed exactly like a too-old one, it is
+     * simply labelled for what it actually is.
      */
     private static String validate(Source source, String candidate, PathProbe probe,
+                                     Function<String, String> versionOf, Predicate<String> meetsMinimum,
                                      List<Rejected> rejections) {
         if (candidate == null || candidate.isBlank()) {
             return null;
@@ -206,6 +256,12 @@ public final class NodeExecutableResolver {
             rejections.add(new Rejected(source, Reason.NOT_EXECUTABLE, candidate));
             return null;
         }
+        String version = versionOf.apply(candidate);
+        if (!meetsMinimum.test(version)) {
+            Reason reason = version == null ? Reason.VERSION_UNKNOWN : Reason.BELOW_MINIMUM_VERSION;
+            rejections.add(new Rejected(source, reason, candidate));
+            return null;
+        }
         return candidate;
     }
 
@@ -231,6 +287,10 @@ public final class NodeExecutableResolver {
             case MISSING -> "does not exist";
             case NOT_A_FILE -> "is not a regular file";
             case NOT_EXECUTABLE -> "is not executable";
+            case BELOW_MINIMUM_VERSION -> "is older than the minimum supported Node.js version";
+            case VERSION_UNKNOWN -> "has a version that could not be determined";
+            case CACHE_UNAVAILABLE ->
+                    "could not be checked because the plugin's Node.js cache directory could not be accessed";
         };
     }
 

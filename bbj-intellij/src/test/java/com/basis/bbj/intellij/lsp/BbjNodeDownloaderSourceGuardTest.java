@@ -108,6 +108,21 @@ class BbjNodeDownloaderSourceGuardTest {
     }
 
     @Test
+    void theIndicatorLeavesIndeterminateModeBeforeTheFirstFractionIsReported() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "setIndeterminate(false)"),
+                "the indicator must leave indeterminate mode exactly once");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "setFraction("),
+                "the progress lambda must still report a fraction exactly once");
+        int setIndeterminateIndex = downloadNodeAsync.indexOf("setIndeterminate(false)");
+        int setFractionIndex = downloadNodeAsync.indexOf("setFraction(");
+        assertTrue(setIndeterminateIndex >= 0 && setIndeterminateIndex < setFractionIndex,
+                "the indicator must leave indeterminate mode before the first fraction is reported -- "
+                        + "the platform logs an exception for a fraction reported on an indeterminate indicator");
+    }
+
+    @Test
     void theGuardIsReleasedInTheFinallyAfterTheFailurePath() {
         String downloadNodeAsync = bodyOf(readGuardedSource(),
                 "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");

@@ -2,138 +2,89 @@ package com.basis.bbj.intellij.ui;
 
 import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.config.ConfigReloadPresentation;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
-import com.intellij.openapi.fileEditor.FileEditorManagerListener;
-import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.CustomStatusBarWidget;
-import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.util.messages.MessageBusConnection;
 import com.redhat.devtools.lsp4ij.ServerStatus;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 /**
  * Status bar widget displaying BBj language server state.
  * Shows colored icon + text label, opens popup menu on click.
  */
-public final class BbjStatusBarWidget implements CustomStatusBarWidget {
+public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatus> {
 
     private static final String ID = "BbjLanguageServerStatus";
-    private final Project project;
-    private final JPanel panel;
-    private final JBLabel iconLabel;
-    private final JBLabel textLabel;
-    private MessageBusConnection messageBusConnection;
 
     public BbjStatusBarWidget(@NotNull Project project) {
-        this.project = project;
-        this.iconLabel = new JBLabel();
-        this.textLabel = new JBLabel();
-
-        // Create panel with horizontal layout
-        this.panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        this.panel.setOpaque(false);
-        this.panel.add(iconLabel);
-        this.panel.add(textLabel);
-
-        // Add mouse listener to open popup menu
-        this.panel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                showPopupMenu(e);
-            }
-        });
-
-        // Subscribe to server status changes
-        messageBusConnection = project.getMessageBus().connect();
-        messageBusConnection.subscribe(
-            BbjServerService.BbjServerStatusListener.TOPIC,
-            this::updateStatus
-        );
-
-        // Follow editor-tab switches so the widget shows/hides immediately, not only on the
-        // next server-status change (#610)
-        messageBusConnection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
-            @Override
-            public void selectionChanged(@NotNull FileEditorManagerEvent event) {
-                updateVisibility();
-            }
-        });
-
-        // Initialize with current status
-        updateStatus(BbjServerService.getInstance(project).getCurrentStatus());
+        super(project);
     }
 
-    private void updateStatus(@NotNull ServerStatus status) {
-        ApplicationManager.getApplication().invokeLater(() -> {
-            Icon icon;
-            String text;
+    @Override
+    protected String widgetId() {
+        return ID;
+    }
 
-            switch (status) {
-                case started:
-                    icon = BbjIcons.STATUS_READY;
-                    text = "BBj: Ready";
-                    break;
-                case starting:
-                    icon = BbjIcons.STATUS_STARTING;
-                    text = "BBj: Starting";
-                    break;
-                case stopping:
-                    icon = BbjIcons.STATUS_STARTING;
-                    text = "BBj: Stopping";
-                    break;
-                case stopped:
-                    icon = BbjIcons.STATUS_ERROR;
-                    text = "BBj: Stopped";
-                    break;
-                default:
-                    icon = BbjIcons.STATUS_ERROR;
-                    text = "BBj: Error";
-                    break;
-            }
+    @Override
+    protected void subscribeToStatusTopic(@NotNull MessageBusConnection messageBusConnection) {
+        messageBusConnection.subscribe(BbjServerService.BbjServerStatusListener.TOPIC, this::updateStatus);
+    }
 
-            iconLabel.setIcon(icon);
-            textLabel.setText(text);
-            panel.setToolTipText(ConfigReloadPresentation.widgetTooltip(
+    @Override
+    protected ServerStatus currentStatus() {
+        return BbjServerService.getInstance(project).getCurrentStatus();
+    }
+
+    @Override
+    protected Icon iconFor(ServerStatus status) {
+        switch (status) {
+            case started:
+                return BbjIcons.STATUS_READY;
+            case starting:
+                return BbjIcons.STATUS_STARTING;
+            case stopping:
+                return BbjIcons.STATUS_STARTING;
+            case stopped:
+                return BbjIcons.STATUS_ERROR;
+            default:
+                return BbjIcons.STATUS_ERROR;
+        }
+    }
+
+    @Override
+    protected String textFor(ServerStatus status) {
+        switch (status) {
+            case started:
+                return "BBj: Ready";
+            case starting:
+                return "BBj: Starting";
+            case stopping:
+                return "BBj: Stopping";
+            case stopped:
+                return "BBj: Stopped";
+            default:
+                return "BBj: Error";
+        }
+    }
+
+    @Override
+    protected String tooltipFor(ServerStatus status, String text) {
+        return ConfigReloadPresentation.widgetTooltip(
                 text, ConfigReloadPresentation.reasonLabel(
-                    BbjServerService.getInstance(project).getRestartReason())));
-
-            // Update visibility based on whether BBj file is open
-            updateVisibility();
-        });
+                        BbjServerService.getInstance(project).getRestartReason()));
     }
 
-    private void updateVisibility() {
-        panel.setVisible(BbjFileVisibility.showsForSelection(FileEditorManager.getInstance(project).getSelectedFiles()));
-    }
-
-    private void showPopupMenu(MouseEvent e) {
-        JPopupMenu popup = new JPopupMenu();
-
+    @Override
+    protected void addPopupItems(JPopupMenu popup) {
         // Restart Server action
         JMenuItem restartItem = new JMenuItem("Restart Server");
-        restartItem.addActionListener(event -> {
-            BbjServerService.getInstance(project).requestRestart(0);
-        });
+        restartItem.addActionListener(event -> BbjServerService.getInstance(project).requestRestart(0));
         popup.add(restartItem);
 
         // Open Settings action
-        JMenuItem settingsItem = new JMenuItem("Open Settings");
-        settingsItem.addActionListener(event -> {
-            ShowSettingsUtil.getInstance().showSettingsDialog(project, "BBj");
-        });
-        popup.add(settingsItem);
+        addOpenSettingsItem(popup);
 
         // Show Server Log action
         JMenuItem logItem = new JMenuItem("Show Server Log");
@@ -144,29 +95,5 @@ public final class BbjStatusBarWidget implements CustomStatusBarWidget {
             }
         });
         popup.add(logItem);
-
-        popup.show(panel, e.getX(), e.getY());
-    }
-
-    @Override
-    public @NonNls @NotNull String ID() {
-        return ID;
-    }
-
-    @Override
-    public @NotNull JComponent getComponent() {
-        return panel;
-    }
-
-    @Override
-    public void install(@NotNull StatusBar statusBar) {
-        // Widget installed
-    }
-
-    @Override
-    public void dispose() {
-        if (messageBusConnection != null) {
-            messageBusConnection.disconnect();
-        }
     }
 }

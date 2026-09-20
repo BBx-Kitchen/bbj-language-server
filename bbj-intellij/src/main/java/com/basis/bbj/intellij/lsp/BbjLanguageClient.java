@@ -119,4 +119,17 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
         service.requestRestart(BbjServerService.RESTART_DEBOUNCE_MS);
     }
+
+    /**
+     * Receives the pushed BBjCPL-availability notification (see
+     * {@code bbj-vscode/src/language/bbj-notifications.ts}), sent once per session. LSP4IJ hands
+     * this client instance to LSP4J's launcher as the local service, and LSP4J reflects over the
+     * concrete class to find supported methods, so declaring the method directly on this class is
+     * what makes the notification reachable -- no extra registration exists or is needed. IntelliJ
+     * deliberately surfaces nothing for this notification: the method exists only so the vendor
+     * stops logging an unsupported-notification warning on every server start.
+     */
+    @JsonNotification("bbj/bbjcplAvailability")
+    public void bbjcplAvailability(Object result) {
+    }
 }

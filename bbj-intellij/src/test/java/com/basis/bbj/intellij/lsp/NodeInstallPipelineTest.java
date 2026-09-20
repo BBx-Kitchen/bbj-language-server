@@ -44,29 +44,32 @@ class NodeInstallPipelineTest {
 
     private static final Path WINDOWS_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win.zip");
 
-    private static final String WINDOWS_ARCHIVE_NAME = "node-v20.18.1-win-x64.zip";
+    private static final String WINDOWS_ARCHIVE_NAME = "node-v22.23.2-win-x64.zip";
     private static final String WINDOWS_DOWNLOAD_URL =
-            "https://nodejs.org/dist/v20.18.1/node-v20.18.1-win-x64.zip";
+            "https://nodejs.org/dist/v22.23.2/node-v22.23.2-win-x64.zip";
     private static final String WINDOWS_MARKER_BYTES_TEXT = "fake-node-binary-windows\n";
 
     private static final Path UNIX_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix.tar.gz");
     private static final Path WINDOWS_NO_BINARY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win-no-binary.zip");
     private static final Path UNIX_NO_BINARY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix-no-binary.tar.gz");
+    private static final Path WINDOWS_DECOY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win-decoy.zip");
 
-    private static final String UNIX_ARCHIVE_NAME = "node-v20.18.1-linux-x64.tar.gz";
+    private static final String UNIX_ARCHIVE_NAME = "node-v22.23.2-linux-x64.tar.gz";
     private static final String UNIX_MARKER_BYTES_TEXT = "fake-node-binary-unix\n";
 
     // Pinned literals, transcribed from the fixtures README rather than computed from the same
     // bytes the verifier reads — computing a pin from the archive it verifies would make the
     // verify step vacuous, since a corrupted fixture and its "pin" would always agree.
     private static final String WINDOWS_FIXTURE_DIGEST =
-            "3debcb508f3ec25a01dba16ab0dde84217a48c74c621f8a69d6d1e3debc76df7";
+            "7886ad2638168e4b4a2823b4d8149090ef421a6a2a8da7e7a75cb42a9dc1a454";
     private static final String UNIX_FIXTURE_DIGEST =
-            "4917712360d519aeca16db0811b9ed99b076992d91b1d978d3beac8dd2d0951d";
+            "b907928f77ce903538200180fb376929fd2fa35b98ddb3bd17ca247c74e05f1e";
     private static final String WINDOWS_NO_BINARY_FIXTURE_DIGEST =
-            "b550d1ac01b4d700749cd110df57578ea9176d80d1e4c36a62e29b313c7f398c";
+            "5350aad3b4373234603e54e8de4a5de4231ff9d2729dd0f8408a125e840027c7";
     private static final String UNIX_NO_BINARY_FIXTURE_DIGEST =
-            "b9c180afeb6ca2746f6ddb17681649b21e3b35680733c739dddc9705e3a1c75b";
+            "8eaf190d87eac28ae2253ce1af15ea560e50a3b504e767521398135a8d15dc76";
+    private static final String WINDOWS_DECOY_FIXTURE_DIGEST =
+            "f7f1bd8402a99c7631bbfe3c7ca892a3c8929d02f986068ad430525b9b102663";
 
     /** Copies a fixture archive into the requested target path, recording every call it saw. */
     private static final class FixtureCopyingFetcher implements NodeInstallPipeline.Fetcher {
@@ -204,6 +207,28 @@ class NodeInstallPipelineTest {
                 "the digest sidecar must exist beside the installed executable");
         assertEquals(1, fetcher.invocations(), "the fetcher must be invoked exactly once");
         assertEquals(List.of(WINDOWS_DOWNLOAD_URL), fetcher.urls());
+    }
+
+    @Test
+    void aWrongPathDecoyEntryAheadOfTheRealBinaryIsSkippedAndTheRealBinaryIsInstalled(
+            @TempDir Path dataDirectory, @TempDir Path temporaryRoot) throws IOException {
+        String expectedDigest = WINDOWS_DECOY_FIXTURE_DIGEST;
+        FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_DECOY_FIXTURE);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
+        FakePathProbe probe = new FakePathProbe();
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot, fetcher, digests, probe,
+                new NodeInstallIntegrity());
+
+        Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+
+        assertEquals(dataDirectory.resolve("node.exe"), installed);
+        assertTrue(Files.exists(installed), "the installed executable must exist");
+        String installedBytes = Files.readString(installed, StandardCharsets.UTF_8);
+        assertEquals(WINDOWS_MARKER_BYTES_TEXT, installedBytes,
+                "the installed executable's bytes must equal the REAL entry's marker bytes, "
+                        + "not the wrong-path decoy's");
+        assertFalse(installedBytes.contains("decoy"),
+                "a wrong-path decoy entry must never be installed as the Node binary");
     }
 
     @Test
@@ -358,17 +383,17 @@ class NodeInstallPipelineTest {
         void everyPlatformAndArchitecturePairAssemblesAnArchiveNameThatHasAPinnedDigest() throws IOException {
             Map<NodeInstallPipeline.Target, String> expectedNames = new LinkedHashMap<>();
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64),
-                    "node-v20.18.1-win-x64.zip");
+                    "node-v22.23.2-win-x64.zip");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.ARM64),
-                    "node-v20.18.1-win-arm64.zip");
+                    "node-v22.23.2-win-arm64.zip");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.MACOS, NodeInstallPipeline.Arch.X64),
-                    "node-v20.18.1-darwin-x64.tar.gz");
+                    "node-v22.23.2-darwin-x64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.MACOS, NodeInstallPipeline.Arch.ARM64),
-                    "node-v20.18.1-darwin-arm64.tar.gz");
+                    "node-v22.23.2-darwin-arm64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.X64),
-                    "node-v20.18.1-linux-x64.tar.gz");
+                    "node-v22.23.2-linux-x64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.ARM64),
-                    "node-v20.18.1-linux-arm64.tar.gz");
+                    "node-v22.23.2-linux-arm64.tar.gz");
             assertEquals(6, expectedNames.size());
 
             for (Map.Entry<NodeInstallPipeline.Target, String> entry : expectedNames.entrySet()) {
@@ -379,7 +404,7 @@ class NodeInstallPipelineTest {
                 assertEquals(entry.getValue(), pipeline.archiveFileName());
                 assertTrue(NodeArchiveVerifier.pinnedArchiveNames().contains(pipeline.archiveFileName()),
                         "no pinned digest for " + pipeline.archiveFileName());
-                assertEquals("https://nodejs.org/dist/v20.18.1/" + entry.getValue(), pipeline.downloadUrl());
+                assertEquals("https://nodejs.org/dist/v22.23.2/" + entry.getValue(), pipeline.downloadUrl());
             }
         }
     }
@@ -411,6 +436,55 @@ class NodeInstallPipelineTest {
                         "the temporary root must be empty — the extraction directory was never created "
                                 + "and the temp archive file is gone");
             }
+        }
+
+        @Test
+        void aFailingTempFileCleanupNeverMasksTheRealVerificationFailure(@TempDir Path dataDirectory,
+                @TempDir Path temporaryRoot) throws IOException {
+            Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                    "this host's default filesystem has no POSIX view");
+
+            String wrongDigest = "0".repeat(64);
+            String actualDigest = WINDOWS_FIXTURE_DIGEST;
+            FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, wrongDigest));
+            List<Path> capturedTarget = new ArrayList<>();
+
+            // A fetcher that copies the fixture as usual, then strips write permission from the
+            // temp root so the outer finally's later cleanup attempt on the temp archive file
+            // fails -- proving that failure never replaces the verification failure already in
+            // flight, which is the real point of this test.
+            NodeInstallPipeline.Fetcher cleanupHostileFetcher = (url, target) -> {
+                Files.copy(WINDOWS_FIXTURE, target, StandardCopyOption.REPLACE_EXISTING);
+                capturedTarget.add(target);
+                Files.setPosixFilePermissions(temporaryRoot,
+                        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+            };
+
+            try {
+                NodeInstallPipeline pipeline = pipeline(
+                        new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64),
+                        dataDirectory, temporaryRoot, cleanupHostileFetcher, digests, new FakePathProbe(),
+                        new NodeInstallIntegrity());
+
+                IOException thrown = assertThrows(IOException.class,
+                        () -> pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED));
+
+                assertTrue(thrown.getMessage().contains(actualDigest),
+                        "the propagated exception must carry the verification failure message even "
+                                + "when the temp archive's cleanup fails");
+                assertFalse(thrown.getMessage().toLowerCase(java.util.Locale.ROOT).contains("delete"),
+                        "the propagated exception must never describe the cleanup failure");
+            } finally {
+                // Restore write permission so @TempDir can clean up temporaryRoot afterwards.
+                Files.setPosixFilePermissions(temporaryRoot, Set.of(PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE));
+            }
+
+            // If this host did not actually enforce the missing write bit (e.g. running as root),
+            // the temp archive would have been deleted anyway and this test never exercised the
+            // failing-cleanup path it targets -- skip gracefully rather than claim false coverage.
+            Assumptions.assumeTrue(!capturedTarget.isEmpty() && Files.exists(capturedTarget.get(0)),
+                    "this host did not enforce the missing write bit on the temp root");
         }
 
         @Test

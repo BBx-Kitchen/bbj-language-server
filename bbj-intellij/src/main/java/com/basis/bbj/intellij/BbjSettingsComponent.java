@@ -115,6 +115,8 @@ public class BbjSettingsComponent {
                 .withTitle("Select Node.js Executable")
                 .withDescription("Choose the Node.js binary");
         nodeJsField.addBrowseFolderListener(new TextBrowseFolderListener(nodeFileDescriptor, null));
+        ((JBTextField) nodeJsField.getTextField()).getEmptyText()
+                .setText("Leave empty to auto-detect or download Node.js 22+");
 
         nodeVersionLabel = new JBLabel(" ");
 
@@ -133,7 +135,7 @@ public class BbjSettingsComponent {
                 }
                 if (!lookup.meetsMinimum()) {
                     return new ValidationInfo(
-                        "Node.js version 18 or higher is required",
+                        "Node.js version 22 or higher is required",
                         nodeJsField
                     );
                 }
@@ -186,13 +188,13 @@ public class BbjSettingsComponent {
 
         // --- Java Interop Port field ---
         javaInteropPortField = new JBTextField();
-        javaInteropPortField.setText("5008");
+        javaInteropPortField.setText(String.valueOf(BbjInteropPortDetector.DEFAULT_PORT));
 
         new ComponentValidator(parentDisposable)
             .withValidator(() -> {
                 String text = javaInteropPortField.getText().trim();
                 if (text.isEmpty()) {
-                    return null; // Empty is valid, will use default 5008
+                    return null; // Empty is valid, will use the shared default
                 }
                 try {
                     int port = Integer.parseInt(text);
@@ -363,7 +365,8 @@ public class BbjSettingsComponent {
         } else if (lookup.version() == null) {
             nodeVersionLabel.setText("Could not detect Node.js version");
         } else if (!lookup.meetsMinimum()) {
-            nodeVersionLabel.setText("Version too old (minimum: 18), detected: " + lookup.version());
+            nodeVersionLabel.setText("Version too old (minimum: 22), detected: " + lookup.version()
+                + " — clear this field to auto-detect or download Node.js 22+");
         } else {
             nodeVersionLabel.setText("Detected: " + lookup.version());
         }
@@ -458,12 +461,12 @@ public class BbjSettingsComponent {
     public int getJavaInteropPort() {
         String text = javaInteropPortField.getText().trim();
         if (text.isEmpty()) {
-            return 5008; // Default when empty
+            return BbjInteropPortDetector.DEFAULT_PORT; // Default when empty
         }
         try {
             return Integer.parseInt(text);
         } catch (NumberFormatException e) {
-            return 5008; // Default when invalid
+            return BbjInteropPortDetector.DEFAULT_PORT; // Default when invalid
         }
     }
 

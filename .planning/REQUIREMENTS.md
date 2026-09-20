@@ -34,20 +34,20 @@ forcing those files to be edited and hand-UAT'd twice.
 
 ### java-interop Status and Settings
 
-- [ ] **IOP-01**: A java-interop health check already in flight when project disposal begins never calls `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies everywhere (#592)
-- [ ] **IOP-02**: The java-interop status poll stops re-arming while no BBj file is open or the IDE window lacks focus, instead of probing every 5 seconds for the lifetime of the project (#593)
-- [ ] **IOP-03**: The status bar reports "Java: Connected" only when the listening peer is confirmed to be java-interop, not merely because a TCP handshake succeeded (#587)
-- [ ] **IOP-04**: The default java-interop port has exactly one named constant, so the UI placeholder, the persisted default and the "changed from default" check cannot drift apart (#594)
-- [ ] **IOP-05**: The two status-bar widgets and their factories share a base, so a change to the widget shape is written once (#620)
+- [x] **IOP-01**: A java-interop health check already in flight when project disposal begins never calls `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies everywhere (#592)
+- [x] **IOP-02**: The java-interop status poll stops re-arming while no BBj file is selected, instead of probing every 5 seconds for the lifetime of the project (#593) — closed on cited reasoning, not as originally written: window-focus gating is deliberately deferred (Phase 95, D-06), because no focus or activation API exists anywhere in `src/main/java` and adding one would introduce a new platform coupling plus a second event source racing editor selection. Accepted cost: an IDE left open on a BBj file overnight still polls.
+- [x] **IOP-03**: The status bar reports "Java: Connected" only when the listening peer is confirmed to be java-interop, not merely because a TCP handshake succeeded (#587)
+- [x] **IOP-04**: The default java-interop port has exactly one named constant, so the UI placeholder, the persisted default and the "changed from default" check cannot drift apart (#594)
+- [x] **IOP-05**: The two status-bar widgets and their factories share a base, so a change to the widget shape is written once (#620)
 
 ### Platform Integration and Node.js
 
-- [ ] **PLAT-01**: The TextMate bundle provider reuses a cached directory across IDE launches instead of allocating a fresh temp directory and re-copying its five files every time, and abandoned directories are cleaned up (#613)
-- [ ] **PLAT-02**: Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the inert page is removed so it cannot mislead (#621)
-- [ ] **PLAT-03**: The three editor notification providers share one base carrying the file-type guard and panel construction (#622)
-- [ ] **PLAT-04**: "Node.js not yet downloaded" and "Node.js cache directory inaccessible" are distinguishable to every caller, so the user is shown the right diagnosis instead of being pointed at a download that will fail the same way again (#588)
-- [ ] **PLAT-05**: A configured-but-unusable Node.js path consults the cached download before the plugin gives up and shows the "Node.js required" banner — with the product decision recorded either way (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`)
-- [ ] **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`)
+- [x] **PLAT-01**: The TextMate bundle provider reuses a cached directory across IDE launches instead of allocating a fresh temp directory and re-copying its five files every time, and abandoned directories are cleaned up (#613)
+- [x] **PLAT-02**: Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the inert page is removed so it cannot mislead (#621)
+- [x] **PLAT-03**: The three editor notification providers share one base carrying the file-type guard and panel construction (#622)
+- [x] **PLAT-04**: "Node.js not yet downloaded" and "Node.js cache directory inaccessible" are distinguishable to every caller, so the user is shown the right diagnosis instead of being pointed at a download that will fail the same way again (#588)
+- [x] **PLAT-05**: A configured-but-unusable Node.js path consults the cached download before the plugin gives up and shows the "Node.js required" banner — with the product decision recorded either way (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`)
+- [x] **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`)
 
 ### Release
 
@@ -103,17 +103,17 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EM-03 | Phase 94 | Complete |
 | EM-04 | Phase 94 | Complete |
 | EM-05 | Phase 94 | Complete |
-| IOP-01 | Phase 95 | Pending |
-| IOP-02 | Phase 95 | Pending |
-| IOP-03 | Phase 95 | Pending |
-| IOP-04 | Phase 95 | Pending |
-| IOP-05 | Phase 95 | Pending |
-| PLAT-01 | Phase 96 | Pending |
-| PLAT-02 | Phase 96 | Pending |
-| PLAT-03 | Phase 96 | Pending |
-| PLAT-04 | Phase 96 | Pending |
-| PLAT-05 | Phase 96 | Pending |
-| PLAT-06 | Phase 96 | Pending |
+| IOP-01 | Phase 95 | Complete |
+| IOP-02 | Phase 95 | Complete (override) |
+| IOP-03 | Phase 95 | Complete |
+| IOP-04 | Phase 95 | Complete |
+| IOP-05 | Phase 95 | Complete |
+| PLAT-01 | Phase 96 | Complete |
+| PLAT-02 | Phase 96 | Complete |
+| PLAT-03 | Phase 96 | Complete |
+| PLAT-04 | Phase 96 | Complete |
+| PLAT-05 | Phase 96 | Complete |
+| PLAT-06 | Phase 96 | Complete |
 | REL-01 | Phase 97 | Pending |
 | REL-02 | Phase 97 | Pending |
 

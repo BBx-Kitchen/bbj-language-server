@@ -57,14 +57,14 @@ class BbjNodeVersionCacheTest {
     void twoConsecutiveCallsWithAnUnchangedStatSpawnOnceAndReturnTheSameVersion() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "100:1000");
-        RecordingSpawner spawner = new RecordingSpawner().with(path, "v20.18.1");
+        RecordingSpawner spawner = new RecordingSpawner().with(path, "v22.23.2");
         BbjNodeVersionCache cache = new BbjNodeVersionCache(spawner, stat);
 
         String first = cache.getVersion(path);
         String second = cache.getVersion(path);
 
-        assertEquals("v20.18.1", first);
-        assertEquals("v20.18.1", second);
+        assertEquals("v22.23.2", first);
+        assertEquals("v22.23.2", second);
         assertEquals(1, spawner.invocationsFor(path));
     }
 
@@ -72,7 +72,7 @@ class BbjNodeVersionCacheTest {
     void aStatChangeBetweenTheTwoCallsRespawnsAndReturnsTheNewVersion() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "100:1000");
-        RecordingSpawner spawner = new RecordingSpawner().with(path, "v20.18.1");
+        RecordingSpawner spawner = new RecordingSpawner().with(path, "v22.23.2");
         BbjNodeVersionCache cache = new BbjNodeVersionCache(spawner, stat);
 
         String first = cache.getVersion(path);
@@ -80,7 +80,7 @@ class BbjNodeVersionCacheTest {
         spawner.with(path, "v22.1.0");
         String second = cache.getVersion(path);
 
-        assertEquals("v20.18.1", first);
+        assertEquals("v22.23.2", first);
         assertEquals("v22.1.0", second);
         assertEquals(2, spawner.invocationsFor(path));
     }
@@ -91,7 +91,7 @@ class BbjNodeVersionCacheTest {
         String pathB = "/opt/node/bin/node";
         ScriptedStat stat = new ScriptedStat().with(pathA, "100:1000").with(pathB, "300:3000");
         RecordingSpawner spawner = new RecordingSpawner()
-                .with(pathA, "v20.18.1")
+                .with(pathA, "v22.23.2")
                 .with(pathB, "v18.20.4");
         BbjNodeVersionCache cache = new BbjNodeVersionCache(spawner, stat);
 
@@ -117,8 +117,16 @@ class BbjNodeVersionCacheTest {
         assertEquals(0, spawner.invocationsFor(path));
     }
 
+    /**
+     * A null probe result must never become a permanent verdict: the stat key it would be cached
+     * against never changes again once a binary is installed, so memoizing a null here would turn
+     * one transient failure (e.g. a freshly-installed binary briefly locked by antivirus) into a
+     * cache entry no later successful probe could ever displace. This deliberately inverts the
+     * prior assertion in this test, which pinned that exact defect (a real Windows failure mode)
+     * as desired behaviour by asserting the spawner was called only once.
+     */
     @Test
-    void aNullSpawnerResultIsCachedAndNotReSpawnedWhileTheStatIsUnchanged() {
+    void aNullSpawnerResultIsNeverCachedAndIsReSpawnedOnTheNextCallEvenWithAnUnchangedStat() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "100:1000");
         RecordingSpawner spawner = new RecordingSpawner(); // no version registered -> null
@@ -130,14 +138,14 @@ class BbjNodeVersionCacheTest {
 
         assertNull(first);
         assertNull(second);
-        assertEquals(1, spawner.invocationsFor(path));
+        assertEquals(2, spawner.invocationsFor(path));
     }
 
     @Test
     void afterClearTheNextCallReSpawnsEvenWithAnUnchangedStat() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "100:1000");
-        RecordingSpawner spawner = new RecordingSpawner().with(path, "v20.18.1");
+        RecordingSpawner spawner = new RecordingSpawner().with(path, "v22.23.2");
         BbjNodeVersionCache cache = new BbjNodeVersionCache(spawner, stat);
 
         cache.getVersion(path);
@@ -151,7 +159,7 @@ class BbjNodeVersionCacheTest {
     void tenStatChangesForTheSamePathLeaveSizeAtOne() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "0:0");
-        RecordingSpawner spawner = new RecordingSpawner().with(path, "v20.18.1");
+        RecordingSpawner spawner = new RecordingSpawner().with(path, "v22.23.2");
         BbjNodeVersionCache cache = new BbjNodeVersionCache(spawner, stat);
 
         for (int i = 1; i <= 10; i++) {

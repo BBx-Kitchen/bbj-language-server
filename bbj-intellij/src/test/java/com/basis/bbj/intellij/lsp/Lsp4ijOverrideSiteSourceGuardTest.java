@@ -135,6 +135,20 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
+    void theBbjcplAvailabilityHandlerIsDeclaredAndDoesNothingWithItsPayload() {
+        String text = readGuardedSource(CLIENT_SOURCE);
+
+        assertEquals(1, countOccurrences(text, "@JsonNotification(\"bbj/bbjcplAvailability\")"),
+            "the bbj/bbjcplAvailability notification must be declared exactly once, so LSP4IJ stops "
+                + "logging it as unsupported");
+
+        String body = bodyOf(text, "public void bbjcplAvailability(");
+        assertEquals("{}", body.replaceAll("\\s+", ""),
+            "the bbjcplAvailability handler must be a true no-op -- it must not parse, validate or "
+                + "store its payload, so a malformed payload has no processing path to reach");
+    }
+
+    @Test
     void completionFeatureOverridesGetIconOnceAndEveryDelegationPointCallsSuper() {
         String text = readGuardedSource(COMPLETION_FEATURE_SOURCE);
         assertEquals(1, countOccurrences(text, "@Override\n    public @Nullable Icon getIcon("),

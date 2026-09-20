@@ -1,152 +1,76 @@
 package com.basis.bbj.intellij.ui;
 
 import com.basis.bbj.intellij.BbjIcons;
-import com.basis.bbj.intellij.BbjSettingsConfigurable;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
-import com.intellij.openapi.fileEditor.FileEditorManagerListener;
-import com.intellij.openapi.options.ShowSettingsUtil;
+import com.basis.bbj.intellij.interop.InteropStatusPresentation;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.CustomStatusBarWidget;
-import com.intellij.openapi.wm.StatusBar;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.util.messages.MessageBusConnection;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 /**
  * Status bar widget displaying BBj java-interop connection state.
  * Shows colored icon + text label, opens popup menu on click.
  */
-public final class BbjJavaInteropStatusBarWidget implements CustomStatusBarWidget {
+public final class BbjJavaInteropStatusBarWidget extends BbjStatusBarWidgetBase<BbjJavaInteropService.InteropStatus> {
 
     private static final String ID = "BbjJavaInteropStatus";
-    private final Project project;
-    private final JPanel panel;
-    private final JBLabel iconLabel;
-    private final JBLabel textLabel;
-    private MessageBusConnection messageBusConnection;
 
     public BbjJavaInteropStatusBarWidget(@NotNull Project project) {
-        this.project = project;
-        this.iconLabel = new JBLabel();
-        this.textLabel = new JBLabel();
-
-        // Create panel with horizontal layout
-        this.panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        this.panel.setOpaque(false);
-        this.panel.add(iconLabel);
-        this.panel.add(textLabel);
-
-        // Add mouse listener to open popup menu
-        this.panel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                showPopupMenu(e);
-            }
-        });
-
-        // Subscribe to java-interop status changes
-        messageBusConnection = project.getMessageBus().connect();
-        messageBusConnection.subscribe(
-            BbjJavaInteropService.BbjJavaInteropStatusListener.TOPIC,
-            this::updateStatus
-        );
-
-        // Follow editor-tab switches so the widget shows/hides immediately, not only on the
-        // next server-status change (#610)
-        messageBusConnection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
-            @Override
-            public void selectionChanged(@NotNull FileEditorManagerEvent event) {
-                updateVisibility();
-            }
-        });
-
-        // Initialize with current status
-        updateStatus(BbjJavaInteropService.getInstance(project).getCurrentStatus());
-    }
-
-    private void updateStatus(@NotNull BbjJavaInteropService.InteropStatus status) {
-        ApplicationManager.getApplication().invokeLater(() -> {
-            Icon icon;
-            String text;
-
-            switch (status) {
-                case CONNECTED:
-                    icon = BbjIcons.INTEROP_CONNECTED;
-                    text = "Java: Connected";
-                    break;
-                case DISCONNECTED:
-                    icon = BbjIcons.INTEROP_DISCONNECTED;
-                    text = "Java: Disconnected";
-                    break;
-                case CHECKING:
-                    icon = BbjIcons.INTEROP_DISCONNECTED;
-                    text = "Java: Checking...";
-                    break;
-                default:
-                    icon = BbjIcons.INTEROP_DISCONNECTED;
-                    text = "Java: Unknown";
-                    break;
-            }
-
-            iconLabel.setIcon(icon);
-            textLabel.setText(text);
-
-            // Update visibility based on whether BBj file is open
-            updateVisibility();
-        });
-    }
-
-    private void updateVisibility() {
-        panel.setVisible(BbjFileVisibility.showsForSelection(FileEditorManager.getInstance(project).getSelectedFiles()));
-    }
-
-    private void showPopupMenu(MouseEvent e) {
-        JPopupMenu popup = new JPopupMenu();
-
-        // Reconnect action (restarts language server)
-        JMenuItem reconnectItem = new JMenuItem("Reconnect");
-        reconnectItem.addActionListener(event -> {
-            BbjServerService.getInstance(project).requestRestart(0);
-        });
-        popup.add(reconnectItem);
-
-        // Open Settings action
-        JMenuItem settingsItem = new JMenuItem("Open Settings");
-        settingsItem.addActionListener(event -> {
-            ShowSettingsUtil.getInstance().showSettingsDialog(project, BbjSettingsConfigurable.class);
-        });
-        popup.add(settingsItem);
-
-        popup.show(panel, e.getX(), e.getY());
+        super(project);
     }
 
     @Override
-    public @NonNls @NotNull String ID() {
+    protected String widgetId() {
         return ID;
     }
 
     @Override
-    public @NotNull JComponent getComponent() {
-        return panel;
+    protected void subscribeToStatusTopic(@NotNull MessageBusConnection messageBusConnection) {
+        messageBusConnection.subscribe(BbjJavaInteropService.BbjJavaInteropStatusListener.TOPIC, this::updateStatus);
     }
 
     @Override
-    public void install(@NotNull StatusBar statusBar) {
-        // Widget installed
+    protected BbjJavaInteropService.InteropStatus currentStatus() {
+        return BbjJavaInteropService.getInstance(project).getCurrentStatus();
     }
 
     @Override
-    public void dispose() {
-        if (messageBusConnection != null) {
-            messageBusConnection.disconnect();
+    protected Icon iconFor(BbjJavaInteropService.InteropStatus status) {
+        switch (status) {
+            case CONNECTED:
+                return BbjIcons.INTEROP_CONNECTED;
+            case DISCONNECTED:
+            case CHECKING:
+            case WRONG_PEER:
+            default:
+                return BbjIcons.INTEROP_DISCONNECTED;
         }
+    }
+
+    @Override
+    protected String textFor(BbjJavaInteropService.InteropStatus status) {
+        // Delegate the whole switch to the shared presentation seam, matching what tooltipFor()
+        // already does below -- CONNECTED/DISCONNECTED/CHECKING used to duplicate
+        // InteropStatusPresentation.statusText()'s own labels independently, which let the two
+        // copies drift silently.
+        return InteropStatusPresentation.statusText(status.name());
+    }
+
+    @Override
+    protected String tooltipFor(BbjJavaInteropService.InteropStatus status, String text) {
+        // Gives the Java widget a tooltip it has never had -- intended, declared at UAT.
+        return InteropStatusPresentation.tooltip(status.name());
+    }
+
+    @Override
+    protected void addPopupItems(JPopupMenu popup) {
+        // Reconnect action (restarts language server)
+        JMenuItem reconnectItem = new JMenuItem("Reconnect");
+        reconnectItem.addActionListener(event -> BbjServerService.getInstance(project).requestRestart(0));
+        popup.add(reconnectItem);
+
+        // Open Settings action
+        addOpenSettingsItem(popup);
     }
 }

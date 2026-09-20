@@ -582,16 +582,21 @@ bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjFileVisibility.java:1,17
 
 ## Open Questions
 
-1. **Does `Launcher.Builder`'s client role need an explicit `ExecutorService`?**
-   - What we know: the production server-side use (`LanguageService.java:88-91`) explicitly calls
-     `.setExecutorService(EXECUTOR)` with a shared cached thread pool; the dev server-side use
-     (`SocketServiceApp.java:54-58`) uses the simpler `Launcher.createLauncher(...)` static factory
-     with no explicit executor.
-   - What's unclear: whether the client-role probe (short-lived, one request, then torn down) needs
-     its own executor or can rely on LSP4J's internal default.
-   - Recommendation: use the simpler `Launcher.createLauncher`-style construction first (fewer
-     moving parts for a short-lived per-tick connection) and only add an explicit executor if the
-     first implementation task's spike shows a need (e.g. thread leakage across repeated ticks).
+1. ~~**Does `Launcher.Builder`'s client role need an explicit `ExecutorService`?**~~ —
+   **RESOLVED 2026-09-19 by an orchestrator spike. Do not re-spike this.** See
+   "Spike Results" below for the evidence.
+   - **Answer:** the client-role construction works with an explicit `ExecutorService`, and that
+     is the form to use. `Launcher.createLauncher(new Object(), InteropRemote.class,
+     socket.getInputStream(), socket.getOutputStream(), pool, c -> c)` compiled and ran green
+     against `bbj-intellij`'s real test classpath, with `pool` a `newCachedThreadPool()` the probe
+     `shutdownNow()`s in a `finally`.
+   - **Why explicit rather than the simpler form:** a per-tick probe must be able to tear its own
+     threads down deterministically, or it leaks a pool every 5 seconds. The explicit executor is
+     what makes that possible, so the original "start simple, add an executor only if a leak
+     shows" recommendation is inverted — start explicit.
+   - **Residual (small, untested):** the 4-arg `createLauncher(localService, remoteInterface, in,
+     out)` form was *not* exercised, so "the simple form also works" is unproven. This does not
+     block anything, because the explicit form is the one the implementation should use anyway.
 
 2. **Is a `volatile` flag sufficient for the poll gate, or does it need more (e.g. debounce against
    rapid tab-switching)?**
@@ -605,6 +610,49 @@ bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjFileVisibility.java:1,17
    - Recommendation: reuse `RestartGate`'s coalescing pattern (cancel-pending, schedule fresh) for
      the gate-open immediate-check trigger, since it is already a proven, tested pattern for
      exactly this "many rapid triggers should still produce close to one action" shape.
+
+## Spike Results (2026-09-19, pre-execution)
+
+A throwaway JUnit spike was run against `bbj-intellij`'s real compile and test classpath before
+Wave 1 was authorised, to retire the MEDIUM-confidence client-role construction risk. The spike
+file was deleted afterwards and the source tree left byte-identical — it is **not** part of the
+phase deliverable, and `95-01` should not re-spike it.
+
+Result: `tests="5" skipped="0" failures="0" errors="0"`, `BUILD SUCCESSFUL`.
+
+| Case | Peer | Outcome | Elapsed |
+|------|------|---------|---------|
+| Q1 | — (construction only) | client-role `Launcher` compiles and runs | — |
+| Q2 | real java-interop-shaped peer (`getTopLevelPackages` → typed list) | `CONNECTED` | — |
+| Q3 | squatter: accepts the connection, never replies | `WRONG_PEER` | **2002 ms** |
+| Q4 | JSON-RPC speaker without `getTopLevelPackages` | `WRONG_PEER` | **47 ms** |
+| Q5 | nothing listening | `DISCONNECTED` | — |
+
+What this establishes for planning and execution:
+
+- **D-03's split timeout budget behaves exactly as specified.** The silent squatter bounded at
+  2002 ms against a 2000 ms response timeout — no hang, and comfortably inside the 5 s poll
+  interval. This was the assumption the entire wrong-peer state rests on.
+- **A wrong-shaped peer fails fast (47 ms), not at the timeout.** LSP4J returns
+  `ResponseErrorException: Unsupported request method: getTopLevelPackages`, so the common
+  misconfiguration case costs ~50 ms per tick rather than the full 2 s. Better than designed.
+- **Assumption A1 is substantially retired.** A plain `new Object()` local service was accepted —
+  the feared "needs a non-null object with at least one method" shape is not required — and
+  `startListening()` did not deadlock.
+- **Assumption A3 is confirmed, including its stricter variant.** A plugin-owned interface with a
+  hand-written response type (`packageName: String`, mirroring `PackageInfoParams`) deserialized a
+  real typed result correctly. No shared DTO module is needed.
+- **`org.eclipse.lsp4j.jsonrpc` is reachable from the test source set** with no new Gradle
+  dependency, confirming the Standard Stack finding from the test side as well as the main side.
+
+Two limits worth stating plainly rather than glossing:
+
+- **Assumption A2 is untouched.** The spike used local stub servers, so the production `bbj-ls`
+  `InteropService()` / `getSSCP` per-tick cost remains unverified and still needs the live-BBjServices
+  UAT that D-09 already calls for.
+- **The jar that supplied `Launcher` could not be identified.** `getCodeSource().getLocation()`
+  returned `null` — a classloader-introspection limit, not absence, since the class demonstrably
+  loaded and functioned. The functional evidence stands; the jar-identity claim does not rest on it.
 
 ## Environment Availability
 

@@ -38,7 +38,7 @@ Rich semantic highlighting powered by TextMate grammars (`bbj.tmLanguage.json`, 
 
 ### Customization
 
-Customize colors via **Settings** > **Editor** > **Color Scheme** > **BBj**.
+Highlighting colors are driven entirely by the bundled TextMate grammars and follow your active IDE theme — there is no separate BBj color page; change your IDE theme to change BBj highlighting.
 
 ## Validation and Diagnostics
 
