@@ -1,0 +1,33 @@
+REM Protects GOTO/GOSUB/ON...GOSUB targets named after a language word (PRINT, SAVE, READ,
+REM INPUT, FIND, EXTRACT, DELETE, ENTER, WRITE) from losing their branch-target linking, in
+REM upper, lower and mixed case, including as the last item of a comma-separated target list.
+GOSUB print
+gosub save
+GoSub read
+GOSUB INPUT
+gosub Find
+GoSub EXTRACT
+GOTO delete
+goto enter
+GoTo write
+ON 1 GOSUB print,save
+GOTO after
+print: x = 1
+RETURN
+save: x = 2
+RETURN
+read: x = 3
+RETURN
+input: x = 4
+RETURN
+find: x = 5
+RETURN
+extract: x = 6
+RETURN
+delete: x = 7
+RETURN
+enter: x = 8
+RETURN
+write: x = 9
+RETURN
+after: y = 1

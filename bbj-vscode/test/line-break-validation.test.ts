@@ -12,21 +12,28 @@ import { createBBjServices } from '../src/language/bbj-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
+// One shared services/validate instance for the whole file (all describe blocks below):
+// each createBBjServices()+initializeWorkspace() pair does real, non-trivial async setup
+// work, and giving every describe block its own copy compounds into a beforeAll timeout
+// once the file holds more than a couple of them.
+const services = createBBjServices(EmptyFileSystem);
+let validate: ReturnType<typeof validationHelper<Program>>;
+
+beforeAll(async () => {
+    await initializeWorkspace(services.shared);
+    validate = validationHelper<Program>(services.BBj);
+});
+
+const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
+    diagnostics.filter(d => /new line|line break/i.test(d.message));
+
 /**
  * P61-D5-006: line-break-validation.ts's hasLinebreakBefore/hasLinebreakAfter (294-318)
  * had no test covering CRLF line endings or a missing trailing newline at end-of-file —
  * a regression in either case would pass `npm test` undetected (D-13, no red state
  * producible: the code already handles both correctly).
  */
-describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
-    let validate: ReturnType<typeof validationHelper<Program>>;
-
-    beforeAll(async () => {
-        await initializeWorkspace(services.shared);
-        validate = validationHelper<Program>(services.BBj);
-    });
-
+describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)', () => {
     test('CRLF line endings do not trigger a spurious line-break error', async () => {
         // Standalone statements (isStandaloneStatement) require a line break both
         // before and after. Joining them with \r\n must satisfy hasLinebreakBefore/
@@ -51,18 +58,7 @@ describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)'
     });
 });
 
-describe('Line break validation: TABLE statement', async () => {
-    const services = createBBjServices(EmptyFileSystem);
-    let validate: ReturnType<typeof validationHelper<Program>>;
-
-    beforeAll(async () => {
-        await initializeWorkspace(services.shared);
-        validate = validationHelper<Program>(services.BBj);
-    });
-
-    const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
-        diagnostics.filter(d => /new line|line break/i.test(d.message));
-
+describe('Line break validation: TABLE statement', () => {
     const positiveCases: [string, string][] = [
         ['no leading label, short unspaced data', 'TABLE ff00aa11\n'],
         ['leading label declaration', 'L1: TABLE ff00aa11\n'],
@@ -112,5 +108,95 @@ describe('Line break validation: TABLE statement', async () => {
     test('TABLE statement immediately after a \';\' statement separator produces no line-break diagnostics', async () => {
         const result = await validate('x = 1;TABLE ff00aa11\n');
         expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+});
+
+describe('Line break validation: RESTORE with a numeric or label reference', () => {
+    const positiveCases: [string, string][] = [
+        ['numeric reference, uppercase keyword', 'RESTORE 0\n'],
+        ['numeric reference, lowercase keyword', 'restore 1\n'],
+        ['numeric reference, mixed-case keyword', 'ReStOrE 2\n'],
+        ['reference to a declared label', 'RESTORE mylabel\nmylabel: x = 1\n'],
+        ['bare RESTORE at end of line', 'RESTORE\n'],
+        ['bare RESTORE followed by another statement', 'RESTORE\nx = 1\n'],
+        ['RESTORE sharing a line with a leading label', 'L1: RESTORE 3\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('two statements on one line with no separator between them is still flagged', async () => {
+        const result = await validate('a = 1 restore 0\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});
+
+describe('Line break validation: LOAD with a file id', () => {
+    const positiveCases: [string, string][] = [
+        ['string file id, uppercase keyword', 'LOAD "prog1"\n'],
+        ['string file id, lowercase keyword', 'load "prog2"\n'],
+        ['string file id, mixed-case keyword', 'LoAd "prog3"\n'],
+        ['file id with a second argument', 'LOAD "prog4",1\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('two statements on one line with no separator between them is still flagged', async () => {
+        const result = await validate('a = 1 load "prog"\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});
+
+describe('Line break validation: EXIT with an identifier operand', () => {
+    const positiveCases: [string, string][] = [
+        ['numeric operand, uppercase keyword', 'EXIT 1\n'],
+        ['numeric operand, lowercase keyword', 'exit 2\n'],
+        ['identifier operand, mixed-case keyword', 'errcode = 5\nExIt errcode\n'],
+        ['identifier operand, uppercase keyword', 'errcode = 5\nEXIT errcode\n'],
+        ['bare EXIT, uppercase keyword', 'EXIT\n'],
+        ['bare EXIT, lowercase keyword', 'exit\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('IF x THEN EXIT ELSE ... still parses with the ELSE branch intact', async () => {
+        const result = await validate('x = 1\nif x then exit else y = 1\n');
+        expect(result.document.parseResult.parserErrors).toHaveLength(0);
+        const statements = (result.document.parseResult.value as unknown as { statements: { $type: string }[] }).statements;
+        expect(statements.map(s => s.$type)).toContain('ElseStatement');
+    });
+
+    test('two statements on one line with no separator between them is still flagged', async () => {
+        const result = await validate('errcode = 1\na = 1 exit errcode\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});
+
+describe('Line break validation: keyword-named GOTO/GOSUB/ON...GOSUB targets', () => {
+    const words = ['print', 'save', 'read', 'input', 'find', 'extract', 'delete', 'enter', 'write'];
+    const positiveCases: [string, string][] = words.map(w => [
+        `GOSUB target named "${w}"`,
+        `GOSUB ${w}\n${w}: x = 1\n`,
+    ]);
+    positiveCases.push(['GOTO target named "print", lowercase keyword', 'goto print\nprint: x = 1\n']);
+    positiveCases.push(['mixed-case GoSub to a mixed-case target', 'GoSub PrInT\nPrInT: x = 1\n']);
+    positiveCases.push(['last target of an ON ... GOSUB list', 'ON 1 GOSUB first,print\nfirst: x = 1\nprint: y = 1\n']);
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('two statements on one line with no separator between them is still flagged', async () => {
+        const result = await validate('a = 1 gosub print\nprint: x = 1\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
     });
 });

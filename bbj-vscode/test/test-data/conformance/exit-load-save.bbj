@@ -1,0 +1,19 @@
+REM Protects EXIT/LOAD/SAVE from losing their line-break-free numeric, identifier and file-id
+REM operands, in upper, lower and mixed case, including the bare EXIT and bare SAVE forms.
+errcode = 5
+EXIT 1
+exit 2
+ExIt errcode
+EXIT errcode
+EXIT
+exit
+LOAD "prog1"
+load "prog2"
+LoAd "prog3"
+LOAD "prog4",1
+load "prog5",2
+SAVE
+save
+SaVe
+SAVE "data1"
+save "data2"

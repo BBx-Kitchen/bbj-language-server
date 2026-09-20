@@ -52,7 +52,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     }
 
     /**
-     * Splices the 14 custom tokens with an explicit priority requirement (line-break markers,
+     * Splices the custom tokens with an explicit priority requirement (line-break markers,
      * standalone-vs-expression disambiguators, etc.) to the front of the token vocabulary
      * (P61-D4-005). Extracted out of buildTokens() so a future edit to this reordering can't
      * accidentally land inside the unrelated CATEGORIES/LONGER_ALT wiring that follows it in
@@ -74,6 +74,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RELEASE_NO_NL');
         this.spliceToken(tokens, 'EXIT_NO_NL');
         this.spliceToken(tokens, 'TABLE_DATA');
+        this.spliceToken(tokens, 'RESTORE_NO_NL');
     }
 
     private spliceToken(tokens: TokenType[], name: string) {
@@ -128,6 +129,19 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             return {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+(?!(?:ELSE|FI|ENDIF|THEN|REM)\b)[0-9(+\-A-Za-z_])/i),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'RESTORE_NO_NL') {
+            // Matches RESTORE only when an operand actually follows (whitespace then a digit,
+            // letter or underscore) so the grammar can commit to consuming a numeric or label
+            // line reference. A bare RESTORE (nothing, or only whitespace, before the next line
+            // break or ';') never matches this token, so it falls through to the plain 'RESTORE'
+            // keyword token and the statement's bare alternative — deciding "has an operand" at
+            // the lexer avoids a parser-level ambiguity between an optional trailing line
+            // reference and the next statement starting right after it.
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/RESTORE(?=[ \t]+[0-9A-Za-z_])/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
