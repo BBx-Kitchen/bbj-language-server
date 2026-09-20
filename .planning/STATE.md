@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-01-PLAN.md
-last_updated: "2026-09-20T21:33:14.849Z"
+stopped_at: Completed 98-02-PLAN.md
+last_updated: "2026-09-20T22:35:32.335Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: 81e1f3764c61239704668170d694276966cd6751
+state_head: 7b6f10aae8023ef173f59eeb58f81e6375c71f92
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 98 execution started
 
@@ -96,6 +96,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 98 P01 | 12min | 3 tasks | 5 files |
+| Phase 98 P02 | 55min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ decisions:
 - [v4.5, roadmap]: CONF-01 is mapped once, to Phase 98; Phases 99 and 100 repeat the regression-file rule in their own success criteria rather than re-owning the requirement.
 - [Phase 98]: TABLE_DATA lexer pattern: lookbehind for TABLE+whitespace, negative lookahead rejecting a following operator/bracket char, body excludes CR/LF/semicolon — Keeps table as an ordinary identifier in table = 5 / x = table + 1 while giving the statement-leading form new opaque rest-of-line meaning; verified via probe with no narrowing needed
 - [Phase 98]: TableStatement grammar rule carries no embedded LabelDecl — A leading label already works via the existing isStandaloneStatement mechanism (a statement immediately following a LabelDecl is not required to have a line break before it); confirmed via probe
+- [Phase 98]: RestoreStatement uses a RESTORE_NO_NL lexer token (mirroring EXIT_NO_NL), not a plain grammar-level optional, to avoid a parser ambiguity against the next statement — A plain-optional lineref parsed a bare RESTORE cleanly only when it was the last statement in the document; the lexer-level disambiguation avoids that ambiguity entirely
+- [Phase 98]: Branch-target exclusion lookbehind extended to look back through a bounded run of prior comma-separated targets — Needed so the last target of a multi-target ON...GOSUB list resolves, not only a single lone target after GOTO/GOSUB; every quantifier stays bounded per the DoS mitigation
 
 ### Tech Debt
 
@@ -178,8 +181,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-20T21:33:14.819Z
-Stopped at: Completed 98-01-PLAN.md
+Last session: 2026-09-20T22:35:32.304Z
+Stopped at: Completed 98-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
