@@ -158,3 +158,78 @@ None - no external service configuration required.
 - Re-ran plan `<verification>` block 1 (blast-radius set): 265 passed / 1 skipped, no failures.
 - Re-ran plan `<verification>` block 2 (whole suite, `--maxWorkers=2`): `numFailedTests: 0` (1869 passed, 94 skipped) — 6 failed suites are pre-existing `beforeAll` hook timeouts under contention, per the whole-suite gate substitution standing decision.
 - Re-ran plan `<verification>` block 3: `git status --porcelain` shows no stray scratch probe file and nothing under `bbj-vscode/src/language/generated/`.
+
+## Post-review fix
+
+**What regressed:** The originally-committed `TABLE_DATA` pattern —
+`/(?<=TABLE[ \t]+)(?![=<>+\-*\/,)\]])[^\r\n;]+/i` — had no word boundary in
+its lookbehind and no anchor to statement position. Any identifier merely
+*ending in* "table" (`mytable`, `rowtable`, a bare `table` variable) followed
+by whitespace and a non-operator character triggered the token, swallowing
+the rest of the physical line as opaque TABLE data instead of parsing
+normally. Confirmed with `parseHelper` (parser errors before → after this
+plan's original commit): `for i=1 to table step 2` / `next i` (0→1),
+`if table then print "x"` (0→1), `mytable = 3` / `for i=1 to mytable step 2`
+/ `next i` (0→1), `if mytable then print "x"` (0→1).
+
+**The fix, in words:** `TABLE_DATA` now matches only when `TABLE` is the verb
+starting a statement — the lookbehind requires `TABLE` plus at least one
+space/tab to be preceded by nothing but: the start of a physical line
+(optionally with a leading numeric line number and/or a `label:` prefix), or
+a `;` statement separator, each with optional surrounding horizontal
+whitespace. The pattern gained the `m` flag so `^` means "start of physical
+line" (matching how chevrotain calls it — a sticky regex anchored at the
+current lexer offset, so the lookbehind's anchor is evaluated at the exact
+scan position). The existing negative lookahead rejecting an immediately
+following operator/bracket character is unchanged, so `table = 5` /
+`x = table + 1` still fall back to an ordinary identifier. Verified against
+chevrotain's actual sticky-regex-at-offset mechanism (not just a plain
+`.exec` scan) before editing the source.
+
+**Line-numbered TABLE (`0100 TABLE ff00aa11`) and a bare digit line number in
+general are not a construct this grammar supports** — `ValidName`/`LabelDecl`
+require an `ID`, not a bare number, so a leading `0100` parses as its own
+statement (a `NumberLiteral` expression), not a label or line-number prefix,
+and the two adjacent statements without a `;` separator correctly still
+trigger the generic "needs to start in a new line" diagnostic. The digit
+line-number branch was kept in the regex (matching the shape requested for
+this fix and verified correct in isolation at the lexer/regex level — see
+below) since it is harmless and forward-compatible, but no parser-level test
+asserts a fully clean parse for that shape, because the language has no
+numbered-line construct to make one clean. TABLE after a `;` separator
+(`x = 1;TABLE ff00aa11`) *is* a real, grammar-supported shape (compound
+statement via `';' statements+=SingleStatement`) and is fully covered.
+
+**Tests added:**
+- `bbj-vscode/test/parser.test.ts`: four new tests — `TABLE` at line start
+  produces a `TableStatement`, with and without a leading label; `TABLE`
+  after a `;` separator produces a `TableStatement`; nine cases proving
+  `mytable`/`rowtable`/bare `table` used as an ordinary identifier (for-loop
+  bound, if/while condition, mid-expression, printed value) parse with zero
+  lexer/parser errors; three cases proving `table`/`mytable` still work as
+  ordinary assignment targets at line start.
+- `bbj-vscode/test/line-break-validation.test.ts`: twelve new
+  `test.each` cases (the same "still an ordinary identifier" shapes) each
+  asserting zero line-break diagnostics, plus one case for `TABLE` right
+  after a `;` separator.
+- All tests were confirmed RED against the pre-fix pattern (temporarily
+  restored via `git checkout HEAD -- bbj-token-builder.ts`, one test failed
+  with `Expecting end of file but found `step 2`.`, matching the reported
+  `for i=1 to table step 2` regression) before the fix was reapplied and
+  confirmed GREEN.
+- No new conformance fixture line was needed — `table-statement.bbj` already
+  covers every compiler-accepted `TABLE` shape; the regressed inputs are
+  ordinary-identifier usages of the word "table", which do not belong in a
+  TABLE-statement conformance fixture.
+
+**Suite numbers:**
+- Targeted set (`line-break-validation`, `conformance-regressions`,
+  `parser`, `lexer`, `example-files`): 260 passed / 1 skipped, 0 failed.
+- Whole suite (`--maxWorkers=2`): 1929 passed / 51 skipped, 0 failed tests;
+  3 failed suites (`hover.test.ts`, `document-builder-rebuild-guard.test.ts`,
+  `installed-extension-e2e.test.ts`) — all pre-existing `beforeAll` hook
+  timeouts under contention plus one known e2e "No document found" flake,
+  matching the standing whole-suite gate substitution decision (judge on
+  `numFailedTests`, not "Failed Suites").
+
+**Commits:** `3f7936ed` (test), `04b8686e` (fix).
