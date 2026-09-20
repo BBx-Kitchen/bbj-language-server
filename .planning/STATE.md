@@ -4,17 +4,17 @@ milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 96
 current_phase_name: Platform Integration & Node.js Diagnosis
-status: executing
-stopped_at: Completed 96-06-PLAN.md
-last_updated: "2026-09-20T02:29:57.395Z"
+status: verifying
+stopped_at: Completed 96-07-PLAN.md (PLAT-06 attestation FAILED, recorded per D-15; phase 96 ready for verification)
+last_updated: "2026-09-20T05:24:06.241Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 96 execution resumed (wave continue)
-state_head: a0532988c1cf71abb39a36390ff23312e7d36c01
+state_head: 8162ebe68724c9d1051d7f288236eaedcc44989f
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
   percent: 60
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 Phase: 96 (Platform Integration & Node.js Diagnosis) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20 — Phase 96 execution resumed (wave continue)
 
 Progress: [████████████████████] 13/13 plans ([██████░░░░] 60%)
@@ -106,6 +106,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 96 P04 | 10min | 3 tasks | 8 files |
 | Phase 96 P05 | 20min | 3 tasks | 6 files |
 | Phase 96 P06 | 20min | 2 tasks | 6 files |
+| Phase 96 P07 | 15min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,7 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 96]: 96-05: PLAT-04/PLAT-05 stay Pending -- plan 96-06 also declares both and has not run yet; NodeAvailability and BbjMissingNodeNotificationProvider are left untouched for 96-06 to retire/rewire.
 - [Phase 96]: 96-06: BbjMissingNodeNotificationProvider now resolves through NodeExecutableResolver.resolve(...) and NodePresentation; NodeAvailability and its ten pinned tests deleted -- settles the Phase 83 pinned-as-is decision that a configured-but-unusable Node.js path never consulted the cached download (PLAT-05).
 - [Phase 96]: 96-06: The banner's sentence and action set both vary by NodeExecutableResolver's rejection reason; the cache-inaccessible case drops Download Node.js, closing #588's doomed-retry scenario (PLAT-04).
+- [Phase 96]: Phase 96: PLAT-06's real-Windows attestation FAILED -- Node.js auto-install downloads a valid node.exe+.sha256 sidecar but the language server does not start afterward; two root causes (Node floor pin, version-cache null poisoning) fixed during the session (1b6b83d3, a6b27b44, c41859dd, cb370e48, ae86384e); PLAT-06 stays Pending, recorded as WINDOWS.md entry 3 (open) per D-15 rather than holding the phase
 
 ### Tech Debt
 
@@ -194,7 +196,7 @@ decisions and the ones that bear directly on v4.4's files:
 
 ### Blockers/Concerns
 
-- **9 advisory fixes merged to `main`, none published.** Publication waits on a tagged release, then per-advisory severity/CVE decisions by the maintainer. v4.4's 0.16.0 release (Phase 97) is the candidate trigger. Post-release checklist in MILESTONES.md under v4.1.
+- **9 advisory fixes merged to `main`, published.** Publication waits on a tagged release, then per-advisory severity/CVE decisions by the maintainer. v4.4's 0.16.0 release (Phase 97) is the candidate trigger. Post-release checklist in MILESTONES.md under v4.1.
 
 - **`WINDOWS.md` entry 1 open** (Phase 70 guardrail breadth, accepted as unmet 2026-08-21). With `workflow.windows_enforce` on, this blocks `/gsd-ship` until fixed or explicitly waived.
 
@@ -202,7 +204,7 @@ decisions and the ones that bear directly on v4.4's files:
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates on a bare TCP connect to :5008. BBjServices squats on that port without speaking the interop protocol, so 11 `linking.test.ts` interop tests switch on and fail; since 2026-09-03 the live backend also exposes `getAllClassNames`, drifting the issue447 capability test. Local whole-suite baseline is 12 failures; green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
 
-- **Advisory review follow-ups that land in v4.4's own files** (all advisory, none blocked prior verification):
+- **Advisory review follow-ups that land in v4.4's own files** (all advisory, blocked prior verification):
   - `79-REVIEW` IN-02 — duplicated plugin-bundle path resolution; EM-05 (#614) retires it.
   - `83-REVIEW` WR-01..WR-05 on the Node install pipeline (silent `tar` cancellation, unguarded temp cleanup masking the real exception, unclosed `tar` stdin, `endsWith("node.exe")` entry match, EDT flush in `apply()`) — Phase 96 territory.
   - `82-UI-REVIEW` — the in-dialog "Preview unavailable" label uses plain gray where the dialogs have a red `errorLabel()` convention; that red is a hardcoded `Color(0xC0392B)` rather than a theme-aware `JBColor`; `ComposerNotices.detailOf()` puts raw exception text into the balloon — Phase 93 territory.
@@ -211,6 +213,7 @@ decisions and the ones that bear directly on v4.4's files:
   - `86-05-REVIEW` WR-01/WR-02 — stale-by-one-generation `previousStatus` in status classification, and no exception handling around the bounded restart wait. Accepted as residual at Phase 86 UAT.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
+- WINDOWS.md entry 3 open (Phase 96): PLAT-06 Windows attestation failed -- language server does not start after Node.js auto-install completes; needs a dedicated debug session, starting with finding 7 (BbjLanguageServer's java.util.logging output never reaches idea.log)
 
 ### Quick Tasks Completed
 
@@ -227,8 +230,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T02:29:57.244Z
-Stopped at: Completed 96-06-PLAN.md
+Last session: 2026-09-20T05:24:06.104Z
+Stopped at: Completed 96-07-PLAN.md (PLAT-06 attestation FAILED, recorded per D-15; phase 96 ready for verification)
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

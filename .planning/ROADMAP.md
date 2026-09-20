@@ -403,7 +403,7 @@ Plans:
   4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
   5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans executed
 
 Plans:
 **Wave 1**
@@ -420,7 +420,7 @@ Plans:
 
 **Wave 3** *(blocked on every other plan — attested against the phase-final build)*
 
-- [ ] 96-07-PLAN.md — PLAT-06: both distributables built from the final tree, Node.js auto-install attested by hand on real Windows (wave 3)
+- [x] 96-07-PLAN.md — PLAT-06: both distributables built from the final tree, Node.js auto-install attested by hand on real Windows (wave 3)
 
 **UI hint**: yes
 
