@@ -43,7 +43,7 @@ forcing those files to be edited and hand-UAT'd twice.
 ### Platform Integration and Node.js
 
 - [ ] **PLAT-01**: The TextMate bundle provider reuses a cached directory across IDE launches instead of allocating a fresh temp directory and re-copying its five files every time, and abandoned directories are cleaned up (#613)
-- [ ] **PLAT-02**: Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the inert page is removed so it cannot mislead (#621)
+- [x] **PLAT-02**: Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the inert page is removed so it cannot mislead (#621)
 - [ ] **PLAT-03**: The three editor notification providers share one base carrying the file-type guard and panel construction (#622)
 - [ ] **PLAT-04**: "Node.js not yet downloaded" and "Node.js cache directory inaccessible" are distinguishable to every caller, so the user is shown the right diagnosis instead of being pointed at a download that will fail the same way again (#588)
 - [ ] **PLAT-05**: A configured-but-unusable Node.js path consults the cached download before the plugin gives up and shows the "Node.js required" banner — with the product decision recorded either way (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`)
@@ -109,7 +109,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | IOP-04 | Phase 95 | Complete |
 | IOP-05 | Phase 95 | Complete |
 | PLAT-01 | Phase 96 | Pending |
-| PLAT-02 | Phase 96 | Pending |
+| PLAT-02 | Phase 96 | Complete |
 | PLAT-03 | Phase 96 | Pending |
 | PLAT-04 | Phase 96 | Pending |
 | PLAT-05 | Phase 96 | Pending |

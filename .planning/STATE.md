@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 96
 current_phase_name: Platform Integration & Node.js Diagnosis
 status: executing
-stopped_at: Phase 96 planned and verified; execution paused before first dispatch (context limit). Branch gsd/phase-96-platform-integration-node-js-diagnosis; ISOLATION=none (sequential).
-last_updated: "2026-09-20T01:03:32.869Z"
-last_activity: 2026-09-19
-last_activity_desc: Phase 96 execution started
-state_head: 93296660907acc763059c3a1252e77330d295b02
+stopped_at: Completed 96-01-PLAN.md
+last_updated: "2026-09-20T01:14:48.417Z"
+last_activity: 2026-09-20
+last_activity_desc: Phase 96 execution resumed (wave continue)
+state_head: cc9de609e4cf3611acc206ce62e67bb7335c8ae3
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 17
+  completed_plans: 18
   percent: 60
 ---
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 96 (Platform Integration & Node.js Diagnosis) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 96
-Last activity: 2026-09-19 — Phase 96 execution started
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-09-20 — Phase 96 execution resumed (wave continue)
 
-Progress: [████████████████████] 13/13 plans ([████░░░░░░] 40%)
+Progress: [████████████████████] 13/13 plans ([██████░░░░] 60%)
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 95 P02 | 12min | 3 tasks | 6 files |
 | Phase 95 P03 | 10min | 2 tasks | 3 files |
 | Phase 95 P04 | 9min | 3 tasks | 7 files |
+| Phase 96 P01 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,7 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 95]: Closed #594 as done on D-11 reasoning (BbjInteropPortDetector.DEFAULT_PORT is the sole canonical port constant); no second BbjSettings-owned constant introduced. — Follows Phase 93 D-05 / Phase 94 D-05 precedent; a second constant would recreate the exact drift #594 complains about and would point platform-free InteropPortSettings/InteropPortPresentation at a PersistentStateComponent.
 - [Phase 95]: IOP-05 (#620): status-bar widgets consolidated onto a generic BbjStatusBarWidgetBase<S> plus thin subclasses (Phase 93 base+thin-subclass precedent), not one data-driven class as #620's literal wording asked -- the two status enums are unrelated types — keeps every difference compile-time checked instead of a runtime no-op on a wiring mistake
 - [Phase 95]: subscribeToStatusTopic's abstract-hook parameter is named messageBusConnection, not connection, so each subclass's own subscribe call matches the source guard's pre-existing literal convention — surfaced as a guard test failure during Task 3, fixed before commit
+- [Phase 96]: Deleted BbjColorSettingsPage outright and its plugin.xml registration (D-01/D-03/D-04); rewrote IntelliJ docs Customization section (D-02) as the phase's one accepted departure from the v4.4-is-IntelliJ-only constraint.
 
 ### Tech Debt
 
@@ -209,9 +211,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T01:03:32.699Z
-Stopped at: Phase 96 planned and verified; execution paused before first dispatch (context limit). Branch gsd/phase-96-platform-integration-node-js-diagnosis; ISOLATION=none (sequential).
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/96-platform-integration-node-js-diagnosis/96-01-PLAN.md
+Last session: 2026-09-20T01:14:48.249Z
+Stopped at: Completed 96-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
 
