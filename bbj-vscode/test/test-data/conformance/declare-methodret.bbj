@@ -1,0 +1,35 @@
+REM Protects the narrowed conflicting-DECLARE and METHODRET checks: a program-level warning
+REM for an unrelated resolved DECLARE pair, silence for a related pair and for an unresolvable
+REM type, and a warning (never an error) for a method missing a value-returning METHODRET and
+REM for a void method that returns a value.
+
+class public FixtureShapeBase
+classend
+
+class public FixtureShapeChild extends FixtureShapeBase
+classend
+
+class public FixtureOtherShape
+classend
+
+DECLARE FixtureShapeBase shapeA!
+DECLARE FixtureOtherShape shapeA!
+
+DECLARE FixtureShapeBase shapeB!
+DECLARE FixtureShapeChild shapeB!
+
+DECLARE FixtureShapeBase shapeC!
+DECLARE FixtureUndeclaredShape shapeC!
+
+class public FixtureMethods
+    method public BBjString getName()
+    methodend
+
+    method public void announce()
+        methodret "hello"
+    methodend
+
+    method public BBjString getGreeting()
+        methodret "hi"
+    methodend
+classend
