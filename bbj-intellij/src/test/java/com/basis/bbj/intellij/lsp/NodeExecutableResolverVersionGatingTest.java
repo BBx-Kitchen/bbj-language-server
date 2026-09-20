@@ -182,6 +182,46 @@ class NodeExecutableResolverVersionGatingTest {
         assertEquals(1, versionOf.callsFor(configured));
     }
 
+    // ---- Cache-directory accessibility (nothing cached vs. cache unreachable) ----
+
+    @Test
+    void anInaccessibleCacheWithNoOtherCandidateUsableRecordsExactlyOneCachedRejection() {
+        NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
+                null, null, null, false, new RecordingProbe(), path -> null, version -> true);
+
+        assertFalse(result.isResolved());
+        NodeExecutableResolver.Rejected rejected = onlyRejection(result);
+        assertEquals(NodeExecutableResolver.Source.CACHED, rejected.source());
+        assertEquals(NodeExecutableResolver.Reason.CACHE_UNAVAILABLE, rejected.reason());
+        assertTrue(result.failureMessage().contains("could not be accessed"),
+                "failureMessage() must name the inaccessible-cache rejection");
+    }
+
+    @Test
+    void anAccessibleButEmptyCacheRecordsNoCachedRejectionAtAll() {
+        NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
+                null, null, null, true, new RecordingProbe(), path -> null, version -> true);
+
+        assertFalse(result.isResolved());
+        assertTrue(result.rejections().isEmpty(),
+                "an accessible but empty cache is absent, not rejected -- no CACHED entry is recorded");
+    }
+
+    @Test
+    void anInaccessibleCacheDoesNotPreventAValidConfiguredCandidateFromResolving() {
+        String configured = "/opt/bbj-test/version-gate/settings-node";
+        RecordingProbe probe = RecordingProbe.validAt(configured);
+        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v20.0.0");
+
+        NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
+                configured, null, null, false, probe, versionOf, AT_LEAST_V18);
+
+        assertTrue(result.isResolved());
+        assertEquals(configured, result.path());
+        assertEquals(NodeExecutableResolver.Source.SETTINGS, result.source());
+        assertTrue(result.rejections().isEmpty());
+    }
+
     // ---- The legacy overload performs no version gating ----
 
     @Test

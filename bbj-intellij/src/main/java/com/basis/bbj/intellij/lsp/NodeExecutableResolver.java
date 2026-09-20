@@ -187,6 +187,13 @@ public final class NodeExecutableResolver {
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.DETECTED, rejections);
         }
+        if (!cacheDirectoryAccessible) {
+            // The cache directory itself could not be checked -- record this directly rather
+            // than letting a null cachedPath slip through validate()'s blank-candidate skip,
+            // which would silently record nothing and read identically to "nothing cached".
+            rejections.add(new Rejected(Source.CACHED, Reason.CACHE_UNAVAILABLE, ""));
+            return Resolution.unresolved(rejections);
+        }
         accepted = validate(Source.CACHED, cachedPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.CACHED, rejections);

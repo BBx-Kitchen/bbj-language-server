@@ -61,7 +61,7 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
         NodeExecutableResolver.Resolution resolution = NodeExecutableResolver.resolve(
                 configuredPath, detectedPath, cachedPath != null ? cachedPath.toString() : null,
-                true, NodeExecutableResolver.REAL_FILESYSTEM,
+                BbjNodeDownloader.isNodeDataDirectoryAccessible(), NodeExecutableResolver.REAL_FILESYSTEM,
                 BbjNodeVersionCache.SESSION::getVersion, BbjNodeDetector::meetsMinimumVersion);
 
         if (resolution.isResolved()) {
