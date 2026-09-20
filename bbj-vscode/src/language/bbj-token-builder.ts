@@ -187,15 +187,22 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             };
             return token;
         } else if (terminal.name === 'TABLE_DATA') {
-            // Opaque rest-of-line data for the TABLE statement:
-            // everything after 'TABLE' plus at least one space/tab, up to end of line or a
-            // trailing ';rem' comment, is one data token — no hex validation here, the compiler
-            // owns that. The negative lookahead keeps `table = 5` / `x = table + 1` parsing as an
-            // ordinary identifier: TABLE_DATA never matches immediately before an operator or
-            // closing bracket, so a TableStatement is only formed when real data follows.
+            // Opaque rest-of-line data for the TABLE statement, matched only when TABLE is the
+            // verb starting a statement: the lookbehind requires TABLE, plus at least one
+            // space/tab, to be preceded by nothing but the start of a line (optionally with a
+            // leading numeric line number and/or a "label:" prefix) or by a ';' statement
+            // separator (with optional surrounding whitespace). This keeps a bare identifier
+            // that merely ends in or contains "table" — mytable, rowtable, a `table` variable
+            // used mid-expression — from ever being mistaken for the statement, since none of
+            // those occur at a position immediately preceded by that anchor. Everything after
+            // 'TABLE' plus the whitespace, up to end of line or a trailing ';rem' comment, is one
+            // data token — no hex validation here, the compiler owns that. The negative lookahead
+            // keeps `table = 5` / `x = table + 1` parsing as an ordinary identifier: TABLE_DATA
+            // never matches immediately before an operator or closing bracket, so a
+            // TableStatement is only formed when real data follows.
             return {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(?<=TABLE[ \t]+)(?![=<>+\-*/,)\]])[^\r\n;]+/i),
+                PATTERN: this.regexPatternFunction(/(?<=(?:^|;)[ \t]*(?:\d+[ \t]+)?(?:[A-Za-z_][A-Za-z0-9_]*:[ \t]*)?TABLE[ \t]+)(?![=<>+\-*/,)\]])[^\r\n;]+/im),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'KEYWORD_STANDALONE') {
