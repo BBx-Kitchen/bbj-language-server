@@ -120,6 +120,110 @@ new filenames/hashes/sizes/source-commit before the hand-UAT verdict below is co
 
 ---
 
+## Round 2
+
+Round 1's numbers above describe the pre-revert tree and are kept only as history. Everything
+under this "Round 2" heading re-runs the same gate on the current, post-revert tree, after the
+crash-detection status-feed rework and the status-log from-state change were pulled out of 0.16.0
+(D-22) and reverted (`8fe7cb72`, `a22b78ad`).
+
+### Suite gate
+
+**Revert-completeness assertion (D-22):**
+
+Command:
+```
+git -C /home/coder/repos/bbj-language-server diff --exit-code bdc024dc -- \
+  bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java \
+  bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java \
+  bbj-intellij/src/main/java/com/basis/bbj/intellij/concurrency/ExpectedStopGuard.java
+```
+
+Result: **exit 0, empty diff.** All three files the pulled-out work touched are byte-identical to
+their pre-code-wave state at `bdc024dc`. The revert of the crash-detection rework and the
+from-state change is provably complete before any number below is measured.
+
+**IntelliJ whole-suite (`--rerun-tasks`)**
+
+Command: `cd /home/coder/repos/bbj-language-server/bbj-intellij && ./gradlew test --rerun-tasks`
+
+Result: **BUILD SUCCESSFUL in 7s** (18 actionable tasks: 18 executed — `--rerun-tasks` forbids the
+UP-TO-DATE `:test` no-op).
+
+Aggregated from `build/test-results/**/*.xml` (122 test classes):
+
+| tests | skipped | failures | errors |
+|-------|---------|----------|--------|
+| 1096  | 0       | 0        | 0      |
+
+Smaller than Round 1's 1101, as expected (D-22): the reverted work's own tests
+(`Lsp4ijOverrideSiteSourceGuardTest`'s new assertions, `Lsp4ijCouplingCanaryTest`,
+`BbjServerServiceRestartSourceGuardTest`, and the two new `ExpectedStopGuardTest` cases) went away
+with the revert.
+
+**Vitest whole-suite (`RUN_BBJ_TESTS=0 --maxWorkers=2`)**
+
+Command: `cd /home/coder/repos/bbj-language-server/bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2`
+
+JSON summary (`--reporter=json`):
+
+| numTotalTestSuites | numFailedTestSuites | numTotalTests | numFailedTests | numPassedTests | numPendingTests |
+|---|---|---|---|---|---|
+| 452 | 6 | 1947 | **0** | 1889 | 58 |
+
+Text-summary level (test files): `Test Files 3 failed \| 105 passed \| 2 skipped (110)`;
+`Tests 1889 passed \| 58 skipped (1947)`.
+
+**Expected-vs-observed statement:** `numFailedTests: 0` is the gate this plan judges on (per
+97-05-PLAN.md and DEBT.md item 5) — met. The documented local baseline of 12 interop failures
+(11 `linking.test.ts` + 1 issue447) applies only when `RUN_BBJ_TESTS` is unset and BBjServices is
+live on `:5008`; this run pinned `RUN_BBJ_TESTS=0`, so that baseline does not apply here and none
+of those 12 appeared.
+
+**Failed-suite classification (3 files reported failed at the `--reporter=default` text-summary
+level, all with zero attributed failed tests):**
+
+1. `test/class-validations-issues.test.ts` — failed in the full run with `Hook timed out in
+   10000ms` in its `beforeAll(async () => { await initializeWorkspace(...) })`. Re-run alone:
+   **passed**, 16/16 tests, 0 failures. Confirmed `initializeWorkspace` `beforeAll` contention
+   timeout, not a regression.
+2. `test/hover.test.ts` — failed in the full run with the same `Hook timed out in 10000ms` in a
+   `beforeAll(async () => { await initializeWorkspace(services.shared) })`. Re-run alone:
+   **passed**, 17/17 tests, 0 failures. Confirmed `initializeWorkspace` `beforeAll` contention
+   timeout, not a regression.
+3. `test/functional/installed-extension-e2e.test.ts` — failed in the full run and reproduced when
+   re-run alone: `Error: No document found for URI:
+   file:///.../issue475-setopts-in-code.bbj`, thrown inside `vscode-jsonrpc`'s
+   `handleResponse`/`processMessageQueue` — the same async LSP response handler race documented in
+   Round 1, not a `beforeAll` timeout. The isolated re-run still reported **0 failed tests** for the
+   file (19 passed, 15 skipped) — a file-level uncaught-rejection event, not an assertion failure,
+   so it does not add to `numFailedTests`. Confirmed pre-existing and unrelated to this phase's
+   diff: `git diff --stat 84d485b26e -- bbj-vscode/test/functional/installed-extension-e2e.test.ts`
+   is empty.
+
+Note that Round 1 saw a different pair of contention-timeout files (`builtin-library-members.test.ts`
+and, at the text-summary level, `installed-extension-e2e.test.ts` for a different reason). Which
+specific suites lose the `beforeAll` race is nondeterministic under worker contention — that is the
+documented shape of this pre-existing issue (DEBT.md / project memory), not a new regression; the
+one suite that reproduces on every isolated re-run (`installed-extension-e2e.test.ts`) is the same
+file, same error, in both rounds.
+
+Both suites therefore satisfy the plan's gate on the post-revert tree: IntelliJ `BUILD SUCCESSFUL`
+under `--rerun-tasks`; Vitest `numFailedTests: 0`.
+
+### Register check (source/test diff against `origin/main`, Round 2)
+
+Command:
+```
+git -C /home/coder/repos/bbj-language-server diff origin/main...HEAD -- bbj-intellij bbj-vscode documentation .github \
+  | grep -nE '(^\+.*)(\b(D|C|CR)-[0-9]+\b|\b(COMP|PLAT|EM|IOP|REL)-[0-9]+\b|\b9[0-7]-[0-9]{2}\b)'
+```
+
+Result: **prints nothing** (grep exit 1, no match). No planning identifier appears in an added
+source/test line of the post-revert diff against `origin/main`. No fix was needed.
+
+---
+
 ## Hand UAT verdict
 
 ### Round 1 — 2026-09-20, macOS, IntelliJ IDEA 2026.2 — FAILED (blocking)
