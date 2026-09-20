@@ -1,13 +1,12 @@
 package com.basis.bbj.intellij.ui;
 
+import com.basis.bbj.intellij.BbjNotificationProviderBase;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.EditorNotificationPanel;
-import com.intellij.ui.EditorNotificationProvider;
-import com.intellij.ui.EditorNotifications;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,21 +17,13 @@ import java.util.function.Function;
  * Editor banner shown when the BBj language server is in crashed state.
  * Provides actions to restart the server or view the log.
  */
-public final class BbjServerCrashNotificationProvider implements EditorNotificationProvider {
+public final class BbjServerCrashNotificationProvider extends BbjNotificationProviderBase {
 
     @Override
-    public @Nullable Function<? super FileEditor, ? extends JComponent> collectNotificationData(
+    protected @Nullable Function<? super @NotNull FileEditor, ? extends @Nullable JComponent> buildPanel(
         @NotNull Project project,
         @NotNull VirtualFile file
     ) {
-        // Only show on BBj files
-        String extension = file.getExtension();
-        if (extension == null ||
-            !(extension.equals("bbj") || extension.equals("bbl") ||
-              extension.equals("bbjt") || extension.equals("src"))) {
-            return null;
-        }
-
         // Check if server is crashed
         BbjServerService service = BbjServerService.getInstance(project);
         if (!service.isServerCrashed()) {
@@ -41,8 +32,9 @@ public final class BbjServerCrashNotificationProvider implements EditorNotificat
 
         // Create error panel
         return fileEditor -> {
-            EditorNotificationPanel panel = new EditorNotificationPanel(EditorNotificationPanel.Status.Error);
-            panel.setText("BBj Language Server has crashed. Language features are unavailable.");
+            EditorNotificationPanel panel = newPanel(
+                    fileEditor, EditorNotificationPanel.Status.Error,
+                    "BBj Language Server has crashed. Language features are unavailable.");
 
             panel.createActionLabel("Restart Server", () -> {
                 service.requestRestart(0);

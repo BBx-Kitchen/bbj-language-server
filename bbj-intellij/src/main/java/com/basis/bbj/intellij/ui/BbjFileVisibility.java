@@ -21,7 +21,13 @@ public final class BbjFileVisibility {
     private BbjFileVisibility() {
     }
 
-    static boolean isBbjProgramFileTypeName(@Nullable String fileTypeName) {
+    /**
+     * Public so the notification base in the parent package ({@code com.basis.bbj.intellij}) can
+     * share one definition of "is this a BBj program file" across the editor notification
+     * providers, rather than each provider deriving its own visibility check (#622). {@link
+     * #showsForSelection} stays package-private -- it is only ever called from within {@code ui}.
+     */
+    public static boolean isBbjProgramFileTypeName(@Nullable String fileTypeName) {
         return BBJ_FILE_TYPE_NAME.equals(fileTypeName);
     }
 
