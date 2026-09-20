@@ -158,6 +158,23 @@ to `manual-release.yml`'s job graph; fixing or waiving WINDOWS.md entry 1.
   curated release notes and the landing PR body only. Milestone #7 stays at exactly 21 issues,
   matching criterion 4. The todo files move from `.planning/todos/pending/` to completed.
 
+### Post-UAT amendment (2026-09-20)
+
+- **D-22:** The crash-detection rework (folded todo 1) and the stale-from-state fix (folded todo 2)
+  are **pulled out of 0.16.0** by maintainer decision after the D-07 hand UAT failed on macOS: with
+  the full status feed a killed server arrives as `started -> stopping -> stopped`, which the
+  expected-stop classifier never treats as a crash, and status alone cannot separate a kill from
+  LSP4IJ's own deliberate stops. Both were reverted (`8fe7cb72`, `a22b78ad`); both todo files stay
+  in `.planning/todos/pending/` with the evidence appended. **This supersedes D-07 and D-08 and
+  narrows D-13, D-20 and D-21:** 0.16.0 ships **four** folded todos (3, 4, 5 and the issue447 half
+  of 6); release notes, the landing-PR body and the closing pass must not claim any crash-detection
+  or status-log change; only the four shipped todo files move to completed. Plans 97-01 and 97-02
+  remain in the phase directory as history — their SUMMARYs describe work that is no longer in the
+  tree. The D-01 gate between the code wave and the landing PR becomes: both suites green on the
+  post-revert tree, both distributables rebuilt, and a short maintainer hand check of what is left
+  (no `bbj/bbjcplAvailability` WARN; server starts and works). Evidence:
+  `97-UAT-ARTIFACTS.md` § Hand UAT verdict, Round 1.
+
 ### Claude's Discretion
 
 - Merge method for the landing PR and therefore which SHA(s) the closing comments cite. The repo
@@ -329,7 +346,9 @@ All six matched todos were folded (first selection was contradictory; confirmed 
   folded todo only needs the log noise gone.
 - Windows re-attestation of the crash-detection rework — not required for 0.16.0 (D-07).
 
-None of the reviewed todos were left unfolded.
+All six reviewed todos were folded at discuss time; two were pulled back out after the hand UAT (D-22) and stay pending:
+- A lost language-server connection is invisible to the plugin's crash detection — needs a crash signal that is not the status sequence (process exit seen by the plugin's own connection provider); own phase.
+- The server status log line prints a stale previous status — fix together with the crash-detection redesign.
 
 </deferred>
 

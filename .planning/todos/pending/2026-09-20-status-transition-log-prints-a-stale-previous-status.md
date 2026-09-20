@@ -18,3 +18,13 @@ files:
 Decide what `classify` should receive, check `ExpectedStopGuard` and its tests, then make the log line print the real from-state (`currentStatus`). Do not change the classifier input without a test that pins the intended behaviour.
 
 See `.planning/debug/resolved/restart-duplicate-node-launches.md` and `.planning/debug/resolved/bbj-language-server-does-not-s.md`.
+
+## 2026-09-20 — first attempt reverted (Phase 97)
+
+The one-line fix (pass and print `currentStatus`, delete the `previousStatus` field — `626b8fe3`,
+pinned by `d16e7e57`) was reverted together with the crash-detection status-feed move
+(`8fe7cb72`), because the two only make sense together. Finding to carry forward: once the full
+status feed is in place every stop arrives as `started -> stopping -> stopped`, so the true
+from-state at `stopped` is `stopping` — which the classifier does not accept as live. The stale
+two-behind value happened to be `started` there. Fix this todo as part of the crash-detection
+redesign, not before it.

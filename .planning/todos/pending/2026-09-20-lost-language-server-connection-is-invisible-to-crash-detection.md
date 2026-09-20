@@ -24,3 +24,23 @@ the full status sequence it will then receive, and add a source guard plus a cou
 
 See `.planning/debug/resolved/lsp4ij-upstream-report-draft.md` (report C, withdrawn) and
 `.planning/debug/resolved/restart-duplicate-node-launches.md`.
+
+## 2026-09-20 — first attempt reverted (Phase 97 hand UAT, macOS)
+
+Moving the status feed to `LSPClientFeatures#handleServerStatusChanged` works — `stopped` does reach
+`BbjServerService.updateStatus` — but it is not enough. With the full feed a killed process arrives
+as `started -> stopping -> stopped`, and `ExpectedStopGuard.classify` only treats `started`/`starting`
+as a live predecessor, so the stop is `NOT_A_STOP` and crash handling never runs (19-line `idea.log`
+excerpt in `.planning/phases/97-release-0-16-0-milestone-close/97-UAT-ARTIFACTS.md`, Round 1).
+LSP4IJ's own deliberate stops (last BBj file closed, project close, idle shutdown) take the same
+path, so **status alone cannot separate a crash from a normal stop**; treating `stopping` as live
+would raise a false crash and auto-restart on every file close.
+
+Reverted in `8fe7cb72` + `a22b78ad`; the implementation that was tried is `bb0a49f0`, `cb3ce7f8`,
+`a2680319` (feed, canary, guards — reusable).
+
+What the real fix needs: a crash signal that does not come from the status sequence — most likely
+the exit of the node process observed by the plugin's own connection provider, combined with "no
+stop was requested". Also note the crash counter resets on every `started`, so the "crashed twice"
+balloon can only fire when the second crash precedes `started`; decide whether that is intended.
+Needs its own phase with a design step and a hand UAT that kills the process in a running IDE.

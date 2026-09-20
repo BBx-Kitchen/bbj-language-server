@@ -122,4 +122,53 @@ new filenames/hashes/sizes/source-commit before the hand-UAT verdict below is co
 
 ## Hand UAT verdict
 
-_(Filled in by Task 3 — the maintainer's checkpoint.)_
+### Round 1 — 2026-09-20, macOS, IntelliJ IDEA 2026.2 — FAILED (blocking)
+
+Verdict recorded against `bbj-intellij-0.1.0.zip` sha256
+`abdd589edf2c7602ea71a44829cbc8467f37bcce324c586ab556f439f909bd55` (1,160,565 bytes) and
+`bbj-lang-0.15.3.vsix` sha256 `daf676bb8939105df89c848b42df378ece268fd44c8a474fba40bb669fe5baff`
+(2,631,405 bytes), both built from source commit `25821695e0c94dec84fa998c576457377ab15bdf`.
+
+Maintainer's replies, verbatim:
+
+> it restarted once after a kill (it was the 2nd in my case) but then never again (MacOS) but hold
+> on - I have to click into an editor, then it restarts. False alarm I assume
+
+> I ever only saw "Show Log" "Disable Error Reporting" "More" in one box. Never "restarting"
+> (though it did)
+
+Evidence — the maintainer's `idea.log` (19 status lines, 17:05:20 – 17:08:07): every stop arrives as
+two transitions, `started -> stopping (classified as NOT_A_STOP)` then
+`stopping -> stopped (classified as NOT_A_STOP)`. There is no `classified as CRASH` line, no
+`Scheduled a BBj language server restart` line and no `Restarting the BBj language server` line in
+the session. Every restart the maintainer observed was LSP4IJ starting the server on demand when
+an editor gained focus; the box they saw is LSP4IJ's own error notification, not this plugin's
+crash balloon.
+
+| Expectation | Result |
+|---|---|
+| Unexpected stop is classified as a crash and auto-restarts | **FAIL** — never classified CRASH; plugin crash handling never ran |
+| Crash notification with Show Log / Restart | **FAIL** — never raised (and the step's premise was wrong: the crash counter resets on every `started`, so two kills of a fully started server never reach the give-up branch) |
+| No `Unsupported notification method: bbj/bbjcplAvailability` WARN | **PASS** — absent from the 2026.2 session (only hit is a 2026-07-16 log from before the fix) |
+| Status log lines name the real from-state | **PASS** — e.g. `started -> stopping`, `stopping -> stopped` |
+| No `IllegalStateException` for `setFraction` during a Node.js download | not exercised |
+
+Root cause: with the full status feed, a dying process passes through `stopping` before `stopped`,
+and `ExpectedStopGuard.classify` only treats `started`/`starting` as a live predecessor. The
+before/after trace shown at the classifier-input checkpoint assumed a direct `started -> stopped`
+transition and was wrong. LSP4IJ's own deliberate stops (last file closed, project close, idle
+shutdown) take the same `started -> stopping -> stopped` path, so status alone cannot separate a
+kill from a normal stop; treating `stopping` as live would raise a false crash on every file close.
+
+Side observation (not blocking): each on-demand start logs
+`stopped -> stopping -> starting -> stopping -> starting -> started` within ~300 ms — the
+double-launch churn already reported upstream as redhat-developer/lsp4ij#1673.
+
+**Maintainer decision (2026-09-20, blocking question): "Pull it out of 0.16.0".** The status-feed
+move and the from-state change are reverted (`8fe7cb72`, `a22b78ad`); both todos return to pending
+with this evidence; 0.16.0 ships the remaining folded work. Both distributables are rebuilt from the
+post-revert tree and a short Round 2 UAT covers what is left.
+
+### Round 2
+
+_(Filled in after the rebuild.)_
