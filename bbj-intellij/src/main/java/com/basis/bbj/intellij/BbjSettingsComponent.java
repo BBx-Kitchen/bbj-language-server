@@ -115,6 +115,8 @@ public class BbjSettingsComponent {
                 .withTitle("Select Node.js Executable")
                 .withDescription("Choose the Node.js binary");
         nodeJsField.addBrowseFolderListener(new TextBrowseFolderListener(nodeFileDescriptor, null));
+        ((JBTextField) nodeJsField.getTextField()).getEmptyText()
+                .setText("Leave empty to auto-detect or download Node.js 22+");
 
         nodeVersionLabel = new JBLabel(" ");
 
@@ -363,7 +365,8 @@ public class BbjSettingsComponent {
         } else if (lookup.version() == null) {
             nodeVersionLabel.setText("Could not detect Node.js version");
         } else if (!lookup.meetsMinimum()) {
-            nodeVersionLabel.setText("Version too old (minimum: 22), detected: " + lookup.version());
+            nodeVersionLabel.setText("Version too old (minimum: 22), detected: " + lookup.version()
+                + " — clear this field to auto-detect or download Node.js 22+");
         } else {
             nodeVersionLabel.setText("Detected: " + lookup.version());
         }
