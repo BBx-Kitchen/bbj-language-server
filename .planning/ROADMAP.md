@@ -277,7 +277,7 @@ no phase here has or needs a UI-SPEC; the hints are informational only.
 - [x] **Phase 93: Composer Robustness & Consolidation** - Composer flows stop raising IDE-internal errors and writing invalid BBj, and the duplicated dialog, intention, launch-action and Swing-helper shapes collapse to one each (completed 2026-09-18)
 - [x] **Phase 94: EM Login & Run Action Consolidation** - EM login cleans up after a failed launch and enables like its siblings; the BUI/DWC run flow, its token validation and its tool-script paths each live in exactly one place (completed 2026-09-19)
 - [x] **Phase 95: java-interop Status Accuracy & Widget Consolidation** - The java-interop status the IDE shows is true and cheap — disposal-safe, gated polling, confirmed peer — behind one port constant and one widget base (completed 2026-09-19)
-- [ ] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows
+- [x] **Phase 96: Platform Integration & Node.js Diagnosis** - A cached TextMate bundle, no inert Color Scheme page, one notification-provider base, and a Node.js diagnosis that names the real problem — attested by hand on real Windows (completed 2026-09-20)
 - [ ] **Phase 97: Release 0.16.0 & Milestone Close** - 0.16.0 published to both marketplaces behind one verification gate, with GitHub milestone #7 closed
 
 ## Phase Details
@@ -403,7 +403,7 @@ Plans:
   4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
   5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
 
-**Plans**: 8/8 plans executed (7/8 executed; 96-08 closes UAT gap G-96-2)
+**Plans**: 8/8 plans executed (96-08 closed UAT gap G-96-2)
 
 Plans:
 **Wave 1**

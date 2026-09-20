@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
-current_phase: 96
-current_phase_name: Platform Integration & Node.js Diagnosis
-status: executing
-stopped_at: Completed 96-08-PLAN.md (G-96-2 closed on maintainer's Windows re-UAT pass; phase 96 8/8 plans executed, ready for verification)
-last_updated: "2026-09-20T12:02:34.720Z"
+current_phase: 97
+current_phase_name: Release 0.16.0 & Milestone Close
+status: planning
+stopped_at: Phase 96 complete, ready to plan Phase 97
+last_updated: "2026-09-20T12:14:06.331Z"
 last_activity: 2026-09-20
-last_activity_desc: Phase 96 execution started
-state_head: 525aecff3859d51394d5ba5932f3b09567257fe2
+last_activity_desc: Phase 96 complete, transitioned to Phase 97
+state_head: a80901e84aac589aa23499af78cac85f8db6b97e
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
   completed_plans: 25
-  percent: 60
+  percent: 80
 ---
 
 # Project State: BBj Language Server
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 ## Current Position
 
-Phase: 96 (Platform Integration & Node.js Diagnosis) — EXECUTING
-Plan: 2 of 8
-Status: Ready to execute
-Last activity: 2026-09-20 — Phase 96 execution started
+Phase: 97 — Release 0.16.0 & Milestone Close
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-20 — Phase 96 complete, transitioned to Phase 97
 
-Progress: [████████████████████] 13/13 plans ([██████░░░░] 60%)
+Progress: [████████████████████] 25/25 plans ([████████░░] 80%)
 
 ## Performance Metrics
 
@@ -233,7 +233,7 @@ decisions and the ones that bear directly on v4.4's files:
 ## Session Continuity
 
 Last session: 2026-09-20T12:02:34.547Z
-Stopped at: Completed 96-08-PLAN.md (G-96-2 closed on maintainer's Windows re-UAT pass; phase 96 8/8 plans executed, ready for verification)
+Stopped at: Phase 96 complete, ready to plan Phase 97
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

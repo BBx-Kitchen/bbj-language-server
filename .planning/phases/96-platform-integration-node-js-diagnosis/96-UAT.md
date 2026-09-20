@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 96-platform-integration-node-js-diagnosis
 source: [96-01-SUMMARY.md, 96-02-SUMMARY.md, 96-03-SUMMARY.md, 96-04-SUMMARY.md, 96-05-SUMMARY.md, 96-06-SUMMARY.md, 96-07-SUMMARY.md]
 started: 2026-09-20T10:58:33Z
-updated: 2026-09-20T12:05:00Z
+updated: 2026-09-20T12:45:00Z
 build:
   intellij: bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip sha256 8853a959bd052571910ea99a23e07f8991a48b6973412ba281636c69d6601c6b (HEAD c7f798a8, last source commit e109c9ee)
   vscode: /tmp/bbj-lang.vsix sha256 a48166d559422de015ae323b5c9aa3a65bb5d18d77ab363ce1473d75d98d9266
@@ -27,6 +27,7 @@ expected: In Settings, point the BBj Node.js path at a runtime older than Node 2
 result: issue
 reported: "with an old node.js configured in the path, I don't get offered to download the suitable one. The popup only suggests to \"Configue node.js\" . In our configuration dialog it's not obvious that I can simply remove the path, then restart and let our automatic do its job. The config dialog should somehow offer that next to the statement where it says \"Version too old: ....\""
 severity: major
+retest: "pass -- re-tested by the maintainer on 2026-09-20 after plan 96-08 (blanket pass, not itemised): \"pass, works as expected now\""
 note: "The rejection itself was observed (the settings dialog shows 'Version too old'). The fall-through to a detected/cached Node 22+ was not confirmed in this run -- no usable alternative appears to have been present."
 coverage_id: 96-05 D1, 96-07 D6
 
@@ -193,6 +194,7 @@ coverage_id: 96-07 D5
 total: 28
 passed: 27
 issues: 1
+issues_resolved: 1
 pending: 0
 skipped: 0
 blocked: 0
@@ -201,7 +203,8 @@ blocked: 0
 
 - gap_id: G-96-2
   truth: "A too-old configured Node.js is rejected and the user is led to a working runtime: the notification offers the Node.js download, and the settings dialog says next to its 'Version too old' statement that clearing the path lets the plugin pick or download a suitable Node.js"
-  status: failed
+  status: resolved
+  resolved_by: "96-08 (commits 42768480, dbdb6528); maintainer re-UAT on Windows 2026-09-20 against bbj-intellij-0.1.0.zip sha256 89ba44723d319771bc6436aee8b0a0218fca04b93c2093c5f6249f3258df2659 -- reply verbatim: pass, works as expected now"
   reason: "User reported: with an old node.js configured in the path, I don't get offered to download the suitable one. The popup only suggests to \"Configue node.js\" . In our configuration dialog it's not obvious that I can simply remove the path, then restart and let our automatic do its job. The config dialog should somehow offer that next to the statement where it says \"Version too old: ....\""
   severity: major
   test: 2
