@@ -5,11 +5,11 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 97
 current_phase_name: Release 0.16.0 & Milestone Close
 status: planning
-stopped_at: Phase 96 complete, ready to plan Phase 97
-last_updated: "2026-09-20T12:14:06.331Z"
+stopped_at: Phase 97 context gathered
+last_updated: "2026-09-20T12:56:28.348Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 96 complete, transitioned to Phase 97
-state_head: a80901e84aac589aa23499af78cac85f8db6b97e
+state_head: 463ab3f1283467bb89b5218217ece8ae4f6e83ee
 progress:
   total_phases: 5
   completed_phases: 4
@@ -232,9 +232,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T12:02:34.547Z
-Stopped at: Phase 96 complete, ready to plan Phase 97
-Resume file: None
+Last session: 2026-09-20T12:56:28.160Z
+Stopped at: Phase 97 context gathered
+Resume file: .planning/phases/97-release-0-16-0-milestone-close/97-CONTEXT.md
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
 
