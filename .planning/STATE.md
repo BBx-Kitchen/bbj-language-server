@@ -5,17 +5,17 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 97
 current_phase_name: Release 0.16.0 & Milestone Close
 status: executing
-stopped_at: Completed 97-03-PLAN.md
-last_updated: "2026-09-20T14:03:21.746Z"
+stopped_at: Completed 97-04-PLAN.md
+last_updated: "2026-09-20T14:09:24.072Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 97 execution started
-state_head: 7848e275d6685ac77d77b50ea59a90cae6e311e9
+state_head: b431ee8468bccfe6a9a5ca9db601c8513646de85
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 36
-  completed_plans: 27
-  percent: 75
+  completed_plans: 28
+  percent: 78
 ---
 
 # Project State: BBj Language Server
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 97 (Release 0.16.0 & Milestone Close) — EXECUTING
-Plan: 3 of 11
+Plan: 4 of 11
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 97 execution started
 
-Progress: [████████████████████] 25/25 plans ([████████░░] 75%)
+Progress: [████████████████████] 25/25 plans ([████████░░] 78%)
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 96 P08 | continuation | 4 tasks | 8 files |
 | Phase 97 P01 | 15min | 3 tasks | 5 files |
 | Phase 97 P03 | 20min | 3 tasks | 2 files |
+| Phase 97 P04 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 97]: [Phase 97]: 97-01: confirmed by javap bytecode reading of LSP4IJ 0.21.0's LanguageServerWrapper that getOrCreateClientFeatures() always calls setServerWrapper(this) before the client-features instance is cached or returned, so getProject() inside the new override can never see an unset wrapper — Resolves the plan's flagged assumption with direct evidence rather than leaving it unconfirmed.
 - [Phase 97]: [Phase 97]: 97-03: issue447's capability test now asserts a product invariant (probe result agrees with cached flag; suggestions resolve either way) instead of one backend's answer
 - [Phase 97]: [Phase 97]: 97-03: linking.test.ts's 11 interop failures re-filed, not fixed -- both the complete-class-index and live-interop warm-up hypotheses were tested and refuted; root cause is the describe block running against a hermetic test double that never talks to real interop
+- [Phase 97]: [Phase 97]: 97-04: bbj/bbjcplAvailability handler takes an untyped Object parameter with an empty body -- a true no-op must not parse, validate or store an untrusted payload
+- [Phase 97]: [Phase 97]: 97-04: setIndeterminate(false) placed as a single unconditional statement before pipeline.install(...), outside the progress lambda, so it runs once per download rather than once per progress tick
 
 ### Tech Debt
 
@@ -238,8 +241,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T14:03:21.546Z
-Stopped at: Completed 97-03-PLAN.md
+Last session: 2026-09-20T14:09:23.873Z
+Stopped at: Completed 97-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

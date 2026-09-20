@@ -442,7 +442,7 @@ Plans:
   3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
   4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
 
-**Plans**: 2/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
+**Plans**: 3/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
 
 Plans:
 **Wave 1**
@@ -453,7 +453,7 @@ Plans:
 **Wave 2** *(blocked on 97-01)*
 
 - [ ] 97-02-PLAN.md — folded todo: the status log and the crash classifier receive the real from-state — pinning test, maintainer decision, then the fix (wave 2)
-- [ ] 97-04-PLAN.md — folded todos: no-op `bbj/bbjcplAvailability` handler; determinate progress before the first Node.js download fraction (wave 2)
+- [x] 97-04-PLAN.md — folded todos: no-op `bbj/bbjcplAvailability` handler; determinate progress before the first Node.js download fraction (wave 2)
 
 **Wave 3** *(blocked on every code-wave plan)*
 
