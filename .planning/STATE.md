@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 96
 current_phase_name: Platform Integration & Node.js Diagnosis
 status: executing
-stopped_at: Completed 96-04-PLAN.md
-last_updated: "2026-09-20T02:09:02.212Z"
+stopped_at: Completed 96-05-PLAN.md
+last_updated: "2026-09-20T02:21:17.966Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 96 execution resumed (wave continue)
-state_head: fe1bac248b8c9a7f6df046c021681b543a91f219
+state_head: 4ed78c7f087a36345dd690060a239ccab0268f2a
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 60
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 96 (Platform Integration & Node.js Diagnosis) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 96 execution resumed (wave continue)
 
@@ -104,6 +104,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 96 P02 | 20min | 3 tasks | 3 files |
 | Phase 96 P03 | 25min | 2 tasks | 4 files |
 | Phase 96 P04 | 10min | 3 tasks | 8 files |
+| Phase 96 P05 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 96]: 96-04: Base covers all four registered providers, not the three #622 named; crash provider's extension guard replaced by the resolved-file-type guard, overriding ROADMAP criterion 3 with recorded reasoning (D-09).
 - [Phase 96]: 96-04: Status stays a per-subclass value at the panel-construction call site; crash banner keeps Error, other three keep Warning (D-10).
 - [Phase 96]: 96-04: #622 closed as done on cited reasoning -- four providers consolidated where the issue named three (D-12).
+- [Phase 96]: 96-05: NodeExecutableResolver's version-aware overload carries seven arguments (cache-directory-accessible boolean plus the two version collaborators), not RESEARCH.md's sketched six -- the boolean lets the CACHED branch record a CACHE_UNAVAILABLE rejection instead of validate()'s generic blank-candidate skip, with no second Reason/Source vocabulary.
+- [Phase 96]: 96-05: PLAT-04/PLAT-05 stay Pending -- plan 96-06 also declares both and has not run yet; NodeAvailability and BbjMissingNodeNotificationProvider are left untouched for 96-06 to retire/rewire.
 
 ### Tech Debt
 
@@ -221,8 +224,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T02:09:02.044Z
-Stopped at: Completed 96-04-PLAN.md
+Last session: 2026-09-20T02:21:09.496Z
+Stopped at: Completed 96-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
