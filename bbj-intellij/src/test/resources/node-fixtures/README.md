@@ -106,3 +106,34 @@ sha256sum scratch/fake-node-unix-no-binary.tar.gz
 ```
 
 SHA-256: `b9c180afeb6ca2746f6ddb17681649b21e3b35680733c739dddc9705e3a1c75b`
+
+## fake-node-win-decoy.zip
+
+Windows-branch fixture proving the exact-path entry match: a wrong-path decoy entry whose name
+still ends with `node.exe` comes first, followed by the real entry at its correct relative path.
+An extractor doing a loose suffix match would install the decoy and stop; the exact-path match
+must skip the decoy and install the real entry.
+
+Built from a scratch directory containing:
+
+```
+other/decoy-node.exe                  -> "decoy-not-the-real-binary\n"
+node-v20.18.1-win-x64/node.exe        -> "fake-node-binary-windows\n"
+```
+
+with the following commands (`scratch/` is a throwaway directory outside this repository):
+
+```
+mkdir -p scratch/node-win-decoy/other scratch/node-win-decoy/node-v20.18.1-win-x64
+printf 'decoy-not-the-real-binary\n' > scratch/node-win-decoy/other/decoy-node.exe
+printf 'fake-node-binary-windows\n' > scratch/node-win-decoy/node-v20.18.1-win-x64/node.exe
+python3 -c "
+import zipfile
+with zipfile.ZipFile('scratch/fake-node-win-decoy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+    z.write('scratch/node-win-decoy/other/decoy-node.exe', arcname='other/decoy-node.exe')
+    z.write('scratch/node-win-decoy/node-v20.18.1-win-x64/node.exe', arcname='node-v20.18.1-win-x64/node.exe')
+"
+sha256sum scratch/fake-node-win-decoy.zip
+```
+
+SHA-256: `7de359bbff1843fd4b6b137ede3c1b170b5b1739a8ed3628c55b8c9c07aa1ce7`

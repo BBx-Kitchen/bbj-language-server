@@ -52,6 +52,7 @@ class NodeInstallPipelineTest {
     private static final Path UNIX_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix.tar.gz");
     private static final Path WINDOWS_NO_BINARY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win-no-binary.zip");
     private static final Path UNIX_NO_BINARY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix-no-binary.tar.gz");
+    private static final Path WINDOWS_DECOY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win-decoy.zip");
 
     private static final String UNIX_ARCHIVE_NAME = "node-v20.18.1-linux-x64.tar.gz";
     private static final String UNIX_MARKER_BYTES_TEXT = "fake-node-binary-unix\n";
@@ -67,6 +68,8 @@ class NodeInstallPipelineTest {
             "b550d1ac01b4d700749cd110df57578ea9176d80d1e4c36a62e29b313c7f398c";
     private static final String UNIX_NO_BINARY_FIXTURE_DIGEST =
             "b9c180afeb6ca2746f6ddb17681649b21e3b35680733c739dddc9705e3a1c75b";
+    private static final String WINDOWS_DECOY_FIXTURE_DIGEST =
+            "7de359bbff1843fd4b6b137ede3c1b170b5b1739a8ed3628c55b8c9c07aa1ce7";
 
     /** Copies a fixture archive into the requested target path, recording every call it saw. */
     private static final class FixtureCopyingFetcher implements NodeInstallPipeline.Fetcher {
@@ -204,6 +207,28 @@ class NodeInstallPipelineTest {
                 "the digest sidecar must exist beside the installed executable");
         assertEquals(1, fetcher.invocations(), "the fetcher must be invoked exactly once");
         assertEquals(List.of(WINDOWS_DOWNLOAD_URL), fetcher.urls());
+    }
+
+    @Test
+    void aWrongPathDecoyEntryAheadOfTheRealBinaryIsSkippedAndTheRealBinaryIsInstalled(
+            @TempDir Path dataDirectory, @TempDir Path temporaryRoot) throws IOException {
+        String expectedDigest = WINDOWS_DECOY_FIXTURE_DIGEST;
+        FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_DECOY_FIXTURE);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
+        FakePathProbe probe = new FakePathProbe();
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot, fetcher, digests, probe,
+                new NodeInstallIntegrity());
+
+        Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+
+        assertEquals(dataDirectory.resolve("node.exe"), installed);
+        assertTrue(Files.exists(installed), "the installed executable must exist");
+        String installedBytes = Files.readString(installed, StandardCharsets.UTF_8);
+        assertEquals(WINDOWS_MARKER_BYTES_TEXT, installedBytes,
+                "the installed executable's bytes must equal the REAL entry's marker bytes, "
+                        + "not the wrong-path decoy's");
+        assertFalse(installedBytes.contains("decoy"),
+                "a wrong-path decoy entry must never be installed as the Node binary");
     }
 
     @Test

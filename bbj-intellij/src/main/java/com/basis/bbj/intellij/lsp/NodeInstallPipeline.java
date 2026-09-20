@@ -218,12 +218,19 @@ public final class NodeInstallPipeline {
     }
 
     private void extractZip(Path zipFile, Path destDir) throws IOException {
+        // The archive's own top-level directory, e.g. "node-v20.18.1-win-x64", built from the
+        // same literals archiveFileName() assembles, joined to the executable's relative path
+        // with the forward slash the zip format mandates regardless of host OS.
+        String expectedEntryName = "node-" + NODE_VERSION + "-" + target.platformName() + "-"
+                + target.archName() + "/" + target.nodeExecutableName();
         try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipFile))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                // We only want node.exe from the archive.
-                if (entry.getName().endsWith("node.exe")) {
-                    Path targetFile = destDir.resolve("node.exe");
+                // We only want the entry at its own expected relative path — an exact match, not
+                // a loose suffix test, so a wrong-path entry that merely ends with the same file
+                // name is never mistaken for the real binary.
+                if (entry.getName().equals(expectedEntryName)) {
+                    Path targetFile = destDir.resolve(target.nodeExecutableName());
                     Files.createDirectories(targetFile.getParent());
                     try (OutputStream out = Files.newOutputStream(targetFile)) {
                         byte[] buffer = new byte[8192];
@@ -278,8 +285,8 @@ public final class NodeInstallPipeline {
 
     private Path installExtracted(Path tempExtractDir) throws IOException {
         Path extractedNode = target.os() == Os.WINDOWS
-                ? tempExtractDir.resolve("node.exe")
-                : tempExtractDir.resolve("bin").resolve("node");
+                ? tempExtractDir.resolve(target.nodeExecutableName())
+                : tempExtractDir.resolve("bin").resolve(target.nodeExecutableName());
 
         if (!Files.exists(extractedNode)) {
             throw new IOException("Node binary not found in extracted archive at: " + extractedNode);
