@@ -242,6 +242,32 @@ class TextMateBundleCacheTest {
         assertEquals("do not delete me\n", Files.readString(outsideFile));
     }
 
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void sweepAbandonedOnADirectChildThatIsItselfASymlinkNeverTouchesTheTarget(
+            @TempDir Path tempRoot, @TempDir Path outsideRoot) throws IOException {
+        Path outsideDir = Files.createDirectories(outsideRoot.resolve("outside-direct"));
+        Path outsideFile = outsideDir.resolve("do-not-delete.txt");
+        Files.writeString(outsideFile, "do not delete me\n");
+
+        Path directChildLink = tempRoot.resolve("textmate-bbj-direct-link");
+        Files.createSymbolicLink(directChildLink, outsideDir);
+
+        int removed = TextMateBundleCache.sweepAbandoned(tempRoot, "textmate-bbj");
+
+        // Files.isDirectory(entry) follows the symlink, so the entry is admitted into the sweep
+        // loop as a matching candidate; Files.walkFileTree's default (non-link-following) root
+        // handling then treats the *root* argument as a plain file when it is itself a symlink,
+        // so only the link is unlinked -- its target is never walked into or deleted. Document
+        // the observed outcome directly rather than assuming it: the sweep reports one removal
+        // (the link is gone), and the link's target and its contents both survive intact.
+        assertEquals(1, removed, "the symlink entry itself counts as one removed candidate");
+        assertFalse(Files.exists(directChildLink), "the direct-child symlink itself must be gone");
+        assertTrue(Files.exists(outsideDir), "the link's target directory must survive");
+        assertTrue(Files.exists(outsideFile), "the file inside the link's target must survive");
+        assertEquals("do not delete me\n", Files.readString(outsideFile));
+    }
+
     private static long countEntries(Path dir) throws IOException {
         try (var stream = Files.list(dir)) {
             return stream.count();
