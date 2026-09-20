@@ -50,3 +50,39 @@ describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)'
         expect(lineBreakErrors).toHaveLength(0);
     });
 });
+
+describe('Line break validation: TABLE statement', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+        validate = validationHelper<Program>(services.BBj);
+    });
+
+    const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
+        diagnostics.filter(d => /new line|line break/i.test(d.message));
+
+    const positiveCases: [string, string][] = [
+        ['no leading label, short unspaced data', 'TABLE ff00aa11\n'],
+        ['leading label declaration', 'L1: TABLE ff00aa11\n'],
+        ['long unspaced data field', 'TABLE aabbccddeeff00112233445566778899aabbccddeeff0011\n'],
+        ['data field with single spaces between groups', 'TABLE aa bb cc dd ee ff\n'],
+        ['data field mixing spaced and unspaced groups', 'TABLE aabb cc ddee ff\n'],
+        ['all-uppercase keyword', 'TABLE FF00AA11\n'],
+        ['all-lowercase keyword', 'table ff00aa11\n'],
+        ['mixed-case keyword', 'TaBlE ff00aa11\n'],
+        ['trailing ;rem comment', 'TABLE ff00aa11;rem trailing comment\n'],
+        ['leading label with lowercase keyword', 'L2: table aa bb cc dd\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('two statements on one line with no separator between them is still flagged', async () => {
+        const result = await validate('a = 1 table 00ff\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});

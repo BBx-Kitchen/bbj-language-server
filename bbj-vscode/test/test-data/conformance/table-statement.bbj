@@ -1,3 +1,14 @@
 REM Protects TABLE statements from being split into extra sibling statements that
-REM falsely need a line break before or after them.
+REM falsely need a line break before or after them. Covers: with and without a
+REM leading label, short and long unspaced data, spaced and mixed-spacing data,
+REM upper/lower/mixed-case keyword, and a trailing ;rem comment.
 TABLE ff00aa11
+L1: TABLE ff00aa11
+TABLE aabbccddeeff00112233445566778899aabbccddeeff0011
+TABLE aa bb cc dd ee ff
+TABLE aabb cc ddee ff
+TABLE FF00AA11
+table ff00aa11
+TaBlE ff00aa11
+TABLE ff00aa11;rem trailing comment
+L2: table aa bb cc dd
