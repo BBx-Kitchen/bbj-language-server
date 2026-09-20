@@ -144,6 +144,14 @@ None - no external service configuration required.
 - The maintainer hand UAT proving this end-to-end in a running IDE (kill the language-server process, observe crash banner + restart) is plan 97-05's blocking checkpoint, not yet run.
 - No blockers for the next plan in this wave.
 
+## Self-Check: PASSED
+
+All 5 modified source/test files verified present on disk; all 4 commits (`bb0a49f0`, `cb3ce7f8`,
+`a2680319`, `764fc451`) verified present in `git log`. All plan-level `<verification>` commands
+re-ran green (`./gradlew test --tests "*.Lsp4ij*" --rerun-tasks` BUILD SUCCESSFUL; exactly one
+non-comment `updateStatus(` across the two files, living in the factory; `ExpectedStopGuard.java`
+and `BbjServerService.java` untouched per `git diff --exit-code`).
+
 ---
 *Phase: 97-release-0-16-0-milestone-close*
 *Completed: 2026-09-20*
