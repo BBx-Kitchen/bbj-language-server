@@ -1,9 +1,9 @@
 # DRAFT — upstream reports for redhat-developer/lsp4ij
 
 Status: draft for maintainer review. Nothing has been filed. Observed with LSP4IJ 0.21.0, IntelliJ IDEA
-2026.2.2 (IU-262.10315.125), Windows 10. Before filing, check each report against LSP4IJ `main` and
-search existing issues — neither was done conclusively (the GitHub code/issue search returned nothing
-useful from this environment).
+2026.2.2 (IU-262.10315.125), Windows 10. Checked on 2026-09-20 against a shallow clone of LSP4IJ `main`
+(9bdfb68, 2026-09-18): `LanguageServerWrapper.java` and `ExtendedStreamMessageProducer.java` are unchanged
+since tag 0.21.0, so A and B still apply. Still to do before filing: search existing upstream issues.
 
 Confidence per report:
 
@@ -11,15 +11,16 @@ Confidence per report:
 |---|--------|----------|----------------|
 | A | `stop()` runs its blocking 5 s shutdown inside a ReadAction thread | stack trace from idea.log | yes |
 | B | while `serverError` is set, every `start()` kills the in-flight start and launches another process | 0.21.0 source + LSP trace message ids | yes, with the caveat below |
-| C | `ServerStatus.stopped` never reaches the language client after an unexpected stop | source reading only | no — verify first |
+| C | `ServerStatus.stopped` never reaches the language client after an unexpected stop | — | WITHDRAWN: documented upstream behaviour, our plugin uses the wrong hook |
 
-What is deliberately NOT claimed: how our malformed server reply led LSP4IJ to stop the server in the
-first place. That link was never captured. A local lsp4j probe (client launcher fed
-`{"id":1,"result":{"code":-32800}}` for a pending `workspace/symbol`) showed lsp4j logs
-`SEVERE: Unexpected token BEGIN_OBJECT: expected BEGIN_ARRAY` , keeps listening, and leaves the request
-future pending forever — it does NOT drop the connection. So the earlier note "a response lsp4j cannot
-deserialise drops the connection silently" is wrong and must not go into a report. The hanging request is
-an eclipse-lsp4j matter (and was caused by our own protocol violation, since fixed), not an LSP4IJ bug.
+How our malformed reply led to the stop (now established): lsp4j's `StreamMessageProducer` takes its
+`fireError` path for a `result` it cannot deserialise (a local probe logged lsp4j's own
+`SEVERE: Unexpected token BEGIN_OBJECT: expected BEGIN_ARRAY` and left the request pending, listener
+alive). LSP4IJ deliberately replaces that producer with `ExtendedStreamMessageProducer`, whose `fireError`
+THROWS so that "the processor is immediately stopped" and "LSP4IJ can detect the failure and automatically
+restart the language server" (their #1238). So one undeserialisable response ends the listener,
+`launcherFuture` completes exceptionally, the next `start()` sets `serverError`, stops and relaunches. That
+is upstream's intended design, not a bug — do not report it. Report B is about what happens next.
 
 ---
 
@@ -122,24 +123,20 @@ timeout (see report A), so 2–3 server processes coexist briefly, and each coun
 `initializeFuture` instead of stopping it; the `serverError` branch should run once per error, not once per
 caller.
 
-**Caveat to state honestly in the issue:** the initial unexpected stop was provoked by a bug in our own
-language server (it answered cancelled requests with `"result": {"code": -32800}` instead of an `error`
-member; fixed on our side). We did not capture which LSP4IJ path reacted to that reply by stopping the
-server. The report is about what happens after ANY unexpected stop, which is visible in the source
-independently of our trigger.
+**Context to state honestly in the issue:** the initial error was provoked by a bug in our own language
+server (it answered cancelled requests with `"result": {"code": -32800}` instead of an `error` member;
+fixed on our side). `ExtendedStreamMessageProducer.fireError` turned that into a listener stop and an
+automatic restart, as designed (#1238). The report is about the restart itself being re-entered by every
+caller until `initialize` completes, which applies after ANY such error.
 
 ---
 
-## Report C — NOT ready: `ServerStatus.stopped` does not reach the language client after an unexpected stop
+## Report C — WITHDRAWN (not an upstream bug)
 
-Claim from the debug session: `stop(InitializingContext)` calls `languageClient.dispose()` before it
-publishes `ServerStatus.stopped`, and publishes `stopped` only when
-`currentInitializingContext == null || currentInitializingContext.equals(initializingContext)`, i.e. not at
-all when a newer start already installed a context. A plugin that tracks status through its
-`LanguageClientImpl` therefore never sees a crash. In our Windows session seven stop/start cycles produced
-zero `stopped` transitions.
-
-Before filing: confirm how status changes are delivered to `LanguageClientImpl.handleServerStatusChanged`
-in 0.21.0 and on `main`, and whether `LanguageServerLifecycleListener` is the intended API for this (in
-which case this is a documentation request, not a bug, and the fix belongs in our plugin — see the todo
-"A lost language-server connection is invisible to the plugin's crash detection").
+`LanguageClientImpl.handleServerStatusChanged` documents that, because the language client does not exist
+during some statuses, it receives ONLY `stopping` and `started`, and says: "If you need to track all status,
+you can do that by implementing `LSPClientFeatures#handleServerStatusChanged(ServerStatus)`".
+`LanguageServerWrapper.updateStatus` indeed calls the lifecycle manager, then the client if non-null, then
+`getClientFeatures().handleServerStatusChanged(...)`. Our `BbjLanguageClient` overrides the client-side
+callback, which is why it never sees `stopped`. The fix belongs in our plugin — see the todo "A lost
+language-server connection is invisible to the plugin's crash detection".

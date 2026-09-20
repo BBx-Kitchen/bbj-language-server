@@ -15,6 +15,12 @@ LSP4IJ detaches the plugin's language client before it publishes `ServerStatus.s
 
 ## What's needed
 
-Subscribe to LSP4IJ's `LanguageServerLifecycleManager` listener (or an equivalent signal that outlives the client) and record status synchronously, so an unexpected stop is logged and reaches the crash/auto-restart logic. Add a source guard and a coupling canary for the listener API.
+LSP4IJ documents this: `LanguageClientImpl.handleServerStatusChanged` receives only `stopping` and
+`started`; to track every status a plugin implements `LSPClientFeatures#handleServerStatusChanged`.
+`BbjLanguageClient` overrides the client-side callback, so it can never see `stopped`. Move the status
+feed for `BbjServerService.updateStatus` to the `LSPClientFeatures` subclass returned by
+`BbjLanguageServerFactory.createClientFeatures()`, re-check `ExpectedStopGuard`'s classification against
+the full status sequence it will then receive, and add a source guard plus a coupling canary for the hook.
 
-See `.planning/debug/resolved/restart-duplicate-node-launches.md` and `.planning/debug/resolved/bbj-language-server-does-not-s.md`.
+See `.planning/debug/resolved/lsp4ij-upstream-report-draft.md` (report C, withdrawn) and
+`.planning/debug/resolved/restart-duplicate-node-launches.md`.

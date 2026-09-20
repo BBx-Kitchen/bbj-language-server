@@ -19,14 +19,15 @@ confidence table: `.planning/debug/resolved/lsp4ij-upstream-report-draft.md`.
 - B (ready, with a stated caveat): while `serverError` is set, every `start()` stops the still-initialising
   previous start and launches another process — one per Search Everywhere keystroke. Backed by the 0.21.0
   source and LSP trace message ids.
-- C (not ready): `ServerStatus.stopped` not reaching the language client after an unexpected stop — source
-  reading only; may be a documentation matter rather than a bug.
+- C (withdrawn): `stopped` not reaching the language client is documented upstream behaviour; the fix is
+  in our plugin (separate todo).
 
-Corrected since this todo was first written: a reply lsp4j cannot deserialise does NOT drop the connection.
-A local probe showed lsp4j logs SEVERE, keeps listening and leaves the request pending. Which LSP4IJ path
-stopped the server after our malformed reply was never captured; the draft says so and no report claims it.
+Established since this todo was first written: LSP4IJ's `ExtendedStreamMessageProducer.fireError` throws on
+a reply that cannot be deserialised, by design (their #1238), which ends the listener and triggers the
+automatic restart. That is intended and is not reported. A and B were checked against LSP4IJ `main`
+(9bdfb68, 2026-09-18): the relevant files are unchanged since 0.21.0.
 
 ## What's needed
 
-Maintainer reviews the draft, checks A and B against LSP4IJ `main` and existing issues, then files (or
-approves filing). Outward-facing: nothing is filed without that approval.
+Maintainer reviews the draft, searches existing upstream issues for A and B, then files (or approves
+filing). Outward-facing: nothing is filed without that approval.
