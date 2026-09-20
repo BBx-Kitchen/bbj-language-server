@@ -3,9 +3,9 @@ package com.basis.bbj.intellij.interop;
 /**
  * Plain-Java decision seam behind {@code BbjJavaInteropService}'s poll cadence (#593). This class
  * holds no IntelliJ platform import, so plain JUnit can drive every branch directly -- the same
- * shape {@link com.basis.bbj.intellij.lsp.NodeAvailability} already establishes: a private
- * constructor, an exhaustive enum of outcomes, and a static pure function taking every dependency
- * as a parameter.
+ * shape {@link com.basis.bbj.intellij.lsp.NodeExecutableResolver} already establishes: a private
+ * constructor, an enum-based rejection vocabulary, and a static pure function taking every
+ * dependency as a parameter.
  *
  * <p>{@link #decide} answers one question -- "given what just happened, should the poll check
  * now, re-arm at the normal interval, pause, or leave the running cadence alone?" -- without ever

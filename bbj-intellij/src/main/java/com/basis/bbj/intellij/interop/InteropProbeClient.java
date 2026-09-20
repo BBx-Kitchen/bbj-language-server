@@ -20,7 +20,7 @@ import java.util.concurrent.TimeoutException;
  * Plain client-side LSP4J probe that confirms a java-interop peer's protocol identity (#587),
  * replacing a bare TCP handshake with a real {@code getTopLevelPackages} JSON-RPC round trip. This
  * class holds no IntelliJ platform import, so plain JUnit drives every branch directly -- the same
- * constraint {@link com.basis.bbj.intellij.lsp.NodeAvailability} already satisfies.
+ * constraint {@link com.basis.bbj.intellij.lsp.NodeExecutableResolver} already satisfies.
  */
 public final class InteropProbeClient {
 

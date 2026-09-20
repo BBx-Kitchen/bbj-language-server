@@ -14,7 +14,7 @@ package com.basis.bbj.intellij.composer;
  * <p>
  * This class has no IntelliJ platform dependency so it can be covered by plain JUnit 5 tests,
  * mirroring the repo's existing plain-Java seam convention ({@code RemToggleSeam},
- * {@code CompilerInitOptions}, {@code NodeAvailability}).
+ * {@code CompilerInitOptions}, {@code NodeExecutableResolver}).
  */
 public final class BbjHexLiteral {
 
