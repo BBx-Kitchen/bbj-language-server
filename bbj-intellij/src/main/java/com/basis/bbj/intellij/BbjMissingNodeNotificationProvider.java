@@ -4,11 +4,9 @@ import com.basis.bbj.intellij.lsp.NodeAvailability;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.options.ShowSettingsUtil;
-import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.EditorNotificationPanel;
-import com.intellij.ui.EditorNotificationProvider;
 import com.intellij.ui.EditorNotifications;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,16 +19,11 @@ import java.util.function.Function;
  * The banner provides links to configure the Node.js path in settings
  * or to download Node.js from nodejs.org.
  */
-public final class BbjMissingNodeNotificationProvider
-        implements EditorNotificationProvider, DumbAware {
+public final class BbjMissingNodeNotificationProvider extends BbjNotificationProviderBase {
 
     @Override
-    public @Nullable Function<? super @NotNull FileEditor, ? extends @Nullable JComponent>
-            collectNotificationData(@NotNull Project project, @NotNull VirtualFile file) {
-
-        if (file.getFileType() != BbjFileType.INSTANCE) {
-            return null;
-        }
+    protected @Nullable Function<? super @NotNull FileEditor, ? extends @Nullable JComponent>
+            buildPanel(@NotNull Project project, @NotNull VirtualFile file) {
 
         String nodeJsPath = BbjSettings.getInstance().getState().nodeJsPath;
 
@@ -46,9 +39,9 @@ public final class BbjMissingNodeNotificationProvider
         }
 
         return fileEditor -> {
-            EditorNotificationPanel panel = new EditorNotificationPanel(
-                    fileEditor, EditorNotificationPanel.Status.Warning);
-            panel.setText("Node.js 18+ is required to run the BBj language server");
+            EditorNotificationPanel panel = newPanel(
+                    fileEditor, EditorNotificationPanel.Status.Warning,
+                    "Node.js 18+ is required to run the BBj language server");
             panel.createActionLabel("Download Node.js", () ->
                     BbjNodeDownloader.downloadNodeAsync(project, () ->
                             EditorNotifications.getInstance(project).updateAllNotifications()));
