@@ -33,12 +33,14 @@ describe('Issue #447 - suggest missing use statements (real interop)', async () 
         return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError) ?? [];
     }
 
-    test.runIf(run)('capability detection: current server lacks getAllClassNames and degrades gracefully', async () => {
+    test.runIf(run)('capability detection: the index probe and the cached flag agree, and suggestions work either way', async () => {
         const interop = services.BBj.java.JavaInteropService;
-        // The deployed server predates the augmented endpoint, so no complete index is built...
-        expect(await interop.ensureCompleteClassIndex()).toBe(false);
-        expect(interop.hasCompleteClassIndex()).toBe(false);
-        // ...yet suggestions still work via the fallback probe.
+        // The deployed backend may or may not expose the augmented getAllClassNames endpoint --
+        // that is an environment fact, not a product invariant. Either way, the probe's answer
+        // and the cached capability flag must agree, and suggestions must resolve regardless.
+        const hasCompleteIndex = await interop.ensureCompleteClassIndex();
+        expect(typeof hasCompleteIndex).toBe('boolean');
+        expect(interop.hasCompleteClassIndex()).toBe(hasCompleteIndex);
         const candidates = await interop.resolveClassCandidatesBySimpleName('HashMap');
         expect(candidates).toContain('java.util.HashMap');
     }, 60000);
