@@ -55,11 +55,11 @@ public final class NodePresentation {
         if (settingsRejection != null) {
             if (settingsRejection.reason() == NodeExecutableResolver.Reason.BELOW_MINIMUM_VERSION) {
                 return "The configured Node.js is older than the minimum supported version -- "
-                        + "Node.js 18+ is required.";
+                        + "Node.js 22+ is required.";
             }
             return "The configured Node.js path " + describeForBanner(settingsRejection.reason()) + ".";
         }
-        return "Node.js 18+ is required to run the BBj language server";
+        return "Node.js 22+ is required to run the BBj language server";
     }
 
     /**

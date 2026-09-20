@@ -133,7 +133,7 @@ public class BbjSettingsComponent {
                 }
                 if (!lookup.meetsMinimum()) {
                     return new ValidationInfo(
-                        "Node.js version 18 or higher is required",
+                        "Node.js version 22 or higher is required",
                         nodeJsField
                     );
                 }
@@ -363,7 +363,7 @@ public class BbjSettingsComponent {
         } else if (lookup.version() == null) {
             nodeVersionLabel.setText("Could not detect Node.js version");
         } else if (!lookup.meetsMinimum()) {
-            nodeVersionLabel.setText("Version too old (minimum: 18), detected: " + lookup.version());
+            nodeVersionLabel.setText("Version too old (minimum: 22), detected: " + lookup.version());
         } else {
             nodeVersionLabel.setText("Detected: " + lookup.version());
         }

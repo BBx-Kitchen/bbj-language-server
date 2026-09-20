@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.util.function.Function;
 
 /**
- * Shows an editor banner on BBj files when Node.js 18+ is not available. The banner reaches its
+ * Shows an editor banner on BBj files when Node.js 22+ is not available. The banner reaches its
  * verdict through the same {@link NodeExecutableResolver} the language server's startup path
  * calls -- configured, then detected, then cached, with the same six-step validation and the
  * same minimum-version gate -- so the banner can no longer claim Node.js is missing on a machine
