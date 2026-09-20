@@ -313,17 +313,17 @@ files describe behaviour and use word lists only.
 
 ### Phase 98: Line-Break & Validation False Alarms (A2)
 
-**Goal**: A developer writing valid BBj stops seeing errors the compiler would never report — the line-break validator and the two class-level checks agree with `bbjcpl` on code it accepts.
-**Depends on**: Nothing (first phase of v4.5; it edits `bbj-vscode/src/language/validations/` and leaves the grammar alone, so it is file-disjoint from Phases 99 and 100)
-**Repository**: this one — `bbj-vscode/src/language/validations/line-break-validation.ts`, `validations/check-classes.ts`, plus new regression files under `bbj-vscode/test/test-data/`
+**Goal**: A developer writing valid BBj stops seeing errors the compiler would never report — the line-break validator, the conflicting-`DECLARE` check and the `METHODRET` checks agree with `bbjcpl` on code it accepts.
+**Depends on**: Nothing (first phase of v4.5). Most of these false alarms are the symptom of a wrong parse — `TABLE` has no grammar rule, `RESTORE` accepts only a label — so the phase fixes the grammar where the syntax tree is wrong and the validator where only the line-break rule is wrong. It therefore shares `bbj.langium` with Phases 99 and 100, which run after it.
+**Repository**: this one — `bbj-vscode/src/language/bbj.langium` (plus `npm run langium:generate`) and `bbj-lexer.ts`, `validations/line-break-validation.ts`, `validations/check-variable-scoping.ts` (conflicting `DECLARE`), `validations/check-classes.ts` (`METHODRET`), plus new regression files under `bbj-vscode/test/test-data/conformance/`
 **Requirements**: VALID-01, VALID-02, VALID-03, VALID-04, VALID-05, CONF-01
 **Success Criteria** (what must be TRUE):
 
   1. A `TABLE` statement — with or without a leading label, hex field spaced or unspaced, long or short — produces no "This statement needs to start in a new line" error. This is the largest A2 group on its own (about 110 of the 267 files, across its message variants).
   2. `RESTORE 0`, `GOSUB`/`GOTO` to a label whose name is also a language word (`gosub print`, `gosub save`), `EXIT err`, `LOAD "prog"`, `SAVE` and a continued `LEN=` item produce no line-break error (about 70 more files).
   3. A `DEF FN...(params)` header spread over continuation lines, and the single-line `IF ... THEN ... ; GOTO label` and `... FI` forms the compiler accepts, produce no "needs to start in a new line" or "needs to end with a line break" error.
-  4. The conflicting-`DECLARE` check and the "method declares a return type but has no METHODRET returning a value" check report nothing on code `bbjcpl` accepts.
-  5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/` that `example-files.test.ts` parses with zero errors — the CONF-01 convention Phases 99 and 100 then follow.
+  4. The conflicting-`DECLARE` check and the two `METHODRET` checks ("declares a return type but has no METHODRET returning a value", "is declared void and must not return a value") report no error on code `bbjcpl` accepts; they may still warn. One deliberate exception stays an error: two declarations of one name inside a single method body whose types both resolve and are unrelated.
+  5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/conformance/` that the example-files test parses with zero errors and validates with zero error-severity diagnostics (linking excluded) — the CONF-01 convention Phases 99 and 100 then follow.
 
 **Plans**: TBD
 
@@ -332,7 +332,7 @@ files describe behaviour and use word lists only.
 ### Phase 99: Parser Gaps — the Largest Groups
 
 **Goal**: The four list-A groups that account for most of the rejected-but-valid files parse: `FIELD` as a verb, the combined `RECORD` verbs with channel options, labels standing alone or in front of a statement, and `IOLIST`.
-**Depends on**: Phase 98 (no file conflict — scheduled after it so the A2 number is already settled when list A is re-measured, and so the regression-file convention is in place)
+**Depends on**: Phase 98 (same grammar file, so strictly after it — the A2 number is then already settled when list A is re-measured, and so the regression-file convention is in place)
 **Repository**: this one — `bbj-vscode/src/language/bbj.langium` (plus `npm run langium:generate`), `bbj-lexer.ts` where the combined verbs need lookahead, and `bbj-vscode/test/test-data/`
 **Requirements**: PARSE-01, PARSE-02, PARSE-03, PARSE-07
 **Success Criteria** (what must be TRUE):
