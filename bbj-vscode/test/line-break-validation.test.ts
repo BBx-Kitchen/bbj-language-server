@@ -85,4 +85,32 @@ describe('Line break validation: TABLE statement', async () => {
         const result = await validate('a = 1 table 00ff\n');
         expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
     });
+
+    // Regression: TABLE_DATA's lookbehind must require TABLE at the start of a statement (line
+    // start, optional label, or after a ';' separator). Without that anchor, any identifier that
+    // merely ends in or contains "table" swallows the rest of its line as opaque TABLE data.
+    const stillOrdinaryIdentifierCases: [string, string][] = [
+        ['bare table as a for-loop bound', 'for i=1 to table step 2\nnext i\n'],
+        ['mytable as a for-loop bound', 'for i=1 to mytable step 2\nnext i\n'],
+        ['rowtable as a for-loop bound', 'for i=1 to rowtable step 2\nnext i\n'],
+        ['bare table in an if condition', 'if table then print "x"\n'],
+        ['mytable in an if condition', 'if mytable then print "x"\n'],
+        ['table in a while condition', 'while table\nwend\n'],
+        ['table used mid-expression after a minus', 'x = table - 1\n'],
+        ['table used mid-expression after a plus', 'x = table + 1\n'],
+        ['table printed as an ordinary value', 'print table ; print 1\n'],
+        ['table as an assignment target', 'table = 5\n'],
+        ['table as a let-assignment target', 'let table = 5\n'],
+        ['mytable as an assignment target', 'mytable = 3\n'],
+    ];
+
+    test.each(stillOrdinaryIdentifierCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('TABLE statement immediately after a \';\' statement separator produces no line-break diagnostics', async () => {
+        const result = await validate('x = 1;TABLE ff00aa11\n');
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
 });
