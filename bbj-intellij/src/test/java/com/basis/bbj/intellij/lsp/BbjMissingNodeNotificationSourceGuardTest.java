@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -56,7 +57,9 @@ class BbjMissingNodeNotificationSourceGuardTest {
     /**
      * Locates {@code declarationMarker} in {@code source}, then returns the substring from that
      * declaration's opening brace through its matching closing brace (inclusive), by counting
-     * brace depth.
+     * brace depth. String literals, char literals, line comments, and block comments are skipped
+     * while counting, so a brace character written inside any of those never perturbs the depth
+     * count -- only braces that are actual Java syntax are counted.
      */
     private static String bodyOf(String source, String declarationMarker) {
         int declarationStart = source.indexOf(declarationMarker);
@@ -67,8 +70,63 @@ class BbjMissingNodeNotificationSourceGuardTest {
         assertTrue(openBrace >= 0, "no opening brace found after declaration: " + declarationMarker);
         int depth = 0;
         int i = openBrace;
+        boolean inString = false;
+        boolean inChar = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
         for (; i < source.length(); i++) {
             char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+
+            if (inLineComment) {
+                if (c == '\n') {
+                    inLineComment = false;
+                }
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inString) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '\'') {
+                    inChar = false;
+                }
+                continue;
+            }
+
+            if (c == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+                continue;
+            }
+            if (c == '\'') {
+                inChar = true;
+                continue;
+            }
+
             if (c == '{') {
                 depth++;
             } else if (c == '}') {
@@ -162,5 +220,32 @@ class BbjMissingNodeNotificationSourceGuardTest {
         assertTrue(bannerActionsIndex > returnFileEditorIndex,
                 "the action set must be derived inside the panel-building closure, after the "
                         + "no-banner early return has already been decided");
+    }
+
+    @Test
+    void bodyOfIgnoresBracesInsideStringAndCharLiterals() {
+        String source =
+                "class Sample {\n"
+                        + "    void buildPanel(@NotNull Project project, @NotNull VirtualFile file) {\n"
+                        + "        String message = \"resolved as {0}\";\n"
+                        + "        char brace = '{';\n"
+                        + "        String another = \"unbalanced } and { characters\";\n"
+                        + "        System.out.println(message);\n"
+                        + "    }\n"
+                        + "\n"
+                        + "    void trailingMethodNotPartOfBody() {\n"
+                        + "        System.out.println(\"must not be included\");\n"
+                        + "    }\n"
+                        + "}\n";
+
+        String body = buildPanelBody(source);
+
+        assertTrue(body.startsWith("{"), "body must start with the opening brace");
+        assertTrue(body.endsWith("}"), "body must end with the matching closing brace");
+        assertTrue(body.contains("System.out.println(message);"),
+                "body must include statements that follow the brace-bearing literals");
+        assertFalse(body.contains("trailingMethodNotPartOfBody"),
+                "a brace-unaware scanner mis-locates the closing brace on unbalanced literal "
+                        + "content and swallows the next method -- this must not happen");
     }
 }
