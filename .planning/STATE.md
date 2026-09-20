@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 97
 current_phase_name: Release 0.16.0 & Milestone Close
 status: executing
-stopped_at: Completed 97-02-PLAN.md
-last_updated: "2026-09-20T14:20:50.033Z"
+stopped_at: Completed 97-05-PLAN.md (Round 2, D-22 gate closed)
+last_updated: "2026-09-20T15:46:18.520Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 97 execution started
-state_head: 626b8fe36a507d587c7b1119429cd9c6311740c3
+state_head: 6bb697aaec2fa0fa2eda65534cfa8caf16ff05d9
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 36
-  completed_plans: 29
+  completed_plans: 30
   percent: 80
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 97 (Release 0.16.0 & Milestone Close) — EXECUTING
-Plan: 5 of 11
+Plan: 6 of 11
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 97 execution started
 
@@ -112,6 +112,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 97 P03 | 20min | 3 tasks | 2 files |
 | Phase 97 P04 | 10min | 2 tasks | 4 files |
 | Phase 97 P02 | continuation | 3 tasks | 3 files |
+| Phase 97 P05 | 10min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,7 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 97]: [Phase 97]: 97-04: setIndeterminate(false) placed as a single unconditional statement before pipeline.install(...), outside the progress lambda, so it runs once per download rather than once per progress tick
 - [Phase 97]: Maintainer approved (2026-09-20, "Proceed (Recommended)") feeding ExpectedStopGuard.classify the one-behind from-state instead of the two-behind stale field; a lost-connection sequence now classifies CRASH on its final transition instead of being silently dismissed as NOT_A_STOP.
 - [Phase 97]: No duplicate ExpectedStopGuardTest case was added for the lost-connection sequence: the prior task-1 executor found stoppedAfterStartedWithNothingArmedIsACrash already covered it, per the plan's own skip-if-covered instruction.
+- [Phase 97]: [Phase 97]: 97-05 Round 2 hand check APPROVED (2026-09-20) against bbj-intellij-0.1.0.zip sha256 9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40 and bbj-lang-0.15.3.vsix sha256 65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d, source commit f0f56b290a2e47c24943b0f101260380b11e2f9d -- D-01 step 1's code-wave gate, as narrowed by D-22, is closed; the optional Node.js download step was recorded as not-reported rather than passed
 
 ### Tech Debt
 
@@ -244,8 +246,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T14:20:42.734Z
-Stopped at: Completed 97-02-PLAN.md
+Last session: 2026-09-20T15:46:18.314Z
+Stopped at: Completed 97-05-PLAN.md (Round 2, D-22 gate closed)
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.

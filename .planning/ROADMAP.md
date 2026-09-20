@@ -442,7 +442,7 @@ Plans:
   3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
   4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
 
-**Plans**: 4/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
+**Plans**: 5/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
 
 Plans:
 **Wave 1**
@@ -457,7 +457,7 @@ Plans:
 
 **Wave 3** *(blocked on every code-wave plan)*
 
-- [ ] 97-05-PLAN.md — REL-01: both suites green on the final tree, register check, both distributables built and hashed, crash-detection hand UAT (wave 3)
+- [x] 97-05-PLAN.md — REL-01: both suites green on the final tree, register check, both distributables built and hashed, crash-detection hand UAT (wave 3)
 
 **Wave 4** *(blocked on 97-05)*
 
