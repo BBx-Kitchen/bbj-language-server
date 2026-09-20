@@ -5,11 +5,11 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 96
 current_phase_name: Platform Integration & Node.js Diagnosis
 status: executing
-stopped_at: Phase 96 context gathered
-last_updated: "2026-09-19T21:25:05.714Z"
+stopped_at: Phase 96 planned and verified; execution paused before first dispatch (context limit). Branch gsd/phase-96-platform-integration-node-js-diagnosis; ISOLATION=none (sequential).
+last_updated: "2026-09-20T01:03:32.869Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 96 execution started
-state_head: 5e156ba71cd1e6d10f59703120bd8f325db84c73
+state_head: 93296660907acc763059c3a1252e77330d295b02
 progress:
   total_phases: 5
   completed_phases: 3
@@ -209,9 +209,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-19T20:15:10.613Z
-Stopped at: Phase 96 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/96-platform-integration-node-js-diagnosis/96-CONTEXT.md
+Last session: 2026-09-20T01:03:32.699Z
+Stopped at: Phase 96 planned and verified; execution paused before first dispatch (context limit). Branch gsd/phase-96-platform-integration-node-js-diagnosis; ISOLATION=none (sequential).
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/96-platform-integration-node-js-diagnosis/96-01-PLAN.md
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
 
