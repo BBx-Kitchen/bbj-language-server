@@ -292,6 +292,44 @@ rebuilt from the final tree (VS Code first, then IntelliJ) and this subsection i
 the new filenames/hashes/sizes/source-commit before the hand-check verdict below is considered
 current.
 
+### Hand check verdict — 2026-09-20 — APPROVED
+
+Verdict recorded against `bbj-intellij-0.1.0.zip` sha256
+`9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40` (1,159,953 bytes) and
+`bbj-lang-0.15.3.vsix` sha256 `65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d`
+(2,631,405 bytes), both built from source commit `f0f56b290a2e47c24943b0f101260380b11e2f9d`. The
+orchestrator re-verified both hashes on disk against the artifacts above before sending the files
+to the maintainer.
+
+Maintainer's reply, verbatim:
+
+> approved
+
+Per the checkpoint's resume signal, "approved" means every expectation held: the rebuilt zip
+installed cleanly; a `.bbj` file opened with the server reaching a started state, diagnostics
+present and completion working; this session's `idea.log` carried no
+`Unsupported notification method: bbj/bbjcplAvailability` WARN. The optional Node.js download
+step (step 4, `setFraction` on an indeterminate progress indicator) was not separately reported
+and is recorded as **not reported**, not as passed.
+
+| Expectation | Result |
+|---|---|
+| Rebuilt zip installs cleanly via Install Plugin from Disk | **PASS** (implied by "approved") |
+| `.bbj` file opens, server reaches a started state, diagnostics present, completion works | **PASS** (implied by "approved") |
+| No `Unsupported notification method: bbj/bbjcplAvailability` WARN in this session's `idea.log` | **PASS** (implied by "approved") |
+| No `IllegalStateException` for `setFraction` during a Node.js download (optional, step 4) | **not reported** — not separately exercised this session |
+
+**Gate outcome (D-01 step 1, narrowed by D-22): MET.** The revert of the crash-detection rework and
+the from-state change is provably complete (Round 2 revert-completeness assertion above), both
+whole suites are green on the post-revert tree, the register check found no planning identifier,
+both distributables are rebuilt from that tree and proven to carry the freshly built
+language-server bundle, and the maintainer has now confirmed in a real IDE that what is actually
+left in 0.16.0 — the no-op `bbj/bbjcplAvailability` handler, the `setIndeterminate(false)` fix, the
+rewritten issue447 test, and the already-green gradle-wrapper-hygiene fixture — behaves correctly.
+No expectation about crash banners, auto-restart or status-log from-states was put to the
+maintainer, and none appears in this verdict (D-22). The code wave's gate is closed; the landing PR
+(plan 97-06) may proceed.
+
 ---
 
 ## Hand UAT verdict
