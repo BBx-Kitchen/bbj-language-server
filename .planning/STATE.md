@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-02-PLAN.md
-last_updated: "2026-09-20T22:35:32.335Z"
+stopped_at: Completed 98-03-PLAN.md
+last_updated: "2026-09-20T22:52:03.180Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: 7b6f10aae8023ef173f59eeb58f81e6375c71f92
+state_head: 5e9ecd5c08e8ca85705ad3d47a7230bb33d6a73f
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 98 execution started
 
@@ -97,6 +97,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 |------|----------|-------|-------|
 | Phase 98 P01 | 12min | 3 tasks | 5 files |
 | Phase 98 P02 | 55min | 3 tasks | 6 files |
+| Phase 98 P03 | 40min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ decisions:
 - [Phase 98]: TableStatement grammar rule carries no embedded LabelDecl — A leading label already works via the existing isStandaloneStatement mechanism (a statement immediately following a LabelDecl is not required to have a line break before it); confirmed via probe
 - [Phase 98]: RestoreStatement uses a RESTORE_NO_NL lexer token (mirroring EXIT_NO_NL), not a plain grammar-level optional, to avoid a parser ambiguity against the next statement — A plain-optional lineref parsed a bare RESTORE cleanly only when it was the last statement in the document; the lexer-level disambiguation avoids that ambiguity entirely
 - [Phase 98]: Branch-target exclusion lookbehind extended to look back through a bounded run of prior comma-separated targets — Needed so the last target of a multi-target ON...GOSUB list resolves, not only a single lone target after GOTO/GOSUB; every quantifier stays bounded per the DoS mitigation
+- [Phase 98]: Both METHODRET disagreements downgraded to warning; conflicting-DECLARE narrowed by scope and resolved-type relation, reusing check-classes.ts's subtype logic via new module-level exports — Matches the compiler's own acceptance of these shapes; avoids a second subtype walker by promoting classFqn/bbjSupertypesReach and adding bbjTypesAreRelated
+- [Phase 98]: java.lang.String/java.lang.Integer resolve under this suite's EmptyFileSystem test setup, confirmed by probe — So the plan's flagged risk did not apply; existing DECLARE severity tests kept their original java.lang.* types
 
 ### Tech Debt
 
@@ -181,8 +184,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-20T22:35:32.304Z
-Stopped at: Completed 98-02-PLAN.md
+Last session: 2026-09-20T22:51:53.658Z
+Stopped at: Completed 98-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
