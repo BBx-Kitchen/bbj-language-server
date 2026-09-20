@@ -2,10 +2,13 @@ package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.composer.BbjComposerServer;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.LanguageServerFactory;
+import com.redhat.devtools.lsp4ij.ServerStatus;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
@@ -59,6 +62,21 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.addProperty(CompilerInitOptions.COMPILER_OUTPUT_DIRECTORY_KEY,
                     CompilerInitOptions.normalizeOutputDirectory(state.compilerOutputDirectory));
                 params.setInitializationOptions(options);
+            }
+
+            @Override
+            public void handleServerStatusChanged(@NotNull ServerStatus status) {
+                super.handleServerStatusChanged(status);
+                Project project = getProject();
+                if (project.isDisposed()) {
+                    return;
+                }
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (project.isDisposed()) {
+                        return;
+                    }
+                    BbjServerService.getInstance(project).updateStatus(status);
+                });
             }
         }
         .setDocumentLinkFeature(new LSPDocumentLinkFeature() {
