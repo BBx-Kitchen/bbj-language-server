@@ -1,6 +1,8 @@
 package com.basis.bbj.intellij;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
@@ -164,5 +166,85 @@ class TextMateBundleCacheTest {
 
         assertFalse(TextMateBundleCache.isPopulatedFor(bundleDir, null, FILES),
                 "an unresolvable plugin descriptor must degrade to re-copy, never a false hit");
+    }
+
+    @Test
+    void sweepAbandonedRemovesOnlyDirectMatchingChildDirectories(@TempDir Path tempRoot) throws IOException {
+        Path matching = Files.createDirectories(tempRoot.resolve("textmate-bbj1234"));
+        Files.writeString(matching.resolve("marker.txt"), "leftover");
+        Path nonMatching = Files.createDirectories(tempRoot.resolve("some-other-dir"));
+
+        int removed = TextMateBundleCache.sweepAbandoned(tempRoot, "textmate-bbj");
+
+        assertEquals(1, removed);
+        assertFalse(Files.exists(matching), "a directory matching the prefix must be removed");
+        assertTrue(Files.exists(nonMatching), "a directory not matching the prefix must survive");
+    }
+
+    @Test
+    void sweepAbandonedNeverRemovesAPlainFileEvenIfItsNameMatches(@TempDir Path tempRoot) throws IOException {
+        Path matchingFile = tempRoot.resolve("textmate-bbj-not-a-directory");
+        Files.writeString(matchingFile, "not a directory");
+
+        int removed = TextMateBundleCache.sweepAbandoned(tempRoot, "textmate-bbj");
+
+        assertEquals(0, removed);
+        assertTrue(Files.exists(matchingFile), "a plain file must never be removed, even if its name matches");
+    }
+
+    @Test
+    void sweepAbandonedNeverReachesADirectoryNestedBelowADirectChild(@TempDir Path tempRoot) throws IOException {
+        Path outer = Files.createDirectories(tempRoot.resolve("unrelated-outer"));
+        Path nestedMatch = Files.createDirectories(outer.resolve("textmate-bbj-nested"));
+
+        int removed = TextMateBundleCache.sweepAbandoned(tempRoot, "textmate-bbj");
+
+        assertEquals(0, removed);
+        assertTrue(Files.exists(nestedMatch),
+                "a matching directory nested below a direct child must never be reached");
+    }
+
+    @Test
+    void sweepAbandonedWithABlankPrefixActsOnNothing(@TempDir Path tempRoot) throws IOException {
+        Files.createDirectories(tempRoot.resolve("textmate-bbj1234"));
+        Files.createDirectories(tempRoot.resolve("some-other-dir"));
+
+        assertEquals(0, TextMateBundleCache.sweepAbandoned(tempRoot, ""));
+        assertEquals(0, TextMateBundleCache.sweepAbandoned(tempRoot, "   "));
+        assertEquals(0, TextMateBundleCache.sweepAbandoned(tempRoot, null));
+        assertEquals(2, countEntries(tempRoot), "a blank or null prefix must leave every entry untouched");
+    }
+
+    @Test
+    void sweepAbandonedOnAMissingRootReturnsZeroWithoutThrowing(@TempDir Path tempRoot) {
+        Path missing = tempRoot.resolve("does-not-exist");
+
+        assertEquals(0, TextMateBundleCache.sweepAbandoned(missing, "textmate-bbj"));
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void sweepAbandonedDeletesASymbolicLinkAndNeverTheFileItPointsAt(
+            @TempDir Path tempRoot, @TempDir Path outsideRoot) throws IOException {
+        Path outsideDir = Files.createDirectories(outsideRoot.resolve("outside"));
+        Path outsideFile = outsideDir.resolve("do-not-delete.txt");
+        Files.writeString(outsideFile, "do not delete me\n");
+
+        Path matching = Files.createDirectories(tempRoot.resolve("textmate-bbj-with-link"));
+        Files.createSymbolicLink(matching.resolve("link-to-outside"), outsideDir);
+
+        int removed = TextMateBundleCache.sweepAbandoned(tempRoot, "textmate-bbj");
+
+        assertEquals(1, removed);
+        assertFalse(Files.exists(matching), "the swept directory itself must be gone");
+        assertTrue(Files.exists(outsideDir), "the link's target directory must survive");
+        assertTrue(Files.exists(outsideFile), "the file inside the link's target must survive");
+        assertEquals("do not delete me\n", Files.readString(outsideFile));
+    }
+
+    private static long countEntries(Path dir) throws IOException {
+        try (var stream = Files.list(dir)) {
+            return stream.count();
+        }
     }
 }

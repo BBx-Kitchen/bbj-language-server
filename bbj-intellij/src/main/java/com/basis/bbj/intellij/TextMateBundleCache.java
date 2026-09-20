@@ -1,11 +1,16 @@
 package com.basis.bbj.intellij;
 
+import com.basis.bbj.intellij.lsp.NodeInstallPipeline;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Platform-free cache decision for the TextMate bundle: whether a stable directory is already
@@ -15,6 +20,8 @@ import java.util.List;
  * be tested at all.
  */
 public final class TextMateBundleCache {
+
+    private static final Logger LOG = Logger.getLogger(TextMateBundleCache.class.getName());
 
     private TextMateBundleCache() {
     }
@@ -90,5 +97,48 @@ public final class TextMateBundleCache {
             Path marker = bundleDir.resolve(MARKER_FILE_NAME);
             Files.writeString(marker, pluginVersion);
         }
+    }
+
+    /**
+     * Removes directories that earlier launches abandoned directly beneath {@code tempRoot},
+     * scoped tightly: only DIRECT children of {@code tempRoot} are considered (never a recursive
+     * search for matches), only entries that ARE directories are eligible, and only those whose
+     * file name starts with {@code namePrefix}. A blank or {@code null} {@code namePrefix} matches
+     * nothing and returns {@code 0} without listing {@code tempRoot} at all -- an empty prefix
+     * would otherwise match every entry in the directory, which is exactly the blast radius this
+     * method exists to bound. A missing or unreadable {@code tempRoot} also returns {@code 0}
+     * without throwing. Each qualifying directory is removed via the already symlink-safe
+     * {@link NodeInstallPipeline#deleteRecursively(Path)} -- a link inside it is deleted as a link,
+     * never followed to whatever it points at. A delete failure on one entry is logged and the
+     * sweep continues to the next entry; a sweep failure never propagates to the caller.
+     *
+     * @return the number of directories successfully removed
+     */
+    public static int sweepAbandoned(Path tempRoot, String namePrefix) {
+        if (namePrefix == null || namePrefix.isBlank()) {
+            return 0;
+        }
+        int removed = 0;
+        try (DirectoryStream<Path> children = Files.newDirectoryStream(tempRoot)) {
+            for (Path entry : children) {
+                if (!Files.isDirectory(entry)) {
+                    continue;
+                }
+                if (!entry.getFileName().toString().startsWith(namePrefix)) {
+                    continue;
+                }
+                try {
+                    NodeInstallPipeline.deleteRecursively(entry);
+                    removed++;
+                } catch (IOException | RuntimeException e) {
+                    LOG.log(Level.WARNING,
+                            "Failed to delete abandoned TextMate bundle directory: " + entry, e);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            // A missing or unreadable tempRoot: nothing was swept, never throw.
+            return removed;
+        }
+        return removed;
     }
 }

@@ -26,6 +26,9 @@ public class BbjTextMateBundleProvider implements TextMateBundleProvider {
         "syntaxes/bbx.tmLanguage.json"
     );
 
+    /** The prefix earlier launches used for {@code Files.createTempDirectory}, swept below. */
+    private static final String ABANDONED_TEMP_DIR_PREFIX = "textmate-bbj";
+
     @NotNull
     @Override
     public List<PluginBundle> getBundles() {
@@ -37,9 +40,22 @@ public class BbjTextMateBundleProvider implements TextMateBundleProvider {
                 TextMateBundleCache.populate(bundleDir, pluginVersion, BUNDLE_FILES,
                         this::openBundleResource);
             }
+            // Only after the stable directory above is confirmed populated: never delete the
+            // old per-launch temp copies before the new one is known good. Guarded so a sweep
+            // failure can never prevent this method returning its PluginBundle.
+            sweepAbandonedTempDirectoriesQuietly();
             return List.of(new PluginBundle("BBj", bundleDir));
         } catch (IOException e) {
             throw new RuntimeException("Failed to extract BBj TextMate bundle", e);
+        }
+    }
+
+    private static void sweepAbandonedTempDirectoriesQuietly() {
+        try {
+            TextMateBundleCache.sweepAbandoned(
+                    Path.of(PathManager.getTempPath()), ABANDONED_TEMP_DIR_PREFIX);
+        } catch (RuntimeException e) {
+            // Best-effort cleanup: a sweep failure must never prevent bundle registration.
         }
     }
 
