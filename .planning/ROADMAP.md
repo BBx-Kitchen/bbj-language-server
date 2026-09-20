@@ -442,13 +442,13 @@ Plans:
   3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
   4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
 
-**Plans**: 1/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
+**Plans**: 2/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
 
 Plans:
 **Wave 1**
 
 - [x] 97-01-PLAN.md — folded todo: the server status feed moves to the client-features hook so a lost connection reaches crash detection; allowlist entry, coupling canary, source guards (wave 1)
-- [ ] 97-03-PLAN.md — folded todos: issue447 capability test accepts either backend shape, gradle-wrapper-hygiene close-out, time-boxed linking-interop investigation (wave 1)
+- [x] 97-03-PLAN.md — folded todos: issue447 capability test accepts either backend shape, gradle-wrapper-hygiene close-out, time-boxed linking-interop investigation (wave 1)
 
 **Wave 2** *(blocked on 97-01)*
 
