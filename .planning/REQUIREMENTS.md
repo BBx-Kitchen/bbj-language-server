@@ -47,7 +47,7 @@ forcing those files to be edited and hand-UAT'd twice.
 - [x] **PLAT-03**: The three editor notification providers share one base carrying the file-type guard and panel construction (#622)
 - [x] **PLAT-04**: "Node.js not yet downloaded" and "Node.js cache directory inaccessible" are distinguishable to every caller, so the user is shown the right diagnosis instead of being pointed at a download that will fail the same way again (#588)
 - [x] **PLAT-05**: A configured-but-unusable Node.js path consults the cached download before the plugin gives up and shows the "Node.js required" banner — with the product decision recorded either way (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`)
-- [ ] **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`)
+- [x] **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`)
 
 ### Release
 
@@ -113,7 +113,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | PLAT-03 | Phase 96 | Complete |
 | PLAT-04 | Phase 96 | Complete |
 | PLAT-05 | Phase 96 | Complete |
-| PLAT-06 | Phase 96 | Pending |
+| PLAT-06 | Phase 96 | Complete |
 | REL-01 | Phase 97 | Pending |
 | REL-02 | Phase 97 | Pending |
 
