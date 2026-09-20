@@ -5,6 +5,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Decides which of three candidate Node.js executable values, if any, should be used
@@ -32,7 +34,9 @@ public final class NodeExecutableResolver {
         NOT_ABSOLUTE,
         MISSING,
         NOT_A_FILE,
-        NOT_EXECUTABLE
+        NOT_EXECUTABLE,
+        BELOW_MINIMUM_VERSION,
+        CACHE_UNAVAILABLE
     }
 
     /**
@@ -147,24 +151,43 @@ public final class NodeExecutableResolver {
     }
 
     /**
-     * The whole decision: the configured, detected and cached candidates are tried in that
-     * order. Each non-blank candidate runs the same five-step validation core, and the first
-     * one to pass is returned; a rejected candidate does not stop resolution, it falls through
-     * to the next branch and its rejection is retained.
+     * The whole decision, performing no minimum-version gating: the configured, detected and
+     * cached candidates are tried in that order against the five-step structural validation core
+     * (parses, absolute, exists, regular file, executable) only. Documented delegator to {@link
+     * #resolve(String, String, String, boolean, PathProbe, Function, Predicate)} with permissive
+     * defaults -- the cache directory treated as accessible, no version resolved, and every
+     * version accepted -- kept so every pre-existing caller of this four-argument signature keeps
+     * its current, no-version-gating behavior unchanged.
      */
     public static Resolution resolve(String configuredPath, String detectedPath, String cachedPath,
                                       PathProbe probe) {
+        return resolve(configuredPath, detectedPath, cachedPath, true, probe,
+                path -> null, version -> true);
+    }
+
+    /**
+     * The whole decision: the configured, detected and cached candidates are tried in that
+     * order. Each non-blank candidate runs the same six-step validation core, and the first one
+     * to pass is returned; a rejected candidate does not stop resolution, it falls through to the
+     * next branch and its rejection is retained. {@code versionOf} and {@code meetsMinimum} back
+     * the sixth (version) step; {@code cacheDirectoryAccessible} distinguishes "the cache
+     * directory could not be checked" from "nothing is cached there" for the {@code CACHED}
+     * branch.
+     */
+    public static Resolution resolve(String configuredPath, String detectedPath, String cachedPath,
+                                      boolean cacheDirectoryAccessible, PathProbe probe,
+                                      Function<String, String> versionOf, Predicate<String> meetsMinimum) {
         List<Rejected> rejections = new ArrayList<>();
 
-        String accepted = validate(Source.SETTINGS, configuredPath, probe, rejections);
+        String accepted = validate(Source.SETTINGS, configuredPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.SETTINGS, rejections);
         }
-        accepted = validate(Source.DETECTED, detectedPath, probe, rejections);
+        accepted = validate(Source.DETECTED, detectedPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.DETECTED, rejections);
         }
-        accepted = validate(Source.CACHED, cachedPath, probe, rejections);
+        accepted = validate(Source.CACHED, cachedPath, probe, versionOf, meetsMinimum, rejections);
         if (accepted != null) {
             return Resolution.resolved(accepted, Source.CACHED, rejections);
         }
@@ -172,13 +195,14 @@ public final class NodeExecutableResolver {
     }
 
     /**
-     * Runs the five-step validation core against one candidate: it parses as a path, it is
-     * absolute, it exists, it is a regular file, it is executable. A blank candidate is absent
-     * and is skipped without recording anything; the first unsatisfied step on a non-blank
-     * candidate is recorded as a {@link Rejected}. Returns the candidate unchanged when every
-     * step passes, else {@code null}.
+     * Runs the six-step validation core against one candidate: it parses as a path, it is
+     * absolute, it exists, it is a regular file, it is executable, and it meets the minimum
+     * supported Node.js version. A blank candidate is absent and is skipped without recording
+     * anything; the first unsatisfied step on a non-blank candidate is recorded as a
+     * {@link Rejected}. Returns the candidate unchanged when every step passes, else {@code null}.
      */
     private static String validate(Source source, String candidate, PathProbe probe,
+                                     Function<String, String> versionOf, Predicate<String> meetsMinimum,
                                      List<Rejected> rejections) {
         if (candidate == null || candidate.isBlank()) {
             return null;
@@ -206,6 +230,10 @@ public final class NodeExecutableResolver {
             rejections.add(new Rejected(source, Reason.NOT_EXECUTABLE, candidate));
             return null;
         }
+        if (!meetsMinimum.test(versionOf.apply(candidate))) {
+            rejections.add(new Rejected(source, Reason.BELOW_MINIMUM_VERSION, candidate));
+            return null;
+        }
         return candidate;
     }
 
@@ -231,6 +259,9 @@ public final class NodeExecutableResolver {
             case MISSING -> "does not exist";
             case NOT_A_FILE -> "is not a regular file";
             case NOT_EXECUTABLE -> "is not executable";
+            case BELOW_MINIMUM_VERSION -> "is older than the minimum supported Node.js version";
+            case CACHE_UNAVAILABLE ->
+                    "could not be checked because the plugin's Node.js cache directory could not be accessed";
         };
     }
 

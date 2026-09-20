@@ -2,6 +2,7 @@ package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjNodeDetector;
 import com.basis.bbj.intellij.BbjNodeDownloader;
+import com.basis.bbj.intellij.BbjNodeVersionCache;
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.BbjSettingsConfigurable;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
@@ -60,7 +61,8 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
         NodeExecutableResolver.Resolution resolution = NodeExecutableResolver.resolve(
                 configuredPath, detectedPath, cachedPath != null ? cachedPath.toString() : null,
-                NodeExecutableResolver.REAL_FILESYSTEM);
+                true, NodeExecutableResolver.REAL_FILESYSTEM,
+                BbjNodeVersionCache.SESSION::getVersion, BbjNodeDetector::meetsMinimumVersion);
 
         if (resolution.isResolved()) {
             for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
