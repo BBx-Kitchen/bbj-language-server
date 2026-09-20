@@ -403,7 +403,7 @@ Plans:
   4. A developer whose Node.js is unusable is shown the diagnosis that matches reality — "not yet downloaded" and "cache directory inaccessible" are distinguishable to every caller — and a configured-but-unusable path either consults the cached download or deliberately does not, with that product decision written down either way.
   5. On a real Windows machine with no Node.js configured, the editor banner's "Download Node.js" action produces a working `node.exe` beside its `.sha256` sidecar in the plugin's `bbj-intellij-data/nodejs` directory and the language server starts afterward — attested by hand, with `idea.log` and the directory contents captured if it fails.
 
-**Plans**: 3/7 plans executed
+**Plans**: 4/7 plans executed
 
 Plans:
 **Wave 1**
@@ -411,7 +411,7 @@ Plans:
 - [x] 96-01-PLAN.md — PLAT-02: the inert Color Scheme page and its registration are deleted, and the docs stop pointing at them (wave 1)
 - [x] 96-02-PLAN.md — PLAT-01: TextMate bundle reused from a stable version-keyed directory, with a gated sweep of abandoned ones (wave 1)
 - [x] 96-03-PLAN.md — PLAT-06: exact Windows zip-entry match and guarded temp cleanup, so the attestation reports real causes (wave 1)
-- [ ] 96-04-PLAN.md — PLAT-03: one notification base under all four providers; the crash banner's extension guard replaced (wave 1)
+- [x] 96-04-PLAN.md — PLAT-03: one notification base under all four providers; the crash banner's extension guard replaced (wave 1)
 - [ ] 96-05-PLAN.md — PLAT-04/05: version gate and cache-unavailable reason inside the resolver, plus the NodePresentation seam (wave 1)
 
 **Wave 2** *(blocked on 96-04 and 96-05)*
