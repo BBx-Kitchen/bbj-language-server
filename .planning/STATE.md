@@ -5,16 +5,16 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 96
 current_phase_name: Platform Integration & Node.js Diagnosis
 status: executing
-stopped_at: Completed 96-02-PLAN.md
-last_updated: "2026-09-20T01:51:35.929Z"
+stopped_at: Completed 96-03-PLAN.md
+last_updated: "2026-09-20T02:00:33.250Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 96 execution resumed (wave continue)
-state_head: 1134624c352ca8cea969c40253c30ca2c818d9c6
+state_head: 8b7aa9ce51a2534a024e798ebebe1050ae1742c1
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 19
+  completed_plans: 20
   percent: 60
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 96 (Platform Integration & Node.js Diagnosis) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 96 execution resumed (wave continue)
 
@@ -102,6 +102,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 95 P04 | 9min | 3 tasks | 7 files |
 | Phase 96 P01 | 25min | 2 tasks | 3 files |
 | Phase 96 P02 | 20min | 3 tasks | 3 files |
+| Phase 96 P03 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 95]: subscribeToStatusTopic's abstract-hook parameter is named messageBusConnection, not connection, so each subclass's own subscribe call matches the source guard's pre-existing literal convention — surfaced as a guard test failure during Task 3, fixed before commit
 - [Phase 96]: Deleted BbjColorSettingsPage outright and its plugin.xml registration (D-01/D-03/D-04); rewrote IntelliJ docs Customization section (D-02) as the phase's one accepted departure from the v4.4-is-IntelliJ-only constraint.
 - [Phase 96]: 96-02: sweep-scoped selected at Task 2's blocking-human gate; TextMateBundleCache.sweepAbandoned deletes only direct-child directories under the IDE's own temp path matching the plugin's own textmate-bbj prefix, reusing NodeInstallPipeline.deleteRecursively, logging and stepping over per-entry failures
+- [Phase 96]: 96-03: IN-02 stayed a one-line reuse per branch as CONTEXT.md's fold condition required; installExtracted resolves the executable name through Target.nodeExecutableName() on both branches
+- [Phase 96]: 96-03: non-writable-parent cleanup-failure test variant ran (not skipped) on this host; deleteIfExistsQuietly mirrors deleteRecursivelyQuietly's swallow-and-log convention for the outer temp-file cleanup
 
 ### Tech Debt
 
@@ -213,8 +216,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T01:51:35.793Z
-Stopped at: Completed 96-02-PLAN.md
+Last session: 2026-09-20T02:00:33.077Z
+Stopped at: Completed 96-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
