@@ -30,7 +30,7 @@ import java.util.function.Function;
  * labels are likewise per-provider and never hoisted here.
  *
  * <p>Every provider becomes {@link DumbAware} through this base, so banners now render during
- * indexing -- an intended, declared behaviour change (D-10).
+ * indexing -- an intended, declared behaviour change.
  */
 public abstract class BbjNotificationProviderBase implements EditorNotificationProvider, DumbAware {
 

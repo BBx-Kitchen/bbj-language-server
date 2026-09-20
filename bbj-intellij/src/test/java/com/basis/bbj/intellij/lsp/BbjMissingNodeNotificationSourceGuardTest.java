@@ -81,7 +81,7 @@ class BbjMissingNodeNotificationSourceGuardTest {
     }
 
     private static String collectNotificationDataBody(String text) {
-        return bodyOf(text, "collectNotificationData(@NotNull Project project, @NotNull VirtualFile file)");
+        return bodyOf(text, "buildPanel(@NotNull Project project, @NotNull VirtualFile file)");
     }
 
     @Test
