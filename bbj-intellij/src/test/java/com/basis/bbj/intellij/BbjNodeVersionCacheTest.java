@@ -117,8 +117,16 @@ class BbjNodeVersionCacheTest {
         assertEquals(0, spawner.invocationsFor(path));
     }
 
+    /**
+     * A null probe result must never become a permanent verdict: the stat key it would be cached
+     * against never changes again once a binary is installed, so memoizing a null here would turn
+     * one transient failure (e.g. a freshly-installed binary briefly locked by antivirus) into a
+     * cache entry no later successful probe could ever displace. This deliberately inverts the
+     * prior assertion in this test, which pinned that exact defect (a real Windows failure mode)
+     * as desired behaviour by asserting the spawner was called only once.
+     */
     @Test
-    void aNullSpawnerResultIsCachedAndNotReSpawnedWhileTheStatIsUnchanged() {
+    void aNullSpawnerResultIsNeverCachedAndIsReSpawnedOnTheNextCallEvenWithAnUnchangedStat() {
         String path = "/usr/bin/node";
         ScriptedStat stat = new ScriptedStat().with(path, "100:1000");
         RecordingSpawner spawner = new RecordingSpawner(); // no version registered -> null
@@ -130,7 +138,7 @@ class BbjNodeVersionCacheTest {
 
         assertNull(first);
         assertNull(second);
-        assertEquals(1, spawner.invocationsFor(path));
+        assertEquals(2, spawner.invocationsFor(path));
     }
 
     @Test

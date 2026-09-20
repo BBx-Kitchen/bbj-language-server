@@ -35,7 +35,17 @@ public final class NodeExecutableResolver {
         MISSING,
         NOT_A_FILE,
         NOT_EXECUTABLE,
+        /** {@code versionOf} returned a version and it failed {@code meetsMinimum}. */
         BELOW_MINIMUM_VERSION,
+        /**
+         * {@code versionOf} returned {@code null} -- the version could not be determined at all,
+         * which is distinct from determining a version and finding it too old. This must never be
+         * treated as permissive: an unverifiable Node still does not start the language server,
+         * it is simply labelled honestly and left retryable rather than being folded into {@link
+         * #BELOW_MINIMUM_VERSION}, which would misreport an unprobeable binary as a known-too-old
+         * one.
+         */
+        VERSION_UNKNOWN,
         CACHE_UNAVAILABLE
     }
 
@@ -207,6 +217,15 @@ public final class NodeExecutableResolver {
      * supported Node.js version. A blank candidate is absent and is skipped without recording
      * anything; the first unsatisfied step on a non-blank candidate is recorded as a
      * {@link Rejected}. Returns the candidate unchanged when every step passes, else {@code null}.
+     *
+     * <p>{@code meetsMinimum} is still the sole gate on whether the version step rejects at all --
+     * the four-argument overload's permissive {@code version -> true} must keep accepting a
+     * {@code null} version exactly as before. Only when {@code meetsMinimum} actually rejects does
+     * this method distinguish why: {@code versionOf} returning {@code null} means the version could
+     * not be determined at all, recorded as {@link Reason#VERSION_UNKNOWN}; a non-null version that
+     * still fails {@code meetsMinimum} is recorded as {@link Reason#BELOW_MINIMUM_VERSION}. Both are
+     * still rejections -- an unverifiable Node is fail-closed exactly like a too-old one, it is
+     * simply labelled for what it actually is.
      */
     private static String validate(Source source, String candidate, PathProbe probe,
                                      Function<String, String> versionOf, Predicate<String> meetsMinimum,
@@ -237,8 +256,10 @@ public final class NodeExecutableResolver {
             rejections.add(new Rejected(source, Reason.NOT_EXECUTABLE, candidate));
             return null;
         }
-        if (!meetsMinimum.test(versionOf.apply(candidate))) {
-            rejections.add(new Rejected(source, Reason.BELOW_MINIMUM_VERSION, candidate));
+        String version = versionOf.apply(candidate);
+        if (!meetsMinimum.test(version)) {
+            Reason reason = version == null ? Reason.VERSION_UNKNOWN : Reason.BELOW_MINIMUM_VERSION;
+            rejections.add(new Rejected(source, reason, candidate));
             return null;
         }
         return candidate;
@@ -267,6 +288,7 @@ public final class NodeExecutableResolver {
             case NOT_A_FILE -> "is not a regular file";
             case NOT_EXECUTABLE -> "is not executable";
             case BELOW_MINIMUM_VERSION -> "is older than the minimum supported Node.js version";
+            case VERSION_UNKNOWN -> "has a version that could not be determined";
             case CACHE_UNAVAILABLE ->
                     "could not be checked because the plugin's Node.js cache directory could not be accessed";
         };

@@ -74,6 +74,12 @@ class NodePresentationTest {
         return NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V22);
     }
 
+    private static NodeExecutableResolver.Resolution configuredVersionUnknown() {
+        String configured = "/opt/bbj-test/presentation/unprobeable-node";
+        RecordingProbe probe = RecordingProbe.validAt(configured);
+        return NodeExecutableResolver.resolve(configured, null, null, true, probe, NO_VERSION, AT_LEAST_V22);
+    }
+
     @Test
     void aResolvedResolutionYieldsANullSentenceAndAnEmptyActionList() {
         String configured = "/opt/bbj-test/presentation/settings-node";
@@ -124,5 +130,36 @@ class NodePresentationTest {
                 "the below-minimum-version sentence must differ from the nothing-found sentence");
         assertNotEquals(belowMinimumText, cacheUnavailableText,
                 "the below-minimum-version sentence must differ from the inaccessible-cache sentence");
+    }
+
+    /**
+     * An unprobeable Node (the version could not be determined at all) must be reported honestly
+     * -- neither as "missing/old" nor as "below the minimum version", since neither is known to be
+     * true -- while still offering every recovery action, exactly like every other non-cache
+     * rejection reason.
+     */
+    @Test
+    void aVersionThatCouldNotBeDeterminedYieldsADistinctSentenceAndTheFullActionSet() {
+        NodeExecutableResolver.Resolution resolution = configuredVersionUnknown();
+
+        String versionUnknownText = NodePresentation.bannerText(resolution);
+        String belowMinimumText = NodePresentation.bannerText(configuredBelowMinimumVersion());
+        String nothingFoundText = NodePresentation.bannerText(nothingConfiguredNothingFound());
+
+        assertTrue(versionUnknownText.contains("could not be determined"),
+                "the sentence must say the version could not be determined");
+        assertFalse(versionUnknownText.toLowerCase().contains("missing"),
+                "the sentence must not claim Node is missing");
+        assertFalse(versionUnknownText.toLowerCase().contains("older"),
+                "the sentence must not claim Node is too old -- that is unknown, not established");
+        assertNotEquals(versionUnknownText, belowMinimumText,
+                "an undeterminable version must read differently from a known-too-old version");
+        assertNotEquals(versionUnknownText, nothingFoundText,
+                "an undeterminable version must read differently from nothing being found at all");
+
+        List<String> actions = NodePresentation.bannerActions(resolution);
+        assertTrue(actions.contains(NodePresentation.ACTION_DOWNLOAD));
+        assertTrue(actions.contains(NodePresentation.ACTION_CONFIGURE_PATH));
+        assertTrue(actions.contains(NodePresentation.ACTION_INSTALL_MANUALLY));
     }
 }

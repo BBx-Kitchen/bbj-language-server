@@ -103,7 +103,10 @@ public final class NodePresentation {
      * Phrases the generic, structural rejection reasons for the banner. {@link
      * NodeExecutableResolver.Reason#BELOW_MINIMUM_VERSION} and {@link
      * NodeExecutableResolver.Reason#CACHE_UNAVAILABLE} are always handled by {@link
-     * #bannerText(NodeExecutableResolver.Resolution)} before reaching here.
+     * #bannerText(NodeExecutableResolver.Resolution)} before reaching here. {@link
+     * NodeExecutableResolver.Reason#VERSION_UNKNOWN} is handled here, not there, precisely because
+     * it needs no special casing: it says only that the version could not be determined -- never
+     * that Node is missing or too old, since neither is known to be true.
      */
     private static String describeForBanner(NodeExecutableResolver.Reason reason) {
         return switch (reason) {
@@ -112,6 +115,7 @@ public final class NodePresentation {
             case MISSING -> "does not exist";
             case NOT_A_FILE -> "is not a regular file";
             case NOT_EXECUTABLE -> "is not executable";
+            case VERSION_UNKNOWN -> "reported a version that could not be determined";
             case BELOW_MINIMUM_VERSION, CACHE_UNAVAILABLE ->
                     throw new IllegalStateException("handled before reaching the generic description");
         };
