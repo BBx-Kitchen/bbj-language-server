@@ -5,17 +5,17 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 97
 current_phase_name: Release 0.16.0 & Milestone Close
 status: executing
-stopped_at: Completed 97-04-PLAN.md
-last_updated: "2026-09-20T14:09:24.072Z"
+stopped_at: Completed 97-02-PLAN.md
+last_updated: "2026-09-20T14:20:50.033Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 97 execution started
-state_head: b431ee8468bccfe6a9a5ca9db601c8513646de85
+state_head: 626b8fe36a507d587c7b1119429cd9c6311740c3
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 36
-  completed_plans: 28
-  percent: 78
+  completed_plans: 29
+  percent: 80
 ---
 
 # Project State: BBj Language Server
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 97 (Release 0.16.0 & Milestone Close) — EXECUTING
-Plan: 4 of 11
+Plan: 5 of 11
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 97 execution started
 
-Progress: [████████████████████] 25/25 plans ([████████░░] 78%)
+Progress: [████████████████████] 25/25 plans ([████████░░] 80%)
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 97 P01 | 15min | 3 tasks | 5 files |
 | Phase 97 P03 | 20min | 3 tasks | 2 files |
 | Phase 97 P04 | 10min | 2 tasks | 4 files |
+| Phase 97 P02 | continuation | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 97]: [Phase 97]: 97-03: linking.test.ts's 11 interop failures re-filed, not fixed -- both the complete-class-index and live-interop warm-up hypotheses were tested and refuted; root cause is the describe block running against a hermetic test double that never talks to real interop
 - [Phase 97]: [Phase 97]: 97-04: bbj/bbjcplAvailability handler takes an untyped Object parameter with an empty body -- a true no-op must not parse, validate or store an untrusted payload
 - [Phase 97]: [Phase 97]: 97-04: setIndeterminate(false) placed as a single unconditional statement before pipeline.install(...), outside the progress lambda, so it runs once per download rather than once per progress tick
+- [Phase 97]: Maintainer approved (2026-09-20, "Proceed (Recommended)") feeding ExpectedStopGuard.classify the one-behind from-state instead of the two-behind stale field; a lost-connection sequence now classifies CRASH on its final transition instead of being silently dismissed as NOT_A_STOP.
+- [Phase 97]: No duplicate ExpectedStopGuardTest case was added for the lost-connection sequence: the prior task-1 executor found stoppedAfterStartedWithNothingArmedIsACrash already covered it, per the plan's own skip-if-covered instruction.
 
 ### Tech Debt
 
@@ -241,8 +244,8 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T14:09:23.873Z
-Stopped at: Completed 97-04-PLAN.md
+Last session: 2026-09-20T14:20:42.734Z
+Stopped at: Completed 97-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
