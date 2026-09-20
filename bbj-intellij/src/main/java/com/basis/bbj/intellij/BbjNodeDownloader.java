@@ -95,6 +95,10 @@ public final class BbjNodeDownloader {
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
                     NodeInstallPipeline pipeline = productionPipeline();
+                    // The indicator must leave indeterminate mode before a fraction is meaningful --
+                    // the platform logs an exception when a fraction is reported while it is still
+                    // indeterminate.
+                    indicator.setIndeterminate(false);
                     pipeline.install(
                             (text, fraction) -> {
                                 indicator.setText(text);
