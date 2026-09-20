@@ -279,11 +279,50 @@ class Lsp4ijCouplingCanaryTest {
         Method start = LanguageServerManager.class.getMethod("start", String.class);
         assertEquals(void.class, start.getReturnType());
 
-        Method stop = LanguageServerManager.class.getMethod("stop", String.class);
+        Method stop = LanguageServerManager.class.getMethod("stop", String.class,
+            LanguageServerManager.StopOptions.class);
         assertEquals(void.class, stop.getReturnType());
+
+        Method setWillDisable = LanguageServerManager.StopOptions.class.getMethod(
+            "setWillDisable", boolean.class);
+        assertEquals(LanguageServerManager.StopOptions.class, setWillDisable.getReturnType());
 
         Method getLanguageServer = LanguageServerManager.class.getMethod("getLanguageServer", String.class);
         assertEquals(CompletableFuture.class, getLanguageServer.getReturnType());
+    }
+
+    /**
+     * Measures, against the pinned jar rather than against the vendor's prose, the option defaults
+     * this plugin's restart path depends on.
+     *
+     * <p>{@code StopOptions.DEFAULT.willDisable} is {@code true}: the one-argument
+     * {@code stop(String)} convenience does not merely stop a server, it disables the server
+     * definition, either via {@code stopAndDisable()} on a registered wrapper or via
+     * {@code setEnabled(false)} on the definition when none is registered. Nothing in
+     * {@code start(...)} re-enables a definition directly — {@code willEnable} only decides whether
+     * a disabled definition throws instead of starting — so the re-enable happens solely as a side
+     * effect of restarting an already-registered wrapper, and {@code forceStart} being {@code false}
+     * by default means the start will not create one. A restart that stops through the convenience
+     * overload therefore has a path on which it permanently disables the server it meant to restart.
+     * {@code BbjServerService} opts out explicitly; if any of these defaults ever change, that opt-out
+     * needs re-auditing, which is what this canary is for.
+     */
+    @Test
+    void theStopAndStartOptionDefaultsTheRestartPathDependsOnAreUnchanged() {
+        assertTrue(LanguageServerManager.StopOptions.DEFAULT.isWillDisable(),
+            "StopOptions.DEFAULT no longer disables the server definition -- re-audit whether "
+                + "BbjServerService still needs its explicit setWillDisable(false) opt-out");
+        assertFalse(new LanguageServerManager.StopOptions().setWillDisable(false).isWillDisable(),
+            "setWillDisable(false) no longer opts out of disabling the server definition");
+
+        assertTrue(LanguageServerManager.StartOptions.DEFAULT.isWillEnable(),
+            "StartOptions.DEFAULT no longer tolerates a disabled definition -- a restart would now "
+                + "throw rather than silently do nothing");
+        assertTrue(LanguageServerManager.StartOptions.DEFAULT.isForceRestart(),
+            "StartOptions.DEFAULT no longer forces a restart of an already-registered wrapper");
+        assertFalse(LanguageServerManager.StartOptions.DEFAULT.isForceStart(),
+            "StartOptions.DEFAULT now force-starts -- a restart would create a wrapper even with no "
+                + "matching file open, which changes when the server is allowed to run");
     }
 
     @Test

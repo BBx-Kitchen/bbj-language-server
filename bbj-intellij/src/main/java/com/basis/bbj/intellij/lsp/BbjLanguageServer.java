@@ -14,6 +14,7 @@ import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
@@ -28,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.logging.Logger;
 
 /**
  * Starts the BBj language server process using Node.js.
@@ -37,7 +37,13 @@ import java.util.logging.Logger;
  */
 public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
-    private static final Logger LOG = Logger.getLogger(BbjLanguageServer.class.getName());
+    /**
+     * The platform logger, so this decision is readable in {@code idea.log} on a user's machine.
+     * Every step below is logged, not only the rejections: a resolution that succeeds and one that
+     * never had a candidate to consider both used to leave the log completely silent, which is why
+     * a Node.js resolution failure in the field could not be diagnosed from a log at all.
+     */
+    private static final Logger LOG = Logger.getInstance(BbjLanguageServer.class);
 
     public BbjLanguageServer(@NotNull Project project) {
         // Resolve Node.js path
@@ -51,31 +57,51 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
         cmd.setCharset(StandardCharsets.UTF_8);
         cmd.setWorkDirectory(new File(project.getBasePath()));
 
+        LOG.info("Launching the BBj language server: " + cmd.getCommandLineString()
+                + " (working directory: " + cmd.getWorkDirectory() + ")");
+
         super.setCommandLine(cmd);
     }
 
     private String resolveNodePath(@NotNull Project project) {
         String configuredPath = BbjSettings.getInstance().getState().nodeJsPath;
         String detectedPath = BbjNodeDetector.detectNodePath();
+        boolean cacheDirectoryAccessible = BbjNodeDownloader.isNodeDataDirectoryAccessible();
         Path cachedPath = BbjNodeDownloader.getCachedNodePath();
+
+        LOG.info("Resolving a Node.js executable for the BBj language server."
+                + " Configured: " + describeCandidate(configuredPath)
+                + "; detected on PATH: " + describeCandidate(detectedPath)
+                + "; downloaded: " + describeCandidate(cachedPath == null ? null : cachedPath.toString())
+                + "; download directory accessible: " + cacheDirectoryAccessible);
 
         NodeExecutableResolver.Resolution resolution = NodeExecutableResolver.resolve(
                 configuredPath, detectedPath, cachedPath != null ? cachedPath.toString() : null,
-                BbjNodeDownloader.isNodeDataDirectoryAccessible(), NodeExecutableResolver.REAL_FILESYSTEM,
+                cacheDirectoryAccessible, NodeExecutableResolver.REAL_FILESYSTEM,
                 BbjNodeVersionCache.SESSION::getVersion, BbjNodeDetector::meetsMinimumVersion);
 
+        for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
+            LOG.warn(rejected.toString());
+        }
+
         if (resolution.isResolved()) {
-            for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
-                LOG.warning(rejected.toString());
-            }
+            LOG.info("Using the " + resolution.source() + " Node.js executable: " + resolution.path());
             return resolution.path();
         }
 
-        for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
-            LOG.warning(rejected.toString());
-        }
-        notifyUnresolvedNodePath(project, resolution.failureMessage());
-        throw new RuntimeException(resolution.failureMessage());
+        String failureMessage = resolution.failureMessage();
+        LOG.warn("No usable Node.js executable; the BBj language server cannot start. " + failureMessage);
+        notifyUnresolvedNodePath(project, failureMessage);
+        throw new RuntimeException(failureMessage);
+    }
+
+    /**
+     * Renders one candidate for the log, naming an absent candidate explicitly. A blank candidate
+     * is skipped silently by the resolver and records no rejection, so without this the log could
+     * not distinguish "nothing was configured" from "what was configured was rejected".
+     */
+    private static String describeCandidate(String candidate) {
+        return (candidate == null || candidate.isBlank()) ? "<none>" : "\"" + candidate + "\"";
     }
 
     private static void notifyUnresolvedNodePath(@NotNull Project project, @NotNull String message) {
