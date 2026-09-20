@@ -107,6 +107,7 @@ SingleStatement:
     StringStatement |
     SwitchStatement |
     SwitchCase |
+    TableStatement |
     ThrowStatement |
     UnlockStatement |
     UntilStatement |
@@ -229,6 +230,10 @@ SaveStatement:
 
 SavePStatement:
     'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
+    ;
+
+TableStatement:
+    'TABLE' data=TABLE_DATA
     ;
 
 SelectStatement:
@@ -934,6 +939,7 @@ terminal RPAREN_NL: /_rparen_nl/;
 terminal RELEASE_NL: /_release_nl/;
 terminal RELEASE_NO_NL: /_release_no_nl/;
 terminal EXIT_NO_NL: /_exit_no_nl/;
+terminal TABLE_DATA: /_table_data/;
 
 terminal ASTERISK_STANDALONE: /_asterisk_standalone/;
 terminal ASTERISK_EXPRESSION: /_asterisk_expression/;

@@ -73,6 +73,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RELEASE_NL');
         this.spliceToken(tokens, 'RELEASE_NO_NL');
         this.spliceToken(tokens, 'EXIT_NO_NL');
+        this.spliceToken(tokens, 'TABLE_DATA');
     }
 
     private spliceToken(tokens: TokenType[], name: string) {
@@ -185,6 +186,18 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: true
             };
             return token;
+        } else if (terminal.name === 'TABLE_DATA') {
+            // Opaque rest-of-line data for the TABLE statement:
+            // everything after 'TABLE' plus at least one space/tab, up to end of line or a
+            // trailing ';rem' comment, is one data token — no hex validation here, the compiler
+            // owns that. The negative lookahead keeps `table = 5` / `x = table + 1` parsing as an
+            // ordinary identifier: TABLE_DATA never matches immediately before an operator or
+            // closing bracket, so a TableStatement is only formed when real data follows.
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/(?<=TABLE[ \t]+)(?![=<>+\-*/,)\]])[^\r\n;]+/i),
+                LINE_BREAKS: false
+            };
         } else if (terminal.name === 'KEYWORD_STANDALONE') {
             const token: TokenType = {
                 name: terminal.name,

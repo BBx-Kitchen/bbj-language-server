@@ -1,0 +1,3 @@
+REM Protects TABLE statements from being split into extra sibling statements that
+REM falsely need a line break before or after them.
+TABLE ff00aa11
