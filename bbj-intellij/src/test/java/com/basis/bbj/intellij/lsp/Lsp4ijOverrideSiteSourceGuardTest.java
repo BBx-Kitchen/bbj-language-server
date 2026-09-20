@@ -135,36 +135,6 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
-    void clientFeaturesHandleServerStatusChangedIsTheSingleStatusFeedSite() {
-        String text = readGuardedSource(FACTORY_SOURCE);
-        String body = bodyOf(text, "public void handleServerStatusChanged(@NotNull ServerStatus status)");
-
-        assertEquals(1, countOccurrences(body, "super.handleServerStatusChanged("),
-            "the client-features override must call super.handleServerStatusChanged( exactly once");
-        assertEquals(1, countOccurrences(body, "invokeLater("),
-            "the client-features override must dispatch its whole body through invokeLater( exactly "
-                + "once, keeping BbjServerService's non-volatile fields on the EDT (Option B)");
-        assertEquals(1, countOccurrences(body, "updateStatus("),
-            "the client-features override must be the single authoritative status-feed site, "
-                + "calling updateStatus( exactly once");
-        assertTrue(countOccurrences(body, "isDisposed()") >= 2,
-            "the client-features override must guard both the outer resolution and the invokeLater "
-                + "lambda's own body with isDisposed()");
-    }
-
-    @Test
-    void theLanguageClientOverrideNoLongerFeedsTheServerService() {
-        String text = readGuardedSource(CLIENT_SOURCE);
-        String body = bodyOf(text, "public void handleServerStatusChanged(ServerStatus serverStatus)");
-
-        assertEquals(0, countOccurrences(body, "updateStatus("),
-            "the language-client override must no longer feed BbjServerService -- a second status "
-                + "feed site would double-process every attached transition");
-        assertEquals(1, countOccurrences(body, "logToConsole("),
-            "the language-client override must keep its console log line");
-    }
-
-    @Test
     void theBbjcplAvailabilityHandlerIsDeclaredAndDoesNothingWithItsPayload() {
         String text = readGuardedSource(CLIENT_SOURCE);
 

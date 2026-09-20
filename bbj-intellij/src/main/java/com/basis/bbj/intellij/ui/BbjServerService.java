@@ -47,6 +47,7 @@ public final class BbjServerService implements Disposable {
 
     private final Project project;
     private ServerStatus currentStatus = ServerStatus.stopped;
+    private ServerStatus previousStatus = ServerStatus.stopped;
     private final Scheduler restartScheduler;
     private final RestartGate restartGate;
     private final ExpectedStopGuard expectedStop;
@@ -143,9 +144,9 @@ public final class BbjServerService implements Disposable {
         boolean autoRestartAbandoned = false;
 
         ExpectedStopGuard.StopKind stopKind =
-            expectedStop.classify(status.name(), currentStatus.name(), System.currentTimeMillis());
+            expectedStop.classify(status.name(), previousStatus.name(), System.currentTimeMillis());
 
-        LOG.info("BBj language server status: " + currentStatus + " -> " + status
+        LOG.info("BBj language server status: " + previousStatus + " -> " + status
             + " (classified as " + stopKind + ")");
 
         if (stopKind == ExpectedStopGuard.StopKind.CRASH) {
@@ -202,6 +203,7 @@ public final class BbjServerService implements Disposable {
             pendingRestartReason = null;
         }
 
+        previousStatus = currentStatus;
         this.currentStatus = status;
 
         ApplicationManager.getApplication().invokeLater(() -> {

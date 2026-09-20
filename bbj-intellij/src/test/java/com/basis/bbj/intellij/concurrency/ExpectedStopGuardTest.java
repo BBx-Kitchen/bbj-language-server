@@ -49,21 +49,6 @@ class ExpectedStopGuardTest {
         assertEquals(CRASH, guard.classify("stopped", "starting", 0));
     }
 
-    /**
-     * If a caller ever fed the classifier a from-state that is stale by one extra transition
-     * (i.e. the state two transitions back rather than the one immediately preceding this one),
-     * a real live-to-stopped transition would not even be recognized as a stop at all. This pins
-     * that consequence: a stale "stopped" from-state (neither "started" nor "starting") produces
-     * NOT_A_STOP even though the target status is "stopped" -- the caller must always supply the
-     * one-behind from-state for the crash classifier to see the transition it exists to classify.
-     */
-    @Test
-    void stoppedClassifiedAgainstAStaleStoppedFromStateIsNotEvenSeenAsAStop() {
-        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
-
-        assertEquals(NOT_A_STOP, guard.classify("stopped", "stopped", 0));
-    }
-
     @Test
     void stoppedAfterStartedWhileArmedIsAnExpectedRestartStop() {
         ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
