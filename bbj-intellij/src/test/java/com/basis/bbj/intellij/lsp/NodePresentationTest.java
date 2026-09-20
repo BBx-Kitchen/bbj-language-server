@@ -8,10 +8,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -161,5 +163,52 @@ class NodePresentationTest {
         assertTrue(actions.contains(NodePresentation.ACTION_DOWNLOAD));
         assertTrue(actions.contains(NodePresentation.ACTION_CONFIGURE_PATH));
         assertTrue(actions.contains(NodePresentation.ACTION_INSTALL_MANUALLY));
+    }
+
+    @Test
+    void actionLabelReturnsTheUserVisibleTextForEachKnownId() {
+        assertEquals("Download Node.js", NodePresentation.actionLabel(NodePresentation.ACTION_DOWNLOAD));
+        assertEquals("Configure Node.js Path",
+                NodePresentation.actionLabel(NodePresentation.ACTION_CONFIGURE_PATH));
+        assertEquals("Install Node.js Manually",
+                NodePresentation.actionLabel(NodePresentation.ACTION_INSTALL_MANUALLY));
+    }
+
+    @Test
+    void actionLabelThrowsOnAnUnrecognisedId() {
+        assertThrows(IllegalArgumentException.class, () -> NodePresentation.actionLabel("not-a-real-action"));
+    }
+
+    @Test
+    void belowMinimumVersionActionsMapToTheDownloadFirstLabelOrder() {
+        NodeExecutableResolver.Resolution resolution = configuredBelowMinimumVersion();
+
+        List<String> labels = NodePresentation.bannerActions(resolution).stream()
+                .map(NodePresentation::actionLabel)
+                .toList();
+
+        assertEquals(
+                List.of("Download Node.js", "Configure Node.js Path", "Install Node.js Manually"), labels);
+    }
+
+    @Test
+    void cacheUnavailableActionsMapToLabelsExcludingDownload() {
+        NodeExecutableResolver.Resolution resolution = cacheUnavailable();
+
+        List<String> labels = NodePresentation.bannerActions(resolution).stream()
+                .map(NodePresentation::actionLabel)
+                .toList();
+
+        assertEquals(List.of("Configure Node.js Path", "Install Node.js Manually"), labels);
+    }
+
+    @Test
+    void everyIdBannerActionsCanReturnHasALabel() {
+        for (String actionId : NodePresentation.bannerActions(configuredBelowMinimumVersion())) {
+            assertDoesNotThrow(() -> NodePresentation.actionLabel(actionId));
+        }
+        for (String actionId : NodePresentation.bannerActions(cacheUnavailable())) {
+            assertDoesNotThrow(() -> NodePresentation.actionLabel(actionId));
+        }
     }
 }
