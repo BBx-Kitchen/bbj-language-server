@@ -714,5 +714,10 @@
     "vitest": "^4.1.10",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
+  },
+  "overrides": {
+    "vscode-languageserver": {
+      "vscode-languageserver-protocol": "3.18.2"
+    }
   }
 }
