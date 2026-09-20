@@ -222,6 +222,76 @@ git -C /home/coder/repos/bbj-language-server diff origin/main...HEAD -- bbj-inte
 Result: **prints nothing** (grep exit 1, no match). No planning identifier appears in an added
 source/test line of the post-revert diff against `origin/main`. No fix was needed.
 
+### Artifacts under test (Round 2)
+
+The Round 1 artifacts (`bbj-lang-0.15.3.vsix` sha256 `daf676bb8939105df89c848b42df378ece268fd44c8a474fba40bb669fe5baff`,
+`bbj-intellij-0.1.0.zip` sha256 `abdd589edf2c7602ea71a44829cbc8467f37bcce324c586ab556f439f909bd55`) were
+built from the pre-revert tree and must not be reused (D-22); both are rebuilt here from the
+current, post-revert tree. Built in the required order — VS Code first, since the IntelliJ build's
+`verifyLanguageServerBundle` task fails fast without `bbj-vscode/out/language/main.cjs` — from
+source commit `f0f56b290a2e47c24943b0f101260380b11e2f9d` (this plan's own Task 1 docs commit on top
+of the post-revert code-wave tree; no source file changed between the two, so the artifacts are
+built from the same code the Round 2 suite gate above just verified).
+
+**VS Code extension:**
+- File: `bbj-lang-0.15.3.vsix`
+- Absolute path: `/home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix`
+- sha256 (`sha256sum` output line):
+```
+65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d  bbj-lang-0.15.3.vsix
+```
+- Size: 2,631,405 bytes (same byte count as Round 1's VSIX, but a different sha256 — expected,
+  since plans 97-01/97-02's revert touched only `bbj-intellij/` and this plan's own diff since then
+  touched none of `bbj-vscode/`'s bundled source; the differing hash reflects the archive's own
+  rebuild metadata, not a content change).
+- Built via `npm run build && npx vsce package` — no dependency-resolution issue occurred, so
+  `--no-dependencies` was not needed.
+
+**IntelliJ plugin:**
+- File: `bbj-intellij-0.1.0.zip`
+- Absolute path: `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`
+- sha256 (`sha256sum` output line):
+```
+9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40  bbj-intellij-0.1.0.zip
+```
+- Size: 1,159,953 bytes (612 bytes smaller than Round 1's zip — consistent with the revert removing
+  the crash-detection rework's code from `BbjServerService.java`, `BbjLanguageServerFactory.java`
+  and `ExpectedStopGuard.java`).
+- Built via `./gradlew clean buildPlugin` — `clean` is mandatory (D-22) so an UP-TO-DATE bundling
+  task cannot hand back the Round 1 zip.
+
+**Freshness proof (each archive's bundled `main.cjs` compared byte-for-byte against the bundle
+`npm run build` just produced at `/home/coder/repos/bbj-language-server/bbj-vscode/out/language/main.cjs`):**
+
+```
+unzip -p /home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip bbj-intellij/lib/language-server/main.cjs | cmp - /home/coder/repos/bbj-language-server/bbj-vscode/out/language/main.cjs
+```
+Result: **exit 0, no difference reported.**
+
+```
+unzip -p /home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix extension/out/language/main.cjs | cmp - /home/coder/repos/bbj-language-server/bbj-vscode/out/language/main.cjs
+```
+Result: **exit 0, no difference reported.**
+
+Both comparisons prove neither archive is a stale UP-TO-DATE artifact — both carry the
+language-server bundle built from the post-revert tree, not a pre-revert copy.
+
+**Verdict-shape sentence (97-PATTERNS.md § "96-08 UAT-record shape"):** the Round 2 hand-UAT
+verdict below (Task 3) is recorded as: closed on the maintainer's verbatim reply, tied to artefact
+`bbj-intellij-0.1.0.zip` sha256 `9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40`
+(1,159,953 bytes) and source commit `f0f56b290a2e47c24943b0f101260380b11e2f9d`, plus VS Code side
+`bbj-lang-0.15.3.vsix` sha256 `65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d`
+(2,631,405 bytes). These Round 2 hashes supersede Round 1's for the purpose of the current verdict;
+Round 1's hashes remain above as the record of what failed.
+
+No install, publish or push command was run against either file — both are staged on local disk
+only, at the absolute paths above, for the maintainer to install by hand.
+
+**Standing rebuild rule:** if a code-review fix lands after this build, both distributables are
+rebuilt from the final tree (VS Code first, then IntelliJ) and this subsection is re-filled with
+the new filenames/hashes/sizes/source-commit before the hand-check verdict below is considered
+current.
+
 ---
 
 ## Hand UAT verdict
@@ -275,4 +345,6 @@ post-revert tree and a short Round 2 UAT covers what is left.
 
 ### Round 2
 
-_(Filled in after the rebuild.)_
+The Round 2 hand-check verdict is recorded as a "Hand check verdict" subsection under the
+top-level "## Round 2" heading above (alongside the Round 2 suite gate and artifact identities),
+not here — see that section once the checkpoint task fills it in.
