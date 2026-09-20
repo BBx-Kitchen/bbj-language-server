@@ -10,6 +10,22 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Current State
 
+**v4.4 IntelliJ Focus shipped 2026-09-20 as release 0.16.0** (override closeout: all five
+phases verified and 25/25 requirements closed, no milestone-level audit was run, and six
+artifacts were acknowledged at close). All 21 issues on GitHub milestone #7 are closed and the
+milestone itself is closed. The IntelliJ plugin no longer throws on the EDT for a malformed
+composer payload, gates composer OK on the language server's own verdict, reports
+"Java: Connected" only to a confirmed java-interop peer and stops polling with no BBj file
+selected, cleans up and gates EM login properly, caches its TextMate bundle, no longer offers
+an inert Color Scheme page, and diagnoses every Node.js failure through one resolver that
+names the real cause — attested by hand on real Windows. Ten duplicated shapes collapsed to
+one each. 0.16.0 is the first tagged release since 0.15.0 and the first through the
+verify-before-publish gate: both marketplaces published, tag `v0.16.0` on `6101a6b6`, code on
+`origin/main` via PR #679. A crash-detection rework was attempted in Phase 97, failed its
+hand UAT on macOS and was reverted before release — a lost language-server connection is
+still invisible to the plugin (todo filed). Phase artifacts for 93-97 are archived under
+`.planning/milestones/v4.4-phases/` (tracked, no embargo).
+
 **v4.3 Polish & Quality shipped 2026-09-13** (override closeout: the milestone audit reported
 `tech_debt` with 25/25 requirements, 9/9 phases, complete integration and flows and no gaps;
 21 open artifacts were acknowledged at close). The 23 issues on GitHub milestone #5 are fixed
@@ -48,38 +64,23 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Current Milestone: v4.4 IntelliJ Focus
+## Next Milestone Goals
 
-**Goal:** Close every open issue on GitHub milestone #7 — eleven behaviour fixes and ten
-duplication consolidations in the IntelliJ plugin — settle the two outstanding Node.js questions,
-and ship the result as release 0.16.0.
+Not yet defined — run `/gsd-new-milestone`. Candidates carried out of v4.4:
 
-**Target features:**
-
-- Eleven behaviour-affecting IntelliJ fixes: EDT `NullPointerException` guard on a malformed
-  catalogs response (#609), composer write validation (#607), TextMate bundle temp-directory
-  caching and cleanup (#613), the inert Color Scheme customization page (#621), EM login
-  temp-file cleanup on a process-launch failure (#590), the java-interop health check's
-  `project.isDisposed()` guard (#592), Node cache-vs-inaccessible diagnosis (#588), java-interop
-  poll visibility/focus gating (#593), java-interop peer-identity confirmation (#587),
-  `applyHexEdit` array length guard (#591), and EM Login action enablement (#589).
-- Ten duplication and placement consolidations, none of which changes behaviour: addWindow-family
-  dialog base (#630), BUI/DWC run-action base (#615), editor notification providers (#622),
-  status-bar widgets and their factories (#620), shared Swing helpers (#619),
-  `Configure*Intention` (#618), composer-launch actions (#616), plugin-tool-path resolution
-  (#614), EM token-validation relocation out of the run-action base (#617), and the java-interop
-  default port constant (#594).
-- A product decision on whether an unusable configured Node.js path should fall back to the
-  cached download, taken alongside #588 (same file, same diagnosis gap).
-- Live Windows attestation of Node.js auto-install, closing the major-severity todo carried
-  since v4.2.
-- Release 0.16.0 cut and published to both marketplaces, closing GitHub milestone #7. This is the
-  first real exercise of SEED-002's verify-before-publish gate.
-
-**Deferred candidates (not v4.4):** diagnostics and completion accuracy (#522, #561/#578, #577,
-#556, #527, #526, #466); the remaining IntelliJ parity items (#634, #631); onboarding and docs
-(#476, #385, #595, #601, #108 follow-up); SETOPTS block discoverability UX (#666); the UAT-log
-issues #659-#662; CI/dependency hygiene and v4.3's own tech debt (MILESTONES.md).
+- **IntelliJ server lifecycle:** make a lost language-server connection visible to crash
+  detection (todo, severity major — the Phase 97 attempt was reverted), and fix the stale
+  previous status in the transition log together with it. Upstream LSP4IJ #1672/#1673 bear on
+  the design.
+- **Phase 97 review follow-ups:** the Node.js download-progress fix is partial for responses
+  without `Content-Length`; three new source guards are comment-unaware.
+- **Test harness:** `linking.test.ts`'s 11 live-interop failures (root cause: the block runs
+  against a hermetic test double) and the bare-TCP `shouldRunBBjTests()` gate.
+- **Deferred since v4.3:** diagnostics and completion accuracy (#522, #561/#578, #577, #556,
+  #527, #526, #466); the remaining IntelliJ parity items (#634, #631); onboarding and docs
+  (#476, #385, #595, #601, #108 follow-up); SETOPTS block discoverability UX (#666); the
+  UAT-log issues #659-#662; CI/dependency hygiene and the tech debt listed in MILESTONES.md.
+- **Release engineering:** the two `manual-release.yml` publish jobs still run in parallel.
 
 ## Requirements
 
@@ -289,18 +290,42 @@ issues #659-#662; CI/dependency hygiene and v4.3's own tech debt (MILESTONES.md)
 - ✓ **RESP-07**: Run, Run BUI/DWC, Compile, Decompile and Denumber resolve their target argument-first through a vscode-free `target-resolution.ts`; with no runnable BBj editor they show one shared "No active BBj file" warning, and BUI/DWC warn before any EM credential prompt (#512) — v4.3 Phase 92
 - ✓ **RESP-08**: Every `activate()` registration — 14 commands, the formatting provider and three notification handlers — is pushed onto `context.subscriptions`, so a second activation in the same host re-registers without `already exists` (#531) — v4.3 Phase 92
 - ✓ **RESP-09**: IntelliJ's BBj and Java status-bar widgets follow editor selection changes and show only when a selected file's resolved file type is `BBj`, hiding for `BBx Config` and non-BBj tabs on the click itself (#610) — v4.3 Phase 92
+- ✓ **COMP-03**: A malformed or partial `bbj/composer/catalogs` response opens the composer with the same graceful "not ready" message a fully-null response already gets, instead of an "IDE Internal Error" balloon from an EDT `NullPointerException` (#609) — v4.4 Phase 93
+- ✓ **COMP-04**: Text typed into a composer dialog that would break BBj statement syntax is rejected or escaped before it is written into the developer's live source file (#607) — v4.4 Phase 93
+- ✓ **COMP-05**: `applyHexEdit` fails gracefully rather than throwing `ArrayIndexOutOfBoundsException` when `flagsRange`/`eventMaskRange` do not carry exactly two elements (#591) — v4.4 Phase 93
+- ✓ **COMP-06**: The addWindow and addChildWindow composer dialogs share one base, so a fix to the shared addWindow-family flow is written once instead of hand-applied to two files (#630) — v4.4 Phase 93
+- ✓ **COMP-07**: `clip`, `labeled` and `setEnabledRecursive` exist exactly once in a shared home rather than duplicated across the schematic panels and dialogs (#619) — v4.4 Phase 93
+- ✓ **COMP-08**: The three `Configure*Intention` classes become one data-driven registration parameterised by display string, `Kind` and keyword (#618) — v4.4 Phase 93
+- ✓ **COMP-09**: The three composer-launch actions become one data-driven registration parameterised by `Kind` (#616) — v4.4 Phase 93
+- ✓ **EM-01**: An EM login temp file is deleted even when the process launch that precedes the cleanup block throws, so no partially-written login output (possibly containing a token fragment) is left on disk (#590) — v4.4 Phase 94
+- ✓ **EM-02**: "Login to Enterprise Manager" gates its enablement on project and server-readiness state and declares `ActionUpdateThread.BGT`, matching its ten sibling actions (#589) — v4.4 Phase 94
+- ✓ **EM-03**: EM server-side token validation lives alongside the rest of the EM-token lifecycle, not inside the run-action base class (#617) — v4.4 Phase 94
+- ✓ **EM-04**: `BbjRunBuiAction` and `BbjRunDwcAction` share the run flow through the base class, differing only in their BUI/DWC-specific literals (#615) — v4.4 Phase 94
+- ✓ **EM-05**: Plugin-bundled tool script paths (`web.bbj`, `em-validate.bbj`, `em-login.bbj`) resolve through one shared helper instead of three near-identical methods across two files (#614) — v4.4 Phase 94
+- ✓ **IOP-01**: A java-interop health check already in flight when project disposal begins never calls `project.getMessageBus()` or `EditorNotifications` on a disposed project, matching the guard its sibling service already applies everywhere (#592) — v4.4 Phase 95
+- ✓ **IOP-02**: The java-interop status poll stops re-arming while no BBj file is selected, instead of probing every 5 seconds for the lifetime of the project (#593) — closed on cited reasoning, not as originally written: window-focus gating is deliberately deferred (Phase 95, D-06), because no focus or activation API exists anywhere in `src/main/java` and adding one would introduce a new platform coupling plus a second event source racing editor selection. Accepted cost: an IDE left open on a BBj file overnight still polls. — v4.4 Phase 95
+- ✓ **IOP-03**: The status bar reports "Java: Connected" only when the listening peer is confirmed to be java-interop, not merely because a TCP handshake succeeded (#587) — v4.4 Phase 95
+- ✓ **IOP-04**: The default java-interop port has exactly one named constant, so the UI placeholder, the persisted default and the "changed from default" check cannot drift apart (#594) — v4.4 Phase 95
+- ✓ **IOP-05**: The two status-bar widgets and their factories share a base, so a change to the widget shape is written once (#620) — v4.4 Phase 95
+- ✓ **PLAT-01**: The TextMate bundle provider reuses a cached directory across IDE launches instead of allocating a fresh temp directory and re-copying its five files every time, and abandoned directories are cleaned up (#613) — v4.4 Phase 96
+- ✓ **PLAT-02**: Customizing a colour under Settings › Editor › Color Scheme › BBj visibly changes editor highlighting — or the inert page is removed so it cannot mislead (#621) — v4.4 Phase 96
+- ✓ **PLAT-03**: The three editor notification providers share one base carrying the file-type guard and panel construction (#622) — v4.4 Phase 96
+- ✓ **PLAT-04**: "Node.js not yet downloaded" and "Node.js cache directory inaccessible" are distinguishable to every caller, so the user is shown the right diagnosis instead of being pointed at a download that will fail the same way again (#588) — v4.4 Phase 96
+- ✓ **PLAT-05**: A configured-but-unusable Node.js path consults the cached download before the plugin gives up and shows the "Node.js required" banner — with the product decision recorded either way (todo `2026-09-06-configured-node-path-suppresses-cached-download-fallback`) — v4.4 Phase 96
+- ✓ **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`) — v4.4 Phase 96
+- ✓ **REL-01**: Release 0.16.0 is published to both the VS Code Marketplace and JetBrains Marketplace through SEED-002's single verification gate, with no half-released version and no orphaned tag — v4.4 Phase 97
+- ✓ **REL-02**: All 21 issues on GitHub milestone #7 are closed and the milestone itself is closed — v4.4 Phase 97
 
 ### Active
 
-Defined for milestone v4.4 in `.planning/REQUIREMENTS.md` — the 21 open issues on GitHub
-milestone #7, the Node.js cached-download fallback decision, the live Windows attestation, and
-the 0.16.0 release. v4.3's 25 requirements shipped and are listed under Validated above
-(archive: `.planning/milestones/v4.3-REQUIREMENTS.md`).
+None defined — the next milestone's requirements are written by `/gsd-new-milestone` into a
+fresh `.planning/REQUIREMENTS.md`. v4.4's 25 requirements shipped and are listed under
+Validated above (archive: `.planning/milestones/v4.4-REQUIREMENTS.md`).
 
 Carried over, maintainer-owned (not GSD phases):
-- [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03) — v4.4's 0.16.0 release is the candidate
+- [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
-- ✓ Land the local-only v4.3 commits on `origin/main` — done; local `main` and `origin/main` in sync (verified 2026-09-17)
+- ✓ Tagged release carrying all nine merged advisory fixes — 0.16.0, v4.4 Phase 97
 
 ### Out of Scope
 
@@ -314,16 +339,19 @@ Carried over, maintainer-owned (not GSD phases):
 - Decode-and-edit for every SETOPTS-in-code shape — the effective options vector is a runtime value; only the two statically safe shapes can be edited soundly (v4.3, #475)
 - General expression evaluation for MSGBOX/CVS options — would preview variables and method calls wrongly; only constant sums are decoded, anything else composes-and-replaces (v4.3)
 - A native IntelliJ `LineMarkerProvider` per composer — the plugin has no BBj PSI; composer cues come from the language server (v4.3)
+- BBj colour customization under Settings › Editor › Color Scheme — TextMate owns BBj highlighting, so the page was inert and was removed rather than wired up (v4.4, #621)
+- Window-focus gating of the java-interop status poll — the plugin uses no focus/activation API, and adding one would introduce a second event source racing editor selection; the poll is gated on editor selection only (v4.4, #593)
+- Reconciling the half-released 0.15.0 across the two marketplaces — settled in SEED-002: the next version simply ships, and 0.16.0 did (v4.4)
 
 ## Context
 
-**Current state:** v4.3 Polish & Quality shipped 2026-09-13 (Phases 84-92, 70 plans, 25/25 requirements); 20 milestones shipped. Phases 84-91 are on `origin/main`; Phase 92 and the late validation/security docs (31 commits) are on local `main` only. Whole-suite vitest green at `numFailedTests: 0` (1,873 passed, 29 skipped); IntelliJ JUnit suite 865 tests (504 at v4.3 start). v4.3 changed 232 files outside `.planning/` (+32,201 / −1,149). All nine known advisory fixes merged; publication awaits a tagged release. Next milestone not yet defined.
+**Current state:** v4.4 IntelliJ Focus shipped 2026-09-20 as release 0.16.0 (Phases 93-97, 36 plans, 25/25 requirements); 21 milestones shipped. All v4.4 code is on `origin/main` (PR #679, squash `7ab6b810`; released commit `6101a6b6`, tag `v0.16.0`), and both marketplaces carry 0.16.0. IntelliJ JUnit suite 1,101 tests (865 at v4.4 start); whole-suite vitest green at `numFailedTests: 0` (1,895 passed, 52 skipped with `RUN_BBJ_TESTS=0`). v4.4 changed 170 files outside `.planning/` (+10,763 / −3,218); roughly 15.9k lines of IntelliJ main Java, 23.9k lines of IntelliJ tests and 24.0k lines of hand-written language-server TypeScript. All nine known advisory fixes are merged and released; publication is the maintainer's next step. Next milestone not yet defined.
 
-**Tech stack:** Java 17, Gradle 8.14.5 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
+**Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary. BBjCPL compiler integration lives in `bbj-document-builder.ts` with lazy service resolution and availability detection via `bbj-notifications.ts`.
 
-**java-interop:** Runs as a configurable Java process (default localhost:5008, now user-configurable) via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. Both IDEs support Refresh Java Classes command. The IntelliJ plugin monitors connection health via independent TCP probes.
+**java-interop:** Runs as a configurable Java process (default localhost:5008, now user-configurable) via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. Both IDEs support Refresh Java Classes command. The IntelliJ plugin monitors connection health with its own `getTopLevelPackages` protocol round trip (a peer that accepts TCP but does not speak java-interop is reported as "Wrong peer"), polled only while a BBj file is selected.
 
 **Target users:** BBj developers using VS Code or IntelliJ (Community Edition supported).
 
@@ -338,6 +366,7 @@ Carried over, maintainer-owned (not GSD phases):
 - IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
 - FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment
 - Static method return type inference gap — String.valueOf(2) does not assign type to target variable
+- v4.4 carried debt: lost language-server connection invisible to crash detection and the stale previous status in the transition log (Phase 97 rework reverted; accepted 86-05 WR-01 is the same defect), partial download-progress fix and three comment-unaware source guards (97-REVIEW), `linking.test.ts` live-interop failures, parallel publish jobs in `manual-release.yml` — listed in MILESTONES.md
 - v4.3 audit tech debt: planning identifiers in 21 source/test files, accepted review risks (86-05 WR-01/WR-02, AR-88-12), duplicated SETOPTS initial-selection logic, `document-formatter.ts` import-time listeners, the `.lst` denumber input path — listed in MILESTONES.md
 
 ## Constraints
@@ -521,6 +550,13 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.3 phase artifacts archived on-tree (`milestones/v4.3-phases/`); no `v4.3` git tag; quick tasks not archived | Phases 84-92 close public issues and carry no advisory detail, so they are tracked like v4.2; repository tags stay release versions (`v0.12.x`), following the v4.2 precedent; the 16 `.planning/quick/` directories all predate v4.3 and would be misfiled under it | Applied — archive tracked; tag and quick-task archival skipped |
 | The six IntelliJ composer dialogs, their intentions, their launch actions and their Swing helpers collapse to one shared shape each (`ComposerSwingHelpers`, `ComposerIntentionBase`, `BbjComposeActionBase`, `AddWindowFamilyComposerDialogBase`); every write path bounds language-server-supplied ranges and line numbers before entering a write command, and OK is gated on the server's own `valid` verdict with the duplicated client-side hex rule deleted rather than kept in sync | #619/#623/#607/#611: the duplicated shapes had already silently diverged — the Java hex rule no longer matched the server's, which carried no length bound — and unguarded `int[]`/`int` payloads threw `ArrayIndexOutOfBoundsException`/`IndexOutOfBoundsException` on the EDT; a hardcoded `new Color(0xC0392B)` was unreadable in Darcula. A second launcher-side validation gate was deliberately rejected: it would need a server round trip on or near the EDT inside a write command, or the very Java duplication this phase deletes | ✓ Good — v4.4 Phase 93; 9 plans, 983 JUnit green; UAT 4/4 passed by hand 2026-09-18 (six composer kinds × three entry points, theme-aware error colour in Light and Darcula, raw-hex validation, addWindow-family parity); 31/31 threats closed in 93-SECURITY.md with 3 documented accepted risks |
 | EM login, token validation and tool-script resolution each collapse to one place: a `BbjToolScriptResolver` behind an injected plugin-path seam, `EmTokenValidator` moved out of the run-action base to sit beside the EM-token lifecycle, and the login action's enablement gate under `ActionUpdateThread.BGT` using the hide-not-grey setter | #614/#617/#589/#590: three duplicated tool-script lookups and a token validator living in the run-action base meant a single fix had to land in several places, and the login temp-file cleanup scope had never been pinned — a `finally` narrowed by a later edit would leak a JWT-bearing file with nothing to catch it. EM-04 was closed on cited evidence (commit `6a55b854` plus two existing guards) rather than by adding a third assertion of an already twice-pinned invariant | ✓ Good — v4.4 Phase 94; 4 plans, 1004 JUnit green via a forced `cleanTest test` (a plain `test` run reported UP-TO-DATE and would have masked a stale green); UAT 5/5 passed by hand 2026-09-19 against a distributable rebuilt after the code-review fixes; 12/12 threats closed in 94-SECURITY.md with 5 documented accepted risks |
+| java-interop health is decided by a real LSP4J `getTopLevelPackages` round trip instead of a TCP handshake, with a distinct `WRONG_PEER` status, and the poll is gated by a `com.intellij`-free `InteropPollPolicy` on editor selection only — window-focus gating deliberately not built | #587/#593/#592: BBjServices squats on :5008 without speaking the protocol, so a bare connect reported "Connected" to the wrong peer and the poll ran for the project's lifetime. No focus/activation API exists anywhere in the plugin; adding one would bring a new platform coupling and a second event source racing editor selection. The default port keeps exactly one constant (`BbjInteropPortDetector.DEFAULT_PORT`) rather than a second settings-owned one that would recreate #594's drift; the widgets share a generic `BbjStatusBarWidgetBase<S>` because the two status enums are unrelated types | ✓ Good — v4.4 Phase 95; IOP-02 closed on cited reasoning by maintainer override (requirement and roadmap criterion corrected to delivered scope); accepted cost: an IDE left open on a BBj file overnight still polls |
+| One Node.js decision engine: `NodeExecutableResolver` gains version gating and a distinguishable cache-inaccessible rejection, `NodePresentation`/`NodeActions` map each rejection reason to a sentence and action set consumed by both the start-failure notification and the editor banner, and `NodeAvailability` with its ten pinned tests is deleted — a configured-but-unusable path now consults the cached download | #588 plus the Phase 83 pinned-as-is decision: two seams answered the same question differently, the banner pointed at a download that would fail the same way again, and the startup popup hardcoded a single "Configure" action (UAT gap G-96-2). Deriving every surface from the resolver's rejection reason makes a doomed retry unrepresentable | ✓ Good — v4.4 Phase 96; real-Windows attestation failed first (Node floor pin and version-cache null poisoning, both fixed in-session), then passed on the maintainer's re-UAT 2026-09-20 |
+| Platform surfaces that misled were removed or consolidated rather than wired up: `BbjColorSettingsPage` deleted outright with the published docs rewritten, four editor notification providers on one `BbjNotificationProviderBase` owning the resolved-file-type guard (the issue named three), TextMate bundle cached with a sweep scoped to the plugin's own prefix under the IDE's own temp path | #621/#622/#613: TextMate owns BBj highlighting so the colour page could never take effect; the crash banner matched on file extension and so misfired on `.bbl` and missed `.bbx`; the bundle was re-copied to a fresh temp directory every launch. The docs rewrite is the milestone's one accepted departure from its IntelliJ-only constraint | ✓ Good — v4.4 Phase 96; UAT passed by hand; the #622 change is user-visible although the 0.16.0 release notes list it under "no observable change" |
+| Consolidations ship as an abstract base plus thin no-arg subclasses, not the "single data-driven registration" the issues asked for (#618, #616, #620) | IntelliJ's `<intentionAction>` extension point instantiates only through a no-arg constructor with no registration identity; an action could read its own id at runtime, but a mistyped id would become a silent click-time no-op instead of a compile error. Every per-kind difference stays compile-time checked | ✓ Good — v4.4 Phases 93/95; issues closed as done with this reasoning recorded in their closing comments |
+| Release 0.16.0 cut through SEED-002's single verification gate after a Preview dress rehearsal approved in both IDEs; a green `publish-intellij` job counts as "live" for JetBrains (the review queue is not waited on), so the IntelliJ smoke ran against the release zip, byte-identical to the upload | First real exercise of verify-before-publish, with the half-released 0.15.0 as the cautionary precedent; the two publish jobs still run in parallel, so a five-path by-hand reconciliation runbook was written first. The squash merge of PR #679 concatenated 135 commit messages and auto-closed #621 and #594 early through old closing keywords | ✓ Good — v4.4 Phase 97; all five jobs green, `verify` finished before either publish started, both assets re-hashed, maintainer smoke "pass"; roadmap criterion 3 met by recorded override for JetBrains; runbook not needed |
+| Crash-detection rework (status feed moved to `LSPClientFeatures#handleServerStatusChanged`, one-behind from-state into `ExpectedStopGuard.classify`) reverted before 0.16.0 after failing its hand UAT | Round 1 on macOS showed `started -> stopping -> stopped` with no CRASH classification ever firing; the approving checkpoint had rested on a hand-derived status trace that a real `idea.log` contradicted. Shipping a release with a known-wrong lifecycle change was worse than shipping the old, known behaviour | ⚠️ Revisit — v4.4 Phase 97; the three files are byte-identical to their pre-phase baseline, two todos carry the finding forward, LSP4IJ #1672/#1673 filed upstream |
+| v4.4 closed as an override closeout without a milestone-level audit, with six open artifacts acknowledged; phase artifacts and quick tasks archived on-tree; no `v4.4` git tag | Close taken 2026-09-20 with all five phases `passed`, 25/25 requirements checked, the release published and GitHub milestone #7 closed at 0/21. The six items were a `diagnosed` debug session whose gap 96-08 had closed, a record file the scanner reads as a UAT script, and four deliberately filed follow-up todos. The five quick-task directories all date from 2026-09-14..17, so unlike v4.3's they belong to this milestone. Repository tags are release versions — this milestone's is `v0.16.0` | Applied — v4.4 archived 2026-09-20; overrides and debt listed in MILESTONES.md |
 
 ## Evolution
 
@@ -540,4 +576,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-19 after Phase 94*
+*Last updated: 2026-09-20 after v4.4 milestone*

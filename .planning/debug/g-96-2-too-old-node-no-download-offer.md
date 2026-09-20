@@ -3,9 +3,14 @@ status: diagnosed
 trigger: "g-96-2-too-old-node-no-download-offer — In the IntelliJ plugin, when the BBj Node.js path in Settings points at a Node.js older than the minimum (22), the user is not led to a working runtime. The popup only offers \"Configure Node.js\" — no \"Download Node.js\" action — and the settings dialog, which shows a \"Version too old: ...\" statement next to the path field, does not say that the user can simply clear the path and restart to let the plugin's automatic detection/download do its job."
 created: 2026-09-20T00:00:00Z
 updated: 2026-09-20T00:00:00Z
+audit_acknowledged:
+  milestone: v4.4
+  at: 2026-09-20
+  status: diagnosed
 ---
 
 ## Current Focus
+
 <!-- OVERWRITE on each update - reflects NOW -->
 
 hypothesis: CONFIRMED (two independent, both-required causes — see Resolution)
@@ -37,6 +42,7 @@ reasoning_checkpoint:
   and_gate: "yes. G-96-2's truth statement is a conjunction: the notification must offer the download AND the settings dialog must name the clear-the-path recovery. The two causes sit in different files with no shared code path, so fixing either alone leaves the gap failed. root_cause is therefore a set of two."
 
 ## Symptoms
+
 <!-- Written during gathering, then IMMUTABLE -->
 
 expected: A too-old configured Node.js is rejected AND the user is guided to a working runtime: the notification/banner offers the Node.js download (NodePresentation's BELOW_MINIMUM_VERSION case is supposed to keep all three action ids: download-nodejs, configure-nodejs-path, install-nodejs-manually), and the settings dialog says next to its "Version too old" statement that clearing the path lets the plugin pick or download a suitable Node.js.
@@ -46,6 +52,7 @@ reproduction: UAT Test 2. Settings > BBj Node.js path -> a Node < 22 binary, no 
 started: Discovered during UAT, 2026-09-20, on the phase-final build (last source commit e109c9ee).
 
 ## Eliminated
+
 <!-- APPEND only - prevents re-investigating -->
 
 - hypothesis: "NodePresentation drops ACTION_DOWNLOAD for the BELOW_MINIMUM_VERSION case, so every surface loses the Download button."
@@ -65,6 +72,7 @@ started: Discovered during UAT, 2026-09-20, on the phase-final build (last sourc
   timestamp: 2026-09-20
 
 ## Evidence
+
 <!-- APPEND only - facts discovered -->
 
 - timestamp: 2026-09-20
@@ -128,6 +136,7 @@ started: Discovered during UAT, 2026-09-20, on the phase-final build (last sourc
   implication: "Wiring Download into the startup popup needs no new dependency and completes the recovery loop end-to-end (download -> offered restart -> server starts) with no manual instruction. Only BrowserUtil is a new import, and only if the install-manually action is included."
 
 ## Resolution
+
 <!-- OVERWRITE as understanding evolves -->
 
 root_cause: "Two independent causes, both required (AND-gate fired). (a) POPUP ACTION SET — BbjLanguageServer.notifyUnresolvedNodePath (bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:107-123) constructs the language-server start-failure notification with a single hardcoded NotificationAction(\"Configure Node.js Path\") at line 114 and never consults NodePresentation.bannerActions(resolution). Its call site (line 94) passes only resolution.failureMessage(), discarding the Resolution, so the reason-specific action set is unreachable. The NodePresentation seam built in 96-05/96-06 was wired into the editor banner only; the startup notification predates it and was never rewired, so the popup offers configure-only for every rejection reason — including BELOW_MINIMUM_VERSION, for which NodePresentation already returns all three action ids and NodePresentationTest already pins Download as present; (b) SETTINGS DIALOG HINT — BbjSettingsComponent.applyNodeLookup's below-minimum branch (bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java:365-366) sets nodeVersionLabel to only 'Version too old (minimum: 22), detected: <version>', and nodeJsField (same file, lines 113-117) is the sole path-like field in the dialog with no getEmptyText() hint while three siblings have one (lines 109, 158, 217). Nothing in the dialog states that clearing the field re-enables the plugin's automatic detection/download, so the user has no way to discover the recovery the resolver already supports."

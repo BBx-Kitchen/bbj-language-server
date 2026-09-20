@@ -1,61 +1,66 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.4
-milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
-current_phase: 97
-current_phase_name: Release 0.16.0 & Milestone Close
-status: executing
-stopped_at: Completed 97-05-PLAN.md (Round 2, D-22 gate closed)
-last_updated: "2026-09-20T15:46:18.520Z"
+milestone_name: IntelliJ Focus (Phases 93-97) — SHIPPED 2026-09-20
+status: Awaiting next milestone
+stopped_at: "Completed 97-11-PLAN.md (all 21 milestone #7 issues closed with maintainer-approved comments, milestone #7 closed 0/21/closed; REL-02 complete; phase 97 and milestone v4.4 complete)"
+last_updated: "2026-09-20T19:12:53.267Z"
 last_activity: 2026-09-20
-last_activity_desc: Phase 97 execution started
-state_head: 6bb697aaec2fa0fa2eda65534cfa8caf16ff05d9
+last_activity_desc: Milestone v4.4 completed and archived
+state_head: d8071b24fcfdd25986f26bf71184d4873fc975c6
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 36
-  completed_plans: 30
-  percent: 80
+  completed_plans: 36
+  percent: 100
+current_phase: 97
+current_phase_name: Release 0.16.0 & Milestone Close
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-19 (Phase 94 complete — 4/4 plans, UAT 5/5, 12/12 threats closed)
+**Last Updated:** 2026-09-20 (v4.4 IntelliJ Focus archived — release 0.16.0 shipped, override closeout)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-19)
+See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 97 — Release 0.16.0 & Milestone Close
+**Current Focus:** Planning next milestone — run `/gsd-new-milestone`
 
 ---
 
 ## Current Position
 
-Phase: 97 (Release 0.16.0 & Milestone Close) — EXECUTING
-Plan: 6 of 11
-Status: Ready to execute
-Last activity: 2026-09-20 — Phase 97 execution started
-
-Progress: [████████████████████] 25/25 plans ([████████░░] 80%)
+Phase: Milestone v4.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-20 — Milestone v4.4 completed and archived
 
 ## Performance Metrics
 
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 20
-**Phases completed:** 94
-**Plans completed:** 348
-**Days elapsed:** 228
-**Velocity:** ~1.5 plans/day (lifetime); v4.3 ran at ~9 plans/day over 8 days
+**Milestones shipped:** 21
+**Phases completed:** 95
+**Plans completed:** 349
+**Days elapsed:** 231
+**Velocity:** ~1.5 plans/day (lifetime); v4.4 ran at ~9 plans/day over its 4 phase-work days
 
-Per-plan duration tables for phases 72-92 are archived with their phase artifacts under
-`.planning/milestones/v4.2-phases/` and `.planning/milestones/v4.3-phases/`.
+Per-plan duration tables for phases 72-97 are archived with their phase artifacts under
+`.planning/milestones/v4.2-phases/`, `v4.3-phases/` and `v4.4-phases/`.
 
 ### Recent History
+
+**v4.4 (Shipped: 2026-09-20):**
+
+- Duration: 7 days (roadmap 2026-09-17, phase work 4 days)
+- Phases: 5 (93-97)
+- Plans: 36 (101 tasks)
+- Key: all 21 GitHub milestone #7 IntelliJ issues closed — eleven behaviour fixes (composer EDT guards and server-verdict OK gating, honest java-interop status, EM login cleanup and enablement, cached TextMate bundle, one Node.js decision engine attested on real Windows) and ten consolidations; shipped as release 0.16.0 through the verify-before-publish gate; a crash-detection rework was reverted before release; override closeout, no milestone audit (6 artifacts acknowledged). IntelliJ JUnit 865 → 1,101.
 
 **v4.3 (Shipped: 2026-09-13):**
 
@@ -71,56 +76,13 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 - Plans: 25 (74 tasks)
 - Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; landed on `origin/main` via PR #651
 
-**v4.1 (Shipped: 2026-09-03):**
-
-- Duration: 14 days
-- Phases: 8 (70-77; 76 closed by 75)
-- Plans: 37
-- Key: Eight advisories remediated 1:1 per phase, each fix merged via a human-gated public PR; override closeout — PROC-01/02/03 carried until a tagged release and publication
-
----
-**Per-Plan Metrics:**
-
-| Plan | Duration | Tasks | Files |
-|------|----------|-------|-------|
-| Phase 93 P01 | 25min | 3 tasks | 12 files |
-| Phase 93 P02 | 35min | 3 tasks | 7 files |
-| Phase 93 P03 | 20min | 3 tasks | 6 files |
-| Phase 93 P04 | 5min | 3 tasks | 8 files |
-| Phase 93 P05 | 15min | 3 tasks | 4 files |
-| Phase 93 P06 | 40min | 3 tasks | 6 files |
-| Phase 93 P07 | 10min | 3 tasks | 11 files |
-| Phase 93 P08 | 20 min | 3 tasks | 4 files |
-| Phase 93 P09 | 9min | 3 tasks | 4 files |
-| Phase 94 P01 | 20min | 2 tasks | 4 files |
-| Phase 94 P02 | 14min | 3 tasks | 5 files |
-| Phase 94 P03 | 20min | 2 tasks | 3 files |
-| Phase 94 P04 | 12min | 2 tasks | 1 files |
-| Phase 95 P01 | 15min | 3 tasks | 9 files |
-| Phase 95 P02 | 12min | 3 tasks | 6 files |
-| Phase 95 P03 | 10min | 2 tasks | 3 files |
-| Phase 95 P04 | 9min | 3 tasks | 7 files |
-| Phase 96 P01 | 25min | 2 tasks | 3 files |
-| Phase 96 P02 | 20min | 3 tasks | 3 files |
-| Phase 96 P03 | 25min | 2 tasks | 4 files |
-| Phase 96 P04 | 10min | 3 tasks | 8 files |
-| Phase 96 P05 | 20min | 3 tasks | 6 files |
-| Phase 96 P06 | 20min | 2 tasks | 6 files |
-| Phase 96 P07 | 15min | 1 tasks | 1 files |
-| Phase 96 P08 | continuation | 4 tasks | 8 files |
-| Phase 97 P01 | 15min | 3 tasks | 5 files |
-| Phase 97 P03 | 20min | 3 tasks | 2 files |
-| Phase 97 P04 | 10min | 2 tasks | 4 files |
-| Phase 97 P02 | continuation | 3 tasks | 3 files |
-| Phase 97 P05 | 10min | 3 tasks | 1 files |
-
 ## Accumulated Context
 
 ### Active Constraints
 
 - Disclosure constraint: no v4.1 planning artifact on `main` may describe a flaw mechanism, affected file, or exploitation path for any of the 8 unpublished advisories — opaque GHSA-id-only references only. Remediation research (`SECRETS-AND-EXEC.md`, `SUPPLY-CHAIN.md`) stays untracked via `.git/info/exclude`.
 - New work lands via a branch cut from `origin/main` plus a pull request, with a per-commit register check of the source diff for planning identifiers (plan/D-xx/C-xx/COMP/CR-xx tokens) before push.
-- v4.4 is IntelliJ-only: every one of the 21 issues lives in `bbj-intellij/src/main/java/...`. Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
+- Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
 - No live IntelliJ UI test coverage exists in CI. Verification pattern is plain-Java seams under plain JUnit 5, whole-file source guards for IDE-only wiring, and hand UAT in a running IDE per phase — build both distributables first, and again from the final tree after code-review fixes.
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require a Java classpath unavailable in the EmptyFileSystem test environment
@@ -128,69 +90,16 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 
 ### Decisions
 
-Full decision log in PROJECT.md's Key Decisions table; per-phase decision detail for phases 70-92
-is archived with the phase directories (v4.1 embargoed off `main`; v4.2/v4.3 tracked). Standing
-decisions and the ones that bear directly on v4.4's files:
+Full decision log in PROJECT.md's Key Decisions table; per-phase decision detail for phases 70-97
+is archived with the phase directories (v4.1 embargoed off `main`; v4.2-v4.4 tracked). Standing
+decisions:
 
 - [v4.1, standing]: No CVE is requested for any advisory during implementation; CVE and severity are decided by the maintainer at publication time (a deliberate PROC-03 departure).
 - [v4.1, standing]: Whole-suite regression gate is project-wide `numFailedTests: 0` plus deterministic targeted-file runs, not a failing-suite identity delta (DEBT.md item 5).
-- [v4.4 roadmap]: Phases 93-97 follow REQUIREMENTS.md's subsystem grouping, so each phase carries both its behaviour fixes and its behaviour-preserving consolidations — the alternative would edit the same files and re-run the same hand UAT twice. Risk is contained by ordering inside each phase: a consolidation goes first when it creates the home a fix must live in (COMP-06 → COMP-04, PLAT-03 → PLAT-04), last when the fix changes the shape being consolidated (IOP-02/03 → IOP-05, EM-03 → EM-04).
-- [Phase 83, pinned as-is]: `NodeAvailability.decide` never consults the cached download when a configured Node path is unusable; pinned by test, decision deferred — this is exactly what PLAT-05 must now settle.
-- [Phase 82/87/90]: Composer dialogs compose through `ComposerFlow` + `StaleEditGuard` + `ComposerNotices`, with previews debounced over the shared `PreviewDebouncer`/`AlarmScheduler` seam — the conventions Phase 93's consolidations must preserve.
-- [Phase 79/80]: All blocking work stays off the EDT behind the `Scheduler` seam with `assertIsNonDispatchThread()` at entry; EM token handling classifies once through `JwtValidity.check` and fails closed — constrains IOP-03's peer confirmation and Phase 94's EM work.
-- [Phase 92]: `BbjFileVisibility` mirrors `BbjConfigPathService`'s static-helper-plus-thin-wrapper convention; widget visibility reads `file.getFileType().getName()`, never the extension — the shape IOP-05's widget base must keep.
-- [Phase 83]: LSP4IJ coupling is fenced by signature canaries, class-file marker assertions and an eleven-file symbol-level import allowlist that fails on drift anywhere in `src/main/java`.
-- [Phase 93]: NamedColorUtil.getErrorForeground() confirmed against the 2024.2 platform jar; clip() reconciled to the cached-FontMetrics variant; setOKActionEnabled(false) stays local to each dialog's wrapper, never moved into the shared helper
-- [Phase 93]: SETOPTS raw-tail validity rule moved server-side (MAX_RAW_TAIL_DIGITS=14, single RAW_TAIL_PATTERN regex); valid/rawTailError on SetOptsPreview and valid on the composeTriState result reach both hosts, fail-closed on a missing key
-- [Phase 93]: MALFORMED_EDIT deliberately reuses Severity.WARNING (shared with STALE_DOCUMENT) rather than adding a fifth Severity constant; ComposerNoticesTest's severity assertion moved from a distinctness count to an explicit per-reason severity table
-- [Phase 93]: openSetoptsInCodeAbsolute's hexRange guard folds null-check and length-check into one ComposerEditRanges.isUsable(...) call, since that write path had no separate null check and no insert-offset fallback to preserve
-- [Phase 93]: COMP-08 shipped as abstract ComposerIntentionBase + 5 thin no-arg Configure*Intention subclasses (platform-forced deviation from #618's 'single data-driven registration' wording -- IntelliJ's <intentionAction> extension point instantiates only via a no-arg constructor with no registration identity, so one class cannot vary text/Kind/keyword); close #618 as done with this reasoning, not as partially implemented
-- [Phase 93]: ComposerCatalogsCheck reuses ComposerNotices.notReady (never MALFORMED_EDIT) -- a malformed catalogs payload and a malformed edit range are different failure classes
-- [Phase 93]: openSetoptsInCode is the single catalogs-shape gate for both SETOPTS-in-code dialogs; the three downstream dispatch methods carry no redundant check
-- [Phase 93]: Carried the addGroupedChecks tooltip branch unconditionally on the base after verifying against the addWindow catalog source that it is dead code there (COMP-06)
-- [Phase 93]: prefill(...)'s title-setting statement stays in each subclass constructor (title is subclass-owned), keeping the base to a single refresh() abstract hook (COMP-06)
-- [Phase 93]: BbjComposeActionBase.isAvailableFor(...) is a regular overridable method defaulting to true, not an abstract hook -- unlike ComposerIntentionBase's getText()/isAvailable(), four of six action subclasses share the literal default gate, so only kind() stays the abstract, compile-time-checked hook
-- [Phase 93]: COMP-09 shipped as abstract BbjComposeActionBase + 6 thin no-arg BbjCompose*Action subclasses (deviation from #616's 'single data-driven registration' wording, per D-06) -- an AnAction could read its own id via ActionManager.getId(this), but that would turn a renamed/mistyped action id into a silent click-time no-op instead of a compile error; close #616 as done with this reasoning
-- [Phase 93]: Both SETOPTS composer dialogs now gate OK/Apply on the language server's valid verdict; the last client-side validation rule in the composer surface (SetoptsComposerDialog's Java hex regex) is deleted. No second validation gate was added at ComposerLauncher's write path, per D-09 -- #607 closes on the dialog-side verdict plus the launcher's existing empty-value guards.
-- [Phase 93]: Line-bound accepted band is strictly [0, lineCount) for ed.line/chain.startLine/chain.endLine, not the 93-REVIEW.md sketch's chain.endLine > lineCount (which still permits endLine == lineCount). — getLineStartOffset(int) throws IndexOutOfBoundsException on exactly that boundary value; the sketch's form would have shipped a guard that still crashes on the one value it claims to close.
-- [Phase 93]: Both new SETOPTS-in-code line-bound aborts reuse ComposerNotices.malformedEdit(...) -- no new Reason or Severity added. — Same failure class as the existing hexRange/flagsRange/eventMaskRange guards (D-10 from 93-CONTEXT.md); a malformed range and a malformed line number are one user-visible failure class.
-- [Phase 94]: Confirmed by inspection that after moving validateTokenServerSide/validateTokenTrusted out of BbjRunActionBase, the first BbjProcessSecretEnv.Invocation declaration and first withEnvironment( call remaining in the file are both buildWebRunCommandLine's own invocation variable, so BbjSecretArgvSourceGuardTest's pre-existing data-flow assertion continues to hold with no code change.
-- [Phase 94]: [Phase 94] BbjEMLoginAction's update() gate reads e.getProject() != null only -- no ServerStatus, no BBj Home -- since EM login never talks to the language server and must keep firing the BBj-Home dialog for new users.
-- [Phase 94]: [Phase 94] EM-01's temp-file cleanup needed no production change (already fixed by 06eb1a7c); EmLoginTempFileCleanupSourceGuardTest pins the ordering with four indexOf assertions, proven to fail on a deliberately narrowed scope via a throwaway helper (to keep the falsification edit compiling) and restored byte-identical before re-verifying.
-- [Phase 94]: EM-04 closed on cited evidence (commit 6a55b854 + two named guards) as verified-already-true, not newly implemented; no third guard added — The invariant was already pinned twice before this plan began; a third assertion of the same fact adds nothing
-- [Phase 94]: Whole-suite gate run with --rerun-tasks rather than plain test, to avoid a Task :test UP-TO-DATE no-op masking a stale green — Gradle's incremental build would otherwise silently skip re-executing tests against this phase's final edits
-- [Phase 95]: InteropProbeClient uses an explicit ExecutorService for the client-role LSP4J Launcher.Builder chain (setExecutorService with newCachedThreadPool, shutdownNow in finally), per RESEARCH.md assumption A1's pre-execution spike -- no re-spike needed in 95-01
-- [Phase 95]: Wrong-peer wording fixed: status label 'Java: Wrong peer', tooltip names the port-collision situation, banner points at the port setting instead of telling the user to start BBjServices
-- [Phase 95]: Phase 96 PLAT-03 file-disjointness correction: 95-01 edited BbjJavaInteropNotificationProvider.java, one of the three editor notification providers PLAT-03 (#622) consolidates -- ROADMAP's Phase 96 file-disjoint claim is now false
-- [Phase 95]: No third volatile field for server-started state -- checkConnection() passes a literal true (invariant: it only runs while a server-started-gated request is pending), refreshSelectionGate() reads BbjServerService.getCurrentStatus() live on the EDT; keeps the field count at exactly two (bbjFileSelected, gateWasOpen)
-- [Phase 95]: BbjFileVisibility and showsForFileTypeNames widened from package-private to public so the interop-package InteropPollPolicyTest can feed the empty-selection edge case through the real predicate; showsForSelection stays package-private
-- [Phase 95]: BbjJavaInteropServiceDisposalSourceGuardTest's pinned isDisposed() count widened from two to three (new startup invokeLater guard) -- Task 2 explicitly requires the third guard, which necessarily changes the count the 95-01 guard pins
-- [Phase 95]: Closed #594 as done on D-11 reasoning (BbjInteropPortDetector.DEFAULT_PORT is the sole canonical port constant); no second BbjSettings-owned constant introduced. — Follows Phase 93 D-05 / Phase 94 D-05 precedent; a second constant would recreate the exact drift #594 complains about and would point platform-free InteropPortSettings/InteropPortPresentation at a PersistentStateComponent.
-- [Phase 95]: IOP-05 (#620): status-bar widgets consolidated onto a generic BbjStatusBarWidgetBase<S> plus thin subclasses (Phase 93 base+thin-subclass precedent), not one data-driven class as #620's literal wording asked -- the two status enums are unrelated types — keeps every difference compile-time checked instead of a runtime no-op on a wiring mistake
-- [Phase 95]: subscribeToStatusTopic's abstract-hook parameter is named messageBusConnection, not connection, so each subclass's own subscribe call matches the source guard's pre-existing literal convention — surfaced as a guard test failure during Task 3, fixed before commit
-- [Phase 96]: Deleted BbjColorSettingsPage outright and its plugin.xml registration (D-01/D-03/D-04); rewrote IntelliJ docs Customization section (D-02) as the phase's one accepted departure from the v4.4-is-IntelliJ-only constraint.
-- [Phase 96]: 96-02: sweep-scoped selected at Task 2's blocking-human gate; TextMateBundleCache.sweepAbandoned deletes only direct-child directories under the IDE's own temp path matching the plugin's own textmate-bbj prefix, reusing NodeInstallPipeline.deleteRecursively, logging and stepping over per-entry failures
-- [Phase 96]: 96-03: IN-02 stayed a one-line reuse per branch as CONTEXT.md's fold condition required; installExtracted resolves the executable name through Target.nodeExecutableName() on both branches
-- [Phase 96]: 96-03: non-writable-parent cleanup-failure test variant ran (not skipped) on this host; deleteIfExistsQuietly mirrors deleteRecursivelyQuietly's swallow-and-log convention for the outer temp-file cleanup
-- [Phase 96]: 96-04: Base class placed in com.basis.bbj.intellij (not ui/lsp) as a cross-package caller of BbjFileVisibility; no provider had to move (D-11).
-- [Phase 96]: 96-04: Base covers all four registered providers, not the three #622 named; crash provider's extension guard replaced by the resolved-file-type guard, overriding ROADMAP criterion 3 with recorded reasoning (D-09).
-- [Phase 96]: 96-04: Status stays a per-subclass value at the panel-construction call site; crash banner keeps Error, other three keep Warning (D-10).
-- [Phase 96]: 96-04: #622 closed as done on cited reasoning -- four providers consolidated where the issue named three (D-12).
-- [Phase 96]: 96-05: NodeExecutableResolver's version-aware overload carries seven arguments (cache-directory-accessible boolean plus the two version collaborators), not RESEARCH.md's sketched six -- the boolean lets the CACHED branch record a CACHE_UNAVAILABLE rejection instead of validate()'s generic blank-candidate skip, with no second Reason/Source vocabulary.
-- [Phase 96]: 96-05: PLAT-04/PLAT-05 stay Pending -- plan 96-06 also declares both and has not run yet; NodeAvailability and BbjMissingNodeNotificationProvider are left untouched for 96-06 to retire/rewire.
-- [Phase 96]: 96-06: BbjMissingNodeNotificationProvider now resolves through NodeExecutableResolver.resolve(...) and NodePresentation; NodeAvailability and its ten pinned tests deleted -- settles the Phase 83 pinned-as-is decision that a configured-but-unusable Node.js path never consulted the cached download (PLAT-05).
-- [Phase 96]: 96-06: The banner's sentence and action set both vary by NodeExecutableResolver's rejection reason; the cache-inaccessible case drops Download Node.js, closing #588's doomed-retry scenario (PLAT-04).
-- [Phase 96]: Phase 96: PLAT-06's real-Windows attestation FAILED -- Node.js auto-install downloads a valid node.exe+.sha256 sidecar but the language server does not start afterward; two root causes (Node floor pin, version-cache null poisoning) fixed during the session (1b6b83d3, a6b27b44, c41859dd, cb370e48, ae86384e); PLAT-06 stays Pending, recorded as WINDOWS.md entry 3 (open) per D-15 rather than holding the phase
-- [Phase 96]: 96-08: G-96-2 closed on the maintainer's reply 'pass, works as expected now' (2026-09-20), tied to bbj-intellij-0.1.0.zip sha256 89ba44723d319771bc6436aee8b0a0218fca04b93c2093c5f6249f3258df2659 from commit dbdb65282e4b5f5c6fc984f24c230b1ef6079dca -- the shared NodeActions.perform/NodePresentation.actionLabel mapping now feeds both the start-failure notification and the editor banner.
-- [Phase 97]: [Phase 97]: 97-01: crash-detection status feed moved to LSPClientFeatures#handleServerStatusChanged with Option B threading (whole body dispatched through invokeLater, keeping BbjServerService.updateStatus on the EDT) — Smallest change immediately before a release; Option A (synchronized non-UI section) stays a deferred follow-up.
-- [Phase 97]: [Phase 97]: 97-01: confirmed by javap bytecode reading of LSP4IJ 0.21.0's LanguageServerWrapper that getOrCreateClientFeatures() always calls setServerWrapper(this) before the client-features instance is cached or returned, so getProject() inside the new override can never see an unset wrapper — Resolves the plan's flagged assumption with direct evidence rather than leaving it unconfirmed.
-- [Phase 97]: [Phase 97]: 97-03: issue447's capability test now asserts a product invariant (probe result agrees with cached flag; suggestions resolve either way) instead of one backend's answer
-- [Phase 97]: [Phase 97]: 97-03: linking.test.ts's 11 interop failures re-filed, not fixed -- both the complete-class-index and live-interop warm-up hypotheses were tested and refuted; root cause is the describe block running against a hermetic test double that never talks to real interop
-- [Phase 97]: [Phase 97]: 97-04: bbj/bbjcplAvailability handler takes an untyped Object parameter with an empty body -- a true no-op must not parse, validate or store an untrusted payload
-- [Phase 97]: [Phase 97]: 97-04: setIndeterminate(false) placed as a single unconditional statement before pipeline.install(...), outside the progress lambda, so it runs once per download rather than once per progress tick
-- [Phase 97]: Maintainer approved (2026-09-20, "Proceed (Recommended)") feeding ExpectedStopGuard.classify the one-behind from-state instead of the two-behind stale field; a lost-connection sequence now classifies CRASH on its final transition instead of being silently dismissed as NOT_A_STOP.
-- [Phase 97]: No duplicate ExpectedStopGuardTest case was added for the lost-connection sequence: the prior task-1 executor found stoppedAfterStartedWithNothingArmedIsACrash already covered it, per the plan's own skip-if-covered instruction.
-- [Phase 97]: [Phase 97]: 97-05 Round 2 hand check APPROVED (2026-09-20) against bbj-intellij-0.1.0.zip sha256 9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40 and bbj-lang-0.15.3.vsix sha256 65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d, source commit f0f56b290a2e47c24943b0f101260380b11e2f9d -- D-01 step 1's code-wave gate, as narrowed by D-22, is closed; the optional Node.js download step was recorded as not-reported rather than passed
+- [v4.4, standing]: IntelliJ consolidations ship as an abstract base plus thin no-arg subclasses, never a runtime-keyed "data-driven" single class — every per-kind difference stays compile-time checked.
+- [v4.4, standing]: A runtime status or lifecycle sequence used as UAT evidence must come from a real `idea.log`, not a hand-derived trace (the Phase 97 crash-detection rework was approved on a wrong trace and reverted).
+- [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
+- [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
 
 ### Tech Debt
 
@@ -203,54 +112,45 @@ decisions and the ones that bear directly on v4.4's files:
 
 ### Pending Todos
 
-4 pending in `.planning/todos/pending/`. Two of them are now v4.4 requirements:
+4 pending in `.planning/todos/pending/`, all filed 2026-09-20 and acknowledged at the v4.4 close:
 
-- `2026-09-06-configured-node-path-suppresses-cached-download-fallback` → PLAT-05 (Phase 96)
-- `2026-09-06-live-windows-check-for-node-auto-install-failure` → PLAT-06 (Phase 96)
-- `2026-09-03-update-live-interop-tests-for-getallclassnames-backend` — env drift, not a regression
-- `2026-09-05-gradle-wrapper-hygiene-fixture-declares-stale-gradle-version` — fixed 2026-09-06; close-out pending
+- `2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection` — severity major; the Phase 97 attempt was reverted
+- `2026-09-20-status-transition-log-prints-a-stale-previous-status` — only makes sense together with the one above
+- `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
+- `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
 
 ### Blockers/Concerns
 
-- **9 advisory fixes merged to `main`, published.** Publication waits on a tagged release, then per-advisory severity/CVE decisions by the maintainer. v4.4's 0.16.0 release (Phase 97) is the candidate trigger. Post-release checklist in MILESTONES.md under v4.1.
+- **9 advisory fixes merged and released, not yet published.** The tagged release publication was waiting for exists (`v0.16.0`, 2026-09-20). Per-advisory severity/CVE decisions are the maintainer's; post-release checklist in MILESTONES.md under v4.1.
 
-- **`WINDOWS.md` entry 1 open** (Phase 70 guardrail breadth, accepted as unmet 2026-08-21). With `workflow.windows_enforce` on, this blocks `/gsd-ship` until fixed or explicitly waived.
+- **`WINDOWS.md` entry 1 open** (Phase 70 guardrail breadth, accepted as unmet 2026-08-21). With `workflow.windows_enforce` on, this blocks `/gsd-ship` until fixed or explicitly waived. Entry 3 (Phase 96 Windows attestation) is fixed.
 
-- **0.15.0 is half-released.** VS Code Marketplace has 0.15.0 and tag `v0.15.0` exists; the JetBrains plugin was never published. Deliberately not reconciled (SEED-002) — 0.16.0 simply ships. Phase 97 is the first real exercise of the verify-before-publish gate, and its two publish jobs still run in parallel, so one marketplace succeeding while the other fails still needs manual reconciliation.
+- **0.15.0 stays half-released** (VS Code only) — deliberately not reconciled (SEED-002); 0.16.0 is on both marketplaces. `manual-release.yml`'s two publish jobs still run in parallel; the by-hand runbook is `milestones/v4.4-phases/97-release-0-16-0-milestone-close/97-RECONCILIATION-RUNBOOK.md`.
 
-- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates on a bare TCP connect to :5008. BBjServices squats on that port without speaking the interop protocol, so 11 `linking.test.ts` interop tests switch on and fail; since 2026-09-03 the live backend also exposes `getAllClassNames`, drifting the issue447 capability test. Local whole-suite baseline is 12 failures; green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+- **Crash detection cannot see a lost language-server connection.** LSP4IJ detaches the client before it publishes `stopped`; the Phase 97 fix failed hand UAT and was reverted. Accepted `86-05-REVIEW` WR-01 is the same defect. Upstream: LSP4IJ #1672/#1673.
 
-- **Advisory review follow-ups that land in v4.4's own files** (all advisory, blocked prior verification):
-  - `79-REVIEW` IN-02 — duplicated plugin-bundle path resolution; EM-05 (#614) retires it.
-  - `83-REVIEW` WR-01..WR-05 on the Node install pipeline (silent `tar` cancellation, unguarded temp cleanup masking the real exception, unclosed `tar` stdin, `endsWith("node.exe")` entry match, EDT flush in `apply()`) — Phase 96 territory.
-  - `82-UI-REVIEW` — the in-dialog "Preview unavailable" label uses plain gray where the dialogs have a red `errorLabel()` convention; that red is a hardcoded `Color(0xC0392B)` rather than a theme-aware `JBColor`; `ComposerNotices.detailOf()` puts raw exception text into the balloon — Phase 93 territory.
-  - `89-REVIEW` WR-01 — the VS Code composer panel always labels its primary button "Insert" even when completing or editing a call.
-  - `90-SECURITY` T-90-11 — `ComposerHandleCache` has no source guard forbidding a static map; the no-cross-project-leak control is structural only.
-  - `86-05-REVIEW` WR-01/WR-02 — stale-by-one-generation `previousStatus` in status classification, and no exception handling around the bounded restart wait. Accepted as residual at Phase 86 UAT.
+- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+
+- **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
-- WINDOWS.md entry 3 open (Phase 96): PLAT-06 Windows attestation failed -- language server does not start after Node.js auto-install completes; needs a dedicated debug session, starting with finding 7 (BbjLanguageServer's java.util.logging output never reaches idea.log)
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260914-7tx | Fix #667: INPUT verification rules accept numeric literals/expressions (e.g. pick:(c)) | 2026-09-14 | 082d02f8 | — | [260914-7tx-fix-667-input-verification-rules-accept-](./quick/260914-7tx-fix-667-input-verification-rules-accept-/) |
-| 2 | Gradle 9 migration: land #652 (wrapper 9.7.1) + #654 (IntelliJ Platform plugin 2.18.1) via PR #669 — 9.7.1 checksums, drop instrumentationTools() | 2026-09-14 | 890e1125 | — | — |
-| 260914-l1o | Fix #663: RUN/CALL file targets — hover shows resolved path, Ctrl/Cmd-Click opens the program (shared resolver with #173 warning) | 2026-09-14 | f695aec4 | — | [260914-l1o-fix-663-run-and-call-file-targets-hover-](./quick/260914-l1o-fix-663-run-and-call-file-targets-hover-/) |
-| 260916-7vf | Fix #671 ("Channel has been closed" — extension now owns the output channel so a restart cannot dispose it) + #672 (a transient unreadable config.bbx no longer restarts the language server) | 2026-09-16 | 3e5ecaa5 | — | [260916-7vf-fix-671-stale-outputchannel-and-672-spur](./quick/260916-7vf-fix-671-stale-outputchannel-and-672-spur/) |
-| 260916-9jy | SEED-001: BbjEMTokenStore.resolveBackend() classifies from the public PasswordSafe.isMemoryOnly() instead of the internal PasswordSafeSettings/ProviderType, unblocking the verifyPlugin INTERNAL_API_USAGES gate that failed the v0.15.0 release; folds in running verifyPlugin in PR validation + preview (ci: 54960905) | 2026-09-16 | 1c80dfb1 | — | [260916-9jy-drop-the-internal-passwordsafesettings-a](./quick/260916-9jy-drop-the-internal-passwordsafesettings-a/) |
-| 260917-9ei | SEED-002 (both parts): one verification job now gates every publish, tag and push in manual-release.yml (5 jobs) and preview.yml (4 jobs + concurrency group); Part B caches the verifier's ~211 MB plugin downloads in all three verifyPlugin jobs, IDE distributions deliberately not cached | 2026-09-17 | fa2c80bf | — | [260917-9ei-verify-before-publish-in-the-release-and](./quick/260917-9ei-verify-before-publish-in-the-release-and/) |
+
+Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-09-20T15:46:18.314Z
-Stopped at: Completed 97-05-PLAN.md (Round 2, D-22 gate closed)
+Last session: 2026-09-20
+Stopped at: v4.4 IntelliJ Focus archived (override closeout, 6 artifacts acknowledged)
 Resume file: None
 
-Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
+Next: `/gsd-new-milestone` to define the next milestone.
 
 ## Deferred Items
 
@@ -258,6 +158,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_sessions | g-96-2-too-old-node-no-download-offer | diagnosed (G-96-2 fixed by 96-08, maintainer pass 2026-09-20) | 2026-09-20 | v4.4 |
+| uat_gaps | 97/97-UAT-ARTIFACTS.md | unknown (suite-gate and artifact-hash record, not a UAT script; 0 pending scenarios) | 2026-09-20 | v4.4 |
+| todos | 2026-09-20-linking-interop-failures-survive-class-warmup.md | (presence-only) | 2026-09-20 | v4.4 |
+| todos | 2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection.md | (presence-only) | 2026-09-20 | v4.4 |
+| todos | 2026-09-20-phase-97-code-review-follow-ups.md | (presence-only) | 2026-09-20 | v4.4 |
+| todos | 2026-09-20-status-transition-log-prints-a-stale-previous-status.md | (presence-only) | 2026-09-20 | v4.4 |
 | debug_sessions | g-88-1-hover-no-decode | diagnosed (G-88-1 resolved in Phase 88) | 2026-09-13 | v4.3 |
 | debug_sessions | g-88-2-composer-never-activates | diagnosed (G-88-2 resolved in Phase 88) | 2026-09-13 | v4.3 |
 | debug_sessions | g-88-2-docker-pull-hang | diagnosed (resolved per 88-UAT) | 2026-09-13 | v4.3 |
@@ -332,20 +238,19 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v4.1 Security Advisory Remediation | 70-77 | 37 | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | 2026-09-06 |
 | v4.3 Polish & Quality | 84-92 | 70 | 2026-09-13 |
-| v4.4 IntelliJ Focus | 93-97 | in progress | — |
+| v4.4 IntelliJ Focus | 93-97 | 36 | 2026-09-20 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-17 after v4.4 roadmap creation (Phases 93-97, 25/25 requirements mapped).
-Per-plan metrics and per-phase decision detail for phases 70-92 now live with their archived phase
-artifacts; this file is a digest again.*
+*State updated: 2026-09-20 after the v4.4 milestone close. Per-plan metrics and per-phase decision
+detail for phases 70-97 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Discuss or plan Phase 93 (`/gsd-discuss-phase 93` or `/gsd-plan-phase 93`)
-- Line up a real Windows machine before Phase 96's UAT — PLAT-06 is a human attestation that no Linux run can close, and it has been carried since v4.2
-- Phase 97 is the first real exercise of the verify-before-publish gate and the maintainer's trigger for the v4.1 advisory publication decision (PROC-03)
-- Carried forward: triage the UAT-log issues #659-#662 and the SETOPTS discoverability follow-up #666 (both deferred out of v4.4)
-- `WINDOWS.md` entry 1 still blocks `/gsd-ship` under `windows_enforce`
+- Run `/gsd-new-milestone` to define the next milestone; phase numbering continues from 98. Candidates are listed in PROJECT.md under Next Milestone Goals.
+- Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
+- Small follow-up candidate: the published 0.16.0 release notes list #622 under "no observable change", but the fix visibly changed the crash banner's file-type coverage.
+- Carried forward: triage the UAT-log issues #659-#662 and the SETOPTS discoverability follow-up #666.
+- `WINDOWS.md` entry 1 still blocks `/gsd-ship` under `windows_enforce`.

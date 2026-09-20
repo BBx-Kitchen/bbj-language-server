@@ -7,6 +7,10 @@ files:
 
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/ExpectedStopGuard.java
+
+audit_acknowledged:
+  milestone: v4.4
+  at: 2026-09-20
 ---
 
 ## Problem

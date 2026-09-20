@@ -1,5 +1,134 @@
 # Project Milestones: BBj Language Server
 
+## v4.4 IntelliJ Focus (Shipped: 2026-09-20)
+
+**Closed 2026-09-20** as an override closeout. No milestone-level audit was run (as at the
+v4.1 and v4.2 closes; v4.3 had one): all five phases verified `passed`, 25/25 requirements
+are checked off, release 0.16.0 is published and GitHub milestone #7 is closed at 0 open /
+21 closed, so an audit pass was judged unlikely to change the outcome. The close is an
+override because the pre-close artifact scan found six open items, which were acknowledged
+rather than resolved (see Known verification overrides).
+
+**Where the code lives.** Everything is on `origin/main`: PR #679 squash-merged phases 93-97's
+source changes as `7ab6b810` on 2026-09-20, and the released commit `6101a6b6` is tagged
+`v0.16.0`. The phase archive under `.planning/milestones/v4.4-phases/` and the quick-task
+archive under `.planning/milestones/v4.4-quick/` are tracked (no embargo). All 21 issues on
+GitHub milestone #7 are closed with a maintainer-approved comment each, and the milestone
+itself is closed.
+
+**Delivered:** the IntelliJ clean-up milestone, shipped as release 0.16.0 — the first tagged
+release since 0.15.0 and the first to pass through the verify-before-publish gate. Eleven
+behaviour fixes: malformed language-server payloads no longer throw on the EDT in any
+composer write path, composer OK buttons follow the server's own validity verdict, the
+status bar says "Java: Connected" only to a peer that actually answers the java-interop
+protocol, the interop poll stops while no BBj file is selected, an in-flight health check
+cannot touch a disposed project, EM login cleans up its temp file on every exit path and
+gates its own enablement, the TextMate bundle is cached across launches, the inert Color
+Scheme page is gone, and every Node.js failure now names its real cause and offers only
+the actions that can work. Ten consolidations collapse duplicated dialogs, intentions,
+actions, widgets, notification providers, tool-script lookups and the default-port constant
+to one shape each, with no observable change except the crash banner's corrected file-type
+coverage.
+
+**Phases completed:** 93-97 (5 phases, 36 plans, 101 tasks)
+
+| Phase | Name | Plans | Issues closed |
+|-------|------|-------|---------------|
+| 93 | Composer Robustness & Consolidation | 9 (93-09 closed a verifier-found line-bound gap) | #609, #607, #591, #630, #619, #618, #616 |
+| 94 | EM Login & Run Action Consolidation | 4 | #590, #589, #617, #615, #614 |
+| 95 | java-interop Status Accuracy & Widget Consolidation | 4 | #592, #593, #587, #594, #620 |
+| 96 | Platform Integration & Node.js Diagnosis | 8 (96-07 Windows attestation, 96-08 closed UAT gap G-96-2) | #613, #621, #622, #588, plus the two Node.js todos carried since v4.2 |
+| 97 | Release 0.16.0 & Milestone Close | 11 | release 0.16.0; GitHub milestone #7 |
+
+**Key accomplishments:**
+
+- The six IntelliJ composer dialogs, their intentions, launch actions and Swing helpers
+  collapse to one shared shape each (`ComposerSwingHelpers`, `ComposerIntentionBase`,
+  `BbjComposeActionBase`, `AddWindowFamilyComposerDialogBase`); every write path bounds
+  language-server-supplied ranges and line numbers before entering a write command, a
+  malformed catalogs payload gets the graceful "not ready" notice, and OK is gated on the
+  server's `valid` verdict with the last client-side validation rule deleted.
+- EM login, token validation and tool-script resolution each live in one place
+  (`BbjToolScriptResolver`, `EmTokenValidator` beside the token store), the login action
+  gates its enablement on a background thread, and an ordering guard pins that temp-file
+  cleanup covers the whole login launch.
+- java-interop status is honest: a real `getTopLevelPackages` round trip replaces the bare
+  TCP handshake, a squatting peer gets its own "Wrong peer" status, tooltip and banner, the
+  poll is gated on editor selection through a platform-free `InteropPollPolicy` seam, both
+  disposal-unsafe sites are guarded, the default port has exactly one constant, and the two
+  status-bar widgets and their factories share a generic base.
+- The plugin has exactly one Node.js decision engine: `NodeExecutableResolver` gates on
+  version and distinguishes "not downloaded" from "cache inaccessible", a configured but
+  unusable path now falls through to the cached download, and one shared action mapping
+  feeds both the start-failure notification and the editor banner. The live Windows
+  attestation failed first, surfaced two root causes that were fixed in-session, and passed
+  on the maintainer's real-Windows re-UAT.
+- Four editor notification providers share one base that owns the resolved-file-type guard,
+  the TextMate bundle directory is cached with a scoped sweep of abandoned ones, and the
+  inert Color Scheme page and its registration are deleted with the published docs
+  rewritten to match.
+- Release 0.16.0 shipped to both marketplaces through the single verification gate: PR #679
+  landed the milestone, a Preview dress rehearsal (0.15.5) was approved in both IDEs, all
+  five `manual-release.yml` jobs succeeded with `verify` finishing before either publish
+  job started, both release assets were re-hashed against the run's own artifacts, the
+  maintainer's smoke verdict was "pass", and a five-path reconciliation runbook exists for
+  the still-parallel publish jobs.
+- Five quick tasks landed alongside: INPUT verification rules (#667), RUN/CALL file-target
+  hover and navigation (#663), the stale VS Code output channel and spurious config restart
+  (#671, #672), dropping the internal PasswordSafe API that failed the 0.15.0 release
+  (SEED-001), and the verify-before-publish gate itself (SEED-002).
+
+**Stats:** 329 commits between 2026-09-13 and 2026-09-20 (7 days; roadmap created
+2026-09-17); 170 files changed outside `.planning/`, +10,763 / −3,218 lines, of which
+`bbj-intellij` main is +2,707 / −1,789 and its tests +5,529 / −622. IntelliJ JUnit suite
+1,101 tests (865 at milestone start); vitest suite green at `numFailedTests: 0` (1,895
+passed, 52 skipped, `RUN_BBJ_TESTS=0`). Hand UAT in a running IDE for phases 93, 94 and 96,
+two hand-check rounds plus a Preview approval and a release smoke in phase 97; UAT gap
+G-96-2 and a verifier-found gap in phase 93 closed in-phase.
+
+**Known verification overrides:** 6 newly acknowledged, 29 carried forward from a prior
+close (see STATE.md Deferred Items). The six are one debug session left at `diagnosed`
+although its gap (G-96-2) was closed by 96-08, `97-UAT-ARTIFACTS.md` (a suite-gate and
+artifact-hash record the scanner reads as a UAT script; 0 pending scenarios), and four
+follow-up todos filed on 2026-09-20.
+
+### Known Gaps
+
+None against requirements. Overrides and debt carried forward:
+
+- **Crash-detection rework attempted and reverted.** Plans 97-01 and 97-02 moved the
+  language-server status feed to `LSPClientFeatures#handleServerStatusChanged` and fixed the
+  stale-by-two `previousStatus`; round 1 of the hand UAT failed on macOS (no CRASH
+  classification ever fired), so both were pulled from 0.16.0 and the three files are
+  byte-identical to their pre-phase baseline. A lost language-server connection is still
+  invisible to crash detection (todo, severity major) and the status log still prints a
+  stale previous status (todo). The two SUMMARYs are a record of the attempt, not of
+  shipped behaviour. Upstream LSP4IJ issues #1672 and #1673 were filed.
+- IOP-02 (#593) closed on cited reasoning, not as written: the poll is gated on editor
+  selection only; window-focus gating is deferred because no focus/activation API is used
+  anywhere in the plugin. An IDE left open on a BBj file overnight still polls.
+- Phase 97 criterion 3 met by recorded override for JetBrains: a green `publish-intellij`
+  job counts as live, and the IntelliJ smoke ran against the release zip (byte-identical
+  to the upload) rather than a Marketplace install.
+- COMP-08, COMP-09 and IOP-05 shipped as an abstract base plus thin subclasses rather than
+  the "single data-driven registration" their issues asked for — a platform constraint for
+  intentions, a compile-time-safety choice for actions and widgets.
+- The published 0.16.0 release notes list #622 under "no observable change", but the fix
+  visibly changed the crash banner's file-type coverage. Not corrected.
+- Phase 97 code-review follow-ups (todo): the download-progress fix is partial when a
+  response carries no `Content-Length`, and three new source guards are comment-unaware.
+- `linking.test.ts`'s 11 live-interop failures were re-filed, not fixed: both the class-index
+  and warm-up hypotheses were refuted; the block runs against a hermetic test double.
+- The two `manual-release.yml` publish jobs still run in parallel, so one marketplace
+  succeeding while the other fails still needs the by-hand runbook.
+- No `v4.4` git tag, following the v4.2/v4.3 precedent (repository tags are release
+  versions; this milestone's release tag is `v0.16.0`).
+- `WINDOWS.md` entry 1 still blocks `/gsd-ship` under `windows_enforce` (outside v4.4 scope).
+- Maintainer-owned, now unblocked: the tagged release that advisory publication (PROC-03)
+  was waiting for exists; per-advisory severity and CVE decisions remain the maintainer's.
+
+---
+
 ## v4.3 Polish & Quality (Shipped: 2026-09-13)
 
 **Closed 2026-09-13** as an override closeout. Unlike the v4.1 and v4.2 closes, a

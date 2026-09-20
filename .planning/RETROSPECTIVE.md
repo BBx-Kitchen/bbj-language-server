@@ -212,6 +212,95 @@
 
 ---
 
+## Milestone: v4.4 — IntelliJ Focus
+
+**Shipped:** 2026-09-20
+**Phases:** 5 (93-97) | **Plans:** 36 (101 tasks) | **Sessions:** not tracked
+
+### What Was Built
+- Composer robustness and four consolidations in the IntelliJ plugin: bounded
+  language-server-supplied ranges and line numbers before every write, a graceful notice for
+  a malformed catalogs payload, OK gated on the server's `valid` verdict, and one shared
+  shape each for Swing helpers, intentions, launch actions and the addWindow-family dialogs
+  (#609, #607, #591, #630, #619, #618, #616).
+- EM login and run actions: one tool-script resolver, token validation beside the token
+  lifecycle, login enablement on a background thread, temp-file cleanup pinned by an ordering
+  guard (#590, #589, #617, #615, #614).
+- Honest java-interop status: protocol round trip instead of a TCP handshake with a distinct
+  wrong-peer state, selection-gated polling, disposal guards, one port constant, one widget
+  base (#592, #593, #587, #594, #620).
+- Platform integration: cached TextMate bundle, the inert Color Scheme page removed, one
+  notification-provider base, and a single Node.js decision engine attested by hand on real
+  Windows (#613, #621, #622, #588, two carried todos).
+- Release 0.16.0 on both marketplaces through the verify-before-publish gate, with all 21
+  milestone issues closed by maintainer-approved comments.
+
+### What Worked
+- Grouping by subsystem so a behaviour fix and the consolidation over the same files rode in
+  one phase, ordered inside the phase (home first, or shape-changing fix first): each file
+  edited once per concern, one hand UAT round per phase.
+- Closing requirements "on cited reasoning, not as written" when the issue's literal wording
+  was wrong for the platform (#618, #616, #620, #594, #593), with the reasoning recorded in
+  the requirement, the decision log and the issue's closing comment.
+- The release was rehearsed before it was cut: a Preview build approved in both IDEs, a
+  reconciliation runbook written for every red-job path, assets re-hashed against the run's
+  own artifacts afterwards. The runbook was never opened.
+- The real-Windows attestation was allowed to fail honestly — it surfaced two root causes no
+  Linux-hosted test could (Node floor pin, version-cache null poisoning) and a UAT gap
+  (G-96-2), all closed in-phase, then passed on re-UAT.
+- Falsify-then-restore for source guards: each new guard was proven to fail on the exact
+  regression it protects against before being trusted.
+
+### What Was Inefficient
+- The crash-detection rework (97-01, 97-02) was approved at a checkpoint on a hand-derived
+  LSP4IJ status trace that a real `idea.log` later contradicted; it failed hand UAT on macOS
+  and was reverted on release day, costing two plans, a second UAT round and a narrowed
+  release-notes pass.
+- The squash merge of PR #679 concatenated 135 commit bodies, and old `Closes #…` lines
+  closed #621 and #594 before the closing pass; the closing pass had to comment in place.
+- Background executors stalled repeatedly on unanswered permission prompts (`cd …; git diff`),
+  and a second still-running agent overwrote a plan file mid-execution; most of phase 97's
+  plans finished as continuations.
+- A plain `./gradlew test` reported UP-TO-DATE and would have passed a stale green as a
+  whole-suite gate; caught in Phase 94 and replaced by `--rerun-tasks`.
+- The published release notes misfile #622 under "no observable change"; found only during
+  the closing pass, not corrected.
+- No milestone audit again, after v4.3 had shown what it catches; `state.json` and the debug
+  session status drifted and were only reconciled at the close.
+
+### Patterns Established
+- One decision engine, many surfaces: a resolver returns a typed rejection reason, and a
+  presentation seam maps reason → sentence and action set for every surface (banner,
+  startup notification, settings label), so no surface can offer a doomed action.
+- Abstract base plus thin no-arg subclasses as the consolidation shape for IntelliJ
+  extension points — per-kind differences stay compile-time checked.
+- Peer identity by protocol round trip, never by TCP connect.
+- Release evidence file: workflow run, job ordering by timestamp, asset digests re-hashed
+  independently, smoke verdict tied to those digests.
+- Maintainer-approved closing comments: draft all, check each against the shipped code,
+  approve as a batch, post byte-for-byte, close the milestone only after a read-back.
+
+### Key Lessons
+1. A runtime sequence used as checkpoint evidence must be read from a real log, and the code
+   behind every UAT "expected" must be read too — a plausible hand-derived trace got a wrong
+   lifecycle change approved.
+2. Do not land a lifecycle rework in the release phase; a change that needs its own UAT round
+   belongs in a phase before the release gate, where a failure costs a gap-closure plan, not
+   a revert under deadline.
+3. Before a squash merge, scan the branch's commit bodies for closing keywords.
+4. Put shell rules (absolute paths, `git -C`, no `cd` chains) in every subagent prompt and
+   watch tool-use counts; a silent executor is usually waiting on a permission prompt.
+5. Force test re-execution for any gate run (`--rerun-tasks`); incremental build caches turn
+   "green" into "unchanged since last green".
+
+### Cost Observations
+- Model mix: not tracked
+- Sessions: not tracked
+- Notable: 36 plans in 4 phase-work days (~9 plans/day, matching v4.3); phase 97 alone was
+  11 plans (31% of the milestone), two of them reverted.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -222,6 +311,7 @@
 | v4.1 | n/a | 8 | Advisory remediation under an embargo; override closeout with explicit Known Gaps |
 | v4.2 | n/a | 6 | Seam-plus-source-guard testing pattern; in-phase UAT gap-closure plans; fastest milestone (3 days) |
 | v4.3 | n/a | 9 | Shared-server-first composer layers; installed-artifact proof before UAT; milestone audit run again (no gaps) |
+| v4.4 | n/a | 5 | Fixes and consolidations grouped by subsystem; first tagged release through the verify-before-publish gate; a release-phase rework reverted after failing hand UAT; no milestone audit |
 
 ### Cumulative Quality
 
@@ -230,6 +320,7 @@
 | v4.1 | ~1,127 vitest + 96 JUnit | not measured at close | 0 new runtime dependencies |
 | v4.2 | ~1,127 vitest + 504 JUnit | not measured at close | 0 new runtime dependencies (LSP4IJ pin 0.19.0 → 0.21.0, Gradle 8.14.5) |
 | v4.3 | 1,873 vitest + 865 JUnit | not measured at close | 0 new runtime dependencies |
+| v4.4 | 1,895 vitest + 1,101 JUnit | not measured at close | 0 new runtime dependencies (Gradle 9.7.1, IntelliJ Platform plugin 2.18.1, bundled Node.js v22.23.2) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -237,8 +328,11 @@
    convention — v4.0 and v4.1 both needed it.
 2. Human gates on merge and release actions are cheap; an unauthorized retry is not.
 3. Hand UAT in a running IDE finds the gaps unit tests structurally cannot (v4.1 CR-02,
-   v4.2 G-80-1/G-81-4/G-81-5/G-82-6); budget a UAT round per phase and close gaps in-phase.
+   v4.2 G-80-1/G-81-4/G-81-5/G-82-6, v4.4 G-96-2 and the reverted crash-detection rework);
+   budget a UAT round per phase and close gaps in-phase.
 4. Rules for subagents (shell hygiene, identifier prohibitions, disclosure) must be in the
-   prompt or a hook — v4.1, v4.2 and v4.3 all paid for relying on memory notes.
+   prompt or a hook — v4.1, v4.2, v4.3 and v4.4 all paid for relying on memory notes.
 5. When a live UAT result contradicts the source, verify the installed artifact before
    changing code — v4.3 Phase 88 spent two gap-closure rounds on a stale install.
+6. Evidence for an approval must be observed, not derived — v4.3's stale install and v4.4's
+   hand-derived status trace both got a wrong conclusion approved by a human.
