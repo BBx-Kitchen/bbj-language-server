@@ -115,6 +115,15 @@ anything in `bbj-ls` or the IntelliJ plugin.
   about one minute). Only **numbers and message-group names with counts** are written into
   tracked files — no corpus file names, paths or source lines.
 
+### Corrections after research (2026-09-20)
+- **D-18:** Research plus a look at the flagged programs corrected two group descriptions. The
+  `DEF FN` group is a multi-line function **without a closing `FNEND`** (body runs to end of
+  file), not a header spread over continuation lines — fix at the root per D-01. The `LEN=`
+  group is an assignment to a **variable named `LEN`**, i.e. a language word as a variable name,
+  which D-04 leaves to Phase 100; it is handled under D-16 (fix only if trivial, otherwise
+  recorded and handed to Phase 100) and this narrows D-15 accordingly. Details in
+  `98-RESEARCH.md`, "Orchestrator Addendum".
+
 ### Claude's Discretion
 - Exact lexer mechanism for the opaque `TABLE` data token, and AST node/property naming.
 - How `RESTORE n`, `EXIT expr`, `LOAD`, `SAVE` are expressed in the grammar, as long as the AST

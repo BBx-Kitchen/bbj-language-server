@@ -614,3 +614,28 @@ tokenized, not what data it's fed).
 
 **Research date:** 2026-09-20
 **Valid until:** next `bbj.langium`/`bbj-token-builder.ts`/`line-break-validation.ts` change, or ~14 days (fast-moving in-repo grammar work, not a third-party dependency)
+
+## Orchestrator Addendum — the three unreproduced groups, resolved (2026-09-20)
+
+Shapes established by reading the flagged programs in the private corpus (described in own
+words; no corpus text). These supersede the matching "Open Questions" above.
+
+1. **`DEF FN` — "needs to end with a line break: DEF" (11 files).** NOT a header spread over
+   continuation lines. The header is on one line; the function is a **multi-line `DEF FN` whose
+   body is never closed by `FNEND`** — it runs to the end of the file (10 of 11 files contain no
+   `FNEND` at all; the 11th has earlier, properly closed functions and one unclosed final one).
+   Bodies contain ordinary statements and one or more `RETURN expr`. The compiler accepts this.
+   Probe to reproduce: `def fnx(a$)` / newline / two statements / `return a$` / end of file, no
+   `FNEND`; also with a trailing space after `)` and with a blank line after the header.
+   Establish what AST results today (which rule swallows the header when `FNEND` is absent) and
+   fix at the root: `FNEND` optional at end of input, per D-01.
+2. **`LEN=` — "needs to end with a line break: LEN=" (3 files).** NOT a continued I/O option. It
+   is a **plain assignment to a variable named `LEN`** at the start of a line (`LEN=<number>`),
+   later used as a value. This is a language word used as a variable name — PARSE-08 territory,
+   which D-04 assigns to Phase 100. Treat under D-16: fix here only if it falls out trivially
+   from another change; otherwise record it as residue handed to Phase 100. It does not get its
+   own plan task beyond a probe.
+3. **Trailing-comma `PRINT` (2 files).** `print <string var>,` followed by **trailing
+   whitespace** before the newline, and the **next line starts with `IF ... THEN`** (multi-line
+   IF block). Probe with exactly that: trailing comma + one space + newline + `if … then` block.
+   Likely one of the NL-sensitive PRINT tokens or `lineEndRegex` not tolerating `, ` at end.
