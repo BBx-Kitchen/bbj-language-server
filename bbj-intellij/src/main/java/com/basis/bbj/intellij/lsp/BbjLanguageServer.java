@@ -4,7 +4,7 @@ import com.basis.bbj.intellij.BbjNodeDetector;
 import com.basis.bbj.intellij.BbjNodeDownloader;
 import com.basis.bbj.intellij.BbjNodeVersionCache;
 import com.basis.bbj.intellij.BbjSettings;
-import com.basis.bbj.intellij.BbjSettingsConfigurable;
+import com.basis.bbj.intellij.NodeActions;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -16,7 +16,6 @@ import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
-import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.redhat.devtools.lsp4ij.server.OSProcessStreamConnectionProvider;
 import org.jetbrains.annotations.NotNull;
@@ -91,7 +90,7 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
         String failureMessage = resolution.failureMessage();
         LOG.warn("No usable Node.js executable; the BBj language server cannot start. " + failureMessage);
-        notifyUnresolvedNodePath(project, failureMessage);
+        notifyUnresolvedNodePath(project, resolution);
         throw new RuntimeException(failureMessage);
     }
 
@@ -104,21 +103,23 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
         return (candidate == null || candidate.isBlank()) ? "<none>" : "\"" + candidate + "\"";
     }
 
-    private static void notifyUnresolvedNodePath(@NotNull Project project, @NotNull String message) {
+    private static void notifyUnresolvedNodePath(
+            @NotNull Project project, @NotNull NodeExecutableResolver.Resolution resolution) {
         Notification notification = new Notification(
                 "BBj Language Server",
                 "BBj Language Server",
-                message,
+                resolution.failureMessage(),
                 NotificationType.ERROR
         );
-        notification.addAction(new NotificationAction("Configure Node.js Path") {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
-                n.expire();
-                ShowSettingsUtil.getInstance()
-                        .showSettingsDialog(project, BbjSettingsConfigurable.class);
-            }
-        });
+        for (String actionId : NodePresentation.bannerActions(resolution)) {
+            notification.addAction(new NotificationAction(NodePresentation.actionLabel(actionId)) {
+                @Override
+                public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
+                    n.expire();
+                    NodeActions.perform(project, actionId);
+                }
+            });
+        }
         Notifications.Bus.notify(notification, project);
     }
 

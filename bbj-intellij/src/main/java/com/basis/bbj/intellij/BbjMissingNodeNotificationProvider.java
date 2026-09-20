@@ -2,13 +2,10 @@ package com.basis.bbj.intellij;
 
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
 import com.basis.bbj.intellij.lsp.NodePresentation;
-import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.fileEditor.FileEditor;
-import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.EditorNotificationPanel;
-import com.intellij.ui.EditorNotifications;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -53,18 +50,8 @@ public final class BbjMissingNodeNotificationProvider extends BbjNotificationPro
             EditorNotificationPanel panel = newPanel(
                     fileEditor, EditorNotificationPanel.Status.Warning, bannerText);
             for (String actionId : NodePresentation.bannerActions(resolution)) {
-                if (actionId.equals(NodePresentation.ACTION_DOWNLOAD)) {
-                    panel.createActionLabel("Download Node.js", () ->
-                            BbjNodeDownloader.downloadNodeAsync(project, () ->
-                                    EditorNotifications.getInstance(project).updateAllNotifications()));
-                } else if (actionId.equals(NodePresentation.ACTION_CONFIGURE_PATH)) {
-                    panel.createActionLabel("Configure Node.js Path", () ->
-                            ShowSettingsUtil.getInstance()
-                                    .showSettingsDialog(project, BbjSettingsConfigurable.class));
-                } else if (actionId.equals(NodePresentation.ACTION_INSTALL_MANUALLY)) {
-                    panel.createActionLabel("Install Node.js Manually", () ->
-                            BrowserUtil.browse("https://nodejs.org/"));
-                }
+                panel.createActionLabel(NodePresentation.actionLabel(actionId),
+                        () -> NodeActions.perform(project, actionId));
             }
             return panel;
         };

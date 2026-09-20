@@ -79,6 +79,24 @@ public final class NodePresentation {
         return ALL_ACTIONS;
     }
 
+    /**
+     * The user-visible text for {@code actionId}, an id returned by {@link
+     * #bannerActions(NodeExecutableResolver.Resolution)}. This is the single source of that text
+     * for every surface that offers the action -- the start-failure notification and the editor
+     * banner both read a label through this method rather than carrying their own literal, so the
+     * two surfaces can never drift apart on what a given action id is called. Throws {@link
+     * IllegalArgumentException} for an id this method does not recognise, so a future id added to
+     * the seam cannot render as an unlabelled button.
+     */
+    public static String actionLabel(String actionId) {
+        return switch (actionId) {
+            case ACTION_DOWNLOAD -> "Download Node.js";
+            case ACTION_CONFIGURE_PATH -> "Configure Node.js Path";
+            case ACTION_INSTALL_MANUALLY -> "Install Node.js Manually";
+            default -> throw new IllegalArgumentException("Unrecognised Node.js action id: " + actionId);
+        };
+    }
+
     private static NodeExecutableResolver.Rejected findByReason(
             NodeExecutableResolver.Resolution resolution, NodeExecutableResolver.Reason reason) {
         for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
