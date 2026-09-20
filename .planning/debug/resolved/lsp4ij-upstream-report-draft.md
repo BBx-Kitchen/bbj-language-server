@@ -3,7 +3,8 @@
 Status: draft for maintainer review. Nothing has been filed. Observed with LSP4IJ 0.21.0, IntelliJ IDEA
 2026.2.2 (IU-262.10315.125), Windows 10. Checked on 2026-09-20 against a shallow clone of LSP4IJ `main`
 (9bdfb68, 2026-09-18): `LanguageServerWrapper.java` and `ExtendedStreamMessageProducer.java` are unchanged
-since tag 0.21.0, so A and B still apply. Still to do before filing: search existing upstream issues.
+since tag 0.21.0, so A and B still apply. Existing upstream issues reviewed on 2026-09-20 (maintainer-supplied): see below —
+neither A nor B is a duplicate.
 
 Confidence per report:
 
@@ -12,6 +13,14 @@ Confidence per report:
 | A | `stop()` runs its blocking 5 s shutdown inside a ReadAction thread | stack trace from idea.log | yes |
 | B | while `serverError` is set, every `start()` kills the in-flight start and launches another process | 0.21.0 source + LSP trace message ids | yes, with the caveat below |
 | C | `ServerStatus.stopped` never reaches the language client after an unexpected stop | — | WITHDRAWN: documented upstream behaviour, our plugin uses the wrong hook |
+
+Related upstream issues:
+
+| Issue | State | Relation |
+|-------|-------|----------|
+| #1442 "Synchronous execution under ReadAction" | closed 2026-04-08, fixed by PR #1460 | Same defect class as report A, fixed for `start()` only (`OSProcessHandler.waitFor` executed via `helpAsyncBlocker` under a ReadAction). Report A is the `stop()` counterpart — file as a NEW issue that references #1442/#1460, since #1442 is closed. |
+| #378 "report error when open idea" | open since 2024-06-21, "cannot reproduce" | 2024-era trace of the same thread-hijack pattern (server start running inside `CompletableFutures.waitUntilDone` on a ForkJoinPool helper, then an NPE on `lspStreamProvider`). Old code; cite in A as background only, do not post there. |
+| #1600 "CompletionException: CannotStartProcessException" | open since 2026-06-12, no linked PR | Same code region as report B (the `exceptionally` handler of the initialise chain, where `serverError` is set) but a different bug: the handler re-completes `initializeFuture` exceptionally and the error reaches the EDT. Not a duplicate. Worth cross-referencing in B: the fix proposed there (let the future complete with `null`) leaves `serverError` set, so B's re-entry — every `start()` stops and relaunches until `initialize` succeeds, up to 20 attempts — still applies and would then be the remaining symptom for a server that cannot start. |
 
 How our malformed reply led to the stop (now established): lsp4j's `StreamMessageProducer` takes its
 `fireError` path for a `result` it cannot deserialise (a local probe logged lsp4j's own
@@ -67,7 +76,8 @@ java.util.concurrent.TimeoutException
 A second instance of the same trace was entered from
 `LSPDocumentSymbolStructureViewModel … LSPBreadcrumbsProvider.getParent`.
 
-**Expected:** the shutdown/kill sequence runs on an IntelliJ pooled thread, like `start()` does.
+**Expected:** the shutdown/kill sequence runs on an IntelliJ pooled thread, like `start()` does since
+#1442 / PR #1460. (#378 looks like an older sighting of the same pattern.)
 
 **Suggested fix:** pass an executor to that `runAsync` (e.g. `AppExecutorUtil.getAppExecutorService()`), or
 use `executeOnPooledThread` as in `start()`.
@@ -122,6 +132,8 @@ timeout (see report A), so 2–3 server processes coexist briefly, and each coun
 **Expected:** while a (re)start is already in flight, further `start()` calls wait on the existing
 `initializeFuture` instead of stopping it; the `serverError` branch should run once per error, not once per
 caller.
+
+**Related:** #1600 concerns the same initialise-chain error handler (different symptom).
 
 **Context to state honestly in the issue:** the initial error was provoked by a bug in our own language
 server (it answered cancelled requests with `"result": {"code": -32800}` instead of an `error` member;
