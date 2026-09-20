@@ -442,7 +442,46 @@ Plans:
   3. The published VS Code extension and JetBrains plugin install from their marketplaces and pass the QA smoke checklist in a clean IDE — the artifacts users get are the artifacts that were verified.
   4. All 21 issues on GitHub milestone #7 are closed and milestone #7 itself is closed.
 
-**Plans**: TBD
+**Plans**: 0/11 plans executed (six pending todos folded in at discuss time — a code wave precedes the release)
+
+Plans:
+**Wave 1**
+
+- [ ] 97-01-PLAN.md — folded todo: the server status feed moves to the client-features hook so a lost connection reaches crash detection; allowlist entry, coupling canary, source guards (wave 1)
+- [ ] 97-03-PLAN.md — folded todos: issue447 capability test accepts either backend shape, gradle-wrapper-hygiene close-out, time-boxed linking-interop investigation (wave 1)
+
+**Wave 2** *(blocked on 97-01)*
+
+- [ ] 97-02-PLAN.md — folded todo: the status log and the crash classifier receive the real from-state — pinning test, maintainer decision, then the fix (wave 2)
+- [ ] 97-04-PLAN.md — folded todos: no-op `bbj/bbjcplAvailability` handler; determinate progress before the first Node.js download fraction (wave 2)
+
+**Wave 3** *(blocked on every code-wave plan)*
+
+- [ ] 97-05-PLAN.md — REL-01: both suites green on the final tree, register check, both distributables built and hashed, crash-detection hand UAT (wave 3)
+
+**Wave 4** *(blocked on 97-05)*
+
+- [ ] 97-06-PLAN.md — REL-01: branch synced with `origin/main` without a version regression, one landing PR, maintainer review and squash merge (wave 4)
+
+**Wave 5** *(blocked on 97-06)*
+
+- [ ] 97-07-PLAN.md — REL-01: reconciliation runbook, green Preview run, maintainer preview hand check in both IDEs (wave 5)
+
+**Wave 6** *(blocked on 97-07)*
+
+- [ ] 97-08-PLAN.md — REL-01: precondition report, maintainer dispatches Manual Release 0.16.0, run watched and release evidence recorded (wave 6)
+
+**Wave 7** *(blocked on 97-08)*
+
+- [ ] 97-09-PLAN.md — REL-01: curated release notes drafted, approved, applied (wave 7)
+
+**Wave 8** *(blocked on 97-09)*
+
+- [ ] 97-10-PLAN.md — REL-01: pre-filled smoke checklist, maintainer smoke of the released artifacts, verdict tied to their hashes (wave 8)
+
+**Wave 9** *(blocked on 97-10)*
+
+- [ ] 97-11-PLAN.md — REL-02: 21 closing comments drafted and approved, issues closed one at a time, milestone #7 closed, folded todos moved to completed (wave 9)
 
 *Note:* This is the first real exercise of the verify-before-publish gate implemented by quick task `260917-9ei` (SEED-002); its own closeout records that "the first real Manual Release is the true test", and that the two publish jobs still run in parallel, so one marketplace succeeding while the other fails needs manual reconciliation. A tagged release is also the maintainer's trigger for the v4.1 advisory publication decision (PROC-03) — maintainer-owned, not a phase deliverable. Reconciling the half-released 0.15.0 is explicitly out of scope.
 
