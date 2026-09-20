@@ -77,7 +77,46 @@ pattern and were not flagged. No fix was needed.
 
 ## Artifacts under test
 
-_(Filled in by Task 2.)_
+Both built in the required order (VS Code first, since the IntelliJ build's `verifyLanguageServerBundle`
+task fails fast without `bbj-vscode/out/language/main.cjs`), from source commit
+`25821695e0c94dec84fa998c576457377ab15bdf` (Task 1's docs-only commit on top of the final
+code-wave tree `84d485b26ed3a2ac6a577260b37e9c7c6727f66e` — no source file changed between the two,
+so the artifacts are built from the same code the suite gate above just verified).
+
+**VS Code extension:**
+- File: `bbj-lang-0.15.3.vsix`
+- Absolute path: `/home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix`
+- sha256 (`sha256sum` output line):
+```
+daf676bb8939105df89c848b42df378ece268fd44c8a474fba40bb669fe5baff  bbj-lang-0.15.3.vsix
+```
+- Size: 2,631,405 bytes
+- Built via `npm run build && npx vsce package` — no dependency-resolution issue occurred, so
+  `--no-dependencies` was not needed.
+
+**IntelliJ plugin:**
+- File: `bbj-intellij-0.1.0.zip`
+- Absolute path: `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`
+- sha256 (`sha256sum` output line):
+```
+abdd589edf2c7602ea71a44829cbc8467f37bcce324c586ab556f439f909bd55  bbj-intellij-0.1.0.zip
+```
+- Size: 1,160,565 bytes
+- Built via `./gradlew buildPlugin` after the VS Code build produced `main.cjs`.
+
+**Verdict-shape sentence (97-PATTERNS.md § "96-08 UAT-record shape"):** the hand-UAT verdict in
+Task 3 below is recorded as: closed on the maintainer's verbatim reply, tied to artefact
+`bbj-intellij-0.1.0.zip` sha256 `abdd589edf2c7602ea71a44829cbc8467f37bcce324c586ab556f439f909bd55`
+(1,160,565 bytes) and source commit `25821695e0c94dec84fa998c576457377ab15bdf`, plus VS Code side
+`bbj-lang-0.15.3.vsix` sha256 `daf676bb8939105df89c848b42df378ece268fd44c8a474fba40bb669fe5baff`
+(2,631,405 bytes).
+
+No install, publish or push command was run against either file — both are staged on local disk
+only, at the absolute paths above, for the maintainer to install by hand.
+
+**Standing rebuild rule:** if a code-review fix lands after this build, both distributables are
+rebuilt from the final tree (VS Code first, then IntelliJ) and this section is re-filled with the
+new filenames/hashes/sizes/source-commit before the hand-UAT verdict below is considered current.
 
 ---
 
