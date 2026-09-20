@@ -238,6 +238,23 @@ class BbjServerServiceRestartSourceGuardTest {
                         + "cannot be silently deleted");
     }
 
+    /**
+     * The classifier must receive the state the server was in immediately before this transition,
+     * not a value staler than that. {@code currentStatus} is still the true one-behind value at
+     * the point {@code classify(...)} is called, because it is only overwritten near the end of
+     * {@code updateStatus}. This guard is expected to FAIL until the call site is corrected to
+     * read {@code currentStatus} instead of the (removed) stale field -- it pins the fix, it does
+     * not yet describe the source it runs against.
+     */
+    @Test
+    void theClassifierIsFedTheOneBehindFromState() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        assertEquals(1, countOccurrences(text, "expectedStop.classify(status.name(), currentStatus.name(),"),
+                "the classifier must receive the state the server was in immediately before this transition");
+        assertEquals(0, countOccurrences(text, "previousStatus"),
+                "the stale from-state field must be gone so no future edit can reach for it again");
+    }
+
     @Test
     void boundedWaitUntilIsCalledExactlyOnce() {
         String text = readGuardedSource(SERVER_SERVICE);
