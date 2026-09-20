@@ -50,7 +50,7 @@ Path to the Node.js executable.
 
 **Features:**
 - Auto-detects from system PATH
-- Validates version 18+
+- Validates version 22+
 - If not found, plugin can auto-download a compatible Node.js version
 
 **Required:** The language server is a Node.js application and requires Node.js to run.

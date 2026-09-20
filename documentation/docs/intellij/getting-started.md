@@ -15,7 +15,7 @@ Before installing the plugin, ensure you have:
 - **BBj** version 25.00 or higher installed
 - **BBjServices** running locally (required for full functionality)
 - **Java 17** or higher (for the Java interop service)
-- **Node.js 18** or higher (auto-detected from PATH, or auto-downloaded by plugin)
+- **Node.js 22** or higher (auto-detected from PATH, or auto-downloaded by plugin)
 
 ## Installation
 
@@ -56,7 +56,7 @@ After installation, configure the plugin to work with your BBj installation:
 Node.js is required for the language server to function:
 
 1. The plugin automatically detects Node.js from your system PATH
-2. If not found, the plugin can auto-download Node.js 18 or higher
+2. If not found, the plugin can auto-download Node.js 22 or higher
 3. You can manually set the Node.js path in **Settings** > **Languages & Frameworks** > **BBj** if needed
 
 ### Enable BBj Language Service

@@ -33,7 +33,7 @@ The BBj Language Support plugin provides comprehensive IDE support for BBj devel
 - **BBj** 25.00 or higher
 - **BBjServices** running locally
 - **Java 17** or higher
-- **Node.js 18** or higher (auto-detected from PATH, or auto-downloaded by plugin)
+- **Node.js 22** or higher (auto-detected from PATH, or auto-downloaded by plugin)
 
 ## Getting Help
 
