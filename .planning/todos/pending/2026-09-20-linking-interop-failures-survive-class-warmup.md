@@ -7,6 +7,10 @@ files:
 
   - bbj-vscode/test/linking.test.ts:295-452 (Interop related tests)
   - bbj-vscode/test/bbj-test-module.ts (JavaInteropTestService)
+
+audit_acknowledged:
+  milestone: v4.4
+  at: 2026-09-20
 ---
 
 ## Problem

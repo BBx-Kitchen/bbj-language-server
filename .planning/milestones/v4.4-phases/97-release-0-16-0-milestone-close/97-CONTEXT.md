@@ -175,6 +175,16 @@ to `manual-release.yml`'s job graph; fixing or waiving WINDOWS.md entry 1.
   (no `bbj/bbjcplAvailability` WARN; server starts and works). Evidence:
   `97-UAT-ARTIFACTS.md` § Hand UAT verdict, Round 1.
 
+- **D-23:** The squash merge of PR #679 (`7ab6b810`, 2026-09-20T16:15:13Z) auto-closed **#621** and
+  **#594** one second later: GitHub concatenated all 135 commit messages into the squash message
+  and two Phase 95/96 commit bodies carried `Closes #621.` / `This closes #594`. The D-04 gate
+  checked only the PR body. Maintainer decision (2026-09-20): **leave both closed, do not reopen**;
+  in the closing pass they still receive their drafted comment naming 0.16.0, posted as a plain
+  `gh issue comment` on the already-closed issue — never re-closed. **This narrows D-18 and D-19:**
+  the closing pass is 19 issues to comment-and-close plus 2 to comment only; the end state is
+  unchanged (21 closed, milestone #7 closed last). Lesson for future landings: scan the commit
+  messages of the range, not only the PR body, for closing keywords before a squash merge.
+
 ### Claude's Discretion
 
 - Merge method for the landing PR and therefore which SHA(s) the closing comments cite. The repo

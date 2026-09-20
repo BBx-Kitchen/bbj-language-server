@@ -1,3 +1,10 @@
+---
+audit_acknowledged:
+  milestone: v4.4
+  at: 2026-09-20
+  gap_snapshot: "unknown::scenarios=0"
+---
+
 # Phase 97 Plan 05 — UAT Artifacts and Suite Gate Record
 
 Source commit for this record (final code-wave tree, before this plan's own docs commits):
@@ -63,6 +70,7 @@ Vitest `numFailedTests: 0`.
 ### Register check (source/test diff against `origin/main`, whole code wave)
 
 Command:
+
 ```
 git -C /home/coder/repos/bbj-language-server diff origin/main...HEAD -- bbj-intellij bbj-vscode documentation .github \
   | grep -nE '(^\+.*)(\b(D|C|CR)-[0-9]+\b|\b(COMP|PLAT|EM|IOP|REL)-[0-9]+\b|\b9[0-7]-[0-9]{2}\b)'
@@ -84,23 +92,29 @@ code-wave tree `84d485b26ed3a2ac6a577260b37e9c7c6727f66e` — no source file cha
 so the artifacts are built from the same code the suite gate above just verified).
 
 **VS Code extension:**
+
 - File: `bbj-lang-0.15.3.vsix`
 - Absolute path: `/home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix`
 - sha256 (`sha256sum` output line):
+
 ```
 daf676bb8939105df89c848b42df378ece268fd44c8a474fba40bb669fe5baff  bbj-lang-0.15.3.vsix
 ```
+
 - Size: 2,631,405 bytes
 - Built via `npm run build && npx vsce package` — no dependency-resolution issue occurred, so
   `--no-dependencies` was not needed.
 
 **IntelliJ plugin:**
+
 - File: `bbj-intellij-0.1.0.zip`
 - Absolute path: `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`
 - sha256 (`sha256sum` output line):
+
 ```
 abdd589edf2c7602ea71a44829cbc8467f37bcce324c586ab556f439f909bd55  bbj-intellij-0.1.0.zip
 ```
+
 - Size: 1,160,565 bytes
 - Built via `./gradlew buildPlugin` after the VS Code build produced `main.cjs`.
 
@@ -132,6 +146,7 @@ crash-detection status-feed rework and the status-log from-state change were pul
 **Revert-completeness assertion (D-22):**
 
 Command:
+
 ```
 git -C /home/coder/repos/bbj-language-server diff --exit-code bdc024dc -- \
   bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java \
@@ -214,6 +229,7 @@ under `--rerun-tasks`; Vitest `numFailedTests: 0`.
 ### Register check (source/test diff against `origin/main`, Round 2)
 
 Command:
+
 ```
 git -C /home/coder/repos/bbj-language-server diff origin/main...HEAD -- bbj-intellij bbj-vscode documentation .github \
   | grep -nE '(^\+.*)(\b(D|C|CR)-[0-9]+\b|\b(COMP|PLAT|EM|IOP|REL)-[0-9]+\b|\b9[0-7]-[0-9]{2}\b)'
@@ -234,12 +250,15 @@ of the post-revert code-wave tree; no source file changed between the two, so th
 built from the same code the Round 2 suite gate above just verified).
 
 **VS Code extension:**
+
 - File: `bbj-lang-0.15.3.vsix`
 - Absolute path: `/home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix`
 - sha256 (`sha256sum` output line):
+
 ```
 65b74bfe43dfddce4bdb2844c37678bbca94b783388f94d1243456b995476d2d  bbj-lang-0.15.3.vsix
 ```
+
 - Size: 2,631,405 bytes (same byte count as Round 1's VSIX, but a different sha256 — expected,
   since plans 97-01/97-02's revert touched only `bbj-intellij/` and this plan's own diff since then
   touched none of `bbj-vscode/`'s bundled source; the differing hash reflects the archive's own
@@ -248,12 +267,15 @@ built from the same code the Round 2 suite gate above just verified).
   `--no-dependencies` was not needed.
 
 **IntelliJ plugin:**
+
 - File: `bbj-intellij-0.1.0.zip`
 - Absolute path: `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`
 - sha256 (`sha256sum` output line):
+
 ```
 9ae85e20d3a027fe341ba6afac3bd71c95ba3dcda8da4174503b0d5d99855b40  bbj-intellij-0.1.0.zip
 ```
+
 - Size: 1,159,953 bytes (612 bytes smaller than Round 1's zip — consistent with the revert removing
   the crash-detection rework's code from `BbjServerService.java`, `BbjLanguageServerFactory.java`
   and `ExpectedStopGuard.java`).
@@ -266,11 +288,13 @@ built from the same code the Round 2 suite gate above just verified).
 ```
 unzip -p /home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip bbj-intellij/lib/language-server/main.cjs | cmp - /home/coder/repos/bbj-language-server/bbj-vscode/out/language/main.cjs
 ```
+
 Result: **exit 0, no difference reported.**
 
 ```
 unzip -p /home/coder/repos/bbj-language-server/bbj-vscode/bbj-lang-0.15.3.vsix extension/out/language/main.cjs | cmp - /home/coder/repos/bbj-language-server/bbj-vscode/out/language/main.cjs
 ```
+
 Result: **exit 0, no difference reported.**
 
 Both comparisons prove neither archive is a stale UP-TO-DATE artifact — both carry the
