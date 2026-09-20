@@ -210,10 +210,11 @@ class ClassValidator {
             .filter(ret => ret.return !== undefined)
             .toArray();
 
-        // A void method must not return a value.
+        // A void method must not return a value. The compiler accepts this, so it is a warning
+        // rather than an error.
         if (meth.voidReturn) {
             for (const ret of valueReturns) {
-                accept('error', `Method '${meth.name}' is declared void and must not return a value.`, {
+                accept('warning', `Method '${meth.name}' is declared void and must not return a value.`, {
                     node: ret,
                     property: 'return'
                 });
@@ -225,9 +226,11 @@ class ClassValidator {
             return; // neither void nor an explicit return type — nothing required
         }
 
-        // #372: a non-void method with no value-returning METHODRET is an error.
+        // #372: a non-void method with no value-returning METHODRET disagrees with the compiler,
+        // which accepts this shape, so it is a warning rather than an error. No special case for
+        // an empty or stub-looking body — a plain warning applies uniformly.
         if (valueReturns.length === 0) {
-            accept('error', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
+            accept('warning', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
                 node: meth,
                 property: 'name'
             });
