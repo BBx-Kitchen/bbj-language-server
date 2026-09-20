@@ -1,6 +1,8 @@
 # DRAFT — upstream reports for redhat-developer/lsp4ij
 
-Status: draft for maintainer review. Nothing has been filed. Observed with LSP4IJ 0.21.0, IntelliJ IDEA
+Status: FILED by the maintainer on 2026-09-20 — A as redhat-developer/lsp4ij#1672, B as #1673 (B was
+reframed before filing: on-demand retry is intended upstream; only the abort of an in-flight retry is
+reported). The text below is the working draft, not the posted wording. Observed with LSP4IJ 0.21.0, IntelliJ IDEA
 2026.2.2 (IU-262.10315.125), Windows 10. Checked on 2026-09-20 against a shallow clone of LSP4IJ `main`
 (9bdfb68, 2026-09-18): `LanguageServerWrapper.java` and `ExtendedStreamMessageProducer.java` are unchanged
 since tag 0.21.0, so A and B still apply. Existing upstream issues reviewed on 2026-09-20 (maintainer-supplied): see below —

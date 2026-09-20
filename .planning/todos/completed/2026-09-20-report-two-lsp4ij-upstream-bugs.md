@@ -3,6 +3,7 @@ created: 2026-09-20T12:00:00.000Z
 title: Report two LSP4IJ upstream bugs found during the Windows restart diagnosis
 area: upstream
 severity: minor
+completed: 2026-09-20
 files:
 
   - bbj-intellij/build.gradle.kts
@@ -31,3 +32,14 @@ automatic restart. That is intended and is not reported. A and B were checked ag
 
 Maintainer reviews the draft, searches existing upstream issues for A and B, then files (or approves
 filing). Outward-facing: nothing is filed without that approval.
+
+## Outcome
+
+Filed by the maintainer on 2026-09-20:
+
+- A: https://github.com/redhat-developer/lsp4ij/issues/1672 — `stop()` runs its blocking shutdown under a
+  ReadAction via `ForkJoinPool.helpAsyncBlocker` (follow-up to their #1442).
+- B: https://github.com/redhat-developer/lsp4ij/issues/1673 — restart-on-error retries abort the retry that
+  is still initialising. Reframed before filing: on-demand retry up to 20 attempts is intended upstream;
+  the report is only about retries triggered by an attempt that is still in progress.
+- C: withdrawn, documented upstream behaviour.
