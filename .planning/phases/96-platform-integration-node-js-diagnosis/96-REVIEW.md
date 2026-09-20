@@ -220,6 +220,24 @@ but with the link as the direct child instead of nested one level down.
 
 ---
 
+## Disposition
+
+Every finding above was acted on or explicitly declined before the phase's Windows attestation
+build. No finding is left merely unread.
+
+| ID | Disposition | Commit | Reasoning |
+|----|-------------|--------|-----------|
+| WR-01 | Declined — not a defect | — | Plan 96-02 decided against a lock on researched grounds: "Do not add a file lock — RESEARCH concluded ordering neutralises the race that a lock would guard, and a lock would be new complexity for no gain." Write-before-marker ordering is the deliberate correctness rule, and racing writes copy identical bytes from the same packaged JAR resource. The finding describes a real property of the code but re-litigates a settled design decision rather than reporting a fault. |
+| WR-02 | Fixed | `6d9b6a7d` | `bodyOf()` now tracks string-literal, char-literal, line-comment and block-comment state while counting braces. The fix was proven falsifiable: reverting `bodyOf()` to the old scanner makes the new regression test fail at its `assertFalse(body.contains(...))` assertion, and restoring the fix returns the class to green. |
+| IN-01 | Deferred | — | Deferred by explicit human decision so the attested build stays behaviourally identical to the reviewed tree. The `CACHE_UNAVAILABLE` sentence in `NodeExecutableResolver.failureMessage()` is cosmetic and touches production user-visible text; `NodePresentation` already gives the editor banner the cleaner phrasing for the same case. Carry as follow-up. |
+| IN-02 | Fixed | `d154c08b` | Added a direct-child symlink sweep test. Behaviour was confirmed safe by reading `sweepAbandoned` and `deleteRecursively` rather than assumed: `Files.isDirectory` follows the link and admits the entry, but `walkFileTree` without `FOLLOW_LINKS` treats the symlink root as a plain file, so only the link is unlinked and the target survives. That reasoning is now pinned by a test instead of resting on implicit JDK semantics. |
+
+Both fixes are test-only. `git diff --name-only b040b195..HEAD` contains exactly the two test files
+and nothing under `src/main/`, so the distributables built for the Windows attestation are
+behaviourally identical to the tree reviewed here.
+
+---
+
 _Reviewed: 2026-09-20T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
