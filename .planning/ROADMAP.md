@@ -325,7 +325,26 @@ files describe behaviour and use word lists only.
   4. The conflicting-`DECLARE` check and the two `METHODRET` checks ("declares a return type but has no METHODRET returning a value", "is declared void and must not return a value") report no error on code `bbjcpl` accepts; they may still warn. One deliberate exception stays an error: two declarations of one name inside a single method body whose types both resolve and are unrelated.
   5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/conformance/` that the example-files test parses with zero errors and validates with zero error-severity diagnostics (linking excluded) — the CONF-01 convention Phases 99 and 100 then follow.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 98-01-PLAN.md — tracer: the CONF-01 conformance-regression harness, proven end-to-end on the `TABLE` statement (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 98-02-PLAN.md — `RESTORE n`, `LOAD`, `EXIT expr` and keyword-named `GOTO`/`GOSUB` targets, fixed in the grammar and lexer (wave 2)
+- [ ] 98-03-PLAN.md — conflicting-`DECLARE` narrowed by scope and resolved-type relation; both `METHODRET` checks become warnings (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 98-04-PLAN.md — single-line `IF`/`FI` mask fixes, the trailing-comma `PRINT` symptom, and the `LEN` probe (wave 3)
+- [ ] 98-05-PLAN.md — a multi-line `DEF FN` whose body is never closed by `FNEND` (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 98-06-PLAN.md — phase-boundary conformance run, residue triage and the closing attestation (wave 4)
 
 *Ordering note:* first because it is the cheapest user-visible win in the milestone and because it establishes the regression-file convention (CONF-01) the two parser phases inherit. It must not be done by widening the checks into uselessness: each criterion is "no error on code the compiler accepts", not "no error".
 
