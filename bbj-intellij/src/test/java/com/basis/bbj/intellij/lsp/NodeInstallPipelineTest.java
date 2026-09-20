@@ -439,6 +439,55 @@ class NodeInstallPipelineTest {
         }
 
         @Test
+        void aFailingTempFileCleanupNeverMasksTheRealVerificationFailure(@TempDir Path dataDirectory,
+                @TempDir Path temporaryRoot) throws IOException {
+            Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                    "this host's default filesystem has no POSIX view");
+
+            String wrongDigest = "0".repeat(64);
+            String actualDigest = WINDOWS_FIXTURE_DIGEST;
+            FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, wrongDigest));
+            List<Path> capturedTarget = new ArrayList<>();
+
+            // A fetcher that copies the fixture as usual, then strips write permission from the
+            // temp root so the outer finally's later cleanup attempt on the temp archive file
+            // fails -- proving that failure never replaces the verification failure already in
+            // flight, which is the real point of this test.
+            NodeInstallPipeline.Fetcher cleanupHostileFetcher = (url, target) -> {
+                Files.copy(WINDOWS_FIXTURE, target, StandardCopyOption.REPLACE_EXISTING);
+                capturedTarget.add(target);
+                Files.setPosixFilePermissions(temporaryRoot,
+                        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+            };
+
+            try {
+                NodeInstallPipeline pipeline = pipeline(
+                        new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64),
+                        dataDirectory, temporaryRoot, cleanupHostileFetcher, digests, new FakePathProbe(),
+                        new NodeInstallIntegrity());
+
+                IOException thrown = assertThrows(IOException.class,
+                        () -> pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED));
+
+                assertTrue(thrown.getMessage().contains(actualDigest),
+                        "the propagated exception must carry the verification failure message even "
+                                + "when the temp archive's cleanup fails");
+                assertFalse(thrown.getMessage().toLowerCase(java.util.Locale.ROOT).contains("delete"),
+                        "the propagated exception must never describe the cleanup failure");
+            } finally {
+                // Restore write permission so @TempDir can clean up temporaryRoot afterwards.
+                Files.setPosixFilePermissions(temporaryRoot, Set.of(PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE));
+            }
+
+            // If this host did not actually enforce the missing write bit (e.g. running as root),
+            // the temp archive would have been deleted anyway and this test never exercised the
+            // failing-cleanup path it targets -- skip gracefully rather than claim false coverage.
+            Assumptions.assumeTrue(!capturedTarget.isEmpty() && Files.exists(capturedTarget.get(0)),
+                    "this host did not enforce the missing write bit on the temp root");
+        }
+
+        @Test
         void anArchiveWithNoNodeBinaryFailsInstallAndCleansUpOnWindows(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
             String expectedDigest = WINDOWS_NO_BINARY_FIXTURE_DIGEST;

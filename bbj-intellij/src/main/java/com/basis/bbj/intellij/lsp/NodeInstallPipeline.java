@@ -205,7 +205,7 @@ public final class NodeInstallPipeline {
                 deleteRecursivelyQuietly(tempExtractDir);
             }
         } finally {
-            Files.deleteIfExists(tempFile);
+            deleteIfExistsQuietly(tempFile);
         }
     }
 
@@ -308,6 +308,14 @@ public final class NodeInstallPipeline {
     private static void deleteRecursivelyQuietly(Path root) {
         try {
             deleteRecursively(root);
+        } catch (IOException e) {
+            // Best-effort cleanup: a failure here must never mask an earlier exception.
+        }
+    }
+
+    private static void deleteIfExistsQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
         } catch (IOException e) {
             // Best-effort cleanup: a failure here must never mask an earlier exception.
         }
