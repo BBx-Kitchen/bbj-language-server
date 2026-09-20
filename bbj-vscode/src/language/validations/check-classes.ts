@@ -86,6 +86,72 @@ export function registerClassChecks(registry: ValidationRegistry, services: BBjS
     registry.register(classChecks, validator);
 }
 
+/** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
+export function classFqn(klass: Class): string {
+    if (isJavaClass(klass)) {
+        const name = (klass as JavaClass).name;
+        if (name.includes('.')) {
+            return name;
+        }
+        const pkg = (klass as JavaClass).packageName;
+        return pkg ? `${pkg}.${name}` : name;
+    }
+    return klass.name;
+}
+
+/** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
+export function bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
+    const visited = new Set<Class>();
+    const queue: BbjClass[] = [klass];
+    while (queue.length > 0) {
+        const current = queue.pop()!;
+        if (visited.has(current)) {
+            continue;
+        }
+        visited.add(current);
+        for (const ref of [...current.extends, ...current.implements]) {
+            const superType = getClass(ref);
+            if (!superType) {
+                continue;
+            }
+            if (superType === target) {
+                return true;
+            }
+            if (isBbjClass(superType)) {
+                queue.push(superType);
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * True when two resolved classes are related closely enough that a conflicting-DECLARE
+ * diagnostic between them should stay silent: they are the same class object, they share a
+ * fully-qualified name (case-insensitive), either one is `java.lang.Object` (the universal top
+ * type), or either one is a BBj class whose resolvable supertype chain reaches the other.
+ */
+export function bbjTypesAreRelated(a: Class, b: Class): boolean {
+    if (a === b) {
+        return true;
+    }
+    const aFqn = classFqn(a).toLowerCase();
+    const bFqn = classFqn(b).toLowerCase();
+    if (aFqn === bFqn) {
+        return true;
+    }
+    if (aFqn === 'java.lang.object' || bFqn === 'java.lang.object') {
+        return true;
+    }
+    if (isBbjClass(a) && bbjSupertypesReach(a, b)) {
+        return true;
+    }
+    if (isBbjClass(b) && bbjSupertypesReach(b, a)) {
+        return true;
+    }
+    return false;
+}
+
 class ClassValidator {
 
     /**
@@ -331,8 +397,8 @@ class ClassValidator {
         if (declared === returned) {
             return true;
         }
-        const declaredFqn = this.classFqn(declared).toLowerCase();
-        const returnedFqn = this.classFqn(returned).toLowerCase();
+        const declaredFqn = classFqn(declared).toLowerCase();
+        const returnedFqn = classFqn(returned).toLowerCase();
         if (declaredFqn === returnedFqn) {
             return true;
         }
@@ -344,7 +410,7 @@ class ClassValidator {
         // assignable; otherwise we cannot be certain (the chain may reach Java types we cannot
         // walk), so we defer rather than risk a false positive.
         if (isBbjClass(returned)) {
-            return this.bbjSupertypesReach(returned, declared) ? true : undefined;
+            return bbjSupertypesReach(returned, declared) ? true : undefined;
         }
         // A returned well-known FINAL Java type has a fully-known supertype set: decide definitively.
         if (isJavaClass(returned)) {
@@ -356,48 +422,9 @@ class ClassValidator {
         return undefined; // hierarchy not walkable / unknown — do not flag
     }
 
-    /** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
-    private bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
-        const visited = new Set<Class>();
-        const queue: BbjClass[] = [klass];
-        while (queue.length > 0) {
-            const current = queue.pop()!;
-            if (visited.has(current)) {
-                continue;
-            }
-            visited.add(current);
-            for (const ref of [...current.extends, ...current.implements]) {
-                const superType = getClass(ref);
-                if (!superType) {
-                    continue;
-                }
-                if (superType === target) {
-                    return true;
-                }
-                if (isBbjClass(superType)) {
-                    queue.push(superType);
-                }
-            }
-        }
-        return false;
-    }
-
-    /** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
-    private classFqn(klass: Class): string {
-        if (isJavaClass(klass)) {
-            const name = (klass as JavaClass).name;
-            if (name.includes('.')) {
-                return name;
-            }
-            const pkg = (klass as JavaClass).packageName;
-            return pkg ? `${pkg}.${name}` : name;
-        }
-        return klass.name;
-    }
-
     /** Human-readable class name for diagnostics (FQN for Java types, simple name for BBj types). */
     private classDisplayName(klass: Class): string {
-        return isJavaClass(klass) ? this.classFqn(klass) : klass.name;
+        return isJavaClass(klass) ? classFqn(klass) : klass.name;
     }
 
     /**

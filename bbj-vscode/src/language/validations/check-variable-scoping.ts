@@ -22,7 +22,8 @@ import {
     isMethodDecl,
     isProgram,
 } from '../generated/ast.js';
-import { getFQNFullname } from '../bbj-nodedescription-provider.js';
+import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
+import { bbjTypesAreRelated } from './check-classes.js';
 
 /**
  * Register variable scoping validation checks for both Program and MethodDecl scopes.
@@ -304,6 +305,15 @@ function getDeclLine(anyNode: AstNode, offset: number): number {
 
 /**
  * Check for conflicting DECLARE statements (same variable, different types) in a scope.
+ *
+ * Every later DECLARE of one name is compared against the FIRST declaration of that name. A raw
+ * reference-text difference alone is no longer enough to flag anything: both types must resolve
+ * to a class, and be unrelated (neither a sub- nor a supertype of the other — see
+ * bbjTypesAreRelated) before a diagnostic is produced. When both conditions hold, the scope
+ * decides severity: inside a method body it stays an error — the one deliberate exception where
+ * this check knowingly says more than the compiler; at program level, where subroutines and
+ * event handlers share one namespace and re-declaring a variable per handler is ordinary
+ * practice, it is a warning.
  */
 function checkConflictingDeclares(
     node: Program | MethodDecl,
@@ -325,6 +335,8 @@ function checkConflictingDeclares(
         }
     });
 
+    const severity = isProgram(node) ? 'warning' : 'error';
+
     // Check for type conflicts
     for (const [, decls] of declares) {
         if (decls.length > 1) {
@@ -332,12 +344,25 @@ function checkConflictingDeclares(
             const firstLine = decls[0].$cstNode?.range.start.line;
             for (let i = 1; i < decls.length; i++) {
                 const thisType = getFQNFullname(decls[i].type);
-                if (thisType.toLowerCase() !== firstType.toLowerCase()) {
-                    const lineInfo = firstLine !== undefined ? ` (declared at line ${firstLine + 1})` : '';
-                    accept('error', `Conflicting DECLARE for '${decls[i].name}': type '${thisType}' conflicts with '${firstType}'${lineInfo}`, {
-                        node: decls[i],
-                    });
+                if (thisType.toLowerCase() === firstType.toLowerCase()) {
+                    continue;
                 }
+                const firstClass = getClass(decls[0].type);
+                const thisClass = getClass(decls[i].type);
+                // Either type failing to resolve is not evidence of a conflict — a raw
+                // reference-text difference alone must never, by itself, produce a diagnostic.
+                if (!firstClass || !thisClass) {
+                    continue;
+                }
+                // Related types (the same class, a shared FQN, java.lang.Object, or a
+                // sub/supertype relation) are never a conflict, in either scope.
+                if (bbjTypesAreRelated(firstClass, thisClass)) {
+                    continue;
+                }
+                const lineInfo = firstLine !== undefined ? ` (declared at line ${firstLine + 1})` : '';
+                accept(severity, `Conflicting DECLARE for '${decls[i].name}': type '${thisType}' conflicts with '${firstType}'${lineInfo}`, {
+                    node: decls[i],
+                });
             }
         }
     }
