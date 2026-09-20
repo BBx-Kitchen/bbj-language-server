@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -220,6 +221,126 @@ class BbjMissingNodeNotificationSourceGuardTest {
         assertTrue(bannerActionsIndex > returnFileEditorIndex,
                 "the action set must be derived inside the panel-building closure, after the "
                         + "no-banner early return has already been decided");
+    }
+
+    @Test
+    void createActionLabelIsCalledExactlyOnceInsideTheBannerActionsLoop() {
+        String text = readGuardedSource();
+        String body = buildPanelBody(text);
+
+        assertEquals(1, countOccurrences(body, "panel.createActionLabel("),
+                "exactly one action label must be created per banner build");
+
+        int forIndex = body.indexOf("for (String actionId : NodePresentation.bannerActions(");
+        int createActionLabelIndex = body.indexOf("panel.createActionLabel(");
+        assertTrue(forIndex >= 0, "the id-iterating for header over the seam's actions was not found");
+        assertTrue(forIndex < createActionLabelIndex,
+                "an action label created outside the loop is an action the seam did not decide");
+    }
+
+    @Test
+    void bannerLoopDerivesLabelAndBehaviourFromTheSharedSeamExactlyOnceEach() {
+        String text = readGuardedSource();
+        String body = buildPanelBody(text);
+
+        assertEquals(1, countOccurrences(body, "NodePresentation.actionLabel("),
+                "every action label must come from NodePresentation exactly once");
+        assertEquals(1, countOccurrences(body, "NodeActions.perform("),
+                "every offered action must run through the shared behaviour mapping exactly once");
+    }
+
+    @Test
+    void noActionLabelLiteralOrInlineBehaviourSurvivesInTheCommentStrippedWholeFile() {
+        String stripped = stripComments(readGuardedSource());
+        for (String actionId : List.of(NodePresentation.ACTION_DOWNLOAD,
+                NodePresentation.ACTION_CONFIGURE_PATH, NodePresentation.ACTION_INSTALL_MANUALLY)) {
+            String quotedLabel = "\"" + NodePresentation.actionLabel(actionId) + "\"";
+            assertEquals(0, countOccurrences(stripped, quotedLabel),
+                    "a literal-labelled action must not reappear: " + quotedLabel);
+        }
+        assertEquals(0, countOccurrences(stripped, "downloadNodeAsync("),
+                "the download behaviour must run through NodeActions, not be inlined here");
+        assertEquals(0, countOccurrences(stripped, "showSettingsDialog("),
+                "the settings-navigation behaviour must run through NodeActions, not be inlined here");
+        assertEquals(0, countOccurrences(stripped, "BrowserUtil.browse("),
+                "the manual-install behaviour must run through NodeActions, not be inlined here");
+    }
+
+    /**
+     * Removes line and block comments from {@code source} while leaving string and char literals
+     * intact, using the same literal-aware state machine as {@link #bodyOf(String, String)}. Copied
+     * from {@code BbjLanguageServerSourceGuardTest} per this project's per-guard-private-helper
+     * convention, so each guard's scanner stays independently verifiable.
+     */
+    private static String stripComments(String source) {
+        StringBuilder result = new StringBuilder(source.length());
+        boolean inString = false;
+        boolean inChar = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+        for (int i = 0; i < source.length(); i++) {
+            char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+
+            if (inLineComment) {
+                if (c == '\n') {
+                    inLineComment = false;
+                    result.append(c);
+                }
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inString) {
+                result.append(c);
+                if (c == '\\' && i + 1 < source.length()) {
+                    i++;
+                    result.append(source.charAt(i));
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                result.append(c);
+                if (c == '\\' && i + 1 < source.length()) {
+                    i++;
+                    result.append(source.charAt(i));
+                } else if (c == '\'') {
+                    inChar = false;
+                }
+                continue;
+            }
+
+            if (c == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+                result.append(c);
+                continue;
+            }
+            if (c == '\'') {
+                inChar = true;
+                result.append(c);
+                continue;
+            }
+
+            result.append(c);
+        }
+        return result.toString();
     }
 
     @Test
