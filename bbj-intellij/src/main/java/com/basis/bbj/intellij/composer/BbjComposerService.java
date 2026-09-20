@@ -4,6 +4,7 @@ import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
+import com.redhat.devtools.lsp4ij.ServerStatus;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -44,9 +45,17 @@ public final class BbjComposerService implements Disposable {
     }
 
     private static @NotNull CompletableFuture<BbjComposerServer> resolveServer(@NotNull Project project) {
-        // Ensure the server is (being) started, then resolve the proxy.
-        LanguageServerManager.getInstance(project).start(SERVER_ID);
-        return LanguageServerManager.getInstance(project)
+        // Ensure the server is (being) started, then resolve the proxy. A server that is already up
+        // or coming up must be left alone: the one-argument start(String) passes
+        // StartOptions.DEFAULT, whose forceRestart flag is true, and even without that flag
+        // LanguageServerManager restarts any registered wrapper whose status is not "started" --
+        // so resolving the proxy for a compile or a refresh would tear down a healthy server.
+        LanguageServerManager manager = LanguageServerManager.getInstance(project);
+        ServerStatus status = manager.getServerStatus(SERVER_ID);
+        if (status != ServerStatus.started && status != ServerStatus.starting) {
+            manager.start(SERVER_ID, new LanguageServerManager.StartOptions().setForceRestart(false));
+        }
+        return manager
                 .getLanguageServer(SERVER_ID)
                 .thenApply(item -> item == null ? null : (BbjComposerServer) item.getServer());
     }

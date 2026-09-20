@@ -99,6 +99,14 @@ class BbjComposerServiceSourceGuardTest {
                 "the service must own exactly one cache instance");
         assertEquals(1, countOccurrences(text, ".start("),
                 "resolveServer(...) must still start the server exactly once");
+        assertEquals(1, countOccurrences(text, "new LanguageServerManager.StartOptions().setForceRestart(false)"),
+                "resolveServer(...) must never force-restart: StartOptions.DEFAULT restarts a healthy server");
+        assertEquals(0, countOccurrences(text, ".start(SERVER_ID)"),
+                "the one-argument start(String) passes StartOptions.DEFAULT, whose forceRestart is true");
+        int statusGuard = text.indexOf("status != ServerStatus.started && status != ServerStatus.starting");
+        assertTrue(statusGuard >= 0 && statusGuard < text.indexOf(".start("),
+                "a server that is started or starting must be left alone -- LanguageServerManager "
+                        + "restarts any registered wrapper whose status is not started");
         assertEquals(1, countOccurrences(text, ".getLanguageServer("),
                 "resolveServer(...) must still resolve the language server proxy exactly once");
         assertEquals(0, countOccurrences(text, "composerCatalogs"),

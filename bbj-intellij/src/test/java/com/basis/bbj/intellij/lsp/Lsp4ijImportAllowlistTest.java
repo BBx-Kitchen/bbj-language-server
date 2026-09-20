@@ -59,7 +59,7 @@ class Lsp4ijImportAllowlistTest {
         Map.entry("com/basis/bbj/intellij/ui/BbjServerService.java",
             Set.of("LanguageServerManager", "ServerStatus")),
         Map.entry("com/basis/bbj/intellij/ui/BbjJavaInteropService.java", Set.of("ServerStatus")),
-        Map.entry("com/basis/bbj/intellij/composer/BbjComposerService.java", Set.of("LanguageServerManager"))
+        Map.entry("com/basis/bbj/intellij/composer/BbjComposerService.java", Set.of("LanguageServerManager", "ServerStatus"))
     );
 
     /**

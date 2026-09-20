@@ -320,6 +320,9 @@ class Lsp4ijCouplingCanaryTest {
                 + "throw rather than silently do nothing");
         assertTrue(LanguageServerManager.StartOptions.DEFAULT.isForceRestart(),
             "StartOptions.DEFAULT no longer forces a restart of an already-registered wrapper");
+        assertFalse(new LanguageServerManager.StartOptions().setForceRestart(false).isForceRestart(),
+            "StartOptions.setForceRestart(false) no longer clears the flag -- resolving the composer "
+                + "server proxy would restart a healthy server again");
         assertFalse(LanguageServerManager.StartOptions.DEFAULT.isForceStart(),
             "StartOptions.DEFAULT now force-starts -- a restart would create a wrapper even with no "
                 + "matching file open, which changes when the server is allowed to run");
