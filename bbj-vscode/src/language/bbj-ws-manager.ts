@@ -138,7 +138,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             if (folders.length > 0) {
                 let prefixfromconfig;
 
-                // Resolve config.bbx location through the single shared resolver — the only
+                // Resolve the config file location through the single shared resolver — the only
                 // place in the repository that derives a config path from a configured
                 // setting or a BBj home fallback.
                 const resolvedConfig = this.getResolvedConfigPath();
@@ -147,10 +147,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                         const configContents = await this.fileSystemProvider.readFile(safeUri(resolvedConfig.path));
                         prefixfromconfig = extractConsumedConfigContent(configContents);
                         this.consumedConfigSnapshotValue = consumedConfigSnapshot(configContents);
-                        logger.info(`Loaded config.bbx from resolved path: ${resolvedConfig.path}`);
+                        logger.info(`Loaded config file from resolved path: ${resolvedConfig.path}`);
                     } catch (e) {
                         this.consumedConfigSnapshotValue = consumedConfigSnapshot(null);
-                        logger.warn(`Failed to load config.bbx from resolved path ${resolvedConfig.path}${resolvedConfig.problem ? ` (${resolvedConfig.problem})` : ''}: ${e}`);
+                        logger.warn(`Failed to load config file from resolved path ${resolvedConfig.path}${resolvedConfig.problem ? ` (${resolvedConfig.problem})` : ''}: ${e}`);
                     }
                 } else {
                     this.consumedConfigSnapshotValue = consumedConfigSnapshot(null);
