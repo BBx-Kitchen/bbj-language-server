@@ -51,6 +51,7 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             }
             BbjServerService service = BbjServerService.getInstance(project);
             service.logToConsole("Server status: " + serverStatus, com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
+            service.updateStatus(serverStatus);
         });
     }
 

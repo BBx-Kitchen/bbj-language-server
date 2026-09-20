@@ -54,7 +54,7 @@ class Lsp4ijImportAllowlistTest {
         Map.entry("com/basis/bbj/intellij/lsp/BbjCompletionFeature.java", Set.of("LSPCompletionFeature")),
         Map.entry("com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java",
             Set.of("LanguageServerFactory", "LanguageClientImpl", "LSPClientFeatures",
-                "LSPDocumentLinkFeature", "StreamConnectionProvider", "ServerStatus")),
+                "LSPDocumentLinkFeature", "StreamConnectionProvider")),
         Map.entry("com/basis/bbj/intellij/ui/BbjStatusBarWidget.java", Set.of("ServerStatus")),
         Map.entry("com/basis/bbj/intellij/ui/BbjServerService.java",
             Set.of("LanguageServerManager", "ServerStatus")),

@@ -344,24 +344,6 @@ class Lsp4ijCouplingCanaryTest {
     }
 
     @Test
-    void theClientFeaturesMembersThisPluginOverridesStillExist() throws NoSuchMethodException {
-        // The crash-detection status feed is now authoritative on this hook -- if LSP4IJ ever
-        // renames or re-signs it, this canary reds instead of crash detection silently going dark.
-        Method handleServerStatusChanged = LSPClientFeatures.class.getMethod(
-            "handleServerStatusChanged", ServerStatus.class);
-        assertEquals(void.class, handleServerStatusChanged.getReturnType(),
-            "LSPClientFeatures.handleServerStatusChanged(ServerStatus) no longer returns void -- "
-                + "this plugin's crash-detection feed depends on this exact signature");
-
-        // getProject() is the only route back to the Project from inside the new override, since
-        // createClientFeatures() itself receives no Project parameter.
-        Method getProject = LSPClientFeatures.class.getMethod("getProject");
-        assertEquals(com.intellij.openapi.project.Project.class, getProject.getReturnType(),
-            "LSPClientFeatures.getProject() no longer returns Project -- the crash-detection "
-                + "override can no longer resolve the project it must feed BbjServerService with");
-    }
-
-    @Test
     void theConnectionProviderMembersThisPluginUsesStillExist() throws NoSuchMethodException {
         Method setCommandLine = OSProcessStreamConnectionProvider.class.getMethod(
             "setCommandLine", com.intellij.execution.configurations.GeneralCommandLine.class);
