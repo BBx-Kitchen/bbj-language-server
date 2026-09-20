@@ -5,17 +5,17 @@ milestone_name: IntelliJ Focus (Phases 93-97) — IN PROGRESS
 current_phase: 97
 current_phase_name: Release 0.16.0 & Milestone Close
 status: executing
-stopped_at: Phase 97 context gathered
-last_updated: "2026-09-20T13:46:39.853Z"
+stopped_at: Completed 97-01-PLAN.md
+last_updated: "2026-09-20T13:55:33.677Z"
 last_activity: 2026-09-20
-last_activity_desc: Phase 96 complete, transitioned to Phase 97
-state_head: f50135462026be531508181eab55277ca31ab525
+last_activity_desc: Phase 97 execution started
+state_head: a26803191a91f99a521c498d2342756abae5ab05
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 36
-  completed_plans: 25
-  percent: 69
+  completed_plans: 26
+  percent: 72
 ---
 
 # Project State: BBj Language Server
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 96 — Platform Integration & Node.js Diagnosis
+**Current Focus:** Phase 97 — Release 0.16.0 & Milestone Close
 
 ---
 
 ## Current Position
 
-Phase: 97 (Release 0.16.0 & Milestone Close) — READY TO EXECUTE
-Plan: Not started
+Phase: 97 (Release 0.16.0 & Milestone Close) — EXECUTING
+Plan: 2 of 11
 Status: Ready to execute
-Last activity: 2026-09-20 — Phase 96 complete, transitioned to Phase 97
+Last activity: 2026-09-20 — Phase 97 execution started
 
-Progress: [████████████████████] 25/25 plans ([████████░░] 80%)
+Progress: [████████████████████] 25/25 plans ([███████░░░] 72%)
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Per-plan duration tables for phases 72-92 are archived with their phase artifact
 | Phase 96 P06 | 20min | 2 tasks | 6 files |
 | Phase 96 P07 | 15min | 1 tasks | 1 files |
 | Phase 96 P08 | continuation | 4 tasks | 8 files |
+| Phase 97 P01 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,8 @@ decisions and the ones that bear directly on v4.4's files:
 - [Phase 96]: 96-06: The banner's sentence and action set both vary by NodeExecutableResolver's rejection reason; the cache-inaccessible case drops Download Node.js, closing #588's doomed-retry scenario (PLAT-04).
 - [Phase 96]: Phase 96: PLAT-06's real-Windows attestation FAILED -- Node.js auto-install downloads a valid node.exe+.sha256 sidecar but the language server does not start afterward; two root causes (Node floor pin, version-cache null poisoning) fixed during the session (1b6b83d3, a6b27b44, c41859dd, cb370e48, ae86384e); PLAT-06 stays Pending, recorded as WINDOWS.md entry 3 (open) per D-15 rather than holding the phase
 - [Phase 96]: 96-08: G-96-2 closed on the maintainer's reply 'pass, works as expected now' (2026-09-20), tied to bbj-intellij-0.1.0.zip sha256 89ba44723d319771bc6436aee8b0a0218fca04b93c2093c5f6249f3258df2659 from commit dbdb65282e4b5f5c6fc984f24c230b1ef6079dca -- the shared NodeActions.perform/NodePresentation.actionLabel mapping now feeds both the start-failure notification and the editor banner.
+- [Phase 97]: [Phase 97]: 97-01: crash-detection status feed moved to LSPClientFeatures#handleServerStatusChanged with Option B threading (whole body dispatched through invokeLater, keeping BbjServerService.updateStatus on the EDT) — Smallest change immediately before a release; Option A (synchronized non-UI section) stays a deferred follow-up.
+- [Phase 97]: [Phase 97]: 97-01: confirmed by javap bytecode reading of LSP4IJ 0.21.0's LanguageServerWrapper that getOrCreateClientFeatures() always calls setServerWrapper(this) before the client-features instance is cached or returned, so getProject() inside the new override can never see an unset wrapper — Resolves the plan's flagged assumption with direct evidence rather than leaving it unconfirmed.
 
 ### Tech Debt
 
@@ -232,9 +235,9 @@ decisions and the ones that bear directly on v4.4's files:
 
 ## Session Continuity
 
-Last session: 2026-09-20T12:56:28.160Z
-Stopped at: Phase 97 context gathered
-Resume file: .planning/phases/97-release-0-16-0-milestone-close/97-CONTEXT.md
+Last session: 2026-09-20T13:55:33.509Z
+Stopped at: Completed 97-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 95` or `/gsd-plan-phase 95`.
 
