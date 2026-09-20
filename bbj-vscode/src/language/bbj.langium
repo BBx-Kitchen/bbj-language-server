@@ -71,6 +71,7 @@ SingleStatement:
     LabelDecl |
     LCheckInStatement |
     LetStatement |
+    LoadStatement |
     LockStatement |
     MethodReturnStatement |
     NextStatement |
@@ -213,7 +214,7 @@ ResourceCloseStatement:
     ;
 
 RestoreStatement:
-    'RESTORE' lineref=LabelRef
+    'RESTORE' lineref=(LabelRef | NUMBER)?
     ;
 
 DreadStatement:
@@ -501,6 +502,10 @@ OpenStatement:
 LetStatement:
     'LET'? assignments+=Assignment (',' assignments+=Assignment)*
 ;
+
+LoadStatement:
+    'LOAD' fileid=Expression (',' int=Expression)?
+    ;
 
 PrintStatement:
     PRINT_STANDALONE_NL
