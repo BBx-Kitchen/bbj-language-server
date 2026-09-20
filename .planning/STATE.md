@@ -1,21 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.4
-milestone_name: IntelliJ Focus (Phases 93-97) — SHIPPED 2026-09-20
-status: Awaiting next milestone
-stopped_at: "Completed 97-11-PLAN.md (all 21 milestone #7 issues closed with maintainer-approved comments, milestone #7 closed 0/21/closed; REL-02 complete; phase 97 and milestone v4.4 complete)"
-last_updated: "2026-09-20T19:12:53.267Z"
+milestone: v4.5
+milestone_name: Compiler Conformance
+status: planning
+last_updated: "2026-09-20T19:39:26.052Z"
 last_activity: 2026-09-20
-last_activity_desc: Milestone v4.4 completed and archived
-state_head: d8071b24fcfdd25986f26bf71184d4873fc975c6
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 36
-  completed_plans: 36
-  percent: 100
-current_phase: 97
-current_phase_name: Release 0.16.0 & Milestone Close
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: Milestone v4.4 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-20 — Milestone v4.4 completed and archived
+Status: Defining requirements
+Last activity: 2026-09-20 — Milestone v4.5 started
 
 ## Performance Metrics
 

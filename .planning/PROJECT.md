@@ -64,9 +64,38 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
+## Current Milestone: v4.5 Compiler Conformance
+
+**Goal:** Bring what the language server accepts and rejects as close as possible to what the
+BBj compiler (`bbjcpl`) accepts and rejects, measured by a conformance harness over a corpus
+of 11,898 compiler-verified programs and 1,210 compiler-rejected ones.
+
+**Baseline (language server `d8071b24`, compiler build of 2026-09-01):** A = 168 valid files
+the parser rejects (1.4 %), A2 = 267 valid files that get a validation error (2.2 %),
+B = 658 of 1,210 invalid files that get no error (54.4 %).
+
+**Target features:**
+- Parse what the compiler accepts (A): `FIELD` as a verb, `READ RECORD(chan,LEN=n)var$`, a
+  label alone on a line, `DREAD x![]`, `;rem` after `METHODEND` / `METHOD` headers /
+  `CLASSEND`, `IOLIST`, `label` as an identifier, `ON ... GOSUB` with line numbers.
+- Stop false alarms on valid code (A2): line-break validation on `TABLE`, `RESTORE 0`,
+  `GOSUB print`, `EXIT err` and multi-line `DEF FN` headers; the conflicting-`DECLARE` and
+  missing-`METHODRET` checks.
+- Flag what the compiler rejects (B), reported as errors: bare expression statements
+  (`PRINT "x"; STR(y)`, `TRY`, `ELSEIF`, unknown verbs), reserved words as variables,
+  unterminated blocks, invalid `DIM` and `DEF` forms. The `ExpressionStatement` restriction
+  comes last because it touches every program.
+- Make the repository's own `examples/` agree with the compiler (18 of 93 are rejected).
+- Every fixed group gets a small synthetic regression file, so CI protects it without the
+  private corpus.
+
+**Measurement:** the corpus and harness live outside this repository in the private
+`bbj-corpus` repository (`conformance/run.mjs --ls <this repo>`, about one minute, no Java
+interop contact). It is run locally at phase boundaries, not in CI.
+
 ## Next Milestone Goals
 
-Not yet defined — run `/gsd-new-milestone`. Candidates carried out of v4.4:
+Deferred while v4.5 runs. Candidates carried out of v4.4:
 
 - **IntelliJ server lifecycle:** make a lost language-server connection visible to crash
   detection (todo, severity major — the Phase 97 attempt was reverted), and fix the stale
@@ -318,8 +347,7 @@ Not yet defined — run `/gsd-new-milestone`. Candidates carried out of v4.4:
 
 ### Active
 
-None defined — the next milestone's requirements are written by `/gsd-new-milestone` into a
-fresh `.planning/REQUIREMENTS.md`. v4.4's 25 requirements shipped and are listed under
+v4.5 Compiler Conformance — the requirements are in `.planning/REQUIREMENTS.md`. v4.4's 25 requirements shipped and are listed under
 Validated above (archive: `.planning/milestones/v4.4-REQUIREMENTS.md`).
 
 Carried over, maintainer-owned (not GSD phases):
@@ -576,4 +604,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-20 after v4.4 milestone*
+*Last updated: 2026-09-20 after starting the v4.5 milestone*
