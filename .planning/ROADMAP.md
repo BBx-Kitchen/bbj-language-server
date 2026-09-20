@@ -23,6 +23,7 @@
 - ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; landed on `origin/main` via PR #651 — see MILESTONES.md)
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
+- 🔷 **v4.5 Compiler Conformance** — Phases 98-104 (in progress, started 2026-09-20)
 
 ## Phases
 
@@ -255,6 +256,184 @@ Shipped as release 0.16.0 (tag `v0.16.0`) on both marketplaces; GitHub milestone
 
 </details>
 
+### 🔷 v4.5 Compiler Conformance (Phases 98-104) — IN PROGRESS
+
+Scope is the 27 requirements in `.planning/REQUIREMENTS.md`: bring what the language server
+accepts and rejects as close as possible to what `bbjcpl` accepts and rejects. Baseline from the
+2026-09-20 conformance run (language server `d8071b24`, compiler build of 2026-09-01, corpus of
+11,898 compiler-accepted and 1,210 compiler-rejected programs):
+
+| Measure | Baseline | Exit target |
+|---|---|---|
+| A — valid files the parser rejects | 168 (1.4 %) | ≤ 25 |
+| A2 — valid files with a false validation error | 267 (2.2 %) | ≤ 25 |
+| B — invalid files with no error at all | 658 of 1,210 (54.4 %) | ≤ 5 %, endpoint active |
+
+**Which repository each phase changes.**
+
+- Phases 98, 99, 100, 102 and 103 change **this repository**, almost entirely under
+  `bbj-vscode/` (grammar, lexer, validations, diagnostics, test data); Phase 102 also touches
+  `documentation/`. The IntelliJ plugin inherits every change through the shared language server —
+  no `bbj-intellij/` source change is planned in this milestone.
+- Phase 101 changes the **separate `bbj-ls` repository** (Java, BASIS GitLab, runs inside
+  BBjServices on port 5008, ships with BBj 26.03 and later). Nothing in this repository changes in
+  that phase; it is a phase of this milestone because the milestone's B target depends on it.
+- Phase 104 works in the **private `bbj-corpus` repository** (`conformance/`) and closes out with
+  test and documentation updates here.
+
+**Measurement is local, never CI.** The corpus and harness live outside this repository
+(`conformance/run.mjs --ls <this repo>`, about one minute, no Java-interop contact). Every fix
+phase ends with a local run at its boundary, and the numbers named in the success criteria below
+are that run's numbers. CI protects the fixes through synthetic regression files instead of the
+corpus, which contains internal and third-party code.
+
+**CONF-01 is a cross-cutting rule, mapped once.** Each construct fixed for a PARSE or VALID
+requirement gets a small synthetic regression file under `bbj-vscode/test/test-data/`, which
+`example-files.test.ts` already parses with zero lexer/parser errors. The requirement is mapped to
+Phase 98 — the first phase that fixes constructs — and Phases 99 and 100 repeat the rule in their
+own success criteria.
+
+**Ordering.** A2 first: those false alarms are small, contained and annoy users today. Then list A
+by file count, the long-tail triage after the named groups. Then the `bbj-ls` endpoint and its
+client, which need a BBj 26.03 or later on the machine doing the work. The closing measurement is
+last because its gate is the whole milestone's number.
+
+**No proprietary BBj source text enters this repository.** Planning files, tests and regression
+files describe behaviour and use word lists only.
+
+- [ ] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET
+- [ ] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, combined RECORD verbs with channel options, labels alone or in front of a statement, and IOLIST
+- [ ] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - PRINT/INPUT item forms, DREAD into arrays, `;rem` after class and method boundaries, language words used as names — then every remaining list-A file is fixed or recorded, and `examples/` agrees with the compiler
+- [ ] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository
+- [ ] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x
+- [ ] **Phase 103: One Set of Errors — Diagnostic Reconciliation** - The compiler's verdict and the language server's own checks stop contradicting and stop duplicating each other
+- [ ] **Phase 104: Conformance Measurement & Milestone Exit** - The harness can measure with the endpoint active, the documented procedure exists, and the milestone's exit numbers are on record
+
+## Phase Details
+
+### Phase 98: Line-Break & Validation False Alarms (A2)
+
+**Goal**: A developer writing valid BBj stops seeing errors the compiler would never report — the line-break validator and the two class-level checks agree with `bbjcpl` on code it accepts.
+**Depends on**: Nothing (first phase of v4.5; it edits `bbj-vscode/src/language/validations/` and leaves the grammar alone, so it is file-disjoint from Phases 99 and 100)
+**Repository**: this one — `bbj-vscode/src/language/validations/line-break-validation.ts`, `validations/check-classes.ts`, plus new regression files under `bbj-vscode/test/test-data/`
+**Requirements**: VALID-01, VALID-02, VALID-03, VALID-04, VALID-05, CONF-01
+**Success Criteria** (what must be TRUE):
+
+  1. A `TABLE` statement — with or without a leading label, hex field spaced or unspaced, long or short — produces no "This statement needs to start in a new line" error. This is the largest A2 group on its own (about 110 of the 267 files, across its message variants).
+  2. `RESTORE 0`, `GOSUB`/`GOTO` to a label whose name is also a language word (`gosub print`, `gosub save`), `EXIT err`, `LOAD "prog"`, `SAVE` and a continued `LEN=` item produce no line-break error (about 70 more files).
+  3. A `DEF FN...(params)` header spread over continuation lines, and the single-line `IF ... THEN ... ; GOTO label` and `... FI` forms the compiler accepts, produce no "needs to start in a new line" or "needs to end with a line break" error.
+  4. The conflicting-`DECLARE` check and the "method declares a return type but has no METHODRET returning a value" check report nothing on code `bbjcpl` accepts.
+  5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/` that `example-files.test.ts` parses with zero errors — the CONF-01 convention Phases 99 and 100 then follow.
+
+**Plans**: TBD
+
+*Ordering note:* first because it is the cheapest user-visible win in the milestone and because it establishes the regression-file convention (CONF-01) the two parser phases inherit. It must not be done by widening the checks into uselessness: each criterion is "no error on code the compiler accepts", not "no error".
+
+### Phase 99: Parser Gaps — the Largest Groups
+
+**Goal**: The four list-A groups that account for most of the rejected-but-valid files parse: `FIELD` as a verb, the combined `RECORD` verbs with channel options, labels standing alone or in front of a statement, and `IOLIST`.
+**Depends on**: Phase 98 (no file conflict — scheduled after it so the A2 number is already settled when list A is re-measured, and so the regression-file convention is in place)
+**Repository**: this one — `bbj-vscode/src/language/bbj.langium` (plus `npm run langium:generate`), `bbj-lexer.ts` where the combined verbs need lookahead, and `bbj-vscode/test/test-data/`
+**Requirements**: PARSE-01, PARSE-02, PARSE-03, PARSE-07
+**Success Criteria** (what must be TRUE):
+
+  1. A program using `FIELD` as a verb (`field rec$,name$=dec(ctrl(...))`) parses with zero lexer and parser errors — the single largest list-A group, 45 files.
+  2. `READ RECORD(SYSGUI,LEN=10)EVENT$` parses, and so do the sibling combined verbs (`EXTRACT RECORD`, `FIND RECORD`, `INPUT RECORD`, `PRINT RECORD`, `WRITE RECORD`) with channel options written directly after the verb — 38 files — without a name such as `RECORD_2` being mistaken for the combined form.
+  3. A label alone on a line (`label:`, `LABEL:`), and a label immediately followed by a statement on the same line (`label:escape`, `label: escape;exit`, `LABEL: ENTER A$,B$`, `L30: iolist a,b,c`), parse — 20 files.
+  4. The `IOLIST` statement parses, standalone and behind a label, with a long item list.
+  5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or an empty word (a bare label); A2 stays at or below its Phase 98 number; each group has its synthetic regression file (CONF-01).
+
+**Plans**: TBD
+
+*Ordering note:* the four groups here are the ones measured by file count in `bbj-corpus/conformance/REPORT.md` (45 + 38 + 16 + 3 + 3 + 1 ≈ 106 files). They are grouped into one phase because all four are grammar-level statement-shape changes that regenerate the same Langium artifacts; splitting them would regenerate and re-verify the grammar twice for no verification benefit.
+
+### Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples
+
+**Goal**: The remaining named list-A groups parse, every file still on list A is either fixed or recorded with the reason it stays, and the repository's own `examples/` no longer disagrees with the compiler.
+**Depends on**: Phase 99 (same grammar files; the long-tail triage is only meaningful once the named groups are gone and list A has been re-measured)
+**Repository**: this one — `bbj-vscode/src/language/bbj.langium` and `bbj-lexer.ts`, `bbj-vscode/test/test-data/`, `examples/` and its test, plus a tracked residual list under `.planning/`
+**Requirements**: PARSE-04, PARSE-05, PARSE-06, PARSE-08, PARSE-09, EXMP-01
+**Success Criteria** (what must be TRUE):
+
+  1. The `PRINT`/`INPUT` item forms the compiler accepts parse — `print (0,err=label) "Hello a"`, `print z![]`, a trailing-comma item list, `print " ",ctrl(sysgui,event.id,1),` inside a single-line `IF` — and `dread x![]` reads into an array variable without error (17 files).
+  2. A `; rem` comment after a `METHOD` header, after `METHODEND`, after `CLASSEND` and after `FNEND`, and class code carrying user line numbers, parse without error.
+  3. Words BBj itself allows as names although they are language words — `label`, `text`, `vector`, `state`, `val`, `class`, `data`, `default`, `exit`, `next`, `step`, `str`, `table`, `to` and the rest of the compiler's `possibleName` set — work as variables, as labels and as `GOSUB`/`GOTO` targets, without a blanket "reserved word" rule being introduced anywhere.
+  4. The conformance run at the phase boundary reports **A ≤ 25** (from 168), and every file still on list A is recorded in a tracked list with its reason — not a program, compiler quirk, or deliberately out of scope — so the residue is a decision rather than an unknown. Each construct fixed in this phase has its synthetic regression file (CONF-01).
+  5. Every file under `examples/` either compiles with `bbjcpl` or lives in a folder marked as deliberately invalid, and a test asserts the diagnostics those deliberately-invalid files are expected to produce (18 of 93 files fail today).
+
+**Plans**: TBD
+
+*Ordering note:* the triage (PARSE-09) runs after the named-group fixes, inside this phase, because it measures what those fixes left behind. `examples/` rides here rather than in a phase of its own: it is the same kind of long-tail clean-up, it is verified by the same `bbjcpl` oracle, and on its own it would be a one-requirement phase.
+
+### Phase 101: BBj Parser Endpoint in `bbj-ls`
+
+**Goal**: BBj's own parser becomes callable on the text a developer is typing — `bbj-ls` exposes an endpoint that runs `ParserServiceAPI` over supplied document text and hands back the compiler's errors with editor coordinates.
+**Depends on**: Nothing technically (no file in this repository is touched, and it shares no code with Phases 98-100). Scheduled after the parser work so the in-repo fixes land while a BBj 26.03 build is being prepared, and before Phase 102, which is its only consumer.
+**Repository**: the separate **`bbj-ls`** repository (`/home/coder/repos/bbj-ls`) — Java, runs inside BBjServices on port 5008, hosted on BASIS GitLab, ships with BBj 26.03 and later. **No change in this repository.**
+**Requirements**: PSRV-01, PSRV-02
+**Success Criteria** (what must be TRUE):
+
+  1. A caller sends document text to the endpoint on a running BBjServices and gets BBj's own parser errors back — each with its category, its message, and its editor line and character range — with type checking off and without the text ever being read from or written to disk.
+  2. The active document is parsed from the supplied text while referenced programs are resolved through the configured prefixes and workspace roots, so a program that `USE`s or `CALL`s another file is parsed in context rather than failing on the reference.
+  3. Two requests for the same document in quick succession never yield the older text's errors: every request carries its own version identity and a superseded result is discarded, not returned.
+  4. A plain client against a locally running BBjServices exercises all of the above, and a BBj that predates the endpoint answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace — which is the signal Phase 102 gates on.
+
+**Plans**: TBD
+
+*Ordering note:* this is a phase of v4.5 although its code lives in another repository with BBj's own release cycle — the milestone's B target (658 → ≤ 5 %) is unreachable without it, and the language-server side in Phases 102 and 103 is written against its contract. The endpoint's own shape follows the integration boundary already described in the internal parser handoff notes (ParserServiceAPI, type checking off, editor line fields preferred over interpreter line fields); none of that source text is reproduced in this public repository.
+
+### Phase 102: Live Compiler Diagnostics With Backward Compatibility
+
+**Goal**: With a BBj that has the endpoint, developers see the compiler's own syntax errors while they type in either IDE; with an older BBj or none at all, both extensions behave exactly as 0.16.x did.
+**Depends on**: Phase 101 (the endpoint it consumes; the fallback half is testable earlier against a service double, the live half is not)
+**Repository**: this one — `bbj-vscode/src/language/` (a parser-service client beside `bbj-cpl-service.ts`, wired into document validation), `bbj-vscode/test/` for the service double, and `documentation/` for both extensions' requirements page. No `bbj-intellij/` source change: IntelliJ receives the diagnostics through the shared language server.
+**Requirements**: PSRV-03, PSRV-04, PSRV-05, PSRV-08, PSRV-09
+**Success Criteria** (what must be TRUE):
+
+  1. Typing invalid BBj in VS Code or in IntelliJ, against a BBjServices that offers the endpoint, surfaces the compiler's syntax errors in the editor without saving the file.
+  2. Against a BBj older than 26.03 whose `bbj-ls` lacks the endpoint, and with no connection at all, both extensions keep every feature they have in 0.16.x — Java completion through the same service, the save-time `bbjcpl` run, the existing diagnostics — with no error, no dialog and no repeated log line; the server decides by probing the endpoint once per connection, never by comparing version strings, and an automated test runs the whole path against a service double that lacks the endpoint.
+  3. Diagnostics land on the right editor line and character range for continuation lines joined by a leading colon, for programs with user line numbers, for CRLF files and for a last line with no trailing newline.
+  4. An endpoint exception, a timeout, or a BBjServices that is not running never appears as a syntax error in the document — it is visible in the server log or in the status surface only.
+  5. The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the published documentation of both extensions says the feature needs BBj 26.03 or later.
+
+**Plans**: TBD
+
+*Ordering note:* PSRV-04 is a hard requirement, not a nicety — the extensions ship to users on BBj versions that will never have the endpoint. Its automated test against a service double is the phase's regression gate, and the probe result is the switch every behaviour in Phase 103 hangs off.
+
+### Phase 103: One Set of Errors — Diagnostic Reconciliation
+
+**Goal**: When the compiler's parser is available, it is the authority on syntax — the language server's own lexer, parser and line-break complaints stand down instead of contradicting or duplicating it.
+**Depends on**: Phase 102 (the live diagnostics and the per-connection probe it suppresses against)
+**Repository**: this one — `bbj-vscode/src/language/bbj-document-validator.ts` and the diagnostic hierarchy/merge added in v3.7, plus its tests
+**Requirements**: PSRV-06, PSRV-07
+**Success Criteria** (what must be TRUE):
+
+  1. A line that both the compiler's parser and the language server's own checks complain about shows one diagnostic, not two, and the save-time `bbjcpl` run adds nothing the endpoint already reported.
+  2. When the compiler's parser accepts a document, the developer sees no lexer, parser or line-break error from the language server for that document at all.
+  3. With the endpoint unavailable — older BBj, BBjServices down — the pre-existing v3.7 diagnostic behaviour returns unchanged, so the suppression is conditional on live compiler diagnostics being on rather than a permanent removal of checks.
+  4. A conformance run at the phase boundary with the endpoint active shows the effect end to end: list B falls from 658 of 1,210 (54.4 %) towards the milestone's ≤ 5 % target, and compiler-accepted files carry no language-server syntax error.
+
+**Plans**: TBD
+
+*Ordering note:* kept separate from Phase 102 because it is the one change that can make diagnostics *worse* for users on an older BBj if the suppression is unconditional — it wants its own verification round with the endpoint both present and absent. Criterion 4 is the working measurement; the formal exit gate belongs to Phase 104.
+
+### Phase 104: Conformance Measurement & Milestone Exit
+
+**Goal**: The milestone's result is measured, reproducible and written down — the harness can run with the endpoint active, maintainers know how to run it, and the exit numbers are on record.
+**Depends on**: Phases 98, 99, 100, 102, 103 (it measures their combined result; Phase 101 indirectly, through the endpoint the run enables)
+**Repository**: the private **`bbj-corpus`** repository (`conformance/run.mjs`, `conformance/REPORT.md`) for the harness and the run; this repository for the final test-suite gate and a maintainer-facing pointer that carries no corpus content
+**Requirements**: CONF-02, CONF-03
+**Success Criteria** (what must be TRUE):
+
+  1. The conformance run can be pointed at a BBjServices that offers the endpoint, reports list B with the endpoint's verdicts included, and the way to run it in that mode is written down for maintainers.
+  2. On the corpus build of the baseline, the final run reports **A ≤ 25**, **A2 ≤ 25** and **B ≤ 5 %** of 1,210 with the endpoint active — the milestone's exit gate, against A = 168, A2 = 267, B = 54.4 % at the start.
+  3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
+  4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
+
+**Plans**: TBD
+
+*Ordering note:* last by necessity — its gate is the whole milestone's number. The run stays local and manual: the corpus contains internal and third-party code and must not enter this repository or its CI.
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -280,6 +459,7 @@ Shipped as release 0.16.0 (tag `v0.16.0`) on both marketplaces; GitHub milestone
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
 | v4.3 Polish & Quality | 84-92 | 70 | Complete | 2026-09-13 |
 | v4.4 IntelliJ Focus | 93-97 | 36 | Complete | 2026-09-20 |
+| v4.5 Compiler Conformance | 98-104 | TBD | Planning | — |
 
 **Total:** 21 milestones shipped, 95 phases complete, 349 plans shipped.
 
@@ -290,12 +470,25 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
 v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked normally.
 
-**Current milestone:** none. v4.4 IntelliJ Focus (Phases 93-97) shipped 2026-09-20 and is
-archived; phase numbering continues from 98.
-Next: `/gsd-new-milestone` to define the next milestone (questioning → research →
-requirements → roadmap).
+### v4.5 phase progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 98. Line-Break & Validation False Alarms (A2) | 0/TBD | Not started | - |
+| 99. Parser Gaps — the Largest Groups | 0/TBD | Not started | - |
+| 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 0/TBD | Not started | - |
+| 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |
+| 102. Live Compiler Diagnostics With Backward Compatibility | 0/TBD | Not started | - |
+| 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
+| 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
+
+**Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.
+27/27 requirements mapped to 7 phases, no orphans and no duplicates. Scope, baseline and exit
+targets are in `.planning/PROJECT.md` under "Current Milestone"; the requirement list and its
+traceability table are in `.planning/REQUIREMENTS.md`.
+Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
 
 ---
 
-*Roadmap last updated: 2026-09-20 — v4.4 IntelliJ Focus archived (5 phases, 36 plans, 25/25
-requirements; release 0.16.0).*
+*Roadmap last updated: 2026-09-20 — v4.5 Compiler Conformance roadmapped (Phases 98-104, 27/27
+requirements mapped, no orphans).*

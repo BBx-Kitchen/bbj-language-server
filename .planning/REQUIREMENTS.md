@@ -76,39 +76,49 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | — | Pending |
-| PARSE-02 | — | Pending |
-| PARSE-03 | — | Pending |
-| PARSE-04 | — | Pending |
-| PARSE-05 | — | Pending |
-| PARSE-06 | — | Pending |
-| PARSE-07 | — | Pending |
-| PARSE-08 | — | Pending |
-| PARSE-09 | — | Pending |
-| VALID-01 | — | Pending |
-| VALID-02 | — | Pending |
-| VALID-03 | — | Pending |
-| VALID-04 | — | Pending |
-| VALID-05 | — | Pending |
-| PSRV-01 | — | Pending |
-| PSRV-02 | — | Pending |
-| PSRV-03 | — | Pending |
-| PSRV-04 | — | Pending |
-| PSRV-05 | — | Pending |
-| PSRV-06 | — | Pending |
-| PSRV-07 | — | Pending |
-| PSRV-08 | — | Pending |
-| PSRV-09 | — | Pending |
-| EXMP-01 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
-| CONF-03 | — | Pending |
+| PARSE-01 | Phase 99 | Pending |
+| PARSE-02 | Phase 99 | Pending |
+| PARSE-03 | Phase 99 | Pending |
+| PARSE-04 | Phase 100 | Pending |
+| PARSE-05 | Phase 100 | Pending |
+| PARSE-06 | Phase 100 | Pending |
+| PARSE-07 | Phase 99 | Pending |
+| PARSE-08 | Phase 100 | Pending |
+| PARSE-09 | Phase 100 | Pending |
+| VALID-01 | Phase 98 | Pending |
+| VALID-02 | Phase 98 | Pending |
+| VALID-03 | Phase 98 | Pending |
+| VALID-04 | Phase 98 | Pending |
+| VALID-05 | Phase 98 | Pending |
+| PSRV-01 | Phase 101 | Pending |
+| PSRV-02 | Phase 101 | Pending |
+| PSRV-03 | Phase 102 | Pending |
+| PSRV-04 | Phase 102 | Pending |
+| PSRV-05 | Phase 102 | Pending |
+| PSRV-06 | Phase 103 | Pending |
+| PSRV-07 | Phase 103 | Pending |
+| PSRV-08 | Phase 102 | Pending |
+| PSRV-09 | Phase 102 | Pending |
+| EXMP-01 | Phase 100 | Pending |
+| CONF-01 | Phase 98 | Pending |
+| CONF-02 | Phase 104 | Pending |
+| CONF-03 | Phase 104 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (filled by the roadmap)
+- Mapped to phases: 27
+- Unmapped: 0
+
+Phases 98-104 are defined in `.planning/ROADMAP.md`. Requirements per phase: Phase 98 — 6
+(VALID-01..05, CONF-01); Phase 99 — 4 (PARSE-01, -02, -03, -07); Phase 100 — 6 (PARSE-04, -05,
+-06, -08, -09, EXMP-01); Phase 101 — 2 (PSRV-01, -02, in the separate `bbj-ls` repository);
+Phase 102 — 5 (PSRV-03, -04, -05, -08, -09); Phase 103 — 2 (PSRV-06, -07); Phase 104 — 2
+(CONF-02, -03). No requirement is mapped to more than one phase.
+
+CONF-01 is a cross-cutting rule mapped once, to Phase 98 — the first phase that fixes constructs.
+Phases 99 and 100 carry it in their own success criteria: every construct they fix also gets a
+synthetic regression file under `bbj-vscode/test/test-data/`.
 
 ---
 *Requirements defined: 2026-09-20*
-*Last updated: 2026-09-20 after initial definition*
+*Last updated: 2026-09-20 — traceability filled by the v4.5 roadmap (27/27 mapped, no orphans)*

@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance
 status: planning
-last_updated: "2026-09-20T19:39:26.052Z"
+last_updated: "2026-09-20T20:15:00.000Z"
 last_activity: 2026-09-20
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,7 +15,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-20 (v4.4 IntelliJ Focus archived — release 0.16.0 shipped, override closeout)
+**Last Updated:** 2026-09-20 (v4.5 Compiler Conformance roadmapped — Phases 98-104, 27/27 requirements mapped)
 
 ## Project Reference
 
@@ -23,16 +23,31 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone — run `/gsd-new-milestone`
+**Current Focus:** v4.5 Compiler Conformance — close the gap between the language server's verdict and `bbjcpl`'s. Phases 98-104 are roadmapped; next is Phase 98 (A2 false alarms).
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 98 — Line-Break & Validation False Alarms (A2) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-20 — Milestone v4.5 started
+Status: Roadmapped, awaiting phase planning
+Last activity: 2026-09-20 — v4.5 roadmap written (7 phases, 27/27 requirements mapped, no orphans)
+
+### v4.5 milestone map
+
+| Phase | Name | Requirements | Repository changed |
+|-------|------|--------------|--------------------|
+| 98 | Line-Break & Validation False Alarms (A2) | VALID-01..05, CONF-01 | this repo (`bbj-vscode/src/language/validations/`) |
+| 99 | Parser Gaps — the Largest Groups | PARSE-01, -02, -03, -07 | this repo (`bbj.langium`, lexer) |
+| 100 | Parser Gaps — Remaining Groups, Long Tail & Examples | PARSE-04, -05, -06, -08, -09, EXMP-01 | this repo (grammar, `examples/`) |
+| 101 | BBj Parser Endpoint in `bbj-ls` | PSRV-01, -02 | **separate `bbj-ls` repo** (Java, BASIS GitLab) |
+| 102 | Live Compiler Diagnostics With Backward Compatibility | PSRV-03, -04, -05, -08, -09 | this repo (`bbj-vscode/`, `documentation/`) |
+| 103 | One Set of Errors — Diagnostic Reconciliation | PSRV-06, -07 | this repo (document validator) |
+| 104 | Conformance Measurement & Milestone Exit | CONF-02, -03 | private `bbj-corpus` harness + this repo's gates |
+
+Baseline to beat: A = 168, A2 = 267, B = 658 of 1,210 (54.4 %). Exit: A ≤ 25, A2 ≤ 25, B ≤ 5 %
+with the endpoint active.
 
 ## Performance Metrics
 
@@ -75,6 +90,10 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 
 ### Active Constraints
 
+- **v4.5:** the conformance corpus and harness stay outside this repository (private `bbj-corpus`, `conformance/run.mjs --ls <this repo>`), are run locally at phase boundaries and never in CI. CI protection comes from synthetic regression files under `bbj-vscode/test/test-data/` (CONF-01).
+- **v4.5:** no proprietary BBj source text enters this public repository — planning files, tests and regression files describe behaviour and use word lists only.
+- **v4.5:** Phase 101 changes the separate `bbj-ls` repository (Java, runs inside BBjServices on port 5008, BASIS GitLab, ships with BBj 26.03+). Both extensions must keep working unchanged against an older BBj whose `bbj-ls` lacks the endpoint (PSRV-04), decided by a once-per-connection probe, not a version-string comparison.
+- **v4.5:** no hand-written strict checks are added to the Langium grammar (bare expression statements, reserved words, block balance) — BBj's parser decides those contextually; they are deferred as STRICT-01/02.
 - Disclosure constraint: no v4.1 planning artifact on `main` may describe a flaw mechanism, affected file, or exploitation path for any of the 8 unpublished advisories — opaque GHSA-id-only references only. Remediation research (`SECRETS-AND-EXEC.md`, `SUPPLY-CHAIN.md`) stays untracked via `.git/info/exclude`.
 - New work lands via a branch cut from `origin/main` plus a pull request, with a per-commit register check of the source diff for planning identifiers (plan/D-xx/C-xx/COMP/CR-xx tokens) before push.
 - Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
@@ -95,6 +114,9 @@ decisions:
 - [v4.4, standing]: A runtime status or lifecycle sequence used as UAT evidence must come from a real `idea.log`, not a hand-derived trace (the Phase 97 crash-detection rework was approved on a wrong trace and reverted).
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
+- [v4.5, roadmap]: new diagnostics from the compiler's parser are errors, like the compiler's own.
+- [v4.5, roadmap]: phase order is A2 first (98), then list A by file count (99, 100) with the long-tail triage after the named groups, then the endpoint (101) and its client (102, 103), then the closing measurement (104).
+- [v4.5, roadmap]: CONF-01 is mapped once, to Phase 98; Phases 99 and 100 repeat the regression-file rule in their own success criteria rather than re-owning the requirement.
 
 ### Tech Debt
 
@@ -126,6 +148,8 @@ decisions:
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
 
+- **v4.5 Phase 101 needs a BBj 26.03-class build and the `bbj-ls` repository.** The endpoint phase cannot be verified against an older BBjServices, and Phases 102-104 consume it; Phase 102's fallback half is testable earlier against a service double, its live half is not.
+
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
@@ -142,10 +166,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-20
-Stopped at: v4.4 IntelliJ Focus archived (override closeout, 6 artifacts acknowledged)
+Stopped at: v4.5 Compiler Conformance roadmapped (Phases 98-104, 27/27 requirements mapped)
 Resume file: None
 
-Next: `/gsd-new-milestone` to define the next milestone.
+Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
 
 ## Deferred Items
 
@@ -239,12 +263,14 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-20 after the v4.4 milestone close. Per-plan metrics and per-phase decision
+*State updated: 2026-09-20 after the v4.5 roadmap. Per-plan metrics and per-phase decision
 detail for phases 70-97 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Run `/gsd-new-milestone` to define the next milestone; phase numbering continues from 98. Candidates are listed in PROJECT.md under Next Milestone Goals.
+- Run `/gsd-discuss-phase 98` (or `/gsd-plan-phase 98` to skip discussion) to start v4.5 Phase 98 — the A2 line-break and validation false alarms.
+- Before Phase 101, make sure a BBj 26.03-class build and the `bbj-ls` repository (`/home/coder/repos/bbj-ls`) are available to work in; that phase changes no file in this repository.
+- Re-run the private harness (`bbj-corpus/conformance/run.mjs --ls <this repo>`) at each fix-phase boundary; the numbers named in the roadmap's success criteria come from that run.
 - Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
 - Small follow-up candidate: the published 0.16.0 release notes list #622 under "no observable change", but the fix visibly changed the crash banner's file-type coverage.
 - Carried forward: triage the UAT-log issues #659-#662 and the SETOPTS discoverability follow-up #666.
