@@ -77,17 +77,28 @@ B = 658 of 1,210 invalid files that get no error (54.4 %).
 **Target features:**
 - Parse what the compiler accepts (A): `FIELD` as a verb, `READ RECORD(chan,LEN=n)var$`, a
   label alone on a line, `DREAD x![]`, `;rem` after `METHODEND` / `METHOD` headers /
-  `CLASSEND`, `IOLIST`, `label` as an identifier, `ON ... GOSUB` with line numbers.
+  `CLASSEND`, `IOLIST`, names BBj allows although they are language words, and a triage of
+  the long tail.
 - Stop false alarms on valid code (A2): line-break validation on `TABLE`, `RESTORE 0`,
-  `GOSUB print`, `EXIT err` and multi-line `DEF FN` headers; the conflicting-`DECLARE` and
-  missing-`METHODRET` checks.
-- Flag what the compiler rejects (B), reported as errors: bare expression statements
-  (`PRINT "x"; STR(y)`, `TRY`, `ELSEIF`, unknown verbs), reserved words as variables,
-  unterminated blocks, invalid `DIM` and `DEF` forms. The `ExpressionStatement` restriction
-  comes last because it touches every program.
+  `GOSUB print`, `EXIT err`, multi-line `DEF FN` headers and single-line `IF` forms; the
+  conflicting-`DECLARE` and missing-`METHODRET` checks.
+- Flag what the compiler rejects (B) with the compiler's own parser instead of hand-written
+  checks: a new endpoint in `bbj-ls` (the Java part that runs inside BBjServices, port 5008)
+  calls BBj's `ParserServiceAPI` on the unsaved document text and returns its errors; the
+  language server shows them while typing, detects whether the endpoint exists, and behaves
+  as before when it does not.
 - Make the repository's own `examples/` agree with the compiler (18 of 93 are rejected).
 - Every fixed group gets a small synthetic regression file, so CI protects it without the
   private corpus.
+
+**Decisions taken while scoping (2026-09-20):** new diagnostics are errors, like the
+compiler's. Hand-written strict checks in the Langium grammar (bare expression statements,
+reserved words, block balance) are not part of v4.5: BBj's parser decides contextually which
+words are verbs, keywords or names and validates parameter shapes and expression types, so
+they could only approximate it. The `bbj-ls` work is a phase of this milestone although it
+lives in a separate repository with BBj's release cycle. No proprietary BBj source text goes
+into this public repository. The endpoint ships with BBj 26.03 or later; both extensions
+must keep working unchanged against an older BBj whose `bbj-ls` lacks it.
 
 **Measurement:** the corpus and harness live outside this repository in the private
 `bbj-corpus` repository (`conformance/run.mjs --ls <this repo>`, about one minute, no Java
