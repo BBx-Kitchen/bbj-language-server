@@ -88,8 +88,8 @@ class NodeExecutableResolverVersionGatingTest {
         }
     }
 
-    private static final Predicate<String> AT_LEAST_V18 = version ->
-            version != null && "v20.0.0".equals(version);
+    private static final Predicate<String> AT_LEAST_V22 = version ->
+            version != null && "v22.0.0".equals(version);
 
     private static NodeExecutableResolver.Rejected onlyRejection(NodeExecutableResolver.Resolution result) {
         assertEquals(1, result.rejections().size());
@@ -105,7 +105,7 @@ class NodeExecutableResolverVersionGatingTest {
         CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v16.0.0");
 
         NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
-                configured, null, null, true, probe, versionOf, AT_LEAST_V18);
+                configured, null, null, true, probe, versionOf, AT_LEAST_V22);
 
         assertFalse(result.isResolved());
         NodeExecutableResolver.Rejected rejected = onlyRejection(result);
@@ -118,10 +118,10 @@ class NodeExecutableResolverVersionGatingTest {
     void aConfiguredCandidateMeetingTheMinimumVersionStillResolvesFromSettings() {
         String configured = "/opt/bbj-test/version-gate/settings-node";
         RecordingProbe probe = RecordingProbe.validAt(configured);
-        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v20.0.0");
+        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v22.0.0");
 
         NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
-                configured, null, null, true, probe, versionOf, AT_LEAST_V18);
+                configured, null, null, true, probe, versionOf, AT_LEAST_V22);
 
         assertTrue(result.isResolved());
         assertEquals(configured, result.path());
@@ -138,10 +138,10 @@ class NodeExecutableResolverVersionGatingTest {
         RecordingProbe probe = RecordingProbe.validAt(configuredTooOld, cached);
         CountingVersionResolver versionOf = new CountingVersionResolver()
                 .withVersion(configuredTooOld, "v16.0.0")
-                .withVersion(cached, "v20.0.0");
+                .withVersion(cached, "v22.0.0");
 
         NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
-                configuredTooOld, null, cached, true, probe, versionOf, AT_LEAST_V18);
+                configuredTooOld, null, cached, true, probe, versionOf, AT_LEAST_V22);
 
         assertTrue(result.isResolved());
         assertEquals(cached, result.path());
@@ -162,7 +162,7 @@ class NodeExecutableResolverVersionGatingTest {
         CountingVersionResolver versionOf = new CountingVersionResolver();
 
         NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
-                configuredMissing, null, null, true, probe, versionOf, AT_LEAST_V18);
+                configuredMissing, null, null, true, probe, versionOf, AT_LEAST_V22);
 
         assertFalse(result.isResolved());
         NodeExecutableResolver.Rejected rejected = onlyRejection(result);
@@ -175,9 +175,9 @@ class NodeExecutableResolverVersionGatingTest {
     void theVersionResolverIsConsultedAtMostOnceForADistinctCandidateWithinOneResolveCall() {
         String configured = "/opt/bbj-test/version-gate/settings-node";
         RecordingProbe probe = RecordingProbe.validAt(configured);
-        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v20.0.0");
+        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v22.0.0");
 
-        NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V18);
+        NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V22);
 
         assertEquals(1, versionOf.callsFor(configured));
     }
@@ -211,10 +211,10 @@ class NodeExecutableResolverVersionGatingTest {
     void anInaccessibleCacheDoesNotPreventAValidConfiguredCandidateFromResolving() {
         String configured = "/opt/bbj-test/version-gate/settings-node";
         RecordingProbe probe = RecordingProbe.validAt(configured);
-        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v20.0.0");
+        CountingVersionResolver versionOf = new CountingVersionResolver().withVersion(configured, "v22.0.0");
 
         NodeExecutableResolver.Resolution result = NodeExecutableResolver.resolve(
-                configured, null, null, false, probe, versionOf, AT_LEAST_V18);
+                configured, null, null, false, probe, versionOf, AT_LEAST_V22);
 
         assertTrue(result.isResolved());
         assertEquals(configured, result.path());

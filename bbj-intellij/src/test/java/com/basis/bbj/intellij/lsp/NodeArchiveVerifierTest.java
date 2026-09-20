@@ -26,8 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodeArchiveVerifierTest {
 
-    private static final String KNOWN_NAME = "node-v20.18.1-linux-x64.tar.gz";
-    private static final String UNKNOWN_NAME = "node-v20.18.1-solaris-sparc64.tar.gz";
+    private static final String KNOWN_NAME = "node-v22.23.2-linux-x64.tar.gz";
+    private static final String UNKNOWN_NAME = "node-v22.23.2-solaris-sparc64.tar.gz";
     private static final Pattern LOWER_HEX_64 = Pattern.compile("^[0-9a-f]{64}$");
 
     /**
@@ -233,12 +233,12 @@ class NodeArchiveVerifierTest {
         @Test
         void pinnedArchiveNamesContainsEachOfTheSixDeclaredFileNames() {
             Set<String> names = NodeArchiveVerifier.pinnedArchiveNames();
-            assertTrue(names.contains("node-v20.18.1-darwin-arm64.tar.gz"));
-            assertTrue(names.contains("node-v20.18.1-darwin-x64.tar.gz"));
-            assertTrue(names.contains("node-v20.18.1-linux-arm64.tar.gz"));
-            assertTrue(names.contains("node-v20.18.1-linux-x64.tar.gz"));
-            assertTrue(names.contains("node-v20.18.1-win-arm64.zip"));
-            assertTrue(names.contains("node-v20.18.1-win-x64.zip"));
+            assertTrue(names.contains("node-v22.23.2-darwin-arm64.tar.gz"));
+            assertTrue(names.contains("node-v22.23.2-darwin-x64.tar.gz"));
+            assertTrue(names.contains("node-v22.23.2-linux-arm64.tar.gz"));
+            assertTrue(names.contains("node-v22.23.2-linux-x64.tar.gz"));
+            assertTrue(names.contains("node-v22.23.2-win-arm64.zip"));
+            assertTrue(names.contains("node-v22.23.2-win-x64.zip"));
         }
 
         @Test

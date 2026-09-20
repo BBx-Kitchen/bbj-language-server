@@ -51,8 +51,8 @@ class NodePresentationTest {
         }
     }
 
-    private static final Predicate<String> AT_LEAST_V18 = version ->
-            version != null && "v20.0.0".equals(version);
+    private static final Predicate<String> AT_LEAST_V22 = version ->
+            version != null && "v22.0.0".equals(version);
 
     private static final Function<String, String> NO_VERSION = path -> null;
     private static final Predicate<String> ANY_VERSION = version -> true;
@@ -71,17 +71,17 @@ class NodePresentationTest {
         String configured = "/opt/bbj-test/presentation/too-old-node";
         RecordingProbe probe = RecordingProbe.validAt(configured);
         Function<String, String> versionOf = path -> "v16.0.0";
-        return NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V18);
+        return NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V22);
     }
 
     @Test
     void aResolvedResolutionYieldsANullSentenceAndAnEmptyActionList() {
         String configured = "/opt/bbj-test/presentation/settings-node";
         RecordingProbe probe = RecordingProbe.validAt(configured);
-        Function<String, String> versionOf = path -> "v20.0.0";
+        Function<String, String> versionOf = path -> "v22.0.0";
 
         NodeExecutableResolver.Resolution resolution =
-                NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V18);
+                NodeExecutableResolver.resolve(configured, null, null, true, probe, versionOf, AT_LEAST_V22);
 
         assertTrue(resolution.isResolved());
         assertNull(NodePresentation.bannerText(resolution));
