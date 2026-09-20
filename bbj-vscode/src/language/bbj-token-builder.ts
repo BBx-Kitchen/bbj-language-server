@@ -116,15 +116,18 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'EXIT_NO_NL') {
-            // Matches EXIT followed by horizontal whitespace then a numeric expression starter.
-            // Restricting to [0-9(+\-] ensures EXIT_NO_NL does not fire before keywords (like
-            // `else` in `if cond then exit else ...`) or identifiers that begin with letters.
-            // EXITTO keyword is not matched because 'T' is not in [0-9(+\-].
+            // Matches EXIT followed by horizontal whitespace then a numeric expression starter,
+            // OR by an identifier expression that is not one of the words that may legally
+            // follow a bare EXIT on the same line (ELSE, FI, ENDIF, THEN, REM — each checked at
+            // a word boundary, case-insensitive). This lets `EXIT err` (a variable holding an
+            // error code) parse as one exit statement while `IF x THEN EXIT ELSE ...` keeps
+            // treating EXIT as bare, so ELSE stays its own statement.
+            // EXITTO keyword is not matched because there is no whitespace between EXIT and TO.
             // Bare EXIT (at EOL or before flow-control keywords) is handled by the 'EXIT' keyword
             // token generated from the `kind='EXIT'` grammar alternative.
             return {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+[0-9(+\-])/i),
+                PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+(?!(?:ELSE|FI|ENDIF|THEN|REM)\b)[0-9(+\-A-Za-z_])/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
@@ -136,22 +139,24 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'START_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/START[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}START[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'FNEND') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/FNEND[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}FNEND[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'NEXT_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                // may match `next` or `<NL>next`, but not `*next`
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n?[^\*][ \t]*)next(?=[ \t]*(?=(;|\r?\n)))/i),
+                // may match `next` or `<NL>next`, but not `*next`, and not a GOTO/GOSUB target
+                PATTERN: this.regexPatternFunction(new RegExp(`(?<=\\r?\\n?[^\\*][ \\t]*)${BRANCH_TARGET_EXCLUSION}next(?=[ \\t]*(?=(;|\\r?\\n)))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
@@ -167,7 +172,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}METHODRET[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
@@ -182,7 +188,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'PRINT_STANDALONE_NL') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(\?|PRINT|WRITE)\s*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}(\\?|PRINT|WRITE)\\s*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: true
             };
             return token;
@@ -208,7 +215,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'KEYWORD_STANDALONE') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(new RegExp(`(${KEYWORD_STANDALONE})\\s*(\\r?\\n|;)`, 'i')),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}(${KEYWORD_STANDALONE})\\s*(\\r?\\n|;)`, 'i')),
                 LINE_BREAKS: true
             };
             return token;
@@ -219,3 +227,15 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 }
 
 const KEYWORD_STANDALONE = 'DELETE|SAVE|ENTER|READ|INPUT|EXTRACT|FIND'
+
+// A label whose name is one of the words above (or START, FNEND, NEXT, METHODRET, PRINT/?/WRITE)
+// is lost as a GOTO/GOSUB/ON...GOTO/GOSUB branch target, because the custom end-of-line tokens
+// above win the lexer's priority race and are not ID-category — the label-reference
+// cross-reference can only match an ID-category token. This lookbehind suppresses each affected
+// token immediately after GOTO or GOSUB (one to eight spaces or tabs, case-insensitive), and
+// through a bounded run of prior comma-separated targets in the same list (so the LAST target of
+// `ON x GOSUB a,b,print` is covered too, not only a single lone target) — leaving the token to
+// fall back to the generic keyword-as-identifier handling used everywhere else, which the
+// cross-reference already understands. Every quantifier here is bounded (never `*`/`+` alone) so
+// the lookbehind cannot backtrack catastrophically.
+const BRANCH_TARGET_EXCLUSION = '(?<!(?:GOTO|GOSUB)[ \\t]{1,8}(?:[_A-Za-z]\\w{0,63}@?[ \\t]{0,8},[ \\t]{0,8}){0,16})'
