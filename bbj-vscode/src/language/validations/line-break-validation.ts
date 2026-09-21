@@ -162,6 +162,15 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
                     lineBreaks.before = false;
                     break;
                 }
+                if (isLabelDecl(prev)) {
+                    // a label declaration immediately before this IF on the same line is
+                    // always a legal prefix (the same rule isStandaloneStatement already
+                    // applies one function away) -- do not walk past it looking for
+                    // something else, and do not clear on a preceding end-of-IF statement,
+                    // which must stay reported.
+                    lineBreaks.before = false;
+                    break;
+                }
                 prev = previousStatement(prev);
             }
         }
@@ -199,10 +208,11 @@ function ifEndStatementLineBreaks(): LineBreakConfig<IfEndStatement> {
                 // ENDIF: if previous is IF_THEN or ELSE same line
                 lineBreaks.both = false;
                 break;
-            } else if (isIfEndStatement(prev)) {
-                // other
-                break;
             }
+            // Walk past a preceding end-of-IF statement instead of stopping there, so a
+            // nested single-line IF closed by two chained end-of-IF statements (e.g.
+            // `if a then if b then c = 1 fi fi`) keeps looking back for its own governing
+            // IF. The same-line guard above keeps this monotonic and terminating.
             prev = previousStatement(prev);
         }
         return lineBreaks
