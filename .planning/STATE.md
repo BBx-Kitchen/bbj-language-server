@@ -24,7 +24,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-09-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
@@ -212,7 +212,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 - **Phase 98 closed 2026-09-21 with two accepted overrides** (Stephan Wald; `98-VERIFICATION.md`): B regressed 658->665 of 1,210 (root cause and per-file evidence in `98-CONFORMANCE.md`; fixing it needs the bbj-ls compiler-parser endpoint, Phases 101-103, not a Phase 98 check), and A2 = 27 vs its ≤25 gate (5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix; tracked as pending todo `2026-09-21-loosen-single-line-if-balance-rule-a2-residue`). Both deltas carry forward to Phase 104's milestone exit measurement.
-- **Phase 99 closing gap (plan 05, 2026-09-21):** the A2 gate miss (30 vs <=27, traced to bbj-validator.ts checkCommentNewLines unmasked on 8 files) and the FIELD verb-form option-tail residue (1 list-A file, the verb's value form plus a trailing `err=<line reference>` option the grammar does not accept) both go to a Phase 99 gap plan by Stephan Wald's decision, rather than being accepted as residue. The B regression (665->666, plan 04's classified lost accidental catch) is accepted as recorded, no fix path before the compiler-parser endpoint (Phases 101-103). See 99-CONFORMANCE.md's Closing run/Gate table/Closing decision sections and 99-05-SUMMARY.md.
+- **Phase 99 closed 2026-09-21 with all gates green** (A 52, A2 23, FIELD/READ/IOLIST/label groups 0; `99-VERIFICATION.md` passed 9/9). Carried forward: B = 666 of 1,210 (+1 vs the Phase 98 close, a lost accidental catch that needs the compiler-parser endpoint, Phases 101-103); the documented `FIELD` array-index form is still rejected (Phase 100 long tail); security enforcement is on and Phase 99 has no SECURITY.md yet (`/gsd-secure-phase 99`).
 
 ### Quick Tasks Completed
 
