@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: executing
-stopped_at: Completed 100-02-PLAN.md
-last_updated: "2026-09-21T20:50:02.208Z"
+stopped_at: Completed 100-03-PLAN.md
+last_updated: "2026-09-21T22:00:30.690Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
-state_head: 7cea991423b3ef63f4a26a7cee4024e6fa88ba28
+state_head: a373777a6611d70dfda8ffa27dc9a09adbba0e5d
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 18
+  completed_plans: 19
   percent: 29
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
@@ -118,6 +118,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 99 P06 | 48min | 3 tasks | 8 files |
 | Phase 100 P01 | 21min | 3 tasks | 5 files |
 | Phase 100 P02 | 24min | 3 tasks | 5 files |
+| Phase 100 P03 | 55min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,8 @@ decisions:
 - [Phase 100]: [Phase 100] Block-boundary comment tail reuses the identical '(";" comments+=CommentStatement)?' fragment already used on MethodDeclStart/ClassDecl headers, repeated at METHODEND/CLASSEND/INTERFACEEND/both DefFunction branches; DefFunction gained a comments AST property
 - [Phase 100]: [Phase 100] ClassDecl member loop widened with an optional leading NUMBER before each member and before CLASSEND (mirrors Program/MethodDecl's existing tolerance); InterfaceDecl's identical gap deliberately left untouched, no known corpus need
 - [Phase 100]: [Phase 100] line-numbered-class.bbj places each line number on its own source line rather than sharing a line with the construct it numbers, to avoid a pre-existing, unrelated line-break-validation gap (masked keywords' 'before' check is a raw line-start text check with no same-line-number tolerance for ANY masked keyword); same-line shapes are asserted parse-only in parser-keyword-statements.test.ts instead
+- [Phase 100]: [Phase 100]: The custom-pattern CATEGORIES-grant mechanism proven for 'start' generalized cleanly to four more lexer tokens (NEXT_BREAK, METHODRET_END, PRINT_STANDALONE_NL, KEYWORD_STANDALONE) covering twelve words total -- each token's own bare-statement alternative is still matched by token TYPE, unaffected by the grant, so no cross-word interference; discovered 'next' was broken despite the roadmap's own already-working claim and fixed it by the same mechanism
+- [Phase 100]: [Phase 100]: classend/methodend/interfaceend's EXCLUDED-set removal tried and reverted -- confirmed genuinely load-bearing (a malformed class/method/interface silently degrades to loose expression statements with zero errors once its own terminator is also ID-category); record left unfixed (PrintStatement's own RECORD flag ambiguity needs a lookahead gate, out of scope) -- both recorded as residue in 100-CONFORMANCE.md, no rescue mechanism built
 
 ### Tech Debt
 
@@ -232,8 +235,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T20:50:02.085Z
-Stopped at: Completed 100-02-PLAN.md
+Last session: 2026-09-21T22:00:14.465Z
+Stopped at: Completed 100-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
