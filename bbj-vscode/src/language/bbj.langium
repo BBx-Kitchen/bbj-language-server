@@ -425,7 +425,9 @@ RedimStatement:
 
 // The IOLIST statement -- items are ordinary variable references (scalars, strings, arrays with
 // an all-elements subscript), covered by the plain Expression rule; no dedicated item rule is
-// needed. At least one item is required, so a bare 'IOLIST' with no items stays a parser error.
+// needed. The first item is mandatory, so a trailing comma with nothing after it stays a parser
+// error. A bare 'IOLIST' with no items is not one: the keyword falls back to an ordinary
+// identifier and the line parses as an expression statement.
 IolistStatement:
     'IOLIST' items+=Expression (',' items+=Expression)*
 ;
