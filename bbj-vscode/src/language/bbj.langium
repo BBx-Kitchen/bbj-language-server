@@ -57,6 +57,7 @@ SingleStatement:
     ExecuteStatement |
     ExitToStatement |
     ExitWithNumberStatement |
+    FieldStatement |
     FileOptStatement |
     FileStatement |
     FnErrStatement |
@@ -235,6 +236,14 @@ SavePStatement:
 
 TableStatement:
     'TABLE' data=TABLE_DATA
+    ;
+
+// The FIELD verb (record, name, value). Distinct from FieldDecl (the class-member declaration,
+// reachable only through ClassMember) -- the two never compete at the same decision point. The
+// name part is typed one level below the relational expression, which otherwise consumes the
+// statement's own '=' as a comparison operator (mirrors Assignment's MemberCall-typed left side).
+FieldStatement:
+    'FIELD' record=Expression ',' name=AdditiveExpr '=' value=Expression
     ;
 
 SelectStatement:
