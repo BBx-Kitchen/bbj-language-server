@@ -399,6 +399,57 @@ DECLARE AlsoNoSuchProbeClass q!
             const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
             expect(conflictErrors).toHaveLength(0);
         });
+
+        test('Conflicting DECLARE of two different BBj scalar types at program scope produces a warning, not an error', async () => {
+            // Restores the scalar-vs-scalar conflict this check used to catch with no Java
+            // classpath loaded, without needing either side to resolve to a class first.
+            const result = await validate(`
+DECLARE BBjNumber sv!
+DECLARE BBjString sv!
+            `);
+            expectWarning(result, /Conflicting DECLARE/i, {
+                node: findAll(result.document, isVariableDecl, true)[1]
+            });
+            const conflictErrors = result.diagnostics.filter(
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+            );
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of two different BBj scalar types inside a method body produces an error', async () => {
+            const result = await validate(`
+class public ScalarConflictTest
+    method public void test()
+        DECLARE BBjNumber sv!
+        DECLARE BBjString sv!
+    methodend
+classend
+            `);
+            expectError(result, /Conflicting DECLARE/i, {
+                node: findAll(result.document, isVariableDecl, true)[1]
+            });
+        });
+
+        test('Conflicting DECLARE of the same BBj scalar type produces no diagnostic', async () => {
+            const result = await validate(`
+DECLARE BBjNumber sameScalar!
+DECLARE BBjNumber sameScalar!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of a BBj scalar type against an unresolvable class produces no diagnostic', async () => {
+            // Only a pair where BOTH sides are scalars is caught without resolution; a mixed
+            // pair still needs both sides to resolve, and the resolution-based rule is
+            // unchanged for it.
+            const result = await validate(`
+DECLARE BBjNumber mixedPair!
+DECLARE NoSuchProbeClassForMixedPair mixedPair!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
+        });
     });
 
     // ========================================================================
