@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: executing
-stopped_at: Completed 100-04-PLAN.md
-last_updated: "2026-09-21T22:42:14.557Z"
+stopped_at: Completed 100-05-PLAN.md
+last_updated: "2026-09-21T23:26:10.226Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
-state_head: f1c73f9b879f4ad1030817a3731cd06026b0aa2e
+state_head: 874d5450cac02076bc4df856530cdcf112f2ad3b
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 20
+  completed_plans: 21
   percent: 29
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
@@ -120,6 +120,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 100 P02 | 24min | 3 tasks | 5 files |
 | Phase 100 P03 | 55min | 3 tasks | 5 files |
 | Phase 100 P04 | 39min | 3 tasks | 7 files |
+| Phase 100 P05 | 40min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,7 @@ decisions:
 - [Phase 100]: SETDRIVE gained a small statement rule reusing the shared Err fragment; PROCESS_EVENTS/FULLTEXT option tails widened to order-independent alternations over the same fragments — The compiler accepts either written order and no spaces; the grammar previously fixed one order only, and SETDRIVE had no rule at all
 - [Phase 100]: CLEAR/BEGIN's plain-variable-list widening was tried and reverted -- it let a bare CLEAR/BEGIN silently swallow the next unrelated statement — Safely disambiguating needs a same-line-only lexer token; recorded as needing lexer work, not fixed
 - [Phase 100]: line-break-validation.ts's lineStartRegex/lineEndRegex widened to tolerate a leading line number and a bare rem with no body; InterfaceDecl gained ClassDecl's leading-NUMBER tolerance — Closes the required A2 rise from plan 02 and the orchestrator's line-number false alarms for FIELD/METHOD/CLASSEND/INTERFACEEND; the class/interface header and methodend-in-body cases are a separate, wider, pre-existing gap left recorded
+- [Phase 100]: [Phase 100]: A class's own field is read via a bare #fieldName reference, never #this!.fieldName (confirmed by direct bbjcpl probe -- #this!.method() calls work, #this!.field access never does); RELEASE takes a numeric expression, not a string; fileopen()/filesave() are valid BBj functions rejected only when their return value is discarded as a bare statement -- issue246.bbj repaired in place rather than moved+todo'd (overturns the plan's own D-18 disposition), no MODE= problem for msgbox.bbj either
 
 ### Tech Debt
 
@@ -239,8 +241,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T22:42:14.427Z
-Stopped at: Completed 100-04-PLAN.md
+Last session: 2026-09-21T23:26:10.073Z
+Stopped at: Completed 100-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
