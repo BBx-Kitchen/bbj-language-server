@@ -208,3 +208,84 @@ does not.
    each asserted by `conformance-regressions.test.ts` (zero parse errors, zero error-severity
    diagnostics, linking excluded).
 
+## 9. B-regression cause — per-file evidence (gap closure)
+
+Sections 6 and 8 above attributed the whole B regression to one mechanism (keyword-named branch
+targets reaching the linker instead of the old line-break check) and called that attribution
+"plausible, not corpus-verified". This section replays the recorded phase-boundary not-caught
+set once through the harness worker directly against a checkout of the baseline commit
+`d8071b24` (the object still exists; no fallback needed), so the newly-uncaught set — the
+intersection of today's not-caught list with the baseline tree's caught verdicts — is identified
+by direct comparison rather than inferred from the +7 delta alone.
+
+**Numbers.** 665 files probed (the full recorded not-caught set), 0 crashes, 7 newly uncaught —
+matching the recorded +7 (658 to 665) exactly. No file moved in the other direction.
+
+**Per-file verdicts.** None of the seven satisfies the claimed mechanism's own three-part test (a
+line-break message, sitting on a branch statement, whose keyword-named target is undeclared) —
+none of the seven baseline diagnostics sat on a `GOTO`/`GOSUB`/`ON...GOSUB` statement at all.
+
+| # | Baseline diagnostic (message group) | Shape, in the executor's own words | Verdict |
+|---|---|---|---|
+| 1 | Line-break: "needs to end with a line break: restore" | A `RESTORE 0` statement inside a GUI event-loop program; the compiler's real complaint sits on an unrelated branch statement later in the file whose target is an ordinary, non-keyword label name never declared anywhere in the file. | REFUTED |
+| 2 | A validation error from the METHODRET check (not a line-break message) | A short class declaration whose one method has a declared generic-collection return type and no METHODRET statement; the compiler's real complaint is on a different line, with no message text recorded for it. | REFUTED |
+| 3 | Line-break: "needs to end with a line break: restore" | A `RESTORE 0` statement inside a splitter-control GUI event-loop program; the compiler's real complaint sits on the default arm of a `switch...swend` block, with no message text recorded. | REFUTED |
+| 4 | Line-break: "needs to end with a line break: restore" | Same shape as row 3, a near-identical splitter-control program. | REFUTED |
+| 5 | Line-break: "needs to end with a line break: restore" | A `RESTORE 0` statement inside a large text-editing GUI event-loop program; the compiler's real complaint sits on an unrelated branch statement later in the file, the same undeclared-non-keyword-label shape as row 1. | REFUTED |
+| 6 | Line-break: "needs to end with a line break: restore" | A `RESTORE 0` statement inside a spinner-control GUI event-loop program; the compiler's real complaint sits on a label-declaration line combined with a same-line comment, with no message text recorded. | REFUTED |
+| 7 | Line-break: "needs to end with a line break: DEF" | A four-line snippet whose first line is a multi-line `DEF` header; the compiler's real complaint is recorded at that exact same line and text, also with no message text recorded. | REFUTED |
+
+Five (rows 1, 3, 4, 5, 6) sat on an unrelated `RESTORE 0` statement; one (row 2) was not a
+line-break message at all; one (row 7) sat on a `DEF` header, not a branch statement. The
+proximate cause differs by row, each traced to a fix this phase legitimately made elsewhere in
+the file: the RESTORE line-break fix (plan 02, VALID-02) for five files, the METHODRET severity
+downgrade (plan 03, VALID-05) for one, and the DEF-FN unclosed-body grammar fix (plan 05,
+VALID-03) for one. Each of those fixes correctly stopped flagging code the compiler accepts; in
+each of these seven files the removed false alarm happened to be the only thing the language
+server was flagging in a file the compiler independently rejects for an unrelated reason
+elsewhere. Two rows (1, 5) have a confirmed real defect: an ordinary (non-keyword-named)
+undefined label reference — a linking-only concern the harness excludes by design regardless of
+which construct exposed it. The other four rows (2, 3, 4, 6) and row 7 have a real compiler
+complaint whose specific text is not recorded anywhere this executor can read, so it cannot be
+further isolated beyond "an opaque compile-stage rejection elsewhere in the file, now uncaught by
+any check at error severity" — reading the flagged source line does not make the compiler's
+objection self-evident.
+
+**Second half of the mechanism, tested independently of these seven files.** A synthetic
+three-line program — a branch statement targeting a keyword-standalone-named label that is never
+declared — was built with invented names and run against both trees. The baseline tree produces
+two ERROR-severity line-break diagnostics on it (the exact false alarm this phase's
+keyword-branch-target fix was built to remove). The current tree produces zero line-break
+diagnostics and one linking-category diagnostic, which the harness's own diagnostic filter
+excludes by design (`worker.mts`'s `NOT_VALIDATION` set). This confirms the originally claimed
+mechanism is real and reproducible in isolation — but it explains none of the seven files that
+actually regressed in this run.
+
+**What this establishes and does not establish.** The recorded attribution of the B regression to
+the keyword-branch-target mechanism specifically is not supported by the seven files that
+actually moved: every one of them regressed for a different, now-identified reason (RESTORE,
+METHODRET, or DEF-FN), and the keyword-branch-target mechanism, while real, was not exercised by
+any of the seven. None of the seven can be fixed inside this phase's line-break/DECLARE/METHODRET
+tools without adding a new error-severity check — undefined-label detection outside linking for
+rows 1 and 5, or a check for compile-stage rejections this executor cannot even precisely
+characterize for rows 2, 3, 4, 6 and 7. Either is an architecturally significant, out-of-scope
+addition this phase's own threat model forbids attempting via a widened existing check, and is
+exactly the job the milestone already assigns to the `bbj-ls` compiler-parser endpoint (Phases
+101-103). **The decision whether to accept the residual B regression — now grounded in a
+corrected root-cause record instead of the original plausible-but-unverified story — is not made
+in this section; it belongs to the human checkpoint in this phase's final gap plan.**
+
+**Disposition of the seven refuted files.** All seven are handed to the same destination, for the
+reason above: none can be fixed by this phase's line-break/DECLARE/METHODRET tools without
+widening a check into a new, unrelated validation.
+
+| # | Disposition | Reason |
+|---|---|---|
+| 1 | Handed to Phases 101-103 | Real defect is an ordinary undefined label reference — a linking-only concern by harness design; the live compiler endpoint (Phase 102) will report it directly instead of needing a bespoke undefined-branch-target check. |
+| 2 | Handed to Phases 101-103 | Real defect's compiler message is not recorded anywhere this executor can read; the live endpoint will surface the compiler's own diagnostic directly. |
+| 3 | Handed to Phases 101-103 | Same as row 2 — no message text recorded; a switch/default-adjacent compile-stage rejection the live endpoint will surface directly. |
+| 4 | Handed to Phases 101-103 | Same as row 3. |
+| 5 | Handed to Phases 101-103 | Same real-defect shape as row 1 — an ordinary undefined label reference, linking-only by harness design. |
+| 6 | Handed to Phases 101-103 | Same as row 2 — no message text recorded. |
+| 7 | Handed to Phases 101-103 | Real defect's compiler message is not recorded; the compiler rejects the exact header line this phase's own DEF-FN grammar fix now accepts, for a reason only the live compiler endpoint can state precisely. |
+
