@@ -325,7 +325,7 @@ files describe behaviour and use word lists only.
   4. The conflicting-`DECLARE` check and the two `METHODRET` checks ("declares a return type but has no METHODRET returning a value", "is declared void and must not return a value") report no error on code `bbjcpl` accepts; they may still warn. One deliberate exception stays an error: two declarations of one name inside a single method body whose types both resolve and are unrelated.
   5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/conformance/` that the example-files test parses with zero errors and validates with zero error-severity diagnostics (linking excluded) — the CONF-01 convention Phases 99 and 100 then follow.
 
-**Plans**: 9/10 plans executed (6 executed; 4 gap-closure plans added after verification found 3 blocking gaps)
+**Plans**: 10/10 plans executed (6 executed; 4 gap-closure plans added after verification found 3 blocking gaps)
 
 Plans:
 **Wave 1**
@@ -357,7 +357,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 98-10-PLAN.md — closing conformance re-run and the human decision on the residual regression (wave 7)
+- [x] 98-10-PLAN.md — closing conformance re-run and the human decision on the residual regression (wave 7)
 
 *Ordering note:* first because it is the cheapest user-visible win in the milestone and because it establishes the regression-file convention (CONF-01) the two parser phases inherit. It must not be done by widening the checks into uselessness: each criterion is "no error on code the compiler accepts", not "no error".
 
@@ -506,7 +506,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 98. Line-Break & Validation False Alarms (A2) | 9/10 | Not started |  |
+| 98. Line-Break & Validation False Alarms (A2) | 10/10 | Not started |  |
 | 99. Parser Gaps — the Largest Groups | 0/TBD | Not started | - |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 0/TBD | Not started | - |
 | 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |

@@ -4,17 +4,17 @@ milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
-status: executing
-stopped_at: Completed 98-09-PLAN.md
-last_updated: "2026-09-21T06:15:09.069Z"
+status: verifying
+stopped_at: Completed 98-10-PLAN.md — Phase 98 closed pending re-verification
+last_updated: "2026-09-21T06:38:20.528Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 98 execution started
-state_head: 994626de5f8fca3ee3e39a623a1699bd34b30392
+state_head: af0c18bddcb1dbc67c8d7bd5b7c331f2326ed7e5
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-21 — Phase 98 execution started
 
 ### v4.5 milestone map
@@ -104,6 +104,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P07 | 15min | 3 tasks | 4 files |
 | Phase 98 P08 | 19min | 3 tasks | 5 files |
 | Phase 98 P09 | 20min | 3 tasks | 1 files |
+| Phase 98 P10 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,7 @@ decisions:
 - [Phase 98]: Phase 98 plan 08: ELSE does not increment ifEndStatementLineBreaks's counter -- an ELSE still belongs to an open IF, so it is a valid thing for an end-of-IF to close directly
 - [Phase 98]: Phase 98 plan 08: the scalar-vs-scalar conflicting-DECLARE short circuit sits before the class-resolution guard and requires BOTH sides to be a known BBj scalar type name -- a mixed scalar/unresolvable pair still falls through unchanged to bbjTypesAreRelated
 - [Phase 98]: All seven B-regressed files are REFUTED against the originally claimed keyword-branch-target mechanism; each traces to a different already-shipped fix (RESTORE, METHODRET, or DEF-FN) unmasking an unrelated real defect — Direct replay against a baseline checkout, not inferred from counts; corrects the prior plausible-but-unverified attribution ahead of the phase's final gap plan
+- [Phase 98]: Phase 98 plan 10: Stephan Wald accepted both open gap-closure gates (B regression 658->665, A2 gate miss 27 vs <=25) on 2026-09-21, closing Phase 98 with two overrides entries in 98-VERIFICATION.md and all six requirement entries ticked
 
 ### Tech Debt
 
@@ -166,12 +168,14 @@ decisions:
 
 ### Pending Todos
 
-4 pending in `.planning/todos/pending/`, all filed 2026-09-20 and acknowledged at the v4.4 close:
+5 pending in `.planning/todos/pending/`: 4 filed 2026-09-20 and acknowledged at the v4.4 close, 1
+filed 2026-09-21 at the Phase 98 close:
 
 - `2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection` — severity major; the Phase 97 attempt was reverted
 - `2026-09-20-status-transition-log-prints-a-stale-previous-status` — only makes sense together with the one above
 - `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
+- `2026-09-21-loosen-single-line-if-balance-rule-a2-residue` — Phase 98's accepted A2 gate miss (27 vs ≤25); 5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix
 
 ### Blockers/Concerns
 
@@ -190,7 +194,7 @@ decisions:
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
-- Phase 98 closing measurement: B regressed 658->665 of 1,210 (roadmap success criterion 5 only partially met). Root cause and full triage in 98-CONFORMANCE.md; fixing B properly needs the bbj-ls compiler-parser endpoint (Phases 101-103), not a Phase 98 line-break/DECLARE/METHODRET check.
+- **Phase 98 closed 2026-09-21 with two accepted overrides** (Stephan Wald; `98-VERIFICATION.md`): B regressed 658->665 of 1,210 (root cause and per-file evidence in `98-CONFORMANCE.md`; fixing it needs the bbj-ls compiler-parser endpoint, Phases 101-103, not a Phase 98 check), and A2 = 27 vs its ≤25 gate (5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix; tracked as pending todo `2026-09-21-loosen-single-line-if-balance-rule-a2-residue`). Both deltas carry forward to Phase 104's milestone exit measurement.
 
 ### Quick Tasks Completed
 
@@ -203,8 +207,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T06:15:09.026Z
-Stopped at: Completed 98-09-PLAN.md
+Last session: 2026-09-21T06:38:20.481Z
+Stopped at: Completed 98-10-PLAN.md — Phase 98 closed pending re-verification
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
