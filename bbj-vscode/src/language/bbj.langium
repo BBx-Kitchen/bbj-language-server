@@ -654,7 +654,7 @@ VerifyOption:
 ;
 
 LastVerifyOption:
-    ('LEN=' min=Expression ',' max=Expression) // LEN=intA,intB 
+    ('LEN' '=' min=Expression ',' max=Expression) // LEN=intA,intB
     | min=Expression // numvar:(4) num A numeric expression can impose range and precision on the numeric input
 ;
 
