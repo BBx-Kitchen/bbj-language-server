@@ -305,12 +305,12 @@ StringStatement:
 
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? (
-        RPAREN_NO_NL '=' value=Expression
+        RPAREN_NO_NL '=' value=Expression (';' comments+=CommentStatement)?
         // FNEND is optional: a multi-line function whose body is never closed (the
         // compiler accepts this, running the body to end of file) must not force the
         // parser's fallback ExpressionStatement interpretation of the header just
         // because a mandatory tail token never arrives.
-        | RPAREN_NL (body += (DefReturn | Statement))* FNEND?
+        | RPAREN_NL (body += (DefReturn | Statement))* FNEND? (';' comments+=CommentStatement)?
     );
 
 DefReturn:
@@ -339,16 +339,16 @@ Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
 
 ClassDecl returns BbjClass:
-    'CLASS' Visibility Static name=ValidName 
+    'CLASS' Visibility Static name=ValidName
         Extends?
         ('IMPLEMENTS' implements+=QualifiedClass)? (',' implements+=QualifiedClass)*  (';' comments+=CommentStatement)?
     (members+=ClassMember | Comments)*
-    'CLASSEND'
+    'CLASSEND' (';' comments+=CommentStatement)?
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
         (members+=InterfaceMethodDecl | Comments)*
-    'INTERFACEEND'
+    'INTERFACEEND' (';' comments+=CommentStatement)?
 ;
 
 fragment Static:
@@ -383,7 +383,7 @@ MethodDecl returns MethodDecl:
     Comments?
     (
         (body+=(DefFunction | Statement))*
-        endTag='METHODEND'
+        endTag='METHODEND' (';' comments+=CommentStatement)?
     )?
 ;
 
@@ -1005,6 +1005,7 @@ interface DefFunction extends NamedElement {
     parameters: NamedElement[];
     value?: Expression;
     body?: DefFunctionStatement[];
+    comments: CommentStatement[]
 }
 
 interface VariableDecl extends NamedElement {
