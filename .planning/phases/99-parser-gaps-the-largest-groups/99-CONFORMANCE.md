@@ -611,6 +611,25 @@ class-member `FieldDecl` shape, a chance identifier, or something else cannot be
 corpus read, which is out of scope for this task; it is handed to the orchestrator as an open note,
 not asserted as a specific cause.
 
+**Orchestrator per-file look (2026-09-21), correcting the note above.** The file-set evidence holds
+(the file entered list A's `FIELD` row at plan 04, when its earlier `IOLIST` stop cleared), but the
+"unrelated failing line" reading does not. The flagged line in the harness details file IS the
+`FIELD` verb in its value form, followed by a trailing comma-separated error-branch option after the
+value — own-words shape: `field <record>,<name>=<value>,err=<line reference>`. The parser stops at
+that second comma ("Expecting end of file but found `,`"). Plan 02's `FieldStatement` rule carries
+no options tail, so this is a genuine residue of the verb form (PARSE-02), not a chance identifier
+and not a class-member declaration. It was hidden behind the `IOLIST` stop until plan 04. Gate row 2
+stays **PARTIAL** until the rule accepts the option tail.
+
+## Closing decision (2026-09-21)
+
+Stephan Wald chose to close the two open gates with a gap plan inside this phase rather than accept
+them as residue: (1) give `FieldStatement` the trailing option tail described above, and (2) fix the
+`checkCommentNewLines` false alarm behind the A2 rise (8 files, one shape: a single-line
+`if … then … fi` statement continued on a `:`-continuation line that ends in `; rem …`), then
+re-measure. The B rise (665 -> 666, lost accidental catch, plan 04) is accepted as recorded — it has
+no fix path inside this repository before the compiler-parser endpoint (Phases 101-103).
+
 ## A2 movement
 
 Comparison is against the recorded Phase 98 closing set (`98-CONFORMANCE.md` sections 7 and 10
