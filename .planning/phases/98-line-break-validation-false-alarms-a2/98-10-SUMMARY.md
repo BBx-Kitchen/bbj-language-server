@@ -164,3 +164,15 @@ None - no external service configuration required.
 ---
 *Phase: 98-line-break-validation-false-alarms-a2*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/98-line-break-validation-false-alarms-a2/98-10-SUMMARY.md`
+- FOUND: `.planning/todos/pending/2026-09-21-loosen-single-line-if-balance-rule-a2-residue.md`
+- FOUND commit: `5a4e70e2` (docs(98-10): record the human decision on both open gap-closure gates)
+- FOUND commit: `57613d79` (docs(98-10): add plan 10 summary)
+- FOUND commit: `8955dd70` (docs(98-10): record closing conformance re-run on the final tree — prior executor)
+- Re-ran Task 3's overrides-block verify script: `overrides_block=true`, `must_have=true`, `reason=true`, `accepted_by=true`, `accepted_at=true`, `gaps_block_intact=true`.
+- Re-ran Task 3's REQUIREMENTS.md verify script: `VALID-01=ticked`, `VALID-02=ticked`, `VALID-03=ticked`, `VALID-04=ticked`, `VALID-05=ticked`, `CONF-01=ticked`.
+- Re-ran Task 3's diff-size verify: `REQUIREMENTS.md` 12+12=24 changed lines, `98-VERIFICATION.md` 21+1=22 changed lines — both under the 30-line rewrite threshold.
+- Re-ran the register check over the whole phase source diff (`5fb113cb..HEAD -- bbj-vscode`): 0 matches.
