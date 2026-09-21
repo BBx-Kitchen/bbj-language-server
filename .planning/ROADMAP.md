@@ -375,7 +375,28 @@ Plans:
   4. The `IOLIST` statement parses, standalone and behind a label, with a long item list.
   5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or `LABEL`; A2 stays at or below its Phase 98 number (27); each group has its synthetic regression file (CONF-01). B is not a gate, but every newly-uncaught file is identified by file-set diff and classified with per-file evidence (99-CONTEXT D-11).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 99-01-PLAN.md — tracer: the `LEN=` unfuse end to end, so the `RECORD` verbs' channel option parses and `LEN` works as a variable name (wave 1)
+
+**Wave 2** *(blocked on Wave 1 — same grammar file, same regenerated artifacts)*
+
+- [ ] 99-02-PLAN.md — `FIELD` as a verb, as a new statement rule whose name part sits below the relational expression level (wave 2)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 99-03-PLAN.md — the word `label` as a name: a widened feature name plus a narrow label-name rule for declarations and branch targets (wave 3)
+
+**Wave 4** *(blocked on Wave 3 — every shape of this group sits behind a label)*
+
+- [ ] 99-04-PLAN.md — the `IOLIST` statement, standalone and behind a label, with a long item list (wave 4)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 99-05-PLAN.md — closing conformance run, the gate table, the disposition of what remains and the criterion-by-criterion attestation (wave 5)
 
 *Ordering note:* the four groups here are the ones measured by file count in `bbj-corpus/conformance/REPORT.md` (45 + 38 + about 25 + 3 ≈ 111 files, regrouped by real cause in 99-CONTEXT.md). They are grouped into one phase because all four are grammar-level statement-shape changes that regenerate the same Langium artifacts; splitting them would regenerate and re-verify the grammar twice for no verification benefit.
 

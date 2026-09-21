@@ -41,26 +41,45 @@ created: "2026-09-21"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| *(filled by the planner)* | | | PARSE-01 | — | N/A | unit (parse + validate) | quick run command; fixture `test/test-data/conformance/field-verb.bbj` | ❌ W0 | ⬜ pending |
-| | | | PARSE-02 | — | N/A | unit (parse + validate) | quick run command; fixture `test/test-data/conformance/record-verbs-len-option.bbj` | ❌ W0 | ⬜ pending |
-| | | | PARSE-03 | — | N/A | unit (parse + validate) | quick run command; fixture `test/test-data/conformance/label-word-as-name.bbj` | ❌ W0 | ⬜ pending |
-| | | | PARSE-07 | — | N/A | unit (parse + validate) | quick run command; fixture `test/test-data/conformance/iolist-statement.bbj` | ❌ W0 | ⬜ pending |
+| 99-01-T1 | 99-01 | 1 | PARSE-02 | T-99-01-03 | generated parser regenerated, never hand-edited, asserted no older than the grammar | unit (parse + validate) | `cd …/bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run test/conformance-regressions.test.ts`; fixture `test/test-data/conformance/record-verbs-len-option.bbj` | ❌ created by this task | ⬜ pending |
+| 99-01-T2 | 99-01 | 1 | PARSE-02 | T-99-01-01 | no planning identifier and no corpus text in the source diff (register check) | unit (parse) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/line-break-validation.test.ts test/line-break-walk-termination.test.ts test/example-files.test.ts` | ❌ created by this task | ⬜ pending |
+| 99-01-T3 | 99-01 | 1 | PARSE-02 | T-99-01-01 | counts and word groups only; corpus-path grep over the record | manual-only (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ❌ record created by this task | ⬜ pending |
+| 99-02-T1 | 99-02 | 2 | PARSE-01 | T-99-02-04 | the class-member declaration rule and its no-type error stay untouched | unit (parse + validate) | `… npx vitest run test/conformance-regressions.test.ts test/parser.test.ts test/classes.test.ts test/declare-in-class.test.ts` | ✅ (fixture in T2) | ⬜ pending |
+| 99-02-T2 | 99-02 | 2 | PARSE-01 | T-99-02-01 | hand-written fixture, invented names, register check | unit (parse + validate) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/line-break-validation.test.ts test/example-files.test.ts` | ❌ fixture created by this task | ⬜ pending |
+| 99-02-T3 | 99-02 | 2 | PARSE-01 | T-99-02-01 | counts and word groups only; corpus-path grep | manual-only (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ pending |
+| 99-03-T1 | 99-03 | 3 | PARSE-03 | T-99-03-02 | widening confined to one narrow name rule plus one feature-name alternative; library keyword untouched | unit (parse + link) | `… npx vitest run test/conformance-regressions.test.ts test/parser.test.ts test/definition.test.ts test/rename.test.ts test/builtin-functions-library.test.ts` | ✅ (fixture in T2) | ⬜ pending |
+| 99-03-T2 | 99-03 | 3 | PARSE-03 | T-99-03-01 | hand-written fixture, invented names apart from the word under test; register check | unit (parse + link) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/definition.test.ts test/line-break-validation.test.ts test/example-files.test.ts` | ❌ fixture created by this task | ⬜ pending |
+| 99-03-T3 | 99-03 | 3 | PARSE-03 | T-99-03-01 | counts, word groups and own-words side effects only; corpus-path grep | manual-only (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ pending |
+| 99-04-T1 | 99-04 | 4 | PARSE-07 | T-99-04-04 | the scoping check's file and severity stay untouched | unit (parse + validate + link) | `… npx vitest run test/conformance-regressions.test.ts test/parser.test.ts test/variable-scoping.test.ts test/definition.test.ts` | ✅ (fixture in T2) | ⬜ pending |
+| 99-04-T2 | 99-04 | 4 | PARSE-07 | T-99-04-01 | hand-written fixture, invented names; register check | unit (parse + validate + link) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/variable-scoping.test.ts test/line-break-validation.test.ts test/example-files.test.ts` | ❌ fixture created by this task | ⬜ pending |
+| 99-04-T3 | 99-04 | 4 | PARSE-07 | T-99-04-01 | counts and word groups only; corpus-path grep | manual-only (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ pending |
+| 99-05-T1 | 99-05 | 5 | PARSE-01, PARSE-02, PARSE-03, PARSE-07 | T-99-05-03 | the measured tree is the committed tree (generated parser current, source status clean) | whole suite + register check | `cd …/bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2` (judged on `numFailedTests: 0`) | ✅ | ⬜ pending |
+| 99-05-T2 | 99-05 | 5 | PARSE-01, PARSE-02, PARSE-03, PARSE-07 | T-99-05-01, T-99-05-02 | gate table with reproducible arithmetic; no cause written without a per-file look | manual-only (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ pending |
+| 99-05-T3 | 99-05 | 5 | PARSE-01, PARSE-02, PARSE-03, PARSE-07 | T-99-05-02 | a missed gate returns a blocking checkpoint instead of an adjusted rule | unit (parse + validate) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/example-files.test.ts` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+`…` in the command column stands for `/home/coder/repos/bbj-language-server`; every command runs
+with cwd = `bbj-vscode` and `RUN_BBJ_TESTS=0`, as the Test Infrastructure table above states.
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `bbj-vscode/test/test-data/conformance/field-verb.bbj` — new fixture
-- [ ] `bbj-vscode/test/test-data/conformance/record-verbs-len-option.bbj` — new fixture
-- [ ] `bbj-vscode/test/test-data/conformance/label-word-as-name.bbj` — new fixture
-- [ ] `bbj-vscode/test/test-data/conformance/iolist-statement.bbj` — new fixture
+- [ ] `bbj-vscode/test/parser-keyword-statements.test.ts` — new test file, created by 99-01-T2; the
+      shared home for this phase's still-flagged negatives and keyword-as-identifier cases. Every
+      later plan adds one `describe` block to it and reuses its single services instance and
+      `beforeAll` (a second instance re-triggers the known hook-timeout flake).
+- [ ] `bbj-vscode/test/test-data/conformance/record-verbs-len-option.bbj` — new fixture (99-01-T1)
+- [ ] `bbj-vscode/test/test-data/conformance/field-verb.bbj` — new fixture (99-02-T2)
+- [ ] `bbj-vscode/test/test-data/conformance/label-word-as-name.bbj` — new fixture (99-03-T2)
+- [ ] `bbj-vscode/test/test-data/conformance/iolist-statement.bbj` — new fixture (99-04-T2)
 
-No new test infrastructure: `test/conformance-regressions.test.ts` already picks up every `.bbj`
-file in that folder and asserts zero parse errors and zero error-severity diagnostics (linking
-excluded). "Still flagged" and keyword-as-identifier cases go into a parser test file, since a
-fixture in the conformance folder must be clean by definition.
+No new fixture-discovery infrastructure: `test/conformance-regressions.test.ts` already picks up every
+`.bbj` file in that folder and asserts zero parse errors and zero error-severity diagnostics (linking
+excluded). "Still flagged" and keyword-as-identifier cases cannot live there — a fixture in the
+conformance folder must be clean by definition — which is why the new parser test file above is the
+one piece of Wave 0 test scaffolding this phase needs.
 
 ---
 
