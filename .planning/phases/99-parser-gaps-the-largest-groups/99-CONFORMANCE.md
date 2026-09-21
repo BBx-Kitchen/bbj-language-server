@@ -900,11 +900,16 @@ needed per D-11/the gate table's own row 4 wording, since B did not rise above 6
 
 ## Final gate table
 
+**Row 3 corrected by "Run: plan 06 follow-up" below (2026-09-21).** The follow-up's own 99-06-T2b
+fix closed the file-set condition this row originally left unmet; the struck values are what this
+table originally recorded (true of the tree at commit `cf29c9d4`), the values beside them are this
+plan's closing state.
+
 | # | Gate | Value | File-set condition | Verdict |
 |---|---|---|---|---|
 | 1 | List A at or below 80 | 52 | 0 files newly entered A | **PASS** |
 | 2 | No remaining list-A first-word group of `FIELD`, `READ`, `IOLIST` or the word `label` | `FIELD`: 0 · `READ`: 0 · `IOLIST`: 0 · `LABEL`: 0 | — | **PASS** |
-| 3 | A2 at or below 27 | 27 | **4 files newly entered A2** | **numeric PASS; file-set condition NOT met** |
+| 3 | A2 at or below 27 | ~~27~~ **23** | ~~4 files newly entered A2~~ **0 files newly entered A2** | ~~numeric PASS; file-set condition NOT met~~ **PASS** |
 | 4 | B — recorded with evidence status, not gated | 666 (unchanged since plan 05; +1 vs the Phase 98 close baseline of 665, carried forward as a previously-classified lost accidental catch) | 0 files newly entered B | **recorded** |
 
 ## Task 3 conditional stop (2026-09-21)
@@ -923,3 +928,119 @@ orchestrator's job, not this plan's — this section hands over counts and the m
 writing no cause, mechanism or attribution for why these 4 specific files newly entered A2. No source
 file was touched to change this number. The plan does not seal here; it returns a blocking-human
 checkpoint instead, per its own Task 3 step 7.
+
+**Resolution (2026-09-21), by the orchestrator's per-file look, own words.** All 4 files newly
+entering A2 carry the same message on the same shape: an argument-less standalone verb statement,
+followed by a `;`, followed by a comment on the same physical line (twice with a leading label).
+The cause: one custom lexer token built for that whole family of bare verb keywords only matches
+when a trailing `;` or line break directly follows, and its match consumes that terminator into its
+own token text — so the checkCommentNewLines rework from earlier in this plan, which decides
+separation from the type of the CST leaf immediately in front of the comment, found no leaf of that
+type in front of the comment (the terminator lives inside the *previous* leaf's own text) and
+flagged a comment that is, in the source, properly separated. Closed narrowly in 99-06-T2b: a leaf
+of that specific token type is now treated as already carrying its own separator. See "Run: plan 06
+follow-up" below for the re-measurement; the Final gate table above is corrected in place.
+
+## Run: plan 06 follow-up
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `8fe67560` (99-06-T2b's `checkCommentNewLines`
+  exemption for a terminator-swallowing leaf, already committed; no source change since).
+  `sourceModified: false`, 78 seconds.
+- Before-snapshot (this follow-up's own): `/home/coder/repos/bbj-corpus/conformance/snapshots/details-99-06b-before.json`,
+  copied from `details.json` immediately before this run (held the "Run: plan 06 (gap closure
+  re-measure)" state: A 52, A2 27, B 666).
+- Before-snapshot (the whole gap-closure plan, i.e. the 99-05 close): `/home/coder/repos/bbj-corpus/conformance/snapshots/details-99-06-before.json`
+  (A 53, A2 30, B 666), unchanged since this plan's Task 3 first ran.
+- Preconditions confirmed before the run: whole vitest suite `numFailedTests: 0` (2090 passed, 91
+  skipped of 2181; 6 reported "failed suites" are hook-timeout contention on 5 files under load
+  plus the documented pre-existing `installed-extension-e2e.test.ts` environment failure, none of
+  them a failed test — see 99-VALIDATION.md's Test Infrastructure judging rule); `bbj-vscode/src/language/generated/ast.ts`
+  no older than `bbj.langium` (no grammar change since Task 1; confirmed by direct mtime
+  comparison, no regeneration needed); `git status --porcelain -- bbj-vscode/src` printed nothing;
+  the register check over the phase's whole source diff (merge-base of HEAD with `origin/main`)
+  produced no match.
+
+**Direction of worse, restated:** for A, A2 and B alike, a **higher** file count is worse; a lower
+count is always better. Every delta below is computed as `this run − baseline`, so a negative delta
+is an improvement and a positive delta is a regression, for all three measures.
+
+**Numbers.**
+
+| Measure | Phase 98 close | Plan 06 (gap-closure re-measure) | This run | Δ vs Phase 98 close | Δ vs plan 06 re-measure | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 167 | 52 | 52 | −115 | 0 | ≤ 80 | **PASS** |
+| A2 — valid code that parses but gets a validation error | 27 | 27 | 23 | −4 | −4 | ≤ 27 | **PASS** |
+| B — invalid code not flagged, of 1,210 | 665 | 666 | 666 | +1 | 0 | recorded, not gated | **unchanged since plan 06's own re-measure** |
+
+**File-set differences against the before-snapshot of THIS follow-up (`details-99-06b-before.json`
+— sizes only, per D-03/D-11/D-12):**
+
+```
+falseRejects (A):  before 52, after 52 — left: 0, entered: 0
+falseAlarms (A2):  before 27, after 23 — left: 4, entered: 0
+missed (B):        before 666, after 666 — left: 0, entered: 0
+```
+
+The 4 files that left A2 are, by a before/after tally against each snapshot's own `id`, **exactly**
+the 4 files that had newly entered A2 in the run this section resolves — every one tagged with the
+`Comments need to be separated by line breaks or ';'.` message before this run, and absent from A2
+entirely after it. 0 files entered A2, A or B.
+
+**File-set differences against the before-snapshot of the WHOLE gap-closure plan
+(`details-99-06-before.json`, i.e. the 99-05 close — sizes only):**
+
+```
+falseRejects (A):  before 53, after 52 — left: 1, entered: 0
+falseAlarms (A2):  before 30, after 23 — left: 7, entered: 0
+missed (B):        before 666, after 666 — left: 0, entered: 0
+```
+
+The 1 file that left A carries the `Expecting end of file but found `,`.` message before this run —
+the same `FIELD`-verb trailing-option shape Task 1 closed, unchanged since the "Run: plan 06 (gap
+closure re-measure)" section above. The 7 files that left A2 all carry the
+`Comments need to be separated by line breaks or ';'.` message before this run — the same 8 minus
+the 1 still-flagged glued-comment shape recorded in that same section, all now cleared by the two
+fixes this plan made across its two tasks. **0 files entered either list, across the whole plan.**
+
+**A — by first word of the line the parser stops at (this run, 52 files, 29 groups, computed
+directly from `details.json` — byte-identical to the "Run: plan 06 (gap closure re-measure)" table
+above, since 0 files moved on list A between the two runs).** `FIELD`, `READ`, `IOLIST` and `LABEL`
+remain fully absent (0 each).
+
+**A2 — by message (this run, 23 files, computed the same way against the full `details.json`).**
+
+| Files | Message group |
+|---|---|
+| 6 | This statement needs to start in a new line: _ |
+| 3 | This statement needs to end with a line break: return |
+| 1 each | endif; `Field _ is declared _ but is initialized with a number.`; `x[all]`; `_ is only allowed inside a SWITCH block.`; `fi`; `DECLARE is not valid at class member level...`; `The member _ from the type _ ... is not visible`; `MODE option only supported in MKEYED Verb.`; `LET num = _._`; `LET tiny = _`; `LET val = _`; `gravitational_constant = _._`; `log.DURATION = log.END-log._`; `else` |
+
+**A2 movement against the plan 06 (gap-closure re-measure) set (27 files), by message group:**
+
+| Files (plan 06 re-measure) | This run | Δ | Message group |
+|---|---|---|---|
+| 4 | 0 | −4 | Comments need to be separated by line breaks or _. |
+
+Every other message group is unchanged in count between the two runs. No new message group
+appeared; none disappeared other than the one above. Arithmetic reconciles: 27 (plan 06 re-measure)
+− 4 = 23 (this run).
+
+**B — no movement.** File-set diff against both before-snapshots shows 0 files left, 0 entered; B
+stays at 666, identical to the state the "Run: plan 06 (gap closure re-measure)" section recorded.
+
+## Final gate table (plan 06 follow-up, closing)
+
+| # | Gate | Value | File-set condition | Verdict |
+|---|---|---|---|---|
+| 1 | List A at or below 80 | 52 | 0 files newly entered A (either snapshot) | **PASS** |
+| 2 | No remaining list-A first-word group of `FIELD`, `READ`, `IOLIST` or the word `label` | `FIELD`: 0 · `READ`: 0 · `IOLIST`: 0 · `LABEL`: 0 | — | **PASS** |
+| 3 | A2 at or below 27 | 23 | 0 files newly entered A2 (either snapshot) | **PASS** |
+| 4 | B — recorded with evidence status, not gated | 666 (unchanged since plan 06's own re-measure; +1 vs the Phase 98 close baseline of 665, carried forward as a previously-classified lost accidental catch) | 0 files newly entered B (either snapshot) | **recorded** |
+
+**Conditional stop, resolved.** Every gate row above reads PASS, A2 (23) is at or below 27, B (666)
+is at or below 666, and the file-set difference shows no file newly entering A and none newly
+entering A2 against either before-snapshot — the condition the first Task 3 run could not clear.
+The plan seals here; see `99-06-SUMMARY.md`.
