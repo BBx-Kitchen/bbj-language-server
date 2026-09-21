@@ -1,0 +1,26 @@
+REM Protects empty array brackets meaning the whole array wherever an array element can
+REM stand: a DREAD target in every suffix, a multi-item DREAD list, a PRINT item alone and
+REM mixed with a string literal, a PRINT list mixing an indexed element and a whole-array
+REM element in written order, an assignment target, a CALL and an XCALL argument, a
+REM method-call argument, a function-call argument with and without a trailing error option,
+REM a nested interop copy call, and upper-, lower- and mixed-case spellings.
+DREAD NOSUF[]
+DREAD STRVAL$[]
+DREAD OBJVAL![]
+DREAD NUMVAL%[]
+DREAD LISTA$[],LISTB[]
+PRINT OBJVAL![]
+PRINT "LABELTXT",STRVAL$[]
+PRINT LISTA[1],OBJVAL![]
+OBJVAL![] = 1
+CALL "SOMEPROC",LISTA[]
+XCALL "SOMEPROC",LISTA[]
+HOLDERX!.PUT("KEYVAL",STRVAL$[])
+RESULTX = VECTORFN(STRVAL$[])
+RESULTY = VECTORFN(STRVAL$[],ERR=RECOVERPT)
+CALL BBJAPI().COPY(OBJVAL!,LISTA[])
+PRINT NOSUF[ALL]
+RECOVERPT:
+RESULTX = 1
+print objval![]
+Print Objval![]

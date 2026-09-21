@@ -830,7 +830,7 @@ MemberCall infers Expression:
     PrimaryExpression
     (
         {infer MemberCall.receiver=current} '.' (member=[NamedElement:FeatureName])?
-        | {infer ArrayElement.receiver=current} "[" (all?="ALL" | indices+=Expression (',' indices+=Expression)*) "]"
+        | {infer ArrayElement.receiver=current} "[" (all?="ALL" "]" | indices+=Expression (',' indices+=Expression)* "]" | all?="]")
         | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? Err? RPAREN
     )*
 ;
