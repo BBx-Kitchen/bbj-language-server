@@ -4,16 +4,16 @@ milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
-status: planning
+status: executing
 stopped_at: Phase 100 context gathered
-last_updated: "2026-09-21T18:25:43.806Z"
+last_updated: "2026-09-21T19:38:35.305Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 99 complete, transitioned to Phase 100
-state_head: 0630f9e66666c2e6e7590a014545932596e9e3b5
+state_head: f929e637c7bd390535fee886da00fb261cda0ce4
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 16
+  total_plans: 22
   completed_plans: 16
   percent: 29
 ---
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 ## Current Position
 
-Phase: 100 — Parser Gaps — Remaining Groups, Long Tail & Examples
+Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,

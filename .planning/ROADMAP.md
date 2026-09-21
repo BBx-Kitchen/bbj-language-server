@@ -421,12 +421,32 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 100-01-PLAN.md — empty brackets mean the whole array wherever an array element can stand, plus the type-side bracket shapes and their downstream reads (phase tracer)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 100-02-PLAN.md — a comment after every block boundary, and line-numbered class code
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 100-03-PLAN.md — the oracle word sweep and the per-word fixes in the three claimed positions
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 100-04-PLAN.md — the cheap long-tail shapes, and the shape-level residue list
 - [ ] 100-05-PLAN.md — `examples/` either compiles or is deliberately invalid with asserted diagnostics
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 100-06-PLAN.md — closing measurement, gate table and per-criterion attestation
+
+**Cross-cutting constraints:**
+
+- `bbj-vscode/src/language/generated/` is produced by `npm run langium:generate` under Node 22, never hand-edited and never staged (D-22).
+- The private conformance harness has been run after this construct group landed, with the harness details file snapshotted first and file sets diffed rather than totals compared (D-26).
+- Only counts, first-word groups, message groups, word lists and own-words shape descriptions reach tracked files — no corpus file name, path or source line (D-27).
 
 *Ordering note:* the triage (PARSE-09) runs after the named-group fixes, inside this phase, because it measures what those fixes left behind. `examples/` rides here rather than in a phase of its own: it is the same kind of long-tail clean-up, it is verified by the same `bbjcpl` oracle, and on its own it would be a one-requirement phase.
 
