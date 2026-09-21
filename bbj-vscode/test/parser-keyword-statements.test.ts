@@ -7,8 +7,9 @@
 import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
+import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { LetStatement, Program, isLetStatement } from '../src/language/generated/ast.js';
+import { FieldStatement, LetStatement, Program, isFieldStatement, isLetStatement } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -86,5 +87,77 @@ describe('RECORD verbs LEN= channel option', () => {
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
         expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('FIELD verb', () => {
+    test.each([
+        ['name-part: string variable', 'field rec$,name$=dec(x$)\n'],
+        ['name-part: string literal, spaced', 'FIELD REC$, "NAME" = "MARY"\n'],
+        ['name-part: concatenation with masked str()', 'field rec$,"PRE_"+str(n:"00") = cvs(a$,3)\n'],
+        ['value-part: nested function call', 'field rec$,name$=dec(str(x$))\n'],
+        ['value-part: negative number', 'field rec$,name$=-5\n'],
+        ['value-part: num() call', 'field rec$,name$=num(x$)\n'],
+        ['value-part: method-call result', 'field rec$,name$=obj!.getName()\n'],
+        ['method body', 'CLASS PUBLIC c\nMETHOD PUBLIC VOID m()\nfield rec$,name$=dec(x$)\nMETHODEND\nCLASSEND\n'],
+        ['upper case', 'FIELD REC$,NAME$=1\n'],
+        ['lower case', 'field rec$,name$=1\n'],
+        ['mixed case', 'Field Rec$,Name$=1\n'],
+    ])('%s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('the verb line produces exactly one FieldStatement with record, name and value present', async () => {
+        const parsed = await parse('field rec$,name$=dec(x$)\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        expect(statements).toHaveLength(1);
+        expect(isFieldStatement(statements[0]), 'statement is a FieldStatement').toBe(true);
+        const fieldStatement = statements[0] as FieldStatement;
+        expect(fieldStatement.record).toBeDefined();
+        expect(fieldStatement.name).toBeDefined();
+        expect(fieldStatement.value).toBeDefined();
+    });
+
+    test('a FIELD verb without a value is still a parser error', async () => {
+        // Confirmed by probe: this is a parser error both before and after the FieldStatement
+        // rule was added -- the value part is mandatory (no '?' marker on the rule).
+        const parsed = await parse('field rec$,name$\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test('a class-member FIELD declaration without a type is still a parser error', async () => {
+        const parsed = await parse('CLASS PUBLIC c\nFIELD PUBLIC x\nCLASSEND\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test('a class-member FIELD declaration with a type stays clean', async () => {
+        const result = await parse('CLASS PUBLIC c\nFIELD PUBLIC INTEGER x\nCLASSEND\n');
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test.each([
+        ['field=5', 'field=5\n'],
+        ['x=field+1', 'x=field+1\n'],
+        ['field(1)', 'field(1)\n'],
+        ['field.x', 'field.x\n'],
+        ['myfield=1', 'myfield=1\n'],
+        ['fieldname$="a"', 'fieldname$="a"\n'],
+        ['nfield(1)=2', 'nfield(1)=2\n'],
+        ['for i=1 to nfield', 'for i=1 to nfield\nnext i\n'],
+        ['if myfield then x=1', 'if myfield then x=1\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('the verb produces no error-severity diagnostic (linking excluded)', async () => {
+        const validated = await validate('field rec$,name$=dec(x$)\n');
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
     });
 });
