@@ -41,6 +41,7 @@ describe('RECORD verbs LEN= channel option', () => {
         ['lower case', 'read record(1,len=10)a$\n'],
         ['mixed case', 'Read Record(1,Len=10)a$\n'],
         ['verifier LEN=a,b form', 'READ(1)a$:(LEN=1,10)\n'],
+        ['bare len as a variable', 'len=1\nx=len+1\n'],
     ])('%s parses with zero lexer and parser errors', async (_name, src) => {
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
@@ -140,6 +141,15 @@ describe('FIELD verb', () => {
         expect(fieldStatement.name).toBeDefined();
         expect(fieldStatement.value).toBeDefined();
         expect(fieldStatement.err).toBeDefined();
+    });
+
+    test('the trailing error branch to a user label resolves to that declaration', async () => {
+        const parsed = await parse('field rec$,name$=1,err=mylabel\nmylabel:\nx=1\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const fieldStatement = (parsed.parseResult.value as Program).statements[0] as FieldStatement;
+        const labelRef = fieldStatement.err as unknown as { label: { ref?: LabelDecl } };
+        expect(labelRef.label.ref, 'error-branch reference resolved').toBeDefined();
+        expect(labelRef.label.ref!.name.toLowerCase(), 'resolved declaration name').toBe('mylabel');
     });
 
     test('a FIELD verb without a value is still a parser error', async () => {
