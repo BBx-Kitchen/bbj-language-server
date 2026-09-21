@@ -24,7 +24,7 @@
 
 - [ ] **VALID-01**: A `TABLE` statement gets no line-break error
 - [ ] **VALID-02**: `RESTORE n`, `GOSUB`/`GOTO` to a label named like a keyword, `EXIT expr`, `LOAD` and `SAVE` get no line-break error
-- [ ] **VALID-03**: A multi-line `DEF FN...(params)` header gets no line-break error
+- [x] **VALID-03**: A multi-line `DEF FN...(params)` header gets no line-break error
 - [ ] **VALID-04**: Single-line `IF` forms and `FI` that the compiler accepts are not reported as "needs to start in a new line"
 - [ ] **VALID-05**: The conflicting-`DECLARE` and `METHODRET` checks report no error on code the compiler accepts
 
@@ -87,7 +87,7 @@
 | PARSE-09 | Phase 100 | Pending |
 | VALID-01 | Phase 98 | Pending |
 | VALID-02 | Phase 98 | Pending |
-| VALID-03 | Phase 98 | Pending |
+| VALID-03 | Phase 98 | Complete |
 | VALID-04 | Phase 98 | Pending |
 | VALID-05 | Phase 98 | Pending |
 | PSRV-01 | Phase 101 | Pending |
@@ -105,6 +105,7 @@
 | CONF-03 | Phase 104 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 27 total
 - Mapped to phases: 27
 - Unmapped: 0

@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-04-PLAN.md
-last_updated: "2026-09-21T03:01:16.597Z"
+stopped_at: Completed 98-05-PLAN.md
+last_updated: "2026-09-21T03:42:11.721Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: 16624d89f04c728a2225f5c0bc26845f0ef2d28c
+state_head: 09b36deffa0b35d363591b2940b61c8e0f6190f1
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 98 execution started
 
@@ -99,6 +99,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P02 | 55min | 3 tasks | 6 files |
 | Phase 98 P03 | 40min | 3 tasks | 5 files |
 | Phase 98 P04 | 40min | 3 tasks | 5 files |
+| Phase 98 P05 | 55min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ decisions:
 - [Phase 98]: ifStatementLineBreaks clears its before-flag on a same-line label declaration (mirrors isStandaloneStatement's existing rule); ifEndStatementLineBreaks walks past a preceding end-of-IF statement instead of stopping without clearing — Fixes the labelled single-line IF and chained-double-FI false alarms without a new traversal mechanism; the existing fixed-target isSameLine guard keeps both walks terminating
 - [Phase 98]: ENDLINE_PRINT_COMMA's lookahead widened to /,(?=[ \t]*(\r?\n|;))/ — the comma-immediately-before-newline requirement (no whitespace tolerance) was the trailing-comma PRINT false alarm's actual cause, confirmed by probe against 98-RESEARCH.md's Open Question 3's first candidate; no grammar change needed
 - [Phase 98]: LEN=<number> residue: a fused 'LEN=' keyword literal (from LastVerifyOption) collides with plain-identifier assignment via the generic keyword-to-ID CATEGORIES fallback, producing a wrong AST — recorded as PARSE-08 residue for Phase 100 per D-16/D-18, not fixed in this plan
+- [Phase 98]: DefFunction's multi-line alternative closing FNEND made optional (grammar-only fix) — an unclosed function body now runs to end of file as one DefFunction node instead of misparsing into fallback expression statements; investigated-and-reverted a token-category fix (excluding CLASS/INTERFACE/DEF from the ID category) because it broke BBjAPI() resolution, which relies on Chevrotain's parser-error recovery over the synthetic bbj-api.ts library source; the class/interface/nested-unclosed-DEF edge case is recorded as residue for plan 06, not present in this phase's corpus target shape
 
 ### Tech Debt
 
@@ -188,8 +190,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T03:01:16.569Z
-Stopped at: Completed 98-04-PLAN.md
+Last session: 2026-09-21T03:42:11.685Z
+Stopped at: Completed 98-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
