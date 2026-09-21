@@ -3,6 +3,15 @@ import { DefaultTokenBuilder, GrammarAST, GrammarUtils, RegExpUtils, stream, Tok
 
 
 export class BBjTokenBuilder extends DefaultTokenBuilder {
+    // METHODEND, CLASSEND and INTERFACEEND are deliberately kept OUT of the generic
+    // uppercase-keyword ID-category fallback below, even though the real compiler accepts all
+    // three as ordinary variable and label names -- tried and reverted: granting them ID
+    // category lets a MALFORMED ClassDecl/MethodDecl/InterfaceDecl that fails to match for an
+    // unrelated reason (for example an invalid name) silently re-parse its own now-ID-category
+    // terminator, plus every other already-ID-category keyword on the same broken line, as a run
+    // of ordinary expression statements with ZERO parser errors -- turning a real syntax problem
+    // into a silent misparse instead of the parser error it produces today. See
+    // 100-CONFORMANCE.md's oracle-sweep section for the reverted probe evidence.
     static EXCLUDED = new Set(['METHODEND', 'CLASSEND', 'INTERFACEEND'])
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const reachableRules = stream(GrammarUtils.getAllReachableRules(grammar, false));
@@ -47,6 +56,66 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         const exitNoNl = terminalTokens.find(e => e.name === 'EXIT_NO_NL')!;
         exitNoNl.CATEGORIES = [id];
         exitNoNl.LONGER_ALT = [idWithSuffix, id];
+
+        // START_BREAK is a custom-PATTERN terminal (bare 'START' immediately before a line
+        // break or ';', with no operand) that never enters the generic uppercase loop above at
+        // all -- unlike the EXCLUDED-set words, it was simply never given an explicit category
+        // grant. The real compiler accepts 'start' as an ordinary variable; granting the ID
+        // category here lets the same token also satisfy an identifier position (the read side
+        // of an assignment, a binary operand) while StartStatement's own bare alternative still
+        // wins at the top of the statement list, exactly as RELEASE_NL/RELEASE_NO_NL/EXIT_NO_NL
+        // already do above.
+        const startBreak = terminalTokens.find(e => e.name === 'START_BREAK')!;
+        startBreak.CATEGORIES = [id];
+        startBreak.LONGER_ALT = [idWithSuffix, id];
+
+        // NEXT_BREAK (the bare, no-variable form of NEXT closing a FOR loop) has the identical
+        // defect: 'next' is not a quoted grammar literal at all -- it exists only through this
+        // custom terminal and its sibling NEXT_ID -- so the roadmap's own "already works" claim
+        // for `next` (100-CONTEXT/ROADMAP) was not actually true until this grant (discovered by
+        // this plan's own deeper sweep, 100-CONFORMANCE.md). NextStatement's bare alternative is
+        // still matched directly by the NEXT_BREAK token TYPE at the top of a statement, so this
+        // grant only adds a second, identifier-position use -- it does not change which
+        // alternative wins when 'next' stands alone as its own statement.
+        const nextBreak = terminalTokens.find(e => e.name === 'NEXT_BREAK')!;
+        nextBreak.CATEGORIES = [id];
+        nextBreak.LONGER_ALT = [idWithSuffix, id];
+
+        // METHODRET_END (the bare, no-value form of METHODRET) has the identical defect: 'methodret'
+        // is not a quoted grammar literal -- MethodReturnStatement's own value-carrying form uses
+        // the literal 'METHODRET', but the bare no-value form only exists through this custom
+        // terminal, so a variable literally named 'methodret' was unusable. MethodReturnStatement's
+        // bare alternative is still matched directly by the METHODRET_END token TYPE, so this
+        // grant only adds a second, identifier-position use.
+        const methodretEnd = terminalTokens.find(e => e.name === 'METHODRET_END')!;
+        methodretEnd.CATEGORIES = [id];
+        methodretEnd.LONGER_ALT = [idWithSuffix, id];
+
+        // PRINT_STANDALONE_NL matches a bare '?'/'PRINT'/'WRITE' with nothing else on the line --
+        // 'print' and 'write' are both quoted literals elsewhere in PrintStatement's own grammar
+        // (already ID-category via the generic loop for every OTHER position), but this custom
+        // token wins the lexer race specifically when nothing follows, so a variable named
+        // 'print' or 'write' silently produced a spurious extra PrintStatement instead of being
+        // read as this PrintStatement's own item. Granting the category here only adds a second,
+        // identifier-position use; PrintStatement's own PRINT_STANDALONE_NL alternative is still
+        // matched directly by the token TYPE, so a genuinely bare 'print'/'write' statement is
+        // unaffected.
+        const printStandaloneNl = terminalTokens.find(e => e.name === 'PRINT_STANDALONE_NL')!;
+        printStandaloneNl.CATEGORIES = [id];
+        printStandaloneNl.LONGER_ALT = [idWithSuffix, id];
+
+        // KEYWORD_STANDALONE matches DELETE/SAVE/ENTER/READ/INPUT/EXTRACT/FIND with nothing else
+        // on the line -- each of these seven words also has its own full verb grammar elsewhere
+        // (DeleteStatement, SaveStatement, EnterStatement, ReadStatement, ...) that already gets
+        // the generic loop's ID category for every OTHER position, but the bare, no-argument form
+        // of each verb is only reachable through this shared custom token, so a variable named
+        // one of the seven silently produced a spurious extra KeywordStatement instead of being
+        // read as an ordinary identifier. Granting the category here only adds a second,
+        // identifier-position use; KeywordStatement is still the first alternative tried for a
+        // whole statement, so a genuinely bare verb is unaffected.
+        const keywordStandalone = terminalTokens.find(e => e.name === 'KEYWORD_STANDALONE')!;
+        keywordStandalone.CATEGORIES = [id];
+        keywordStandalone.LONGER_ALT = [idWithSuffix, id];
 
         return tokens;
     }

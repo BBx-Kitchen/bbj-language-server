@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
+import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOnGotoStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -521,5 +521,112 @@ describe('a comment after a block boundary, and a line number in class code', ()
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
         expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('language words as names (oracle sweep against the compiler)', () => {
+    // Every word the compiler accepts as a name and the parser used to reject, fixed by its own
+    // mechanism: 'declare', 'auto', 'library', 'use', 'var' widen FeatureName/LabelName the same
+    // way Phase 99's 'label'/'void' did; 'void' gains the same widening in LabelName; 'start',
+    // 'next', 'methodret', 'print', 'write', 'delete', 'save', 'enter', 'read', 'input',
+    // 'extract' and 'find' each get an explicit ID-category grant on their own custom-pattern
+    // token, mirroring the file's existing RELEASE_NL/RELEASE_NO_NL/EXIT_NO_NL grants.
+    const fixedWords = [
+        'declare', 'auto', 'library', 'use', 'var', 'void',
+        'start', 'next', 'methodret', 'print', 'write',
+        'delete', 'save', 'enter', 'read', 'input', 'extract', 'find',
+    ];
+
+    test.each(fixedWords.map(w => [w, w] as const))('%s: variable position, every suffix, upper/lower/mixed case, and a binary-operand form', async (_name, w) => {
+        const upper = w.toUpperCase();
+        const mixed = w[0].toUpperCase() + w.slice(1);
+        const src = [
+            `${upper}=1`, `PRINT ${upper}`,
+            `${w}$="a"`, `print ${w}$`,
+            `${mixed}!=bbjapi()`, `Print ${mixed}!`,
+            `${upper}%=1`, `PRINT ${upper}%`,
+            `xdeep = 1 - ${w}`,
+        ].join('\n') + '\n';
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        expect((result.parseResult.value as Program).statements, 'top-level statement count (catches a silently-swallowed spurious statement)').toHaveLength(9);
+    });
+
+    test.each(fixedWords.map(w => [w, w] as const))('%s: label declaration and a GOTO/GOSUB/ON...GOTO branch target, including as the last of a multi-target list', async (_name, w) => {
+        const src = `${w}:\nx=1\ngoto ${w}\nother:\ny=1\non x goto other,${w}\n`;
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        expect((result.parseResult.value as Program).statements, 'top-level statement count').toHaveLength(6);
+    });
+
+    test('a multi-target branch whose last target is a fixed word resolves every target in the order written', async () => {
+        const src = 'a1:\nx=1\ngoto b1\na2:\ny=1\nb1:\nz=1\non x goto a1,a2,declare\ndeclare:\nw=1\n';
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        const onGoto = statements.find(isOnGotoStatement);
+        expect(onGoto, 'OnGotoStatement found').toBeDefined();
+        const resolvedNames = onGoto!.targets.map(t => {
+            const ref = t as unknown as { label: { ref?: LabelDecl } };
+            return ref.label.ref?.name.toLowerCase();
+        });
+        expect(resolvedNames, 'targets resolve in written order').toEqual(['a1', 'a2', 'declare']);
+    });
+
+    test.each(fixedWords.flatMap(w => [
+        [`my${w}=1`, `my${w}=1\n`],
+        [`${w}x$="a"`, `${w}x$="a"\n`],
+        [`x=${w}2+1`, `x=${w}2+1\n`],
+        [`for i=1 to n${w}`, `for i=1 to n${w}\nnext i\n`],
+    ]))('identifier-adjacency: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    const customPatternWords = ['start', 'next', 'methodret', 'print', 'write', 'delete', 'save', 'enter', 'read', 'input', 'extract', 'find'];
+    test.each(customPatternWords.map(w => [w, w] as const))('%s followed by a semicolon-introduced comment produces no error-severity diagnostic', async (_name, w) => {
+        const validated = await validate(`${w}; rem c\n`);
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('the fourteen already-working roadmap words still work as a variable, a label and a branch target', async () => {
+        const roadmapWords = ['label', 'text', 'vector', 'state', 'val', 'class', 'data', 'default', 'exit', 'next', 'step', 'str', 'table', 'to'];
+        for (const w of roadmapWords) {
+            const varResult = await parse(`${w}=1\nprint ${w}\nxdeep = 1 - ${w}\n`);
+            expect(varResult.parseResult.parserErrors, `${w} as variable`).toHaveLength(0);
+            const labelResult = await parse(`${w}:\nx=1\ngoto ${w}\n`);
+            expect(labelResult.parseResult.parserErrors, `${w} as label/target`).toHaveLength(0);
+        }
+    });
+
+    test('a malformed use of a newly-widened word is still a parser error -- the widening is additive, not a blanket fallback', async () => {
+        // 'declare' reading as an ordinary identifier does not also make a bare, dangling '='
+        // with nothing valid on either side of it disappear -- the widening only adds one more
+        // way to CONSUME the word, it does not relax anything else in the grammar.
+        const parsed = await parse('declare =\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test('a word the compiler rejects as a name is not flagged as an error (record-only, not a regression to fix here)', async () => {
+        // 'then' is one of the words the oracle sweep found the real compiler rejects as a name;
+        // the parser already accepts it via the pre-existing generic uppercase-keyword ID-category
+        // fallback (unrelated to this plan's own widening) -- recorded in 100-CONFORMANCE.md's
+        // oracle-sweep section as record-only: words the compiler rejects are recorded, not
+        // flagged, and adding a check for them is not this plan's job.
+        const parsed = await parse('then=1\n');
+        expect(parsed.parseResult.parserErrors).toHaveLength(0);
+    });
+
+    test('a malformed class whose name is not a valid identifier is still a parser error -- the METHODEND/CLASSEND/INTERFACEEND exclusion stays in place', async () => {
+        // Tried and reverted this plan: removing these three from BBjTokenBuilder.EXCLUDED let a
+        // malformed ClassDecl silently re-parse as a run of expression statements with zero
+        // errors instead of the parser error it produces today. Recorded in
+        // 100-CONFORMANCE.md, not fixed.
+        const parsed = await parse('CLASS PUBLIC label\nCLASSEND\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
     });
 });

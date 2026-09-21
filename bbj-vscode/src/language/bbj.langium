@@ -443,8 +443,14 @@ LabelDecl returns LabelDecl:
 // library function or library variable, all of which are typed by ValidName elsewhere.
 // 'declare' is free here for the same reason it is free in FeatureName above -- a label
 // declaration (`declare:`) is never mistaken for a VariableDecl, which always requires a type.
+// 'auto', 'library', 'use' and 'var' are free here for the same reasons given in FeatureName
+// above -- none of them can start a valid LabelDecl continuation (a label is always immediately
+// followed by ':'), so a label declared with one of these words never competes with the rule it
+// is also a keyword for.
+// 'void' has no label-position conflict either -- FeatureName above already explains why it is
+// free as a variable; a void-return marker never appears where a label declaration is expected.
 LabelName returns string:
-    ID | 'label' | 'declare';
+    ID | 'label' | 'declare' | 'auto' | 'library' | 'use' | 'var' | 'void';
 
 ForStatement:
     // TODO check `to` evaluates to a number
@@ -923,7 +929,19 @@ FeatureName returns string:
     // by this same FeatureName rule for its OWN name -- a bare `declare=1` never starts a
     // VariableDecl (that rule always needs a type after the optional 'auto' flag), so the
     // word is free to also be an ordinary variable name here.
-    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare';
+    // 'auto' is a keyword only as VariableDecl's own optional flag, one token AFTER 'declare' --
+    // a bare `auto=1` can never be mistaken for that flag, since nothing starts a VariableDecl
+    // without the leading 'declare' verb first.
+    // 'library' is a keyword only as the entry token of the separate top-level Library rule
+    // (`entry Model: Library | Program`), which Program's own statement list can never reach
+    // mid-program -- so this widening cannot compete with it at all.
+    // 'use' is a keyword only as the leading verb of the Use rule, which always requires a file
+    // path or a Java type reference immediately after it -- a bare `use=1` supplies neither, so
+    // the parser falls through to this rule for the assignment/read form, the same shape
+    // 'declare' already relies on above.
+    // 'var' is a keyword only inside LibVariable, itself only reachable through the separate
+    // Library rule -- like 'library', it is unreachable from Program and so cannot compete here.
+    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare' | 'auto' | 'library' | 'use' | 'var';
 
 ValidName returns string:
     ID
