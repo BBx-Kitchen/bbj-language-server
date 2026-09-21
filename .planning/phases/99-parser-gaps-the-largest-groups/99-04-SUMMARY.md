@@ -260,3 +260,9 @@ None — no external service configuration required.
 ---
 *Phase: 99-parser-gaps-the-largest-groups*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+All 5 key files confirmed present on disk (`bbj.langium`, `iolist-statement.bbj`,
+`parser-keyword-statements.test.ts`, `99-CONFORMANCE.md`, this SUMMARY). All 4 commit hashes
+(`f47c652a`, `33446378`, `ff9a5b59`, `1523ec13`) confirmed present in `git log`.
