@@ -1,0 +1,37 @@
+REM Protects class code carrying user line numbers: a number directly before a field, before a
+REM method header, before a method's own end marker, before the class end marker, and on the
+REM class header line itself, plus the same class written with no line numbers at all. Each
+REM number sits on its own line immediately ahead of what it numbers. Upper and lower case.
+
+0010
+CLASS PUBLIC Counter
+0020
+FIELD PUBLIC INTEGER total
+0030
+METHOD PUBLIC VOID bump()
+0040
+total = total + 1
+0050
+METHODEND
+0060
+CLASSEND
+
+0010
+class public tally
+0020
+field public integer total
+0030
+method public void bump()
+0040
+total = total + 1
+0050
+methodend
+0060
+classend
+
+class public plaintally
+field public integer total
+method public void bump()
+total = total + 1
+methodend
+classend

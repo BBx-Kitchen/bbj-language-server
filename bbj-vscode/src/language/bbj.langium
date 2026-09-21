@@ -342,8 +342,8 @@ ClassDecl returns BbjClass:
     'CLASS' Visibility Static name=ValidName
         Extends?
         ('IMPLEMENTS' implements+=QualifiedClass)? (',' implements+=QualifiedClass)*  (';' comments+=CommentStatement)?
-    (members+=ClassMember | Comments)*
-    'CLASSEND' (';' comments+=CommentStatement)?
+    (NUMBER? (members+=ClassMember | Comments))*
+    NUMBER? 'CLASSEND' (';' comments+=CommentStatement)?
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?

@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
+import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -449,5 +449,77 @@ describe('type-side bracket shapes', () => {
         const statements = (parsed.parseResult.value as Program).statements;
         expect(statements).toHaveLength(1);
         expect(statements[0].$type, 'top-level node is the class').toBe('BbjClass');
+    });
+});
+
+describe('a comment after a block boundary, and a line number in class code', () => {
+    test.each([
+        ['methodend, end of file, upper case', 'class public a\nmethod public void m()\nmethodend; rem c\nclassend\n'],
+        ['classend, end of file, lower case', 'class public a\nclassend; rem c\n'],
+        ['interfaceend, end of file, upper case', 'interface public i\ninterfaceend; REM c\n'],
+        ['single-line def fn, end of file, lower case', 'def fnx(a)=a+1; rem c\n'],
+        ['multi-line def fn, end of file, upper case', 'def fny(a)\nfnend; REM c\n'],
+    ])('%s parses with zero lexer and parser errors and no error-severity diagnostic', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const validated = await validate(src);
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test.each([
+        ['methodend, mid-stream, followed by another method and the class end', 'class public a\nmethod public void m()\nmethodend; rem c\nmethod public void n()\nmethodend\nclassend\n'],
+        ['classend, mid-stream, followed by more of the program', 'class public a\nclassend; rem c\nx=1\n'],
+        ['interfaceend, mid-stream, followed by more of the program', 'interface public i\ninterfaceend; rem c\nx=1\n'],
+        ['single-line def fn, mid-stream, followed by more of the program', 'def fnx(a)=a+1; rem c\nx=1\n'],
+        ['multi-line def fn, mid-stream, followed by more of the program', 'def fny(a)\nfnend; rem c\nx=1\n'],
+    ])('%s parses with zero lexer and parser errors and no error-severity diagnostic', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const validated = await validate(src);
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('a mid-stream comment right after a method end marker leaves the surrounding class as one class node, not loose expression statements', async () => {
+        const src = 'class public a\nmethod public void m()\nmethodend; rem c\nmethod public void n()\nmethodend\nclassend\n';
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        expect(statements).toHaveLength(1);
+        expect(isBbjClass(statements[0]), 'top-level node is a class, via the generated type guard').toBe(true);
+    });
+
+    test.each([
+        ['a boundary followed by an ordinary statement rather than a comment', 'class public a\nclassend; x=1\n'],
+        ['two line numbers in a row before the class end marker', 'class public a\n0010\n0020 classend\n'],
+    ])('%s is still a parser error', async (_name, src) => {
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['number before a statement inside a method body', 'class public a\nmethod public void m()\n0016 print "x"\nmethodend\nclassend\n'],
+        ['number directly before the method end marker', 'class public a\nmethod public void m()\n0017 methodend\nclassend\n'],
+        ['number before the class header at top level', '0010 class public a\nclassend\n'],
+        ['number directly before the class end marker, no method in between', 'class public a\n0020 classend\n'],
+        ['number directly before a method header', 'class public a\n0015 method public void m()\nmethodend\nclassend\n'],
+    ])('%s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test.each([
+        ['myclassend=1', 'myclassend=1\n'],
+        ['fnendx$="a"', 'fnendx$="a"\n'],
+        ['x=methodend2+1', 'x=methodend2+1\n'],
+        ['for i=1 to nfnend', 'for i=1 to nfnend\nnext i\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
     });
 });
