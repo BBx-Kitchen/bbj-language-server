@@ -4,7 +4,7 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { basename, normalize, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
@@ -269,21 +269,32 @@ export class BBjValidator {
         if (document.parseResult.parserErrors.length > 0 || isLabelDecl(getPreviousNode(node))) {
             return;
         }
-        if (node.$cstNode) {
-            const text = (node.$cstNode.root as RootCstNode).fullText;
-            const offset = node.$cstNode.offset;
-            for (let i = offset - 1; i >= 0; i--) {
-                const char = text.charAt(i);
-                if (char === '\n' || char === ';') {
-                    return;
-                } else if (char !== ' ' && char !== '\t') {
-                    accept('error', "Comments need to be separated by line breaks or ';'.", {
-                        node
-                    });
-                    return;
-                }
-            }
+        if (!node.$cstNode) {
+            return;
         }
+        // Decide from the CST, not from a raw-text scan: findLeafNodeAtOffset resolves the
+        // preceding leaf against the same tokenized (lexer-rewritten) offsets every CST node
+        // already lives in, so tree lookup stays correct through a ':'-continuation join --
+        // unlike indexing node.$cstNode.root.fullText (the ORIGINAL, pre-rewrite document text)
+        // with an offset that comes from that rewritten text, which is what produced the false
+        // alarms here. The leaf's own tokenType.name is decided once, at tokenize time against
+        // that same rewritten text, so it stays trustworthy post-join too -- unlike the leaf's
+        // own .text, which is (like .root.fullText) sliced from the ORIGINAL text and therefore
+        // corrupted exactly where a join happened. .range stays comparable between nodes because
+        // every node's range is computed from the SAME rewritten-text token stream.
+        const previousLeaf = findLeafNodeAtOffset(node.$cstNode.root, node.$cstNode.offset - 1);
+        const commentStartsNewLine = previousLeaf === undefined
+            || previousLeaf.range.end.line < node.$cstNode.range.start.line;
+        const separatedByStatementSeparator = previousLeaf?.tokenType.name === ';';
+        // A statement legally begins right after a then-branch or an else-branch keyword, the
+        // same precedent isStandaloneStatement already relies on for a preceding label.
+        const afterBranchKeyword = previousLeaf?.tokenType.name === 'THEN' || previousLeaf?.tokenType.name === 'ELSE';
+        if (commentStartsNewLine || separatedByStatementSeparator || afterBranchKeyword) {
+            return;
+        }
+        accept('error', "Comments need to be separated by line breaks or ';'.", {
+            node
+        });
     }
 
 

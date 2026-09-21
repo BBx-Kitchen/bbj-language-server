@@ -279,3 +279,40 @@ describe('Line break validation: multi-line DEF FN with no closing FNEND', () =>
         expect(result.diagnostics.length).toBeGreaterThan(0);
     });
 });
+
+describe('Line break validation: a comment at a position where a statement legally begins', () => {
+    const positiveCases: [string, string][] = [
+        ['comment on a continuation line after a separator-ended statement, upper case', 'IF X=1 THEN IF X=1 THEN LET Y=1 ELSE LET Y=2 FI;\n: REM a comment\n'],
+        ['comment on a continuation line after a separator-ended statement, lower case', 'if x=1 then if x=1 then let y=1 else let y=2 fi;\n: rem a comment\n'],
+        ['comment on a continuation line whose preceding line ends in THEN, upper case', 'IF X=1 THEN\n: REM a comment\n'],
+        ['comment on a continuation line whose preceding line ends in THEN, several spaces', 'IF X=1 THEN\n:    REM a comment\n'],
+        ['comment on a continuation line whose preceding line ends in THEN, lower case', 'if x=1 then\n: rem a comment\n'],
+        ['comment directly after THEN on the same physical line', 'if x=1 then rem a comment\n'],
+        ['comment on a continuation line after ELSE', 'if x=1 then y=1 else\n: rem a comment\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    // Already-clean shapes, unaffected by this fix -- kept here as regression coverage for the
+    // same check.
+    const alreadyCleanCases: [string, string][] = [
+        ['comment on its own line', 'x=1\nrem a comment\n'],
+        ['comment after a ";" separator on the same line', 'x=1;rem a comment\n'],
+        ['comment directly after a label declaration', 'lbl:rem a comment\n'],
+    ];
+
+    test.each(alreadyCleanCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('a comment glued directly after an ordinary statement with no separator is still flagged', async () => {
+        // Non-emptiness only, per the project's own convention for this diagnostic -- never an
+        // exact message string.
+        const result = await validate('x=1 rem a comment\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});

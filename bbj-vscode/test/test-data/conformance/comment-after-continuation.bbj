@@ -1,0 +1,15 @@
+REM Protects a comment at a position where a statement legally begins from a false
+REM line-break-check alarm: a comment alone on a ':'-continuation line whose
+REM preceding statement line ends in a ';' separator, a comment alone on a
+REM ':'-continuation line whose preceding line ends in the word THEN, and a comment
+REM directly after THEN on the same physical line. Upper, lower and mixed case.
+COUNT=1
+IF COUNT=1 THEN IF COUNT=1 THEN LET COUNT=1 ELSE LET COUNT=2 FI;
+: REM comment after a separator-ended continuation, upper case
+if count=1 then if count=1 then let count=1 else let count=2 fi;
+: rem comment after a separator-ended continuation, lower case
+If Count=1 Then
+:  Rem comment after a THEN-ended continuation, mixed case
+IF COUNT=1 THEN
+: REM comment after a THEN-ended continuation, single space
+if count=1 then rem comment directly after THEN on the same line
