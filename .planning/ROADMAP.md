@@ -325,7 +325,7 @@ files describe behaviour and use word lists only.
   4. The conflicting-`DECLARE` check and the two `METHODRET` checks ("declares a return type but has no METHODRET returning a value", "is declared void and must not return a value") report no error on code `bbjcpl` accepts; they may still warn. One deliberate exception stays an error: two declarations of one name inside a single method body whose types both resolve and are unrelated.
   5. The conformance run at the phase boundary reports **A2 ≤ 25** (from 267) with A and B not regressed, and every construct fixed above has a synthetic regression file in `bbj-vscode/test/test-data/conformance/` that the example-files test parses with zero errors and validates with zero error-severity diagnostics (linking excluded) — the CONF-01 convention Phases 99 and 100 then follow.
 
-**Plans**: 6/6 plans executed
+**Plans**: 10 plans (6 executed; 4 gap-closure plans added after verification found 3 blocking gaps)
 
 Plans:
 **Wave 1**
@@ -345,6 +345,19 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 98-06-PLAN.md — phase-boundary conformance run, residue triage and the closing attestation (wave 4)
+
+**Wave 5** *(gap closure — blocked on Wave 4 verification)*
+
+- [ ] 98-07-PLAN.md — RESTORE with a symbolic-label target, fixed in the lexer, plus this criterion's own LEN= amendment (wave 5)
+- [ ] 98-08-PLAN.md — open/closed balance in the ELSE and end-of-IF backward walks, and the scalar-type conflicting DECLARE restored (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 98-09-PLAN.md — per-file evidence for the invalid-code files that stopped being flagged (wave 6)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 98-10-PLAN.md — closing conformance re-run and the human decision on the residual regression (wave 7)
 
 *Ordering note:* first because it is the cheapest user-visible win in the milestone and because it establishes the regression-file convention (CONF-01) the two parser phases inherit. It must not be done by widening the checks into uselessness: each criterion is "no error on code the compiler accepts", not "no error".
 
