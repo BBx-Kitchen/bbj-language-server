@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, LetStatement, Program, isFieldStatement, isLetStatement } from '../src/language/generated/ast.js';
+import { FieldStatement, LabelDecl, LetStatement, Program, isFieldStatement, isGotoStatement, isLetStatement, isUserLabelRef } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -157,6 +157,80 @@ describe('FIELD verb', () => {
 
     test('the verb produces no error-severity diagnostic (linking excluded)', async () => {
         const validated = await validate('field rec$,name$=dec(x$)\n');
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+});
+
+describe('the word `label` as a name', () => {
+    test.each([
+        ['declaration alone, upper case', 'LABEL:\nESCAPE\n'],
+        ['declaration alone, lower case', 'label:\nescape\n'],
+        ['declaration alone, mixed case', 'Label:\nEscape\n'],
+        ['declaration immediately followed by a statement, no space', 'label:escape\n'],
+        ['declaration followed by a space and a semicolon-chained pair', 'label: escape;exit\n'],
+        ['upper-case declaration in front of ENTER', 'LABEL: ENTER A$,B$\n'],
+        ['GOSUB target', 'label:\nx=1\nreturn\ngosub label\n'],
+        ['GOTO target', 'label:\nx=1\ngoto label\n'],
+        ['GOTO target inside a semicolon-chained statement', 'label:\nx=1\nLET X=0; GOTO LABEL\n'],
+        ['one entry of a multi-target ON...GOTO list', 'label:\nx=1\nother:\ny=1\non x goto label,other\n'],
+        ['variable on the left of an assignment', 'label=x+1\n'],
+        ['variable read inside an expression', 'x=label+1\n'],
+    ])('%s parses with zero lexer and parser errors and a non-empty statement list', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (result.parseResult.value as Program).statements;
+        expect(statements.length, 'top-level statement count').toBeGreaterThan(0);
+    });
+
+    test('a GOSUB to the declaration resolves the cross-reference to that declaration', async () => {
+        const src = 'gosub label\nx=1\nreturn\nlabel:\nx=2\n';
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        const gotoStmt = statements.find(isGotoStatement);
+        expect(gotoStmt, 'GotoStatement found').toBeDefined();
+        expect(isUserLabelRef(gotoStmt!.target), 'target is a UserLabelRef').toBe(true);
+        const userLabelRef = gotoStmt!.target as unknown as { label: { ref?: LabelDecl } };
+        expect(userLabelRef.label.ref, 'cross-reference resolved to a declaration').toBeDefined();
+        expect(userLabelRef.label.ref!.name.toLowerCase(), 'resolved declaration name').toBe('label');
+    });
+
+    test.each([
+        ['other-name declaration alone', 'foo:\nx=1\n'],
+        ['other-name declaration followed by a statement', 'foo:escape\n'],
+        ['other-name numeric label followed by a statement', 'L30: enter a$\n'],
+    ])('regression: %s still parses clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('a class declared with the word as its name is still a parser error (deliberately not widened)', async () => {
+        // ClassDecl.name is typed by ValidName, deliberately left unwidened -- confirmed by
+        // probe as a parser error both before and after this plan's grammar edit.
+        const parsed = await parse('CLASS PUBLIC label\nCLASSEND\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['mylabel=1', 'mylabel=1\n'],
+        ['labelx$="a"', 'labelx$="a"\n'],
+        ['nlabel(1)=2', 'nlabel(1)=2\n'],
+        ['for i=1 to nlabel', 'for i=1 to nlabel\nnext i\n'],
+        ['if mylabel then x=1', 'if mylabel then x=1\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test.each([
+        ['declaration immediately followed by a statement, no space', 'label:escape\n'],
+        ['declaration followed by a space and a semicolon-chained pair', 'label: escape;exit\n'],
+    ])('%s produces no error-severity diagnostic', async (_name, src) => {
+        const validated = await validate(src);
         const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
         expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
     });
