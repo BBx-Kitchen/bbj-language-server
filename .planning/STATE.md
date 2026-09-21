@@ -5,17 +5,17 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 99
 current_phase_name: Parser Gaps — the Largest Groups
 status: executing
-stopped_at: Completed 99-05-PLAN.md (closing checkpoint resolved — gap plan pending, phase not sealed)
-last_updated: "2026-09-21T14:19:00.000Z"
+stopped_at: Completed 99-06-PLAN.md (all Phase 99 conformance gates PASS — A 52, A2 23, B 666; requirements left unticked per plan/follow-up instruction)
+last_updated: "2026-09-21T15:29:49.852Z"
 last_activity: 2026-09-21
-last_activity_desc: Phase 99 plan 05 closing measurement complete; gap plan decision recorded
-state_head: 97b2d083286481bddbf9e1882e95367e312803b7
+last_activity_desc: Phase 99 plan 06 gap closure complete; all conformance gates PASS, phase ready for verification
+state_head: d5116873b881120e86972325e61890a187e15f91
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 15
-  completed_plans: 15
-  percent: 15
+  total_plans: 16
+  completed_plans: 16
+  percent: 14
 ---
 
 # Project State: BBj Language Server
@@ -34,12 +34,15 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 99 (Parser Gaps — the Largest Groups) — EXECUTING (gap plan pending, not sealed)
-Plan: 5 of 5 complete; a gap plan (99-06) is needed before the phase closes
-Status: Phase 99 closing checkpoint resolved 2026-09-21 — Stephan Wald chose to close the two open
-gates (A2 30 vs ≤27; FIELD verb-form `err=` option-tail residue) with a gap plan inside Phase 99
-rather than accept them as residue
-Last activity: 2026-09-21 — Phase 99 plan 05 closing measurement complete, gap plan decision recorded
+Phase: 99 (Parser Gaps — the Largest Groups) — READY FOR VERIFICATION (gap plan 06 closed both open gates)
+Plan: 6 of 6 complete
+Status: Phase 99's gap plan (99-06) closed both gates the 99-05 closing run left open — `FieldStatement`
+gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
+rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
+Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
+unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
+fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
+Last activity: 2026-09-21 — Phase 99 plan 06 gap closure complete; all conformance gates PASS
 
 ### v4.5 milestone map
 
@@ -112,6 +115,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 99 P03 | 15min | 3 tasks | 4 files |
 | Phase 99 P04 | 24min | 3 tasks | 4 files |
 | Phase 99 P05 | 32min | 3 tasks | 2 files |
+| Phase 99 P06 | 48min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -168,6 +172,7 @@ decisions:
 - [Phase 99]: [Phase 99]: FeatureName gains a 'label' alternative and a new narrow LabelName rule (ID | 'label') replaces ValidName as the type of LabelDecl.name and the UserLabelRef cross-reference -- follows the already-shipped 'void' precedent; ValidName itself stays unwidened (recorded fallback not needed, confirmed by probe: no new generator ambiguity warning)
 - [Phase 99]: [Phase 99]: IolistStatement grammar rule (RedimStatement-shaped, no dedicated item rule) clears the IOLIST group; check-variable-scoping.ts and line-break-validation.ts needed no change, confirmed by probe -- item-list-only variables draw only Warning-severity linking diagnostics by this project's own downgrade design
 - [Phase 99]: Closing measurement (plan 05) -- A 167->53 (gate met, <=80), A2 unchanged at 30 (gate missed, exceeds <=27 by 3), B 665->666 (recorded, not gated, plan 04's classified lost accidental catch accepted as-is); gate row 2's one remaining FIELD-labeled list-A file was corrected by the orchestrator's own per-file look from "table churn" to a genuine PARSE-01 residue (the verb's value form plus a trailing `err=<line reference>` option the grammar's FieldStatement rule does not accept). Stephan Wald chose 2026-09-21 to close both open gates (A2 miss, FIELD residue) with a gap plan inside Phase 99 rather than accept them as residue; the checkCommentNewLines false alarm behind the A2 rise (8 files, one shape) is the gap plan's other target. PARSE-01/02/03/07 stay unticked pending that gap plan's re-measure.
+- [Phase 99]: checkCommentNewLines needs a second, narrow exemption for lexer tokens that consume their own trailing terminator (KEYWORD_STANDALONE) — a named, closed Set checked alongside the CST-leaf exemptions, found via the plan's own conditional stop rather than the totals alone
 
 ### Tech Debt
 
@@ -220,13 +225,12 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T14:19:00.000Z
-Stopped at: Completed 99-05-PLAN.md (closing checkpoint resolved 2026-09-21; gap plan pending)
+Last session: 2026-09-21T15:29:24.921Z
+Stopped at: Completed 99-06-PLAN.md (all Phase 99 conformance gates PASS — A 52, A2 23, B 666; requirements left unticked per plan/follow-up instruction)
 Resume file: None
 
-Next: plan and execute a Phase 99 gap plan (FieldStatement option-tail, checkCommentNewLines A2
-false alarm) to close the two open gates recorded in 99-CONFORMANCE.md, then re-measure and seal
-Phase 99 before moving to Phase 100.
+Next: `/gsd-verify-work 99` to confirm the closed gates, then tick PARSE-01/02/03/07 in
+REQUIREMENTS.md and move to Phase 100 (Parser Gaps — Remaining Groups, Long Tail & Examples).
 
 ## Deferred Items
 
