@@ -4,17 +4,17 @@ milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
-status: executing
-stopped_at: Completed 100-05-PLAN.md
-last_updated: "2026-09-21T23:26:10.226Z"
+status: verifying
+stopped_at: Completed 100-06-PLAN.md (halted -- blocking-human checkpoint on the phase closing gate)
+last_updated: "2026-09-21T23:54:37.455Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
-state_head: 874d5450cac02076bc4df856530cdcf112f2ad3b
+state_head: 28db9169c839603410196c238a5a876049949c4b
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
   percent: 29
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
@@ -121,6 +121,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 100 P03 | 55min | 3 tasks | 5 files |
 | Phase 100 P04 | 39min | 3 tasks | 7 files |
 | Phase 100 P05 | 40min | 3 tasks | 18 files |
+| Phase 100 P06 | 27min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,8 @@ decisions:
 - [Phase 100]: CLEAR/BEGIN's plain-variable-list widening was tried and reverted -- it let a bare CLEAR/BEGIN silently swallow the next unrelated statement — Safely disambiguating needs a same-line-only lexer token; recorded as needing lexer work, not fixed
 - [Phase 100]: line-break-validation.ts's lineStartRegex/lineEndRegex widened to tolerate a leading line number and a bare rem with no body; InterfaceDecl gained ClassDecl's leading-NUMBER tolerance — Closes the required A2 rise from plan 02 and the orchestrator's line-number false alarms for FIELD/METHOD/CLASSEND/INTERFACEEND; the class/interface header and methodend-in-body cases are a separate, wider, pre-existing gap left recorded
 - [Phase 100]: [Phase 100]: A class's own field is read via a bare #fieldName reference, never #this!.fieldName (confirmed by direct bbjcpl probe -- #this!.method() calls work, #this!.field access never does); RELEASE takes a numeric expression, not a string; fileopen()/filesave() are valid BBj functions rejected only when their return value is discarded as a bare statement -- issue246.bbj repaired in place rather than moved+todo'd (overturns the plan's own D-18 disposition), no MODE= problem for msgbox.bbj either
+- [Phase 100]: [Phase 100] Closing measurement: A 9 (<=25 gate, PASS), A2 22 (<=23 gate, PASS), B 669 (+3 vs the Phase 99 close baseline of 666, recorded not gated, unchanged since plan 01). Shape-level residue table completed to 8 of 9 rows; 1 row (a METHOD-declaration file) left genuinely pending -- cause probed but not isolated. Plan 06's own conditional stop fired: does not seal the phase, returns a blocking-human checkpoint.
+- [Phase 100]: [Phase 100] Redacted corpus file paths that had leaked into 100-CONFORMANCE.md across three earlier plans' per-file-look tables -- a Rule 2 security deviation found and fixed during plan 06, not part of the plan's own task list.
 
 ### Tech Debt
 
@@ -229,6 +232,7 @@ filed 2026-09-21 at the Phase 98 close:
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 - **Phase 98 closed 2026-09-21 with two accepted overrides** (Stephan Wald; `98-VERIFICATION.md`): B regressed 658->665 of 1,210 (root cause and per-file evidence in `98-CONFORMANCE.md`; fixing it needs the bbj-ls compiler-parser endpoint, Phases 101-103, not a Phase 98 check), and A2 = 27 vs its ≤25 gate (5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix; tracked as pending todo `2026-09-21-loosen-single-line-if-balance-rule-a2-residue`). Both deltas carry forward to Phase 104's milestone exit measurement.
 - **Phase 99 closed 2026-09-21 with all gates green** (A 52, A2 23, FIELD/READ/IOLIST/label groups 0; `99-VERIFICATION.md` passed 9/9). Carried forward: B = 666 of 1,210 (+1 vs the Phase 98 close, a lost accidental catch that needs the compiler-parser endpoint, Phases 101-103); the documented `FIELD` array-index form is still rejected (Phase 100 long tail); security enforcement is on and Phase 99 has no SECURITY.md yet (`/gsd-secure-phase 99`).
+- Phase 100 closing gate: 1 shape-level residue row (a METHOD-declaration file) is genuinely pending -- cause probed but not isolated -- and B rose 666->669 vs the Phase 99 close baseline (unchanged, already classified since plan 01). Both numeric gates (A<=25, A2<=23) PASS. Human decision needed: accept as recorded residue, or hand to a later phase (see 100-06-SUMMARY.md / 100-CONFORMANCE.md's Task 3 conditional stop).
 
 ### Quick Tasks Completed
 
@@ -241,8 +245,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T23:26:10.073Z
-Stopped at: Completed 100-05-PLAN.md
+Last session: 2026-09-21T23:54:37.300Z
+Stopped at: Completed 100-06-PLAN.md (halted -- blocking-human checkpoint on the phase closing gate)
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
