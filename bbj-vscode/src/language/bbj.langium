@@ -68,6 +68,7 @@ SingleStatement:
     IfStatement |
     IndexedStatement |
     InitFileStatement |
+    IolistStatement |
     KeyedFileStatement |
     LabelDecl |
     LCheckInStatement |
@@ -420,6 +421,13 @@ ArrayDecl returns ArrayDecl:
 
 RedimStatement:
     'REDIM' arrays+=Expression (',' arrays+=Expression)* Err?
+;
+
+// The IOLIST statement -- items are ordinary variable references (scalars, strings, arrays with
+// an all-elements subscript), covered by the plain Expression rule; no dedicated item rule is
+// needed. At least one item is required, so a bare 'IOLIST' with no items stays a parser error.
+IolistStatement:
+    'IOLIST' items+=Expression (',' items+=Expression)*
 ;
 
 LabelDecl returns LabelDecl:
