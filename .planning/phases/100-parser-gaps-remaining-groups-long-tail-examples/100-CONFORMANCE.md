@@ -481,3 +481,182 @@ path, violating D-27/T-100-06-01. Replaced with a neutral per-row label.
 
 With these two, all 9 remaining list-A entries are accounted for: 7 by the filled rows above, 1 by the
 line-start `::` row, 1 open.
+
+## Closing run
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `72d0d3a1` (the tree as committed through this plan's
+  Task 1 — no `bbj-vscode/src` or `examples` change since plan 04's `a16c356c` / plan 05's
+  `874d5450`; the two `.planning`-only commits made earlier in this plan, including a redaction fix,
+  touch neither directory). `sourceModified: false`, 77 seconds.
+- Before-snapshot: `/home/coder/repos/bbj-corpus/conformance/snapshots/details-100-06-before.json`,
+  copied from `details.json` immediately before this run.
+- Preconditions confirmed before the run (Task 1): whole vitest suite failed-test count 0 beyond two
+  documented environment exceptions (hook-timeout `beforeAll` failures under contention on 5 files
+  plus the known stale-bundle `installed-extension-e2e.test.ts` failure — both zero-failed-test
+  "failed suites" per this project's own judging rule; and 3 `linking.test.ts` BBjAPI-resolution
+  test failures caused by live java-interop on `:5008` triggering `shouldRunBBjTests()`'s bare-TCP
+  gate against a backend whose `getAllClassNames` exposure has drifted since 2026-09-03 — a
+  pre-existing, standing, documented condition unrelated to this phase's diff, independently
+  reproduced by plans 04 and 05's own whole-suite runs earlier in this same phase); generated parser
+  no older than the grammar or token-builder; `git status --porcelain -- bbj-vscode/src examples`
+  printed nothing; the register check over the phase's whole source diff (base commit
+  `9cc8bffe7bc9079df86ec1ea6d5897b038b7c98a`, recorded in plan 01's SUMMARY) produced no match.
+
+**Direction of worse, restated:** for A, A2 and B alike, a **higher** file count is worse; a lower
+count is always better. Every delta below is computed as `this run − baseline` (or `this run −
+previous`), so a negative delta is an improvement and a positive delta is a regression, for all
+three measures.
+
+**Numbers.**
+
+| Measure | Phase 99 close | Last per-group run (plan 04) | This run | Δ vs Phase 99 close | Δ vs last per-group run | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 52 | 9 | 9 | −43 | 0 | ≤ 25 | **PASS** |
+| A2 — valid code that parses but gets a validation error | 23 | 22 | 22 | −1 | 0 | ≤ 23 | **PASS** |
+| B — invalid code not flagged, of 1,210 | 666 | 669 | 669 | +3 | 0 | recorded, not gated | **B rose by 3 vs the Phase 99 close baseline** |
+
+**D-26 backstop confirmed: this run and the last per-group run (plan 04) report identical numbers,
+because no source changed between them.** A file-set diff against plan 04's own before-snapshot
+(`details-100-04-before.json`) confirms 0 files moved on any of the three lists between that run and
+this one:
+
+```
+falseRejects (A): before 9, after 9 — left: 0, entered: 0
+falseAlarms (A2): before 22, after 22 — left: 0, entered: 0
+missed (B):       before 669, after 669 — left: 0, entered: 0
+```
+
+Every recorded number in this section is therefore attributable to the commits made across plans
+01-04, not to run-to-run variation.
+
+**A — shape breakdown (this run, 9 files total, cross-checked against the completed residue table
+below).**
+
+| Files | Shape |
+|---|---|
+| 1 | The line-start `::`-continuation glued statement (Residue file E) |
+| 2 | A bare, unadorned `METHODEND` or `FNEND` terminator with nothing else on its line |
+| 1 | An unspaced positional `INPUT` form |
+| 1 | A branch-target list using bare line numbers as `GOTO`/`GOSUB` targets |
+| 3 | A number in scientific/exponent notation used as a function-call argument |
+| 1 | A `METHOD` declaration whose own signature line parses cleanly in isolation — cause still open (Residue file F) |
+
+## Gate table
+
+| # | Gate | Value | Verdict |
+|---|---|---|---|
+| 1 | List A at or below 25 | 9 | **PASS** — 16 files below the threshold |
+| 2 | A2 at or below 23 (the Phase 99 close) | 22 | **PASS** — 1 file below the threshold |
+| 3 | B — recorded with per-file evidence status, not gated | 669 (+3 vs the Phase 99 close baseline of 666) | **recorded** — see B movement section below |
+
+**Boundary restated (D-12 edge-probe truth):** a measured value exactly at a gate's threshold passes,
+and one file past it fails — 25 passes and 26 fails for list A; 23 passes and 24 fails for A2. Both
+measured values (9, 22) sit strictly below their thresholds, not at the boundary itself, so this run
+does not exercise the boundary directly; the rule is restated here so a later reader can verify which
+side of the threshold today's numbers sit on without re-deriving it. Every value in this table is an
+integer file count read directly from the harness details file — never a percentage or a rate.
+
+## A2 movement
+
+Comparison is against the recorded Phase 99 close set (`snapshots/details-100-01-before.json`, the
+snapshot taken immediately before plan 01's own run — 23 files across 16 message groups, listed in
+this file's own "Baselines" section), established by a file-set difference of this run's `details.json`
+against that snapshot — not by the totals (D-05, D-11).
+
+**Message group present at the Phase 99 close, absent from this run (cleared) — 2 groups, 2 files:**
+
+| Files (Phase 99 close) | Message group |
+|---|---|
+| 1 | This statement needs to end with a line break: endif |
+| 1 | This statement needs to end with a line break: log.DURATION = log.END-log. |
+
+**Message group present at the Phase 99 close, still present in this run, unchanged in count — 13
+groups, matching file counts:** the blank-message "needs to start in a new line" group (6), `return`
+(3), `Field _ is declared _ but is initialized with a number.` (1), `x[all]` (1), `SWITCH block` (1),
+`fi` (1), `DECLARE is not valid at class member level...` (1), the member-visibility check (1),
+`MODE option only supported in MKEYED Verb.` (1), `LET num = _._` (1), `LET tiny = _` (1), `LET val =
+_` (1), `gravitational_constant = _._` (1), and `else` (1).
+
+**Message group present at the Phase 99 close whose count is unchanged, 1 group:** `x[all]` (1 file)
+— this is the same file both before and after (confirmed by matching harness id, not just message
+text): a pre-existing false alarm on `x[all]`-adjacent code that this phase's own array-bracket
+group did not touch or move.
+
+**Message group new against the Phase 99 close — 1 group, +1 file:**
+
+| Files | Message group |
+|---|---|
+| 1 | This statement needs to end with a line break: clear |
+
+**Arithmetic reconciles:** 23 (Phase 99 close) − 2 (cleared) + 1 (new) = 22 (this run). Matches
+exactly.
+
+**Did a parser fix unmask a validator false alarm in the same file? Yes, once.** The single new
+message group above (`clear`) is Residue file A from the "per-file look at the four files (orchestrator,
+after plan 01)" table earlier in this record: it was on list A for `dread x![]` before plan 01's
+empty-bracket fix; once that parsed, the file's next disagreement — `clear x![]`, a `CLEAR` statement
+followed by a variable list — became visible and drew this validation false alarm instead. This is
+the only file in this run's A2 set whose message changed because of a parser fix elsewhere in this
+phase; every other message-group count above is either unchanged from the Phase 99 close or explained
+by the two cleared groups (both fixed by plan 04's shared bare-comment-word regex widening, applied
+to `endif` and, separately at an earlier point in the phase, to `classend` — see the "Per-file look at
+the four A2 files (orchestrator, after plan 02)" section above for that intermediate history).
+
+## B movement
+
+**This section's own file-set diff (against `details-100-06-before.json`, taken immediately before
+this run): 0 files newly uncaught, 0 files left the list.** The closing run's `missed` set is
+byte-identical to the state plan 04 left it in.
+
+**Phase-wide B delta vs the Phase 99 close baseline (666): +3 (669).** These three files were
+identified and classified by plan 01's own before/after file-set diff (the redacted "per-file look at
+the four files" table above) immediately after they entered:
+
+- Residue file B — **lost accidental catch.** The compiler's real complaint is a semantic
+  branch-target check this project's document validator cannot surface at error severity (linking
+  errors are downgraded to Warning); the file's prior "catch" came from an unrelated syntax error
+  this phase's empty-bracket fix resolved, exposing the pre-existing, structurally-unreachable defect
+  underneath.
+- Residue file C — **a rule now accepting an invalid form, and out of scope.** The compiler enforces
+  a whole-array-right-hand-side rule on a whole-array assignment target; this is a typed validation
+  rule, not a parser shape, and applied to this exact construct before this phase — never checked by
+  any plan here. Not fixed, not gated; carried forward unchanged.
+- Residue file D — **lost accidental catch.** The compiler's real complaint is the pending
+  `FILEOPEN`/file-dialog gap (the false-premise item plan 05 resolved by repairing the affected
+  example in place rather than filing a todo — see 100-05-SUMMARY.md); the file's prior "catch" came
+  from the same unrelated syntax error this phase's empty-bracket fix resolved.
+
+This classification is carried forward unchanged from plan 01's own record; this section's own diff
+(above) confirms no further B movement occurred since then, and writes no new cause, mechanism or
+attribution of its own for any of the three files.
+
+## The completed residue list
+
+Plan 04 opened the shape-level residue table with 4 filled rows (7 files) and 2 rows pending a
+per-file look (2 files: Residue file E and Residue file F, above). One of the two — Residue file E —
+now has its per-file look, filled in by the orchestrator's own note directly above this section. The
+other — Residue file F — does not: the orchestrator's own probe narrowed the cause to somewhere in
+lines 1–188 of that file but did not isolate it "in the time allowed," and this plan changes no
+source and reads no further corpus content, so there is nothing more to add here. Per the plan's own
+instruction, **no category is guessed to close this row.**
+
+| Shape (own words) | Files | Reason category | Fixed or stays |
+|---|---|---|---|
+| An unspaced positional `INPUT` form (`input` immediately followed by `@(` with no space between them) — the `ID` terminal's own optional trailing `@` matches longer than the `INPUT` keyword at that exact position. | 1 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| A branch-target list using bare line numbers as `GOTO`/`GOSUB` targets instead of a named label — needs a genuinely new addressing mechanism (the file's own physical/declared line numbering), not a `LabelDecl`/`LabelRef` extension. | 1 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| A number written in scientific/exponent notation (for example `1.0e-2`) used as an argument inside a parenthesized function call — the `NUMBER` terminal's own pattern has no exponent suffix at all; a bare top-level occurrence is only ever tolerated by unrelated leniency, not genuine support. | 3 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| A bare, unadorned `METHODEND` or `FNEND` terminator with nothing else on its line, appearing where no method or `DEF FN` is open. | 2 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| A statement that begins with a `::file::Class` static-call reference, glued onto the end of the line before it — a line whose first character is `:` is read by the lexer as a continuation of the previous line, not the start of a new statement, so this shape can only ever appear after the very first line of a program (Residue file E). | 1 | valid but disproportionate to fix now | stays — the fix belongs in the lexer's own line-continuation splitter, not a grammar rule; a candidate for a later milestone |
+| A `METHOD` declaration whose signature line the parser stops on, in a file whose class header, fields and that same signature shape all parse cleanly in isolation — the real cause is a second, hidden defect earlier in the file (Residue file F). | 1 | **pending** | **pending** — the orchestrator's own probe did not isolate the cause in the time allowed; no category is guessed |
+
+**Row-count check:** 1 + 1 + 3 + 2 + 1 + 1 = 9, matching the measured list-A total exactly.
+
+**The fourth roadmap success criterion does not fully hold.** Five of the six rows above are filled
+with an own-words shape, a file count, one of the four permitted reason categories, and a
+fixed-or-stays decision. The sixth (Residue file F) is not: its cause was probed but not isolated, so
+neither a shape description nor a reason category can be honestly assigned without guessing, which
+the plan's own instruction forbids. This is recorded here exactly as it stands, and carried into
+Task 3's conditional stop below — the residue list is not closed, whatever the gate numbers say.
