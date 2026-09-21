@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: executing
-stopped_at: Completed 100-03-PLAN.md
-last_updated: "2026-09-21T22:00:30.690Z"
+stopped_at: Completed 100-04-PLAN.md
+last_updated: "2026-09-21T22:42:14.557Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
-state_head: a373777a6611d70dfda8ffa27dc9a09adbba0e5d
+state_head: f1c73f9b879f4ad1030817a3731cd06026b0aa2e
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 29
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
@@ -119,6 +119,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 100 P01 | 21min | 3 tasks | 5 files |
 | Phase 100 P02 | 24min | 3 tasks | 5 files |
 | Phase 100 P03 | 55min | 3 tasks | 5 files |
+| Phase 100 P04 | 39min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,9 @@ decisions:
 - [Phase 100]: [Phase 100] line-numbered-class.bbj places each line number on its own source line rather than sharing a line with the construct it numbers, to avoid a pre-existing, unrelated line-break-validation gap (masked keywords' 'before' check is a raw line-start text check with no same-line-number tolerance for ANY masked keyword); same-line shapes are asserted parse-only in parser-keyword-statements.test.ts instead
 - [Phase 100]: [Phase 100]: The custom-pattern CATEGORIES-grant mechanism proven for 'start' generalized cleanly to four more lexer tokens (NEXT_BREAK, METHODRET_END, PRINT_STANDALONE_NL, KEYWORD_STANDALONE) covering twelve words total -- each token's own bare-statement alternative is still matched by token TYPE, unaffected by the grant, so no cross-word interference; discovered 'next' was broken despite the roadmap's own already-working claim and fixed it by the same mechanism
 - [Phase 100]: [Phase 100]: classend/methodend/interfaceend's EXCLUDED-set removal tried and reverted -- confirmed genuinely load-bearing (a malformed class/method/interface silently degrades to loose expression statements with zero errors once its own terminator is also ID-category); record left unfixed (PrintStatement's own RECORD flag ambiguity needs a lookahead gate, out of scope) -- both recorded as residue in 100-CONFORMANCE.md, no rescue mechanism built
+- [Phase 100]: SETDRIVE gained a small statement rule reusing the shared Err fragment; PROCESS_EVENTS/FULLTEXT option tails widened to order-independent alternations over the same fragments — The compiler accepts either written order and no spaces; the grammar previously fixed one order only, and SETDRIVE had no rule at all
+- [Phase 100]: CLEAR/BEGIN's plain-variable-list widening was tried and reverted -- it let a bare CLEAR/BEGIN silently swallow the next unrelated statement — Safely disambiguating needs a same-line-only lexer token; recorded as needing lexer work, not fixed
+- [Phase 100]: line-break-validation.ts's lineStartRegex/lineEndRegex widened to tolerate a leading line number and a bare rem with no body; InterfaceDecl gained ClassDecl's leading-NUMBER tolerance — Closes the required A2 rise from plan 02 and the orchestrator's line-number false alarms for FIELD/METHOD/CLASSEND/INTERFACEEND; the class/interface header and methodend-in-body cases are a separate, wider, pre-existing gap left recorded
 
 ### Tech Debt
 
@@ -235,8 +239,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T22:00:14.465Z
-Stopped at: Completed 100-03-PLAN.md
+Last session: 2026-09-21T22:42:14.427Z
+Stopped at: Completed 100-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
