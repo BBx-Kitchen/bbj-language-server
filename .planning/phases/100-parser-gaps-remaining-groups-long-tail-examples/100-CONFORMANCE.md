@@ -201,3 +201,17 @@ gave the comment a body (`; rem c`); a bare `; rem` with nothing following it is
 this plan did not probe. No cause, mechanism or attribution is recorded here for any of the four
 — the per-file look is the orchestrator's job, not this task's, per this phase's own working
 rule.
+
+### Per-file look at the four A2 files (orchestrator, after plan 02)
+
+File-set diff of `snapshots/details-100-02-before.json` against the post-run `details.json`: list A lost
+5 files and gained none; B is the same set; A2 gained exactly `samples/16526-175f36d1.bbj` (line 20),
+`samples/17065-6c66c142.bbj` (line 19), `samples/28950-024d2643.bbj` (line 33) and
+`samples/thismethod-36d8a603.bbj` (line 36). All four were on list A before, all four flagged lines are
+`classend; rem` / `classend;rem` with nothing after the comment word, all four carry the message
+"This statement needs to end with a line break: classend". The line-end pattern in
+`line-break-validation.ts` demands a blank after `rem`, so a bare `rem` at end of line does not count
+as a comment tail. For a user these four files are no better off yet (one error replaced by another),
+so the pattern fix is folded into plan 04 together with `clear x![]` from the plan 01 look; the
+same-line leading line number in front of `class`/`classend` (false line-break diagnostics, present
+before this phase) goes to plan 04 as well.
