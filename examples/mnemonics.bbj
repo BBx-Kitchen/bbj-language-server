@@ -1,5 +1,5 @@
 let x = 1,y = 2
-let ABS = "func"
+let ABS$ = "func"
 
 REM using mnemonic in output:
 PRINT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),

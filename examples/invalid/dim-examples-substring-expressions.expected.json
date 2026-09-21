@@ -1,0 +1,4 @@
+{
+  "reason": "Three bare substring-access expressions used as standalone statements; the compiler rejects a bare expression statement, the grammar accepts it.",
+  "diagnostics": "none-today"
+}
