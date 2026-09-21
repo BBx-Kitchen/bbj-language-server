@@ -1,0 +1,16 @@
+REM Protects a bare RETURN used to exit a multi-line DEF FN body early,
+REM before the value-carrying RETURN that ends the function, from being
+REM flagged as an error for lacking a return value. Covers both the
+REM in-loop early-exit shape and a single-line IF guard shape, in upper
+REM and lower case.
+DEF FNGREATESTCOMMONFACTOR(numone, numtwo)
+    IF numone = 0 THEN RETURN
+    WHILE numone <> 0
+        temp = numone, numone = MOD(numtwo, numone), numtwo = temp
+    WEND
+    RETURN numtwo
+FNEND
+def fnfirstpositive(itemone, itemtwo)
+    if itemone > 0 then return
+    return itemtwo
+fnend

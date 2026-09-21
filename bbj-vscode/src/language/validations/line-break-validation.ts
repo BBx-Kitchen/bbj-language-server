@@ -188,10 +188,11 @@ function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
                 // ELSE: if previous is IF_THEN - same line
                 lineBreaks.both = false;
                 break;
-            } else if (isElseStatement(prev) || isIfEndStatement(prev)) {
-                // other
-                break;
             }
+            // Walk past a preceding ELSE or end-of-IF statement instead of stopping there,
+            // so an ELSE that closes a nested single-line IF/FI chain still finds its own
+            // governing IF further back on the same line. The same-line guard above keeps
+            // this monotonic and terminating.
             prev = previousStatement(prev);
         }
         return lineBreaks

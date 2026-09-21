@@ -430,7 +430,7 @@ export class BBjValidator {
         if (ele.body && ele.body.length > 0) {
             ele.body.filter(isKeywordStatement).forEach(statement => {
                 if (statement.kind && statement.kind.toUpperCase() === 'RETURN') {
-                    accept('error', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
+                    accept('warning', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
                 }
             })
             return;

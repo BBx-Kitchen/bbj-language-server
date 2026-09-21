@@ -7,7 +7,7 @@
 import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
-import { expectError, expectNoIssues, validationHelper } from 'langium/test';
+import { expectError, expectNoIssues, expectWarning, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Program, isBinaryExpression, isDefFunction, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
@@ -203,13 +203,13 @@ describe('BBj validation', async () => {
             WHILE X<>0
                 LET TEMP=X, X=MOD(Y,X), Y=TEMP
             WEND
-            REM expect error here
+            REM expect warning here
             RETURN
         FNEND
         `);
         const keywordStatement  = findFirst(validationResult.document, isKeywordStatement, true);
         expect(keywordStatement).toBeDefined();
-        expectError(validationResult, 'RETURN statement inside a DEF function must have a return value.', {
+        expectWarning(validationResult, 'RETURN statement inside a DEF function must have a return value.', {
             node: keywordStatement
         });
     });
