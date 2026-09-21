@@ -179,20 +179,28 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
     return [isIfStatement, mask]
 }
 
+// Balance rule shared by elseStatementLineBreaks and ifEndStatementLineBreaks: walking
+// past a same-line closer finds a nested chain's true governing IF, but each closer
+// stepped over consumes one open IF that this node cannot also claim. `openIfs` counts
+// unclaimed closers; an IF found while it is positive belongs to one of them (decrement,
+// keep walking), an IF found at zero governs this node. The same-line guard keeps the
+// walk monotonic and terminating either way.
 function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
     const mask = (node: ElseStatement) => {
         const lineBreaks = { before: false, after: false, both: true };
+        let openIfs = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {
-            if (isIfStatement(prev)) {
-                // ELSE: if previous is IF_THEN - same line
-                lineBreaks.both = false;
-                break;
+            if (isIfEndStatement(prev) || isElseStatement(prev)) {
+                // A prior closer or ELSE already spent one open IF; an ELSE cannot own two.
+                openIfs++;
+            } else if (isIfStatement(prev)) {
+                if (openIfs === 0) {
+                    lineBreaks.both = false;
+                    break;
+                }
+                openIfs--;
             }
-            // Walk past a preceding ELSE or end-of-IF statement instead of stopping there,
-            // so an ELSE that closes a nested single-line IF/FI chain still finds its own
-            // governing IF further back on the same line. The same-line guard above keeps
-            // this monotonic and terminating.
             prev = previousStatement(prev);
         }
         return lineBreaks
@@ -203,17 +211,20 @@ function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
 function ifEndStatementLineBreaks(): LineBreakConfig<IfEndStatement> {
     const mask = (node: IfEndStatement) => {
         let lineBreaks = { before: false, after: false, both: true };
+        let openIfs = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {
-            if (isIfStatement(prev) || isElseStatement(prev)) {
-                // ENDIF: if previous is IF_THEN or ELSE same line
-                lineBreaks.both = false;
-                break;
+            if (isIfEndStatement(prev)) {
+                // ELSE does not increment here: it still belongs to an open IF, so it is a
+                // valid thing for an end-of-IF to close directly.
+                openIfs++;
+            } else if (isIfStatement(prev) || isElseStatement(prev)) {
+                if (openIfs === 0) {
+                    lineBreaks.both = false;
+                    break;
+                }
+                openIfs--;
             }
-            // Walk past a preceding end-of-IF statement instead of stopping there, so a
-            // nested single-line IF closed by two chained end-of-IF statements (e.g.
-            // `if a then if b then c = 1 fi fi`) keeps looking back for its own governing
-            // IF. The same-line guard above keeps this monotonic and terminating.
             prev = previousStatement(prev);
         }
         return lineBreaks
