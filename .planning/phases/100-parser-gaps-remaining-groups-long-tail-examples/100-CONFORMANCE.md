@@ -857,3 +857,22 @@ was adjusted anywhere in this plan to move a number.
 This plan does not seal here. It returns a blocking human checkpoint instead, per Task 3's own step
 7 and this project's `gate="blocking-human"` convention — see the checkpoint returned alongside this
 SUMMARY.
+
+### Residue file F — cause isolated (orchestrator, after plan 06)
+
+A bisect over the file's first 188 lines against the parser (each prefix joined to the class header and
+the flagged constructor) found the smallest failing start: a multi-line `DEF FN…(…)` (line 160) whose
+body ends with `return 1` and never has an `FNEND`, followed later by the `class` block. Probes:
+
+| Program shape | `bbjcpl` | Parser errors |
+|---------------|----------|---------------|
+| `def fnx(a)` / body / `return 1` / `print fnx(1)` | accepted | 0 |
+| `def fnx(a)` / body / `return 1` / `class … classend` | accepted | 2 (at the class's first `method`) |
+| same with `fnend` before `class` | accepted | 0 |
+
+So a `DEF FN` body without `FNEND` keeps swallowing statements; that is harmless until the next thing
+is a class definition, which the body cannot contain. This is the "multi-line DEF FN without FNEND"
+shape already known from Phase 98, in the one arrangement that phase did not cover. It is a grammar
+change (end the body at `return` when no `FNEND` follows), not attempted here. The residue table's
+pending row is now filled: 1 file, reason "known shape, uncovered arrangement". All 9 list-A entries
+have an own-words shape.
