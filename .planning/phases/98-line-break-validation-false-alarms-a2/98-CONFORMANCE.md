@@ -360,3 +360,20 @@ A2 by 2 over the ≤25 gate (27, up 5 from the phase-boundary's 22), B by 7 over
 unchanged since the phase boundary). Neither was fixed in this task, per this plan's instruction to
 report a missed gate rather than engineer it away. Both are put in front of the human decision below.
 
+## 11. Closing decision — both gates accepted, A2 residue carried forward
+
+Stephan Wald accepted both open gates above on 2026-09-21, closing Phase 98 (recorded as two
+`overrides:` entries in 98-VERIFICATION.md). The five files behind the A2 gate miss are, in this
+executor's own words: ordinary single-line `IF ... FI` / `IF ... ELSE` forms the compiler accepts,
+which stopped being flagged once plan 06 taught the ELSE and end-of-IF line-break masks to walk past
+a same-line closer unconditionally, and started being flagged again after plan 08's commit `8ba30038`
+added a same-line-closer counter so the walk only steps past a closer when a matching, still-open IF
+remains further back — a change made to stop a *different*, genuinely misplaced ELSE/FI from being
+silently accepted. These five files apparently exercise a single-line shape the counter still
+mis-measures as having no open IF left, even though the compiler accepts the line. The shape itself
+is not identified further here (no corpus text); fixing it means adjusting the counter's bookkeeping
+without reopening the false-negative plan 08 closed, which is more investigation than this closing
+task can respect its own no-widen-a-check rule and still do safely. Tracked as a pending todo
+(`.planning/todos/pending/2026-09-21-loosen-single-line-if-balance-rule-a2-residue.md`) rather than
+fixed here.
+

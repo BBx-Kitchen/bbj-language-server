@@ -4,7 +4,18 @@ verified: 2026-09-21T04:45:44Z
 status: gaps_found
 score: 4/6 must-haves verified
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 2
+overrides:
+  -
+    must_have: "Roadmap Success Criterion 5 / CONF-01 — 'the conformance run at the phase boundary reports A2 ≤ 25 (from 267) with A and B not regressed'"
+    reason: "B regressed 658->665 of 1,210 (+7, unchanged since the phase boundary). Section 9's per-file evidence refutes the original keyword-branch-target attribution for all seven files: 5 trace to the RESTORE line-break fix (plan 02), 1 to the METHODRET severity downgrade (plan 03), 1 to the unclosed DEF FN grammar fix (plan 05) — each a legitimate, already-shipped fix whose removed false alarm happened to be the only thing flagging a file the compiler independently rejects for an unrelated reason elsewhere. Not fixable with this phase's line-break/DECLARE/METHODRET tools; carried to Phases 101-103 (the bbj-ls compiler-parser endpoint)."
+    accepted_by: "Stephan Wald"
+    accepted_at: "2026-09-21T00:00:00Z"
+  -
+    must_have: "Roadmap Success Criterion 5 / CONF-01 — 'the conformance run at the phase boundary reports A2 ≤ 25 (from 267) with A and B not regressed'"
+    reason: "Closing re-run (98-CONFORMANCE.md section 10) measured A2 = 27, 2 over the ≤25 gate, up 5 from the phase boundary's 22. The +5 are two message groups (the blank 'needs to start in a new line' group, 4 files; the '...: else' group, 1 file) that reappeared after plan 08's commit 8ba30038 made the ELSE/end-of-IF backward walks count open IFs against stepped-over closers, restoring detection of a genuinely misplaced ELSE/FI. Since A2 by definition counts files the compiler accepts, these five are valid code being re-flagged, not a correctly restored detection — the balance rule is too strict for some real single-line shape. Accepted as carried-forward residue, not as correct behavior; tracked via a pending todo."
+    accepted_by: "Stephan Wald"
+    accepted_at: "2026-09-21T00:00:00Z"
 gaps:
   - truth: "Roadmap Success Criterion 5 / CONF-01 — 'the conformance run at the phase boundary reports A2 ≤ 25 (from 267) with A and B not regressed'"
     status: failed
@@ -212,6 +223,15 @@ the B regression and the two unresolved review criticals as scoped-out residue f
 the clean path is to add explicit `overrides:` entries to this VERIFICATION.md (or re-open a
 closure plan) rather than let an executor's own "accepted residue" language stand in for that
 decision.
+
+**Decision recorded 2026-09-21.** Stephan Wald accepted both open gates found across the gap-closure
+wave (98-07 through 98-10) and closed the phase: the unchanged B regression (658->665, gap 1 above,
+grounded in 98-CONFORMANCE.md section 9's per-file evidence) and the A2 gate miss the closing re-run
+surfaced (A2 = 27 vs. the ≤25 gate, five files re-flagged by plan 08's ELSE/end-of-IF balance fix,
+98-CONFORMANCE.md section 10). Both are recorded as `overrides:` entries above with their evidence
+pointers. Gaps 2 and 3 (the RESTORE symbolic-label and ELSE/FI-balance code review criticals) are not
+part of this decision — both were fixed in code by plans 07 and 08 respectively and are left for
+re-verification to confirm, not overridden here.
 
 ---
 

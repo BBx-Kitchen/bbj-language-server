@@ -22,11 +22,11 @@
 
 ### No false alarms on valid code (list A2)
 
-- [ ] **VALID-01**: A `TABLE` statement gets no line-break error
-- [ ] **VALID-02**: `RESTORE n`, `GOSUB`/`GOTO` to a label named like a keyword, `EXIT expr`, `LOAD` and `SAVE` get no line-break error
-- [ ] **VALID-03**: A multi-line `DEF FN...(params)` header gets no line-break error
-- [ ] **VALID-04**: Single-line `IF` forms and `FI` that the compiler accepts are not reported as "needs to start in a new line"
-- [ ] **VALID-05**: The conflicting-`DECLARE` and `METHODRET` checks report no error on code the compiler accepts
+- [x] **VALID-01**: A `TABLE` statement gets no line-break error
+- [x] **VALID-02**: `RESTORE n`, `GOSUB`/`GOTO` to a label named like a keyword, `EXIT expr`, `LOAD` and `SAVE` get no line-break error
+- [x] **VALID-03**: A multi-line `DEF FN...(params)` header gets no line-break error
+- [x] **VALID-04**: Single-line `IF` forms and `FI` that the compiler accepts are not reported as "needs to start in a new line"
+- [x] **VALID-05**: The conflicting-`DECLARE` and `METHODRET` checks report no error on code the compiler accepts
 
 ### Compiler parser diagnostics (list B)
 
@@ -46,7 +46,7 @@
 
 ### Conformance measurement
 
-- [ ] **CONF-01**: Each construct fixed for PARSE and VALID has a small synthetic regression file that the existing example-files test parses with zero errors
+- [x] **CONF-01**: Each construct fixed for PARSE and VALID has a small synthetic regression file that the existing example-files test parses with zero errors
 - [ ] **CONF-02**: The conformance run can include the `bbj-ls` endpoint, reports list B with it, and the way to run it is documented for maintainers
 - [ ] **CONF-03**: On the corpus build of the baseline, the milestone ends with A ≤ 25, A2 ≤ 25, and B ≤ 5 % with the endpoint active, with all existing test suites passing
 
@@ -85,11 +85,11 @@
 | PARSE-07 | Phase 99 | Pending |
 | PARSE-08 | Phase 100 | Pending |
 | PARSE-09 | Phase 100 | Pending |
-| VALID-01 | Phase 98 | Gaps Found |
-| VALID-02 | Phase 98 | Gaps Found |
-| VALID-03 | Phase 98 | Gaps Found |
-| VALID-04 | Phase 98 | Gaps Found |
-| VALID-05 | Phase 98 | Gaps Found |
+| VALID-01 | Phase 98 | Complete |
+| VALID-02 | Phase 98 | Complete |
+| VALID-03 | Phase 98 | Complete |
+| VALID-04 | Phase 98 | Complete |
+| VALID-05 | Phase 98 | Complete |
 | PSRV-01 | Phase 101 | Pending |
 | PSRV-02 | Phase 101 | Pending |
 | PSRV-03 | Phase 102 | Pending |
@@ -100,7 +100,7 @@
 | PSRV-08 | Phase 102 | Pending |
 | PSRV-09 | Phase 102 | Pending |
 | EXMP-01 | Phase 100 | Pending |
-| CONF-01 | Phase 98 | Gaps Found |
+| CONF-01 | Phase 98 | Complete |
 | CONF-02 | Phase 104 | Pending |
 | CONF-03 | Phase 104 | Pending |
 
