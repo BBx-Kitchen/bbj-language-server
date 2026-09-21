@@ -194,8 +194,14 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'ENDLINE_PRINT_COMMA') {
             const token: TokenType = {
                 name: terminal.name,
-                // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/),
+                // The lookahead tolerates horizontal whitespace between the trailing comma and
+                // the line break or semicolon that ends the item list (a trailing comma followed
+                // by a space then a newline was previously left as an ordinary separator, so the
+                // parser reached across the line break for another item). The matched token image
+                // stays the comma alone -- the tolerated whitespace is zero-width lookahead, not
+                // consumed -- so no downstream offset changes. Bounded single character class,
+                // no nested quantifier.
+                PATTERN: this.regexPatternFunction(/,(?=[ \t]*(\r?\n|;))/),
                 LINE_BREAKS: true
             };
             return token;
