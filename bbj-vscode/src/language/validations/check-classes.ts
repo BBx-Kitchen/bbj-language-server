@@ -126,6 +126,16 @@ export function bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
 }
 
 /**
+ * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
+ * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
+ * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
+ * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
+ * partially-loaded classpath (or a test double that does not preload them) must not produce a
+ * false positive.
+ */
+export const KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
+
+/**
  * True when two resolved classes are related closely enough that a conflicting-DECLARE
  * diagnostic between them should stay silent: they are the same class object, they share a
  * fully-qualified name (case-insensitive), either one is `java.lang.Object` (the universal top
@@ -153,16 +163,6 @@ export function bbjTypesAreRelated(a: Class, b: Class): boolean {
 }
 
 class ClassValidator {
-
-    /**
-     * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
-     * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
-     * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
-     * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
-     * partially-loaded classpath (or a test double that does not preload them) must not produce a
-     * false positive.
-     */
-    private static readonly KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
 
     constructor(private readonly inferer: TypeInferer, private readonly javaInterop?: JavaInteropService) {
     }
@@ -214,7 +214,7 @@ class ClassValidator {
             return;
         }
         const simpleName = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
-        if(ClassValidator.KNOWN_BBJ_SCALAR_TYPES.has(simpleName)) {
+        if(KNOWN_BBJ_SCALAR_TYPES.has(simpleName)) {
             return;
         }
         accept('warning', `Type '${name}' cannot be resolved.`, info);

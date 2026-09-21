@@ -23,7 +23,7 @@ import {
     isProgram,
 } from '../generated/ast.js';
 import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
-import { bbjTypesAreRelated } from './check-classes.js';
+import { bbjTypesAreRelated, KNOWN_BBJ_SCALAR_TYPES } from './check-classes.js';
 
 /**
  * Register variable scoping validation checks for both Program and MethodDecl scopes.
@@ -306,12 +306,14 @@ function getDeclLine(anyNode: AstNode, offset: number): number {
 /**
  * Check for conflicting DECLARE statements (same variable, different types) in a scope.
  *
- * Every later DECLARE of one name is compared against the FIRST declaration of that name. A raw
- * reference-text difference alone is no longer enough to flag anything: both types must resolve
- * to a class, and be unrelated (neither a sub- nor a supertype of the other — see
- * bbjTypesAreRelated) before a diagnostic is produced. When both conditions hold, the scope
- * decides severity: inside a method body it stays an error — the one deliberate exception where
- * this check knowingly says more than the compiler; at program level, where subroutines and
+ * Every later DECLARE of one name is compared against the FIRST declaration of that name. Two
+ * different BBj built-in scalar type names (see KNOWN_BBJ_SCALAR_TYPES) never need resolution to
+ * be recognised as a conflict, because they are known names regardless of classpath state. Every
+ * other pair still needs both sides to resolve to a class and be unrelated (neither a sub- nor a
+ * supertype of the other — see bbjTypesAreRelated) before a diagnostic is produced; a raw
+ * reference-text difference alone is never enough on its own. When either condition holds, the
+ * scope decides severity: inside a method body it stays an error — the one deliberate exception
+ * where this check knowingly says more than the compiler; at program level, where subroutines and
  * event handlers share one namespace and re-declaring a variable per handler is ordinary
  * practice, it is a warning.
  */
@@ -347,6 +349,18 @@ function checkConflictingDeclares(
                 if (thisType.toLowerCase() === firstType.toLowerCase()) {
                     continue;
                 }
+                const lineInfo = firstLine !== undefined ? ` (declared at line ${firstLine + 1})` : '';
+                // Both sides being a known BBj scalar type name is the whole condition here --
+                // it never needs resolution, and never short-circuits a mixed pair, where a
+                // live classpath may legitimately keep the pair silent via bbjTypesAreRelated.
+                const firstSimpleName = firstType.substring(firstType.lastIndexOf('.') + 1).toLowerCase();
+                const thisSimpleName = thisType.substring(thisType.lastIndexOf('.') + 1).toLowerCase();
+                if (KNOWN_BBJ_SCALAR_TYPES.has(firstSimpleName) && KNOWN_BBJ_SCALAR_TYPES.has(thisSimpleName)) {
+                    accept(severity, `Conflicting DECLARE for '${decls[i].name}': type '${thisType}' conflicts with '${firstType}'${lineInfo}`, {
+                        node: decls[i],
+                    });
+                    continue;
+                }
                 const firstClass = getClass(decls[0].type);
                 const thisClass = getClass(decls[i].type);
                 // Either type failing to resolve is not evidence of a conflict — a raw
@@ -359,7 +373,6 @@ function checkConflictingDeclares(
                 if (bbjTypesAreRelated(firstClass, thisClass)) {
                     continue;
                 }
-                const lineInfo = firstLine !== undefined ? ` (declared at line ${firstLine + 1})` : '';
                 accept(severity, `Conflicting DECLARE for '${decls[i].name}': type '${thisType}' conflicts with '${firstType}'${lineInfo}`, {
                     node: decls[i],
                 });
