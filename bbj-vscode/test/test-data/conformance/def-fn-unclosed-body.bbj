@@ -1,0 +1,15 @@
+REM Protects a multi-line DEF FN whose body is never explicitly closed from
+REM being misparsed into fallback expression statements and flagged for a
+REM missing line break: a closed function still ends at its own closing
+REM marker below, a statement after that marker stays its own top-level
+REM statement, and the final unclosed function's body runs cleanly to the
+REM end of the file with no diagnostic.
+DEF FNADDONE(num)
+sum = num + 1
+RETURN sum
+FNEND
+total = 1
+def fntriple(val)
+doubled = val + val
+tripled = doubled + val
+return tripled

@@ -200,3 +200,36 @@ describe('Line break validation: keyword-named GOTO/GOSUB/ON...GOSUB targets', (
         expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
     });
 });
+
+describe('Line break validation: multi-line DEF FN with no closing FNEND', () => {
+    const positiveCases: [string, string][] = [
+        ['unclosed function, no closing marker at all', 'def fnx(a$)\nb$ = a$\nreturn b$\n'],
+        ['unclosed function, trailing space after the header\'s closing parenthesis', 'def fnx (a$) \nb$ = a$\nreturn b$\n'],
+        ['unclosed function, blank line between the header and the first body statement', 'def fnx(a$)\n\nb$ = a$\nreturn b$\n'],
+        ['an earlier, properly closed function followed by one unclosed function', 'def fna(a$)\nb$=a$\nreturn b$\nfnend\ndef fnc(c$)\nd$=c$\nreturn d$\n'],
+    ];
+
+    test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
+    test('a properly closed function still ends at its closing marker: a statement on the next line is a top-level statement, not part of the body', async () => {
+        const result = await validate('def fna(a$)\nb$=a$\nreturn b$\nfnend\nx=1\n');
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+        const statements = (result.document.parseResult.value as unknown as { statements: { $type: string }[] }).statements;
+        expect(statements.map(s => s.$type)).toEqual(['DefFunction', 'LetStatement']);
+    });
+
+    test('a statement crammed onto the closing marker\'s own line via a semicolon is still rejected', async () => {
+        // The closing marker's own lexer token only matches when immediately followed by
+        // ';' or a line break, so a real statement can never legally share its physical
+        // line: trying to chain one on with ';' produces a diagnostic (a parser error
+        // surfaced as one), proving the relaxed rule did not also relax this. Asserting
+        // non-emptiness only, per this construct's own nature -- not the usual
+        // lineBreakDiagnostics() filter, since the rejection here is a parse failure,
+        // not a "needs a line break" message.
+        const result = await validate('def fna(a$)\nb$=a$\nreturn b$\nfnend;x=1\n');
+        expect(result.diagnostics.length).toBeGreaterThan(0);
+    });
+});
