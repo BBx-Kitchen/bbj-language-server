@@ -9,7 +9,7 @@ funcNoReturn:
 funcWithReturn:
     return
 
-def identity(value)
+def fnidentity(value)
     return value
 fnend
 

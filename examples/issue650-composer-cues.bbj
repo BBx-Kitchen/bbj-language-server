@@ -6,7 +6,7 @@ sysgui! = BBjAPI().openSysGui("X0")
 win1! = sysgui!.addWindow(10, 10, 400, 300, "First", $00010003$)
 win2! = sysgui!.addWindow(50, 50, 300, 200, "Second", $00000001$)
 
-win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")
+win3! = sysgui!.addWindow(0, 0, 100, 100, "A"); win4! = sysgui!.addWindow(0, 0, 100, 100, "B")
 
 rem win5! = sysgui!.addWindow(0, 0, 100, 100, "Commented")
 

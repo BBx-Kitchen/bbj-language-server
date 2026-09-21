@@ -1,21 +1,21 @@
 class public Test
-    field private static String fieldPrivate
-    field protected static String fieldProtected
-    field public static String fieldPublic
+    field private static String fieldPrivate!
+    field protected static String fieldProtected!
+    field public static String fieldPublic!
 
-    method private static doPrivately()
+    method private static void doPrivately()
     methodend
 
-    method protected static doProtected()
+    method protected static void doProtected()
     methodend
 
-    method public static doPublic()
+    method public static void doPublic()
         #this!.doPrivately()             ; REM no error
     methodend
 classend
 
-class public TestDX extends Test 
-    method public doNew()
+class public TestDX extends Test
+    method public void doNew()
         Test.doProtected()               ; REM no error
         let local1 = Test.fieldProtected ; REM no error
     methodend

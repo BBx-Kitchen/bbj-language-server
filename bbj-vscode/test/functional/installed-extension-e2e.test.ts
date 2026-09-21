@@ -710,7 +710,7 @@ describe.skipIf(!installPresent)('composer cues on the installed bundle (#650)',
         ).line;
         const sharedLine = findPosition(
             fixtureText,
-            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
+            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A"); win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
             'addWindow',
         ).line;
         const lines = fixtureText.split('\n');
@@ -842,7 +842,7 @@ describe.skipIf(!installPresent)('every composer kind carries its cue', () => {
         ).line;
         const sharedLine = findPosition(
             fixtureText,
-            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A") : win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
+            'win3! = sysgui!.addWindow(0, 0, 100, 100, "A"); win4! = sysgui!.addWindow(0, 0, 100, 100, "B")',
             'addWindow',
         ).line;
         expect(linesFor('addwindow')).toEqual([win1Line, win2Line, sharedLine, sharedLine].sort((a, b) => a - b));
