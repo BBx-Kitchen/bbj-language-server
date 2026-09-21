@@ -138,7 +138,7 @@ status: complete
   harness's flagged line is the `FieldStatement` verb itself, in its value form, followed by a
   trailing comma-separated error-branch option (own-words shape: `field
   <record>,<name>=<value>,err=<line reference>`) — plan 02's `FieldStatement` grammar rule carries no
-  options tail, so the parser stops at that second comma. This is a genuine PARSE-02 residue of the
+  options tail, so the parser stops at that second comma. This is a genuine PARSE-01 residue of the
   verb form, not a chance identifier and not a class-member declaration. `99-CONFORMANCE.md`'s gate-2
   note and the closing attestation's criterion-5 entry were both corrected in place to record this;
   gate row 2 stays **PARTIAL** until the rule accepts the option tail.
@@ -198,7 +198,7 @@ was wrong**
   unrelated later line exposed by plan 04's `IOLIST` fix, without reading the file's own flagged line.
 - **Fix:** The orchestrator read the harness's flagged line and found it to be the `FieldStatement`
   verb's own value form with a trailing `err=<line reference>` option the grammar rule does not
-  accept — a genuine PARSE-02 residue, not table churn. `99-CONFORMANCE.md` corrected in place.
+  accept — a genuine PARSE-01 residue, not table churn. `99-CONFORMANCE.md` corrected in place.
 - **Files modified:** `.planning/phases/99-parser-gaps-the-largest-groups/99-CONFORMANCE.md`
 - **Verification:** the corrected note is self-contained own-words shape description; no corpus file
   name, path or source line was written.

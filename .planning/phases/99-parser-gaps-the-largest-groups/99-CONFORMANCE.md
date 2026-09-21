@@ -617,7 +617,7 @@ not asserted as a specific cause.
 `FIELD` verb in its value form, followed by a trailing comma-separated error-branch option after the
 value — own-words shape: `field <record>,<name>=<value>,err=<line reference>`. The parser stops at
 that second comma ("Expecting end of file but found `,`"). Plan 02's `FieldStatement` rule carries
-no options tail, so this is a genuine residue of the verb form (PARSE-02), not a chance identifier
+no options tail, so this is a genuine residue of the verb form (PARSE-01), not a chance identifier
 and not a class-member declaration. It was hidden behind the `IOLIST` stop until plan 04. Gate row 2
 stays **PARTIAL** until the rule accepts the option tail.
 
