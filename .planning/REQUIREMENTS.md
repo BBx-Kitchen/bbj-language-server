@@ -10,13 +10,13 @@
 
 ### Parsing valid code (list A)
 
-- [ ] **PARSE-01**: A program that uses `FIELD` as a verb (`FIELD rec$,"name"=value`) parses without lexer or parser errors
-- [ ] **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with a `LEN=` channel option parse without errors, and `LEN` is usable as a variable name
-- [ ] **PARSE-03**: The word `label` works as a label name — alone on a line or directly followed by a statement (`label:escape`) — as a `GOTO`/`GOSUB` target and as a variable; a label with any other name in front of a statement (`L30: iolist a,b,c`) keeps parsing
+- [x] **PARSE-01**: A program that uses `FIELD` as a verb (`FIELD rec$,"name"=value`) parses without lexer or parser errors
+- [x] **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with a `LEN=` channel option parse without errors, and `LEN` is usable as a variable name
+- [x] **PARSE-03**: The word `label` works as a label name — alone on a line or directly followed by a statement (`label:escape`) — as a `GOTO`/`GOSUB` target and as a variable; a label with any other name in front of a statement (`L30: iolist a,b,c`) keeps parsing
 - [ ] **PARSE-04**: `PRINT (chan,err=label) ...` and the other `PRINT`/`INPUT` item forms the compiler accepts but the parser rejects today parse without errors
 - [ ] **PARSE-05**: `DREAD` into arrays (`dread x![]`) parses without errors
 - [ ] **PARSE-06**: A `; rem` comment after a `METHOD` header, `METHODEND` or `CLASSEND`, and line-numbered class code, parse without errors
-- [ ] **PARSE-07**: The `IOLIST` statement parses without errors
+- [x] **PARSE-07**: The `IOLIST` statement parses without errors
 - [ ] **PARSE-08**: Words BBj accepts as names although they are language words (for example `label`, `text`, `vector`, `state`, `val`) can be used as variables and labels without parser errors
 - [ ] **PARSE-09**: Every file that remains on list A is either fixed or recorded in a tracked list with the reason it stays (not a program, compiler quirk, deliberate)
 
@@ -76,13 +76,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | Phase 99 | Pending |
-| PARSE-02 | Phase 99 | Pending |
-| PARSE-03 | Phase 99 | Pending |
+| PARSE-01 | Phase 99 | Complete |
+| PARSE-02 | Phase 99 | Complete |
+| PARSE-03 | Phase 99 | Complete |
 | PARSE-04 | Phase 100 | Pending |
 | PARSE-05 | Phase 100 | Pending |
 | PARSE-06 | Phase 100 | Pending |
-| PARSE-07 | Phase 99 | Pending |
+| PARSE-07 | Phase 99 | Complete |
 | PARSE-08 | Phase 100 | Pending |
 | PARSE-09 | Phase 100 | Pending |
 | VALID-01 | Phase 98 | Complete |

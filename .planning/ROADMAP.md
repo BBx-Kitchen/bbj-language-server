@@ -302,7 +302,7 @@ last because its gate is the whole milestone's number.
 files describe behaviour and use word lists only.
 
 - [x] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET (completed 2026-09-21)
-- [ ] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, `LEN=` as a channel option of the RECORD verbs, the word `label` as a name, and IOLIST
+- [x] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, `LEN=` as a channel option of the RECORD verbs, the word `label` as a name, and IOLIST (completed 2026-09-21)
 - [ ] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - PRINT/INPUT item forms, DREAD into arrays, `;rem` after class and method boundaries, language words used as names — then every remaining list-A file is fixed or recorded, and `examples/` agrees with the compiler
 - [ ] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository
 - [ ] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x

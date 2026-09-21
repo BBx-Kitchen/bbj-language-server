@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
-current_phase: 99
-current_phase_name: Parser Gaps — the Largest Groups
-status: executing
-stopped_at: Completed 99-06-PLAN.md (all Phase 99 conformance gates PASS — A 52, A2 23, B 666; requirements left unticked per plan/follow-up instruction)
-last_updated: "2026-09-21T15:29:49.852Z"
+current_phase: 100
+current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
+status: planning
+stopped_at: Phase 99 complete, ready to plan Phase 100
+last_updated: "2026-09-21T15:56:31.986Z"
 last_activity: 2026-09-21
-last_activity_desc: Phase 99 plan 06 gap closure complete; all conformance gates PASS, phase ready for verification
-state_head: d5116873b881120e86972325e61890a187e15f91
+last_activity_desc: Phase 99 complete, transitioned to Phase 100
+state_head: 1a6ff91506cfe473997419e43339d7334c2b3b51
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 16
   completed_plans: 16
-  percent: 14
+  percent: 29
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-20 (v4.5 Compiler Conformance roadmapped — Phases 98-104, 27/27 requirements mapped)
+**Last Updated:** 2026-09-21 (Phase 99 complete — A 167 -> 52, A2 27 -> 23, B 666 accepted; verification passed 9/9)
 
 ## Project Reference
 
@@ -28,21 +28,21 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 99 — Parser Gaps — the Largest Groups
+**Current Focus:** Phase 100 — Parser Gaps — Remaining Groups, Long Tail & Examples
 
 ---
 
 ## Current Position
 
-Phase: 99 (Parser Gaps — the Largest Groups) — READY FOR VERIFICATION (gap plan 06 closed both open gates)
-Plan: 6 of 6 complete
-Status: Phase 99's gap plan (99-06) closed both gates the 99-05 closing run left open — `FieldStatement`
+Phase: 100 — Parser Gaps — Remaining Groups, Long Tail & Examples
+Plan: Not started
+Status: Ready to plan
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
 unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
 fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
-Last activity: 2026-09-21 — Phase 99 plan 06 gap closure complete; all conformance gates PASS
+Last activity: 2026-09-21 — Phase 99 complete, transitioned to Phase 100
 
 ### v4.5 milestone map
 
@@ -225,12 +225,12 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T15:29:24.921Z
-Stopped at: Completed 99-06-PLAN.md (all Phase 99 conformance gates PASS — A 52, A2 23, B 666; requirements left unticked per plan/follow-up instruction)
+Last session: 2026-09-21T16:00:00.000Z
+Stopped at: Phase 99 complete, ready to plan Phase 100
 Resume file: None
 
-Next: `/gsd-verify-work 99` to confirm the closed gates, then tick PARSE-01/02/03/07 in
-REQUIREMENTS.md and move to Phase 100 (Parser Gaps — Remaining Groups, Long Tail & Examples).
+Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
+SECURITY.md yet: run `/gsd-secure-phase 99` before shipping.
 
 ## Deferred Items
 
@@ -329,7 +329,7 @@ detail for phases 70-97 live with their archived phase artifacts; this file is a
 
 ## Operator Next Steps
 
-- Run `/gsd-discuss-phase 98` (or `/gsd-plan-phase 98` to skip discussion) to start v4.5 Phase 98 — the A2 line-break and validation false alarms.
+- Run `/gsd-discuss-phase 100` (or `/gsd-plan-phase 100`) to start Phase 100 — the remaining list-A groups, the long tail and the examples. Hand-overs from Phase 99: the documented `FIELD` array-index form is still rejected; read the corpus shapes before describing any group.
 - Before Phase 101, make sure a BBj 26.03-class build and the `bbj-ls` repository (`/home/coder/repos/bbj-ls`) are available to work in; that phase changes no file in this repository.
 - Re-run the private harness (`bbj-corpus/conformance/run.mjs --ls <this repo>`) at each fix-phase boundary; the numbers named in the roadmap's success criteria come from that run.
 - Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
