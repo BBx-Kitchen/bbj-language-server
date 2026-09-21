@@ -34,6 +34,14 @@ export function isTypeResolutionWarningsEnabled(): boolean {
 /** Prefix of the diagnostic message emitted for unresolvable USE file paths. Used by document builder to identify and reconcile these diagnostics after PREFIX docs are loaded. */
 export const USE_FILE_NOT_RESOLVED_PREFIX = "File '";
 
+// Token types built by bbj-token-builder.ts whose own regex only matches when a trailing ';' or
+// line break directly follows, consuming that terminator into the token's own matched text --
+// so its own leaf never carries the separator, even though the source has one. KEYWORD_STANDALONE
+// is the only such token built from a bare statement keyword (DELETE/SAVE/ENTER/READ/INPUT/
+// EXTRACT/FIND); every other terminator-adjacent custom token only looks ahead at the terminator
+// without consuming it, so its own leaf (';' or a line break) is still there to see.
+const TERMINATOR_CONSUMING_LEAF_TOKENS = new Set(['KEYWORD_STANDALONE']);
+
 /**
  * Register custom validation checks.
  */
@@ -289,7 +297,12 @@ export class BBjValidator {
         // A statement legally begins right after a then-branch or an else-branch keyword, the
         // same precedent isStandaloneStatement already relies on for a preceding label.
         const afterBranchKeyword = previousLeaf?.tokenType.name === 'THEN' || previousLeaf?.tokenType.name === 'ELSE';
-        if (commentStartsNewLine || separatedByStatementSeparator || afterBranchKeyword) {
+        // The preceding leaf's own token already swallowed its terminator (see
+        // TERMINATOR_CONSUMING_LEAF_TOKENS above) -- the separator is in the source, just not on
+        // a leaf of its own.
+        const separatorSwallowedByPrecedingToken = previousLeaf !== undefined
+            && TERMINATOR_CONSUMING_LEAF_TOKENS.has(previousLeaf.tokenType.name);
+        if (commentStartsNewLine || separatedByStatementSeparator || afterBranchKeyword || separatorSwallowedByPrecedingToken) {
             return;
         }
         accept('error', "Comments need to be separated by line breaks or ';'.", {

@@ -296,6 +296,22 @@ describe('Line break validation: a comment at a position where a statement legal
         expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
     });
 
+    // A custom lexer token that consumes its own trailing ';' or line break as part of its own
+    // matched text (bbj-token-builder.ts's KEYWORD_STANDALONE) leaves no separator leaf of its
+    // own in front of the comment, even though the source has one.
+    const terminatorSwallowingTokenCases: [string, string][] = [
+        ['a bare standalone-verb statement followed by a semicolon-attached comment, uppercase keyword', 'ENTER; rem a comment\n'],
+        ['the same shape behind a leading label, lowercase keyword', 'somelabel: enter; rem a comment\n'],
+        ['no space before the semicolon', 'enter;rem a comment\n'],
+        ['several spaces before the semicolon', 'enter   ; rem a comment\n'],
+        ['a sibling standalone-verb word from the same token family', 'read; rem a comment\n'],
+    ];
+
+    test.each(terminatorSwallowingTokenCases)('%s produces no line-break diagnostics', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+    });
+
     // Already-clean shapes, unaffected by this fix -- kept here as regression coverage for the
     // same check.
     const alreadyCleanCases: [string, string][] = [
@@ -313,6 +329,14 @@ describe('Line break validation: a comment at a position where a statement legal
         // Non-emptiness only, per the project's own convention for this diagnostic -- never an
         // exact message string.
         const result = await validate('x=1 rem a comment\n');
+        expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+
+    // Honest negative for the same token family: when the standalone-verb word is used as an
+    // ordinary identifier instead of the bare keyword statement, the terminator-swallowing token
+    // never matches at all, so the glued comment after it must still be flagged.
+    test('the same word used as an ordinary identifier, glued directly to a comment, is still flagged', async () => {
+        const result = await validate('enter = 1 rem a comment\n');
         expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
     });
 });
