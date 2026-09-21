@@ -1,0 +1,18 @@
+REM Protects the words BBj's own compiler accepts as ordinary names although they are grammar
+REM keywords: each fixed word parses as a plain variable (with every type suffix and with none),
+REM as a label declaration, and as a GOTO/GOSUB/ON...GOTO branch target -- including as the last
+REM entry of a multi-target list -- in upper, lower and mixed case.
+DECLARE=1
+PRINT DECLARE
+declare$="a"
+print declare$
+Declare!=bbjapi()
+Print Declare!
+DECLARE%=1
+PRINT DECLARE%
+declare:
+x=1
+goto DECLARE
+Other:
+y=1
+on x goto Other,declare

@@ -441,8 +441,10 @@ LabelDecl returns LabelDecl:
 // A label declaration's name may be an ordinary identifier or the word 'label' itself -- narrowly
 // scoped (unlike ValidName) so this widening doesn't also let 'label' name a class, method,
 // library function or library variable, all of which are typed by ValidName elsewhere.
+// 'declare' is free here for the same reason it is free in FeatureName above -- a label
+// declaration (`declare:`) is never mistaken for a VariableDecl, which always requires a type.
 LabelName returns string:
-    ID | 'label';
+    ID | 'label' | 'declare';
 
 ForStatement:
     // TODO check `to` evaluates to a number
@@ -917,7 +919,11 @@ FeatureName returns string:
     // 'label' is a keyword only for the library grammar's symbolic-label declaration
     // (LibSymbolicLabel), which is a separate rule entirely -- so it never conflicts here.
     // Allowing it as a FeatureName lets `label` be read and assigned as an ordinary variable.
-    ID | ID_WITH_SUFFIX | 'void' | 'label';
+    // 'declare' is a keyword only as the leading verb of VariableDecl, which is itself typed
+    // by this same FeatureName rule for its OWN name -- a bare `declare=1` never starts a
+    // VariableDecl (that rule always needs a type after the optional 'auto' flag), so the
+    // word is free to also be an ordinary variable name here.
+    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare';
 
 ValidName returns string:
     ID
