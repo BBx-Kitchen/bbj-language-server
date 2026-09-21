@@ -294,7 +294,11 @@ StringStatement:
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? (
         RPAREN_NO_NL '=' value=Expression
-        | RPAREN_NL (body += (DefReturn | Statement))* FNEND
+        // FNEND is optional: a multi-line function whose body is never closed (the
+        // compiler accepts this, running the body to end of file) must not force the
+        // parser's fallback ExpressionStatement interpretation of the header just
+        // because a mandatory tail token never arrives.
+        | RPAREN_NL (body += (DefReturn | Statement))* FNEND?
     );
 
 DefReturn:
