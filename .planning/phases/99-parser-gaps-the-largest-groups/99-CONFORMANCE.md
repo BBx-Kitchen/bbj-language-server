@@ -779,3 +779,147 @@ lost accidental catch by plan 04's own per-file look) — not gated, as the road
    `28b13298fecc2e88afe08cf8fdbc2e3919e61946`). `FieldStatement` and `IolistStatement` declare no
    `name` property, so `bbj-document-symbol-provider.ts`'s generic `'name' in astNode` guard produces
    no outline entry for either — a property of the AST shape, not a suppression added by this phase.
+
+**Superseded by "Run: plan 06 (gap closure re-measure)" and "Final gate table" below (2026-09-21).**
+The two open gates this section left standing — gate row 2's one remaining `FIELD` file and gate row
+3's A2 miss — were closed by plan 06's own source changes (a trailing option tail on `FieldStatement`,
+and a rework of `checkCommentNewLines`) and re-measured once more. The numbers and verdicts in this
+"Closing run" / "Gate table" / "Closing attestation" section were true of the tree they measured
+(commit `0f513214`) and are left as originally written; only the two affected verdicts are corrected
+below, in place, each pointing at the newer run's own evidence rather than repeating it.
+
+- **Gate table row 2 correction:** no longer `PARTIAL`. Plan 06 Task 1 gave `FieldStatement` the
+  documented trailing error-branch option; the closing re-measure below shows 0 remaining list-A
+  files whose first word is `FIELD`, alongside the already-cleared `READ`/`IOLIST`/`LABEL`. Gate row 2
+  is **PASS** as of the "Final gate table" below.
+- **Gate table row 3 correction:** no longer `FAIL`. Plan 06 Task 2 reworked `checkCommentNewLines` to
+  decide from the CST instead of a raw-text scan; the closing re-measure below shows A2 at 27, meeting
+  the ≤ 27 gate exactly. Gate row 3 is **PASS** as of the "Final gate table" below.
+- **Closing attestation criterion 5 correction:** no longer "Partially holds" on the grounds stated
+  above. See the "Final gate table" and the Task 3 conditional-stop note below for the current,
+  complete picture — including a file-set condition this run did **not** clear.
+
+## Run: plan 06 (gap closure re-measure)
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `cf29c9d4` (Task 1's `FieldStatement` trailing-option
+  fragment plus Task 2's `checkCommentNewLines` rework, both already committed; no source change
+  since). `sourceModified: false`, 76 seconds.
+- Before-snapshot: `/home/coder/repos/bbj-corpus/conformance/snapshots/details-99-06-before.json`,
+  copied from `details.json` immediately before this run (which itself held plan 05's closing-run
+  state: A 53, A2 30, B 666).
+- Preconditions confirmed before the run (Task 3): whole vitest suite `numFailedTests: 0` (2117
+  passed, 58 skipped; the 2 reported "failed suites" are a hook-timeout on one file under contention
+  plus the documented pre-existing `installed-extension-e2e.test.ts` environment failure, neither a
+  failed test); `bbj-vscode/src/language/generated/ast.ts` no older than `bbj.langium` (both from
+  Task 1's own regeneration); `git status --porcelain -- bbj-vscode/src` printed nothing; the register
+  check over the phase's whole source diff (merge-base of HEAD with `origin/main`) produced no match.
+
+**Direction of worse, restated:** for A, A2 and B alike, a **higher** file count is worse; a lower
+count is always better. Every delta below is computed as `this run − baseline` (or `this run −
+previous`), so a negative delta is an improvement and a positive delta is a regression, for all
+three measures.
+
+**Numbers.**
+
+| Measure | Phase 98 close | Plan 05 closing run | This run | Δ vs Phase 98 close | Δ vs plan 05 closing run | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 167 | 53 | 52 | −115 | −1 | ≤ 80 | **PASS** |
+| A2 — valid code that parses but gets a validation error | 27 | 30 | 27 | 0 | −3 | ≤ 27 | **PASS (exactly at gate)** |
+| B — invalid code not flagged, of 1,210 | 665 | 666 | 666 | +1 | 0 | recorded, not gated | **unchanged since plan 05** |
+
+**File-set differences against the before-snapshot (sizes only, per D-03/D-11/D-12):**
+
+```
+falseRejects (A):  before 53, after 52 — left: 1, entered: 0
+falseAlarms (A2):  before 30, after 27 — left: 7, entered: 4
+missed (B):        before 666, after 666 — left: 0, entered: 0
+```
+
+**A — by first word of the line the parser stops at (this run, 52 files, 29 groups — computed
+directly from the harness's own `details.json`, not from `REPORT.md`'s table, which caps at 25
+displayed rows and would silently drop the smallest four).**
+
+| Files | Group |
+|---|---|
+| 8 | DREAD |
+| 7 | PRINT |
+| 4 | METHOD |
+| 3 | METHODEND |
+| 2 each | V, TEXT, CALL, VECTOR, IF |
+| 1 each | PROCESS_EVENTS, *(empty)*, STATE, USE, NS, FNEND, VAR, BBJAPI, INPUT, C, DECLARE, DIM, FULLTEXT, GB__LIST, OT, DEF, ASSERT, XCALL, ON, LET |
+
+`FIELD`, `READ`, `IOLIST` and `LABEL` (the four named groups) do not appear at all — all four are
+fully absent (0 remaining), including the `FIELD` file gate row 2 above carried as `PARTIAL`. The one
+file that left list A between the two runs (53 → 52) is consistent with that closure; no other file
+moved on list A (0 entered).
+
+**A2 — by message (this run, 27 files, computed the same way against the full `details.json`, not
+the capped `REPORT.md` table).**
+
+| Files | Message group |
+|---|---|
+| 6 | This statement needs to start in a new line: _ |
+| 4 | Comments need to be separated by line breaks or _. |
+| 3 | This statement needs to end with a line break: return |
+| 1 each | endif; `Field _ is declared _ but is initialized with a number.`; `x[all]`; `_ is only allowed inside a SWITCH block.`; `fi`; `DECLARE is not valid at class member level...`; `The member _ from the type _ ... is not visible`; `MODE option only supported in MKEYED Verb.`; `LET num = _._`; `LET tiny = _`; `LET val = _`; `gravitational_constant = _._`; `log.DURATION = log.END-log._`; `else` |
+
+**A2 movement against the plan 05 closing set (30 files), by message group (net change; a message
+that only differs by an embedded corpus filename — one specific private-member-access message — is
+templated to the same group here, matching `REPORT.md`'s own underscore convention, so it is not
+double-counted):**
+
+| Files (plan 05 closing) | This run | Δ | Message group |
+|---|---|---|---|
+| 9 | 4 | −5 | Comments need to be separated by line breaks or _. |
+| 4 | 6 | +2 | This statement needs to start in a new line: _ |
+
+Every other message group is unchanged in count between the two runs. No new message group appeared;
+none disappeared entirely. Arithmetic reconciles: 30 (plan 05 closing) − 5 + 2 = 27 (this run).
+
+**A2 file-set detail, established without a per-file corpus read (D-11):**
+
+- The 7 files that left A2 entirely, and separately the 4 files that entered A2 for the first time,
+  are **all** tagged with the `Comments need to be separated by line breaks or ';'.` message (before
+  and after, respectively) — a plain before/after tally by file id against each snapshot's own
+  message field, not an inference.
+- Of the 23 files present in A2 in both snapshots, 2 changed which message they carry: from
+  `Comments need to be separated...` (plan 05 closing) to `This statement needs to start in a new
+  line: _` (this run) — the same before/after tally, applied to files whose id appears in both sets.
+  These 2 are **not** newly-entered files (their id was already in A2 before this run); a file with
+  more than one simultaneous validation error only has its first one recorded, so clearing the first
+  can surface a second, pre-existing one already in the same file.
+- The `This statement needs to start in a new line: _` group's net +2 is fully accounted for by
+  those 2 message-changed files; 0 genuinely new files carry that message.
+
+**B — no movement.** File-set diff against the before-snapshot shows 0 files left, 0 entered; B stays
+at 666, identical to the state plan 05's closing run recorded. No file-set count or hand-over is
+needed per D-11/the gate table's own row 4 wording, since B did not rise above 666.
+
+## Final gate table
+
+| # | Gate | Value | File-set condition | Verdict |
+|---|---|---|---|---|
+| 1 | List A at or below 80 | 52 | 0 files newly entered A | **PASS** |
+| 2 | No remaining list-A first-word group of `FIELD`, `READ`, `IOLIST` or the word `label` | `FIELD`: 0 · `READ`: 0 · `IOLIST`: 0 · `LABEL`: 0 | — | **PASS** |
+| 3 | A2 at or below 27 | 27 | **4 files newly entered A2** | **numeric PASS; file-set condition NOT met** |
+| 4 | B — recorded with evidence status, not gated | 666 (unchanged since plan 05; +1 vs the Phase 98 close baseline of 665, carried forward as a previously-classified lost accidental catch) | 0 files newly entered B | **recorded** |
+
+## Task 3 conditional stop (2026-09-21)
+
+Every numeric gate value reads at or better than its threshold (A 52 ≤ 80; gate row 2 fully 0 across
+all four named groups; A2 27 ≤ 27; B 666, not risen above 666). The plan's own conditional stop is
+stricter than the numeric gates alone: it also requires the file-set difference to show **no file
+newly entering A2**, "even if the totals improved" — and 4 files did newly enter A2 between the plan
+05 closing snapshot and this run (all four under the `Comments need to be separated by line breaks or
+';'.` message, per the A2 file-set detail above). Total A2 improved (30 → 27) because 7 files left the
+list against those 4 entering, but the stop's own wording does not accept a net improvement as a
+substitute for the file-set condition.
+
+Per the plan's own working rules, per-file inspection of a corpus file that moved the wrong way is the
+orchestrator's job, not this plan's — this section hands over counts and the message-group tag only,
+writing no cause, mechanism or attribution for why these 4 specific files newly entered A2. No source
+file was touched to change this number. The plan does not seal here; it returns a blocking-human
+checkpoint instead, per its own Task 3 step 7.
