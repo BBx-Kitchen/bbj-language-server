@@ -301,7 +301,7 @@ last because its gate is the whole milestone's number.
 **No proprietary BBj source text enters this repository.** Planning files, tests and regression
 files describe behaviour and use word lists only.
 
-- [ ] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET
+- [x] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET (completed 2026-09-21)
 - [ ] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, combined RECORD verbs with channel options, labels alone or in front of a statement, and IOLIST
 - [ ] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - PRINT/INPUT item forms, DREAD into arrays, `;rem` after class and method boundaries, language words used as names — then every remaining list-A file is fixed or recorded, and `examples/` agrees with the compiler
 - [ ] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository
@@ -506,7 +506,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 98. Line-Break & Validation False Alarms (A2) | 10/10 | Not started |  |
+| 98. Line-Break & Validation False Alarms (A2) | 10/10 | Complete | 2026-09-21 |
 | 99. Parser Gaps — the Largest Groups | 0/TBD | Not started | - |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 0/TBD | Not started | - |
 | 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |
