@@ -302,7 +302,7 @@ last because its gate is the whole milestone's number.
 files describe behaviour and use word lists only.
 
 - [x] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET (completed 2026-09-21)
-- [ ] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, combined RECORD verbs with channel options, labels alone or in front of a statement, and IOLIST
+- [ ] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, `LEN=` as a channel option of the RECORD verbs, the word `label` as a name, and IOLIST
 - [ ] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - PRINT/INPUT item forms, DREAD into arrays, `;rem` after class and method boundaries, language words used as names — then every remaining list-A file is fixed or recorded, and `examples/` agrees with the compiler
 - [ ] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository
 - [ ] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x
@@ -363,21 +363,21 @@ Plans:
 
 ### Phase 99: Parser Gaps — the Largest Groups
 
-**Goal**: The four list-A groups that account for most of the rejected-but-valid files parse: `FIELD` as a verb, the combined `RECORD` verbs with channel options, labels standing alone or in front of a statement, and `IOLIST`.
+**Goal**: The four list-A groups that account for most of the rejected-but-valid files parse: `FIELD` as a verb, `LEN=` as a channel option of `READ RECORD` and its sibling verbs, the word `label` used as a name, and `IOLIST`.
 **Depends on**: Phase 98 (same grammar file, so strictly after it — the A2 number is then already settled when list A is re-measured, and so the regression-file convention is in place)
 **Repository**: this one — `bbj-vscode/src/language/bbj.langium` (plus `npm run langium:generate`), `bbj-lexer.ts` where the combined verbs need lookahead, and `bbj-vscode/test/test-data/`
 **Requirements**: PARSE-01, PARSE-02, PARSE-03, PARSE-07
 **Success Criteria** (what must be TRUE):
 
   1. A program using `FIELD` as a verb (`field rec$,name$=dec(ctrl(...))`) parses with zero lexer and parser errors — the single largest list-A group, 45 files.
-  2. `READ RECORD(SYSGUI,LEN=10)EVENT$` parses, and so do the sibling combined verbs (`EXTRACT RECORD`, `FIND RECORD`, `INPUT RECORD`, `PRINT RECORD`, `WRITE RECORD`) with channel options written directly after the verb — 38 files — without a name such as `RECORD_2` being mistaken for the combined form.
-  3. A label alone on a line (`label:`, `LABEL:`), and a label immediately followed by a statement on the same line (`label:escape`, `label: escape;exit`, `LABEL: ENTER A$,B$`, `L30: iolist a,b,c`), parse — 20 files.
+  2. `READ RECORD(SYSGUI,LEN=10)EVENT$` parses, and so do the sibling combined verbs (`EXTRACT RECORD`, `FIND RECORD`, `INPUT RECORD`, `PRINT RECORD`, `WRITE RECORD`) with a `LEN=` channel option — 38 files — without a name such as `RECORD_2` being mistaken for the combined form. The group's cause is the fused `LEN=` keyword literal, not the verb (99-CONTEXT D-01): it is fixed at the root, so the INPUT verifier form `LEN=a,b` still parses and `LEN` works as a variable name (`LET LEN=5`) — the item Phase 98 had handed to Phase 100.
+  3. The word `label` works as a name in every position, in any letter case: as a label alone on a line (`label:`, `LABEL:`), as a label immediately followed by a statement on the same line (`label:escape`, `label: escape;exit`, `LABEL: ENTER A$,B$`), as a `GOTO`/`GOSUB` target (`gosub label`) and as a variable (`label = x + 1`) — about 25 files. Every file of this group uses that literal word (99-CONTEXT D-04); a label with any other name, alone or in front of a statement (`L30: iolist a,b,c`), keeps parsing. The other language words as names stay with Phase 100.
   4. The `IOLIST` statement parses, standalone and behind a label, with a long item list.
-  5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or an empty word (a bare label); A2 stays at or below its Phase 98 number; each group has its synthetic regression file (CONF-01).
+  5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or `LABEL`; A2 stays at or below its Phase 98 number (27); each group has its synthetic regression file (CONF-01). B is not a gate, but every newly-uncaught file is identified by file-set diff and classified with per-file evidence (99-CONTEXT D-11).
 
 **Plans**: TBD
 
-*Ordering note:* the four groups here are the ones measured by file count in `bbj-corpus/conformance/REPORT.md` (45 + 38 + 16 + 3 + 3 + 1 ≈ 106 files). They are grouped into one phase because all four are grammar-level statement-shape changes that regenerate the same Langium artifacts; splitting them would regenerate and re-verify the grammar twice for no verification benefit.
+*Ordering note:* the four groups here are the ones measured by file count in `bbj-corpus/conformance/REPORT.md` (45 + 38 + about 25 + 3 ≈ 111 files, regrouped by real cause in 99-CONTEXT.md). They are grouped into one phase because all four are grammar-level statement-shape changes that regenerate the same Langium artifacts; splitting them would regenerate and re-verify the grammar twice for no verification benefit.
 
 ### Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples
 

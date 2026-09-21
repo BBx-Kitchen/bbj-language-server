@@ -11,8 +11,8 @@
 ### Parsing valid code (list A)
 
 - [ ] **PARSE-01**: A program that uses `FIELD` as a verb (`FIELD rec$,"name"=value`) parses without lexer or parser errors
-- [ ] **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with channel options directly after the verb parse without errors
-- [ ] **PARSE-03**: A label alone on a line, and a label directly followed by a statement (`label:escape`, `L30: iolist a,b,c`), parse without errors
+- [ ] **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with a `LEN=` channel option parse without errors, and `LEN` is usable as a variable name
+- [ ] **PARSE-03**: The word `label` works as a label name — alone on a line or directly followed by a statement (`label:escape`) — as a `GOTO`/`GOSUB` target and as a variable; a label with any other name in front of a statement (`L30: iolist a,b,c`) keeps parsing
 - [ ] **PARSE-04**: `PRINT (chan,err=label) ...` and the other `PRINT`/`INPUT` item forms the compiler accepts but the parser rejects today parse without errors
 - [ ] **PARSE-05**: `DREAD` into arrays (`dread x![]`) parses without errors
 - [ ] **PARSE-06**: A `; rem` comment after a `METHOD` header, `METHODEND` or `CLASSEND`, and line-numbered class code, parse without errors
@@ -122,4 +122,4 @@ synthetic regression file under `bbj-vscode/test/test-data/`.
 
 ---
 *Requirements defined: 2026-09-20*
-*Last updated: 2026-09-20 — traceability filled by the v4.5 roadmap (27/27 mapped, no orphans)*
+*Last updated: 2026-09-21 — PARSE-02 and PARSE-03 reworded to the real causes found in the Phase 99 discussion (fused `LEN=` literal; the word `label` as a name)*
