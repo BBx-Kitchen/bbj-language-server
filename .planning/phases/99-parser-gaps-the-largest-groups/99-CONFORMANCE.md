@@ -393,3 +393,134 @@ counts and set sizes, never a corpus file name, path or source line.
 finding.** This run neither introduces a new A2/B regression nor resolves the A2 gate excess
 carried forward from plan 02 (30 vs ≤27) — that decision remains open for the orchestrator between
 plans, unaffected by this plan's own (clean) contribution.
+
+## Run: plan 04
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `33446378` (the tree as committed through this plan's
+  task 2), mode `validate`, `sourceModified: false`, 73 seconds.
+- Preconditions confirmed before the run: `bbj-vscode/src/language/generated/ast.ts` no older
+  than `bbj.langium`; `git status --porcelain -- bbj-vscode/src` printed nothing.
+- The before-snapshot went to `/home/coder/repos/bbj-corpus/conformance/snapshots/details-99-04-before.json`
+  (the same never-cleared `snapshots/` location plans 02-03 established) — a real per-file diff is
+  available for this run.
+- **The `IOLIST` first-word group (the group this plan targeted): 0 remaining** — it does not
+  appear anywhere in this run's per-group table below, down from 3 at the previous run.
+
+**Numbers.**
+
+| Measure | Baseline | Previous run | This run | Delta vs previous | Delta vs baseline | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 167 | 56 | 53 | −3 | −114 | ≤ 80 (phase-final) | improved, phase gate not yet due |
+| A2 — valid code that parses but gets a validation error | 27 | 30 | 30 | 0 | +3 | ≤ 27 | still exceeds gate (unchanged from plan 02) |
+| B — invalid code not flagged, of 1,210 | 665 | 665 | 666 | +1 | +1 | recorded, not gated | one file regressed — see below |
+
+The phase's A ≤ 80 gate is evaluated once all four groups have landed (plan 05); this run's own
+contribution is a −3 file improvement, consistent with the `IOLIST` group's own recorded size (3
+files, all behind a label, per the phase's own scoping). A2 carries forward plan 02's
+exceeded-gate finding (30 vs ≤27) completely unchanged — this plan's grammar edit produced **zero**
+A2 movement (see set-movement below).
+
+**A — by first word of the line the parser stops at (this run, 53 files total, no display cap —
+read directly from `details.json`, not the harness's own 25-row-capped `REPORT.md` table).**
+
+| Files | Group |
+|---|---|
+| 8 | DREAD |
+| 7 | PRINT |
+| 4 | METHOD |
+| 3 | METHODEND |
+| 2 | V |
+| 2 | TEXT |
+| 2 | CALL |
+| 2 | VECTOR |
+| 2 | IF |
+| 1 each | PROCESS_EVENTS, *(empty)*, STATE, USE, NS, FNEND, VAR, BBJAPI, INPUT, C, DECLARE, DIM, FULLTEXT, GB__LIST, OT, DEF, ASSERT, XCALL, ON, LET, FIELD |
+
+`IOLIST` — the group this plan targeted (3 files at the previous run) — is fully cleared from list
+A; it does not appear in this run's table at all. Five small groups not present in the previous
+run's table now appear at 1 file each: `DEF`, `ASSERT`, `XCALL`, `ON`, `LET`, plus one file whose
+first word is now `FIELD` (a group plan 02 fully cleared to 0). None of these six files is newly on
+the A list — the set-movement diff below shows 0 files newly appeared in A — so each is a file that
+was already on the list before this run, whose *first* blocking line moved further into the file
+once an earlier `IOLIST`-related line in the same file stopped being a parser error, exposing a
+different, later, unrelated failing line further down — the same already-documented pattern plan 03
+recorded for the `label` group's own table churn. The one-file `FIELD` entry is not evidence that
+plan 02's fix regressed: it is a file whose current first-blocking-line happens to start with that
+word for an unrelated reason (this task's tools — first-word grouping only — cannot distinguish a
+class-member `FIELD` declaration shape from the verb shape plan 02 fixed without a corpus read,
+which is out of scope for this task); it is handed to the orchestrator as a note, not fixed here.
+
+**A2 — by message (this run, 30 files total, no display cap).**
+
+Byte-identical to plan 03's table — every row and every count unchanged. Reproduced here for
+completeness:
+
+| Files | Message group |
+|---|---|
+| 9 | Comments need to be separated by line breaks or *(semicolon)*. |
+| 4 | This statement needs to start in a new line: *(blank)* |
+| 3 | This statement needs to end with a line break: return |
+| 1 | This statement needs to end with a line break: endif |
+| 1 | Field _ is declared _ but is initialized with a number. |
+| 1 | This statement needs to start in a new line: x[all] |
+| 1 | _ is only allowed inside a SWITCH block. |
+| 1 | This statement needs to start in a new line: fi |
+| 1 | DECLARE is not valid at class member level. ... |
+| 1 | The member _ from the type _ ... is not visible |
+| 1 | MODE option only supported in MKEYED Verb. |
+| 1 | This statement needs to end with a line break: LET num = _._ |
+| 1 | This statement needs to end with a line break: LET tiny = _ |
+| 1 | This statement needs to end with a line break: LET val = _ |
+| 1 | This statement needs to end with a line break: gravitational_constant = _._ |
+| 1 | This statement needs to end with a line break: log.DURATION = log.END-log. |
+| 1 | This statement needs to start in a new line: else |
+
+**B — the one newly-appeared file, classified (D-11).** The compiler's own complaint for this file
+is a semantic check — a `GOSUB`-style branch target naming a label that is never declared anywhere
+in the file, inside a conditional statement. This project's own document validator downgrades every
+non-cyclic linking-error diagnostic to Warning severity and the harness's own worker excludes any
+diagnostic carrying the `linking-error` code from its error count regardless of severity (confirmed
+by reading `worker.mts`'s `NOT_VALIDATION` set and this repository's `bbj-document-validator.ts`
+`toDiagnostic` override) — so this specific defect was **never** structurally reachable by this
+project's validator, before or after this plan's change. The file must therefore have been
+correctly classified before this run only through an unrelated syntax error elsewhere in the same
+document; since this task's only change is the `IolistStatement` grammar rule, the most likely
+explanation is a bare `IOLIST` usage in the file that previously produced the trailing-comma-style
+parser error this plan's fix resolves, now parsing clean and exposing the pre-existing,
+structurally-unreachable label-not-found defect underneath. Classified as **lost an accidental
+catch** per D-11: the prior "catch" was not a real detection of the compiler's own complaint, and
+the actual defect belongs to the future compiler-parser endpoint (Phases 101-103), not a Phase 99
+parser-gap fix. No new grammar rule accepts an invalid form; nothing in this plan relaxed the
+scoping or use-before-assignment checks (both are confirmed unchanged by the Task 1 acceptance
+criteria). No corpus file name, path or source line appears in this classification.
+
+**Set-movement sizes.**
+
+The before-snapshot (`details-99-04-before.json`) gives a real per-file diff against the fresh
+`details.json`. The inline `node -e` diff below compares file-identifier sets only; it prints
+counts and set sizes, never a corpus file name, path or source line.
+
+| List | Before (this plan's start) | After (this run) | Left the list | Newly appeared | Unchanged |
+|---|---|---|---|---|---|
+| A (falseRejects) | 56 | 53 | 3 | 0 | 53 |
+| A2 (falseAlarms) | 30 | 30 | 0 | 0 | 30 |
+| B (missed) | 665 | 666 | 0 | 1 | 665 |
+
+- **A: 3 files left the list, 0 newly appeared.** Exactly matches the `IOLIST` group's own
+  recorded size (3 files, per the phase's own scoping) — every file that left is fully accounted
+  for by this plan's target mechanism; no file regressed into the list.
+- **A2: 0 files left, 0 newly appeared.** An exact match against the previous run — this plan's
+  grammar edit produced zero A2 movement in either direction, the same as plan 03's own (clean)
+  contribution. `IolistStatement`'s items are plain expressions with no special-cased validator
+  path, so no `checkCommentNewLines`-style unmasking mechanism applies here.
+- **B: 0 files left, 1 newly appeared.** Classified above (D-11) as a lost accidental catch —
+  accepted, recorded, handed to the orchestrator.
+
+**1 file moved the wrong way — handed to the orchestrator.** The one newly-appeared B entry is
+classified above as an accepted, structurally-unreachable side effect of this plan's own fix, not a
+new grammar rule accepting an invalid form. This run neither resolves nor worsens the A2 gate
+excess carried forward from plan 02 (30 vs ≤27) — that decision remains open for the orchestrator
+between plans.
