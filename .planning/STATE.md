@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 99
 current_phase_name: Parser Gaps — the Largest Groups
 status: executing
-stopped_at: Completed 99-01-PLAN.md
-last_updated: "2026-09-21T09:49:01.272Z"
+stopped_at: Completed 99-02-PLAN.md
+last_updated: "2026-09-21T10:41:33.832Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 99 execution started
-state_head: 01ade0f23ad4ea738c40e8c4b451f7b47af16977
+state_head: ac62a7d0db63859e77a01e1e6bffc60b42c847cb
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 15
-  completed_plans: 11
+  completed_plans: 12
   percent: 14
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 99 (Parser Gaps — the Largest Groups) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 99 execution started
 
@@ -106,6 +106,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P09 | 20min | 3 tasks | 1 files |
 | Phase 98 P10 | 15min | 3 tasks | 5 files |
 | Phase 99 P01 | 18min | 3 tasks | 5 files |
+| Phase 99 P02 | 17min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,7 @@ decisions:
 - [Phase 98]: All seven B-regressed files are REFUTED against the originally claimed keyword-branch-target mechanism; each traces to a different already-shipped fix (RESTORE, METHODRET, or DEF-FN) unmasking an unrelated real defect — Direct replay against a baseline checkout, not inferred from counts; corrects the prior plausible-but-unverified attribution ahead of the phase's final gap plan
 - [Phase 98]: Phase 98 plan 10: Stephan Wald accepted both open gap-closure gates (B regression 658->665, A2 gate miss 27 vs <=25) on 2026-09-21, closing Phase 98 with two overrides entries in 98-VERIFICATION.md and all six requirement entries ticked
 - [Phase 99]: [Phase 99]: LastVerifyOption's fused 'LEN=' literal split into 'LEN' '=' -- fixes the RECORD verbs' LEN= channel option for all six sibling verbs, keeps the INPUT verifier's own LEN=a,b form, and makes LEN a usable variable name as a side effect (no token-builder change needed since LEN is uppercase and inherits the generic ID-category fallback)
+- [Phase 99]: [Phase 99]: FieldStatement's name part typed at AdditiveExpr (not full Expression) to dodge the relational level's '=' comparison operator; field(1)/field.x needed no alternation reorder or record-part narrowing (probed unchanged); D-17 still-flagged case is the no-value verb form (field rec$,name$)
 
 ### Tech Debt
 
@@ -197,6 +199,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 - **Phase 98 closed 2026-09-21 with two accepted overrides** (Stephan Wald; `98-VERIFICATION.md`): B regressed 658->665 of 1,210 (root cause and per-file evidence in `98-CONFORMANCE.md`; fixing it needs the bbj-ls compiler-parser endpoint, Phases 101-103, not a Phase 98 check), and A2 = 27 vs its ≤25 gate (5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix; tracked as pending todo `2026-09-21-loosen-single-line-if-balance-rule-a2-residue`). Both deltas carry forward to Phase 104's milestone exit measurement.
+- Phase 99 plan 02: conformance run found A2 22->30 (exceeds <=27 gate), traced to bbj-validator.ts checkCommentNewLines being unmasked on 8 files previously hidden behind the FIELD parser error; needs an orchestrator fix-or-accept decision before phase close (99-CONFORMANCE.md Run: plan 02).
 
 ### Quick Tasks Completed
 
@@ -209,8 +212,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T09:49:01.173Z
-Stopped at: Completed 99-01-PLAN.md
+Last session: 2026-09-21T10:41:33.730Z
+Stopped at: Completed 99-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
