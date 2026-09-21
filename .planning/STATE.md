@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-08-PLAN.md
-last_updated: "2026-09-21T05:55:51.589Z"
+stopped_at: Completed 98-09-PLAN.md
+last_updated: "2026-09-21T06:15:09.069Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 98 execution started
-state_head: ecbdc47cb4affe9e8effe4c9310da23fa3e5a9c1
+state_head: 994626de5f8fca3ee3e39a623a1699bd34b30392
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 98 execution started
 
@@ -103,6 +103,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P06 | 50min | 3 tasks | 8 files |
 | Phase 98 P07 | 15min | 3 tasks | 4 files |
 | Phase 98 P08 | 19min | 3 tasks | 5 files |
+| Phase 98 P09 | 20min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ decisions:
 - [Phase 98]: Phase 98 plan 08: elseStatementLineBreaks/ifEndStatementLineBreaks each get a local openIfs counter, incremented by a same-line closer and decremented (not stopped at) when an IF is found while positive, so a nested chain still resolves to its true governing IF while a non-nested misplaced ELSE/FI is re-flagged
 - [Phase 98]: Phase 98 plan 08: ELSE does not increment ifEndStatementLineBreaks's counter -- an ELSE still belongs to an open IF, so it is a valid thing for an end-of-IF to close directly
 - [Phase 98]: Phase 98 plan 08: the scalar-vs-scalar conflicting-DECLARE short circuit sits before the class-resolution guard and requires BOTH sides to be a known BBj scalar type name -- a mixed scalar/unresolvable pair still falls through unchanged to bbjTypesAreRelated
+- [Phase 98]: All seven B-regressed files are REFUTED against the originally claimed keyword-branch-target mechanism; each traces to a different already-shipped fix (RESTORE, METHODRET, or DEF-FN) unmasking an unrelated real defect — Direct replay against a baseline checkout, not inferred from counts; corrects the prior plausible-but-unverified attribution ahead of the phase's final gap plan
 
 ### Tech Debt
 
@@ -201,8 +203,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T05:55:51.546Z
-Stopped at: Completed 98-08-PLAN.md
+Last session: 2026-09-21T06:15:09.026Z
+Stopped at: Completed 98-09-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
