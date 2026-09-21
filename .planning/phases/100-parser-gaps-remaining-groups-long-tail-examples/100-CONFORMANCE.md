@@ -660,3 +660,200 @@ fixed-or-stays decision. The sixth (Residue file F) is not: its cause was probed
 neither a shape description nor a reason category can be honestly assigned without guessing, which
 the plan's own instruction forbids. This is recorded here exactly as it stands, and carried into
 Task 3's conditional stop below — the residue list is not closed, whatever the gate numbers say.
+
+## Closing attestation
+
+One entry per Phase 100 success criterion, in the wording `ROADMAP.md` carries. Evidence commands run
+with cwd = `bbj-vscode`, `RUN_BBJ_TESTS=0`.
+
+**1. The empty-bracket whole-array form `name[]` parses wherever an array element can stand, with the
+same meaning as `name[all]` — `PRINT` item, `DREAD` target, assignment target, `CALL`/method/function
+argument; the type-side bracket shapes (`declare int[][] two!`, `BBjArray dat[all]`) parse too; the
+`PRINT` item forms the original wording named already parsed and keep parsing.** **Holds.** Evidence:
+fixture `bbj-vscode/test/test-data/conformance/array-bracket-forms.bbj`; `npx vitest run
+test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the "empty array
+brackets meaning the whole array" and "type-side bracket shapes" describe blocks pass (every call
+site, every suffix, every case, the AST-shape assertion that an empty bracket produces the same node
+`x[all]` does). Still-flagged cases that keep the rule honest: `print x[` and `print x[,]` stay parser
+errors. Plan 01's own measurement: this group's grammar edit alone dropped list A from 52 to 21 (−31
+files), and the closing run confirms 0 files re-entered list A on this shape across the rest of the
+phase.
+
+**2. A `; rem` comment after a `METHOD` header, `METHODEND`, `CLASSEND`, `FNEND` and a single-line
+`DEF FN…=…`, and class code carrying user line numbers, parse without error.** **Holds.** Evidence:
+fixtures `rem-after-block-boundaries.bbj` and `line-numbered-class.bbj`; `npx vitest run
+test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the "a comment after a
+block boundary, and a line number in class code" describe block passes (all five boundaries,
+end-of-file and mid-stream, an AST-shape assertion that the mid-stream container stays one class
+node, the five line-numbered shapes). Plan 02's own edit closed −5 files (21→16); the validator false
+alarm it briefly unmasked on a bare `; rem` with no body (`classend`/`endif` message groups, 4+1
+files across the phase) is confirmed cleared in this run's own A2 movement section above — both
+message groups present at the Phase 99 close are absent from this run.
+
+**3. Words BBj allows as names although they are language words work as variables, labels and
+`GOSUB`/`GOTO` targets; the fourteen roadmap-named words already work and are locked in by a
+regression file; the rest is established by an oracle sweep against the real compiler, word by word,
+without a blanket reserved-word rule and without flagging words the compiler itself rejects.**
+**Holds.** Evidence: fixture `language-words-as-names.bbj`, extended to the fourteen roadmap words
+plus every word this plan's oracle sweep fixed; `npx vitest run test/parser-keyword-statements.test.ts
+test/conformance-regressions.test.ts` — the "language words as names (oracle sweep against the
+compiler)" describe block passes. The oracle-sweep record above shows: 169 grammar keyword literals
+compiled against `bbjcpl` in four positions, validated against a known-rejected word before trusting
+any bulk result; 12 words fixed by a lowercase-declared or custom-pattern-token mechanism, plus `next`
+(discovered broken despite the roadmap's own "already works" claim, fixed by the identical mechanism);
+`classend`/`methodend`/`interfaceend`'s `EXCLUDED`-set removal tried and reverted (13 blast-radius
+test failures, a malformed class/method/interface would silently misparse instead of erroring);
+`record` left unfixed (a `PrintStatement` grammar ambiguity needing a lookahead gate, out of scope).
+The 34-word record-only list (compiler rejects, parser accepts) is not flagged — matching the
+criterion's own "without flagging words the compiler rejects" clause.
+
+**4. The conformance run at the phase boundary reports A ≤ 25, and every shape still on list A is
+recorded in a tracked list — own-words shape, file count, reason; the file-by-file mapping stays with
+the private harness; each construct fixed has its synthetic regression file.** **Partially holds.**
+Evidence: the Closing run, Gate table and "The completed residue list" sections above. The numeric
+gate holds: A = 9, well below ≤ 25. Every construct fixed in this phase has its synthetic regression
+file — 19 fixtures confirmed present in Task 1, the five new ones (`array-bracket-forms.bbj`,
+`rem-after-block-boundaries.bbj`, `line-numbered-class.bbj`, `language-words-as-names.bbj`,
+`statement-option-tails.bbj`) alongside the fourteen inherited from Phases 98-99. The "every shape
+recorded" clause does **not** fully hold: of the 9 files still on list A, 8 are filled with an
+own-words shape, a file count and a reason category (5 rows in the residue table above), and 1
+(Residue file F, the `METHOD`-declaration file) is not — its cause was probed but not isolated in the
+time allowed, and no category was guessed to close it. This is the same file-by-file mapping practice
+the criterion asks for (kept as counts and shapes here, the corpus identity itself never leaving the
+private harness).
+
+**5. Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in
+`examples/invalid/`, with a test asserting the diagnostics those deliberately-invalid files are
+expected to produce, including an explicit "none today" marker.** **Holds.** Evidence:
+`bbj-vscode/test/examples-compile.test.ts` (both the always-on layer and the `RUN_BBJ_TESTS=1`
+BBj-gated layer); `examples/invalid/README.md` documents the sidecar format and the
+`"none-today"`/`ExpectedDiagnostic[]` convention. 92 real programs under `examples/` compile clean; 1
+(`examples/invalid/dim-examples-substring-expressions.bbj`) is deliberately invalid, paired with its
+own `.expected.json` sidecar carrying the `"none-today"` marker (no LS diagnostic exists yet for the
+construct it demonstrates). The `.bbx` configuration file and the `.bbl` library file are excluded by
+extension, as the criterion allows.
+
+**Requirement-to-evidence chain.**
+
+| Requirement | Fixture | Test |
+|---|---|---|
+| PARSE-04 | `array-bracket-forms.bbj` | `parser-keyword-statements.test.ts` — "empty array brackets meaning the whole array" |
+| PARSE-05 | `array-bracket-forms.bbj` | `parser-keyword-statements.test.ts` — "type-side bracket shapes" |
+| PARSE-06 | `rem-after-block-boundaries.bbj`, `line-numbered-class.bbj` | `parser-keyword-statements.test.ts` — "a comment after a block boundary, and a line number in class code" |
+| PARSE-08 | `language-words-as-names.bbj` | `parser-keyword-statements.test.ts` — "language words as names (oracle sweep against the compiler)" |
+| PARSE-09 | `statement-option-tails.bbj` | `parser-keyword-statements.test.ts` — "the long-tail triage: a verb with no rule at all, and two order-fixed option tails"; plus the shape-level residue table above (not fully closed — see criterion 4) |
+| EXMP-01 | `examples/invalid/dim-examples-substring-expressions.bbj` + sidecar | `examples-compile.test.ts` (always-on and `RUN_BBJ_TESTS=1` layers) |
+
+**The two deliberate non-goals.**
+
+1. **No blanket reserved-word rule anywhere, and no generic keyword-falls-back-to-identifier
+   mechanism.** Confirmed by diff: `git diff --stat
+   9cc8bffe7bc9079df86ec1ea6d5897b038b7c98a..HEAD -- bbj-vscode/src/language/` shows exactly four
+   files changed across the whole phase — `bbj.langium`, `bbj-token-builder.ts`,
+   `check-classes.ts`, `line-break-validation.ts` — and every addition is one of the named,
+   narrowly-scoped grammar rules, lexer-token grants or validator-regex widenings listed in the
+   phase-wide artifacts table (100-01-PLAN.md). No new generic "any keyword may be a name" mechanism
+   exists anywhere in `bbj-token-builder.ts`'s or `bbj.langium`'s diff; each grant names its own
+   specific token or rule.
+2. **No new editor capability for any construct touched.** Same diff evidence: none of
+   `bbj-completion-provider.ts`, `bbj-hover.ts`, `bbj-document-symbol-provider.ts`,
+   `bbj-semantic-token-provider.ts`, `bbj-inlay-hint-provider.ts`, `bbj-code-action-provider.ts` or
+   `bbj-signature-help-provider.ts` appears in the phase's diff against its base commit — all seven
+   are byte-for-byte untouched.
+
+**The grammar rule that was NOT tightened, and why.** The oracle sweep's own record-only list (34
+words the compiler rejects in a name position and the parser currently accepts — `all`, `begin`,
+`callback`, `case`, `dread`, `else`, `endif`, `err`, `exitto`, `fi`, `fnerr`, `for`, `from`, `gosub`,
+`goto`, `if`, `iolist`, `let`, `load`, `new`, `on`, `process_events`, `remove_callback`, `restore`,
+`seterr`, `setesc`, `swend`, `switch`, `then`, `tim`, `until`, `wend`, `where`, `while`) was left
+exactly as it stood — the grammar was not tightened to also reject those words, because the strict,
+compiler-parity checks that would enforce it (bare expression statements, reserved words, block
+balance) are explicitly deferred as STRICT-01/STRICT-02 in `REQUIREMENTS.md`'s Future Requirements,
+out of this phase's and this milestone's scope; BBj's own compiler stays the authority for that class
+of error through the endpoint Phases 101-103 build. The reviewed Phase 98 single-line-`IF`
+balance-rule todo (`.planning/todos/pending/2026-09-21-loosen-single-line-if-balance-rule-a2-residue.md`)
+was deliberately not folded into this phase either, per the same working rule this record has carried
+since plan 01.
+
+**Correction to the plan's own template language.** Task 3's own action text anticipated "the call
+forms accepted on a false premise are recorded with a filed todo" as part of this section. That is not
+what happened: plan 05 investigated the suspected false-premise case (`fileopen`/`filesave`'s
+`MODE=` option) directly against `bbjcpl` and found it was never a false premise at all — both
+functions are valid BBj functions whose return value must be assigned, confirmed by probe, and the
+affected example was repaired in place. No todo was filed
+(`.planning/todos/pending/2026-09-21-file-dialog-functions-accepted-on-a-false-premise.md` does not
+exist — see 100-05-SUMMARY.md's own deviation record). This phase carries no call-forms-accepted-on-
+a-false-premise item; recorded here accurately rather than repeating the plan's own unverified
+template sentence.
+
+## Developer verification block
+
+What a human needs to judge this phase's close, in one place, for a reader who has not seen the run.
+
+**Gate table.**
+
+| # | Gate | Value | Verdict |
+|---|---|---|---|
+| 1 | List A at or below 25 | 9 | **PASS** |
+| 2 | A2 at or below 23 | 22 | **PASS** |
+| 3 | B — recorded, not gated | 669 (+3 vs the Phase 99 close baseline of 666) | **recorded, rose** |
+
+**Residue list.** NOT complete. 8 of 9 remaining list-A files have an own-words shape, a file count
+and a reason category (all "valid but disproportionate to fix now"); 1 file (a `METHOD` declaration
+whose own signature line parses cleanly in isolation) is still pending — its cause was probed but not
+isolated in the time allowed, and no category was guessed to close it.
+
+**Did B rise?** Yes — 666 → 669 (+3) against the Phase 99 close baseline, unchanged since plan 01.
+All three files were classified by plan 01's own per-file look (2 lost accidental catches, 1
+out-of-scope typed validation rule) and carried forward unchanged; 0 further B movement occurred
+across plans 02-06.
+
+**Per-criterion verdicts.** 1: Holds. 2: Holds. 3: Holds. 4: Partially holds (numeric gate passes;
+the residue list has 1 unclosed row). 5: Holds.
+
+**Examples.** 92 real programs under `examples/` compile clean with `bbjcpl`; 1 deliberately-invalid
+program lives in `examples/invalid/` with an asserted sidecar carrying a `"none-today"` diagnostics
+marker.
+
+**What this means for sealing.** Two of the plan's own three closing conditions are unmet: the residue
+list is not complete (1 pending row), and B rose above the Phase 99 close baseline (669 > 666, though
+unchanged since plan 01 and already classified). Per the plan's own Task 3 instruction, this phase
+does **not** seal autonomously — see the conditional stop below.
+
+## Task 3 conditional stop (2026-09-21)
+
+Every numeric gate value reads at or better than its threshold (A 9 ≤ 25; A2 22 ≤ 23). But the plan's
+own autonomous-close condition requires all three of: every gate row PASS, no residue row still
+pending, and B not risen above the Phase 99 recorded 666. Two of those three are unmet:
+
+1. **1 residue row is still pending** (Residue file F, the `METHOD`-declaration file) — its cause was
+   probed (the class header, fields and the signature shape itself all parse cleanly in isolation, so
+   the real cause is something else in lines 1–188 of that file) but not isolated in the time allowed.
+   No category was guessed to close it, per the plan's own explicit prohibition.
+2. **B rose above the Phase 99 close baseline** (669 vs 666, +3) — though this is not a new
+   regression: all three files entered at plan 01 and have been unchanged and already classified (2
+   lost accidental catches, 1 out-of-scope typed validation rule) since that run; 0 further B movement
+   occurred across the rest of the phase.
+
+**What Task 2 already tried.** The closing run was executed once, on the final tree, with a snapshot
+taken first (per D-26/D-12). The residue table was filled from every per-file look already on record
+in this file; the one file whose cause is genuinely unestablished (Residue file F) was not
+re-investigated further, because this plan changes no source and reads no further corpus content,
+and guessing a category to close the row is explicitly forbidden. No rule, check, fixture or example
+was adjusted anywhere in this plan to move a number.
+
+**The decision this stop is between.** Per the plan's own instruction, the choice is between:
+
+- **Accept the shortfall as recorded residue.** Both open items already carry full evidence and a
+  neutral classification (Residue file F as "cause open, pending", the B rise as the three already-
+  classified files from plan 01) — the phase's numeric gates (A, A2) both pass, and neither open item
+  blocks the milestone's downstream phases (101-104), which do not depend on this file's cause or on
+  B's exact count returning to 666 before the compiler-parser endpoint lands.
+- **Hand a named shape to a later phase.** Residue file F's `METHOD`-declaration cause could be
+  isolated by a dedicated investigation (bisecting lines 1–188 of that one file) in a future gap plan
+  inside this phase or a follow-up milestone item, the same way Phase 99 closed its own two open gates
+  with a dedicated gap plan (99-06) rather than accepting them as residue.
+
+This plan does not seal here. It returns a blocking human checkpoint instead, per Task 3's own step
+7 and this project's `gate="blocking-human"` convention — see the checkpoint returned alongside this
+SUMMARY.
