@@ -100,3 +100,18 @@ way this run. Of these, **3 files left the caught set** (the B regressions: code
 used to correctly flag as invalid is now silently accepted). No cause, mechanism or attribution
 is recorded here for any of the four — the per-file look is the orchestrator's job, not this
 task's, per this phase's own working rule.
+
+### Per-file look at the four files (orchestrator, after plan 01)
+
+Evidence: file-set diff of `snapshots/details-100-01-before.json` against the post-run `details.json`,
+the flagged source lines, and direct `bbjcpl -N` probes.
+
+| File | Move | What the file shows |
+|------|------|---------------------|
+| `samples/dup-75c6bfa9.bbj` | A → A2 | Was on list A for `dread x![]` (line 5). That now parses; the next disagreement in the same file is `clear x![]` (line 14), reported as "This statement needs to end with a line break: clear". `bbjcpl` accepts `clear x![]`. `CLEAR` followed by a variable list is a long-tail shape for plan 04, not a fault of the bracket rule. |
+| `samples/asprsa-9a447b16.bbj` | caught → B | Compiler's complaint is an undefined label (line 895). The only thing this tree ever flagged was the parse error on `A![]=SN!.split("R")` (line 2527), which the compiler accepts. The earlier "catch" was accidental. |
+| `bbjllm-dataset/row1733-0-79df14d1.bbj` | caught → B | Compiler rejects `LET parts$[] = SPLIT(dateStr$, "/")` (line 4). Probes: `parts$[] = "a"` and `parts$[all] = "a"` are both rejected, `parts$[] = q$[]` is accepted. The compiler requires a whole-array right-hand side for a whole-array target; that rule applied to `[all]` before this phase and was never checked here. It is a typed validation rule, not a parser shape; out of scope for the parser plans. |
+| `bbjllm-dataset/row1772-0-b1c55c9f.bbj` | caught → B | Compiler rejects `FILEOPEN(...)` on line 1 (see the pending file-dialog todo handled in plan 05). Previously flagged only through the `[]` parse error on line 6. Accidental catch. |
+
+Net: no file lost a correct diagnosis. Three accidental catches went away with the parse error that
+produced them; one file advanced from its first disagreement to its second.
