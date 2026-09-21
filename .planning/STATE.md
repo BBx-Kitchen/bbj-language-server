@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: executing
-stopped_at: Completed 100-01-PLAN.md
-last_updated: "2026-09-21T20:20:49.181Z"
+stopped_at: Completed 100-02-PLAN.md
+last_updated: "2026-09-21T20:50:02.208Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
-state_head: 332e9e33ce0052705f6947f688cc2afd833b8dab
+state_head: 7cea991423b3ef63f4a26a7cee4024e6fa88ba28
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 17
+  completed_plans: 18
   percent: 29
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
@@ -117,6 +117,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 99 P05 | 32min | 3 tasks | 2 files |
 | Phase 99 P06 | 48min | 3 tasks | 8 files |
 | Phase 100 P01 | 21min | 3 tasks | 5 files |
+| Phase 100 P02 | 24min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,9 @@ decisions:
 - [Phase 99]: checkCommentNewLines needs a second, narrow exemption for lexer tokens that consume their own trailing terminator (KEYWORD_STANDALONE) — a named, closed Set checked alongside the CST-leaf exemptions, found via the plan's own conditional stop rather than the totals alone
 - [Phase 100]: Empty ArrayElement brackets set the whole-array marker from the closing bracket token itself (all?="]"), matching x[all]'s node exactly
 - [Phase 100]: VariableDecl/MethodDecl's array boolean renamed to arrayDims: string[] across DECLARE/FIELD/method-return/parameter, mirroring CastExpression's repeatable-pair pattern
+- [Phase 100]: [Phase 100] Block-boundary comment tail reuses the identical '(";" comments+=CommentStatement)?' fragment already used on MethodDeclStart/ClassDecl headers, repeated at METHODEND/CLASSEND/INTERFACEEND/both DefFunction branches; DefFunction gained a comments AST property
+- [Phase 100]: [Phase 100] ClassDecl member loop widened with an optional leading NUMBER before each member and before CLASSEND (mirrors Program/MethodDecl's existing tolerance); InterfaceDecl's identical gap deliberately left untouched, no known corpus need
+- [Phase 100]: [Phase 100] line-numbered-class.bbj places each line number on its own source line rather than sharing a line with the construct it numbers, to avoid a pre-existing, unrelated line-break-validation gap (masked keywords' 'before' check is a raw line-start text check with no same-line-number tolerance for ANY masked keyword); same-line shapes are asserted parse-only in parser-keyword-statements.test.ts instead
 
 ### Tech Debt
 
@@ -228,8 +232,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T20:20:49.056Z
-Stopped at: Completed 100-01-PLAN.md
+Last session: 2026-09-21T20:50:02.085Z
+Stopped at: Completed 100-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
