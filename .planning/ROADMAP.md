@@ -418,7 +418,15 @@ Plans:
   4. The conformance run at the phase boundary reports **A ≤ 25** (from 168; 52 at the Phase 99 close), and every shape still on list A is recorded in a tracked list — own-words shape, file count, reason (not a program, compiler quirk, deliberately out of scope, or valid but disproportionate to fix now) — so the residue is a decision rather than an unknown. The file-by-file mapping behind the counts is kept next to the harness in the private corpus repository, because no corpus file name enters this one. Each construct fixed in this phase has its synthetic regression file (CONF-01).
   5. Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, the folder marked as deliberately invalid, and a test asserts the diagnostics those deliberately-invalid files are expected to produce — including an explicit "none today" for a file only the compiler can flag (17 of 92 program files fail today; the `.bbx` configuration file and the `.bbl` library file are not programs and are excluded by extension, with the reason stated in the test).
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 100-01-PLAN.md — empty brackets mean the whole array wherever an array element can stand, plus the type-side bracket shapes and their downstream reads (phase tracer)
+- [ ] 100-02-PLAN.md — a comment after every block boundary, and line-numbered class code
+- [ ] 100-03-PLAN.md — the oracle word sweep and the per-word fixes in the three claimed positions
+- [ ] 100-04-PLAN.md — the cheap long-tail shapes, and the shape-level residue list
+- [ ] 100-05-PLAN.md — `examples/` either compiles or is deliberately invalid with asserted diagnostics
+- [ ] 100-06-PLAN.md — closing measurement, gate table and per-criterion attestation
 
 *Ordering note:* the triage (PARSE-09) runs after the named-group fixes, inside this phase, because it measures what those fixes left behind. `examples/` rides here rather than in a phase of its own: it is the same kind of long-tail clean-up, it is verified by the same `bbjcpl` oracle, and on its own it would be a one-requirement phase.
 

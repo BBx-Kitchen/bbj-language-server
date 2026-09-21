@@ -44,26 +44,51 @@ cwd = `bbj-vscode`. The reporter name `basic` does not exist in this vitest — 
 
 ## Per-Task Verification Map
 
-Filled by the planner — one row per task. Requirement → test anchors:
+Filled by the planner — one row per task. Requirement → test anchors. The fixture named for the
+bracket group is `array-bracket-forms.bbj`: the type-side shapes share the array group's single
+regression file, per the phase context's own decision, rather than getting a second file.
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists |
-|-------------|----------|-----------|-------------------|-------------|
-| PARSE-04 | empty-bracket array form parses in every position and yields the whole-array node | unit (parse + validate + AST property) | quick run + `test/test-data/conformance/whole-array-empty-brackets.bbj` | ❌ W0 |
-| PARSE-05 | `DREAD` into arrays; multi-pair type brackets; array-typed parameter | unit | quick run + `test/test-data/conformance/multi-bracket-array-types.bbj` | ❌ W0 |
-| PARSE-06 | `; rem` after block boundaries; line-numbered class code | unit | quick run + `rem-after-block-boundaries.bbj`, `line-numbered-class.bbj` | ❌ W0 |
-| PARSE-08 | sweep words usable as variable, label, branch target; identifier probes stay clean | unit | quick run + `language-words-as-names.bbj` | ❌ W0 |
-| PARSE-09 | cheap long-tail shapes parse; residue list complete | unit + manual triage | quick run + `statement-option-tails.bbj`; residue list in `100-CONFORMANCE.md` | ❌ W0 / manual |
-| EXMP-01 | valid examples parse; `examples/invalid/` expectations hold; BBj-gated compile check | unit + BBj-gated | `npx vitest run test/examples-compile.test.ts` (name at planner's discretion) | ❌ W0 |
+| Plan / Task | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
+|-------------|-------------|----------|-----------|-------------------|-------------|--------|
+| 100-01 T1 (tracer) | PARSE-04 | empty brackets parse at all eleven call sites and yield the whole-array node (marker true, empty index list) | unit (parse + AST property) | `cd …/bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run test/conformance-regressions.test.ts` + `test/test-data/conformance/array-bracket-forms.bbj` | ❌ W0 (fixture) | ⬜ |
+| 100-01 T2 | PARSE-04, PARSE-05 | multi-pair type brackets on four declaration sites; post-name whole-array marker on a parameter; pair-count reads in `check-classes.ts`; still-flagged bracket forms; identifier cases | unit (parse + validate + AST property) | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/classes.test.ts test/class-validations-issues.test.ts test/validation.test.ts test/declare-in-class.test.ts test/method-return-java-type.test.ts test/line-break-validation.test.ts test/example-files.test.ts` | ✅ (test file exists) | ⬜ |
+| 100-01 T3 | PARSE-04, PARSE-05 | group measured; conformance record opened with baselines | manual (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ❌ W0 (`100-CONFORMANCE.md`) | ⬜ |
+| 100-02 T1 (tracer) | PARSE-06 | a semicolon-introduced comment after all five block boundaries, end-of-file and mid-stream, with no error-severity diagnostic | unit (parse + validate) | `… npx vitest run test/conformance-regressions.test.ts` + `test/test-data/conformance/rem-after-block-boundaries.bbj` | ❌ W0 (fixture) | ⬜ |
+| 100-02 T2 | PARSE-06 | line-numbered class code parses; the three already-working line-number shapes unchanged; still-flagged and identifier cases | unit | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/classes.test.ts test/line-numbering.test.ts test/line-break-validation.test.ts test/line-break-walk-termination.test.ts test/line-break-single-line-if.test.ts test/example-files.test.ts` | ❌ W0 (`line-numbered-class.bbj`) | ⬜ |
+| 100-02 T3 | PARSE-06 | group measured; any validator false alarm the parser fix unmasked named by message group | manual (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ |
+| 100-03 T1 (tracer) | PARSE-08 | oracle sweep built, validated against a known-rejected word, three lists produced; one word green in four positions | unit + oracle (compiler) | `… npx vitest run test/conformance-regressions.test.ts` + `test/test-data/conformance/language-words-as-names.bbj` | ❌ W0 (fixture) | ⬜ |
+| 100-03 T2 | PARSE-08 | every fix-list word working in its claimed positions by its own mechanism; branch-target order; identifier and comment probes; still-flagged cases | unit | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/classes.test.ts test/linking.test.ts test/definition.test.ts test/line-break-validation.test.ts test/line-break-walk-termination.test.ts test/example-files.test.ts` | ✅ | ⬜ |
+| 100-03 T3 | PARSE-08 | group measured; sweep result and the not-flagged rejected-word list recorded | manual (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ |
+| 100-04 T1 (tracer) | PARSE-09 | every long-tail candidate has a compiler verdict, a parser verdict and a fixed-or-recorded decision; the verb with no rule parses | unit + oracle (compiler) | `… npx vitest run test/conformance-regressions.test.ts` + `test/test-data/conformance/statement-option-tails.bbj` | ❌ W0 (fixture) | ⬜ |
+| 100-04 T2 | PARSE-09 | option tails in either order, single-option, no-tail and unspaced forms; still-flagged and identifier cases | unit | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/parser.test.ts test/lexer.test.ts test/line-break-validation.test.ts test/line-break-walk-termination.test.ts test/example-files.test.ts` | ✅ | ⬜ |
+| 100-04 T3 | PARSE-09 | group measured; shape-level residue skeleton written with counts and reason categories; per-file mapping handed over | manual (private harness + orchestrator per-file look) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ |
+| 100-05 T1 (tracer) | EXMP-01 | recursive compile sweep; two-layer test; `examples/invalid/` with README and sidecar format; one repair and one move green | unit + BBj-gated | `… RUN_BBJ_TESTS=0 npx vitest run test/examples-compile.test.ts` and `… RUN_BBJ_TESTS=1 npx vitest run test/examples-compile.test.ts` | ❌ W0 (test file, folder, README) | ⬜ |
+| 100-05 T2 | EXMP-01 | every remaining failing example repaired, split or moved with sidecar and README line; the cross-file quoted line updated in the same task; the false-premise file moved with a filed todo | unit | `… npx vitest run test/examples-compile.test.ts test/imports.test.ts test/linking.test.ts test/textmate-bbx-highlighting.test.ts test/utils.test.ts test/example-files.test.ts` | ✅ (after T1) | ⬜ |
+| 100-05 T3 | EXMP-01 | fresh whole-set sweep; both layers over a non-empty list; the three single-file references resolve | unit + BBj-gated + whole suite | `… RUN_BBJ_TESTS=1 npx vitest run test/examples-compile.test.ts` and `… RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2` | ✅ (after T1) | ⬜ |
+| 100-06 T1 | all six | final tree coherent: generated parser current, source clean, suite green on failed tests, register check clean, verification map reconciled | whole suite | `cd …/bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2` | ✅ | ⬜ |
+| 100-06 T2 | PARSE-09 (+ all) | closing run; gate table with each value against its threshold; A2 and B movement by file-set difference; residue list completed | manual (private harness) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ |
+| 100-06 T3 | all six | per-criterion verdict with named evidence; requirement-to-evidence chain; deliberate non-goals; conditional stop on a missed gate | unit + human review at end of phase | `… npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts test/examples-compile.test.ts test/example-files.test.ts` plus the `<human-check>` harvested into the phase UAT | ✅ | ⬜ |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+**Gate thresholds used by 100-06.** List A at or below 25 (25 passes, 26 fails); A2 at or below the
+Phase 99 close of 23 (23 passes, 24 fails); B recorded with per-file evidence, not gated. Every gate
+number is an integer file count from the harness details file.
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] The six conformance fixtures named above under `bbj-vscode/test/test-data/conformance/`
-- [ ] The examples test file and `examples/invalid/` with its README and sidecar expectations
-- [ ] No framework or harness change — `conformance-regressions.test.ts` picks up any `.bbj` dropped into its folder
+- [ ] Five conformance fixtures under `bbj-vscode/test/test-data/conformance/`:
+      `array-bracket-forms.bbj` (100-01), `rem-after-block-boundaries.bbj` and
+      `line-numbered-class.bbj` (100-02), `language-words-as-names.bbj` (100-03),
+      `statement-option-tails.bbj` (100-04)
+- [ ] `bbj-vscode/test/examples-compile.test.ts` and `examples/invalid/` with its README and one
+      sidecar per deliberately-invalid program (100-05 T1)
+- [ ] `.planning/phases/100-…/100-CONFORMANCE.md`, opened by 100-01 T3
+- [ ] No framework or harness change — `conformance-regressions.test.ts` picks up any `.bbj` dropped
+      into its folder, and `bbj-vscode/test/parser-keyword-statements.test.ts` already exists and
+      gains one describe block per construct group
 
 ---
 
