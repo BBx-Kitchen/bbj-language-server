@@ -96,6 +96,7 @@ SingleStatement:
     SelectStatement |
     SerialStatement |
     SetDayStatement |
+    SetDriveStatement |
     SetErrorStatement |
     SetOptsStatement |
     SetTerminalStatement |
@@ -261,6 +262,14 @@ SelectStatement:
 
 SetDayStatement:
     'SETDAY' string=Expression
+    ;
+
+// SETDRIVE fileid{,ERR=lineref} -- no grammar rule existed for this verb at all before this
+// change, so every SETDRIVE line silently split into two unrelated expression statements. The
+// trailing Err? reuses the same optional error-branch fragment every other small verb in this
+// grammar already carries -- the verb's only documented option.
+SetDriveStatement:
+    'SETDRIVE' fileid=Expression Err?
     ;
 
 SetTerminalStatement:
