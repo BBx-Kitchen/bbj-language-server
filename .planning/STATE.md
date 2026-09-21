@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-06-PLAN.md
-last_updated: "2026-09-21T05:20:24.548Z"
-last_activity: 2026-09-20
+stopped_at: Completed 98-07-PLAN.md
+last_updated: "2026-09-21T05:34:07.682Z"
+last_activity: 2026-09-21
 last_activity_desc: Phase 98 execution started
-state_head: 0702b61f16b19f03e6787b48c2e45cc77e47143f
+state_head: ee462411fedeaaaa3282ba6d0ec531218cf6b537
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 98 (Line-Break & Validation False Alarms (A2)) — READY TO EXECUTE
-Plan: 6 of 10 (gap closure 98-07 … 98-10 planned)
+Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
+Plan: 8 of 10
 Status: Ready to execute
-Last activity: 2026-09-20 — Phase 98 execution started
+Last activity: 2026-09-21 — Phase 98 execution started
 
 ### v4.5 milestone map
 
@@ -101,6 +101,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P04 | 40min | 3 tasks | 5 files |
 | Phase 98 P05 | 55min | 2 tasks | 3 files |
 | Phase 98 P06 | 50min | 3 tasks | 8 files |
+| Phase 98 P07 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,7 @@ decisions:
 - [Phase 98]: checkReturnValueInDef downgraded error->warning for a bare early-exit RETURN inside a DEF FN — unmasked by plan 05's FNEND-optional fix once these bodies started parsing correctly; matches the D-06/D-07 pattern of warning rather than silencing a compiler disagreement
 - [Phase 98]: elseStatementLineBreaks now walks past a same-line ELSE/end-of-IF statement, mirroring plan 04's ifEndStatementLineBreaks fix for the sibling mask plan 04 did not touch — resolved 12 A2 files (some previously surfacing under a different message from the same underlying defect)
 - [Phase 98]: closing measurement — A2 267->22 (gate met), A 168->167 (improved), B 658->665 of 1,210 (regressed, NOT fixed); B's regression is accepted, documented residue since fixing it needs the bbj-ls compiler-parser endpoint (Phases 101-103), not a line-break/DECLARE/METHODRET check; roadmap success criterion 5 recorded as only partially met
+- [Phase 98]: RESTORE_NO_NL's operand lookahead widened via non-capturing alternation (existing digit/letter/underscore class OR asterisk-plus-name-start), not a single widened character class — the wider class would also match an asterisk followed by whitespace and reintroduce the x = restore * 2 false positive
 
 ### Tech Debt
 
@@ -195,8 +197,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T04:26:12.977Z
-Stopped at: Completed 98-06-PLAN.md
+Last session: 2026-09-21T05:33:59.739Z
+Stopped at: Completed 98-07-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.

@@ -157,3 +157,14 @@ None - no external service configuration required.
 ---
 *Phase: 98-line-break-validation-false-alarms-a2*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+All key files confirmed present on disk (`bbj-vscode/src/language/bbj-token-builder.ts`,
+`bbj-vscode/test/line-break-validation.test.ts`,
+`bbj-vscode/test/test-data/conformance/restore-numeric.bbj`, `.planning/ROADMAP.md`, this
+SUMMARY.md). All four task/summary commit hashes (`1084d1bc`, `1ad87ada`, `1aae8208`,
+`ee462411`) confirmed present in `git log --oneline --all`. All task-level acceptance
+criteria re-verified passing (register check, generated-dir check, targeted vitest files,
+whole-suite JSON `numFailedTests=0`, ROADMAP.md node-script checks, diff --numstat bound).
+`.planning/REQUIREMENTS.md` confirmed unchanged by this plan.
