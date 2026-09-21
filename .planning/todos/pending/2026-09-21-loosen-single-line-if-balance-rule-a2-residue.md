@@ -55,3 +55,12 @@ conformance harness afterward and confirm A2 returns to at or below 25 with no r
 No corpus file name, path, or source line may be used to investigate or describe this — synthetic
 regression fixtures under `bbj-vscode/test/test-data/conformance/` are the sanctioned way to
 reproduce and test the shape once identified.
+
+## Concrete repro (from the post-gap-closure code review, 2026-09-21)
+
+`if a then if b then c=1 else d=1 fi else e=1 fi` — legal nested one-liner — is flagged with
+"This statement needs to start in a new line: else". Mechanism per 98-REVIEW.md (WR-A):
+`elseStatementLineBreaks` counts a same-line `ElseStatement` as an independent closer claim,
+while `ifEndStatementLineBreaks` treats it as consuming; a complete inner `IF…ELSE…FI` group is
+therefore double-counted against the outer ELSE. Start the fix from this input (add it as a
+"stays clean" case), keep the three "still flagged" regressions, then re-measure A2.
