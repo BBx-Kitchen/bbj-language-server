@@ -524,3 +524,153 @@ classified above as an accepted, structurally-unreachable side effect of this pl
 new grammar rule accepting an invalid form. This run neither resolves nor worsens the A2 gate
 excess carried forward from plan 02 (30 vs ≤27) — that decision remains open for the orchestrator
 between plans.
+
+## Closing run
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `0f513214` (the tree as committed through this plan's
+  Task 1 — no source change since plan 04's `ff9a5b59`; Task 1 confirmed a clean `bbj-vscode/src`
+  status and a generated parser no older than the grammar before this run). `sourceModified: false`,
+  75 seconds.
+- Before-snapshot: `/home/coder/repos/bbj-corpus/conformance/snapshots/details-99-05-before.json`,
+  copied from `details.json` immediately before this run.
+- Preconditions confirmed before the run (Task 1): whole vitest suite `numFailedTests: 0` (2075
+  passed, 73 skipped; the 4 reported "failed suites" are hook-timeout contention on 3 files plus the
+  documented pre-existing `installed-extension-e2e.test.ts` environment failure, none of them a
+  failed test); `bbj-vscode/src/language/generated/ast.ts` no older than `bbj.langium`;
+  `git status --porcelain -- bbj-vscode/src` printed nothing; the register check over the phase's
+  whole source diff (merge-base of HEAD with `origin/main`) produced no match.
+
+**Direction of worse, restated:** for A, A2 and B alike, a **higher** file count is worse; a lower
+count is always better. Every delta below is computed as `this run − baseline` (or `this run −
+previous`), so a negative delta is an improvement and a positive delta is a regression, for all
+three measures.
+
+**Numbers.**
+
+| Measure | Phase 98 close | Last per-group run (plan 04) | This run | Δ vs Phase 98 close | Δ vs last per-group run | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 167 | 53 | 53 | −114 | 0 | ≤ 80 | **PASS** |
+| A2 — valid code that parses but gets a validation error | 27 | 30 | 30 | +3 | 0 | ≤ 27 | **exceeds gate by 3** |
+| B — invalid code not flagged, of 1,210 | 665 | 666 | 666 | +1 | 0 | recorded, not gated | **B rose by 1 vs the Phase 98 close baseline** |
+
+**D-12 backstop confirmed: this run and the last per-group run (plan 04) report identical
+numbers, because no source changed between them.** A file-set diff against the before-snapshot
+(below) confirms 0 files moved on any of the three lists — every recorded number in this section is
+therefore attributable to the commits made across plans 01-04, not to run-to-run variation.
+
+```
+falseRejects (A): before 53, after 53 — left: 0, appeared: 0, unchanged: 53
+falseAlarms (A2): before 30, after 30 — left: 0, appeared: 0, unchanged: 30
+missed (B):       before 666, after 666 — left: 0, appeared: 0, unchanged: 666
+```
+
+**A — by first word of the line the parser stops at (this run, 53 files total, no display cap,
+byte-identical to plan 04's own table since no source changed).**
+
+| Files | Group |
+|---|---|
+| 8 | DREAD |
+| 7 | PRINT |
+| 4 | METHOD |
+| 3 | METHODEND |
+| 2 | V |
+| 2 | TEXT |
+| 2 | CALL |
+| 2 | VECTOR |
+| 2 | IF |
+| 1 each | PROCESS_EVENTS, *(empty)*, STATE, USE, NS, FNEND, VAR, BBJAPI, INPUT, C, DECLARE, DIM, FULLTEXT, GB__LIST, OT, DEF, ASSERT, XCALL, ON, LET, FIELD |
+
+`FIELD`, `READ`, `IOLIST` and `LABEL` (the four named groups) do not appear as their own multi-file
+groups; `READ`, `IOLIST` and `LABEL` are fully absent (0 remaining). One file's current first-blocking
+line begins with the word `FIELD` — see the Gate table below for its disposition.
+
+## Gate table
+
+| # | Gate | Value | Verdict |
+|---|---|---|---|
+| 1 | List A at or below 80 | 53 | **PASS** |
+| 2 | No remaining list-A first-word group of `FIELD`, `READ`, `IOLIST` or the word `label` | `FIELD`: 1 · `READ`: 0 · `IOLIST`: 0 · `LABEL`: 0 | **PARTIAL** — see note below |
+| 3 | A2 at or below 27 | 30 | **FAIL** (exceeds by 3) |
+| 4 | B — recorded with evidence status, not gated | 666 (+1 vs the Phase 98 close baseline of 665) | **recorded** — see B movement section below |
+
+**Note on gate row 2 (`FIELD`: 1).** The `FIELD`-verb defect itself is confirmed fixed: plan 02's
+own before/after file-set diff showed the whole 45-file `FIELD` first-word group clearing to 0, and
+this closing run's own file-set diff (above) shows 0 files newly appeared in A since plan 04 — so
+the one file whose current first-blocking line begins with `FIELD` was **already on list A before
+this run**, unchanged since plan 04's own measurement, not a new occurrence of the verb-form defect.
+Plan 04's own record (`Run: plan 04`, above) already established, by its own before/after diff, that
+this specific first-word label is table churn: an `IOLIST`-group file whose earlier, `IOLIST`-related
+blocking line stopped being a parser error, exposing a different, later, unrelated failing line
+further down the same document whose first word happens to be `FIELD`. No corpus file was read by
+this task to reach that conclusion — it is entirely file-set-diff evidence, carried forward from
+plan 04's own per-run diff, not re-derived or re-attributed here. Whether that later line is itself a
+class-member `FieldDecl` shape, a chance identifier, or something else cannot be determined without a
+corpus read, which is out of scope for this task; it is handed to the orchestrator as an open note,
+not asserted as a specific cause.
+
+## A2 movement
+
+Comparison is against the recorded Phase 98 closing set (`98-CONFORMANCE.md` sections 7 and 10
+combined: 18 message groups / 22 files from section 7, plus two message groups / 5 files added by
+section 10's own closing re-run — 27 files total across 20 message groups), not against totals alone
+(D-03).
+
+**Message groups present at the Phase 98 close, absent from this run (cleared) — 3 groups, 5 files:**
+
+| Files (Phase 98 close) | Message group |
+|---|---|
+| 3 | This statement needs to end with a line break: LEN= |
+| 1 | This statement needs to end with a line break: LET |
+| 1 | This statement needs to end with a line break: len= |
+
+These are exactly the five `LEN`-related residue files 99-CONTEXT.md's D-03 predicted would clear
+once `LEN=` was unfused — confirmed cleared, by plan 01's own run (A2 27 → 22) and unchanged since.
+
+**Message groups present at the Phase 98 close, still present in this run, unchanged in count — 16
+groups, matching file counts:** `return` (3), `endif` (1), `Field _ is declared _ but is initialized
+with a number.` (1), `x[all]` (1), `SWITCH block` (1), `fi` (1), `DECLARE is not valid at class
+member level...` (1), `The member _ from the type _ ... is not visible` (1), `MODE option only
+supported in MKEYED Verb.` (1), `LET num = _._` (1), `LET tiny = _` (1), `LET val = _` (1),
+`gravitational_constant = _._` (1), `log.DURATION = log.END-log.` (1), the blank-message "needs to
+start in a new line" group (4), and `else` (1).
+
+**Message group present at the Phase 98 close whose count grew — 1 group, +8 files:**
+
+| Phase 98 close | This run | Delta | Message group |
+|---|---|---|---|
+| 1 | 9 | +8 | Comments need to be separated by line breaks or *(semicolon)*. |
+
+This is the exact `checkCommentNewLines` unmasking plan 02's own run traced to source (this
+repository's own `bbj-validator.ts`, not corpus source): a pre-existing check that returns
+immediately whenever a document has any parser error; once `FieldStatement` parsing removed the
+`FIELD`-verb parser error from 8 files, the check ran on them for the first time and found a comment
+not immediately preceded by a line break or `;`. This mechanism was fully established in plan 02's
+own run section above; not re-derived here.
+
+**No new message group appeared.** Every message group present in this run's 30-file table also
+appears in the Phase 98 close's 27-file table (possibly at a different count, per the two rows
+above) — 0 groups are new.
+
+**Arithmetic reconciles:** 27 (Phase 98 close) − 5 (cleared) + 8 (grown) = 30 (this run). Matches
+exactly.
+
+## B movement
+
+**This task's own file-set diff (against `details-99-05-before.json`, taken immediately before this
+run): 0 files newly uncaught, 0 files left the list.** The closing run's `missed` set is
+byte-identical to the state plan 04 left it in — 0 files newly uncaught — handed to the orchestrator
+for the per-file look.
+
+**Phase-wide B delta vs the Phase 98 close baseline (665): +1 (666).** This single file was already
+identified and classified by plan 04's own before/after file-set diff (`Run: plan 04`, above, under
+"B — the one newly-appeared file, classified (D-11)") as a **lost accidental catch**: the compiler's
+own complaint for that file is a semantic branch-target-not-found check this project's document
+validator structurally cannot surface at error severity (linking errors are downgraded to Warning
+and excluded from the harness's own error count by design), so the file's prior "catch" must have
+come from an unrelated syntax error that this phase's own `IolistStatement` fix resolved, exposing
+the pre-existing, structurally-unreachable defect underneath. That classification is carried forward
+unchanged; this task's own diff (above) confirms no further B movement occurred since plan 04's run,
+and writes no new cause, mechanism or attribution of its own for that file.
