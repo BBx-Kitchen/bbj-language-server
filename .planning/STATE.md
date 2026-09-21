@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
 status: executing
-stopped_at: Completed 98-03-PLAN.md
-last_updated: "2026-09-20T22:52:03.180Z"
+stopped_at: Completed 98-04-PLAN.md
+last_updated: "2026-09-21T03:01:16.597Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: 5e9ecd5c08e8ca85705ad3d47a7230bb33d6a73f
+state_head: 16624d89f04c728a2225f5c0bc26845f0ef2d28c
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 98 execution started
 
@@ -98,6 +98,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P01 | 12min | 3 tasks | 5 files |
 | Phase 98 P02 | 55min | 3 tasks | 6 files |
 | Phase 98 P03 | 40min | 3 tasks | 5 files |
+| Phase 98 P04 | 40min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ decisions:
 - [Phase 98]: Branch-target exclusion lookbehind extended to look back through a bounded run of prior comma-separated targets — Needed so the last target of a multi-target ON...GOSUB list resolves, not only a single lone target after GOTO/GOSUB; every quantifier stays bounded per the DoS mitigation
 - [Phase 98]: Both METHODRET disagreements downgraded to warning; conflicting-DECLARE narrowed by scope and resolved-type relation, reusing check-classes.ts's subtype logic via new module-level exports — Matches the compiler's own acceptance of these shapes; avoids a second subtype walker by promoting classFqn/bbjSupertypesReach and adding bbjTypesAreRelated
 - [Phase 98]: java.lang.String/java.lang.Integer resolve under this suite's EmptyFileSystem test setup, confirmed by probe — So the plan's flagged risk did not apply; existing DECLARE severity tests kept their original java.lang.* types
+- [Phase 98]: ifStatementLineBreaks clears its before-flag on a same-line label declaration (mirrors isStandaloneStatement's existing rule); ifEndStatementLineBreaks walks past a preceding end-of-IF statement instead of stopping without clearing — Fixes the labelled single-line IF and chained-double-FI false alarms without a new traversal mechanism; the existing fixed-target isSameLine guard keeps both walks terminating
+- [Phase 98]: ENDLINE_PRINT_COMMA's lookahead widened to /,(?=[ \t]*(\r?\n|;))/ — the comma-immediately-before-newline requirement (no whitespace tolerance) was the trailing-comma PRINT false alarm's actual cause, confirmed by probe against 98-RESEARCH.md's Open Question 3's first candidate; no grammar change needed
+- [Phase 98]: LEN=<number> residue: a fused 'LEN=' keyword literal (from LastVerifyOption) collides with plain-identifier assignment via the generic keyword-to-ID CATEGORIES fallback, producing a wrong AST — recorded as PARSE-08 residue for Phase 100 per D-16/D-18, not fixed in this plan
 
 ### Tech Debt
 
@@ -184,8 +188,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-20T22:51:53.658Z
-Stopped at: Completed 98-03-PLAN.md
+Last session: 2026-09-21T03:01:16.569Z
+Stopped at: Completed 98-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
