@@ -1,5 +1,6 @@
-REM Protects RESTORE from losing its line-break-free numeric and label targets, in upper,
-REM lower and mixed case, plus a bare RESTORE and a RESTORE sharing a line with a label.
+REM Protects RESTORE from losing its line-break-free numeric, user-label and symbolic-label
+REM targets, in upper, lower and mixed case, plus a bare RESTORE and a RESTORE sharing a line
+REM with a label.
 RESTORE 0
 restore 1
 ReStOrE 2
@@ -7,3 +8,6 @@ RESTORE mylabel
 RESTORE
 L1: RESTORE 3
 mylabel: x = 1
+RESTORE *RETRY
+restore *retry
+ReStOrE *ReTrY

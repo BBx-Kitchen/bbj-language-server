@@ -133,15 +133,27 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             };
         } else if (terminal.name === 'RESTORE_NO_NL') {
             // Matches RESTORE only when an operand actually follows (whitespace then a digit,
-            // letter or underscore) so the grammar can commit to consuming a numeric or label
-            // line reference. A bare RESTORE (nothing, or only whitespace, before the next line
-            // break or ';') never matches this token, so it falls through to the plain 'RESTORE'
-            // keyword token and the statement's bare alternative — deciding "has an operand" at
-            // the lexer avoids a parser-level ambiguity between an optional trailing line
-            // reference and the next statement starting right after it.
+            // letter or underscore, OR an asterisk immediately followed by a letter or
+            // underscore — a symbolic-label name) so the grammar can commit to consuming a
+            // numeric, user-label or symbolic-label line reference. A bare RESTORE (nothing, or
+            // only whitespace, before the next line break or ';') never matches this token, so
+            // it falls through to the plain 'RESTORE' keyword token and the statement's bare
+            // alternative — deciding "has an operand" at the lexer avoids a parser-level
+            // ambiguity between an optional trailing line reference and the next statement
+            // starting right after it.
+            //
+            // The asterisk branch requires a name-start character directly after the '*', with
+            // no whitespace in between: widening the first character class to simply include
+            // '*' would also match an asterisk followed by whitespace, which turns the ordinary
+            // multiplication `x = restore * 2` into a false RESTORE statement. Requiring the
+            // name to start immediately keeps that expression as plain multiplication while
+            // still matching a real symbolic-label target such as `RESTORE *RETRY`. One residual
+            // ambiguity is not resolved by this pattern: an unspaced multiplication written as
+            // `x = restore *foo` is ambiguous in the language itself, and the lexer resolves it
+            // in favour of the statement.
             return {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/RESTORE(?=[ \t]+[0-9A-Za-z_])/i),
+                PATTERN: this.regexPatternFunction(/RESTORE(?=[ \t]+(?:[0-9A-Za-z_]|\*[A-Za-z_]))/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
