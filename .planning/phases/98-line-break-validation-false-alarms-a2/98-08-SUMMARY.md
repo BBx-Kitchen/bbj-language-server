@@ -223,3 +223,12 @@ None - no external service configuration required.
 ---
 *Phase: 98-line-break-validation-false-alarms-a2*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+All five modified source/test files confirmed present on disk with `[ -f ]`, and all five commit
+hashes (`6aed9399`, `8ba30038`, `0627cdd2`, `5bfa5ddf`, `5246f841`) confirmed present in
+`git log --oneline --all`. All plan-level `<verification>` commands re-run clean: targeted
+five-file suite green, whole-suite JSON `numFailedTests=0`, register check exits 1 (no match),
+no changes under `generated/` or `test-data/`, no changes to the other wave-5 plan's four files,
+`.planning/REQUIREMENTS.md` unchanged.
