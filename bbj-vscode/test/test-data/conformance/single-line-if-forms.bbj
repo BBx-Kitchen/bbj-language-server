@@ -1,0 +1,13 @@
+REM Protects single-line IF/FI forms the compiler accepts from a false line-break
+REM diagnostic: a labelled single-line IF with a semicolon-chained branch and a
+REM jump back to its own label, a nested single-line IF closed by two chained FI,
+REM and IF...THEN RETURN...FI, each in upper, lower and mixed case.
+loopstart: IF flag THEN count = 1; GOTO loopstart
+loopstart2: if flag then count = 2; goto loopstart2
+LoopStart3: If flag Then count = 3; Goto loopstart3
+IF flag THEN IF other THEN count = 4 FI FI
+if flag then if other then count = 5 fi fi
+If flag Then If other Then count = 6 Fi Fi
+IF flag THEN RETURN 1 FI
+if flag then return 2 fi
+If flag Then Return 3 Fi

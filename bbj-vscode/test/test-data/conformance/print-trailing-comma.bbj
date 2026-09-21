@@ -1,0 +1,18 @@
+REM Protects a PRINT item list ending in a trailing comma, followed by trailing
+REM whitespace, then a line whose first statement is a multi-line IF...THEN block,
+REM from a false line-break diagnostic caused by the comma token not recognizing
+REM the line break across intervening horizontal whitespace. Covers a trailing
+REM comma with trailing whitespace, one with none, and one chained after a
+REM semicolon.
+PRINT message$, 
+IF flag THEN
+count = 1
+FI
+PRINT message$,
+IF flag THEN
+count = 2
+FI
+value = 1; PRINT message$,
+IF flag THEN
+count = 3
+FI
