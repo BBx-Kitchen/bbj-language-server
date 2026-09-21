@@ -112,6 +112,17 @@ describe('Line break validation: TABLE statement', () => {
 });
 
 describe('Line break validation: RESTORE with a numeric or label reference', () => {
+    // Symbolic-label targets (an asterisk followed by a name) are a form the grammar's
+    // lineref alternative already declares legal, so these must land in the same
+    // positiveCases array as the numeric/user-label forms above rather than a separate list.
+    const symbolicLabelCases: [string, string][] = [
+        ['symbolic label target, uppercase keyword', 'RESTORE *RETRY\n'],
+        ['symbolic label target, lowercase keyword', 'restore *retry\n'],
+        ['symbolic label target, mixed case', 'ReStOrE *ReTrY\n'],
+        ['symbolic label target whose name is also a language word', 'RESTORE *NEXT\n'],
+        ['symbolic label target, undeclared label', 'RESTORE *mytarget\n'],
+    ];
+
     const positiveCases: [string, string][] = [
         ['numeric reference, uppercase keyword', 'RESTORE 0\n'],
         ['numeric reference, lowercase keyword', 'restore 1\n'],
@@ -120,6 +131,7 @@ describe('Line break validation: RESTORE with a numeric or label reference', () 
         ['bare RESTORE at end of line', 'RESTORE\n'],
         ['bare RESTORE followed by another statement', 'RESTORE\nx = 1\n'],
         ['RESTORE sharing a line with a leading label', 'L1: RESTORE 3\n'],
+        ...symbolicLabelCases,
     ];
 
     test.each(positiveCases)('%s produces no line-break diagnostics', async (_label, src) => {
@@ -127,9 +139,43 @@ describe('Line break validation: RESTORE with a numeric or label reference', () 
         expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
     });
 
+    // Diagnostics-only is not sufficient here: the defect this pins is that the input splits
+    // into two statements (a RestoreStatement plus an ExpressionStatement for the stray
+    // "*label"), which a future pattern change could keep quiet on diagnostics alone while
+    // still producing the wrong tree. An undeclared symbolic label (RESTORE *mytarget) may
+    // still produce a linking diagnostic, which lineBreakDiagnostics() already excludes; the
+    // statement shape below is unaffected by linking and is asserted regardless.
+    test.each(symbolicLabelCases)('%s parses as exactly one RestoreStatement', async (_label, src) => {
+        const result = await validate(src);
+        const statements = (result.document.parseResult.value as unknown as { statements: { $type: string }[] }).statements;
+        expect(statements.map(s => s.$type)).toEqual(['RestoreStatement']);
+    });
+
     test('two statements on one line with no separator between them is still flagged', async () => {
         const result = await validate('a = 1 restore 0\n');
         expect(lineBreakDiagnostics(result.diagnostics).length).toBeGreaterThan(0);
+    });
+});
+
+// Regression: RESTORE_NO_NL's operand lookahead must require a name-start character
+// immediately after an asterisk, not merely tolerate an asterisk anywhere in its operand
+// class. A variable named after the verb, multiplied with a spaced '*' operator, must keep
+// parsing as an ordinary assignment -- not be swallowed into a RestoreStatement the way an
+// earlier lexer token in this phase once swallowed an identifier that merely contained its
+// verb word, before that token gained a statement anchor.
+describe('Line break validation: the RESTORE verb word used as a name', () => {
+    const stillOrdinaryIdentifierCases: [string, string][] = [
+        ['a variable named after the verb, multiplied with a spaced operator', 'x = restore * 2\n'],
+        ['a variable named after the verb, added with a spaced operator', 'y = restore + 1\n'],
+        ['the verb word embedded in a longer identifier, multiplied', 'x = restorex * 2\n'],
+        ['the verb word embedded in a longer identifier, as an assignment target', 'restorex = 1\n'],
+    ];
+
+    test.each(stillOrdinaryIdentifierCases)('%s produces no line-break diagnostics and parses as one LetStatement', async (_label, src) => {
+        const result = await validate(src);
+        expect(lineBreakDiagnostics(result.diagnostics)).toHaveLength(0);
+        const statements = (result.document.parseResult.value as unknown as { statements: { $type: string }[] }).statements;
+        expect(statements.map(s => s.$type)).toEqual(['LetStatement']);
     });
 });
 
