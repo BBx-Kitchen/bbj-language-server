@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: executing
-stopped_at: Phase 100 context gathered
-last_updated: "2026-09-21T19:38:35.305Z"
+stopped_at: Completed 100-01-PLAN.md
+last_updated: "2026-09-21T20:20:49.181Z"
 last_activity: 2026-09-21
-last_activity_desc: Phase 99 complete, transitioned to Phase 100
-state_head: f929e637c7bd390535fee886da00fb261cda0ce4
+last_activity_desc: Phase 100 execution started
+state_head: 332e9e33ce0052705f6947f688cc2afd833b8dab
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 22
-  completed_plans: 16
+  completed_plans: 17
   percent: 29
 ---
 
@@ -34,15 +34,15 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 ## Current Position
 
-Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — READY TO EXECUTE
-Plan: Not started
+Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
 unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
 fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
-Last activity: 2026-09-21 — Phase 99 complete, transitioned to Phase 100
+Last activity: 2026-09-21 — Phase 100 execution started
 
 ### v4.5 milestone map
 
@@ -116,6 +116,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 99 P04 | 24min | 3 tasks | 4 files |
 | Phase 99 P05 | 32min | 3 tasks | 2 files |
 | Phase 99 P06 | 48min | 3 tasks | 8 files |
+| Phase 100 P01 | 21min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,8 @@ decisions:
 - [Phase 99]: [Phase 99]: IolistStatement grammar rule (RedimStatement-shaped, no dedicated item rule) clears the IOLIST group; check-variable-scoping.ts and line-break-validation.ts needed no change, confirmed by probe -- item-list-only variables draw only Warning-severity linking diagnostics by this project's own downgrade design
 - [Phase 99]: Closing measurement (plan 05) -- A 167->53 (gate met, <=80), A2 unchanged at 30 (gate missed, exceeds <=27 by 3), B 665->666 (recorded, not gated, plan 04's classified lost accidental catch accepted as-is); gate row 2's one remaining FIELD-labeled list-A file was corrected by the orchestrator's own per-file look from "table churn" to a genuine PARSE-01 residue (the verb's value form plus a trailing `err=<line reference>` option the grammar's FieldStatement rule does not accept). Stephan Wald chose 2026-09-21 to close both open gates (A2 miss, FIELD residue) with a gap plan inside Phase 99 rather than accept them as residue; the checkCommentNewLines false alarm behind the A2 rise (8 files, one shape) is the gap plan's other target. PARSE-01/02/03/07 stay unticked pending that gap plan's re-measure.
 - [Phase 99]: checkCommentNewLines needs a second, narrow exemption for lexer tokens that consume their own trailing terminator (KEYWORD_STANDALONE) — a named, closed Set checked alongside the CST-leaf exemptions, found via the plan's own conditional stop rather than the totals alone
+- [Phase 100]: Empty ArrayElement brackets set the whole-array marker from the closing bracket token itself (all?="]"), matching x[all]'s node exactly
+- [Phase 100]: VariableDecl/MethodDecl's array boolean renamed to arrayDims: string[] across DECLARE/FIELD/method-return/parameter, mirroring CastExpression's repeatable-pair pattern
 
 ### Tech Debt
 
@@ -225,9 +228,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T18:25:43.686Z
-Stopped at: Phase 100 context gathered
-Resume file: .planning/phases/100-parser-gaps-remaining-groups-long-tail-examples/100-CONTEXT.md
+Last session: 2026-09-21T20:20:49.056Z
+Stopped at: Completed 100-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
 SECURITY.md yet: run `/gsd-secure-phase 99` before shipping.
