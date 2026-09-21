@@ -375,7 +375,7 @@ Plans:
   4. The `IOLIST` statement parses, standalone and behind a label, with a long item list.
   5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or `LABEL`; A2 stays at or below its Phase 98 number (27); each group has its synthetic regression file (CONF-01). B is not a gate, but every newly-uncaught file is identified by file-set diff and classified with per-file evidence (99-CONTEXT D-11).
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -397,6 +397,10 @@ Plans:
 **Wave 5** *(blocked on Wave 4)*
 
 - [x] 99-05-PLAN.md — closing conformance run, the gate table, the disposition of what remains and the criterion-by-criterion attestation (wave 5)
+
+**Wave 6** *(blocked on Wave 5 — gap closure for the two gates the closing run left open)*
+
+- [ ] 99-06-PLAN.md — gap closure: the `FIELD` verb's trailing `ERR=` option tail, the `checkCommentNewLines` false alarm behind the A2 rise, and the closing re-measure (wave 6)
 
 *Ordering note:* the four groups here are the ones measured by file count in `bbj-corpus/conformance/REPORT.md` (45 + 38 + about 25 + 3 ≈ 111 files, regrouped by real cause in 99-CONTEXT.md). They are grouped into one phase because all four are grammar-level statement-shape changes that regenerate the same Langium artifacts; splitting them would regenerate and re-verify the grammar twice for no verification benefit.
 
