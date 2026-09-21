@@ -365,3 +365,101 @@ six are not grammar literals at all (`text`, `vector`, `state`, `val`, `str` wer
 identifiers needing no widening, and `next` was the one discovered broken above and fixed by this
 plan). None of the fourteen was missing from the confirmed-working set once the sweep and its
 follow-up checks completed.
+
+## Run: plan 04
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `a16c356c` (the tree as committed through this plan's
+  task 2), mode `validate`, `sourceModified: false`, 77 seconds.
+- Preconditions confirmed before the run: `bbj-vscode/src/language/generated/ast.ts` no older
+  than `bbj.langium`; `git status --porcelain -- bbj-vscode/src` printed nothing.
+- `details.json` snapshotted to `snapshots/details-100-04-before.json` before the run.
+- Run twice back to back over the same, unchanged tree: both runs reported the identical A 9,
+  A2 22, B 669 -- a recorded movement always means a source change, not run-to-run noise.
+
+**Numbers.**
+
+| Measure | Plan 03 run | This run | Delta vs plan 03 | Delta vs Phase 99 close | Gate | Verdict |
+|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 13 | 9 | −4 | −43 | ≤ 25 (phase-final) | **improved, well below the phase-final gate** |
+| A2 — valid code that parses but gets a validation error | 27 | 22 | −5 | −1 | ≤ 23 | **improved, at or below the Phase 99 close and its own ≤23 gate** |
+| B — invalid code not flagged, of 1,210 | 669 | 669 | 0 | +3 | recorded, not gated | unchanged from plan 03 |
+
+**A — by first word of the line the parser stops at (this run, 9 files total).**
+
+| Files | Group |
+|---|---|
+| 2 | PRINT |
+| 1 each | *(empty)*, METHODEND, FNEND, an unspaced positional INPUT form, an ASSERT-named variable assignment, ON, a METHOD declaration |
+
+**A2 — by message (this run, 22 files total).**
+
+| Files | Message group |
+|---|---|
+| 6 | This statement needs to start in a new line: *(blank)* |
+| 3 | This statement needs to end with a line break: return |
+| 1 | Field 'y!' is declared 'BBjString' but is initialized with a number. |
+| 1 | This statement needs to start in a new line: x[all] |
+| 1 | This statement needs to end with a line break: clear |
+| 1 | 'CASE DEFAULT' is only allowed inside a SWITCH block. |
+| 1 | This statement needs to start in a new line: fi |
+| 1 | DECLARE is not valid at class member level. Use FIELD for class-level declarations, or move DECLARE inside a method body. |
+| 1 | The member is not visible (a visibility check) |
+| 1 | MODE option only supported in MKEYED Verb. |
+| 1 | This statement needs to end with a line break: LET num = 6.022 |
+| 1 | This statement needs to end with a line break: LET tiny = 1 |
+| 1 | This statement needs to end with a line break: LET val = 1 |
+| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to start in a new line: else |
+
+Two message groups present at the plan 03 run no longer appear: "This statement needs to end
+with a line break: classend" (4 files at plan 03, this plan's bare-comment-word fix) and "This
+statement needs to end with a line break: endif" (1 file, the identical bare-comment-word fix
+applied through the same shared regex to a different masked construct). Every other message
+group present at the plan 03 run still appears at an unchanged count in this run's table.
+
+**Set-movement sizes** (file-set difference, `snapshots/details-100-04-before.json` vs. this
+run's `details.json`; sizes only, no id, path or line).
+
+- **A (falseRejects): before 13, after 9 — 4 files left the list, 0 newly appeared.** Every
+  movement this run made to list A is an improvement; none of this plan's grammar edit added a
+  new list-A entry. By first word of the line the four files were flagged at in the plan 03
+  snapshot: one `PROCESS_EVENTS` line with its option tail in the order this plan's widening now
+  accepts, one `FULLTEXT` line likewise, and two lines whose own first word is `IF` (a
+  single-line `IF`'s THEN-branch containing one of the shapes this plan fixed, so the line's
+  first-failing token moved once the THEN-branch itself started parsing).
+- **A2 (falseAlarms): before 27, after 22 — 0 files newly appeared, 5 left.** All five departures
+  are covered by the two message groups named above — the bare-comment-word fix (addition A)
+  applied through the shared `lineEndRegex`, not scoped to `CLASSEND` alone.
+- **B (missed): before 669, after 669 — 0 files newly appeared, 0 left.** No movement in the
+  missed set this run.
+
+## 0 files moved the wrong way this run
+
+Every set-movement this run was an improvement or neutral: 4 files left list A, 5 files left
+list A2, and list B did not move at all. No file newly entered A or A2, so there is nothing to
+hand to the orchestrator's per-file look this time.
+
+## Residue: shapes still on list A
+
+Nine files remain on list A after this group. Four rows are filled from group-level evidence
+alone (the harness's own first-word grouping, this plan's own Task 1 candidate decisions, and
+one additional cause this plan's own triage traced to a shared root across three files); two
+rows are marked pending a per-file look, with no cause guessed.
+
+| Shape (own words) | Files | Reason category | Fixed or stays |
+|---|---|---|---|
+| An unspaced positional `INPUT` form (`input` immediately followed by `@(` with no space between them) — the `ID` terminal's own optional trailing `@` (the client-object-class marker) matches longer than the `INPUT` keyword at that exact position, so the lexer's own longer-match rule picks `ID` over the keyword. The spaced form (`input @(...)`) already parses; only the unspaced form is affected. | 1 | valid but disproportionate to fix now | stays — candidate for a later milestone (needs a lexer-level disambiguation, the `RESTORE_NO_NL`/`TABLE_DATA` same-line-commit technique already used elsewhere in this file) |
+| A branch-target list using bare line numbers as `GOTO`/`GOSUB` targets instead of a named label (for example an `ON ERR(...) GOTO` list whose targets are plain numbers) — confirmed in an earlier plan's own research to need a genuinely new addressing mechanism (the file's own physical/declared line numbering), not a `LabelDecl`/`LabelRef` extension. | 1 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| A number written in scientific/exponent notation (for example `1.0e-2`) used as an argument inside a parenthesized function call. Confirmed by probe: the exact same exponent form parses without error when it stands alone as a top-level `PRINT` item, but fails hard inside a call's argument list — the `NUMBER` terminal's own pattern has no exponent suffix at all, so a bare top-level occurrence is only ever tolerated by an unrelated leniency elsewhere, not genuinely supported; inside a call's parenthesized argument list there is no such leniency and the mismatch becomes a hard parser error. | 3 | valid but disproportionate to fix now | stays — candidate for a later milestone (needs a `NUMBER` terminal pattern change, a wide-blast-radius lexer edit well beyond this plan's remaining scope) |
+| A bare, unadorned `METHODEND` or `FNEND` terminator with nothing else on its line, appearing where no method or `DEF FN` is open. An earlier plan in this phase already named this exact shape as residue (one file each) when it closed its own group. | 2 | valid but disproportionate to fix now | stays — candidate for a later milestone |
+| *(empty first-failing line)*, flagged with an unexpected `:` — the shape cannot be described from the harness's own group-level evidence alone; the flagged line has no visible content to classify by. | 1 | pending | pending the per-file look |
+| A `METHOD` declaration whose signature line the parser stops on — probed directly (an implicit/no-return-type method declaration with the same shape) and confirmed that shape alone already parses cleanly in isolation, so the real cause is something else nearby in that file, a second cause hidden behind whatever this phase's earlier groups already cleared from in front of it. Cannot be described further from group-level evidence alone. | 1 | pending | pending the per-file look |
+
+**Hand-over.** 7 of the 9 list-A entries are covered by a filled row above; 2 are pending. Every
+filled row's reason category is *valid but disproportionate to fix now*, and each names its shape
+as a candidate for a later milestone, per this phase's own four-category convention. Classifying
+the 2 pending entries by a per-file look, and writing the entry-to-shape mapping next to the
+harness in the private corpus repository, is the orchestrator's work, not this plan's.
