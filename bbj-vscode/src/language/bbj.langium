@@ -423,8 +423,14 @@ RedimStatement:
 ;
 
 LabelDecl returns LabelDecl:
-    name=ValidName':'
+    name=LabelName':'
 ;
+
+// A label declaration's name may be an ordinary identifier or the word 'label' itself -- narrowly
+// scoped (unlike ValidName) so this widening doesn't also let 'label' name a class, method,
+// library function or library variable, all of which are typed by ValidName elsewhere.
+LabelName returns string:
+    ID | 'label';
 
 ForStatement:
     // TODO check `to` evaluates to a number
@@ -482,7 +488,7 @@ LabelRef infers Expression:
 ;
 
 UserLabelRef infers LabelRef:
-   {infer UserLabelRef} label=[LabelDecl:ValidName]
+   {infer UserLabelRef} label=[LabelDecl:LabelName]
 ;
 
 SymbolicLabelRef infers LabelRef:
@@ -896,7 +902,10 @@ FeatureName returns string:
     // 'void' is a keyword only for a method's void-return marker (MethodDeclStart), which uses
     // ValidName for the method name — so it never conflicts here. Allowing it as a FeatureName
     // lets `void` be used as an ordinary (numeric) variable/field/member name (#439).
-    ID | ID_WITH_SUFFIX | 'void';
+    // 'label' is a keyword only for the library grammar's symbolic-label declaration
+    // (LibSymbolicLabel), which is a separate rule entirely -- so it never conflicts here.
+    // Allowing it as a FeatureName lets `label` be read and assigned as an ordinary variable.
+    ID | ID_WITH_SUFFIX | 'void' | 'label';
 
 ValidName returns string:
     ID
