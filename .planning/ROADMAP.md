@@ -375,7 +375,7 @@ Plans:
   4. The `IOLIST` statement parses, standalone and behind a label, with a long item list.
   5. The conformance run at the phase boundary reports **A ≤ 80** (from 168) and no remaining list-A file whose first failing word is `FIELD`, `READ`, `IOLIST` or `LABEL`; A2 stays at or below its Phase 98 number (27); each group has its synthetic regression file (CONF-01). B is not a gate, but every newly-uncaught file is identified by file-set diff and classified with per-file evidence (99-CONTEXT D-11).
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 **Wave 1**
@@ -392,7 +392,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 — every shape of this group sits behind a label)*
 
-- [ ] 99-04-PLAN.md — the `IOLIST` statement, standalone and behind a label, with a long item list (wave 4)
+- [x] 99-04-PLAN.md — the `IOLIST` statement, standalone and behind a label, with a long item list (wave 4)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -528,7 +528,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 98. Line-Break & Validation False Alarms (A2) | 10/10 | Complete | 2026-09-21 |
-| 99. Parser Gaps — the Largest Groups | 3/5 | Not started |  |
+| 99. Parser Gaps — the Largest Groups | 4/5 | Not started |  |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 0/TBD | Not started | - |
 | 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 0/TBD | Not started | - |
