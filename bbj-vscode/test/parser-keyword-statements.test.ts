@@ -4,12 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { EmptyFileSystem } from 'langium';
+import { AstUtils, EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef } from '../src/language/generated/ast.js';
+import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -347,5 +347,107 @@ describe('IOLIST statement', () => {
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
         expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('empty array brackets meaning the whole array', () => {
+    test.each([
+        ['dread target, no suffix', 'dread x[]\n'],
+        ['dread target, string suffix', 'dread x$[]\n'],
+        ['dread target, object suffix', 'dread x![]\n'],
+        ['dread target, integer suffix', 'dread x%[]\n'],
+        ['dread target, upper case', 'DREAD X![]\n'],
+        ['dread target, lower case', 'dread x![]\n'],
+        ['dread target, mixed case', 'Dread X![]\n'],
+        ['dread multi-item list', 'dread a$[],b[]\n'],
+        ['print item alone', 'print z![]\n'],
+        ['print item mixed with a string literal', 'print "a",x$[]\n'],
+        ['print list mixing an indexed and a whole-array item, written order', 'print x[1],z![]\n'],
+        ['assignment target', 'x![] = 1\n'],
+        ['CALL argument', 'call "p",a[]\n'],
+        ['XCALL argument', 'xcall "p",a[]\n'],
+        ['method-call argument', 'o!.put("k",a$[])\n'],
+        ['function-call argument', 'x = vector(a$[])\n'],
+        ['function-call argument with a trailing error option', 'x = vector(a$[],err=L100)\nL100:\ny=1\n'],
+        ['nested interop copy call', 'call bbjapi().copy(v!,a[])\n'],
+    ])('%s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('an empty-bracket element carries the whole-array marker and an empty index list, matching x[all]', async () => {
+        const empty = await parse('print z![]\n');
+        expect(empty.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const emptyElements = AstUtils.streamAllContents(empty.parseResult.value).filter(isArrayElement).toArray();
+        expect(emptyElements, 'one ArrayElement node').toHaveLength(1);
+        expect(emptyElements[0].all, 'whole-array marker').toBe(true);
+        expect(emptyElements[0].indices, 'index list').toHaveLength(0);
+
+        const wholeAll = await parse('print z![all]\n');
+        expect(wholeAll.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const allElements = AstUtils.streamAllContents(wholeAll.parseResult.value).filter(isArrayElement).toArray();
+        expect(allElements, 'one ArrayElement node').toHaveLength(1);
+        expect(allElements[0].all, 'whole-array marker matches x[all]').toBe(emptyElements[0].all);
+        expect(allElements[0].indices, 'index list matches x[all]').toHaveLength(0);
+    });
+
+    test.each([
+        ['unclosed bracket', 'print x[\n'],
+        ['leading comma with nothing before it', 'print x[,]\n'],
+    ])('%s is still a parser error', async (_name, src) => {
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['myall=1', 'myall=1\n'],
+        ['allx$="a"', 'allx$="a"\n'],
+        ['x=all2+1', 'x=all2+1\n'],
+        ['for i=1 to nall', 'for i=1 to nall\nnext i\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('type-side bracket shapes', () => {
+    test.each([
+        ['two-pair declaration', 'declare int[][] two!\n'],
+        ['one-pair declaration', 'declare int[] one!\n'],
+        ['no-pair declaration', 'declare int x\n'],
+        ['two-pair field inside a class that closes', 'class public A\nfield public int[][] f!\nclassend\n'],
+        ['two-pair method return type inside a class that closes', 'class public A\nmethod public int[][] m()\nmethodend\nclassend\n'],
+        ['parameter marker, upper case', 'class public A\nmethod public void m(BBjArray dat[all])\nmethodend\nclassend\n'],
+        ['parameter marker, lower case', 'class public a\nmethod public void m(bbjarray dat[all])\nmethodend\nclassend\n'],
+    ])('%s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('a two-pair declaration records a bracket-pair count of two', async () => {
+        const parsed = await parse('declare int[][] two!\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const decl = AstUtils.streamAllContents(parsed.parseResult.value).filter(isVariableDecl).toArray()[0] as VariableDecl;
+        expect(decl, 'VariableDecl found').toBeDefined();
+        expect(decl.arrayDims, 'bracket-pair count').toHaveLength(2);
+    });
+
+    test('a no-pair declaration records a bracket-pair count of zero', async () => {
+        const parsed = await parse('declare int x\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const decl = AstUtils.streamAllContents(parsed.parseResult.value).filter(isVariableDecl).toArray()[0] as VariableDecl;
+        expect(decl, 'VariableDecl found').toBeDefined();
+        expect(decl.arrayDims, 'bracket-pair count').toHaveLength(0);
+    });
+
+    test('the whole class around a two-pair field or method return type survives -- exactly one BbjClass, no loose expression statements', async () => {
+        const parsed = await parse('class public A\nfield public int[][] f!\nmethod public int[][] m()\nmethodend\nclassend\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        expect(statements).toHaveLength(1);
+        expect(statements[0].$type, 'top-level node is the class').toBe('BbjClass');
     });
 });

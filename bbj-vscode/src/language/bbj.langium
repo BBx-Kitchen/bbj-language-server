@@ -333,7 +333,7 @@ Use:
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' auto?='auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
+    'declare' auto?='auto'? type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
@@ -375,7 +375,7 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=QualifiedClass (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
@@ -388,7 +388,7 @@ MethodDecl returns MethodDecl:
 ;
 
 fragment MethodDeclStart:
-    'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (array?='[' ']')?) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (arrayDims+='[' ']')*) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
 InterfaceMethodDecl returns MethodDecl:
@@ -400,7 +400,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=QualifiedClass (array?='[' ']')? name=FeatureName
+    {infer ParameterDecl} type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName ('[' 'ALL'? ']')?
 ;
 
 /**
@@ -1009,7 +1009,7 @@ interface DefFunction extends NamedElement {
 
 interface VariableDecl extends NamedElement {
     type?: QualifiedClass
-    array?: boolean
+    arrayDims: string[]
     auto?: boolean
 }
 
@@ -1025,7 +1025,7 @@ interface MethodDecl extends NamedElement {
     static?: boolean
     voidReturn?: boolean
     returnType?: QualifiedClass
-    array?: boolean
+    arrayDims: string[]
     comments: CommentStatement[]
     params: VariableDecl[]
     body: (Statement | DefFunction)[];

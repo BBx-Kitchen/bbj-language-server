@@ -304,7 +304,7 @@ class ClassValidator {
         }
 
         // Conservative return-type check on returned literals. Array return types are skipped.
-        if (meth.array) {
+        if (meth.arrayDims.length > 0) {
             return;
         }
         for (const ret of valueReturns) {
@@ -366,7 +366,7 @@ class ClassValidator {
      *    unflagged because the Java class hierarchy is not walkable from the AST here.
      */
     private checkReturnTypeAssignable<N extends AstNode>(meth: MethodDecl, returned: Expression, info: DiagnosticInfo<N>, accept: ValidationAcceptor): void {
-        if (!isTypeResolutionWarningsEnabled() || meth.array) {
+        if (!isTypeResolutionWarningsEnabled() || meth.arrayDims.length > 0) {
             return;
         }
         // BBj scalar declared types are handled elsewhere / loosely typed — never flag them here.
@@ -433,7 +433,7 @@ class ClassValidator {
      * literal check as method return types.
      */
     public checkFieldInit(field: FieldDecl, accept: ValidationAcceptor): void {
-        if (!field.init || field.array) {
+        if (!field.init || field.arrayDims.length > 0) {
             return; // no initializer, or an array field — nothing to check here
         }
         const mismatch = this.literalTypeMismatch(field.type, field.init);

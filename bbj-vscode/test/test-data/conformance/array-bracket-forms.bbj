@@ -3,7 +3,11 @@ REM stand: a DREAD target in every suffix, a multi-item DREAD list, a PRINT item
 REM mixed with a string literal, a PRINT list mixing an indexed element and a whole-array
 REM element in written order, an assignment target, a CALL and an XCALL argument, a
 REM method-call argument, a function-call argument with and without a trailing error option,
-REM a nested interop copy call, and upper-, lower- and mixed-case spellings.
+REM a nested interop copy call, and upper-, lower- and mixed-case spellings. Also protects
+REM the type-side bracket shapes sharing this same group: a two-pair, a one-pair and a
+REM no-pair DECLARE, a two-pair FIELD and METHOD return type inside a class that closes,
+REM and a method parameter carrying the whole-array marker after its own name, upper and
+REM lower case.
 DREAD NOSUF[]
 DREAD STRVAL$[]
 DREAD OBJVAL![]
@@ -24,3 +28,16 @@ RECOVERPT:
 RESULTX = 1
 print objval![]
 Print Objval![]
+DECLARE INTEGER[][] TWOPAIR!
+DECLARE INTEGER[] ONEPAIR!
+DECLARE INTEGER NOPAIR!
+CLASS PUBLIC ArrayHolder
+FIELD PUBLIC INTEGER[][] GRID!
+METHOD PUBLIC INTEGER[][] GETGRID()
+METHODRET GRID!
+METHODEND
+METHOD PUBLIC VOID SETDATA(BBjArray DAT[ALL])
+METHODEND
+method public void setdata2(bbjarray dat2[all])
+methodend
+CLASSEND
