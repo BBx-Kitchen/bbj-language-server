@@ -196,8 +196,11 @@ FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
 ;
 
+// The compiler accepts MODE= and ERR= in either written order; the grammar previously fixed
+// Mode before Err. Widened to an order-independent alternation over the same two existing
+// fragments -- no new option syntax, no new fragment.
 FulltextStatement:
-    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
+    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression (Mode Err? | Err Mode?)?
     ;
 
 IndexedStatement:
@@ -356,8 +359,8 @@ ClassDecl returns BbjClass:
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
-        (members+=InterfaceMethodDecl | Comments)*
-    'INTERFACEEND' (';' comments+=CommentStatement)?
+        (NUMBER? (members+=InterfaceMethodDecl | Comments))*
+    NUMBER? 'INTERFACEEND' (';' comments+=CommentStatement)?
 ;
 
 fragment Static:
@@ -747,10 +750,24 @@ ThrowStatement:
     'THROW' expression=Expression (',' number=Expression)? Err?
 ;
 
+// The compiler accepts TIM= and ERR= in either written order; the grammar previously fixed Tim
+// before Err. Widened to an order-independent alternation over the same two existing fragments --
+// no new option syntax, no new fragment.
 ProcessEvent:
-    {infer ProcessEvent} 'PROCESS_EVENTS' Tim? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' (Tim Err? | Err Tim?)?
 ;
 
+// Tried widening this rule to also accept a plain comma-separated variable list after CLEAR (the
+// compiler accepts `clear x`, `clear x$,y`, `clear x![]`, in addition to the already-modeled bare
+// and EXCEPT forms) -- reverted. Since the entire tail is optional and a variable list starts
+// with an ordinary Expression, a BARE 'CLEAR'/'BEGIN' immediately followed by an unrelated
+// statement on the next line (no comma, only a line break) got its neighbour's first expression
+// silently swallowed as its own variable list instead of leaving it for the next statement --
+// confirmed by probe (`begin\nx=1\nprint x` lost x's declaration and produced two "could not
+// resolve" errors). Safely disambiguating "more of this statement's list" from "the next
+// statement starts here" needs a same-line-only lexer token (the RESTORE_NO_NL/TABLE_DATA style
+// of committing to an operand only when no line break intervenes), which is lexer work -- recorded
+// as needing more than this small change, not fixed here.
 BeginStatement:
     kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=Expression (','  except+=Expression)*)?
 ;

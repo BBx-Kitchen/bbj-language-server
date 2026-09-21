@@ -630,3 +630,204 @@ describe('language words as names (oracle sweep against the compiler)', () => {
         expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
     });
 });
+
+describe('the long-tail triage: a verb with no rule at all, and two order-fixed option tails', () => {
+    test.each([
+        ['bare', 'SETDRIVE "C:\\bbj"\n'],
+        ['with an error option', 'SETDRIVE "C:\\bbj",ERR=driveerr\ndriveerr: END\n'],
+        ['lower case', 'setdrive "C:\\bbj"\n'],
+        ['mixed case', 'SetDrive "C:\\bbj"\n'],
+    ])('SETDRIVE %s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('SETDRIVE with nothing after it is still a parser error', async () => {
+        // The compiler rejects a bare SETDRIVE with no fileid; confirmed a parser error both
+        // before this plan's rule existed (the leftover comma) and after (the missing required
+        // expression) -- the message text differs, the error status does not.
+        const parsed = await parse('setdrive ,err=driveerr\ndriveerr: END\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['setdrive=1', 'setdrive=1\nprint setdrive\n'],
+        ['setdrive$="a"', 'setdrive$="a"\nprint setdrive$\n'],
+        ['mysetdrive=1', 'mysetdrive=1\nprint mysetdrive\n'],
+        ['setdrivex=1', 'setdrivex=1\nprint setdrivex\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test.each([
+        ['bare', 'PROCESS_EVENTS\n'],
+        ['tim then err', 'PROCESS_EVENTS,TIM=5,ERR=peerr\npeerr: END\n'],
+        ['err then tim', 'PROCESS_EVENTS,ERR=peerr,TIM=5\npeerr: END\n'],
+        ['tim only', 'PROCESS_EVENTS,TIM=5\n'],
+        ['err only', 'PROCESS_EVENTS,ERR=peerr\npeerr: END\n'],
+        ['no spaces around separators', 'PROCESS_EVENTS,TIM=5,ERR=peerr\npeerr:END\n'],
+        ['lower case', 'process_events,err=peerr,tim=5\npeerr: end\n'],
+    ])('PROCESS_EVENTS %s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('PROCESS_EVENTS with a dangling option is still a parser error', async () => {
+        const parsed = await parse('process_events,tim=\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['process_events=1', 'process_events=1\nprint process_events\n'],
+        ['myprocess_events=1', 'myprocess_events=1\nprint myprocess_events\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test.each([
+        ['bare', 'FULLTEXT "f","t","k"\n'],
+        ['mode then err', 'FULLTEXT "f","t","k",MODE="a",ERR=fterr\nfterr: END\n'],
+        ['err then mode', 'FULLTEXT "f","t","k",ERR=fterr,MODE="a"\nfterr: END\n'],
+        ['mode only', 'FULLTEXT "f","t","k",MODE="a"\n'],
+        ['err only', 'FULLTEXT "f","t","k",ERR=fterr\nfterr: END\n'],
+        ['no spaces around separators', 'FULLTEXT "f","t","k",MODE="a",ERR=fterr\nfterr:END\n'],
+        ['lower case', 'fulltext "f","t","k",err=fterr,mode="a"\nfterr: end\n'],
+    ])('FULLTEXT %s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('FULLTEXT with a dangling option is still a parser error', async () => {
+        const parsed = await parse('fulltext "f","t","k",mode=\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['fulltext=1', 'fulltext=1\nprint fulltext\n'],
+        ['myfulltext=1', 'myfulltext=1\nprint myfulltext\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('a same-line leading line number before a class-boundary keyword validates clean', () => {
+    // Plan 02 asserted these shapes parse-only (the line-break validator's raw line-start text
+    // check had no tolerance for a leading line number). This plan widened that check; these
+    // same five shapes now validate clean, not just parse clean.
+    test.each([
+        ['number directly before the class end marker, no method in between', 'class public a\n0020 classend\n'],
+        ['number directly before a method header', 'class public a\n0015 method public void m()\nmethodend\nclassend\n'],
+        ['number directly before the interface end marker', 'interface public a\n0020 interfaceend\n'],
+    ])('%s', async (_name, src) => {
+        const validated = await validate(src);
+        expect(validated.document.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('two line numbers in a row before the interface end marker is still a parser error', async () => {
+        // Mirrors the identical ClassDecl still-flagged case above -- the widening tolerates one
+        // leading number, not an unbounded run of them.
+        const parsed = await parse('interface public a\n0010\n0020 interfaceend\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test('a leading number sharing a line with the class header itself is a recorded, not a fixed, gap', async () => {
+        // The class/interface HEADER case (and a leading number directly before METHODEND inside
+        // a method body) is different from the five cases above: the top-level `Statements*`
+        // loop and MethodDecl's own permissive body loop both absorb the leading number as its
+        // OWN separate NumberLiteral expression statement (not a bare token inside a strict
+        // allow-list loop, unlike ClassDecl's/InterfaceDecl's member loops) -- so a SECOND,
+        // pre-existing and much more general diagnostic still fires: the number statement's own
+        // "needs to end with a line break" check, from the same classic-BASIC-style
+        // same-line-numbering idiom applied to an ORDINARY statement (`10 print 1` triggers the
+        // identical pair of false diagnostics, confirmed by probe, unrelated to any class
+        // construct). Fixing that well needs a general exemption for a leading-line-number
+        // statement from the statement-separation check, not a contained mask edit -- out of
+        // scope here, recorded in 100-CONFORMANCE.md.
+        const validated = await validate('0010 class public a\nclassend\n');
+        const lineBreakErrors = lineBreakDiagnostics(validated.diagnostics);
+        expect(lineBreakErrors.length, 'a line-break diagnostic remains on the leading line number itself').toBeGreaterThan(0);
+    });
+
+    test('a leading number sharing a line with the method end marker, inside a method body, is the identical recorded gap', async () => {
+        // MethodDecl's own body loop is permissive (like Program's), so a number directly before
+        // METHODEND inside a method body also becomes its own separate NumberLiteral statement --
+        // same recorded gap as the class-header case above, not the strict-allow-list member-loop
+        // mechanism that made classend/field/method-header/interfaceend fully fixable.
+        const validated = await validate('class public a\nmethod public void m()\n0017 methodend\nclassend\n');
+        const lineBreakErrors = lineBreakDiagnostics(validated.diagnostics);
+        expect(lineBreakErrors.length, 'a line-break diagnostic remains on the leading line number itself').toBeGreaterThan(0);
+    });
+});
+
+describe('a bare comment word with nothing after it, right after a block boundary', () => {
+    test.each([
+        ['classend, a space then nothing', 'class public a\nclassend; rem\n'],
+        ['classend, no space at all', 'class public a\nclassend;rem\n'],
+        ['methodend, a space then nothing', 'class public a\nmethod public void m()\nmethodend; rem\nclassend\n'],
+        ['classend, upper case REM', 'class public a\nCLASSEND; REM\n'],
+        ['classend, no trailing line break at all (end of file)', 'class public a\nclassend;rem'],
+    ])('%s validates clean', async (_name, src) => {
+        const validated = await validate(src);
+        expect(validated.document.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('a name merely starting with the comment word is still reported -- the bare-comment tolerance is not a blanket exemption', async () => {
+        // 'remx=1' does not lex as a comment body (COMMENT requires the 'rem' word to stand
+        // alone), so this stays a parser error exactly as before this plan's regex widening --
+        // the line-break checker itself never runs once there is a parser error (it returns
+        // early), so the still-flagged evidence here is the parser error, not a line-break
+        // diagnostic.
+        const parsed = await parse('class public a\nclassend; remx=1\nclassend\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+});
+
+describe('CLEAR/BEGIN with a plain variable list is a recorded, not a fixed, gap', () => {
+    // Tried widening BeginStatement (shared by CLEAR and BEGIN) to also accept a plain
+    // comma-separated variable list -- the compiler accepts `clear x`, `clear x$,y`,
+    // `clear x![]` in addition to the bare and EXCEPT forms already modeled. Reverted: since the
+    // whole tail is optional and a variable list starts with an ordinary Expression, a BARE
+    // CLEAR/BEGIN immediately followed by an unrelated statement on the next line (only a line
+    // break between them, no comma) silently swallowed that next statement's first expression as
+    // its own variable list instead of leaving it for the next statement -- confirmed by probe
+    // (`begin\nx=1\nprint x` lost x's declaration). Safely disambiguating needs a same-line-only
+    // lexer token (the RESTORE_NO_NL/TABLE_DATA technique), which is lexer work -- recorded in
+    // 100-CONFORMANCE.md, not fixed here. `clear x![]` and `clear except a$,b` stay exactly as
+    // before this plan.
+    test('clear followed by a variable stays two separately-flagged statements, not a widened CLEAR', async () => {
+        const validated = await validate('x=1\nclear x\n');
+        const lineBreakErrors = lineBreakDiagnostics(validated.diagnostics);
+        expect(lineBreakErrors.length, 'the pre-existing line-break diagnostic on CLEAR is unchanged').toBeGreaterThan(0);
+    });
+
+    test('a bare CLEAR or BEGIN never absorbs the following, unrelated statement', async () => {
+        // The regression this plan's own probe caught and reverted -- kept as a permanent
+        // guardrail so a future re-attempt at this widening trips the same test.
+        const validated = await validate('begin\nx=1\nprint x\n');
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'x must still resolve as an ordinary assignment, not be swallowed into BEGIN').toHaveLength(0);
+    });
+
+    test.each([
+        ['clear except still parses', 'clear except a$\n'],
+        ['begin except still parses', 'begin except a$\n'],
+        ['bare begin still parses', 'begin\n'],
+    ])('%s', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});

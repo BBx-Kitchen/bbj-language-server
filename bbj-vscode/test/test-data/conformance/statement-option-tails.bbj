@@ -8,3 +8,31 @@ setdrive "C:\bbj"
 SetDrive "C:\bbj"
 SETDRIVE "C:\bbj",ERR=driveerr
 driveerr: END
+
+PROCESS_EVENTS
+process_events
+Process_Events
+PROCESS_EVENTS,TIM=5
+process_events,tim=5
+PROCESS_EVENTS,ERR=peerr
+PROCESS_EVENTS,TIM=5,ERR=peerr
+process_events,err=peerr2,tim=5
+PROCESS_EVENTS,TIM=5,ERR=peerr3
+peerr: END
+peerr2: END
+peerr3: END
+
+FULLTEXT "ftfile","fttemplate","ftkey"
+fulltext "ftfile","fttemplate","ftkey"
+Fulltext "ftfile","fttemplate","ftkey"
+FULLTEXT "ftfile","fttemplate","ftkey",MODE="a"
+FULLTEXT "ftfile","fttemplate","ftkey",ERR=fterr
+FULLTEXT "ftfile","fttemplate","ftkey",MODE="a",ERR=fterr2
+fulltext "ftfile","fttemplate","ftkey",err=fterr3,mode="a"
+fterr: END
+fterr2: END
+fterr3: END
+
+x1=1
+CLEAR EXCEPT x1
+BEGIN EXCEPT x1

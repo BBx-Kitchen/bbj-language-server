@@ -310,8 +310,20 @@ function getCstNodes(node: CstNode, features: string[] | boolean): CstNode[] {
     }
 }
 
-const lineStartRegex = /^\s*$/;
-const lineEndRegex = /^\s*(;[ \t]*)?(rem[ \t][^\n\r]*)?(\r?\n)?$/i;
+// Tolerates a leading user line number (classic BASIC-style numbering, e.g. `0010 class public
+// a`) immediately before a masked keyword on the same physical line -- a line number followed by
+// whitespace is a legitimate "start of statement" prefix, not code that requires its own line
+// break before the masked keyword. A prefix that is anything other than whitespace or a single
+// leading number stays rejected exactly as before.
+const lineStartRegex = /^\s*(\d+\s+)?$/;
+// The comment-tail group requires a separator (space/tab) plus the comment body when `rem` is
+// followed by more text (`; rem c`), but also accepts a bare `rem` with nothing at all after it
+// (`; rem` / `;rem` at end of line) by making the separator+body group itself optional. An
+// identifier that merely starts with `rem` (`remx=1`) still fails to match: after consuming the
+// literal `rem`, the regex has nothing left to consume the trailing identifier characters with,
+// and backtracking to skip the whole group entirely leaves the same trailing text unconsumed --
+// either way, the required `$` anchor cannot be reached.
+const lineEndRegex = /^\s*(;[ \t]*)?(rem(?:[ \t][^\n\r]*)?)?(\r?\n)?$/i;
 
 function hasLinebreakBefore(node: CstNode, textDocument: TextDocument): boolean {
     const nodeStart = node.range.start;
