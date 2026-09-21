@@ -92,3 +92,41 @@ describe('backward walk termination (#232)', () => {
         expect(lineBreakDiagnostics(result)).toEqual([]);
     });
 });
+
+describe('a closer with no open IF left on the line is still flagged', () => {
+    test('an ELSE after a single-line IF already closed by FI is still flagged', async () => {
+        const result = await validate('if a=1 then b=1 fi else c=1');
+
+        expect(lineBreakDiagnostics(result).some(m => /else\s*$/i.test(m))).toBe(true);
+    });
+
+    test('a trailing end-of-IF statement with no open IF left on the line is still flagged', async () => {
+        const result = await validate('if a=1 then b=1 fi fi');
+
+        expect(lineBreakDiagnostics(result).some(m => /fi\s*$/i.test(m))).toBe(true);
+    });
+
+    test('a second ELSE for one IF is still flagged', async () => {
+        const result = await validate('if a then b=1 else c=1 else d=1');
+
+        expect(lineBreakDiagnostics(result).some(m => /else\s*$/i.test(m))).toBe(true);
+    });
+
+    test('a nested single-line IF/FI followed by the outer ELSE stays clean', async () => {
+        const result = await validate('if a then if b then c = 1 fi else d = 1 fi');
+
+        expect(lineBreakDiagnostics(result)).toEqual([]);
+    });
+
+    test('a nested single-line IF closed by two chained end-of-IF statements stays clean', async () => {
+        const result = await validate('if a then if b then c = 1 fi fi');
+
+        expect(lineBreakDiagnostics(result)).toEqual([]);
+    });
+
+    test('a simple single-line IF/ELSE/FI stays clean', async () => {
+        const result = await validate('if a then b=1 else c=1 fi');
+
+        expect(lineBreakDiagnostics(result)).toEqual([]);
+    });
+});
