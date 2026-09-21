@@ -691,7 +691,7 @@
     "test:bbj": "RUN_BBJ_TESTS=1 vitest run"
   },
   "dependencies": {
-    "@vscode/vsce": "^3.7.1",
+    "@vscode/vsce": "^4.0.0",
     "chevrotain": "~12.0.0",
     "langium": "~4.3.1",
     "properties-file": "^5.0.7",
