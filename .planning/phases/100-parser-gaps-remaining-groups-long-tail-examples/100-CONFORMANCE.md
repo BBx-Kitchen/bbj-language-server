@@ -463,3 +463,13 @@ filled row's reason category is *valid but disproportionate to fix now*, and eac
 as a candidate for a later milestone, per this phase's own four-category convention. Classifying
 the 2 pending entries by a per-file look, and writing the entry-to-shape mapping next to the
 harness in the private corpus repository, is the orchestrator's work, not this plan's.
+
+### Per-file look at the two pending residue rows (orchestrator, after plan 04)
+
+| File | First failing line | What the file shows | Status |
+|------|--------------------|---------------------|--------|
+| `samples/29595-5d8b193e.bbj` | 5 (reported as 4, the blank line before it) | The statement `::static.txt::Sample.sample(); rem …` starts its line with `::`. Probe: the same statement as the first line of a program parses with 0 errors; after any earlier line it fails with 1 parser error. A line whose first character is `:` is read as a continuation of the line before, so a statement that begins with a `::file::Class` reference is glued onto its predecessor. The compiler accepts the file. The fix belongs in the line-continuation splitter of the lexer, not in a grammar rule — recorded, not fixed here. | residue, 1 file |
+| `bbj-install/DemosLaunchDock-767ee906.bbj` | 204 | Probes: the class from its header (line 189) through the fields plus this constructor parses with 0 errors; constructors calling `#this!(…)` and `#super!(…)` parse with 0 errors and `bbjcpl` accepts them. The failure therefore needs something in lines 1–188 of the file; it was not isolated in the time allowed. No cause is recorded. | residue, 1 file, cause open |
+
+With these two, all 9 remaining list-A entries are accounted for: 7 by the filled rows above, 1 by the
+line-start `::` row, 1 open.
