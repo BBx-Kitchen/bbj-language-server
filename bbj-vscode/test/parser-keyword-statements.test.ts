@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, LabelDecl, LetStatement, Program, isFieldStatement, isGotoStatement, isLetStatement, isUserLabelRef } from '../src/language/generated/ast.js';
+import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOtherItem, isReadStatement, isUserLabelRef } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
@@ -233,5 +233,76 @@ describe('the word `label` as a name', () => {
         const validated = await validate(src);
         const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
         expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+});
+
+describe('IOLIST statement', () => {
+    test.each([
+        ['standalone, short item list', 'iolist a$,b$\n'],
+        ['behind a numeric label', 'L30: iolist a,b,c\n'],
+        ['behind an ordinary named label', 'recio: iolist a$,b$,c,d[all]\n'],
+        ['behind a label named with the word `label`', 'label: iolist a$,b$\n'],
+        ['item list mixing a numeric scalar, a string variable and an all-elements array item', 'iolist n1,s1$,arr1[all]\n'],
+        ['a long item list spread over a continuation line', 'iolist i1,i2,i3,i4,i5,i6,i7,i8,\n:i9,i10\n'],
+        ['upper case', 'IOLIST a,b\n'],
+        ['lower case', 'iolist a,b\n'],
+        ['mixed case', 'IoList a,b\n'],
+    ])('%s parses with zero lexer and parser errors', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+
+    test('the statement produces exactly one top-level IolistStatement with the expected item count', async () => {
+        const parsed = await parse('iolist a,b,c\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        expect(statements).toHaveLength(1);
+        expect(isIolistStatement(statements[0]), 'statement is an IolistStatement').toBe(true);
+        const iolistStatement = statements[0] as IolistStatement;
+        expect(iolistStatement.items).toHaveLength(3);
+    });
+
+    test('a channel-option reference to the leading label resolves to that label declaration', async () => {
+        const src = 'chanio: iolist chnum,chstr$\nread(1)iol=chanio\n';
+        const parsed = await parse(src);
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        const readStmt = statements.find(isReadStatement);
+        expect(readStmt, 'ReadStatement found').toBeDefined();
+        const item0 = readStmt!.items[0];
+        expect(isOtherItem(item0), 'first item is an OtherItem').toBe(true);
+        const otherItem = item0 as OtherItem;
+        const userLabelRef = otherItem.iol as unknown as { label: { ref?: LabelDecl } };
+        expect(userLabelRef.label.ref, 'channel-option reference resolved').toBeDefined();
+        expect(userLabelRef.label.ref!.name.toLowerCase(), 'resolved declaration name').toBe('chanio');
+    });
+
+    test('a program whose variables appear only inside the statement produces no error-severity diagnostic', async () => {
+        const validated = await validate('recio:\niolist a1,b1$\nprint a1,b1$\n');
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('an item list with a trailing comma and no item after it is still a parser error', async () => {
+        // Confirmed by probe: a parser error both before and after the IolistStatement rule
+        // was added -- the item list requires at least one item per comma, so a trailing
+        // comma with nothing following it stays unparseable.
+        const parsed = await parse('iolist a,b,\n');
+        expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
+    });
+
+    test.each([
+        ['iolist=5', 'iolist=5\n'],
+        ['x=iolist+1', 'x=iolist+1\n'],
+        ['myiolist=1', 'myiolist=1\n'],
+        ['iolistx$="a"', 'iolistx$="a"\n'],
+        ['niolist(1)=2', 'niolist(1)=2\n'],
+        ['for i=1 to niolist', 'for i=1 to niolist\nnext i\n'],
+        ['if myiolist then x=1', 'if myiolist then x=1\n'],
+    ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
+        const result = await parse(src);
+        expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
     });
 });
