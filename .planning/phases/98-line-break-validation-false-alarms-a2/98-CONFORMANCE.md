@@ -289,3 +289,74 @@ widening a check into a new, unrelated validation.
 | 6 | Handed to Phases 101-103 | Same as row 2 — no message text recorded. |
 | 7 | Handed to Phases 101-103 | Real defect's compiler message is not recorded; the compiler rejects the exact header line this phase's own DEF-FN grammar fix now accepts, for a reason only the live compiler endpoint can state precisely. |
 
+## 10. Closing re-run — final tree, gap-closure wave (Task 1)
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`.
+- Date: 2026-09-21. Language server commit `c30389d8` (the tree as committed through plan 09 — the
+  last commit of this wave before this run). `sourceModified: false`, confirmed by the harness's own
+  recorded history line. 69 seconds.
+- Preconditions confirmed before the run: whole suite `numFailedTests: 0` (2059 total; 14 suites
+  reported "failed" under `--maxWorkers=2` contention with zero failed tests, matching the standing
+  whole-suite gate substitution — hook timeouts, not real failures); `git status --porcelain --
+  bbj-vscode/src` printed nothing; `bbj-vscode/src/language/generated/ast.ts` is newer than
+  `bbj.langium`, so no regeneration was needed; the register check over the whole phase source diff
+  (`5fb113cb..HEAD`) printed 0.
+
+**Numbers.**
+
+| Measure | Baseline | Phase-boundary (section 6) | This run | Δ vs baseline | Δ vs phase-boundary | Gate | Verdict |
+|---|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 168 | 167 | 167 | −1 | 0 | ≤ 168 | **PASS** |
+| A2 — valid code that parses but gets a validation error | 267 | 22 | 27 | −240 | **+5** | ≤ 25 | **FAIL** |
+| B — invalid code not flagged, of 1,210 | 658 | 665 | 665 | +7 | 0 | ≤ 658 | **FAIL (unchanged)** |
+
+**A2 moved against the phase boundary — traced, not left unexplained.** This run's A2 breakdown
+(19 message groups, 27 files, per the harness's own report) contains every one of the 18 groups
+recorded in section 7 at the same file count, plus two groups absent at the phase boundary:
+
+- "This statement needs to start in a new line: " (blank message) — 4 files
+- "This statement needs to start in a new line: else" — 1 file
+
+These are the exact two message groups Fix B (section 5) reported resolving at the phase boundary —
+Fix B's backward walk in `elseStatementLineBreaks`/`ifEndStatementLineBreaks` walked past *every*
+same-line ELSE or end-of-IF statement unconditionally, which is what let the phase-boundary run
+measure 22. This wave's plan 08 commit (`8ba30038`, "count open IFs against stepped-over closers")
+replaced that unconditional walk with a counter that only walks past a same-line closer when a
+matching, still-open IF exists further back — explicitly to restore detection of a genuinely
+misplaced ELSE/end-of-IF that Fix B's version had started silently accepting. Plan 08's own stated
+purpose was a different narrowing (the scalar-DECLARE watch item); this counter change was that
+plan's second code change, made for its own stated reason (re-flagging a misplaced ELSE/FI with no
+open IF left on the line), and its effect on these two message groups was not re-measured against
+the harness until this run.
+
+**Whether this is a reintroduced false alarm or a correctly-restored true detection is not decided
+here.** This section reports the movement and its proximate cause in the commit history; adjudicating
+whether the 5 files are compiler-valid code the language server should stop flagging again, or code
+plan 08 correctly resumed flagging, would mean judging or narrowing the check further — out of this
+task's scope under this plan's own prohibition against widening or narrowing a check to move a
+number. It is surfaced at the checkpoint below, alongside the B regression, as a second open item the
+closing run found beyond what this plan anticipated.
+
+**Watch item (plan 08's scalar-DECLARE narrowing) — clear.** None of this run's 19 message groups
+names "Conflicting DECLARE" or either METHODRET message ("declares a return type but has no
+METHODRET returning a value" / "is declared void and must not return a value"); no RESTORE message
+group appears either. No new conflicting-DECLARE, METHODRET or RESTORE error-severity group appears
+in this run. The pre-authorised narrowing named in this plan's measurement_facts block was not
+needed.
+
+**B — unchanged at 665.** No further movement since the phase boundary. Section 9's per-file
+evidence (all seven newly-uncaught files REFUTED against the originally claimed keyword-branch-target
+mechanism, each traced instead to the RESTORE, METHODRET or DEF-FN fix) still applies unchanged —
+this run did not re-probe file-by-file since the B count itself did not move.
+
+**Cleanliness checks after the run.** `git status --porcelain` showed only the pre-existing untracked
+`.planning/milestone.lock` — no file under `bbj-vscode/src/language/generated/` and no scratch file
+inside the repository. `git worktree list` showed exactly one line (the main checkout).
+
+**Verdict summary carried to the checkpoint.** A passes its gate. A2 and B both fail their gates —
+A2 by 2 over the ≤25 gate (27, up 5 from the phase-boundary's 22), B by 7 over the ≤658 gate (665,
+unchanged since the phase boundary). Neither was fixed in this task, per this plan's instruction to
+report a missed gate rather than engineer it away. Both are put in front of the human decision below.
+
