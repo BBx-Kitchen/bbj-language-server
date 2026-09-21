@@ -4,7 +4,9 @@ REM following comma. Covers the name-part shapes (a string variable, a spaced
 REM string literal, and a masked concatenation), the value-part shapes (a nested
 REM call, a negative number, NUM(), and a method-call result), upper/lower/mixed
 REM case, a verb chained after a label on the same line, and the untouched
-REM class-member FIELD declaration that shares the same keyword.
+REM class-member FIELD declaration that shares the same keyword. Also protects the
+REM verb's trailing error-branch option (a symbolic and a user label reference, and
+REM a value whose own call carries an inner error branch as well).
 CLASS PUBLIC HolderRecord
 FIELD PUBLIC INTEGER COUNT
 METHOD PUBLIC STRING GETNAME()
@@ -26,3 +28,10 @@ FIELD REC$,NAME$=HOLDER!.GETNAME()
 field rec$,name$=1
 Field Rec$,Name$=1
 LBL:FIELD REC$,NAME$=1
+FIELD REC$,NAME$=DEC(N),ERR=*RETRY
+FIELD REC$,NAME$=DEC(N,ERR=*RETRY),ERR=*SAME
+field rec$,name$=1,err=*retry
+Field Rec$,Name$=1,Err=*Retry
+ERRTARGET:
+N=N+1
+FIELD REC$,NAME$=DEC(N),ERR=ERRTARGET

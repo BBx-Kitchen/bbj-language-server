@@ -103,6 +103,14 @@ describe('FIELD verb', () => {
         ['upper case', 'FIELD REC$,NAME$=1\n'],
         ['lower case', 'field rec$,name$=1\n'],
         ['mixed case', 'Field Rec$,Name$=1\n'],
+        ['trailing error branch to a symbolic label', 'field rec$,name$=1,err=*retry\n'],
+        ['trailing error branch to a user label', 'field rec$,name$=1,err=mylabel\nmylabel:\nx=1\n'],
+        ['trailing error branch, upper case', 'FIELD REC$,NAME$=1,ERR=*RETRY\n'],
+        ['trailing error branch, lower case', 'field rec$,name$=1,err=*retry\n'],
+        ['trailing error branch, mixed case', 'Field Rec$,Name$=1,Err=*Retry\n'],
+        ['trailing error branch in a method body', 'CLASS PUBLIC c\nMETHOD PUBLIC VOID m()\nfield rec$,name$=1,err=*retry\nMETHODEND\nCLASSEND\n'],
+        ['value carries its own inner error branch, no trailing one', 'field rec$,name$=dec(x$,err=*retry)\n'],
+        ['value carries its own inner error branch, plus a trailing one', 'field rec$,name$=dec(x$,err=*retry),err=*same\n'],
     ])('%s parses with zero lexer and parser errors', async (_name, src) => {
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
@@ -119,6 +127,19 @@ describe('FIELD verb', () => {
         expect(fieldStatement.record).toBeDefined();
         expect(fieldStatement.name).toBeDefined();
         expect(fieldStatement.value).toBeDefined();
+    });
+
+    test('the verb line with a trailing error branch produces exactly one FieldStatement with its error-branch property present', async () => {
+        const parsed = await parse('field rec$,name$=1,err=*retry\n');
+        expect(parsed.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        const statements = (parsed.parseResult.value as Program).statements;
+        expect(statements).toHaveLength(1);
+        expect(isFieldStatement(statements[0]), 'statement is a FieldStatement').toBe(true);
+        const fieldStatement = statements[0] as FieldStatement;
+        expect(fieldStatement.record).toBeDefined();
+        expect(fieldStatement.name).toBeDefined();
+        expect(fieldStatement.value).toBeDefined();
+        expect(fieldStatement.err).toBeDefined();
     });
 
     test('a FIELD verb without a value is still a parser error', async () => {
@@ -149,6 +170,12 @@ describe('FIELD verb', () => {
         ['nfield(1)=2', 'nfield(1)=2\n'],
         ['for i=1 to nfield', 'for i=1 to nfield\nnext i\n'],
         ['if myfield then x=1', 'if myfield then x=1\n'],
+        ['err=5', 'err=5\n'],
+        ['x=err+1', 'x=err+1\n'],
+        ['err(1)', 'err(1)\n'],
+        ['err.x', 'err.x\n'],
+        ['myerr=1', 'myerr=1\n'],
+        ['errcode=1', 'errcode=1\n'],
     ])('keyword-as-identifier: %s stays clean', async (_name, src) => {
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
@@ -157,6 +184,12 @@ describe('FIELD verb', () => {
 
     test('the verb produces no error-severity diagnostic (linking excluded)', async () => {
         const validated = await validate('field rec$,name$=dec(x$)\n');
+        const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
+    });
+
+    test('the verb line with a trailing error branch produces no error-severity diagnostic (linking excluded)', async () => {
+        const validated = await validate('field rec$,name$=1,err=*retry\n');
         const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
         expect(errorDiagnostics, 'error-severity diagnostics').toHaveLength(0);
     });
