@@ -4,17 +4,17 @@ milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 98
 current_phase_name: Line-Break & Validation False Alarms (A2)
-status: executing
-stopped_at: Completed 98-05-PLAN.md
-last_updated: "2026-09-21T03:42:11.721Z"
+status: verifying
+stopped_at: Completed 98-06-PLAN.md
+last_updated: "2026-09-21T04:26:20.851Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 98 execution started
-state_head: 09b36deffa0b35d363591b2940b61c8e0f6190f1
+state_head: f38d3a82579f2f51741498af7530a9af52de145c
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 Phase: 98 (Line-Break & Validation False Alarms (A2)) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20 — Phase 98 execution started
 
 ### v4.5 milestone map
@@ -100,6 +100,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 98 P03 | 40min | 3 tasks | 5 files |
 | Phase 98 P04 | 40min | 3 tasks | 5 files |
 | Phase 98 P05 | 55min | 2 tasks | 3 files |
+| Phase 98 P06 | 50min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ decisions:
 - [Phase 98]: ENDLINE_PRINT_COMMA's lookahead widened to /,(?=[ \t]*(\r?\n|;))/ — the comma-immediately-before-newline requirement (no whitespace tolerance) was the trailing-comma PRINT false alarm's actual cause, confirmed by probe against 98-RESEARCH.md's Open Question 3's first candidate; no grammar change needed
 - [Phase 98]: LEN=<number> residue: a fused 'LEN=' keyword literal (from LastVerifyOption) collides with plain-identifier assignment via the generic keyword-to-ID CATEGORIES fallback, producing a wrong AST — recorded as PARSE-08 residue for Phase 100 per D-16/D-18, not fixed in this plan
 - [Phase 98]: DefFunction's multi-line alternative closing FNEND made optional (grammar-only fix) — an unclosed function body now runs to end of file as one DefFunction node instead of misparsing into fallback expression statements; investigated-and-reverted a token-category fix (excluding CLASS/INTERFACE/DEF from the ID category) because it broke BBjAPI() resolution, which relies on Chevrotain's parser-error recovery over the synthetic bbj-api.ts library source; the class/interface/nested-unclosed-DEF edge case is recorded as residue for plan 06, not present in this phase's corpus target shape
+- [Phase 98]: checkReturnValueInDef downgraded error->warning for a bare early-exit RETURN inside a DEF FN — unmasked by plan 05's FNEND-optional fix once these bodies started parsing correctly; matches the D-06/D-07 pattern of warning rather than silencing a compiler disagreement
+- [Phase 98]: elseStatementLineBreaks now walks past a same-line ELSE/end-of-IF statement, mirroring plan 04's ifEndStatementLineBreaks fix for the sibling mask plan 04 did not touch — resolved 12 A2 files (some previously surfacing under a different message from the same underlying defect)
+- [Phase 98]: closing measurement — A2 267->22 (gate met), A 168->167 (improved), B 658->665 of 1,210 (regressed, NOT fixed); B's regression is accepted, documented residue since fixing it needs the bbj-ls compiler-parser endpoint (Phases 101-103), not a line-break/DECLARE/METHODRET check; roadmap success criterion 5 recorded as only partially met
 
 ### Tech Debt
 
@@ -178,6 +182,7 @@ decisions:
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
+- Phase 98 closing measurement: B regressed 658->665 of 1,210 (roadmap success criterion 5 only partially met). Root cause and full triage in 98-CONFORMANCE.md; fixing B properly needs the bbj-ls compiler-parser endpoint (Phases 101-103), not a Phase 98 line-break/DECLARE/METHODRET check.
 
 ### Quick Tasks Completed
 
@@ -190,8 +195,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-21T03:42:11.685Z
-Stopped at: Completed 98-05-PLAN.md
+Last session: 2026-09-21T04:26:12.977Z
+Stopped at: Completed 98-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 98` or `/gsd-plan-phase 98`.
