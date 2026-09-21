@@ -674,3 +674,89 @@ come from an unrelated syntax error that this phase's own `IolistStatement` fix 
 the pre-existing, structurally-unreachable defect underneath. That classification is carried forward
 unchanged; this task's own diff (above) confirms no further B movement occurred since plan 04's run,
 and writes no new cause, mechanism or attribution of its own for that file.
+
+## Closing attestation
+
+One entry per Phase 99 success criterion, in the wording `ROADMAP.md` carries after the context
+commit's amendment (D-06). Evidence commands run with cwd = `bbj-vscode`, `RUN_BBJ_TESTS=0`.
+
+**1. `FIELD` as a verb parses with zero lexer and parser errors (the single largest list-A group, 45
+files).** **Holds.** Evidence: fixture
+`bbj-vscode/test/test-data/conformance/field-verb.bbj`; `npx vitest run test/parser-keyword-statements.test.ts
+test/conformance-regressions.test.ts` — the "FIELD verb" describe block passes (positive shapes for
+every name-part and value-part variety, both letter cases, inside a method body). Still-flagged case
+that keeps the rule honest: `FIELD rec$,name$` (no `=value`) stays a parser error. The class-member
+`FieldDecl` form and its own no-type still-flagged case are confirmed byte-for-byte untouched.
+
+**2. `READ RECORD(...,LEN=n)...` and the sibling combined `RECORD` verbs' `LEN=` channel option parse,
+without a name such as `RECORD_2` being mistaken for the combined form (38 files); the root cause is
+fixed, so the INPUT verifier's own `LEN=a,b` form still parses and `LEN` works as a variable name.**
+**Holds.** Evidence: fixture `bbj-vscode/test/test-data/conformance/record-verbs-len-option.bbj`;
+`npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the
+"RECORD verbs LEN= channel option" describe block passes (all six sibling verbs, spaced and fused
+spellings, any case; `record_2`/`READ(1)record_2` unaffected; `LET LEN=5`/`len=5`/`a=1,len=2` parse as
+ordinary assignments; the INPUT verifier's own `LEN=a,b` form unchanged). Still-flagged case: a
+verifier option missing its `max` expression (`READ(1)a$:(LEN=1,)`) stays a parser error.
+
+**3. The word `label` works as a name in every listed position, any letter case; a label with any
+other name keeps parsing (about 25 files).** **Holds.** Evidence: fixture
+`bbj-vscode/test/test-data/conformance/label-word-as-name.bbj`; `npx vitest run
+test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the "the word `label`
+as a name" describe block passes (declaration alone, declaration immediately followed by a statement
+with and without a space, semicolon-chained, `GOTO`/`GOSUB`/`ON...GOTO` target with resolution to its
+declaration, variable read/write, every letter case). Still-flagged case: a class declared with the
+word as its name (`ValidName` deliberately not widened). The library grammar's own symbolic-label
+declarations (`labels.bbl`) keep loading — confirmed by the whole-suite run above, which parses that
+file on every `initializeWorkspace()` call.
+
+**4. The `IOLIST` statement parses, standalone and behind a label, with a long item list (3 files, all
+behind a label).** **Holds.** Evidence: fixture `bbj-vscode/test/test-data/conformance/iolist-statement.bbj`;
+`npx vitest run test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the
+"IOLIST statement" describe block passes (standalone, behind a numeric label, an ordinary named label
+and a label named `label`, every item shape including an all-elements array subscript, over a
+continuation line, `IOL=<label>` channel-option resolution). Still-flagged case: a trailing comma with
+no item after it. A program whose variables appear only inside an `IOLIST` produces no error-severity
+diagnostic from the scoping or use-before-assignment checks (confirmed by probe in plan 04; the check
+in question only ever emits `'hint'`/`'warning'` severity).
+
+**5. The conformance run at the phase boundary reports A ≤ 80 and no remaining list-A file whose first
+failing word is `FIELD`, `READ`, `IOLIST` or `LABEL`; A2 stays at or below the Phase 98 number (27);
+each group has its synthetic regression file; B is not a gate, but every newly-uncaught file is
+identified by file-set diff and classified with per-file evidence.** **Partially holds.** Evidence:
+the Closing run, Gate table, A2 movement and B movement sections above. A ≤ 80 holds (53). The
+no-remaining-group clause partially holds: `READ`, `IOLIST` and `LABEL` are fully cleared (0
+remaining); `FIELD` shows 1 remaining file, established by plan 04's own before/after file-set diff
+as table churn already present on list A before this run, not a new occurrence of the verb-form
+defect — but not independently re-verified by a corpus read, so the clause is not asserted as fully
+met. A2 ≤ 27 does **not** hold (30, exceeds the gate by 3). Each of the four groups has its synthetic
+regression file, confirmed present in Task 1 (`field-verb.bbj`, `record-verbs-len-option.bbj`,
+`label-word-as-name.bbj`, `iolist-statement.bbj`, alongside the nine inherited from Phase 98). B is
+recorded with its evidence status (666, +1 vs the Phase 98 close baseline of 665, classified as a
+lost accidental catch by plan 04's own per-file look) — not gated, as the roadmap wording requires.
+
+**Requirement-to-evidence chain.**
+
+| Requirement | Fixture | Test |
+|---|---|---|
+| PARSE-01 | `field-verb.bbj` | `parser-keyword-statements.test.ts` — "FIELD verb" |
+| PARSE-02 | `record-verbs-len-option.bbj` | `parser-keyword-statements.test.ts` — "RECORD verbs LEN= channel option" |
+| PARSE-03 | `label-word-as-name.bbj` | `parser-keyword-statements.test.ts` — "the word `label` as a name" |
+| PARSE-07 | `iolist-statement.bbj` | `parser-keyword-statements.test.ts` — "IOLIST statement" |
+
+**The two deliberate non-goals.**
+
+1. **No blanket reserved-word rule anywhere.** Confirmed by diff: `git diff --stat
+   28b13298fecc2e88afe08cf8fdbc2e3919e61946..HEAD -- bbj-vscode/src/language/` shows exactly one
+   file changed across the whole phase — `bbj-vscode/src/language/bbj.langium` (32 insertions, 4
+   deletions) — and every addition is one of the four named, narrowly-scoped grammar changes listed
+   in the phase-wide artifacts table above (`FieldStatement`, `LastVerifyOption`'s `LEN`/`=` split,
+   `FeatureName`'s `'label'` alternative, the new `LabelName` rule, `IolistStatement`). No
+   `bbj-token-builder.ts` change, no generic keyword-category mechanism, no rule that admits more
+   than the one word each addition names.
+2. **No new editor capability for either new statement.** Same diff evidence: `bbj-token-builder.ts`,
+   `bbj-document-symbol-provider.ts`, `bbj-semantic-token-provider.ts`, `bbj-hover.ts`,
+   `bbj-completion-provider.ts` and `bbj-inlay-hint-provider.ts` are all byte-for-byte untouched by
+   this phase (none appears in the phase's own diff against its base commit
+   `28b13298fecc2e88afe08cf8fdbc2e3919e61946`). `FieldStatement` and `IolistStatement` declare no
+   `name` property, so `bbj-document-symbol-provider.ts`'s generic `'name' in astNode` guard produces
+   no outline entry for either — a property of the AST shape, not a suppression added by this phase.
