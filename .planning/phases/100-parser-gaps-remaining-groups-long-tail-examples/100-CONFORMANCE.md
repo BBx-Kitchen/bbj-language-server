@@ -106,12 +106,17 @@ task's, per this phase's own working rule.
 Evidence: file-set diff of `snapshots/details-100-01-before.json` against the post-run `details.json`,
 the flagged source lines, and direct `bbjcpl -N` probes.
 
+**Redaction note (100-06, Task 2):** this table originally named each corpus file directly by path,
+violating this phase's own no-corpus-identifier rule (D-27) and T-100-06-01's disposition. The path
+column below has been replaced with a neutral per-row label; every other word of the original
+analysis is unchanged.
+
 | File | Move | What the file shows |
 |------|------|---------------------|
-| `samples/dup-75c6bfa9.bbj` | A → A2 | Was on list A for `dread x![]` (line 5). That now parses; the next disagreement in the same file is `clear x![]` (line 14), reported as "This statement needs to end with a line break: clear". `bbjcpl` accepts `clear x![]`. `CLEAR` followed by a variable list is a long-tail shape for plan 04, not a fault of the bracket rule. |
-| `samples/asprsa-9a447b16.bbj` | caught → B | Compiler's complaint is an undefined label (line 895). The only thing this tree ever flagged was the parse error on `A![]=SN!.split("R")` (line 2527), which the compiler accepts. The earlier "catch" was accidental. |
-| `bbjllm-dataset/row1733-0-79df14d1.bbj` | caught → B | Compiler rejects `LET parts$[] = SPLIT(dateStr$, "/")` (line 4). Probes: `parts$[] = "a"` and `parts$[all] = "a"` are both rejected, `parts$[] = q$[]` is accepted. The compiler requires a whole-array right-hand side for a whole-array target; that rule applied to `[all]` before this phase and was never checked here. It is a typed validation rule, not a parser shape; out of scope for the parser plans. |
-| `bbjllm-dataset/row1772-0-b1c55c9f.bbj` | caught → B | Compiler rejects `FILEOPEN(...)` on line 1 (see the pending file-dialog todo handled in plan 05). Previously flagged only through the `[]` parse error on line 6. Accidental catch. |
+| Residue file A | A → A2 | Was on list A for `dread x![]` (line 5). That now parses; the next disagreement in the same file is `clear x![]` (line 14), reported as "This statement needs to end with a line break: clear". `bbjcpl` accepts `clear x![]`. `CLEAR` followed by a variable list is a long-tail shape for plan 04, not a fault of the bracket rule. |
+| Residue file B | caught → B | Compiler's complaint is an undefined label (line 895). The only thing this tree ever flagged was the parse error on `A![]=SN!.split("R")` (line 2527), which the compiler accepts. The earlier "catch" was accidental. |
+| Residue file C | caught → B | Compiler rejects `LET parts$[] = SPLIT(dateStr$, "/")` (line 4). Probes: `parts$[] = "a"` and `parts$[all] = "a"` are both rejected, `parts$[] = q$[]` is accepted. The compiler requires a whole-array right-hand side for a whole-array target; that rule applied to `[all]` before this phase and was never checked here. It is a typed validation rule, not a parser shape; out of scope for the parser plans. |
+| Residue file D | caught → B | Compiler rejects `FILEOPEN(...)` on line 1 (see the pending file-dialog todo handled in plan 05). Previously flagged only through the `[]` parse error on line 6. Accidental catch. |
 
 Net: no file lost a correct diagnosis. Three accidental catches went away with the parse error that
 produced them; one file advanced from its first disagreement to its second.
@@ -205,9 +210,9 @@ rule.
 ### Per-file look at the four A2 files (orchestrator, after plan 02)
 
 File-set diff of `snapshots/details-100-02-before.json` against the post-run `details.json`: list A lost
-5 files and gained none; B is the same set; A2 gained exactly `samples/16526-175f36d1.bbj` (line 20),
-`samples/17065-6c66c142.bbj` (line 19), `samples/28950-024d2643.bbj` (line 33) and
-`samples/thismethod-36d8a603.bbj` (line 36). All four were on list A before, all four flagged lines are
+5 files and gained none; B is the same set; A2 gained exactly 4 files (their respective flagged lines
+were 20, 19, 33 and 36 — corpus identifiers redacted per D-27, T-100-06-01). All four were on list A
+before, all four flagged lines are
 `classend; rem` / `classend;rem` with nothing after the comment word, all four carry the message
 "This statement needs to end with a line break: classend". The line-end pattern in
 `line-break-validation.ts` demands a blank after `rem`, so a bare `rem` at end of line does not count
@@ -466,10 +471,13 @@ harness in the private corpus repository, is the orchestrator's work, not this p
 
 ### Per-file look at the two pending residue rows (orchestrator, after plan 04)
 
+**Redaction note (100-06, Task 2):** the File column originally named each corpus file directly by
+path, violating D-27/T-100-06-01. Replaced with a neutral per-row label.
+
 | File | First failing line | What the file shows | Status |
 |------|--------------------|---------------------|--------|
-| `samples/29595-5d8b193e.bbj` | 5 (reported as 4, the blank line before it) | The statement `::static.txt::Sample.sample(); rem …` starts its line with `::`. Probe: the same statement as the first line of a program parses with 0 errors; after any earlier line it fails with 1 parser error. A line whose first character is `:` is read as a continuation of the line before, so a statement that begins with a `::file::Class` reference is glued onto its predecessor. The compiler accepts the file. The fix belongs in the line-continuation splitter of the lexer, not in a grammar rule — recorded, not fixed here. | residue, 1 file |
-| `bbj-install/DemosLaunchDock-767ee906.bbj` | 204 | Probes: the class from its header (line 189) through the fields plus this constructor parses with 0 errors; constructors calling `#this!(…)` and `#super!(…)` parse with 0 errors and `bbjcpl` accepts them. The failure therefore needs something in lines 1–188 of the file; it was not isolated in the time allowed. No cause is recorded. | residue, 1 file, cause open |
+| Residue file E | 5 (reported as 4, the blank line before it) | The statement `::static.txt::Sample.sample(); rem …` starts its line with `::`. Probe: the same statement as the first line of a program parses with 0 errors; after any earlier line it fails with 1 parser error. A line whose first character is `:` is read as a continuation of the line before, so a statement that begins with a `::file::Class` reference is glued onto its predecessor. The compiler accepts the file. The fix belongs in the line-continuation splitter of the lexer, not in a grammar rule — recorded, not fixed here. | residue, 1 file |
+| Residue file F | 204 | Probes: the class from its header (line 189) through the fields plus this constructor parses with 0 errors; constructors calling `#this!(…)` and `#super!(…)` parse with 0 errors and `bbjcpl` accepts them. The failure therefore needs something in lines 1–188 of the file; it was not isolated in the time allowed. No cause is recorded. | residue, 1 file, cause open |
 
 With these two, all 9 remaining list-A entries are accounted for: 7 by the filled rows above, 1 by the
 line-start `::` row, 1 open.
