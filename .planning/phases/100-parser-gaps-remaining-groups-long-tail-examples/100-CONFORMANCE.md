@@ -115,3 +115,89 @@ the flagged source lines, and direct `bbjcpl -N` probes.
 
 Net: no file lost a correct diagnosis. Three accidental catches went away with the parse error that
 produced them; one file advanced from its first disagreement to its second.
+
+## Run: plan 02
+
+**What was measured.**
+
+- Command: `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server`
+- Date: 2026-09-21. Language server commit `84d800c7` (the tree as committed through this
+  plan's task 2), mode `validate`, `sourceModified: false`, 77 seconds.
+- Preconditions confirmed before the run: `bbj-vscode/src/language/generated/ast.ts` no older
+  than `bbj.langium`; `git status --porcelain -- bbj-vscode/src` printed nothing.
+- `details.json` snapshotted to `snapshots/details-100-02-before.json` before the run.
+
+**Numbers.**
+
+| Measure | Plan 01 run | This run | Delta vs plan 01 | Delta vs Phase 99 close | Gate | Verdict |
+|---|---|---|---|---|---|---|
+| A — valid code the language server rejects | 21 | 16 | −5 | −36 | ≤ 25 (phase-final) | **improved, at or below the plan 01 run and the phase-final gate** |
+| A2 — valid code that parses but gets a validation error | 24 | 28 | +4 | +5 | ≤ 23 | above both baselines |
+| B — invalid code not flagged, of 1,210 | 669 | 669 | 0 | +3 | recorded, not gated | unchanged from plan 01 |
+
+**A — by first word of the line the parser stops at (this run, 16 files total).**
+
+| Files | Group |
+|---|---|
+| 2 | PRINT |
+| 2 | IF |
+| 1 each | PROCESS_EVENTS, *(empty)*, METHODEND, USE, FNEND, VAR, INPUT, FULLTEXT, ON, LET, METHOD |
+
+None of the remaining first-word groups belong to the block-boundary or line-numbered-class
+groups this plan targeted — the one `METHODEND` file and the one `FNEND` file left on list A
+are a bare, unadorned `methodend`/`fnend` line with nothing after it (no trailing comment, no
+class around it), which is a different shape from the comment-tail and line-number gaps this
+plan closed; they carry over as residue for the long-tail triage.
+
+**A2 — by message (this run, 28 files total).**
+
+| Files | Message group |
+|---|---|
+| 6 | This statement needs to start in a new line: *(blank)* |
+| 4 | This statement needs to end with a line break: classend |
+| 3 | This statement needs to end with a line break: return |
+| 1 | This statement needs to end with a line break: endif |
+| 1 | Field 'y!' is declared 'BBjString' but is initialized with a number. |
+| 1 | This statement needs to start in a new line: x[all] |
+| 1 | This statement needs to end with a line break: clear |
+| 1 | 'CASE DEFAULT' is only allowed inside a SWITCH block. |
+| 1 | This statement needs to start in a new line: fi |
+| 1 | DECLARE is not valid at class member level. Use FIELD for class-level declarations, or move DECLARE inside a method body. |
+| 1 | The member is not visible (a visibility check) |
+| 1 | MODE option only supported in MKEYED Verb. |
+| 1 | This statement needs to end with a line break: LET num = 6.022 |
+| 1 | This statement needs to end with a line break: LET tiny = 1 |
+| 1 | This statement needs to end with a line break: LET val = 1 |
+| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to end with a line break: log.DURATION = log.END-log. |
+| 1 | This statement needs to start in a new line: else |
+
+One message group is new against the plan 01 run: "This statement needs to end with a line
+break: classend" (4 files). Every other message group present at the plan 01 run still appears
+at an unchanged count in this run's table.
+
+**Set-movement sizes** (file-set difference, `snapshots/details-100-02-before.json` vs. this
+run's `details.json`; sizes only, no id, path or line).
+
+- **A (falseRejects): before 21, after 16 — 5 files left the list, 0 newly appeared.** Every
+  movement this run made to list A is an improvement; none of this plan's grammar edit added a
+  new list-A entry.
+- **A2 (falseAlarms): before 24, after 28 — 4 files newly appeared, 0 left.** All four newly
+  appeared files carry the exact same message group above, and the exact same own-words line
+  shape: a `CLASSEND` immediately followed by a semicolon-introduced comment with the word
+  `rem` and no comment text at all after it (`classend; rem` and `classend;rem`, nothing
+  trailing).
+- **B (missed): before 669, after 669 — 0 files newly appeared, 0 left.** No movement in the
+  missed set this run.
+
+## 4 files moved the wrong way — handed to the orchestrator
+
+All four are A2 entries (0 files left the caught set this run — the missed/B set did not move).
+Every one of the four carries the identical message group ("This statement needs to end with a
+line break: classend") and the identical own-words line shape: `CLASSEND` followed by a
+semicolon-introduced comment whose comment word (`rem`) has no text after it at all — no space,
+no body. This plan's own diagnostic-cleanliness tests for the block-boundary comment tail always
+gave the comment a body (`; rem c`); a bare `; rem` with nothing following it is a narrower shape
+this plan did not probe. No cause, mechanism or attribution is recorded here for any of the four
+— the per-file look is the orchestrator's job, not this task's, per this phase's own working
+rule.
