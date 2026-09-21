@@ -1,152 +1,218 @@
 # External Integrations
 
-**Analysis Date:** 2026-02-01
+**Analysis Date:** 2026-09-21
 
 ## APIs & External Services
 
-**BBj Compiler & Runtime:**
-- BBj Language Server - Provides program compilation, execution, and debugging
-  - SDK/Client: Native execution via `child_process.exec()`
-  - Configuration: `bbj.home` setting points to BBj installation directory
-  - Usage: Located in `src/Commands/Commands.cjs` for compile, decompile, run commands
+**Java Interop Backend:**
+- **Service**: java-interop socket service (port 5008, localhost by default)
+- **What it's used for**: Resolves Java classes, methods, fields, Javadoc from the BBj classpath
+- **Connection**: Socket + JSON-RPC via `vscode-jsonrpc` in `bbj-vscode/src/language/java-interop.ts`
+- **SDK/Client**: `JavaInteropService` class (custom implementation)
+- **Config env vars**: `bbj.interop.host` (default "localhost"), `bbj.interop.port` (default 5008)
+- **Circuit breaker**: Handles outages with exponential backoff (initial 5s, max 30s cooldown, P61-D3-001)
+- **Caching**: LRU cache of 5,000 resolved classes; survives ~30 minutes of typical editing
 
-**Java Classpath Service:**
-- Java Interop Service - Provides Java class metadata for code completion and type checking
-  - SDK/Client: JSON-RPC over socket communication via `vscode-jsonrpc`
-  - Connection: TCP socket on localhost:5008 (default port defined in `src/language/java-interop.ts`)
-  - Implementation: `java-interop/src/` - standalone Java application using Eclipse LSP4J
-  - Classes: `JavaInteropService` in `src/language/java-interop.ts` manages connection lifecycle
+**BBj Compiler (bbjcpl):**
+- **Service**: Native BBj compiler binary (`bbjcpl`)
+- **What it's used for**: Syntax validation, error diagnostics, compile-time checks
+- **Location**: Discovered via `bbj.home` setting; spawned as child process in `bbj-cpl-service.ts`
+- **Integration**: Runs on file save or debounced typing (configurable via `bbj.compiler.trigger`)
+- **Timeout**: 30 seconds (configurable via `BBjCPLService.setTimeout()`)
+- **Config env vars**: `bbj.home` (BBj installation path), `bbj.compiler.trigger` ("debounced"/"on-save"/"off")
+- **Failure handling**: Logs warnings, gracefully degrades (returns empty diagnostics if bbjcpl unavailable)
 
 **Enterprise Manager (EM):**
-- Web UI for BBj administration and monitoring
-  - Usage: `bbj.em` command opens EM interface in browser
-  - Configuration: `bbj.web.username` and `bbj.web.password` settings
+- **Service**: BBj's web-based admin/runtime system (typically http://localhost:8888)
+- **What it's used for**: Running BUI and DWC programs; querying server configuration
+- **Integration**: Commands `bbj.run`, `bbj.runBUI`, `bbj.runDWC`, `bbj.em`, `bbj.loginEM` invoke EM
+- **Config env vars**: `bbj.em.url` (Enterprise Manager URL)
+- **Auth**: EM login credentials managed via EM's own auth (em-login.bbj)
+- **Failure handling**: If EM unavailable, run commands fail with error message
+
+**BBj Runtime (GUI/DWC Execution):**
+- **Service**: BBj runtime services for executing programs
+- **What it's used for**: Running .bbj programs as GUI, BUI, or DWC applications
+- **Classpath**: Configured via `bbj.classpath` setting (e.g., "bbj_default", "addon", "barista")
+- **Integration**: VS Code commands and right-click context menus trigger program execution
 
 ## Data Storage
 
 **Databases:**
-- Not directly used by extension/language server
-- BBj runtime may use BBj databases (external system)
-- Java classpath introspection: In-memory caching in `JavaInteropService._resolvedClasses` Map
+- Not used. No external database integration.
 
 **File Storage:**
 - Local filesystem only
-- Configuration files: BBj.properties (`{bbj.home}/cfg/BBj.properties`)
-- Workspace files: `.bbj`, `.bbl`, `.bbjt`, `.src` file extensions
-- Tools directory: `bbj-vscode/tools/` contains BBj helper programs (`web.bbj`, formatter scripts)
+- Virtual library files served via `BBjLibraryFileSystemProvider` (`src/language/lib/fs-provider.ts`)
+  - Provides synthetic `classpath:/bbj.bbl` with built-in BBj function signatures
+- BBj config files (config.bbx) read from disk
 
 **Caching:**
-- In-memory cache: `JavaInteropService._resolvedClasses` - Map-based caching of resolved Java classes
-- Document cache: Langium `LangiumDocuments` service manages parsed document ASTs
-- Index cache: `BBjIndexManager` caches symbol index per workspace
+- **Java classpath cache**: LRU map, 5,000-entry limit, per-session memory only
+- **Resolved class cache**: In-memory, evicts least-recently-used classes
+- **Config file path cache**: Memory cache with watcher for disk changes (`config-path-cache.ts`, `config-watcher.ts`)
+- **Implicit imports cache**: Cached after first load from java-interop service
+
+**Session Persistence:**
+- No persistent session storage
+- Each LS restart clears all caches
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom (Web runner authentication via configuration)
-  - Username: `bbj.web.username` (default: "admin")
-  - Password: `bbj.web.password` (default: "admin123")
-  - Implementation: Passed directly to BBj web runner (`web.bbj`) in `src/Commands/Commands.cjs`
-  - Scope: Web-based program execution only (GUI, BUI, DWC runners)
+- Custom integration with BBj's own authentication
+- Enterprise Manager login via `em-login.bbj` (run-tool)
+- No OAuth, SAML, or external identity providers
 
-**BBj Home Configuration:**
-- Critical configuration: `bbj.home` setting (required)
-- No centralized auth; credentials are workspace-level configuration
-- Credentials stored in VS Code settings (typically in `.vscode/settings.json`)
+**Implementation:**
+- EM credentials stored in VS Code's secret storage (`secretStorage` API)
+- BBj-side credentials managed by EM system
+- Login flow triggered by `bbj.loginEM` command
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected - no error tracking service integrated
+- Not detected. No external error tracking service (Sentry, DataDog, etc.)
 
 **Logs:**
-- VS Code Extension Output: Logged via `console.log()`, `console.error()` to VS Code output panel
-- Language Server: Langium LSP logs via vscode-languageserver
-- Debug Mode: `DEBUG_BREAK` env var enables Node.js inspector on port 6009 (configurable via `DEBUG_SOCKET`)
-- Error propagation: Exceptions caught in `src/Commands/Commands.cjs` and shown to user via `vscode.window.showErrorMessage()`
+- **Output channel**: Langium's LSP diagnostic notifications → VS Code Output panel
+- **Logger**: Configurable debug level via `bbj.debug` setting
+  - `LogLevel.DEBUG` - detailed diagnostics, class loading, validation messages
+  - `LogLevel.WARN` - normal operation (default)
+- **Console output**: Errors logged to `console.error()` (captured by VS Code)
+- **Java interop logs**: Connection failures, timeouts, circuit breaker state transitions
 
-**Debugging:**
-- Node.js Inspector: Enabled via launch configuration in VS Code
-- Language Server Debug: Separate debug configuration for language server process
-- Java Interop Service: Debuggable via IDE (VS Code Debugger for Java extension recommended)
+**Metrics:**
+- No metrics collection or telemetry
+- Vitest coverage reports available locally via `npm run test:coverage`
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- VS Code Marketplace - Official distribution channel for extension
-- GitHub Pages - Documentation hosted at `BBx-Kitchen.github.io/bbj-language-server/`
-- Repository: GitHub (`https://github.com/BBx-Kitchen/bbj-language-server/`)
+- VS Code Marketplace (VSIX extension)
+- JetBrains Marketplace (IntelliJ plugin ZIP)
+- GitHub Pages (Docusaurus documentation site)
+- GitHub Releases (release artifacts)
 
 **CI Pipeline:**
-- GitHub Actions - `.github/workflows/` (content not detailed in exploration)
-- Gitpod support - `.gitpod.yml` for cloud development environment
+- GitHub Actions workflows (`.github/workflows/`)
+  - `build.yml` - Test and build on every commit
+  - `pr-validation.yml` - Lint, test, build validation for PRs
+  - `pr-vsix.yml` - Build VSIX artifact on PR (for manual testing)
+  - `preview.yml` - Build preview releases (dev channel)
+  - `manual-release.yml` - Manual release trigger
+  - `deploy-docs.yml` - Docusaurus site deployment
+  - `workflow-hygiene.yml` - Gradle/dependencies checks
 
 **Build Process:**
-- npm scripts: `npm run prepare`, `npm run build`, `npm run esbuild`
-- TypeScript compilation: `tsc -b tsconfig.json`
-- Gradle build: `./gradlew build` in java-interop directory
-- VSCode publishing: `npm run vscode:prepublish` (minification + linting)
+```bash
+npm install                    # Install dependencies
+npm run langium:generate       # Generate AST/grammar from .langium
+npm run build                  # Compile TypeScript + bundle
+npm run test                   # Run all vitest suites
+npm run lint                   # ESLint check
+vsce package                   # Create VSIX for VS Code
+./gradlew buildPlugin          # Create ZIP for IntelliJ
+```
+
+**Release Publishing:**
+- VS Code: `vsce publish` (authenticated to Marketplace)
+- IntelliJ: Gradle `intellijPlatformPublishing` block (authenticated to JetBrains)
+- Docs: `docusaurus deploy` (GitHub Pages, main branch only)
 
 ## Environment Configuration
 
-**Required env vars:**
-- `DEBUG_BREAK` - Set to 'true' to wait for debugger attachment on language server startup
-- `DEBUG_SOCKET` - Port for Node.js inspector (default: 6009)
-- `BBJ_HOME` - Referenced indirectly via VS Code setting `bbj.home` (not environment variable)
-
-**VS Code Settings (bbj.* namespace):**
-- `bbj.home` - Path to BBj installation directory (REQUIRED)
+**Required env vars (client-side, VS Code settings):**
+- `bbj.home` - Path to BBj installation directory
 - `bbj.classpath` - Classpath entry name (default: "bbj_default")
-- `bbj.web.username` - Web runner username (default: "admin")
-- `bbj.web.password` - Web runner password (default: "admin123")
-- `bbj.web.apps` - Object mapping program names to web app configurations
-- `bbj.web.AutoSaveUponRun` - Auto-save before program execution (boolean)
-- `bbj.formatter.*` - Formatter options (indent width, line continuations, etc.)
-- `bbj.compiler.*` - Compiler options (type checking, line numbering, output control, content modification, diagnostics)
+- `bbj.em.url` - Enterprise Manager URL (e.g., http://localhost:8888)
+- `bbj.interop.host` - Java interop hostname (default: "localhost")
+- `bbj.interop.port` - Java interop port (default: 5008)
+- `bbj.configPath` - Path to BBj config file (optional, computed if not set)
+- `bbj.debug` - Enable debug logging (boolean, default: false)
+
+**Compiler options (buildable from UI):**
+- Type checking: `-t` (enable), `-W` (warnings), `-c` (config file), `-CP` (classpath)
+- Line numbering: `-n` (renumber), `-s` (start line), `-i` (interval), `-D` (remove line numbers)
+- Output: `-d` (directory), `-x` (extension), `-X` (keep extension), `-F` (force overwrite), `-N` (validate only)
+- Content: `-r` (remove REM), `-p` (protect), `-e` (error log)
+
+**Formatter options (configurable):**
+- `bbj.formatter.indentWidth` - Indentation spaces (default: 2)
+- `bbj.formatter.removeLineContinuation` - Remove continuations (default: false)
+- `bbj.formatter.keywordsToUppercase` - Convert keywords to uppercase (default: false)
+- `bbj.formatter.splitSingleLineIF` - Split single-line IF (default: false)
+
+**Diagnostic options:**
+- `bbj.diagnostics.suppressCascading` - Suppress downstream errors (default: true)
+- `bbj.diagnostics.maxErrors` - Max parse errors shown (default: 20)
+- `bbj.typeResolution.warnings` - Warn on CAST/USE/inheritance issues (default: true)
+- `bbj.compiler.trigger` - When to run bbjcpl ("debounced"/"on-save"/"off")
+
+**Inlay hints:**
+- `bbj.inlayHints.parameterNames.enabled` - Show parameter names ("none"/"literals"/"all", default: "literals")
 
 **Secrets location:**
-- VS Code workspace settings (`.vscode/settings.json`)
-- No separate secrets file or environment-based secret management
-- Credentials stored in plaintext in settings (security consideration)
+- VS Code secret storage (platform-specific: macOS Keychain, Windows Credential Manager, Linux libsecret)
+- EM login credentials stored via `secretStorage.store('bbj.em.password', ...)`
+
+**Decompile/Denumber prompts:**
+- `bbj.decompile.promptOnOpen` - Prompt when opening tokenized files (default: true)
+- `bbj.denumber.promptOnOpen` - Prompt when opening numbered files (default: true)
 
 ## Webhooks & Callbacks
 
-**Incoming:**
-- None detected
+**Incoming Webhooks:**
+- No incoming webhooks. The language server is not HTTP-based (LSP only).
 
-**Outgoing:**
-- None detected - integration is synchronous/request-response only
+**Outgoing Webhooks/Callbacks:**
 
-## Web Program Execution
+**Configuration Watcher:**
+- Watches `config.bbx` file for changes
+- Triggers `bbj/configReloadRequired` notification to client
+- Client requests language server restart to pick up new config
+- Integration: `createConfigWatcher()` in `main.ts`, armed after first workspace build
 
-**Web Runner:**
-- Client programs executed via BBj web runner: `web.bbj`
-- Location: `bbj-vscode/tools/web.bbj`
-- Supports three execution modes:
-  - BUI (Browser User Interface) - Modern web UI
-  - DWC (Desktop Web Client) - Legacy web UI
-  - GUI (Graphical User Interface) - Native desktop
-- URL pattern: `http://127.0.0.1:{port}/{program_name}` (port managed by BBj runtime)
+**Java Class Reload Notifications:**
+- `bbj/javaClassesRefreshed` - Fired when `bbj.refreshJavaClasses` command completes
+- `bbj/javaConnectionError` - Fired when java-interop service becomes unavailable
+- Recovery callback: `onConnectionRecovered()` listener re-validates open documents silently
 
-## Symbol & Type Information
+**Config Reload Notifications:**
+- `bbj/resolvedConfigPath` - Pushed when config path is resolved or changes
+- `bbj/configReloadRequired` - Pushed when config.bbx has changed on disk (prompts client restart)
 
-**Java Class Information:**
-- Source: Java classpath accessible via java-interop service
-- Classes tracked in memory in `JavaInteropService._resolvedClasses`
-- Implicit Java imports (always available):
-  - `java.lang`
-  - `com.basis.startup.type`
-  - `com.basis.bbj.proxies`
-  - `com.basis.bbj.proxies.sysgui`
-  - `com.basis.bbj.proxies.event`
-  - `com.basis.startup.type.sysgui`
-  - `com.basis.bbj.proxies.servlet`
+**Diagnostic Notifications:**
+- `textDocument/publishDiagnostics` - LSP standard; sent after parse, linking, validation
+- Cascading suppression: if parse errors exist, downstream validation errors are hidden
 
-**BBj Built-in Library:**
-- Synthetic document: `classpath:/bbj.class`
-- Contains standard BBj library classes and methods
-- Loaded from `src/language/lib/` directory
+**Refresh Requests:**
+- `inlayHint/refresh` - Request client refresh inlay hints (parameter names) after Java classes load
+- `codeLens/refresh` - Request client refresh code lenses (composer UI cues)
+
+**Workspace Notifications:**
+- `window/showErrorMessage` - User-facing errors (bbjcpl unavailable, Java interop failure)
+- `window/showInformationMessage` - Confirmations (Java classes refreshed, config reloaded)
+
+## Error Recovery
+
+**Java Interop Circuit Breaker (P61-D3-001):**
+- State machine: closed → half-open → open → half-open → closed
+- Initial cooldown: 5 seconds, backoff factor: 2×, max: 30 seconds
+- Behavior:
+  - **Closed**: Requests proceed normally
+  - **Open**: Requests fail immediately with "circuit open" error
+  - **Half-open**: One probe per cooldown window; if it succeeds, transition to closed and notify recovery listeners
+  - On recovery: silent re-validation (no popup), implicit imports reloaded, documents re-checked
+
+**Compile Timeout:**
+- bbjcpl process killed after 30 seconds (configurable)
+- Returns empty diagnostics array; logs warning
+
+**Config File Issues:**
+- If config file not found: uses BBj home defaults, logs warning
+- If config parsing fails: falls back to computed classpath
 
 ---
 
-*Integration audit: 2026-02-01*
+*Integration audit: 2026-09-21*
