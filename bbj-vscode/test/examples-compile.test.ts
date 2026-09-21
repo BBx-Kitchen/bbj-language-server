@@ -10,7 +10,7 @@ import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace, shouldRunBBjTests } from './test-helper.js';
 
 // Every BBj program under "examples/" either compiles with the real compiler or lives under
-// "examples/invalid/" with an asserted diagnostic expectation (EXMP-01). This file has two
+// "examples/invalid/" with an asserted diagnostic expectation. This file has two
 // independent layers:
 //   - always-on: parses and validates every example with the language server itself. Runs
 //     everywhere (CI included) since it needs no local BBj install.
