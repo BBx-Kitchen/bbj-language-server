@@ -498,12 +498,12 @@ Plans:
   4. An endpoint exception, a timeout, or a BBjServices that is not running never appears as a syntax error in the document — it is visible in the server log or in the status surface only.
   5. The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the published documentation of both extensions says the feature needs BBj 26.03 or later.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 102-01-PLAN.md — The parser-service client, the once-per-connection probe latch and the old-server fallback, proved end to end against the scriptable service double
+- [x] 102-01-PLAN.md — The parser-service client, the once-per-connection probe latch and the old-server fallback, proved end to end against the scriptable service double
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -597,7 +597,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 | 99. Parser Gaps — the Largest Groups | 6/6 | Not started |  |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Not started |  |
 | 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Not started |  |
-| 102. Live Compiler Diagnostics With Backward Compatibility | 0/TBD | Not started | - |
+| 102. Live Compiler Diagnostics With Backward Compatibility | 1/4 | Not started |  |
 | 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
 

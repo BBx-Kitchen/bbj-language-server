@@ -37,7 +37,7 @@
 - [ ] **PSRV-05**: Compiler diagnostics appear on the correct editor line and range for continuation lines, line-numbered programs, CRLF files and a last line without newline
 - [ ] **PSRV-06**: Compiler diagnostics and the language server's own diagnostics do not duplicate each other on a line, and the save-time `bbjcpl` run does not repeat what the endpoint already reported
 - [ ] **PSRV-07**: When the compiler's parser accepts a document, the user sees no lexer, parser or line-break error from the language server for it
-- [ ] **PSRV-08**: A failure of the endpoint (exception, timeout, BBj not running) is never shown as a syntax error in the document; it is visible in the server log or status
+- [x] **PSRV-08**: A failure of the endpoint (exception, timeout, BBj not running) is never shown as a syntax error in the document; it is visible in the server log or status
 - [ ] **PSRV-09**: The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the documentation of both extensions says they need BBj 26.03 or later
 
 ### Examples
@@ -97,7 +97,7 @@
 | PSRV-05 | Phase 102 | Pending |
 | PSRV-06 | Phase 103 | Pending |
 | PSRV-07 | Phase 103 | Pending |
-| PSRV-08 | Phase 102 | Pending |
+| PSRV-08 | Phase 102 | Complete |
 | PSRV-09 | Phase 102 | Pending |
 | EXMP-01 | Phase 100 | Complete |
 | CONF-01 | Phase 98 | Complete |
