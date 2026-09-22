@@ -589,6 +589,32 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
 v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked normally.
 
+### Phase 105: Live Diagnostics Responsiveness on Large Workspaces
+
+**Goal:** Make live compiler diagnostics appear while typing on a project of realistic
+size, not only on a handful of files. Today the live-parse debounce timer is armed from
+inside `buildDocuments()`, so it sits behind Langium's FIFO `WorkspaceLock` until the
+initial whole-workspace build finishes; the request then shares one interop socket with
+the bulk class resolution that build issues. Both IDEs are affected. See issue #692.
+
+**Requirements**: TBD — derive from #692 at planning time
+**Depends on:** Phase 102 (the live-diagnostics client this makes usable)
+**Plans:** 0 plans
+
+**Success Criteria** (draft, to be firmed at planning):
+
+1. A live parser diagnostic appears while typing in a large workspace without waiting for
+   the initial build to finish, in VS Code and IntelliJ alike.
+2. The live-parse path no longer depends on `buildDocuments()` for its scheduling.
+3. Live-parse and BBjCPL diagnostics remain correct when both write `document.diagnostics`
+   concurrently — no lost, doubled or misattributed diagnostic.
+4. Measured on a workspace large enough to reproduce the stall, with the before/after
+   wait time recorded.
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 105 to break down)
+
 ### v4.5 phase progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -600,6 +626,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Not started |  |
 | 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
+| 105. Live Diagnostics Responsiveness on Large Workspaces | 0/TBD | Not started | - |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.
 27/27 requirements mapped to 7 phases, no orphans and no duplicates. Scope, baseline and exit
