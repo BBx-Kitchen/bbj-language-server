@@ -303,7 +303,7 @@ files describe behaviour and use word lists only.
 
 - [x] **Phase 98: Line-Break & Validation False Alarms (A2)** - Valid code that parses stops collecting invented errors — TABLE, RESTORE, keyword-named branch targets, EXIT/LOAD/SAVE, multi-line DEF FN headers, single-line IF forms, DECLARE and METHODRET (completed 2026-09-21)
 - [x] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, `LEN=` as a channel option of the RECORD verbs, the word `label` as a name, and IOLIST (completed 2026-09-21)
-- [ ] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - The empty-bracket whole-array form `name[]` in every position, `;rem` after class, method and function boundaries, language words used as names checked against the compiler — then every remaining list-A shape is fixed or recorded, and `examples/` agrees with the compiler
+- [x] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - The empty-bracket whole-array form `name[]` in every position, `;rem` after class, method and function boundaries, language words used as names checked against the compiler — then every remaining list-A shape is fixed or recorded, and `examples/` agrees with the compiler (completed 2026-09-22)
 - [ ] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository
 - [ ] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x
 - [ ] **Phase 103: One Set of Errors — Diagnostic Reconciliation** - The compiler's verdict and the language server's own checks stop contradicting and stop duplicating each other
@@ -418,7 +418,7 @@ Plans:
   4. The conformance run at the phase boundary reports **A ≤ 25** (from 168; 52 at the Phase 99 close), and every shape still on list A is recorded in a tracked list — own-words shape, file count, reason (not a program, compiler quirk, deliberately out of scope, or valid but disproportionate to fix now) — so the residue is a decision rather than an unknown. The file-by-file mapping behind the counts is kept next to the harness in the private corpus repository, because no corpus file name enters this one. Each construct fixed in this phase has its synthetic regression file (CONF-01).
   5. Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, the folder marked as deliberately invalid, and a test asserts the diagnostics those deliberately-invalid files are expected to produce — including an explicit "none today" for a file only the compiler can flag (17 of 92 program files fail today; the `.bbx` configuration file and the `.bbl` library file are not programs and are excluded by extension, with the reason stated in the test).
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**

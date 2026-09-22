@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
-current_phase: 100
-current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
-status: verifying
-stopped_at: Completed 100-06-PLAN.md (checkpoint resolved 2026-09-22 — residue accepted, phase 100 plans 6/6 complete)
-last_updated: "2026-09-21T23:54:37.455Z"
-last_activity: 2026-09-21
-last_activity_desc: Phase 100 execution started
-state_head: 28db9169c839603410196c238a5a876049949c4b
+current_phase: 101
+current_phase_name: BBj Parser Endpoint in `bbj-ls`
+status: planning
+stopped_at: Phase 100 complete, ready to plan Phase 101
+last_updated: "2026-09-22T04:56:27.299Z"
+last_activity: 2026-09-22
+last_activity_desc: Phase 100 complete, transitioned to Phase 101
+state_head: ca758ab8ea5bfc46b2345e84402d0c07aefef853
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 22
   completed_plans: 22
-  percent: 29
+  percent: 43
 ---
 
 # Project State: BBj Language Server
@@ -34,15 +34,15 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 ## Current Position
 
-Phase: 100 (Parser Gaps — Remaining Groups, Long Tail & Examples) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 101 — BBj Parser Endpoint in `bbj-ls`
+Plan: Not started
+Status: Ready to plan
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
 unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
 fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
-Last activity: 2026-09-21 — Phase 100 execution started
+Last activity: 2026-09-22 — Phase 100 complete, transitioned to Phase 101
 
 ### v4.5 milestone map
 
@@ -246,7 +246,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-21T23:54:37.300Z
-Stopped at: Completed 100-06-PLAN.md (checkpoint resolved 2026-09-22 — residue accepted, phase 100 plans 6/6 complete)
+Stopped at: Phase 100 complete, ready to plan Phase 101
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
