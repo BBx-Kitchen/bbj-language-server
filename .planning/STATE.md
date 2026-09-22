@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 103
 current_phase_name: One Set of Errors — Diagnostic Reconciliation
 status: executing
-stopped_at: Phase 103 context gathered
-last_updated: "2026-09-22T21:15:31.047Z"
+stopped_at: Completed 103-01-PLAN.md
+last_updated: "2026-09-22T22:02:25.148Z"
 last_activity: 2026-09-22
-last_activity_desc: Phase 102 execution started
-state_head: 911c0966b56e421c2fccdbf20029ccf1b2fec2f4
+last_activity_desc: Phase 103 execution started
+state_head: 3c396fef5680e5abb606947c61a9869b610fde2f
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 35
-  completed_plans: 30
+  completed_plans: 31
   percent: 63
 ---
 
@@ -28,17 +28,17 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 102 — Live Compiler Diagnostics With Backward Compatibility
+**Current Focus:** Phase 103 — One Set of Errors — Diagnostic Reconciliation
 
 ---
 
 ## Current Position
 
-Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — READY TO EXECUTE
-Plan: 4 of 4
+Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-22 — Phase 102 execution started
+Last activity: 2026-09-22 — Phase 103 execution started
 
 ### v4.5 milestone map
 
@@ -126,6 +126,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 102 P02 | 13min | 2 tasks | 4 files |
 | Phase 102 P03 | 10min | 3 tasks | 7 files |
 | Phase 102 P04 | 28min | 3 tasks | 1 files |
+| Phase 103 P01 | 48min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,8 @@ decisions:
 - [Phase 102]: [Phase 102, plan 02]: parseErrorToRange's collapsed/inverted-range whole-line clamp restored (start character 0 whenever startCharacter<=0 OR endCharacter<=startCharacter) -- the fixture suite exposed plan 01's shipped converter producing a zero-width marker instead of spanning the whole line for those shapes; fixed in the service, matching D-11's clamp-never-drop policy
 - [Phase 102]: [Phase 102, plan 03]: The live confirmation test asserts converted range shape (start line, END_OF_LINE_CHARACTER sentinel) through the exported parseErrorToRange converter, never BBj's raw reported endCharacter value — The raw endCharacter was measured exceeding the anchor line's true length in three of four live-probed cases during research, so pinning it would be green against one BBj build and red against the next
 - [Phase 102]: Branch pushed and PR #691 opened for phase 102; two IDE hand-verification blocks (live diagnostics endpoint-present; older-server replay/restore) remain outstanding, recorded as a precise runbook in 102-04-SUMMARY.md rather than claimed as observed — This executor cannot see a running IDE; the human_verification_boundary constraint requires the runbook, never a simulated observation
+- [Phase 103]: [Phase 103 P01]: downgradeSyntaxComplaint changes both severity AND data.code together — a severity-only downgrade would leave the diagnostic in the Parse tier and keep suppressing linking diagnostics and counting against the parse-error cap
+- [Phase 103]: [Phase 103 P01]: a syntax complaint replaced by an overlapping BBj diagnostic is still recorded in the verdict state's seen set, so it carries over like a downgraded complaint between verdicts rather than reappearing as an Error the moment BBj's own diagnostic vanishes on the next edit
 
 ### Tech Debt
 
@@ -270,9 +273,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T20:29:05.177Z
-Stopped at: Phase 103 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/103-one-set-of-errors-diagnostic-reconciliation/103-CONTEXT.md
+Last session: 2026-09-22T22:02:24.862Z
+Stopped at: Completed 103-01-PLAN.md
+Resume file: None
 
 Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
 responsiveness, then 104 exit measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The

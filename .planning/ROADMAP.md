@@ -532,12 +532,12 @@ Plans:
   3. With the endpoint unavailable — older BBj, BBjServices down — the pre-existing v3.7 diagnostic behaviour returns unchanged, so the suppression is conditional on live compiler diagnostics being on rather than a permanent removal of checks.
   4. A conformance run at the phase boundary with the endpoint active shows the effect end to end: list B falls from 658 of 1,210 (54.4 %) towards the milestone's ≤ 5 % target, and compiler-accepted files carry no language-server syntax error.
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 103-01-PLAN.md — tracer: an accepted verdict turns Langium's parse error into a warning and skips bbjcpl; the pure reconciliation (replace by overlap, downgrade), the hierarchy exemptions and the carry-over function (wave 1)
+- [x] 103-01-PLAN.md — tracer: an accepted verdict turns Langium's parse error into a warning and skips bbjcpl; the pure reconciliation (replace by overlap, downgrade), the hierarchy exemptions and the carry-over function (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -645,7 +645,7 @@ Plans:
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Not started |  |
 | 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Not started |  |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Not started |  |
-| 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
+| 103. One Set of Errors — Diagnostic Reconciliation | 1/5 | Not started |  |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
 | 105. Live Diagnostics Responsiveness on Large Workspaces | 0/TBD | Not started | - |
 
