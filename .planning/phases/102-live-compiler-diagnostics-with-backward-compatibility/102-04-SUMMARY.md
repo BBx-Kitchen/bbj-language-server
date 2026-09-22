@@ -58,21 +58,27 @@ coverage:
   - id: D2
     description: "A developer typing an invalid line sees BBj's own syntax error appear in the editor without saving, in VS Code and in IntelliJ, against the endpoint-present server"
     requirement: PSRV-03
-    verification: []
+    verification:
+      - kind: manual
+        ref: "Hand-verified in both IDEs 2026-09-22. Passes on a project with few files. CAVEAT: on a project with many files nothing live appears until the initial whole-workspace build finishes — the live-parse timer is armed inside buildDocuments(), behind Langium's FIFO WorkspaceLock, and the request then shares one interop socket with that build's bulk class resolution. Pre-existing scheduling exposed, not introduced, by this phase. Tracked as issue #692 and Phase 105."
+        status: pass-with-caveat
     human_judgment: true
-    rationale: "Requires a human watching a real running IDE render a squiggle while typing; not observable by this executor. Runbook below, marked pending."
   - id: D3
     description: "With the pre-endpoint jar swapped back in, both IDEs behave exactly as 0.16.x: Java completion works, the save-time compile still runs, no live diagnostic ever appears, and the log holds exactly one quiet off-mode line that does not grow on repeated typing"
     requirement: PSRV-04
-    verification: []
+    verification:
+      - kind: manual
+        ref: "Hand-verified on macOS 2026-09-22 against the pre-endpoint bbj-ls.jar: both IDEs behave as expected, no problem reported. The jar swap was performed by the tester on their own machine, not by the staged devcontainer replay."
+        status: pass
     human_judgment: true
-    rationale: "Requires a human running the swap-and-restore replay against a real BBjServices in both IDEs and reading real log files; not observable by this executor. Runbook below, marked pending."
   - id: D4
     description: "The server log states the mode once per connection in each IDE, in both directions, read out of a real log file"
     requirement: PSRV-09
-    verification: []
+    verification:
+      - kind: manual
+        ref: "Off-mode line read out of a real log 2026-09-22, matching the shipped string verbatim: `2026-09-22 19:11:29.120 [info] Live compiler diagnostics: off (endpoint not available)`. Real log output, not a hand-derived trace."
+        status: pass
     human_judgment: true
-    rationale: "Same human-observation constraint as D2/D3 — the exact strings are quoted in the runbook from the shipped source, but confirming they appear exactly once per connection in a real output channel and idea.log needs a human."
   - id: D5
     description: "The whole suite is green against the documented interop baseline on the final tree"
     verification:
@@ -182,7 +188,24 @@ See `key-decisions` in the frontmatter: the IntelliJ install step is a human act
 
 None — this plan ships no source code.
 
-## Awaiting Human UAT
+## Human UAT — Results (recorded 2026-09-22)
+
+Both runbook blocks below were run by hand and are no longer outstanding.
+
+- **Block 1 (endpoint present):** PASS WITH CAVEAT. The live diagnostic appears while typing,
+  without saving, in both IDEs on a project with few files. On a project with many files nothing
+  live appears until the initial whole-workspace scan completes. Tracked as issue #692; Phase 105
+  was appended to the v4.5 milestone to fix it. PSRV-03 is recorded Complete (caveat).
+- **Block 2 (older server):** PASS. Run on macOS against the pre-endpoint `bbj-ls.jar`; both IDEs
+  behave as expected, no problem. The tester performed the swap on their own machine — the staged
+  devcontainer replay was not used, and `/opt/bbx/` was left endpoint-present and untouched.
+- **Mode line:** PASS, from a real log —
+  `2026-09-22 19:11:29.120 [info] Live compiler diagnostics: off (endpoint not available)` —
+  matching the shipped string verbatim.
+
+The original runbook is kept below unchanged, as the procedure that was followed.
+
+## Awaiting Human UAT (original runbook, now executed)
 
 **Neither of the two staged hand-verification blocks below has been observed.** This executor cannot
 see a running IDE. Both are recorded here `pending`, with `human_judgment: true` in the coverage
