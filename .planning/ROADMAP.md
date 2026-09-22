@@ -463,12 +463,12 @@ Plans:
   3. Two requests for the same document in quick succession never yield the older text's errors: every request carries its own version identity and a superseded result is discarded, not returned.
   4. A plain client against a locally running BBjServices exercises all of the above, and a BBj that predates the endpoint answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace — which is the signal Phase 102 gates on.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 101-01-PLAN.md — tracer: branch, offline jars, the wire contract and a stubbed `parseProgram` answering a real client over 127.0.0.1:5008, plus the in-process MethodNotFound probe (wave 1)
+- [x] 101-01-PLAN.md — tracer: branch, offline jars, the wire contract and a stubbed `parseProgram` answering a real client over 127.0.0.1:5008, plus the in-process MethodNotFound probe (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -579,7 +579,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 | 98. Line-Break & Validation False Alarms (A2) | 10/10 | Complete | 2026-09-21 |
 | 99. Parser Gaps — the Largest Groups | 6/6 | Not started |  |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Not started |  |
-| 101. BBj Parser Endpoint in `bbj-ls` | 0/TBD | Not started | - |
+| 101. BBj Parser Endpoint in `bbj-ls` | 1/4 | Not started |  |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 0/TBD | Not started | - |
 | 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |

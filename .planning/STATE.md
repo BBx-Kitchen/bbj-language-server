@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 101
 current_phase_name: BBj Parser Endpoint in `bbj-ls`
 status: executing
-stopped_at: Phase 101 context gathered
-last_updated: "2026-09-22T06:46:58.087Z"
+stopped_at: Completed 101-01-PLAN.md
+last_updated: "2026-09-22T07:13:08.876Z"
 last_activity: 2026-09-22
-last_activity_desc: Phase 100 complete, transitioned to Phase 101
-state_head: 05ae6d6762ddecf820b4944b94a0f18f2d71a54d
+last_activity_desc: Phase 101 execution started
+state_head: d7ebd8d8f25dbcf2b1b7852cc2f3712e025f4155
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 26
-  completed_plans: 22
+  completed_plans: 23
   percent: 43
 ---
 
@@ -28,21 +28,21 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 101 — BBj Parser Endpoint in `bbj-ls` (Phase 100 complete 2026-09-22)
+**Current Focus:** Phase 101 — BBj Parser Endpoint in `bbj-ls`
 
 ---
 
 ## Current Position
 
-Phase: 101 (BBj Parser Endpoint in `bbj-ls`) — READY TO EXECUTE
-Plan: Not started
+Phase: 101 (BBj Parser Endpoint in `bbj-ls`) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
 unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
 fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
-Last activity: 2026-09-22 — Phase 100 complete, transitioned to Phase 101
+Last activity: 2026-09-22 — Phase 101 execution started
 
 ### v4.5 milestone map
 
@@ -122,6 +122,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 100 P04 | 39min | 3 tasks | 7 files |
 | Phase 100 P05 | 40min | 3 tasks | 18 files |
 | Phase 100 P06 | 27min | 3 tasks | 2 files |
+| Phase 101 P01 | 20min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,8 @@ decisions:
 - [Phase 100]: [Phase 100]: A class's own field is read via a bare #fieldName reference, never #this!.fieldName (confirmed by direct bbjcpl probe -- #this!.method() calls work, #this!.field access never does); RELEASE takes a numeric expression, not a string; fileopen()/filesave() are valid BBj functions rejected only when their return value is discarded as a bare statement -- issue246.bbj repaired in place rather than moved+todo'd (overturns the plan's own D-18 disposition), no MODE= problem for msgbox.bbj either
 - [Phase 100]: [Phase 100] Closing measurement: A 9 (<=25 gate, PASS), A2 22 (<=23 gate, PASS), B 669 (+3 vs the Phase 99 close baseline of 666, recorded not gated, unchanged since plan 01). Shape-level residue table completed to 8 of 9 rows; 1 row (a METHOD-declaration file) left genuinely pending -- cause probed but not isolated. Plan 06's own conditional stop fired: does not seal the phase, returns a blocking-human checkpoint.
 - [Phase 100]: [Phase 100] Redacted corpus file paths that had leaked into 100-CONFORMANCE.md across three earlier plans' per-file-look tables -- a Rule 2 security deviation found and fixed during plan 06, not part of the plan's own task list.
+- [Phase 101]: 101-01: kept ParseProgramIntegrationTest naming (not ParseProgramIT) so Surefire's default includes still run it without a pom change
+- [Phase 101]: 101-01: fixed root-owned useraccts.json ownership (sudo chown to coder) so BBjServices' own admin auth could read its security file and stopbbjservices could authenticate — pre-existing sandbox misconfiguration, not a phase-caused issue
 
 ### Tech Debt
 
@@ -245,9 +248,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T05:32:59.421Z
-Stopped at: Phase 101 context gathered
-Resume file: .planning/phases/101-bbj-parser-endpoint-in-bbj-ls/101-CONTEXT.md
+Last session: 2026-09-22T07:13:08.700Z
+Stopped at: Completed 101-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
 SECURITY.md yet: run `/gsd-secure-phase 99` before shipping.
