@@ -1,5 +1,5 @@
 import { LangiumDocument } from 'langium';
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, LSPErrorCodes, Range } from 'vscode-languageserver';
 import { JavaInteropService, METHOD_NOT_FOUND, ParseError, ParseProgramParams } from './java-interop.js';
 import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 import { logger } from './logger.js';
@@ -69,6 +69,37 @@ export function parseErrorsToDiagnostics(errors: ParseError[], lineCount: number
 }
 
 /**
+ * The endpoint's own application error codes (see `101-MR-DESCRIPTION.md`), each mapped to the
+ * short kind token used in {@link BBjParserService}'s failure log lines and per-kind warn/debug
+ * cadence. Any JSON-RPC error whose `code` is not one of these (a rejected connect, a closed
+ * connection, a breaker-open short circuit, or any other unrecognized code) classifies as
+ * `'transport'` instead.
+ */
+const APPLICATION_ERROR_KINDS: Record<number, string> = {
+    [-33001]: 'parser-exception',
+    [-33002]: 'timeout',
+    [-33003]: 'size-cap',
+    [-33004]: 'service-unavailable',
+    [-33005]: 'protected-program',
+};
+
+/** The kind token for a `malformed-result` failure — a resolved result whose `errors` is invalid. */
+const MALFORMED_RESULT_KIND = 'malformed-result';
+/** The kind token for any failure that is not one of the endpoint's own application error codes. */
+const TRANSPORT_KIND = 'transport';
+
+/**
+ * Classifies a caught failure's JSON-RPC `code` (or its absence) into one of the short kind
+ * tokens used by the failure log cadence.
+ */
+function classifyFailureKind(code: number | undefined): string {
+    if (code !== undefined && code in APPLICATION_ERROR_KINDS) {
+        return APPLICATION_ERROR_KINDS[code];
+    }
+    return TRANSPORT_KIND;
+}
+
+/**
  * The structural slice of `BBjWorkspaceManager` this service reads: the resolved PREFIX list and
  * the workspace folder uris, both used to build `ParseProgramParams`. Kept narrow (rather than
  * importing `BBjWorkspaceManager` directly) so a test double only needs to shape these two calls.
@@ -119,6 +150,14 @@ export class BBjParserService {
     private mode: ParserMode = 'unknown';
     /** The connection generation {@link mode} was decided for. */
     private decidedForGeneration = -1;
+    /**
+     * Failure kind tokens already reported (at warn) for the current connection generation —
+     * see {@link logFailure}. A later occurrence of an already-reported kind logs at debug
+     * instead, until a successful parse clears this set so the next outage warns again.
+     */
+    private readonly reportedFailureKinds = new Set<string>();
+    /** The connection generation {@link reportedFailureKinds} currently belongs to. */
+    private failureKindsGeneration = -1;
 
     constructor(services: BBjParserServiceContext) {
         this.javaInteropService = services.java.JavaInteropService;
@@ -136,16 +175,28 @@ export class BBjParserService {
         return this.mode !== 'off';
     }
 
-    /** Resets {@link mode} to `'unknown'` when the interop connection has moved on. */
+    /**
+     * Resets {@link mode} to `'unknown'` and {@link reportedFailureKinds} when the interop
+     * connection has moved on since either was last touched.
+     */
     private resetIfGenerationChanged(): void {
-        if (this.javaInteropService.connectionGeneration !== this.decidedForGeneration) {
+        const generation = this.javaInteropService.connectionGeneration;
+        if (generation !== this.decidedForGeneration) {
             this.mode = 'unknown';
+        }
+        if (generation !== this.failureKindsGeneration) {
+            this.reportedFailureKinds.clear();
+            this.failureKindsGeneration = generation;
         }
     }
 
     /**
      * Sends the document's current text through `parseProgram` and returns the resulting
-     * diagnostics. Never throws to the caller — every non-result outcome returns an empty array.
+     * diagnostics. Never throws to the caller — every non-result outcome returns an empty array,
+     * and no failure shape (an application error, a transport failure, a malformed result) ever
+     * changes the on/off latch: an endpoint that answered at all still has the method. A
+     * superseded request's `RequestCancelled` answer is the server's normal reply to ordinary
+     * fast typing, checked first, and produces no diagnostic change and no log line at any level.
      * @param document the document to parse; its current (possibly unsaved) text is sent
      */
     public async requestLiveParse(document: LangiumDocument): Promise<Diagnostic[]> {
@@ -160,16 +211,42 @@ export class BBjParserService {
         };
         try {
             const result = await this.javaInteropService.parseProgram(params);
+            if (!Array.isArray(result?.errors)) {
+                this.logFailure(MALFORMED_RESULT_KIND, 'result.errors was missing or not an array');
+                return [];
+            }
             this.latchOn(generation);
+            // A genuine successful parse re-arms the warn level for every failure kind.
+            this.reportedFailureKinds.clear();
             return parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, DEFAULT_MAX_ERRORS);
         } catch (e) {
-            if ((e as { code?: number } | undefined)?.code === METHOD_NOT_FOUND) {
+            const code = (e as { code?: number } | undefined)?.code;
+            if (code === LSPErrorCodes.RequestCancelled) {
+                return [];
+            }
+            if (code === METHOD_NOT_FOUND) {
                 this.latchOff(generation);
                 return [];
             }
-            // The failure-classification branch (application codes, transport failures,
-            // cancellation, malformed results) is filled in by a later task in this plan.
+            const message = e instanceof Error ? e.message : String(e);
+            this.logFailure(classifyFailureKind(code), message);
             return [];
+        }
+    }
+
+    /**
+     * Logs one failure log line, at warn for the first occurrence of `kind` on the current
+     * connection generation and at debug for every repeat, until a successful parse clears
+     * {@link reportedFailureKinds}. The line carries the kind and the error's own message only —
+     * never the request's document text, at any level.
+     */
+    private logFailure(kind: string, message: string): void {
+        const line = `Live compiler diagnostics: request failed (${kind}): ${message}`;
+        if (this.reportedFailureKinds.has(kind)) {
+            logger.debug(line);
+        } else {
+            this.reportedFailureKinds.add(kind);
+            logger.warn(line);
         }
     }
 

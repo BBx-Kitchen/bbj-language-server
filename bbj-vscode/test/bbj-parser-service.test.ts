@@ -2,7 +2,7 @@ import type { LangiumDocument, LangiumSharedCoreServices } from 'langium';
 import { EmptyFileSystem, URI } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
-import { DiagnosticSeverity } from 'vscode-languageserver';
+import { DiagnosticSeverity, LSPErrorCodes } from 'vscode-languageserver';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
@@ -312,5 +312,233 @@ describe('BBjParserService behaves exactly as before against an older server', (
         expect(doc.diagnostics).toHaveLength(2);
         const sources = doc.diagnostics!.map(d => d.source).sort();
         expect(sources).toEqual([BBJ_PARSER_SOURCE, 'BBjCPL'].sort());
+    });
+});
+
+describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () => {
+    test.each([
+        [-33001, 'parser-exception'],
+        [-33002, 'timeout'],
+        [-33003, 'size-cap'],
+        [-33004, 'service-unavailable'],
+        [-33005, 'protected-program'],
+    ])('an application error %i (%s) never becomes a diagnostic', async (code, kind) => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ code, message: `boom (${kind})` });
+
+        const existing: Diagnostic = {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            message: 'pre-existing diagnostic',
+            severity: DiagnosticSeverity.Warning,
+        };
+        const doc = fakeDocument(`/proj/app-${kind}.bbj`, 'rem line 1\n', [existing]);
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        // Zero diagnostics added; the document's existing diagnostics are untouched.
+        expect(doc.diagnostics).toEqual([existing]);
+        expect(errorSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain(kind);
+    });
+
+    test('a transport failure (a plain rejected error) never becomes a diagnostic: zero diagnostics and one warn line', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram('transport-error');
+
+        const doc = fakeDocument('/proj/transport.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(0);
+        expect(errorSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain('transport');
+    });
+
+    test('a malformed result (errors missing) never becomes a diagnostic: zero diagnostics, one warn line, no exception', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram('malformed-result');
+
+        const doc = fakeDocument('/proj/malformed.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(0);
+        expect(errorSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain('malformed-result');
+    });
+
+    test('a cancellation never becomes a diagnostic: zero diagnostics and no log line at any level', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ code: LSPErrorCodes.RequestCancelled, message: 'superseded by a newer request' });
+
+        const doc = fakeDocument('/proj/cancelled.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => { });
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const debugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => { });
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(0);
+        expect(infoSpy).not.toHaveBeenCalled();
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(debugSpy).not.toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    test('repeat failures of the same kind never become a diagnostic: the first warns, repeats log at debug, a different kind warns again', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+
+        const doc = fakeDocument('/proj/cadence.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const debugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => { });
+
+        // First occurrence of 'timeout': warn.
+        interopService.scriptParseProgram({ code: -33002, message: 'timeout 1' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(debugSpy.mock.calls.filter(c => String(c[0]).includes('timeout'))).toHaveLength(0);
+
+        // Second occurrence of the same kind: debug, not warn.
+        interopService.scriptParseProgram({ code: -33002, message: 'timeout 2' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(debugSpy.mock.calls.filter(c => String(c[0]).includes('timeout'))).toHaveLength(1);
+
+        // A different kind: warns again.
+        interopService.scriptParseProgram({ code: -33001, message: 'parser exception' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+
+        expect(doc.diagnostics).toHaveLength(0);
+    });
+
+    test('a success between two failures never becomes a diagnostic and re-arms the warn level for the next occurrence of the same kind', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+
+        const doc = fakeDocument('/proj/rearm.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        // First 'timeout': warn.
+        interopService.scriptParseProgram({ code: -33002, message: 'timeout 1' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+
+        // A genuine successful parse in between.
+        interopService.scriptParseProgram({ errors: [] });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        // 'timeout' again: warns again, since the success re-armed it.
+        interopService.scriptParseProgram({ code: -33002, message: 'timeout 3' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('a failure never changes the on/off latch: after a failure the next edit still sends a request', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const doc = fakeDocument('/proj/latch-unaffected.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        interopService.scriptParseProgram({ code: -33001, message: 'boom' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+
+        interopService.scriptParseProgram({ code: -33001, message: 'boom again' });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(2);
+
+        expect(doc.diagnostics).toHaveLength(0);
+    });
+
+    test('no log line for any failure kind contains the document text', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ code: -33001, message: 'boom' });
+
+        const secretText = 'REM this line must never appear in a log line, marker XYZZY123';
+        const doc = fakeDocument('/proj/no-text-in-log.bbj', secretText);
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+        const infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => { });
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const debugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => { });
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        for (const spy of [infoSpy, warnSpy, debugSpy, errorSpy]) {
+            for (const call of spy.mock.calls) {
+                expect(String(call[0])).not.toContain('XYZZY123');
+            }
+        }
     });
 });

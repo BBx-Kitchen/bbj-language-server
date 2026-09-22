@@ -44,6 +44,20 @@ export class TestableBBjLexer extends BbjLexer {
     }
 }
 
+/**
+ * The scriptable answers {@link JavaInteropTestService.parseProgram} can be set to give:
+ * the default old-server `MethodNotFound`; a plain rejected `Error` standing in for a transport
+ * failure; a resolved result whose `errors` field is missing (`malformed-result`); a resolved
+ * result carrying a scripted error list; or a JSON-RPC error with an arbitrary code/message
+ * (covers every application error code and, via `-32800`, a `RequestCancelled` cancellation).
+ */
+export type JavaInteropTestServiceParseProgramScript =
+    | 'method-not-found'
+    | 'transport-error'
+    | 'malformed-result'
+    | { errors: ParseError[] }
+    | { code: number; message: string };
+
 export class JavaInteropTestService extends JavaInteropService {
     constructor(services: BBjServices) {
         super(services)
@@ -89,10 +103,10 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 
     // --- parseProgram scripting: default answers like an old server (MethodNotFound). ---
-    private parseProgramScript: 'method-not-found' | { errors: ParseError[] } | { code: number; message: string } = 'method-not-found';
+    private parseProgramScript: JavaInteropTestServiceParseProgramScript = 'method-not-found';
 
     /** Test seam: script the next/every {@link parseProgram} answer. */
-    public scriptParseProgram(script: 'method-not-found' | { errors: ParseError[] } | { code: number; message: string }): void {
+    public scriptParseProgram(script: JavaInteropTestServiceParseProgramScript): void {
         this.parseProgramScript = script;
     }
 
@@ -105,6 +119,15 @@ export class JavaInteropTestService extends JavaInteropService {
         const script = this.parseProgramScript;
         if (script === 'method-not-found') {
             throw new ResponseError(ErrorCodes.MethodNotFound, 'Unsupported request method: parseProgram');
+        }
+        if (script === 'transport-error') {
+            // Stands in for a plain rejected promise that is not a JSON-RPC error at all — a
+            // failed connect, a closed connection, or a breaker-open short circuit.
+            throw new Error('connection reset');
+        }
+        if (script === 'malformed-result') {
+            // A resolved result whose `errors` property is missing entirely.
+            return { version: params.version, errors: undefined as unknown as ParseError[] };
         }
         if ('errors' in script) {
             return { version: params.version, errors: script.errors };
