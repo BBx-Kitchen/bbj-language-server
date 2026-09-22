@@ -175,6 +175,14 @@ export class JavaInteropService {
     private breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
     /** Bumped by clearCache() so a connect attempt started before the reset cannot change breaker state or report recovery. */
     private breakerGeneration = 0;
+    /**
+     * Bumped every time a fresh `MessageConnection` is created — once inside
+     * {@link establishConnection} right after the new connection is assigned, and once inside
+     * {@link clearCache} beside {@link breakerGeneration}. A change in this value means "a new
+     * connection is now in use", so any per-connection latch (e.g. a probe result) keyed on it
+     * must reset and re-decide on the next request.
+     */
+    protected _connectionGeneration = 0;
     /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
     private readonly recoveryListeners: Array<() => void | Promise<void>> = [];
     /** Simple-name copies already added by loadImplicitImports(), keyed by "package.simpleName", so re-running it adds no duplicate entry to the synthetic classpath document. */
@@ -199,6 +207,11 @@ export class JavaInteropService {
 
     private get resolvedClasses(): LruMap<string, JavaClass> {
         return this._resolvedClasses;
+    }
+
+    /** See {@link _connectionGeneration}. */
+    public get connectionGeneration(): number {
+        return this._connectionGeneration;
     }
 
     /**
@@ -349,6 +362,7 @@ export class JavaInteropService {
         connection.onError(() => { if (this.connection === connection) this.connection = undefined; });
         connection.listen();
         this.connection = connection;
+        this._connectionGeneration++;
         return connection;
     }
 
@@ -437,6 +451,21 @@ export class JavaInteropService {
             requestPromise,
             new Promise<never>((_, reject) => setTimeout(() => reject(new InteropTransportError(`Java class resolution timeout for ${className}`)), 10000))
         ]);
+    }
+
+    /**
+     * Parses `params.text` through the interop service's `parseProgram` endpoint and returns its
+     * result, riding the same connection, circuit breaker and reconnect logic as every other
+     * request. Deliberately NOT routed through {@link sendRequestSafe}: a caller here must be
+     * able to tell a `MethodNotFound` error (older server, no endpoint), an application error
+     * (`-3300x`) and a cancellation (`RequestCancelled`, a superseded request) apart, which a
+     * collapsed fallback value would destroy.
+     * @param params the parse request — the document's current text plus its resolution context
+     * @param token cancellation token for request cancellation
+     */
+    public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
+        const connection = await this.connect();
+        return connection.sendRequest(parseProgramRequest, params, token);
     }
 
     /**
@@ -1115,6 +1144,11 @@ export class JavaInteropService {
         // the generation so a connect attempt started before this reset cannot report its
         // outcome (#504).
         this.breakerGeneration++;
+        // A cleared cache forces the next connect() to open a fresh socket (see the dispose()
+        // call below), so the connection generation is bumped here too — otherwise a latch
+        // already sitting at "off" would suppress every request forever, since nothing would
+        // ever call connect() again to reach the establishConnection() bump.
+        this._connectionGeneration++;
         this.breakerState = 'closed';
         this.breakerProbeDueAt = 0;
         this.breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
@@ -1277,14 +1311,62 @@ const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('ge
  */
 const getAllClassNamesRequest = new RequestType<null, string[], null>('getAllClassNames');
 
+/**
+ * Request type for parsing a document's current (possibly unsaved) text through BBj's own
+ * parser. Provided only by an augmented bbj-ls (BBj 26.03+); older servers answer with a
+ * MethodNotFound error, which {@link BBjParserService} uses to latch live diagnostics off.
+ */
+const parseProgramRequest = new RequestType<ParseProgramParams, ParseProgramResult, void>('parseProgram');
+
 /** JSON-RPC error code returned by a server that does not implement a requested method. */
-const METHOD_NOT_FOUND = -32601;
+export const METHOD_NOT_FOUND = -32601;
 
 /**
  * Parameters for class information requests.
  */
 interface ClassInfoParams {
     className: string
+}
+
+/**
+ * Parameters for the `parseProgram` request — the wire contract fixed by
+ * `101-MR-DESCRIPTION.md`. Field names and types are not renamed, added to or omitted here.
+ */
+export interface ParseProgramParams {
+    /** The full current text of the active document, including unsaved edits. */
+    text: string;
+    /** The document's path as the language server knows it. */
+    canonicalName: string;
+    /** Opaque to the server and echoed back unchanged. */
+    version: string;
+    /** The PREFIX directories referenced programs should be resolved through. May be empty. */
+    prefixes: string[];
+    /** The workspace roots referenced programs should be resolved through. May be empty. */
+    workspaceRoots: string[];
+}
+
+/** One error reported by BBj's parser through `parseProgram` — editor coordinates, one-based. */
+export interface ParseError {
+    /** BBj's own error-type strings for this error; one error can carry several at once. */
+    categories: string[];
+    /** The parser's own message, unchanged. */
+    message: string;
+    /** BBj's editor starting line, verbatim (one-based). */
+    editorStartLine: number;
+    /** BBj's editor ending line, verbatim (one-based). */
+    editorEndLine: number;
+    /** BBj's starting character position, verbatim (one-based). */
+    startCharacter: number;
+    /** BBj's ending character position, verbatim (one-based) — not always trustworthy, see the converter. */
+    endCharacter: number;
+}
+
+/** Result of a `parseProgram` request. `errors` is always present — empty on a clean parse. */
+export interface ParseProgramResult {
+    /** The request's own `version` token, unchanged. */
+    version: string;
+    /** The parser's errors, in the parser's own order. */
+    errors: ParseError[];
 }
 
 /**

@@ -11,6 +11,7 @@ import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 import { mergeDiagnostics, getCompilerTrigger } from './bbj-document-validator.js';
+import { BBJ_PARSER_SOURCE } from './bbj-parser-service.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
@@ -176,13 +177,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const trigger = getCompilerTrigger();
 
         if (trigger === 'off') {
-            // Clear stale BBjCPL diagnostics for all eligible documents
+            // Clear stale BBjCPL and live-parser diagnostics for all eligible documents.
             for (const document of documents) {
                 if (!this.shouldCompileWithBbjcpl(document)) continue;
-                const hadBbjcpl = document.diagnostics?.some(d => d.source === 'BBjCPL');
-                if (hadBbjcpl) {
+                const hadCompilerDiagnostics = document.diagnostics?.some(
+                    d => d.source === 'BBjCPL' || d.source === BBJ_PARSER_SOURCE
+                );
+                if (hadCompilerDiagnostics) {
                     document.diagnostics = (document.diagnostics ?? []).filter(
-                        d => d.source !== 'BBjCPL'
+                        d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE
                     );
                     await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
                 }
@@ -248,8 +251,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     d => d.source !== 'BBjCPL'
                 );
 
-                // Resolve BBjCPLService lazily via serviceRegistry
-                // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
+                // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
+                // (BBjDocumentBuilder is a shared service; both are language services)
                 const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
                 const cplService = langServices.compiler.BBjCPLService;
 
@@ -263,9 +266,23 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     );
                 }
 
-                // Re-notify client with updated merged diagnostics.
+                // Live parser diagnostics: filter-then-concat, deliberately NOT mergeDiagnostics
+                // — that helper collapses a same-line match into the 'BBjCPL' source, which would
+                // hide the live diagnostic from its own source and pull it into the
+                // BBjCPL-suppresses-Langium-parse-errors rule.
+                document.diagnostics = (document.diagnostics ?? []).filter(d => d.source !== BBJ_PARSER_SOURCE);
+                const bbjParserService = langServices.compiler.BBjParserService;
+                if (bbjParserService.isEnabled()) {
+                    const liveDiags = await bbjParserService.requestLiveParse(document);
+                    if (liveDiags.length > 0) {
+                        document.diagnostics = [...(document.diagnostics ?? []), ...liveDiags];
+                    }
+                }
+
+                // Re-notify client with updated merged diagnostics — a single publish covering
+                // both the BBjCPL and the live-parser step above.
                 // Use CancellationToken.None — the original build's token may be stale
-                // after the 500ms debounce. BBjCPLService handles its own timeout internally.
+                // after the 500ms debounce. Both compiler services handle their own timeout internally.
                 await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
             } catch (e) {
                 // The callback runs detached from setTimeout, with no rejection handler of
