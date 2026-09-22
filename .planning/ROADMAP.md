@@ -463,7 +463,7 @@ Plans:
   3. Two requests for the same document in quick succession never yield the older text's errors: every request carries its own version identity and a superseded result is discarded, not returned.
   4. A plain client against a locally running BBjServices exercises all of the above, and a BBj that predates the endpoint answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace — which is the signal Phase 102 gates on.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -480,7 +480,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 101-04-PLAN.md — the full plain-client suite, the older-server replay against the real 26.02 jar, the contract document, branch push and merge request (wave 4)
+- [x] 101-04-PLAN.md — the full plain-client suite, the older-server replay against the real 26.02 jar, the contract document, branch push and merge request (wave 4)
 
 *Ordering note:* this is a phase of v4.5 although its code lives in another repository with BBj's own release cycle — the milestone's B target (658 → ≤ 5 %) is unreachable without it, and the language-server side in Phases 102 and 103 is written against its contract. The endpoint's own shape follows the integration boundary already described in the internal parser handoff notes (ParserServiceAPI, type checking off, editor line fields preferred over interpreter line fields); none of that source text is reproduced in this public repository.
 
@@ -579,7 +579,7 @@ v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked nor
 | 98. Line-Break & Validation False Alarms (A2) | 10/10 | Complete | 2026-09-21 |
 | 99. Parser Gaps — the Largest Groups | 6/6 | Not started |  |
 | 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Not started |  |
-| 101. BBj Parser Endpoint in `bbj-ls` | 3/4 | Not started |  |
+| 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Not started |  |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 0/TBD | Not started | - |
 | 103. One Set of Errors — Diagnostic Reconciliation | 0/TBD | Not started | - |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |

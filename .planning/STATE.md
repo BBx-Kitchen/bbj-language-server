@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 101
-current_phase_name: BBj Parser Endpoint in bbj-ls
+current_phase_name: BBj Parser Endpoint in `bbj-ls`
 status: executing
-stopped_at: Completed 101-03-PLAN.md
-last_updated: "2026-09-22T08:36:07.320Z"
+stopped_at: 101-04-PLAN.md tasks 1-3 complete; blocked at task 4 (blocking-human checkpoint — BASIS GitLab merge request pending)
+last_updated: "2026-09-22T09:00:27.072Z"
 last_activity: 2026-09-22
-last_activity_desc: Phase 101 execution started
-state_head: 057cfaaec61d45f80bbbed780502fe4eaba3225b
+last_activity_desc: Phase 101 plan 04 tasks 1-3 complete; branch pushed to BASIS GitLab; awaiting human to open the merge request
+state_head: e4b743251a060b2f08022925f4ead9bce750cc4c
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 43
 ---
 
@@ -28,15 +28,15 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 101 — BBj Parser Endpoint in bbj-ls
+**Current Focus:** Phase 101 — BBj Parser Endpoint in `bbj-ls`
 
 ---
 
 ## Current Position
 
-Phase: 101 (BBj Parser Endpoint in bbj-ls) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
+Phase: 101 (BBj Parser Endpoint in `bbj-ls`) — EXECUTING
+Plan: 4 of 4 (tasks 1-3 complete; task 4 is a blocking-human checkpoint — open the BASIS GitLab merge request)
+Status: Blocked on checkpoint
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
@@ -125,6 +125,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 101 P01 | 20min | 3 tasks | 9 files |
 | Phase 101 P02 | 26min | 3 tasks | 4 files |
 | Phase 101 P03 | ~14min | 3 tasks | 4 files |
+| Phase 101 P04 | 35min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,8 @@ decisions:
 - [Phase 101]: [Phase 101 P03]: Non-positive -Dbbj.interop.parse.* overrides fall back to the documented default rather than disabling the guard
 - [Phase 101]: [Phase 101 P03]: ParserWorker.checkSize gained a cap-explicit two-argument overload so ParseGuardsTest can exercise the size guard without racing ParserWorker's static-field class-initialization order
 - [Phase 101]: [Phase 101 P03]: The protected-program failure signal is a generic text heuristic ("protect"/"password" in the class name or message), not a specific BBj exception type, since none was identified and D-19 forbids depending on internal BBj source for that identification
+- [Phase 101]: [Phase 101, plan 04]: Live timeout scenario skipped — a reversible mechanism (basis.java.args.BBjServices in the shared BBj.properties) exists but exercising it needed two more full BBjServices restarts on a shared config file right before the delicate 26.02 replay, and could not be landed as a permanent test without breaking the Skipped:1 acceptance criterion; timeout code stays covered in-process by ParseGuardsTest, carried as a named accepted gap
+- [Phase 101]: [Phase 101, plan 04]: 101-MR-DESCRIPTION.md's Referenced-programs section corrected against plan 02's WINDOWS.md entry 4 finding (findProgram never observed invoked under type checking off) rather than shipping the plan's optimistic template text as fact
 
 ### Tech Debt
 
@@ -256,12 +259,15 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T08:36:07.148Z
-Stopped at: Completed 101-03-PLAN.md
+Last session: 2026-09-22T08:59:37.450Z
+Stopped at: 101-04-PLAN.md tasks 1-3 complete; blocked at task 4 (blocking-human checkpoint — BASIS GitLab merge request pending)
 Resume file: None
 
-Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
-SECURITY.md yet: run `/gsd-secure-phase 99` before shipping.
+Next: Open the BASIS GitLab merge request for `bbj-ls` branch `feat/689-parse-program-endpoint`
+(already pushed to `origin`), pasting `101-MR-DESCRIPTION.md` as the description — see
+101-04-SUMMARY.md's "User Setup Required" section. Merging is the BASIS maintainers' call and does
+not block Phase 102. Security enforcement is on and Phase 99 has no SECURITY.md yet: run
+`/gsd-secure-phase 99` before shipping.
 
 ## Deferred Items
 
