@@ -24,11 +24,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-21)
+See: .planning/PROJECT.md (updated 2026-09-22)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 101 — BBj Parser Endpoint in `bbj-ls`
+**Current Focus:** Phase 102 — Live Compiler Diagnostics With Backward Compatibility
 
 ---
 
@@ -37,11 +37,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 Phase: 102 — Live Compiler Diagnostics With Backward Compatibility
 Plan: Not started
 Status: Ready to plan
-gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
-rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
-Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
-unchanged since plan 05) — every gate PASS, 0 files newly entered A or A2. `PARSE-01/02/03/07` are
-fully evidenced but intentionally left unticked in REQUIREMENTS.md per the plan's own working rule.
+Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-22 — Phase 101 complete, transitioned to Phase 102
 
 ### v4.5 milestone map
@@ -156,6 +152,7 @@ decisions:
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
 - [v4.5, roadmap]: new diagnostics from the compiler's parser are errors, like the compiler's own.
+- [v4.5, Phase 101]: referenced-program (USE/CALL) resolution is NOT observable through the `parseProgram` endpoint — BBj's parser never invokes the wired prefix algorithm under this call sequence; accepted by override 2026-09-22. Phases 102/103 must not build reference diagnostics on it. Older-server detection is a once-per-connection MethodNotFound probe.
 - [v4.5, roadmap]: phase order is A2 first (98), then list A by file count (99, 100) with the long-tail triage after the named groups, then the endpoint (101) and its client (102, 103), then the closing measurement (104).
 - [v4.5, roadmap]: CONF-01 is mapped once, to Phase 98; Phases 99 and 100 repeat the regression-file rule in their own success criteria rather than re-owning the requirement.
 - [Phase 98]: TABLE_DATA lexer pattern: lookbehind for TABLE+whitespace, negative lookahead rejecting a following operator/bracket char, body excludes CR/LF/semicolon — Keeps table as an ordinary identifier in table = 5 / x = table + 1 while giving the statement-leading form new opaque rest-of-line meaning; verified via probe with no narrowing needed
@@ -239,7 +236,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
 
-- **v4.5 Phase 101 needs a BBj 26.03-class build and the `bbj-ls` repository.** The endpoint phase cannot be verified against an older BBjServices, and Phases 102-104 consume it; Phase 102's fallback half is testable earlier against a service double, its live half is not.
+- **Phase 101 closed 2026-09-22 with one accepted override** (`101-VERIFICATION.md`): referenced-program resolution through the prefix algorithm is implemented but never invoked by ParserServiceAPI under type checking off (`WINDOWS.md` entry 4 waived). Open follow-ups: the BASIS GitLab merge request for `feat/689-parse-program-endpoint` is still to be opened by hand; `101-REVIEW.md` holds 5 critical / 3 warning findings (null `canonicalName`, unreachable -33004, close-vs-submit race, stuck overrunning marker, accept-loop close) to fix before the MR is merged, and a re-push needs a live SSH agent; security enforcement is on and Phase 101 has no SECURITY.md (`/gsd-secure-phase 101`).
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
@@ -259,7 +256,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T08:59:37.450Z
+Last session: 2026-09-22T11:32:54Z
 Stopped at: Phase 101 complete, ready to plan Phase 102
 Resume file: None
 
@@ -366,8 +363,9 @@ detail for phases 70-97 live with their archived phase artifacts; this file is a
 
 ## Operator Next Steps
 
-- Run `/gsd-discuss-phase 100` (or `/gsd-plan-phase 100`) to start Phase 100 — the remaining list-A groups, the long tail and the examples. Hand-overs from Phase 99: the documented `FIELD` array-index form is still rejected; read the corpus shapes before describing any group.
-- Before Phase 101, make sure a BBj 26.03-class build and the `bbj-ls` repository (`/home/coder/repos/bbj-ls`) are available to work in; that phase changes no file in this repository.
+- Run `/gsd-discuss-phase 102` (or `/gsd-plan-phase 102`) to start Phase 102 — the language-server client of the `parseProgram` endpoint with the older-BBj fallback. Contract: `.planning/phases/101-bbj-parser-endpoint-in-bbj-ls/101-MR-DESCRIPTION.md`. Do not plan USE/CALL reference diagnostics on the endpoint (Phase 101 override).
+- Open the BASIS GitLab merge request for `bbj-ls` `feat/689-parse-program-endpoint` against `develop` (branch is pushed), pasting `101-MR-DESCRIPTION.md`; fix `101-REVIEW.md`'s 5 critical findings first (`/gsd-code-review 101 --fix`, then register-check the branch diff and re-push with a live SSH agent).
+- Security enforcement is on: Phases 99 and 101 have no SECURITY.md (`/gsd-secure-phase 99`, `/gsd-secure-phase 101`).
 - Re-run the private harness (`bbj-corpus/conformance/run.mjs --ls <this repo>`) at each fix-phase boundary; the numbers named in the roadmap's success criteria come from that run.
 - Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
 - Small follow-up candidate: the published 0.16.0 release notes list #622 under "no observable change", but the fix visibly changed the crash banner's file-type coverage.
