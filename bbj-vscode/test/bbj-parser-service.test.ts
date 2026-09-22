@@ -1,26 +1,33 @@
 import type { LangiumDocument, LangiumSharedCoreServices } from 'langium';
-import { EmptyFileSystem, URI } from 'langium';
+import { DocumentValidator, EmptyFileSystem, URI } from 'langium';
+import { validationHelper } from 'langium/test';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity, LSPErrorCodes } from 'vscode-languageserver';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { setMaxErrors } from '../src/language/bbj-document-validator.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BBJ_PARSER_SOURCE, BBjParserService } from '../src/language/bbj-parser-service.js';
 import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
+import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
 import type { ParseError } from '../src/language/java-interop.js';
+import { Program } from '../src/language/generated/ast.js';
 import { logger } from '../src/language/logger.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
+import { initializeWorkspace } from './test-helper.js';
 
 /**
  * End-to-end harness for the live parser diagnostics client: a real `BBjDocumentBuilder` driving
  * a real `BBjParserService` over the hermetic `JavaInteropTestService` double, exactly the shape
  * `document-builder.test.ts`'s `buildHarness()` already establishes for the sibling `BBjCPLService`
  * path, plus a real `TextDocument` per `bbj-document-builder-config.test.ts`'s `fakeTextDocuments`.
+ *
+ * Accepts an existing `createBBjTestServices` result so a caller that also needs a validated
+ * document (the tracer test below) can drive the builder over the same workspace/interop double
+ * the document was validated against, instead of a second, unrelated instance.
  */
-function buildHarness() {
-    const services = createBBjTestServices(EmptyFileSystem);
+function buildHarness(services: ReturnType<typeof createBBjTestServices> = createBBjTestServices(EmptyFileSystem)) {
     const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
     const interopService = services.BBj.java.JavaInteropService as JavaInteropTestService;
 
@@ -92,6 +99,9 @@ afterEach(() => {
     // The diagnostics-cap tests below push bbj-document-validator's module-scoped setting;
     // restore its default so later tests in this file (and other files sharing the module) see it.
     setMaxErrors(20);
+    // Verdict state is also module-scoped, keyed by document uri; clear it so an earlier
+    // test's carried-over state can never leak into a later one.
+    clearAllVerdictStates();
 });
 
 describe('BBjParserService publishes a live diagnostic through the document builder', () => {
@@ -293,7 +303,7 @@ describe('BBjParserService behaves exactly as before against an older server', (
         expect(doc.diagnostics).toHaveLength(1);
     });
 
-    test('a live diagnostic and a save-time diagnostic on the same line coexist with their own sources', async () => {
+    test('a live verdict replaces the save-time compile: only the live diagnostic, no compile run', async () => {
         vi.useFakeTimers();
         const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
 
@@ -316,7 +326,7 @@ describe('BBjParserService behaves exactly as before against an older server', (
         };
         interopService.scriptParseProgram({ errors: [scriptedError] });
 
-        const doc = fakeDocument('/proj/coexist.bbj', 'rem line 1\n');
+        const doc = fakeDocument('/proj/replaces.bbj', 'rem line 1\n');
         openDocumentUris.add(doc.uri.toString());
 
         const privates = builder as unknown as BuilderPrivates;
@@ -325,9 +335,58 @@ describe('BBjParserService behaves exactly as before against an older server', (
         privates.debouncedCompile(doc);
         await vi.advanceTimersByTimeAsync(600);
 
-        expect(doc.diagnostics).toHaveLength(2);
-        const sources = doc.diagnostics!.map(d => d.source).sort();
-        expect(sources).toEqual([BBJ_PARSER_SOURCE, 'BBjCPL'].sort());
+        expect(doc.diagnostics).toHaveLength(1);
+        expect(doc.diagnostics![0].source).toBe(BBJ_PARSER_SOURCE);
+        expect(compileMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('an accepted verdict turns the language server\'s parse error into a warning and skips the save-time compile', () => {
+    const validationServices = createBBjTestServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(validationServices.shared);
+        validate = validationHelper<Program>(validationServices.BBj);
+    });
+
+    test('an accepted verdict turns the language server\'s parse error into a warning and skips the save-time compile', async () => {
+        // A deliberate syntax error: an unclosed parenthesis in an assignment.
+        const result = await validate('x = (1 + 2\n');
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        // Precondition: the invented text really does produce at least one Langium parse error.
+        expect(parseErrors.length).toBeGreaterThan(0);
+
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness(validationServices);
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: [] });
+
+        const document = result.document;
+        openDocumentUris.add(document.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        const notifySpy = vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        const finalDiagnostics = document.diagnostics ?? [];
+        expect(finalDiagnostics.some(d => d.severity === DiagnosticSeverity.Error)).toBe(false);
+        for (const original of parseErrors) {
+            const carried = finalDiagnostics.find(
+                d => d.message === original.message && d.range.start.line === original.range.start.line
+            );
+            expect(carried).toBeDefined();
+            expect(carried!.severity).toBe(DiagnosticSeverity.Warning);
+            expect(carried!.source).toBe('bbj');
+            expect((carried!.data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+        }
+        expect(compileMock).not.toHaveBeenCalled();
+        expect(notifySpy).toHaveBeenCalledTimes(1);
     });
 });
 

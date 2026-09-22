@@ -80,6 +80,24 @@ export function parseErrorsToDiagnostics(errors: ParseError[], lineCount: number
 }
 
 /**
+ * The four outcomes {@link BBjParserService.requestLiveParse} can classify a request into:
+ * - `verdict`: BBj's parser answered for the document's current text. `diagnostics` is BBj's own
+ *   opinion, converted and capped — possibly empty, which is itself a verdict (the document has no
+ *   errors), not the absence of one.
+ * - `failed`: the request reached the endpoint but did not produce a usable result (an application
+ *   error, a transport failure, or a malformed result). No verdict for this cycle.
+ * - `unavailable`: the endpoint does not exist on this connection (`MethodNotFound`). No verdict for
+ *   this cycle, and the on/off latch has just flipped off.
+ * - `cancelled`: the request was superseded by a newer one, the server's ordinary answer to fast
+ *   typing. Not a failure and not a verdict — this cycle produced nothing to act on.
+ */
+export type LiveParseOutcome =
+    | { kind: 'verdict'; diagnostics: Diagnostic[] }
+    | { kind: 'failed' }
+    | { kind: 'unavailable' }
+    | { kind: 'cancelled' };
+
+/**
  * The endpoint's own application error codes (see `101-MR-DESCRIPTION.md`), each mapped to the
  * short kind token used in {@link BBjParserService}'s failure log lines and per-kind warn/debug
  * cadence. Any JSON-RPC error whose `code` is not one of these (a rejected connect, a closed
@@ -202,15 +220,15 @@ export class BBjParserService {
     }
 
     /**
-     * Sends the document's current text through `parseProgram` and returns the resulting
-     * diagnostics. Never throws to the caller — every non-result outcome returns an empty array,
-     * and no failure shape (an application error, a transport failure, a malformed result) ever
-     * changes the on/off latch: an endpoint that answered at all still has the method. A
-     * superseded request's `RequestCancelled` answer is the server's normal reply to ordinary
-     * fast typing, checked first, and produces no diagnostic change and no log line at any level.
+     * Sends the document's current text through `parseProgram` and classifies the outcome — see
+     * {@link LiveParseOutcome}. Never throws to the caller. No failure shape (an application error,
+     * a transport failure, a malformed result) ever changes the on/off latch: an endpoint that
+     * answered at all still has the method. A superseded request's `RequestCancelled` answer is the
+     * server's normal reply to ordinary fast typing, checked first, and produces no diagnostic
+     * change and no log line at any level.
      * @param document the document to parse; its current (possibly unsaved) text is sent
      */
-    public async requestLiveParse(document: LangiumDocument): Promise<Diagnostic[]> {
+    public async requestLiveParse(document: LangiumDocument): Promise<LiveParseOutcome> {
         this.resetIfGenerationChanged();
         const generation = this.javaInteropService.connectionGeneration;
         const params: ParseProgramParams = {
@@ -224,24 +242,25 @@ export class BBjParserService {
             const result = await this.javaInteropService.parseProgram(params);
             if (!Array.isArray(result?.errors)) {
                 this.logFailure(MALFORMED_RESULT_KIND, 'result.errors was missing or not an array');
-                return [];
+                return { kind: 'failed' };
             }
             this.latchOn(generation);
             // A genuine successful parse re-arms the warn level for every failure kind.
             this.reportedFailureKinds.clear();
-            return parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, getMaxErrors());
+            const diagnostics = parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, getMaxErrors());
+            return { kind: 'verdict', diagnostics };
         } catch (e) {
             const code = (e as { code?: number } | undefined)?.code;
             if (code === LSPErrorCodes.RequestCancelled) {
-                return [];
+                return { kind: 'cancelled' };
             }
             if (code === METHOD_NOT_FOUND) {
                 this.latchOff(generation);
-                return [];
+                return { kind: 'unavailable' };
             }
             const message = e instanceof Error ? e.message : String(e);
             this.logFailure(classifyFailureKind(code), message);
-            return [];
+            return { kind: 'failed' };
         }
     }
 

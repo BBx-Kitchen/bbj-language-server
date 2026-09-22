@@ -5,6 +5,7 @@ import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, Diagnostic
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
+import { rememberLangiumDiagnostics } from "./bbj-diagnostic-reconciliation.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -80,8 +81,17 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * data.code when parse errors exist. Without Rule 1, linking errors would only be
  * suppressed when ANY error exists (Rule 2), which is wrong — linking errors should
  * survive when only semantic errors (no parse errors) are present.
+ *
+ * Note on Rule 0: `applyDiagnosticHierarchy` runs once, synchronously, inside
+ * `validateDocument()` — before the save-time compiler's `'BBjCPL'`-sourced diagnostics exist.
+ * Those are merged later, directly into `document.diagnostics`, by the document builder's
+ * debounce callback (`bbj-document-builder.ts`), a separate code path that never calls this
+ * function again. Rule 0 therefore only ever acts on a list that already carries a `'BBjCPL'`
+ * diagnostic if one was already present from an earlier cycle; on the build that first
+ * introduces one, Rule 0 does not run against it. This is confirmed, long-standing behaviour,
+ * unchanged by this phase.
  */
-function applyDiagnosticHierarchy(
+export function applyDiagnosticHierarchy(
     diagnostics: Diagnostic[],
     suppressEnabled: boolean,
     maxErrors: number
@@ -133,6 +143,16 @@ function applyDiagnosticHierarchy(
 }
 
 /**
+ * Applies {@link applyDiagnosticHierarchy} using the module's current settings
+ * (`suppressCascadingEnabled`, `maxErrorsDisplayed`) — the shape the document builder's debounce
+ * callback calls after reconciling a verdict, so a verdict's result goes through the same
+ * suppression rules as every other build.
+ */
+export function applyConfiguredDiagnosticHierarchy(diagnostics: Diagnostic[]): Diagnostic[] {
+    return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+}
+
+/**
  * Merge BBjCPL diagnostics into Langium diagnostics.
  *
  * Rules (from CONTEXT.md):
@@ -169,6 +189,10 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         cancelToken?: CancellationToken
     ): Promise<Diagnostic[]> {
         const diagnostics = await super.validateDocument(document, options, cancelToken);
+        // Remembered before the hierarchy runs: the debounce callback reconciles a verdict
+        // against this pre-hierarchy list, not against the already-filtered result below, so a
+        // diagnostic the hierarchy hid can still reappear once the verdict arrives.
+        rememberLangiumDiagnostics(document, diagnostics);
         return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
     }
 

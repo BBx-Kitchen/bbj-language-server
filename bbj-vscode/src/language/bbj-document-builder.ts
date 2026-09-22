@@ -10,8 +10,14 @@ import { normalize, resolve, join } from "path";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
-import { mergeDiagnostics, getCompilerTrigger } from './bbj-document-validator.js';
-import { BBJ_PARSER_SOURCE } from './bbj-parser-service.js';
+import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy } from './bbj-document-validator.js';
+import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.js';
+import {
+    documentLineText,
+    reconcileWithVerdict,
+    recallLangiumDiagnostics,
+    setVerdictState
+} from './bbj-diagnostic-reconciliation.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
@@ -234,8 +240,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * On rapid saves, only the last save triggers compilation after
      * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
      *
-     * Clear-then-show: old BBjCPL diagnostics are cleared when compile starts,
-     * new ones appear when done.
+     * Clear-then-show: old BBjCPL and live-parser diagnostics are cleared when the cycle
+     * starts, new ones appear when it is done.
+     *
+     * The live parser is asked first. A verdict reconciles Langium's own diagnostics against
+     * BBj's and the save-time compile does not run this cycle — bbjcpl is the same BBj parser,
+     * run against the saved file instead of the live text, so with a verdict already in hand it
+     * would only add duplicates or stale results. Every other outcome (the latch is off, the
+     * live parse failed, or it was superseded) falls back to the save-time compile exactly as
+     * before the live parser existed.
      */
     private debouncedCompile(document: LangiumDocument): void {
         const key = document.uri.fsPath;
@@ -247,11 +260,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
             try {
                 // Clear-then-show: remove old BBjCPL and live-parser diagnostics together,
-                // before the BBjCPL merge step runs. mergeDiagnostics() matches a cplDiag
-                // against any existing diagnostic on the same line whose source isn't
-                // 'BBjCPL' — if a stale live-parser diagnostic from a previous debounce
-                // cycle were still present here, it would get silently absorbed into a
-                // mislabeled 'BBjCPL' entry that keeps the old message text.
+                // before either the BBjCPL merge or the verdict reconciliation runs below.
+                // mergeDiagnostics() matches a cplDiag against any existing diagnostic on the
+                // same line whose source isn't 'BBjCPL' — if a stale live-parser diagnostic
+                // from a previous debounce cycle were still present here, it would get silently
+                // absorbed into a mislabeled 'BBjCPL' entry that keeps the old message text.
                 document.diagnostics = (document.diagnostics ?? []).filter(
                     d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE
                 );
@@ -260,32 +273,39 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // (BBjDocumentBuilder is a shared service; both are language services)
                 const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
                 const cplService = langServices.compiler.BBjCPLService;
+                const bbjParserService = langServices.compiler.BBjParserService;
 
-                const cplDiags = await cplService.compile(key);
-
-                if (cplDiags.length > 0) {
-                    // Merge BBjCPL diagnostics with current Langium diagnostics
-                    document.diagnostics = mergeDiagnostics(
-                        document.diagnostics ?? [],
-                        cplDiags
-                    );
+                let liveOutcome: LiveParseOutcome | undefined;
+                if (bbjParserService.isEnabled()) {
+                    liveOutcome = await bbjParserService.requestLiveParse(document);
                 }
 
-                // Live parser diagnostics: append-only, deliberately NOT mergeDiagnostics
-                // — that helper collapses a same-line match into the 'BBjCPL' source, which would
-                // hide the live diagnostic from its own source and pull it into the
-                // BBjCPL-suppresses-Langium-parse-errors rule. Stale entries were already
-                // cleared above, so there is nothing left to re-filter here.
-                const bbjParserService = langServices.compiler.BBjParserService;
-                if (bbjParserService.isEnabled()) {
-                    const liveDiags = await bbjParserService.requestLiveParse(document);
-                    if (liveDiags.length > 0) {
-                        document.diagnostics = [...(document.diagnostics ?? []), ...liveDiags];
+                if (liveOutcome?.kind === 'verdict') {
+                    // Reconcile against the pre-hierarchy Langium list, not document.diagnostics
+                    // above: the hierarchy may already have hidden linking diagnostics or
+                    // warnings because of a parse error the verdict is about to downgrade or
+                    // replace, and those need the chance to reappear once it has.
+                    const langiumDiagnostics = recallLangiumDiagnostics(document) ?? document.diagnostics ?? [];
+                    const { diagnostics, state } = reconcileWithVerdict(
+                        langiumDiagnostics,
+                        liveOutcome.diagnostics,
+                        documentLineText(document.textDocument)
+                    );
+                    setVerdictState(document.uri, state);
+                    document.diagnostics = applyConfiguredDiagnosticHierarchy(diagnostics);
+                } else {
+                    const cplDiags = await cplService.compile(key);
+                    if (cplDiags.length > 0) {
+                        // Merge BBjCPL diagnostics with current Langium diagnostics
+                        document.diagnostics = mergeDiagnostics(
+                            document.diagnostics ?? [],
+                            cplDiags
+                        );
                     }
                 }
 
-                // Re-notify client with updated merged diagnostics — a single publish covering
-                // both the BBjCPL and the live-parser step above.
+                // Re-notify client with the updated diagnostics — a single publish covering
+                // whichever branch above ran.
                 // Use CancellationToken.None — the original build's token may be stale
                 // after the 500ms debounce. Both compiler services handle their own timeout internally.
                 await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);

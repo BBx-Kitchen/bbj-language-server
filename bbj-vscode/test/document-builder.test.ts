@@ -1,6 +1,7 @@
 import type { AstNodeDescription, LangiumDocument, LangiumSharedCoreServices } from 'langium';
 import { EmptyFileSystem, URI, stream } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
@@ -8,7 +9,8 @@ import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BbjClass } from '../src/language/generated/ast.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from '../src/language/bbj-validator.js';
-import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
+import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from '../src/language/bbj-parser-service.js';
+import { clearAllVerdictStates } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { logger } from '../src/language/logger.js';
 
 vi.mock('../src/language/bbj-notifications.js', () => ({
@@ -29,7 +31,8 @@ function buildHarness() {
 
     const compileMock = vi.fn<(filePath: string) => Promise<Diagnostic[]>>();
     const isEnabledMock = vi.fn<() => boolean>().mockReturnValue(true);
-    const requestLiveParseMock = vi.fn<(document: LangiumDocument) => Promise<Diagnostic[]>>().mockResolvedValue([]);
+    const requestLiveParseMock = vi.fn<(document: LangiumDocument) => Promise<LiveParseOutcome>>()
+        .mockResolvedValue({ kind: 'unavailable' });
     const fakeServiceRegistry = {
         getServices: () => ({
             compiler: {
@@ -68,10 +71,12 @@ function buildHarness() {
     };
 }
 
-function fakeDocument(path: string, diagnostics: Diagnostic[] = []): LangiumDocument {
+function fakeDocument(path: string, diagnostics: Diagnostic[] = [], text = ''): LangiumDocument {
+    const uri = URI.file(path);
     return {
-        uri: URI.file(path),
+        uri,
         diagnostics,
+        textDocument: TextDocument.create(uri.toString(), 'bbj', 1, text),
     } as unknown as LangiumDocument;
 }
 
@@ -87,6 +92,9 @@ afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.useRealTimers();
+    // Verdict state is module-scoped, keyed by document uri; clear it so an earlier test's
+    // carried-over state can never leak into a later one.
+    clearAllVerdictStates();
 });
 
 describe('debouncedCompile catches and logs callback errors (P61-D2-017)', () => {
@@ -181,33 +189,37 @@ describe('trackBbjcplAvailability dedup and debouncedCompile timing (P61-D5-016)
 });
 
 describe('debouncedCompile clears stale live-parser diagnostics before the BBjCPL merge step', () => {
-    test('a fresh same-line BBjCPL diagnostic is not absorbed into a leftover live-parser entry from a prior cycle', async () => {
+    test('a fresh same-line BBjCPL diagnostic from a fallback cycle is not absorbed into a leftover live-parser entry from a prior verdict cycle', async () => {
         vi.useFakeTimers();
         const { builder, compileMock, requestLiveParseMock } = buildHarness();
         const privates = builder as unknown as BuilderPrivates;
         const doc = fakeDocument('/proj/persistent-error.bbj');
         const line5Range = { start: { line: 5, character: 0 }, end: { line: 5, character: 10 } };
 
-        // First debounce cycle: BBjCPL reports nothing new, the live parser flags line 5.
-        compileMock.mockResolvedValueOnce([]);
-        requestLiveParseMock.mockResolvedValueOnce([
-            { message: 'stale live-parser message', range: line5Range, severity: 1, source: BBJ_PARSER_SOURCE },
-        ]);
+        // First debounce cycle: a verdict carrying one live-parser diagnostic on line 5. The
+        // save-time compile does not run this cycle.
+        requestLiveParseMock.mockResolvedValueOnce({
+            kind: 'verdict',
+            diagnostics: [
+                { message: 'stale live-parser message', range: line5Range, severity: 1, source: BBJ_PARSER_SOURCE },
+            ],
+        });
         privates.debouncedCompile(doc);
         await vi.advanceTimersByTimeAsync(600);
 
         expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
             { source: BBJ_PARSER_SOURCE, message: 'stale live-parser message' },
         ]);
+        expect(compileMock).not.toHaveBeenCalled();
 
-        // Second debounce cycle: the same line is now flagged by BBjCPL with a new message, and
-        // the live parser reports nothing this time (its own diagnostic would only reappear if
-        // still present). The BBjCPL diagnostic must win with its own current message, not the
-        // leftover live-parser text from the previous cycle.
+        // Second debounce cycle: the live parse fails, so this cycle falls back to the save-time
+        // compile, which now flags the same line with a new message. The BBjCPL diagnostic must
+        // win with its own current message, not the leftover live-parser text from the previous
+        // cycle's verdict.
+        requestLiveParseMock.mockResolvedValueOnce({ kind: 'failed' });
         compileMock.mockResolvedValueOnce([
             { message: 'current bbjcpl message', range: line5Range, severity: 1, source: 'BBjCPL' },
         ]);
-        requestLiveParseMock.mockResolvedValueOnce([]);
         privates.debouncedCompile(doc);
         await vi.advanceTimersByTimeAsync(600);
 
