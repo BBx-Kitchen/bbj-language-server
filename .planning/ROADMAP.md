@@ -459,7 +459,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
   1. A caller sends document text to the endpoint on a running BBjServices and gets BBj's own parser errors back — each with its category, its message, and its editor line and character range — with type checking off and without the text ever being read from or written to disk.
-  2. The active document is parsed from the supplied text while referenced programs are resolved through the configured prefixes and workspace roots, so a program that `USE`s or `CALL`s another file is parsed in context rather than failing on the reference.
+  2. The active document is parsed from the supplied text while referenced programs are resolved through the configured prefixes and workspace roots, so a program that `USE`s or `CALL`s another file is parsed in context rather than failing on the reference. *(Re-scoped 2026-09-22: the prefix algorithm is implemented and wired, but BBj's ParserServiceAPI never invokes it under this call sequence with type checking off, so referenced-program resolution is NOT observable through this endpoint; accepted as a parser-API limitation, see 101-VERIFICATION.md override and WINDOWS.md entry 4. Phases 102/103 must not depend on USE/CALL reference diagnostics from it.)*
   3. Two requests for the same document in quick succession never yield the older text's errors: every request carries its own version identity and a superseded result is discarded, not returned.
   4. A plain client against a locally running BBjServices exercises all of the above, and a BBj that predates the endpoint answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace — which is the signal Phase 102 gates on.
 

@@ -31,7 +31,7 @@
 ### Compiler parser diagnostics (list B)
 
 - [x] **PSRV-01**: `bbj-ls` offers an endpoint that runs BBj's parser on supplied document text, without reading or writing the document on disk and with type checking off, and returns each error's category, message and editor line and character range
-- [x] **PSRV-02**: The endpoint uses the supplied text for the active document, resolves referenced programs through the configured prefixes and workspace roots, and never returns results of an earlier version of the text
+- [x] **PSRV-02**: The endpoint uses the supplied text for the active document, wires a prefix algorithm for the configured prefixes and workspace roots, and never returns results of an earlier version of the text *(re-scoped 2026-09-22: BBj's parser API does not invoke the prefix algorithm under type checking off, so referenced-program resolution is not observable through the endpoint; accepted, see 101-VERIFICATION.md override)*
 - [ ] **PSRV-03**: With a BBjServices that offers the endpoint, the user sees the compiler's syntax errors while typing, without saving
 - [ ] **PSRV-04**: With a BBj older than 26.03, whose `bbj-ls` lacks the endpoint, and with no connection at all, both extensions (VS Code and IntelliJ) keep every feature they have in 0.16.x, including Java completion through the same service and the save-time `bbjcpl` run. The language server finds out by probing the endpoint once per connection, not by comparing version strings, and reports no error, dialog or repeated log line. An automated test runs against a service double that lacks the endpoint
 - [ ] **PSRV-05**: Compiler diagnostics appear on the correct editor line and range for continuation lines, line-numbered programs, CRLF files and a last line without newline

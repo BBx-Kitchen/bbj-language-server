@@ -1,13 +1,18 @@
 ---
 phase: 101-bbj-parser-endpoint-in-bbj-ls
 verified: 2026-09-22T09:45:00Z
-status: gaps_found
-score: 3/4 must-haves verified
+status: passed
+score: 4/4 must-haves verified (1 override)
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 1
+overrides:
+  - must_have: "referenced programs are resolved through the configured prefixes and workspace roots (success criterion 2 / PSRV-02 reference-resolution clause)"
+    reason: "Accepted and re-scoped by human decision: BbjPrefixAlgorithm is implemented to spec, but BBj's ParserServiceAPI never invokes PrefixAlgorithmIF.findProgram through getProgramFactory+loadSourceProgram+doJSONSerialization for any tested USE/CALL shape, under type checking off (locked, D-05) or on. This is a property of the parser API, not of bbj-ls; the endpoint's core value (own-parser errors on unsaved text, supersession, older-server probe) stands without it. Disclosed to BASIS in 101-MR-DESCRIPTION.md (Observed limitation) and closed in WINDOWS.md entry 4 as waived. Phase 102/103 must not rely on USE/CALL reference diagnostics from this endpoint."
+    accepted_by: "stephan.wald (user)"
+    accepted_at: "2026-09-22T11:31:24Z"
 gaps:
   - truth: "The active document is parsed from the supplied text while referenced programs are resolved through the configured prefixes and workspace roots, so a program that USEs or CALLs another file is parsed in context rather than failing on the reference (success criterion 2)."
-    status: failed
+    status: overridden
     reason: >
       BbjPrefixAlgorithm is implemented exactly to spec (in-memory active document, disk
       resolution in the documented order, null on an unresolved name) and passes every
@@ -33,7 +38,7 @@ requirements_coverage:
     status: satisfied
     evidence: "Endpoint returns BBj's own parser errors (category list, message, editor line/character range verbatim) with type checking off and no disk I/O for the active document; the legacy-server probe was replayed against the real backed-up 26.02 jar and answered MethodNotFound (-32601) in 0.244s with exactly one WARNING log line and no stack trace."
   - id: PSRV-02
-    status: partially_blocked
+    status: satisfied (override)
     evidence: "The 'never returns results of an earlier version of the text' (supersession/latest-wins) half is verified live over the socket in three scenarios. The 'resolves referenced programs through the configured prefixes and workspace roots' half is implemented but not observed working — see the gap above. REQUIREMENTS.md marks PSRV-02 Complete; this verification disputes that for the reference-resolution clause specifically."
 ---
 
@@ -43,7 +48,7 @@ requirements_coverage:
 exposes an endpoint that runs `ParserServiceAPI` over supplied document text and hands back the
 compiler's errors with editor coordinates.
 **Verified:** 2026-09-22T09:45:00Z
-**Status:** gaps_found
+**Status:** passed (1 override — success criterion 2 accepted as a ParserServiceAPI limitation, decision 2026-09-22)
 **Re-verification:** No — initial verification
 
 ## Two-Repository Note
@@ -64,7 +69,7 @@ own plan explicitly does not block on it (checkpoint resolved 2026-09-22, "pushe
 | # | Truth (phase success criterion) | Status | Evidence |
 |---|------|--------|----------|
 | 1 | A caller gets BBj's own parser errors back (category, message, editor line/character range), type checking off, text never touches disk | ✓ VERIFIED | `BbjPrefixAlgorithm`/`ParserWorker` use only `ByteArrayInputStream`/UTF-8 byte arrays for the active document; `grep -c 'FileWriter\|FileOutputStream\|createTempFile\|Files.write\|Files.createTemp' BbjPrefixAlgorithm.java` = 0; `ParserWorker.parse` maps `ErrorType`(list)/`ErrorMessage`/`ErrorPositionInfo` 1:1 onto `ParseError`; live test `syntaxErrorCarriesPositions` passed against the real deployed jar; `factory.setTypeChecking(false)` called exactly once in the constructor |
-| 2 | Referenced programs (USE/CALL) are resolved through the configured prefixes/workspace roots so they parse in context rather than failing on the reference | ✗ FAILED | `BbjPrefixAlgorithm` is correctly implemented, but plan 02's own investigation (trace instrumentation, all combinations tried) found BBj's parser never calls `findProgram` under type checking off, the locked setting this endpoint ships with. `.planning/WINDOWS.md` entry 4 is still `open`. `101-MR-DESCRIPTION.md`'s own "Observed limitation" paragraph and both the 101-02 and 101-04 SUMMARYs disclose this directly. See Gaps below. |
+| 2 | Referenced programs (USE/CALL) are resolved through the configured prefixes/workspace roots so they parse in context rather than failing on the reference | ✗ PASSED (override) | `BbjPrefixAlgorithm` is correctly implemented, but plan 02's own investigation (trace instrumentation, all combinations tried) found BBj's parser never calls `findProgram` under type checking off, the locked setting this endpoint ships with. `.planning/WINDOWS.md` entry 4 is still `open`. `101-MR-DESCRIPTION.md`'s own "Observed limitation" paragraph and both the 101-02 and 101-04 SUMMARYs disclose this directly. See Gaps below. |
 | 3 | Two quick-succession requests for the same document never both yield an errors list from the older text; every request carries its own version identity and a superseded result is discarded | ✓ VERIFIED | `ParserWorker.submit`'s `ConcurrentHashMap<String,PendingParse>` latest-wins design, code-reviewed; live socket tests `supersessionQueuedInterleavingCancelsTheOlderRequest`, `supersessionInFlightInterleavingCancelsTheOlderRequest`, and `identicalVersionTokensStillProduceTwoRequests` all pass against the real deployed jar (re-ran full suite: `Tests run: 20, Failures: 0, Errors: 0, Skipped: 1`) |
 | 4 | A plain client exercises all of the above against a live BBjServices; an older BBj answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace | ⚠ PARTIAL | The legacy-probe half is strongly verified: the real, backed-up pre-endpoint 26.02 `bbj-ls.jar` was swapped back into a live BBjServices and answered `parseProgram` with `MethodNotFound` (-32601) in 0.244s, with the service's own stderr log gaining exactly one `WARNING: Unsupported request method: parseProgram` line and nothing else (quoted in 101-04-SUMMARY.md). The "exercises all of the above" half is undermined by truth 2's gap — the client suite cannot exercise reference resolution because the code path was found unreachable |
 
