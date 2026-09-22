@@ -48,7 +48,7 @@ created: "2026-09-22"
 
 ## Wave 0 Requirements
 
-- [ ] `/home/coder/repos/bbj-ls/src/test/java/bbj/interop/ParseProgramIT.java` — gated integration scenarios for PSRV-01/PSRV-02 (syntax error with positions, clean program → empty list, workspace-root + PREFIX reference, missing reference → BBj's error, quick-succession supersession, timeout/size-cap codes)
+- [ ] `/home/coder/repos/bbj-ls/src/test/java/bbj/interop/ParseProgramIntegrationTest.java` — gated integration scenarios for PSRV-01/PSRV-02 (syntax error with positions, clean program → empty list, workspace-root + PREFIX reference, missing reference → BBj's error, quick-succession supersession, timeout/size-cap codes)
 - [ ] `/home/coder/repos/bbj-ls/src/test/java/bbj/interop/MethodNotFoundProbeTest.java` — older-server probe via in-process lsp4j `Launcher` pair, no BBjServices needed
 - [ ] `/home/coder/repos/bbj-ls/src/test/java/bbj/interop/BBjServicesAvailability.java` — shared "is `127.0.0.1:5008` reachable" skip gate, forceable by system property
 - [ ] Framework install: none — `junit-jupiter` already declared, Surefire already new enough; `src/test` directory itself is new

@@ -4,16 +4,16 @@ milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 101
 current_phase_name: BBj Parser Endpoint in `bbj-ls`
-status: planning
+status: executing
 stopped_at: Phase 101 context gathered
-last_updated: "2026-09-22T05:32:59.577Z"
+last_updated: "2026-09-22T06:46:58.087Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 100 complete, transitioned to Phase 101
-state_head: 6cdbbf60859dabce89da68dd3c23676543b6a2ac
+state_head: 05ae6d6762ddecf820b4944b94a0f18f2d71a54d
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 22
+  total_plans: 26
   completed_plans: 22
   percent: 43
 ---
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 ## Current Position
 
-Phase: 101 — BBj Parser Endpoint in `bbj-ls`
+Phase: 101 (BBj Parser Endpoint in `bbj-ls`) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 gained the documented trailing `ERR=` option, and `checkCommentNewLines` was reworked twice (a CST-leaf
 rework, then a narrow terminator-swallowing-token exemption found via the plan's own conditional stop).
 Closing re-measure: A 52 (≤80), gate-2 FIELD/READ/IOLIST/LABEL all 0, A2 23 (≤27), B 666 (recorded,
