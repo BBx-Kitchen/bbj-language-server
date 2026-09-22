@@ -463,7 +463,24 @@ Plans:
   3. Two requests for the same document in quick succession never yield the older text's errors: every request carries its own version identity and a superseded result is discarded, not returned.
   4. A plain client against a locally running BBjServices exercises all of the above, and a BBj that predates the endpoint answers the same probe with a clean "unknown endpoint" result — no hang, no stack trace — which is the signal Phase 102 gates on.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 101-01-PLAN.md — tracer: branch, offline jars, the wire contract and a stubbed `parseProgram` answering a real client over 127.0.0.1:5008, plus the in-process MethodNotFound probe (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 101-02-PLAN.md — the real parse: the connection-scoped prefix algorithm, BBj's parser with type checking off, and its JSON errors mapped onto the DTO (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 101-03-PLAN.md — one worker thread per connection, latest-wins supersession, the size cap and timeout guards, five application error codes, and connection-close teardown (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 101-04-PLAN.md — the full plain-client suite, the older-server replay against the real 26.02 jar, the contract document, branch push and merge request (wave 4)
 
 *Ordering note:* this is a phase of v4.5 although its code lives in another repository with BBj's own release cycle — the milestone's B target (658 → ≤ 5 %) is unreachable without it, and the language-server side in Phases 102 and 103 is written against its contract. The endpoint's own shape follows the integration boundary already described in the internal parser handoff notes (ParserServiceAPI, type checking off, editor line fields preferred over interpreter line fields); none of that source text is reproduced in this public repository.
 
