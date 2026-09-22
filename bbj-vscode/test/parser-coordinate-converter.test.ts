@@ -223,6 +223,23 @@ describe('parseErrorToRange: an out-of-range or collapsed input is clamped, neve
         }
     });
 
+    test('an end line reported before the start line clamps up to the start line, never producing an inverted range', () => {
+        const error: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'end line before start line',
+            editorStartLine: 5,
+            editorEndLine: 2,
+            startCharacter: 1,
+            endCharacter: 2,
+        };
+
+        const range = parseErrorToRange(error, lineCountOf(fourLineText) + 10);
+
+        expect(range.start.line).toBe(4);
+        expect(range.end.line).toBe(4);
+        expect(range.end.line).toBeGreaterThanOrEqual(range.start.line);
+    });
+
     test('the converter carries no state between calls: two calls with different line counts in one test both convert correctly', () => {
         const inAShortDocument: ParseError = {
             categories: [],

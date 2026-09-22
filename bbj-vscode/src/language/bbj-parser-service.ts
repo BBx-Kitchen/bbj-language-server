@@ -32,7 +32,10 @@ const DEFAULT_MAX_ERRORS = 20;
  * for exactly this (see `extractCyclicReferenceRelatedInfo` in `bbj-document-validator.ts`).
  * A collapsed or inverted character range — an end character at or before the start character,
  * or a start character of zero — spans the whole clamped line (starting at character 0) rather
- * than producing a zero-width marker.
+ * than producing a zero-width marker. An `editorEndLine` reported before `editorStartLine` is
+ * clamped up to `startLine` — mirroring the same defensive posture for the character axis —
+ * so the result is never an inverted `Range`, which a JVM language client's deserializer may
+ * reject outright, hiding every diagnostic for the document.
  * @param error the parser's own error DTO, one-based lines and characters
  * @param lineCount the document's current line count, used to clamp an out-of-range line
  */
@@ -40,7 +43,7 @@ export function parseErrorToRange(error: ParseError, lineCount: number): Range {
     const clampLine = (oneBasedLine: number) =>
         Math.min(Math.max(oneBasedLine - 1, 0), Math.max(lineCount - 1, 0));
     const startLine = clampLine(error.editorStartLine);
-    const endLine = clampLine(error.editorEndLine);
+    const endLine = Math.max(clampLine(error.editorEndLine), startLine);
     const isCollapsedOrInverted = error.startCharacter <= 0 || error.endCharacter <= error.startCharacter;
     const startCharacter = isCollapsedOrInverted ? 0 : error.startCharacter - 1;
     return {
