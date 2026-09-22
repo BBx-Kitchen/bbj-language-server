@@ -501,9 +501,20 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 102-01-PLAN.md — The parser-service client, the once-per-connection probe latch and the old-server fallback, proved end to end against the scriptable service double
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 102-02-PLAN.md — Coordinate conversion for every document shape, the clamp-never-drop policy, and one setting capping both kinds of syntax error
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 102-03-PLAN.md — One gated confirmation against the real endpoint, and both published guides stating the BBj version the feature needs
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 102-04-PLAN.md — Both distributables built from the final tree, the older-server replay staged for hand verification, green suite, branch and pull request
 
 *Ordering note:* PSRV-04 is a hard requirement, not a nicety — the extensions ship to users on BBj versions that will never have the endpoint. Its automated test against a service double is the phase's regression gate, and the probe result is the switch every behaviour in Phase 103 hangs off.
