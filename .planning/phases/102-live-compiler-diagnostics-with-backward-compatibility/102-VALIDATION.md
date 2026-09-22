@@ -40,37 +40,55 @@ created: "2026-09-22"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 102-01-01 | 01 | 1 | PSRV-04 | T-102-01 / — | Old-server double: no live diagnostic, `bbjcpl` path untouched, one "off" log line, no error | integration (hermetic double) | `npx vitest run test/bbj-parser-service.test.ts -t "PSRV-04"` | ❌ W0 | ⬜ pending |
-| 102-01-02 | 01 | 1 | PSRV-03 | — | Scripted result list becomes Error diagnostics with source `BBj Parser` | integration (hermetic double) | `npx vitest run test/bbj-parser-service.test.ts -t "publishes a live diagnostic"` | ❌ W0 | ⬜ pending |
-| 102-01-03 | 01 | 1 | PSRV-08 | T-102-02 / — | `-3300x`, transport and malformed failures never become a diagnostic; first at warn, repeats at debug | unit (scripted double, log spy) | `npx vitest run test/bbj-parser-service.test.ts -t "never a diagnostic"` | ❌ W0 | ⬜ pending |
-| 102-01-04 | 01 | 1 | PSRV-09 | — | Exactly one mode log line per connection; reset on new connection and `clearCache()` | unit (log spy) | `npx vitest run test/bbj-parser-service.test.ts -t "logs the mode exactly once"` | ❌ W0 | ⬜ pending |
-| 102-02-01 | 02 | 1 | PSRV-05 | — | One-based → zero-based ranges for colon continuation, user line numbers, CRLF, no trailing newline; D-11 clamping | unit (hand-written DTO fixtures) | `npx vitest run test/parser-coordinate-converter.test.ts` | ❌ W0 | ⬜ pending |
-| 102-03-01 | 03 | 2 | PSRV-05 | — | Same four fixtures against the real endpoint | integration (`RUN_BBJ_TESTS`-gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/parse-program-live.test.ts` | ❌ W0 | ⬜ pending |
-| 102-03-02 | 03 | 2 | PSRV-09 | — | Docs of both extensions state BBj 26.03 or later | source assertion | `grep -c '26.03' documentation/docs/vscode/getting-started.md documentation/docs/intellij/getting-started.md` | ✅ | ⬜ pending |
+| 102-01-01 | 01 | 1 | PSRV-03 | T-102-01 | A scripted parser error becomes one Error diagnostic with the live parser source, BBj's message verbatim, joined categories as its code, and a range bounded by the end-of-line sentinel | integration (hermetic double, real document builder) | `npx vitest run test/bbj-parser-service.test.ts -t "publishes a live diagnostic"` | ❌ W0 | ⬜ pending |
+| 102-01-02 | 01 | 1 | PSRV-04 | — | Default old-server double: no live diagnostic, one request only, save-time compile still invoked, one off-mode log line, no error; a simulated reconnect re-probes | integration (hermetic double) | `npx vitest run test/bbj-parser-service.test.ts -t "an older server"` | ❌ W0 | ⬜ pending |
+| 102-01-02 | 01 | 1 | PSRV-09 | — | Exactly one mode log line per connection generation, across two documents | unit (logger spy) | `npx vitest run test/bbj-parser-service.test.ts -t "logs the mode once per connection"` | ❌ W0 | ⬜ pending |
+| 102-01-03 | 01 | 1 | PSRV-08 | T-102-02, T-102-03 | Five application codes, a transport failure and a malformed result each yield zero diagnostics and one log line at the right level; a cancellation yields silence; no log line carries the document text | unit/integration (scripted double, logger spies) | `npx vitest run test/bbj-parser-service.test.ts -t "never becomes a diagnostic"` | ❌ W0 | ⬜ pending |
+| 102-02-01 | 02 | 2 | PSRV-05 | T-102-06, T-102-07 | The existing diagnostics setting caps the live errors per document, in the parser's own order, applied to the records before conversion | integration (hermetic double) | `npx vitest run test/bbj-parser-service.test.ts -t "caps the live errors"` | ❌ W0 | ⬜ pending |
+| 102-02-02 | 02 | 2 | PSRV-05 | T-102-01 | Colon continuation, user line numbers, CRLF and no-final-newline land on the right zero-based line; out-of-range, inverted and zero-start ranges clamp and are never dropped; no range exceeds the LSP unsigned-integer bound | unit (hand-written typed DTO fixtures) | `npx vitest run test/parser-coordinate-converter.test.ts` | ❌ W0 | ⬜ pending |
+| 102-03-01 | 03 | 3 | PSRV-05 | — | The same four invented documents plus a clean-program control against the real endpoint; skipped, never failed, when the gate is closed | integration (`RUN_BBJ_TESTS`-gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/parse-program-live.test.ts` | ❌ W0 | ⬜ pending |
+| 102-03-02 | 03 | 3 | PSRV-09 | T-102-09 | The VS Code guide states BBj 26.03 or later, keeps the 25.00 base prerequisite, and names the existing compiler trigger setting | source assertion | `grep -c '26\.03' documentation/docs/vscode/getting-started.md documentation/docs/vscode/index.md documentation/docs/vscode/features.md` | ✅ | ⬜ pending |
+| 102-03-03 | 03 | 3 | PSRV-09 | T-102-09 | The IntelliJ guide says the same three things, and no IntelliJ plugin source changed | source assertion | `grep -c '26\.03' documentation/docs/intellij/getting-started.md documentation/docs/intellij/index.md documentation/docs/intellij/features.md` | ✅ | ⬜ pending |
+| 102-04-01 | 04 | 4 | PSRV-03, PSRV-09 | — | Both distributables built from the final tree; the endpoint-present hand check is staged for the end-of-phase verifier | build + `<human-check>` | `cd bbj-vscode && npm run build` · `cd bbj-intellij && ./gradlew buildPlugin` | ✅ | ⬜ pending |
+| 102-04-02 | 04 | 4 | PSRV-04, PSRV-09 | T-102-12 | The endpoint jar is backed up outside the load directory, the directory holds exactly two jars, and the older-server replay plus restore is staged verbatim for the tester | CLI assertion + `<human-check>` | `ls -l /opt/bbx/.lib/bbjls/ /opt/bbx/.lib/bbjls-backup/` | ✅ | ⬜ pending |
+| 102-04-03 | 04 | 4 | PSRV-03, PSRV-04, PSRV-09 | T-102-11, T-102-13 | Whole suite green against the documented baseline; no planning identifier in any added source, test or doc line; no closing keyword in any commit body; branch pushed and pull request open | CLI assertion | `cd bbj-vscode && npm test -- --maxWorkers=2` · branch-diff register check | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
-*The planner re-maps rows to the final plan/task ids; the table above is the strategy seed from RESEARCH.md § Validation Architecture.*
+*Re-mapped from the RESEARCH.md strategy seed to the final plan/task ids. Note the test-selector
+change: the seed used requirement ids as `-t` selectors, which would have put planning identifiers
+into shipped test names — every selector above is a behaviour phrase instead.*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `bbj-vscode/test/bbj-parser-service.test.ts` — PSRV-03, PSRV-04, PSRV-08, PSRV-09 (probe/latch, per-connection reset, failure-cadence logging, hermetic double scripting)
-- [ ] `bbj-vscode/test/parser-coordinate-converter.test.ts` — PSRV-05 (hand-written `ParseError` DTO fixtures, D-11 clamping cases)
-- [ ] `bbj-vscode/test/functional/parse-program-live.test.ts` — PSRV-05 live confirmatory check, `RUN_BBJ_TESTS`-gated
-- [ ] `bbj-vscode/test/bbj-test-module.ts` — extend `JavaInteropTestService` with the scriptable `parseProgram()` override (D-14); shared fixture infrastructure every test above depends on
+- [ ] `bbj-vscode/test/bbj-test-module.ts` — `JavaInteropTestService` exported and given a scriptable
+      `parseProgram()` plus `simulateReconnect()`; shared fixture infrastructure every test below
+      depends on (plan 01 task 1)
+- [ ] `bbj-vscode/test/bbj-parser-service.test.ts` — PSRV-03, PSRV-04, PSRV-08, PSRV-09 and the cap:
+      probe/latch, per-connection reset, failure cadence, same-line coexistence, idempotency
+      (plan 01 tasks 1-3, plan 02 task 1)
+- [ ] `bbj-vscode/test/parser-coordinate-converter.test.ts` — PSRV-05 and the clamp-never-drop cases
+      (plan 02 task 2)
+- [ ] `bbj-vscode/test/functional/parse-program-live.test.ts` — PSRV-05's live confirmation plus a
+      clean-program control, `RUN_BBJ_TESTS`-gated (plan 03 task 1)
 - Framework install: none — Vitest is already installed and configured
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Live errors appear while typing in VS Code and in IntelliJ | PSRV-03 | Needs both IDEs against the running BBjServices with the Phase 101 jar | Build + install VSIX and IntelliJ zip; open a `.bbj` file, type an invalid line, watch the `BBj Parser` diagnostic appear without saving |
-| Both extensions behave as 0.16.x against a pre-endpoint `bbj-ls` | PSRV-04 | Needs the backed-up 26.02 jar swapped into `/opt/bbx/.lib/bbjls/` and BBjServices restarted | Swap jar, restart, open a `.bbj` file in each IDE: Java completion works, save runs `bbjcpl`, no dialog, server log shows one "off" line; swap back afterwards |
-| Server log states the mode once per connection | PSRV-09 | Log inspection | Open the language-server output channel / idea.log; count the mode line after connect and after "Refresh Java classes" |
+`workflow.human_verify_mode` resolves to `end-of-phase`, so these are staged as `<verify><human-check>`
+blocks inside plan 04's `auto` tasks rather than as mid-flight checkpoints; the verifier harvests them
+into `102-UAT.md`.
+
+| Behavior | Requirement | Plan · Task | Why Manual | Test Instructions |
+|----------|-------------|-------------|------------|-------------------|
+| Live errors appear while typing, without saving, in VS Code and in IntelliJ | PSRV-03 | 04 · 1 | Needs both IDEs against the running BBjServices with the phase-101 jar | Build and install both distributables from the final tree; enable the BBj debug setting; open a `.bbj` file, type an invalid line, watch the live parser diagnostic appear without a save; hover it and read its source and code |
+| Both extensions behave as 0.16.x against a pre-endpoint `bbj-ls` | PSRV-04 | 04 · 2 | Needs the backed-up 26.02 jar swapped into `/opt/bbx/.lib/bbjls/` and BBjServices restarted | Follow plan 04 task 2's 16-step procedure verbatim: swap, reload both IDEs, confirm Java completion and the save-time check still work, confirm no live diagnostic and no dialog, count the off-mode log line, then restore and confirm live diagnostics return |
+| The server log states the mode once per connection | PSRV-09 | 04 · 1 and 04 · 2 | Log inspection in two IDEs | The mode line is emitted at info level and the server's level is warn unless the BBj debug setting is on — enable it first, then count the line in the output channel and in `idea.log` after connect, and again after the jar swap re-establishes the connection |
+| Live and save-time diagnostics overlapping on one line | — | 04 · 1 | Expected in this phase, reconciled in the next | Two diagnostics on one line after a save is CORRECT here — the tester must not file it |
 
 ---
 

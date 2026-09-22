@@ -498,7 +498,13 @@ Plans:
   4. An endpoint exception, a timeout, or a BBjServices that is not running never appears as a syntax error in the document — it is visible in the server log or in the status surface only.
   5. The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the published documentation of both extensions says the feature needs BBj 26.03 or later.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 102-01-PLAN.md — The parser-service client, the once-per-connection probe latch and the old-server fallback, proved end to end against the scriptable service double
+- [ ] 102-02-PLAN.md — Coordinate conversion for every document shape, the clamp-never-drop policy, and one setting capping both kinds of syntax error
+- [ ] 102-03-PLAN.md — One gated confirmation against the real endpoint, and both published guides stating the BBj version the feature needs
+- [ ] 102-04-PLAN.md — Both distributables built from the final tree, the older-server replay staged for hand verification, green suite, branch and pull request
 
 *Ordering note:* PSRV-04 is a hard requirement, not a nicety — the extensions ship to users on BBj versions that will never have the endpoint. Its automated test against a service double is the phase's regression gate, and the probe result is the switch every behaviour in Phase 103 hangs off.
 
