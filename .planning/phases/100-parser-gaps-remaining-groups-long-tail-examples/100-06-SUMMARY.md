@@ -46,7 +46,7 @@ key-decisions:
   - "Residue file F (a METHOD declaration whose own signature line parses cleanly in isolation) stays pending, not guessed into one of the four reason categories -- the plan explicitly forbids guessing a category to close a row, and this plan changes no source and reads no further corpus content."
   - "The plan's own Task 3 template sentence ('the call forms accepted on a false premise are recorded with a filed todo') does not match what actually happened in this phase -- plan 05 found the suspected false premise (fileopen/filesave's MODE= option) was never one, and filed no todo. Corrected in the attestation rather than repeated."
 
-requirements-completed: []  # This plan does not mark requirements complete (working rule #4) -- criterion 4 partially holds and the conditional stop fired
+requirements-completed: [PARSE-04, PARSE-05, PARSE-06, PARSE-08, PARSE-09, EXMP-01]  # marked after the human accepted the recorded residue on 2026-09-22
 
 coverage:
   - id: D1
@@ -74,7 +74,7 @@ coverage:
 
 duration: 27min
 completed: 2026-09-21
-status: halted
+status: complete
 ---
 
 # Phase 100 Plan 06: Closing Conformance Measurement Summary
@@ -170,3 +170,11 @@ A human decision is needed between two options, per the checkpoint returned alon
 - Corpus-path scan (`samples/|bbjllm-dataset/|bbj-install/`) over `100-CONFORMANCE.md` returns nothing.
 - Register check over the phase's whole source diff (`bbj-vscode`, `examples`) produces no match.
 - `git status --porcelain -- bbj-vscode examples` prints nothing — no source file touched by this plan.
+
+## Checkpoint Resolution (2026-09-22)
+
+The human chose **accept**: the B rise (666 → 669, three accidental catches lost, evidence in
+`100-CONFORMANCE.md`) and the residue list stand as recorded. The one row that was still open at this
+plan's close was isolated afterwards by the orchestrator (a `DEF FN` body without `FNEND` followed by a
+`class` block) and filled in, so every list-A file now has a shape. All six owned requirements are
+marked complete, with the residue noted against PARSE-08 and PARSE-09 in `REQUIREMENTS.md`.

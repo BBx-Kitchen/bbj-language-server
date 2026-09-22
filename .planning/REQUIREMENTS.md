@@ -13,12 +13,12 @@
 - [x] **PARSE-01**: A program that uses `FIELD` as a verb (`FIELD rec$,"name"=value`) parses without lexer or parser errors
 - [x] **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with a `LEN=` channel option parse without errors, and `LEN` is usable as a variable name
 - [x] **PARSE-03**: The word `label` works as a label name — alone on a line or directly followed by a statement (`label:escape`) — as a `GOTO`/`GOSUB` target and as a variable; a label with any other name in front of a statement (`L30: iolist a,b,c`) keeps parsing
-- [ ] **PARSE-04**: The empty-bracket whole-array form `name[]` parses wherever an array element can stand — `PRINT` item, assignment target, `CALL`/method/function argument — with the meaning of `name[all]`; `PRINT (chan,err=label) ...`, a trailing-comma item list and the other `PRINT`/`INPUT` item forms that already parse keep parsing
-- [ ] **PARSE-05**: `DREAD` into arrays (`dread x![]`, `dread a$[],b[]`) parses without errors, and so do the type-side bracket shapes `declare int[][] name!` and a parameter written `BBjArray name[all]`
-- [ ] **PARSE-06**: A `; rem` comment after a `METHOD` header, `METHODEND`, `CLASSEND`, `FNEND` or a single-line `DEF FN`, and line-numbered class code, parse without errors
+- [x] **PARSE-04**: The empty-bracket whole-array form `name[]` parses wherever an array element can stand — `PRINT` item, assignment target, `CALL`/method/function argument — with the meaning of `name[all]`; `PRINT (chan,err=label) ...`, a trailing-comma item list and the other `PRINT`/`INPUT` item forms that already parse keep parsing
+- [x] **PARSE-05**: `DREAD` into arrays (`dread x![]`, `dread a$[],b[]`) parses without errors, and so do the type-side bracket shapes `declare int[][] name!` and a parameter written `BBjArray name[all]`
+- [x] **PARSE-06**: A `; rem` comment after a `METHOD` header, `METHODEND`, `CLASSEND`, `FNEND` or a single-line `DEF FN`, and line-numbered class code, parse without errors
 - [x] **PARSE-07**: The `IOLIST` statement parses without errors
-- [ ] **PARSE-08**: Words BBj accepts as names although they are language words (for example `label`, `text`, `vector`, `state`, `val`) can be used as variables, labels and `GOTO`/`GOSUB` targets without parser errors; the set is established by compiling every grammar keyword in those positions with `bbjcpl`, and each word the compiler accepts and the parser rejects is fixed
-- [ ] **PARSE-09**: Every shape that remains on list A is either fixed or recorded in a tracked list with its file count and the reason it stays (not a program, compiler quirk, deliberate, or valid but disproportionate to fix now); the file-by-file mapping stays with the private harness
+- [x] **PARSE-08**: Words BBj accepts as names although they are language words (for example `label`, `text`, `vector`, `state`, `val`) can be used as variables, labels and `GOTO`/`GOSUB` targets without parser errors; the set is established by compiling every grammar keyword in those positions with `bbjcpl`, and each word the compiler accepts and the parser rejects is fixed
+- [x] **PARSE-09**: Every shape that remains on list A is either fixed or recorded in a tracked list with its file count and the reason it stays (not a program, compiler quirk, deliberate, or valid but disproportionate to fix now); the file-by-file mapping stays with the private harness
 
 ### No false alarms on valid code (list A2)
 
@@ -42,7 +42,7 @@
 
 ### Examples
 
-- [ ] **EXMP-01**: Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, with its expected diagnostics (or an explicit "none today") asserted by a test; configuration and library files are excluded by extension
+- [x] **EXMP-01**: Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, with its expected diagnostics (or an explicit "none today") asserted by a test; configuration and library files are excluded by extension
 
 ### Conformance measurement
 
@@ -79,12 +79,12 @@
 | PARSE-01 | Phase 99 | Complete |
 | PARSE-02 | Phase 99 | Complete |
 | PARSE-03 | Phase 99 | Complete |
-| PARSE-04 | Phase 100 | Pending |
-| PARSE-05 | Phase 100 | Pending |
-| PARSE-06 | Phase 100 | Pending |
+| PARSE-04 | Phase 100 | Complete |
+| PARSE-05 | Phase 100 | Complete |
+| PARSE-06 | Phase 100 | Complete |
 | PARSE-07 | Phase 99 | Complete |
-| PARSE-08 | Phase 100 | Pending |
-| PARSE-09 | Phase 100 | Pending |
+| PARSE-08 | Phase 100 | Complete — residue accepted 2026-09-22: `record`, `classend`, `methodend`, `interfaceend` stay keyword-only (100-CONFORMANCE.md, oracle sweep) |
+| PARSE-09 | Phase 100 | Complete — residue accepted 2026-09-22: 9 list-A files, every shape recorded (100-CONFORMANCE.md, residue table) |
 | VALID-01 | Phase 98 | Complete |
 | VALID-02 | Phase 98 | Complete |
 | VALID-03 | Phase 98 | Complete |
@@ -99,7 +99,7 @@
 | PSRV-07 | Phase 103 | Pending |
 | PSRV-08 | Phase 102 | Pending |
 | PSRV-09 | Phase 102 | Pending |
-| EXMP-01 | Phase 100 | Pending |
+| EXMP-01 | Phase 100 | Complete |
 | CONF-01 | Phase 98 | Complete |
 | CONF-02 | Phase 104 | Pending |
 | CONF-03 | Phase 104 | Pending |
