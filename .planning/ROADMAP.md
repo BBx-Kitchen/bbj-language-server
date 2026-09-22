@@ -532,7 +532,28 @@ Plans:
   3. With the endpoint unavailable — older BBj, BBjServices down — the pre-existing v3.7 diagnostic behaviour returns unchanged, so the suppression is conditional on live compiler diagnostics being on rather than a permanent removal of checks.
   4. A conformance run at the phase boundary with the endpoint active shows the effect end to end: list B falls from 658 of 1,210 (54.4 %) towards the milestone's ≤ 5 % target, and compiler-accepted files carry no language-server syntax error.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 103-01-PLAN.md — tracer: an accepted verdict turns Langium's parse error into a warning and skips bbjcpl; the pure reconciliation (replace by overlap, downgrade), the hierarchy exemptions and the carry-over function (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 103-02-PLAN.md — builder outcomes: failure falls back to bbjcpl with Langium's errors restored, cancelled/stale answers change nothing, an older server gets exactly the 0.16.x merge, every endpoint-gone event forgets the verdicts (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 103-03-PLAN.md — validator side: a seen complaint stays yellow while typing, close forgets the verdict, line-break diagnostics carry a code, end-to-end on real validator output (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 103-04-PLAN.md — gated live check against the real endpoint, and the phase-boundary working conformance measurement (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 103-05-PLAN.md — green suite and clean register, both distributables built and both hand checks staged (endpoint present, pre-endpoint jar), branch pushed and PR #691 grown (wave 5)
 
 *Ordering note:* kept separate from Phase 102 because it is the one change that can make diagnostics *worse* for users on an older BBj if the suppression is unconditional — it wants its own verification round with the endpoint both present and absent. Criterion 4 is the working measurement; the formal exit gate belongs to Phase 104.
 
