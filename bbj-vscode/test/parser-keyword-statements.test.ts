@@ -9,8 +9,9 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOnGotoStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl } from '../src/language/generated/ast.js';
+import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOnGotoStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl, isLibrary } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
+import { builtinBBjAPI } from '../src/language/lib/bbj-api.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
 // including those added by later plans in this phase): each createBBjServices() +
@@ -526,13 +527,13 @@ describe('a comment after a block boundary, and a line number in class code', ()
 
 describe('language words as names (oracle sweep against the compiler)', () => {
     // Every word the compiler accepts as a name and the parser used to reject, fixed by its own
-    // mechanism: 'declare', 'auto', 'library', 'use', 'var' widen FeatureName/LabelName the same
+    // mechanism: 'declare', 'auto', 'use', 'var' widen FeatureName/LabelName the same
     // way Phase 99's 'label'/'void' did; 'void' gains the same widening in LabelName; 'start',
     // 'next', 'methodret', 'print', 'write', 'delete', 'save', 'enter', 'read', 'input',
     // 'extract' and 'find' each get an explicit ID-category grant on their own custom-pattern
     // token, mirroring the file's existing RELEASE_NL/RELEASE_NO_NL/EXIT_NO_NL grants.
     const fixedWords = [
-        'declare', 'auto', 'library', 'use', 'var', 'void',
+        'declare', 'auto', 'use', 'var', 'void',
         'start', 'next', 'methodret', 'print', 'write',
         'delete', 'save', 'enter', 'read', 'input', 'extract', 'find',
     ];
@@ -829,5 +830,26 @@ describe('CLEAR/BEGIN with a plain variable list is a recorded, not a fixed, gap
         const result = await parse(src);
         expect(result.parseResult.lexerErrors, 'lexer errors').toHaveLength(0);
         expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+    });
+});
+
+describe('the library word stays reserved at statement start', () => {
+    // The entry rule chooses between a library file and a program by its first token. If
+    // `library` were also an ordinary variable name, every built-in library file (whose first
+    // line is the bare word) would be read as a program, and BBjAPI() would stop resolving.
+    test('the built-in BBjAPI library text is read as a library', async () => {
+        const result = await parse(builtinBBjAPI);
+        expect(isLibrary(result.parseResult.value), 'entry rule chose Library').toBe(true);
+    });
+
+    test('a bare library line followed by a class is read as a library', async () => {
+        const result = await parse('library\nclass public A\nclassend\n');
+        expect(isLibrary(result.parseResult.value), 'entry rule chose Library').toBe(true);
+    });
+
+    test('library still works as a label name', async () => {
+        const result = await parse('library:\nx=1\ngoto library\n');
+        expect(result.parseResult.parserErrors, 'parser errors').toHaveLength(0);
+        expect(isLibrary(result.parseResult.value), 'entry rule chose Program').toBe(false);
     });
 });

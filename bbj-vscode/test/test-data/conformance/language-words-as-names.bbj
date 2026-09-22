@@ -15,8 +15,6 @@ PRINT DECLARE%
 AUTO=1
 PRINT AUTO
 auto$="a"
-LIBRARY=1
-library$="a"
 USE=1
 use$="a"
 VAR=1

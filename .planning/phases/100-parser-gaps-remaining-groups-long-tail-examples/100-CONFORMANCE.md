@@ -323,7 +323,7 @@ zero and writes its errors to stderr only).
 |---|---|---|---|
 | `declare` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | fixed |
 | `auto` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | fixed |
-| `library` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | fixed |
+| `library` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | **reverted for the variable position** at the regression gate (2026-09-22): the entry rule `Model: Library \| Program` chooses by the first token, so with `library` a legal variable the built-in library files (`bbj-api.ts`, `*.bbl`) parsed as programs and the three `BBjAPI()` linking tests failed; label position kept |
 | `use` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | fixed |
 | `var` | variable, label | lowercase-declared — added to `FeatureName`/`LabelName` | fixed |
 | `void` | label only (variable already fixed, Phase 99) | lowercase-declared — added to `LabelName` | fixed |
@@ -876,3 +876,15 @@ shape already known from Phase 98, in the one arrangement that phase did not cov
 change (end the body at `return` when no `FNEND` follows), not attempted here. The residue table's
 pending row is now filled: 1 file, reason "known shape, uncovered arrangement". All 9 list-A entries
 have an own-words shape.
+
+### Regression-gate fix: `library` as a variable name (orchestrator, 2026-09-22)
+
+The whole-suite run at the regression gate showed 14 `linking.test.ts` failures against the known
+11-failure environment baseline, which a run of the same file on the phase base commit confirmed. The
+three extra tests (`Case insensitive access to BBjAPI`, `BBjAPI() resolves without Java interop`,
+`BBjAPI() variable has correct type`) were bisected to plan 03's per-word commit: freeing `library`
+as a variable name lets the entry rule read every built-in library file as a program. `library` was
+removed from `FeatureName` again (label position kept), a test now guards that the built-in library
+text is read as a library, and the harness was re-run on the fixed tree: A 9, A2 22, B 669 — the
+same file sets as the closing run. Plans 04, 05 and 06 had classified the three failures as
+environment noise; the baseline in this repository's notes is 11 for that file, not 14.

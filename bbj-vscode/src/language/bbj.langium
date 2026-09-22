@@ -958,16 +958,17 @@ FeatureName returns string:
     // 'auto' is a keyword only as VariableDecl's own optional flag, one token AFTER 'declare' --
     // a bare `auto=1` can never be mistaken for that flag, since nothing starts a VariableDecl
     // without the leading 'declare' verb first.
-    // 'library' is a keyword only as the entry token of the separate top-level Library rule
-    // (`entry Model: Library | Program`), which Program's own statement list can never reach
-    // mid-program -- so this widening cannot compete with it at all.
+    // 'library' is deliberately NOT free here: the entry rule (`Model: Library | Program`)
+    // chooses by the first token, and a bare `library` line is how every built-in library
+    // file begins. Accepting it as a variable name makes those files parse as programs and
+    // BBjAPI() stops resolving. It stays usable as a label name (see LabelName).
     // 'use' is a keyword only as the leading verb of the Use rule, which always requires a file
     // path or a Java type reference immediately after it -- a bare `use=1` supplies neither, so
     // the parser falls through to this rule for the assignment/read form, the same shape
     // 'declare' already relies on above.
     // 'var' is a keyword only inside LibVariable, itself only reachable through the separate
-    // Library rule -- like 'library', it is unreachable from Program and so cannot compete here.
-    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare' | 'auto' | 'library' | 'use' | 'var';
+    // Library rule, which is unreachable from Program and so cannot compete here.
+    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare' | 'auto' | 'use' | 'var';
 
 ValidName returns string:
     ID
