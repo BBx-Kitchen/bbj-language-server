@@ -1316,7 +1316,7 @@ const getAllClassNamesRequest = new RequestType<null, string[], null>('getAllCla
  * parser. Provided only by an augmented bbj-ls (BBj 26.03+); older servers answer with a
  * MethodNotFound error, which {@link BBjParserService} uses to latch live diagnostics off.
  */
-const parseProgramRequest = new RequestType<ParseProgramParams, ParseProgramResult, void>('parseProgram');
+const parseProgramRequest = new RequestType<ParseProgramParams, ParseProgramResult, null>('parseProgram');
 
 /** JSON-RPC error code returned by a server that does not implement a requested method. */
 export const METHOD_NOT_FOUND = -32601;
