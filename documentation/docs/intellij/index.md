@@ -31,6 +31,8 @@ The BBj Language Support plugin provides comprehensive IDE support for BBj devel
 
 - **IntelliJ IDEA** 2024.2 or higher (Community or Ultimate)
 - **BBj** 25.00 or higher
+- **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
+  compiler check)
 - **BBjServices** running locally
 - **Java 17** or higher
 - **Node.js 22** or higher (auto-detected from PATH, or auto-downloaded by plugin)
