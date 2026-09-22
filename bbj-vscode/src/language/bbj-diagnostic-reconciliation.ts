@@ -114,17 +114,38 @@ export interface VerdictState {
 }
 
 /**
+ * True when the editor line spans of `a` and `b` share at least one whole line — inclusive of the
+ * boundary, so two spans that only touch at a single shared line still count. Character positions
+ * are ignored on purpose (unlike `mergeDiagnostics`' start-line equality, which stays as-is for
+ * the save-time compiler path): a colon-continued statement can have BBj reporting on one line of
+ * the statement and Langium on another line of the same statement, and both still need to be
+ * recognized as the same complaint.
+ */
+export function lineSpansOverlap(a: Range, b: Range): boolean {
+    return a.start.line <= b.end.line && b.start.line <= a.end.line;
+}
+
+/**
  * Reconciles Langium's diagnostics against one verdict's diagnostics. Pure: neither input array
- * nor any diagnostic in it is mutated, and equal inputs give equal outputs.
+ * nor any diagnostic in it is mutated, and equal inputs give equal outputs. `langiumDiagnostics`
+ * must not itself contain verdict diagnostics — this function only ever produces the union of the
+ * two lists, never de-duplicates within one of them.
  *
- * Every non-syntax diagnostic in `langiumDiagnostics` passes through unchanged. Every syntax
- * complaint is downgraded ({@link downgradeSyntaxComplaint}) and its key recorded in the returned
- * state's `seen` set. The result is the processed Langium list, in its original relative order,
+ * Every non-syntax diagnostic in `langiumDiagnostics` — semantic checks, linking errors, ordinary
+ * validator warnings — passes through unchanged and is never compared against the verdict: BBj's
+ * parser has no opinion on those, even on a line it also flags. Every syntax complaint (a Langium
+ * lexer error, parser error or line-break complaint) is looked up in `verdictDiagnostics` by
+ * {@link lineSpansOverlap}:
+ * - it overlaps at least one verdict diagnostic → dropped (BBj's own diagnostic speaks for that
+ *   line instead) and its key is still recorded in the returned state's `seen` set, because
+ *   between verdicts a replaced complaint is carried over exactly like a downgraded one — BBj's
+ *   own diagnostic disappears again on the very next keystroke, and only `seen` remembers that
+ *   this complaint was already accounted for;
+ * - it overlaps none → downgraded ({@link downgradeSyntaxComplaint}), keeping its message, range
+ *   and `source` (never rewritten), and its key is recorded in `seen` the same way.
+ *
+ * The result is the surviving/downgraded Langium diagnostics, in their original relative order,
  * followed by `verdictDiagnostics`, in the verdict's own order — nothing is re-sorted.
- *
- * This first cut treats every syntax complaint the same way regardless of whether a verdict
- * diagnostic covers its line; replacing a complaint that overlaps a verdict diagnostic's line
- * (rather than downgrading it) is added by a later task in this same module.
  */
 export function reconcileWithVerdict(
     langiumDiagnostics: Diagnostic[],
@@ -132,14 +153,20 @@ export function reconcileWithVerdict(
     lineText: LineTextLookup
 ): { diagnostics: Diagnostic[]; state: VerdictState } {
     const seen = new Set<string>();
-    const processed = langiumDiagnostics.map(diagnostic => {
+    const processed: Diagnostic[] = [];
+    for (const diagnostic of langiumDiagnostics) {
         if (!isSyntaxComplaint(diagnostic)) {
-            return diagnostic;
+            processed.push(diagnostic);
+            continue;
         }
         const key = syntaxComplaintKey(diagnostic.message, lineText(diagnostic.range.start.line));
         seen.add(key);
-        return downgradeSyntaxComplaint(diagnostic);
-    });
+        const overlapsVerdict = verdictDiagnostics.some(verdictDiagnostic => lineSpansOverlap(diagnostic.range, verdictDiagnostic.range));
+        if (!overlapsVerdict) {
+            processed.push(downgradeSyntaxComplaint(diagnostic));
+        }
+        // else: dropped — BBj's own diagnostic on this line replaces it (still recorded in `seen`).
+    }
     return {
         diagnostics: [...processed, ...verdictDiagnostics],
         state: { seen }
