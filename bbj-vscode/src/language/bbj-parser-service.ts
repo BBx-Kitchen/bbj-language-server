@@ -1,5 +1,6 @@
 import { LangiumDocument } from 'langium';
 import { Diagnostic, DiagnosticSeverity, LSPErrorCodes, Range } from 'vscode-languageserver';
+import { getMaxErrors } from './bbj-document-validator.js';
 import { JavaInteropService, METHOD_NOT_FOUND, ParseError, ParseProgramParams } from './java-interop.js';
 import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 import { logger } from './logger.js';
@@ -14,9 +15,9 @@ import { logger } from './logger.js';
 export const BBJ_PARSER_SOURCE = 'BBj Parser';
 
 /**
- * The diagnostics cap used until the diagnostics-setting seam ({@code getMaxErrors()} on
- * `bbj-document-validator.ts`) is wired through in a later plan of this phase. Mirrors that
- * setting's own default.
+ * The fallback cap used when a value pushed through {@link getMaxErrors} is not a positive
+ * finite number — a malformed configuration-change payload must not silently blank every live
+ * diagnostic. Mirrors the diagnostics setting's own module default.
  */
 const DEFAULT_MAX_ERRORS = 20;
 
@@ -51,10 +52,13 @@ export function parseErrorToRange(error: ParseError, lineCount: number): Range {
  * `categories` — omitted entirely when `categories` is absent or empty.
  * @param errors the parser's errors, in the parser's own order
  * @param lineCount the document's current line count, used by the range converter
- * @param maxErrors the cap on the number of diagnostics returned (the diagnostics setting's value)
+ * @param maxErrors the cap on the number of diagnostics returned (the diagnostics setting's
+ *   value); a non-positive or non-finite value falls back to {@link DEFAULT_MAX_ERRORS} rather
+ *   than blanking every live diagnostic
  */
 export function parseErrorsToDiagnostics(errors: ParseError[], lineCount: number, maxErrors: number): Diagnostic[] {
-    return errors.slice(0, maxErrors).map(error => {
+    const cap = Number.isFinite(maxErrors) && maxErrors > 0 ? maxErrors : DEFAULT_MAX_ERRORS;
+    return errors.slice(0, cap).map(error => {
         const diagnostic: Diagnostic = {
             range: parseErrorToRange(error, lineCount),
             message: error.message,
@@ -218,7 +222,7 @@ export class BBjParserService {
             this.latchOn(generation);
             // A genuine successful parse re-arms the warn level for every failure kind.
             this.reportedFailureKinds.clear();
-            return parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, DEFAULT_MAX_ERRORS);
+            return parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, getMaxErrors());
         } catch (e) {
             const code = (e as { code?: number } | undefined)?.code;
             if (code === LSPErrorCodes.RequestCancelled) {

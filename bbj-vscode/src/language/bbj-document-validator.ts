@@ -35,6 +35,9 @@ export function setSuppressCascading(enabled: boolean): void {
 export function setMaxErrors(max: number): void {
     maxErrorsDisplayed = max;
 }
+export function getMaxErrors(): number {
+    return maxErrorsDisplayed;
+}
 
 // BBjCPL trigger mode configuration
 let compilerTrigger: 'debounced' | 'on-save' | 'off' = 'debounced';

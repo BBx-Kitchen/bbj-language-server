@@ -5,6 +5,7 @@ import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity, LSPErrorCodes } from 'vscode-languageserver';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
+import { setMaxErrors } from '../src/language/bbj-document-validator.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BBJ_PARSER_SOURCE, BBjParserService } from '../src/language/bbj-parser-service.js';
 import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
@@ -72,10 +73,25 @@ type BuilderPrivates = {
     notifyDocumentPhase(document: LangiumDocument, state: number, cancelToken: unknown): Promise<void>;
 };
 
+/** Builds `count` distinct `ParseError` records, each with its own message so scripted order is observable. */
+function manyErrors(count: number): ParseError[] {
+    return Array.from({ length: count }, (_, i) => ({
+        categories: ['SyntaxError'],
+        message: `error ${i}`,
+        editorStartLine: 1,
+        editorEndLine: 1,
+        startCharacter: 1,
+        endCharacter: 5,
+    }));
+}
+
 afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.useRealTimers();
+    // The diagnostics-cap tests below push bbj-document-validator's module-scoped setting;
+    // restore its default so later tests in this file (and other files sharing the module) see it.
+    setMaxErrors(20);
 });
 
 describe('BBjParserService publishes a live diagnostic through the document builder', () => {
@@ -540,5 +556,127 @@ describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () =
                 expect(String(call[0])).not.toContain('XYZZY123');
             }
         }
+    });
+});
+
+describe('BBjParserService: the diagnostics setting caps the live errors, per document, in scripted order', () => {
+    test('caps the live errors at the default of 20, publishing exactly the first 20 in scripted order', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: manyErrors(25) });
+
+        const doc = fakeDocument('/proj/cap-default.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(20);
+        expect(doc.diagnostics!.map(d => d.message)).toEqual(manyErrors(20).map(e => e.message));
+    });
+
+    test('caps the live errors at a pushed value of 3, publishing exactly the first 3', async () => {
+        vi.useFakeTimers();
+        setMaxErrors(3);
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: manyErrors(5) });
+
+        const doc = fakeDocument('/proj/cap-pushed.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(3);
+        expect(doc.diagnostics!.map(d => d.message)).toEqual(manyErrors(3).map(e => e.message));
+    });
+
+    test('caps the live errors: a scripted list shorter than the cap is not padded or dropped', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: manyErrors(5) });
+
+        const doc = fakeDocument('/proj/cap-shorter.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(5);
+        expect(doc.diagnostics!.map(d => d.message)).toEqual(manyErrors(5).map(e => e.message));
+    });
+
+    test('caps the live errors per document: two documents each scripted with 25 end up with 20 each, not 20 between them', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+
+        const docA = fakeDocument('/proj/cap-a.bbj', 'rem a\n');
+        const docB = fakeDocument('/proj/cap-b.bbj', 'rem b\n');
+        openDocumentUris.add(docA.uri.toString());
+        openDocumentUris.add(docB.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        interopService.scriptParseProgram({ errors: manyErrors(25) });
+        privates.debouncedCompile(docA);
+        await vi.advanceTimersByTimeAsync(600);
+
+        interopService.scriptParseProgram({ errors: manyErrors(25) });
+        privates.debouncedCompile(docB);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(docA.diagnostics).toHaveLength(20);
+        expect(docB.diagnostics).toHaveLength(20);
+    });
+
+    test('caps the live errors: a non-positive pushed cap falls back to the module default instead of blanking every diagnostic', async () => {
+        vi.useFakeTimers();
+        setMaxErrors(0);
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: manyErrors(25) });
+
+        const doc = fakeDocument('/proj/cap-nonpositive.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(20);
+    });
+
+    test('caps the live errors: an empty scripted list produces zero diagnostics', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+        interopService.scriptParseProgram({ errors: [] });
+
+        const doc = fakeDocument('/proj/cap-empty.bbj', 'rem line 1\n');
+        openDocumentUris.add(doc.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics).toHaveLength(0);
     });
 });
