@@ -128,7 +128,10 @@ to local `HEAD`).
 | `239aa24` | `feat(#689): tear the parser worker down on connection close, log failures once` | 03 |
 | `1492d62` | `test(#689): exercise supersession, size cap and the legacy-server probe over the socket` | 04 |
 
-**Merge request:** MR not yet opened — awaiting a human (task 4). The push itself succeeded (see
+**Merge request:** pushed, MR pending. Checkpoint resolved 2026-09-22 by the user with "the branch
+landed remote" — the branch is confirmed on BASIS GitLab; the merge request is to be opened by hand in
+the web UI (no `glab`, no GitLab token, and no live SSH agent in the orchestrator shell). The push
+itself succeeded (see
 below); this is not a push failure, only the MR-opening step, which needs BASIS GitLab's web UI or
 `glab` (not installed on this machine).
 
@@ -248,8 +251,8 @@ design is covered by code review (plan 03). This scenario is not part of the pha
 3. **Task 3: Write the contract document and push the branch** — `3103976d` (docs, in
    `bbj-language-server`) — plus the successful `git push` to BASIS GitLab (no commit, a remote
    ref update)
-4. **Task 4: Open the merge request on BASIS GitLab** — not started; this is the blocking-human
-   checkpoint this plan stops at
+4. **Task 4: Open the merge request on BASIS GitLab** — checkpoint resolved with "pushed, MR
+   pending": branch confirmed on the remote by the user; MR opening deferred to the web UI
 
 **Plan metadata:** will be committed alongside `STATE.md`/`ROADMAP.md` once the phase is fully
 closed out (after the checkpoint resolves) — not part of this SUMMARY's own commit, per the
@@ -328,4 +331,4 @@ this SUMMARY for the exact instructions.
 
 ---
 *Phase: 101-bbj-parser-endpoint-in-bbj-ls*
-*Completed: 2026-09-22 (through task 3; task 4 pending)*
+*Completed: 2026-09-22 (task 4 checkpoint resolved: pushed, MR pending)*
