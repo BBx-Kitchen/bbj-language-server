@@ -246,7 +246,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
 
-- **Phase 101 closed 2026-09-22 with one accepted override** (`101-VERIFICATION.md`): referenced-program resolution through the prefix algorithm is implemented but never invoked by ParserServiceAPI under type checking off (`WINDOWS.md` entry 4 waived). Open follow-ups: the BASIS GitLab merge request for `feat/689-parse-program-endpoint` is still to be opened by hand; `101-REVIEW.md` holds 5 critical / 3 warning findings (null `canonicalName`, unreachable -33004, close-vs-submit race, stuck overrunning marker, accept-loop close) to fix before the MR is merged, and a re-push needs a live SSH agent; security enforcement is on and Phase 101 has no SECURITY.md (`/gsd-secure-phase 101`).
+- **Phase 101 closed 2026-09-22 with one accepted override** (`101-VERIFICATION.md`): referenced-program resolution through the prefix algorithm is implemented but never invoked by ParserServiceAPI under type checking off (`WINDOWS.md` entry 4 waived). Merged into `bbj-ls` `develop` as `e23d400`. The 2026-09-22 re-review on `cd5bf83` found the stuck overrun marker fixed and 4 critical / 3 warning findings open. **Those are handed off and handled in `bbj-ls` itself, outside the v4.5 GSD flow:** `/home/coder/repos/bbj-ls/HANDOFF-parse-program-hardening.md`. The v4.5 client already tolerates every one of them (any non-MethodNotFound error is logged, never shown as a diagnostic), so they don't block phases 103-105.
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
@@ -274,11 +274,9 @@ Last session: 2026-09-22T15:41:35.429Z
 Stopped at: Completed 102-04-PLAN.md — branch pushed, PR #691 open, two IDE hand-verifications outstanding
 Resume file: None
 
-Next: Open the BASIS GitLab merge request for `bbj-ls` branch `feat/689-parse-program-endpoint`
-(already pushed to `origin`), pasting `101-MR-DESCRIPTION.md` as the description — see
-101-04-SUMMARY.md's "User Setup Required" section. Merging is the BASIS maintainers' call and does
-not block Phase 102. Security enforcement is on and Phase 99 has no SECURITY.md yet: run
-`/gsd-secure-phase 99` before shipping.
+Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
+responsiveness, then 104 exit measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
+`bbj-ls` hardening follow-up is tracked separately in `bbj-ls` (handoff doc) and is not a v4.5 step.
 
 ## Deferred Items
 
@@ -378,7 +376,7 @@ detail for phases 70-97 live with their archived phase artifacts; this file is a
 ## Operator Next Steps
 
 - Run `/gsd-discuss-phase 102` (or `/gsd-plan-phase 102`) to start Phase 102 — the language-server client of the `parseProgram` endpoint with the older-BBj fallback. Contract: `.planning/phases/101-bbj-parser-endpoint-in-bbj-ls/101-MR-DESCRIPTION.md`. Do not plan USE/CALL reference diagnostics on the endpoint (Phase 101 override).
-- Open the BASIS GitLab merge request for `bbj-ls` `feat/689-parse-program-endpoint` against `develop` (branch is pushed), pasting `101-MR-DESCRIPTION.md`; fix `101-REVIEW.md`'s 5 critical findings first (`/gsd-code-review 101 --fix`, then register-check the branch diff and re-push with a live SSH agent).
+- `bbj-ls` endpoint hardening (4 critical / 3 warning from the re-review) is decoupled from v4.5 and is done in `bbj-ls` directly: `/home/coder/repos/bbj-ls/HANDOFF-parse-program-hardening.md`. Do not run `/gsd-code-review 101 --fix` here; its fixer commits in this repo.
 - Security enforcement is on: Phases 99 and 101 have no SECURITY.md (`/gsd-secure-phase 99`, `/gsd-secure-phase 101`).
 - Re-run the private harness (`bbj-corpus/conformance/run.mjs --ls <this repo>`) at each fix-phase boundary; the numbers named in the roadmap's success criteria come from that run.
 - Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
