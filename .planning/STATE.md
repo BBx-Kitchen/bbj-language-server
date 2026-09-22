@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 100 — Parser Gaps — Remaining Groups, Long Tail & Examples
+**Current Focus:** Phase 101 — BBj Parser Endpoint in `bbj-ls` (Phase 100 complete 2026-09-22)
 
 ---
 
