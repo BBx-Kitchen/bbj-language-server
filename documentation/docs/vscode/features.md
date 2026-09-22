@@ -47,6 +47,17 @@ Real-time error detection:
 
 Errors appear as you type with detailed messages and quick fixes where available.
 
+### Live Compiler Diagnostics
+
+With BBj 26.03 or later, the BBj compiler's own parser checks the currently open file as you
+type, and its syntax errors appear in the editor without saving — the same errors `bbjcpl` would
+report on save, shown earlier.
+
+This follows the existing `bbj.compiler.trigger` setting: setting it to `off` turns live
+compiler diagnostics off along with the save-time compiler check. With an earlier BBj, or when
+BBjServices is not running, the editor simply keeps the save-time compiler check and nothing
+else changes.
+
 ## Hover Information
 
 Hover over elements to see:

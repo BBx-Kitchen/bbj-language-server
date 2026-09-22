@@ -31,6 +31,8 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 
 - **VS Code** 1.67.0 or higher
 - **BBj** 25.00 or higher
+- **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
+  compiler check)
 - **BBjServices** running locally
 - **Java 17** or higher
 
