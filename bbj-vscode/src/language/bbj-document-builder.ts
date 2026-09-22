@@ -246,9 +246,14 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             this.cplDebounceTimers.delete(key);
 
             try {
-                // Clear-then-show: remove old BBjCPL diagnostics before compile
+                // Clear-then-show: remove old BBjCPL and live-parser diagnostics together,
+                // before the BBjCPL merge step runs. mergeDiagnostics() matches a cplDiag
+                // against any existing diagnostic on the same line whose source isn't
+                // 'BBjCPL' — if a stale live-parser diagnostic from a previous debounce
+                // cycle were still present here, it would get silently absorbed into a
+                // mislabeled 'BBjCPL' entry that keeps the old message text.
                 document.diagnostics = (document.diagnostics ?? []).filter(
-                    d => d.source !== 'BBjCPL'
+                    d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE
                 );
 
                 // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
@@ -266,11 +271,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     );
                 }
 
-                // Live parser diagnostics: filter-then-concat, deliberately NOT mergeDiagnostics
+                // Live parser diagnostics: append-only, deliberately NOT mergeDiagnostics
                 // — that helper collapses a same-line match into the 'BBjCPL' source, which would
                 // hide the live diagnostic from its own source and pull it into the
-                // BBjCPL-suppresses-Langium-parse-errors rule.
-                document.diagnostics = (document.diagnostics ?? []).filter(d => d.source !== BBJ_PARSER_SOURCE);
+                // BBjCPL-suppresses-Langium-parse-errors rule. Stale entries were already
+                // cleared above, so there is nothing left to re-filter here.
                 const bbjParserService = langServices.compiler.BBjParserService;
                 if (bbjParserService.isEnabled()) {
                     const liveDiags = await bbjParserService.requestLiveParse(document);

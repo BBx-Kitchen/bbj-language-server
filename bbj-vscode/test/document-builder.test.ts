@@ -8,6 +8,7 @@ import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BbjClass } from '../src/language/generated/ast.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from '../src/language/bbj-validator.js';
+import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
 import { logger } from '../src/language/logger.js';
 
 vi.mock('../src/language/bbj-notifications.js', () => ({
@@ -27,9 +28,14 @@ function buildHarness() {
     const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
     const compileMock = vi.fn<(filePath: string) => Promise<Diagnostic[]>>();
+    const isEnabledMock = vi.fn<() => boolean>().mockReturnValue(true);
+    const requestLiveParseMock = vi.fn<(document: LangiumDocument) => Promise<Diagnostic[]>>().mockResolvedValue([]);
     const fakeServiceRegistry = {
         getServices: () => ({
-            compiler: { BBjCPLService: { compile: compileMock } },
+            compiler: {
+                BBjCPLService: { compile: compileMock },
+                BBjParserService: { isEnabled: isEnabledMock, requestLiveParse: requestLiveParseMock },
+            },
         }),
     };
 
@@ -51,7 +57,15 @@ function buildHarness() {
     };
 
     const builder = new BBjDocumentBuilder(fakeServices as unknown as LangiumSharedCoreServices);
-    return { builder, wsManager, compileMock, openDocumentUris, indexManager: services.shared.workspace.IndexManager };
+    return {
+        builder,
+        wsManager,
+        compileMock,
+        isEnabledMock,
+        requestLiveParseMock,
+        openDocumentUris,
+        indexManager: services.shared.workspace.IndexManager,
+    };
 }
 
 function fakeDocument(path: string, diagnostics: Diagnostic[] = []): LangiumDocument {
@@ -163,5 +177,42 @@ describe('trackBbjcplAvailability dedup and debouncedCompile timing (P61-D5-016)
         await vi.advanceTimersByTimeAsync(600);
 
         expect(compileMock).toHaveBeenCalledOnce();
+    });
+});
+
+describe('debouncedCompile clears stale live-parser diagnostics before the BBjCPL merge step', () => {
+    test('a fresh same-line BBjCPL diagnostic is not absorbed into a leftover live-parser entry from a prior cycle', async () => {
+        vi.useFakeTimers();
+        const { builder, compileMock, requestLiveParseMock } = buildHarness();
+        const privates = builder as unknown as BuilderPrivates;
+        const doc = fakeDocument('/proj/persistent-error.bbj');
+        const line5Range = { start: { line: 5, character: 0 }, end: { line: 5, character: 10 } };
+
+        // First debounce cycle: BBjCPL reports nothing new, the live parser flags line 5.
+        compileMock.mockResolvedValueOnce([]);
+        requestLiveParseMock.mockResolvedValueOnce([
+            { message: 'stale live-parser message', range: line5Range, severity: 1, source: BBJ_PARSER_SOURCE },
+        ]);
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
+            { source: BBJ_PARSER_SOURCE, message: 'stale live-parser message' },
+        ]);
+
+        // Second debounce cycle: the same line is now flagged by BBjCPL with a new message, and
+        // the live parser reports nothing this time (its own diagnostic would only reappear if
+        // still present). The BBjCPL diagnostic must win with its own current message, not the
+        // leftover live-parser text from the previous cycle.
+        compileMock.mockResolvedValueOnce([
+            { message: 'current bbjcpl message', range: line5Range, severity: 1, source: 'BBjCPL' },
+        ]);
+        requestLiveParseMock.mockResolvedValueOnce([]);
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
+            { source: 'BBjCPL', message: 'current bbjcpl message' },
+        ]);
     });
 });
