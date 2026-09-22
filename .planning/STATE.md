@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 101
 current_phase_name: BBj Parser Endpoint in `bbj-ls`
 status: executing
-stopped_at: Completed 101-01-PLAN.md
-last_updated: "2026-09-22T07:13:08.876Z"
+stopped_at: Completed 101-02-PLAN.md
+last_updated: "2026-09-22T07:52:10.403Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 101 execution started
-state_head: d7ebd8d8f25dbcf2b1b7852cc2f3712e025f4155
+state_head: 346402c50f9d2b5ca1bb54f45f1783cc5a87286e
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
   percent: 43
 ---
 
@@ -123,6 +123,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 100 P05 | 40min | 3 tasks | 18 files |
 | Phase 100 P06 | 27min | 3 tasks | 2 files |
 | Phase 101 P01 | 20min | 3 tasks | 9 files |
+| Phase 101 P02 | 26min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,9 @@ decisions:
 - [Phase 100]: [Phase 100] Redacted corpus file paths that had leaked into 100-CONFORMANCE.md across three earlier plans' per-file-look tables -- a Rule 2 security deviation found and fixed during plan 06, not part of the plan's own task list.
 - [Phase 101]: 101-01: kept ParseProgramIntegrationTest naming (not ParseProgramIT) so Surefire's default includes still run it without a pom change
 - [Phase 101]: 101-01: fixed root-owned useraccts.json ownership (sudo chown to coder) so BBjServices' own admin auth could read its security file and stopbbjservices could authenticate — pre-existing sandbox misconfiguration, not a phase-caused issue
+- [Phase 101]: [Phase 101 P02]: Gson was already transitively reachable at compile time through lsp4j's own dependency tree, confirmed with a clean mvn clean package; no pom.xml change was needed (plan's Branch A taken)
+- [Phase 101]: [Phase 101 P02]: ParserWorker.parse() stays a synchronized instance method in this plan per its own interim design; plan 03 replaces synchronization with a single-thread executor and the latest-wins queue without changing the method signature
+- [Phase 101]: [Phase 101 P02]: BbjPrefixAlgorithm.findProgram is never invoked by BBj's parser through this endpoint's getProgramFactory+loadSourceProgram+doJSONSerialization call sequence for a bare USE/CALL reference, under either type-checking setting; recorded as WINDOWS.md entry 4 (open), flagged for Phase 102/103 and the plan 04 MR text
 
 ### Tech Debt
 
@@ -248,8 +252,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T07:13:08.700Z
-Stopped at: Completed 101-01-PLAN.md
+Last session: 2026-09-22T07:52:10.214Z
+Stopped at: Completed 101-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
