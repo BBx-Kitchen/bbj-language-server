@@ -30,6 +30,9 @@ const DEFAULT_MAX_ERRORS = 20;
  * makes a JVM language client's deserializer reject the entire publish-diagnostics message,
  * hiding every diagnostic for the document. The sentinel is the idiom this codebase already uses
  * for exactly this (see `extractCyclicReferenceRelatedInfo` in `bbj-document-validator.ts`).
+ * A collapsed or inverted character range — an end character at or before the start character,
+ * or a start character of zero — spans the whole clamped line (starting at character 0) rather
+ * than producing a zero-width marker.
  * @param error the parser's own error DTO, one-based lines and characters
  * @param lineCount the document's current line count, used to clamp an out-of-range line
  */
@@ -38,7 +41,8 @@ export function parseErrorToRange(error: ParseError, lineCount: number): Range {
         Math.min(Math.max(oneBasedLine - 1, 0), Math.max(lineCount - 1, 0));
     const startLine = clampLine(error.editorStartLine);
     const endLine = clampLine(error.editorEndLine);
-    const startCharacter = Math.max(error.startCharacter - 1, 0);
+    const isCollapsedOrInverted = error.startCharacter <= 0 || error.endCharacter <= error.startCharacter;
+    const startCharacter = isCollapsedOrInverted ? 0 : error.startCharacter - 1;
     return {
         start: { line: startLine, character: startCharacter },
         end: { line: endLine, character: END_OF_LINE_CHARACTER }
