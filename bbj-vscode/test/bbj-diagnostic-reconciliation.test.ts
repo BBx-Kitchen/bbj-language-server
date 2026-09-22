@@ -4,11 +4,14 @@ import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import {
     DOWNGRADED_SYNTAX_CODE,
     LINE_BREAK_DIAGNOSTIC_CODE,
+    applyVerdictCarryOver,
     downgradeSyntaxComplaint,
     reconcileWithVerdict,
     syntaxComplaintKey,
     type LineTextLookup,
+    type VerdictState,
 } from '../src/language/bbj-diagnostic-reconciliation.js';
+import { applyDiagnosticHierarchy } from '../src/language/bbj-document-validator.js';
 import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
 
 /** A diagnostic spanning `line` to `endLine`, in the style of cpl-integration.test.ts's `makeDiag`. */
@@ -213,6 +216,181 @@ describe('reconcileWithVerdict', () => {
             syntaxComplaintKey(downgradedComplaint.message, 'a'),
             syntaxComplaintKey(replacedComplaint.message, 'b'),
         ]));
+    });
+
+});
+
+describe('applyDiagnosticHierarchy', () => {
+
+    test('a downgraded syntax warning and a linking-error warning both survive when there is no Error', () => {
+        const downgraded = makeDiag(0, 0, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', 'downgraded warning');
+        const linking = makeDiag(1, 1, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+
+        const result = applyDiagnosticHierarchy([downgraded, linking], true, 20);
+
+        expect(result).toEqual([downgraded, linking]);
+    });
+
+    test('the same list plus a fresh parsing-error Error removes the linking-error, not the downgraded warning', () => {
+        const downgraded = makeDiag(0, 0, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', 'downgraded warning');
+        const linking = makeDiag(1, 1, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+        const parseError = makeDiag(2, 2, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'fresh parse error');
+
+        const result = applyDiagnosticHierarchy([downgraded, linking, parseError], true, 20);
+
+        expect(result).toEqual([downgraded, parseError]);
+    });
+
+    test('a live-parser Error and a downgraded warning survive; a validator warning and a linking warning are removed', () => {
+        const liveError = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'live parser error');
+        const downgraded = makeDiag(1, 1, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', 'downgraded warning');
+        const validatorWarning = makeDiag(2, 2, DiagnosticSeverity.Warning, undefined, 'bbj', 'validator warning');
+        const linkingWarning = makeDiag(3, 3, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+
+        const result = applyDiagnosticHierarchy([liveError, downgraded, validatorWarning, linkingWarning], true, 20);
+
+        expect(result).toEqual([liveError, downgraded]);
+    });
+
+    test('25 downgraded warnings with maxErrors 20: exactly the first 20 survive, in order', () => {
+        const warnings = Array.from({ length: 25 }, (_, i) =>
+            makeDiag(i, i, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', `warning ${i}`));
+
+        const result = applyDiagnosticHierarchy(warnings, true, 20);
+
+        expect(result).toEqual(warnings.slice(0, 20));
+    });
+
+    test('20 parsing-errors plus 5 downgraded warnings all survive — downgraded warnings do not count against the error cap', () => {
+        const parseErrors = Array.from({ length: 20 }, (_, i) =>
+            makeDiag(i, i, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', `parse error ${i}`));
+        const warnings = Array.from({ length: 5 }, (_, i) =>
+            makeDiag(20 + i, 20 + i, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', `warning ${i}`));
+
+        const result = applyDiagnosticHierarchy([...parseErrors, ...warnings], true, 20);
+
+        expect(result).toHaveLength(25);
+    });
+
+    test('unchanged: suppression off returns the input as is', () => {
+        const diagnostics = [makeDiag(0, 0, DiagnosticSeverity.Warning, undefined, 'bbj', 'a warning')];
+
+        const result = applyDiagnosticHierarchy(diagnostics, false, 20);
+
+        expect(result).toBe(diagnostics);
+    });
+
+    test('unchanged: a parse error plus a linking error removes the linking error', () => {
+        const parseError = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const linking = makeDiag(1, 1, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+
+        const result = applyDiagnosticHierarchy([parseError, linking], true, 20);
+
+        expect(result).toEqual([parseError]);
+    });
+
+    test('unchanged: a semantic Error plus a Warning removes the Warning', () => {
+        const semanticError = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'bbj', 'semantic error');
+        const warning = makeDiag(1, 1, DiagnosticSeverity.Warning, undefined, 'bbj', 'ordinary warning');
+
+        const result = applyDiagnosticHierarchy([semanticError, warning], true, 20);
+
+        expect(result).toEqual([semanticError]);
+    });
+
+    test('unchanged: 25 parse errors cap at 20', () => {
+        const parseErrors = Array.from({ length: 25 }, (_, i) =>
+            makeDiag(i, i, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', `parse error ${i}`));
+
+        const result = applyDiagnosticHierarchy(parseErrors, true, 20);
+
+        expect(result).toHaveLength(20);
+    });
+
+    test('unchanged: a BBjCPL-sourced diagnostic removes the Parse tier (Rule 0\'s pure behaviour)', () => {
+        const parseError = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const cplDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error');
+
+        const result = applyDiagnosticHierarchy([parseError, cplDiag], true, 20);
+
+        expect(result).toEqual([cplDiag]);
+    });
+
+});
+
+describe('applyVerdictCarryOver', () => {
+
+    test('a parsing-error whose message and line text match a seen key is downgraded', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const lineText = lineTextFrom(['x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([complaint], state, lineText);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect((result[0].data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+    });
+
+    test('a complaint whose message differs from every seen key stays an Error', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'a different message');
+        const lineText = lineTextFrom(['x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([complaint], state, lineText);
+
+        expect(result).toEqual([complaint]);
+    });
+
+    test('a complaint whose line text differs from every seen key stays an Error', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const lineText = lineTextFrom(['x = (1']); // the line was edited since the last verdict
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([complaint], state, lineText);
+
+        expect(result).toEqual([complaint]);
+    });
+
+    test('the same message on the same text at a different line number is still downgraded', () => {
+        const complaint = makeDiag(3, 3, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const lineText = lineTextFrom(['', '', '', 'x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([complaint], state, lineText);
+
+        expect(result[0].severity).toBe(DiagnosticSeverity.Warning);
+    });
+
+    test('a non-syntax diagnostic whose key happens to match a seen entry is untouched', () => {
+        const semanticError = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'bbj', 'parse error');
+        const lineText = lineTextFrom(['x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([semanticError], state, lineText);
+
+        expect(result).toEqual([semanticError]);
+    });
+
+    test('an already-downgraded complaint is untouched', () => {
+        const downgraded = makeDiag(0, 0, DiagnosticSeverity.Warning, DOWNGRADED_SYNTAX_CODE, 'bbj', 'already downgraded');
+        const lineText = lineTextFrom(['x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('already downgraded', 'x = (')]) };
+
+        const result = applyVerdictCarryOver([downgraded], state, lineText);
+
+        expect(result).toEqual([downgraded]);
+    });
+
+    test('inputs are not mutated', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const before = structuredClone(complaint);
+        const lineText = lineTextFrom(['x = (']);
+        const state: VerdictState = { seen: new Set([syntaxComplaintKey('parse error', 'x = (')]) };
+
+        applyVerdictCarryOver([complaint], state, lineText);
+
+        expect(complaint).toEqual(before);
     });
 
 });
