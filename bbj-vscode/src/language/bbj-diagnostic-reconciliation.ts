@@ -174,6 +174,33 @@ export function reconcileWithVerdict(
 }
 
 /**
+ * Re-applies the last verdict's decisions to a freshly produced Langium diagnostics list — the
+ * per-keystroke carry-over between two verdicts. Each keystroke re-validates immediately, but the
+ * next verdict only arrives after the debounce settles; without this, a complaint the last verdict
+ * downgraded or replaced would flash back to an Error on every keystroke until then.
+ *
+ * Pure and non-mutating. A syntax complaint that is not already downgraded and whose
+ * {@link syntaxComplaintKey} (its message and its line's current text) is in `state.seen` is
+ * replaced by its downgraded copy — matched by message and line text rather than line number, so
+ * an edit that only shifts the complaint's line still matches, while an edit to the line's own
+ * text does not. Every other diagnostic — already-downgraded complaints, non-syntax diagnostics,
+ * and any complaint not in `seen` — passes through unchanged.
+ */
+export function applyVerdictCarryOver(
+    langiumDiagnostics: Diagnostic[],
+    state: VerdictState,
+    lineText: LineTextLookup
+): Diagnostic[] {
+    return langiumDiagnostics.map(diagnostic => {
+        if (!isSyntaxComplaint(diagnostic) || isDowngradedSyntaxWarning(diagnostic)) {
+            return diagnostic;
+        }
+        const key = syntaxComplaintKey(diagnostic.message, lineText(diagnostic.range.start.line));
+        return state.seen.has(key) ? downgradeSyntaxComplaint(diagnostic) : diagnostic;
+    });
+}
+
+/**
  * Per-document verdict state, module-scoped over one `Map`, in the style of this codebase's other
  * cross-service settings (`compilerTrigger`/`maxErrorsDisplayed` in `bbj-document-validator.ts`).
  * The debounce callback that produces a verdict (`bbj-document-builder.ts`) and the synchronous,

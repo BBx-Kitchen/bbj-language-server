@@ -5,7 +5,7 @@ import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, Diagnostic
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
-import { rememberLangiumDiagnostics } from "./bbj-diagnostic-reconciliation.js";
+import { isDowngradedSyntaxWarning, rememberLangiumDiagnostics } from "./bbj-diagnostic-reconciliation.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -80,7 +80,10 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * errors to Warning severity, but they must still be identified and suppressed by their
  * data.code when parse errors exist. Without Rule 1, linking errors would only be
  * suppressed when ANY error exists (Rule 2), which is wrong — linking errors should
- * survive when only semantic errors (no parse errors) are present.
+ * survive when only semantic errors (no parse errors) are present. Rule 1 needs no special
+ * case for a downgraded syntax warning: once a syntax complaint is downgraded, its `data.code`
+ * is no longer the parsing-error code, so `getDiagnosticTier()` no longer places it in the
+ * Parse tier and it can no longer make `hasParseErrors` true on its own.
  *
  * Note on Rule 0: `applyDiagnosticHierarchy` runs once, synchronously, inside
  * `validateDocument()` — before the save-time compiler's `'BBjCPL'`-sourced diagnostics exist.
@@ -125,10 +128,12 @@ export function applyDiagnosticHierarchy(
         );
     }
 
-    // Rule 2: any Error-severity diagnostic → suppress all warnings/hints
+    // Rule 2: any Error-severity diagnostic → suppress all warnings/hints, except a downgraded
+    // syntax warning — that is Langium's own opinion on a line the compiler-parser verdict
+    // stayed silent about, and must stay visible even while an Error exists elsewhere.
     if (hasAnyError) {
         result = result.filter(
-            d => d.severity === DiagnosticSeverity.Error
+            d => d.severity === DiagnosticSeverity.Error || isDowngradedSyntaxWarning(d)
         );
     }
 
@@ -137,6 +142,21 @@ export function applyDiagnosticHierarchy(
     if (parseErrors.length > maxErrors) {
         const nonParseErrors = result.filter(d => getDiagnosticTier(d) !== DiagnosticTier.Parse);
         result = [...parseErrors.slice(0, maxErrors), ...nonParseErrors];
+    }
+
+    // Rule 3b: downgraded syntax warnings are no longer errors, so they never count against the
+    // parse-error cap above — but they still need their own cap at the same value, so a verdict
+    // with many downgraded complaints can never make the visible list longer than the capped
+    // error list used to be. Kept in their original relative order among themselves and among
+    // every other diagnostic; only excess downgraded warnings past the cap are dropped.
+    const downgradedWarningCount = result.reduce((count, d) => count + (isDowngradedSyntaxWarning(d) ? 1 : 0), 0);
+    if (downgradedWarningCount > maxErrors) {
+        let kept = 0;
+        result = result.filter(d => {
+            if (!isDowngradedSyntaxWarning(d)) return true;
+            kept++;
+            return kept <= maxErrors;
+        });
     }
 
     return result;
