@@ -10,8 +10,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     // unrelated reason (for example an invalid name) silently re-parse its own now-ID-category
     // terminator, plus every other already-ID-category keyword on the same broken line, as a run
     // of ordinary expression statements with ZERO parser errors -- turning a real syntax problem
-    // into a silent misparse instead of the parser error it produces today. See
-    // 100-CONFORMANCE.md's oracle-sweep section for the reverted probe evidence.
+    // into a silent misparse instead of the parser error it produces today (confirmed by
+    // probe: `CLASS PUBLIC label` / `CLASSEND` went from 1 parser error to 0 without the set).
     static EXCLUDED = new Set(['METHODEND', 'CLASSEND', 'INTERFACEEND'])
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const reachableRules = stream(GrammarUtils.getAllReachableRules(grammar, false));
@@ -71,9 +71,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
         // NEXT_BREAK (the bare, no-variable form of NEXT closing a FOR loop) has the identical
         // defect: 'next' is not a quoted grammar literal at all -- it exists only through this
-        // custom terminal and its sibling NEXT_ID -- so the roadmap's own "already works" claim
-        // for `next` (100-CONTEXT/ROADMAP) was not actually true until this grant (discovered by
-        // this plan's own deeper sweep, 100-CONFORMANCE.md). NextStatement's bare alternative is
+        // custom terminal and its sibling NEXT_ID -- so `next` as an ordinary name did not work
+        // until this grant, although it was long believed to. NextStatement's bare alternative is
         // still matched directly by the NEXT_BREAK token TYPE at the top of a statement, so this
         // grant only adds a second, identifier-position use -- it does not change which
         // alternative wins when 'next' stands alone as its own statement.

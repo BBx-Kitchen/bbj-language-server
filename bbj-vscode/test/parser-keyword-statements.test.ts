@@ -253,7 +253,7 @@ describe('the word `label` as a name', () => {
 
     test('a class declared with the word as its name is still a parser error (deliberately not widened)', async () => {
         // ClassDecl.name is typed by ValidName, deliberately left unwidened -- confirmed by
-        // probe as a parser error both before and after this plan's grammar edit.
+        // probe as a parser error both before and after this grammar edit.
         const parsed = await parse('CLASS PUBLIC label\nCLASSEND\n');
         expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
     });
@@ -528,7 +528,7 @@ describe('a comment after a block boundary, and a line number in class code', ()
 describe('language words as names (oracle sweep against the compiler)', () => {
     // Every word the compiler accepts as a name and the parser used to reject, fixed by its own
     // mechanism: 'declare', 'auto', 'use', 'var' widen FeatureName/LabelName the same
-    // way Phase 99's 'label'/'void' did; 'void' gains the same widening in LabelName; 'start',
+    // way 'label'/'void' already were; 'void' gains the same widening in LabelName; 'start',
     // 'next', 'methodret', 'print', 'write', 'delete', 'save', 'enter', 'read', 'input',
     // 'extract' and 'find' each get an explicit ID-category grant on their own custom-pattern
     // token, mirroring the file's existing RELEASE_NL/RELEASE_NO_NL/EXIT_NO_NL grants.
@@ -615,18 +615,16 @@ describe('language words as names (oracle sweep against the compiler)', () => {
     test('a word the compiler rejects as a name is not flagged as an error (record-only, not a regression to fix here)', async () => {
         // 'then' is one of the words the oracle sweep found the real compiler rejects as a name;
         // the parser already accepts it via the pre-existing generic uppercase-keyword ID-category
-        // fallback (unrelated to this plan's own widening) -- recorded in 100-CONFORMANCE.md's
-        // oracle-sweep section as record-only: words the compiler rejects are recorded, not
-        // flagged, and adding a check for them is not this plan's job.
+        // fallback (unrelated to the widening tested here). Words the compiler rejects as names
+        // are not flagged by the parser today; adding a check for them is separate work.
         const parsed = await parse('then=1\n');
         expect(parsed.parseResult.parserErrors).toHaveLength(0);
     });
 
     test('a malformed class whose name is not a valid identifier is still a parser error -- the METHODEND/CLASSEND/INTERFACEEND exclusion stays in place', async () => {
-        // Tried and reverted this plan: removing these three from BBjTokenBuilder.EXCLUDED let a
+        // Tried and reverted: removing these three from BBjTokenBuilder.EXCLUDED let a
         // malformed ClassDecl silently re-parse as a run of expression statements with zero
-        // errors instead of the parser error it produces today. Recorded in
-        // 100-CONFORMANCE.md, not fixed.
+        // errors instead of the parser error it produces today. Known and left as is.
         const parsed = await parse('CLASS PUBLIC label\nCLASSEND\n');
         expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
     });
@@ -646,7 +644,7 @@ describe('the long-tail triage: a verb with no rule at all, and two order-fixed 
 
     test('SETDRIVE with nothing after it is still a parser error', async () => {
         // The compiler rejects a bare SETDRIVE with no fileid; confirmed a parser error both
-        // before this plan's rule existed (the leftover comma) and after (the missing required
+        // before the rule existed (the leftover comma) and after (the missing required
         // expression) -- the message text differs, the error status does not.
         const parsed = await parse('setdrive ,err=driveerr\ndriveerr: END\n');
         expect(parsed.parseResult.parserErrors.length, 'parser errors').toBeGreaterThan(0);
@@ -721,9 +719,9 @@ describe('the long-tail triage: a verb with no rule at all, and two order-fixed 
 });
 
 describe('a same-line leading line number before a class-boundary keyword validates clean', () => {
-    // Plan 02 asserted these shapes parse-only (the line-break validator's raw line-start text
-    // check had no tolerance for a leading line number). This plan widened that check; these
-    // same five shapes now validate clean, not just parse clean.
+    // These shapes used to be asserted parse-only (the line-break validator's raw line-start text
+    // check had no tolerance for a leading line number). That check is now tolerant; these
+    // same five shapes validate clean, not just parse clean.
     test.each([
         ['number directly before the class end marker, no method in between', 'class public a\n0020 classend\n'],
         ['number directly before a method header', 'class public a\n0015 method public void m()\nmethodend\nclassend\n'],
@@ -753,8 +751,8 @@ describe('a same-line leading line number before a class-boundary keyword valida
         // same-line-numbering idiom applied to an ORDINARY statement (`10 print 1` triggers the
         // identical pair of false diagnostics, confirmed by probe, unrelated to any class
         // construct). Fixing that well needs a general exemption for a leading-line-number
-        // statement from the statement-separation check, not a contained mask edit -- out of
-        // scope here, recorded in 100-CONFORMANCE.md.
+        // statement from the statement-separation check, not a contained mask edit -- known
+        // and left as is.
         const validated = await validate('0010 class public a\nclassend\n');
         const lineBreakErrors = lineBreakDiagnostics(validated.diagnostics);
         expect(lineBreakErrors.length, 'a line-break diagnostic remains on the leading line number itself').toBeGreaterThan(0);
@@ -787,7 +785,7 @@ describe('a bare comment word with nothing after it, right after a block boundar
 
     test('a name merely starting with the comment word is still reported -- the bare-comment tolerance is not a blanket exemption', async () => {
         // 'remx=1' does not lex as a comment body (COMMENT requires the 'rem' word to stand
-        // alone), so this stays a parser error exactly as before this plan's regex widening --
+        // alone), so this stays a parser error exactly as before the regex widening --
         // the line-break checker itself never runs once there is a parser error (it returns
         // early), so the still-flagged evidence here is the parser error, not a line-break
         // diagnostic.
@@ -805,9 +803,8 @@ describe('CLEAR/BEGIN with a plain variable list is a recorded, not a fixed, gap
     // break between them, no comma) silently swallowed that next statement's first expression as
     // its own variable list instead of leaving it for the next statement -- confirmed by probe
     // (`begin\nx=1\nprint x` lost x's declaration). Safely disambiguating needs a same-line-only
-    // lexer token (the RESTORE_NO_NL/TABLE_DATA technique), which is lexer work -- recorded in
-    // 100-CONFORMANCE.md, not fixed here. `clear x![]` and `clear except a$,b` stay exactly as
-    // before this plan.
+    // lexer token (the RESTORE_NO_NL/TABLE_DATA technique), which is lexer work -- known and
+    // left as is. `clear x![]` and `clear except a$,b` are unchanged.
     test('clear followed by a variable stays two separately-flagged statements, not a widened CLEAR', async () => {
         const validated = await validate('x=1\nclear x\n');
         const lineBreakErrors = lineBreakDiagnostics(validated.diagnostics);
@@ -815,7 +812,7 @@ describe('CLEAR/BEGIN with a plain variable list is a recorded, not a fixed, gap
     });
 
     test('a bare CLEAR or BEGIN never absorbs the following, unrelated statement', async () => {
-        // The regression this plan's own probe caught and reverted -- kept as a permanent
+        // The regression a probe caught, and the widening was reverted -- kept as a permanent
         // guardrail so a future re-attempt at this widening trips the same test.
         const validated = await validate('begin\nx=1\nprint x\n');
         const errorDiagnostics = validated.diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
