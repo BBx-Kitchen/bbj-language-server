@@ -5,7 +5,7 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 100
 current_phase_name: Parser Gaps — Remaining Groups, Long Tail & Examples
 status: verifying
-stopped_at: Completed 100-06-PLAN.md (halted -- blocking-human checkpoint on the phase closing gate)
+stopped_at: Completed 100-06-PLAN.md (checkpoint resolved 2026-09-22 — residue accepted, phase 100 plans 6/6 complete)
 last_updated: "2026-09-21T23:54:37.455Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 100 execution started
@@ -232,7 +232,7 @@ filed 2026-09-21 at the Phase 98 close:
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 - **Phase 98 closed 2026-09-21 with two accepted overrides** (Stephan Wald; `98-VERIFICATION.md`): B regressed 658->665 of 1,210 (root cause and per-file evidence in `98-CONFORMANCE.md`; fixing it needs the bbj-ls compiler-parser endpoint, Phases 101-103, not a Phase 98 check), and A2 = 27 vs its ≤25 gate (5 valid single-line IF/ELSE files re-flagged by plan 08's balance-counter fix; tracked as pending todo `2026-09-21-loosen-single-line-if-balance-rule-a2-residue`). Both deltas carry forward to Phase 104's milestone exit measurement.
 - **Phase 99 closed 2026-09-21 with all gates green** (A 52, A2 23, FIELD/READ/IOLIST/label groups 0; `99-VERIFICATION.md` passed 9/9). Carried forward: B = 666 of 1,210 (+1 vs the Phase 98 close, a lost accidental catch that needs the compiler-parser endpoint, Phases 101-103); the documented `FIELD` array-index form is still rejected (Phase 100 long tail); security enforcement is on and Phase 99 has no SECURITY.md yet (`/gsd-secure-phase 99`).
-- Phase 100 closing gate: 1 shape-level residue row (a METHOD-declaration file) is genuinely pending -- cause probed but not isolated -- and B rose 666->669 vs the Phase 99 close baseline (unchanged, already classified since plan 01). Both numeric gates (A<=25, A2<=23) PASS. Human decision needed: accept as recorded residue, or hand to a later phase (see 100-06-SUMMARY.md / 100-CONFORMANCE.md's Task 3 conditional stop).
+- Phase 100 closing gate (resolved 2026-09-22, human accepted): the last residue row was isolated (a `DEF FN` body without `FNEND` followed by a `class` block) and B stays 669 vs 666 — three accidental catches lost, none a correct diagnosis; see 100-CONFORMANCE.md
 
 ### Quick Tasks Completed
 
@@ -246,7 +246,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-21T23:54:37.300Z
-Stopped at: Completed 100-06-PLAN.md (halted -- blocking-human checkpoint on the phase closing gate)
+Stopped at: Completed 100-06-PLAN.md (checkpoint resolved 2026-09-22 — residue accepted, phase 100 plans 6/6 complete)
 Resume file: None
 
 Next: `/gsd-discuss-phase 100` or `/gsd-plan-phase 100`. Security enforcement is on and Phase 99 has no
