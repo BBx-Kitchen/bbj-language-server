@@ -156,6 +156,7 @@ decisions:
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
 - [v4.5, roadmap]: new diagnostics from the compiler's parser are errors, like the compiler's own.
+- [v4.5, Phase 102]: PR #691 (phases 98-102) is held open and not merged until the whole v4.5 milestone is finished, Phase 105 included; the milestone lands on `main` as one piece.
 - [v4.5, Phase 101]: referenced-program (USE/CALL) resolution is NOT observable through the `parseProgram` endpoint — BBj's parser never invokes the wired prefix algorithm under this call sequence; accepted by override 2026-09-22. Phases 102/103 must not build reference diagnostics on it. Older-server detection is a once-per-connection MethodNotFound probe.
 - [v4.5, roadmap]: phase order is A2 first (98), then list A by file count (99, 100) with the long-tail triage after the named groups, then the endpoint (101) and its client (102, 103), then the closing measurement (104).
 - [v4.5, roadmap]: CONF-01 is mapped once, to Phase 98; Phases 99 and 100 repeat the regression-file rule in their own success criteria rather than re-owning the requirement.
