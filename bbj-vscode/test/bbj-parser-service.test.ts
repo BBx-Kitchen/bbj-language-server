@@ -10,7 +10,12 @@ import { setMaxErrors } from '../src/language/bbj-document-validator.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BBJ_PARSER_SOURCE, BBjParserService } from '../src/language/bbj-parser-service.js';
 import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
-import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
+import {
+    clearAllVerdictStates,
+    DOWNGRADED_SYNTAX_CODE,
+    getVerdictState,
+    rememberLangiumDiagnostics,
+} from '../src/language/bbj-diagnostic-reconciliation.js';
 import type { ParseError } from '../src/language/java-interop.js';
 import { Program } from '../src/language/generated/ast.js';
 import { logger } from '../src/language/logger.js';
@@ -390,6 +395,190 @@ describe('an accepted verdict turns the language server\'s parse error into a wa
     });
 });
 
+describe('a live-parse failure falls back to the save-time compile', () => {
+    const validationServices = createBBjTestServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(validationServices.shared);
+        validate = validationHelper<Program>(validationServices.BBj);
+    });
+
+    /**
+     * Builds a validated document with a real Langium parse error, then drives one accepted
+     * (zero-error) verdict cycle so the parse error starts out downgraded to a Warning — the
+     * precondition every case below falls back from.
+     */
+    async function acceptedVerdictDocument(
+        harness: ReturnType<typeof buildHarness>
+    ): Promise<{ document: LangiumDocument; parseErrors: Diagnostic[] }> {
+        const result = await validate('x = (1 + 2\n');
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        // Precondition: the invented text really does produce at least one Langium parse error.
+        expect(parseErrors.length).toBeGreaterThan(0);
+
+        const document = result.document;
+        harness.openDocumentUris.add(document.uri.toString());
+
+        const privates = harness.builder as unknown as BuilderPrivates;
+        harness.interopService.scriptParseProgram({ errors: [] });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(document.diagnostics?.some(d => d.severity === DiagnosticSeverity.Error)).toBe(false);
+
+        return { document, parseErrors };
+    }
+
+    test.each([
+        [-33001, 'parser-exception'],
+        [-33002, 'timeout'],
+        [-33003, 'size-cap'],
+        [-33004, 'service-unavailable'],
+        [-33005, 'protected-program'],
+    ])('application error %i (%s): falls back to the save-time compile with Langium errors restored', async (code, kind) => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService, compileMock } = harness;
+        compileMock.mockResolvedValue([]);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        const { document, parseErrors } = await acceptedVerdictDocument(harness);
+
+        interopService.scriptParseProgram({ code, message: `boom (${kind})` });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).toHaveBeenCalledOnce();
+        for (const original of parseErrors) {
+            const restored = document.diagnostics?.find(
+                d => d.message === original.message && d.range.start.line === original.range.start.line
+            );
+            expect(restored).toBeDefined();
+            expect(restored!.severity).toBe(DiagnosticSeverity.Error);
+            expect((restored!.data as { code?: unknown } | undefined)?.code).toBe(DocumentValidator.ParsingError);
+        }
+        expect(getVerdictState(document.uri)).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('a transport failure: falls back to the save-time compile with Langium errors restored', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService, compileMock } = harness;
+        compileMock.mockResolvedValue([]);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        const { document, parseErrors } = await acceptedVerdictDocument(harness);
+
+        interopService.scriptParseProgram('transport-error');
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).toHaveBeenCalledOnce();
+        for (const original of parseErrors) {
+            const restored = document.diagnostics?.find(
+                d => d.message === original.message && d.range.start.line === original.range.start.line
+            );
+            expect(restored).toBeDefined();
+            expect(restored!.severity).toBe(DiagnosticSeverity.Error);
+        }
+        expect(getVerdictState(document.uri)).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('a malformed result: falls back to the save-time compile with Langium errors restored', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService, compileMock } = harness;
+        compileMock.mockResolvedValue([]);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        const { document, parseErrors } = await acceptedVerdictDocument(harness);
+
+        interopService.scriptParseProgram('malformed-result');
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).toHaveBeenCalledOnce();
+        for (const original of parseErrors) {
+            const restored = document.diagnostics?.find(
+                d => d.message === original.message && d.range.start.line === original.range.start.line
+            );
+            expect(restored).toBeDefined();
+            expect(restored!.severity).toBe(DiagnosticSeverity.Error);
+        }
+        expect(getVerdictState(document.uri)).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('a cancelled answer after an accepted verdict: no compile run, the parse error stays a Warning, verdict state unchanged', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService, compileMock } = harness;
+        compileMock.mockResolvedValue([]);
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        const { document } = await acceptedVerdictDocument(harness);
+        const stateBefore = getVerdictState(document.uri);
+        expect(stateBefore).toBeDefined();
+
+        interopService.scriptParseProgram({ code: LSPErrorCodes.RequestCancelled, message: 'superseded by a newer request' });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).not.toHaveBeenCalled();
+        expect(document.diagnostics?.some(d => d.severity === DiagnosticSeverity.Warning)).toBe(true);
+        expect(getVerdictState(document.uri)).toEqual(stateBefore);
+    });
+
+    test('a verdict for a document whose text version changed while the request was in flight: the parse error stays an Error, no verdict state stored, no compile run', async () => {
+        vi.useFakeTimers();
+        const { builder, interopService, compileMock, openDocumentUris } = buildHarness();
+        compileMock.mockResolvedValue([]);
+
+        const parsingErrorDiag: Diagnostic = {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } },
+            message: 'stale parse error',
+            severity: DiagnosticSeverity.Error,
+            data: { code: DocumentValidator.ParsingError },
+        };
+        const doc = fakeDocument('/proj/stale-version.bbj', 'rem line 1\n', [parsingErrorDiag]);
+        rememberLangiumDiagnostics(doc, [parsingErrorDiag]);
+        openDocumentUris.add(doc.uri.toString());
+
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(async params => {
+            // Simulate the document changing text version while this request is in flight —
+            // the edit that changed it has already scheduled a newer debounce cycle of its own.
+            doc.textDocument = TextDocument.create(doc.uri.toString(), 'bbj', Number(params.version) + 1, 'rem line 1\n');
+            return { version: params.version, errors: [] };
+        });
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).not.toHaveBeenCalled();
+        expect(doc.diagnostics).toEqual([parsingErrorDiag]);
+        expect(getVerdictState(doc.uri)).toBeUndefined();
+    });
+});
+
 describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () => {
     test.each([
         [-33001, 'parser-exception'],
@@ -424,6 +613,7 @@ describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () =
         expect(errorSpy).not.toHaveBeenCalled();
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy.mock.calls[0][0]).toContain(kind);
+        expect(compileMock).toHaveBeenCalledOnce();
     });
 
     test('a transport failure (a plain rejected error) never becomes a diagnostic: zero diagnostics and one warn line', async () => {
@@ -447,6 +637,7 @@ describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () =
         expect(errorSpy).not.toHaveBeenCalled();
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy.mock.calls[0][0]).toContain('transport');
+        expect(compileMock).toHaveBeenCalledOnce();
     });
 
     test('a malformed result (errors missing) never becomes a diagnostic: zero diagnostics, one warn line, no exception', async () => {
@@ -470,6 +661,7 @@ describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () =
         expect(errorSpy).not.toHaveBeenCalled();
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy.mock.calls[0][0]).toContain('malformed-result');
+        expect(compileMock).toHaveBeenCalledOnce();
     });
 
     test('a cancellation never becomes a diagnostic: zero diagnostics and no log line at any level', async () => {
@@ -496,6 +688,7 @@ describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () =
         expect(warnSpy).not.toHaveBeenCalled();
         expect(debugSpy).not.toHaveBeenCalled();
         expect(errorSpy).not.toHaveBeenCalled();
+        expect(compileMock).not.toHaveBeenCalled();
     });
 
     test('repeat failures of the same kind never become a diagnostic: the first warns, repeats log at debug, a different kind warns again', async () => {
