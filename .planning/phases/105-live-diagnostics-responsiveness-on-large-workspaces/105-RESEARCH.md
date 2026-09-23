@@ -644,7 +644,7 @@ comments) that a fresh `ParserWorker` factory on a new connection was safe by co
 | A2 | The deployed `/opt/bbx` jar's build provenance (built from `bbj-ls@develop` past `9987bee`, not from a tagged release) means its behavior is representative of what a near-future BBj 26.03 release *will* ship once `9987bee` is backported, not necessarily of what already-released 26.03 builds ship today | Live Server Evidence | If a customer's already-installed BBj 26.03 predates the backport, D-09's dedicated connection could hit the stale-cache hazard on its first parse of a canonical name another connection already touched; this is called out explicitly as a residual risk, not swept under a passing local measurement |
 | A3 | `bbj-ls`'s lsp4j `Launcher`, built with `.setExecutorService(EXECUTOR)` (a shared cached thread pool across all connections), dispatches each connection's incoming request handling without head-of-line blocking across connections at the JVM thread-pool level | Live Server Evidence, Pattern 4 | If `Executors.newCachedThreadPool()` were somehow saturated/bounded in a given deployment, a burst of `getClassInfo` work could still transiently delay dispatch of a `parseProgram` request even on its own connection's read stream having already delivered the bytes; not verified by a live concurrency probe in this session (no BBj instance was driven under load) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where exactly should the "Langium's latest pre-hierarchy list + its text version" be tracked
    (Claude's Discretion item 3)?**
