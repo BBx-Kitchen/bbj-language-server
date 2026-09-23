@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 103
 current_phase_name: One Set of Errors — Diagnostic Reconciliation
 status: executing
-stopped_at: Completed 103-03-PLAN.md
-last_updated: "2026-09-23T07:06:02.490Z"
+stopped_at: Completed 103-04-PLAN.md
+last_updated: "2026-09-23T08:03:04.132Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 103 execution started
-state_head: bda2566cee6897ff5386dec30823681599863215
+state_head: e726a8f77d98bf2910a293a03a378e0b4ccbc27c
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 35
-  completed_plans: 33
+  completed_plans: 34
   percent: 63
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 ## Current Position
 
 Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-23 — Phase 103 execution started
@@ -129,6 +129,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 103 P01 | 48min | 3 tasks | 7 files |
 | Phase 103 P02 | 22min | 2 tasks | 4 files |
 | Phase 103 P03 | 25min | 2 tasks | 3 files |
+| Phase 103 P04 | 55min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -222,6 +223,7 @@ decisions:
 - [Phase 103]: resetIfGenerationChanged() clears every verdict state only on an actual decided-to-undecided connection transition, not on every undecided-latch probe — prevents redundant clearAllVerdictStates() calls before the first real parse on a fresh connection
 - [Phase 103]: Carry-over reads gate on compiler trigger not being off before checking for stored verdict state, so no-state and trigger-off share one code path
 - [Phase 103]: Two-independent-syntax-error test fixtures use the dangling-binary-operator pattern, not two unclosed-paren statements, since an unclosed paren mid-document swallows everything after it into one diagnostic
+- [Phase 103]: [Phase 103]: [Phase 103 P04]: The endpoint-active probe always builds with validation, even for a syntax-erroring document (unlike worker.mts, which skips validation once syntaxErrors>0), and re-measures all 1,210 rejects rather than only the 669 the endpoint-absent run missed -- a verdict can turn a previously-caught reject into a newly-missed one; list B falls to 31 of 1,210 (2.6%), well under the 5% target, with 0 language-server syntax errors surviving on any of the 31 compiler-accepted files
 
 ### Tech Debt
 
@@ -279,8 +281,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T07:06:02.206Z
-Stopped at: Completed 103-03-PLAN.md
+Last session: 2026-09-23T08:02:55.929Z
+Stopped at: Completed 103-04-PLAN.md
 Resume file: None
 
 Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
