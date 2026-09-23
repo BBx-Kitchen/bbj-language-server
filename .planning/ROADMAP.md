@@ -620,7 +620,7 @@ the bulk class resolution that build issues. Both IDEs are affected. See issue #
 
 **Requirements**: RESP-01, RESP-02, RESP-03, RESP-04, RESP-05
 **Depends on:** Phase 102 (the live-diagnostics client this makes usable)
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 **Success Criteria** (draft, to be firmed at planning):
 
@@ -635,7 +635,7 @@ the bulk class resolution that build issues. Both IDEs are affected. See issue #
 Plans:
 **Wave 1**
 
-- [ ] 105-01-PLAN.md — Wave 1: arm the live-parse cycle from document open/change events outside the workspace lock; state-aware publish; held-lock test
+- [x] 105-01-PLAN.md — Wave 1: arm the live-parse cycle from document open/change events outside the workspace lock; state-aware publish; held-lock test
 - [ ] 105-02-PLAN.md — Wave 1: pure snapshot composition (early verdict vs stale Langium list, case table, edges)
 - [ ] 105-03-PLAN.md — Wave 1: dedicated `parseProgram` interop connection with silent shared-connection fallback
 
@@ -658,7 +658,7 @@ Plans:
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
 | 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
-| 105. Live Diagnostics Responsiveness on Large Workspaces | 0/TBD | Not started | - |
+| 105. Live Diagnostics Responsiveness on Large Workspaces | 1/5 | Not started |  |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.
 27/27 requirements mapped to 7 phases, no orphans and no duplicates. Scope, baseline and exit

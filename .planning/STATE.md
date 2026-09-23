@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 105
 current_phase_name: Live Diagnostics Responsiveness on Large Workspaces
 status: executing
-stopped_at: Phase 105 context gathered
-last_updated: "2026-09-23T11:40:22.476Z"
+stopped_at: Completed 105-01-PLAN.md
+last_updated: "2026-09-23T12:22:26.926Z"
 last_activity: 2026-09-23
-last_activity_desc: Phase 103 complete (UAT 2/2, validated, secured), transitioned to Phase 105
-state_head: 297b93e823f6e28216f39e103f7fbf33eaf5cbf0
+last_activity_desc: Phase 105 execution started
+state_head: 36520261d835cf4c45b44f2cdabde2bc02c9e662
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 40
-  completed_plans: 35
+  completed_plans: 36
   percent: 75
 ---
 
@@ -34,11 +34,11 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 
 ## Current Position
 
-Phase: 105 (Live Diagnostics Responsiveness on Large Workspaces) — READY TO EXECUTE
-Plan: Not started
+Phase: 105 (Live Diagnostics Responsiveness on Large Workspaces) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-23 — Phase 103 complete (UAT 2/2 in both IDEs, Nyquist-compliant, 20/20 threats closed), transitioned to Phase 105
+Last activity: 2026-09-23 — Phase 105 execution started
 
 ### v4.5 milestone map
 
@@ -131,6 +131,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 103 P03 | 25min | 2 tasks | 3 files |
 | Phase 103 P04 | 55min | 2 tasks | 2 files |
 | Phase 103 P05 | 13min | 3 tasks | 1 files |
+| Phase 105 P01 | 35min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -227,6 +228,7 @@ decisions:
 - [Phase 103]: [Phase 103]: [Phase 103 P04]: The endpoint-active probe always builds with validation, even for a syntax-erroring document (unlike worker.mts, which skips validation once syntaxErrors>0), and re-measures all 1,210 rejects rather than only the 669 the endpoint-absent run missed -- a verdict can turn a previously-caught reject into a newly-missed one; list B falls to 31 of 1,210 (2.6%), well under the 5% target, with 0 language-server syntax errors surviving on any of the 31 compiler-accepted files
 - [Phase 103]: [Phase 103 P05]: Plan 05 is a gate/build/ship plan with no source deliverable -- every task verifies or ships plans 01-04's work, so no task-level commit exists, only the final metadata commit
 - [Phase 103]: [Phase 103 P05]: The on-host pre-endpoint jar backup (bbj-ls.jar.26.02) no longer exists after the 2026-09-23 fresh BBj install; rebuilt it from the sibling bbj-ls repository at the commit before the parseProgram endpoint was added, in a scratch worktree, confirmed by unzip -l to carry no parser classes
+- [Phase 105]: Direct listener on TextDocuments.onDidOpen/onDidChangeContent arms the live-parse cycle outside Langium's WorkspaceLock; compute-first publish-once debounce cycle with a state-aware publish path — Removes the first of #692's two serialization points without waiting on or enqueueing into the workspace lock
 
 ### Tech Debt
 
@@ -284,9 +286,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T10:48:06.388Z
-Stopped at: Phase 105 context gathered
-Resume file: .planning/phases/105-live-diagnostics-responsiveness-on-large-workspaces/105-CONTEXT.md
+Last session: 2026-09-23T12:22:26.608Z
+Stopped at: Completed 105-01-PLAN.md
+Resume file: None
 
 Next: plan the remaining v4.5 phases (105 large-workspace responsiveness, then 104 exit
 measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
