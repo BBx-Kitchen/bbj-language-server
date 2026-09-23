@@ -719,6 +719,95 @@ describe('a live-parse failure falls back to the save-time compile', () => {
     });
 });
 
+describe('a BBj Parser diagnostic that replaced a Langium parse error survives a cancelled cycle and a stale-version cycle', () => {
+    const validationServices = createBBjTestServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(validationServices.shared);
+        validate = validationHelper<Program>(validationServices.BBj);
+    });
+
+    test('a following cancelled cycle, then a following stale-version cycle, each change nothing', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService, compileMock, openDocumentUris } = harness;
+        compileMock.mockResolvedValue([]);
+
+        // A deliberate syntax error: an unclosed parenthesis in an assignment.
+        const result = await validate('x = (1 + 2\n');
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        expect(parseErrors.length).toBeGreaterThan(0);
+        const flaggedLine = parseErrors[0].range.start.line;
+
+        const document = result.document;
+        openDocumentUris.add(document.uri.toString());
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        // Cycle 1: a verdict whose own error overlaps the Langium parse error's line drives the
+        // *replace* path (not the downgrade path): the Langium complaint is dropped entirely and
+        // BBj's own diagnostic (source BBJ_PARSER_SOURCE) stands in for it alone.
+        const bbjError: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'bbj parser replacement diagnostic',
+            editorStartLine: flaggedLine + 1, // ParseError lines are one-based.
+            editorEndLine: flaggedLine + 1,
+            startCharacter: 1,
+            endCharacter: 5,
+        };
+        interopService.scriptParseProgram({ errors: [bbjError] });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        const afterReplace = document.diagnostics ?? [];
+        const replacementDiagnostic = afterReplace.find(d => d.source === BBJ_PARSER_SOURCE);
+        expect(replacementDiagnostic).toBeDefined();
+        expect(replacementDiagnostic!.message).toBe('bbj parser replacement diagnostic');
+        // The Langium parse error on the same line is gone -- replaced, not merely downgraded.
+        expect(afterReplace.some(
+            d => (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+                && d.range.start.line === flaggedLine
+        )).toBe(false);
+        expect(compileMock).not.toHaveBeenCalled();
+
+        // Cycle 2: cancelled -- superseded by a newer request. Per debouncedCompile()'s own
+        // no-op branch, this must change nothing: a clear-then-show strip that ran
+        // unconditionally, without this branch restoring it, would silently drop the
+        // BBJ_PARSER_SOURCE diagnostic from the republished list.
+        interopService.scriptParseProgram({ code: LSPErrorCodes.RequestCancelled, message: 'superseded by a newer request' });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(document.diagnostics).toEqual(afterReplace);
+        expect(compileMock).not.toHaveBeenCalled();
+
+        // Cycle 3: a verdict for text whose version has since moved on -- must also change
+        // nothing, for the same reason.
+        vi.spyOn(interopService, 'parseProgram').mockImplementationOnce(async params => {
+            // Unlike the plain `fakeDocument()` stub used elsewhere in this file, a real
+            // validated `LangiumDocument`'s `textDocument` is a getter-only accessor property
+            // (`DefaultLangiumDocumentFactory`) — a plain assignment throws. `defineProperty`
+            // replaces it with a plain writable value, mirroring what a real edit does.
+            Object.defineProperty(document, 'textDocument', {
+                value: TextDocument.create(
+                    document.uri.toString(), 'bbj', Number(params.version) + 1, document.textDocument.getText()
+                ),
+                writable: true,
+                configurable: true
+            });
+            return { version: params.version, errors: [] };
+        });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(document.diagnostics).toEqual(afterReplace);
+        expect(compileMock).not.toHaveBeenCalled();
+    });
+});
+
 describe('BBjParserService: no endpoint failure ever becomes a diagnostic', () => {
     test.each([
         [-33001, 'parser-exception'],

@@ -299,7 +299,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // same line whose source isn't 'BBjCPL' — if a stale live-parser diagnostic
                 // from a previous debounce cycle were still present here, it would get silently
                 // absorbed into a mislabeled 'BBjCPL' entry that keeps the old message text.
-                document.diagnostics = (document.diagnostics ?? []).filter(
+                //
+                // The pre-strip list is kept so the cancelled/stale-verdict no-op branch below
+                // can restore it verbatim: that branch decides nothing changed this cycle, so
+                // the republish at the end of this callback must not drop a previous cycle's
+                // live-parser-sourced diagnostics just because this cycle's strip ran first.
+                const diagnosticsBeforeCycle = document.diagnostics ?? [];
+                document.diagnostics = diagnosticsBeforeCycle.filter(
                     d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE
                 );
 
@@ -334,7 +340,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
                     // A verdict for text that has since moved on, or a request superseded by a
                     // newer one: nothing further this cycle — no reconciliation, no state change,
-                    // no save-time compile.
+                    // no save-time compile. Restore what the clear-then-show strip above removed
+                    // so the republish below really does republish nothing changed, instead of
+                    // silently dropping a previous cycle's live-parser-sourced diagnostics.
+                    document.diagnostics = diagnosticsBeforeCycle;
                 } else {
                     // failed, unavailable, or the latch/trigger is off: forget any verdict first,
                     // so a real Langium error is never left downgraded without one behind it, then
