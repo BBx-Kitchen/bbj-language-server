@@ -633,11 +633,18 @@ the bulk class resolution that build issues. Both IDEs are affected. See issue #
    wait time recorded.
 
 Plans:
+**Wave 1**
 
 - [ ] 105-01-PLAN.md — Wave 1: arm the live-parse cycle from document open/change events outside the workspace lock; state-aware publish; held-lock test
 - [ ] 105-02-PLAN.md — Wave 1: pure snapshot composition (early verdict vs stale Langium list, case table, edges)
 - [ ] 105-03-PLAN.md — Wave 1: dedicated `parseProgram` interop connection with silent shared-connection fallback
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 105-04-PLAN.md — Wave 2: wire the composition into the validator and the builder; interleaving matrix
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 105-05-PLAN.md — Wave 3: gate, build before/after pairs, corpus measurement in both IDEs (checkpoint), `105-MEASUREMENT.md`, PR #691
 
 ### v4.5 phase progress
