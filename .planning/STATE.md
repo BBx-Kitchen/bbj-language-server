@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 104
 current_phase_name: Conformance Measurement & Milestone Exit
 status: executing
-stopped_at: Phase 104 context gathered
-last_updated: "2026-09-23T19:52:30.577Z"
+stopped_at: Completed 104-01-PLAN.md
+last_updated: "2026-09-23T20:13:23.178Z"
 last_activity: 2026-09-23
-last_activity_desc: Phase 105 complete, transitioned to Phase 104
-state_head: 4d78e3a4adbe53652a7304d73f9e7082ab069713
+last_activity_desc: Phase 104 execution started
+state_head: e6271b6d9a6fc96698d3a47e25a2b4870494c6d6
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 43
-  completed_plans: 40
+  completed_plans: 41
   percent: 88
 ---
 
@@ -34,11 +34,11 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 
 ## Current Position
 
-Phase: 104 (Conformance Measurement & Milestone Exit) — READY TO EXECUTE
-Plan: Not started
+Phase: 104 (Conformance Measurement & Milestone Exit) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-23 - Completed quick task 260923-pu7: Document what bbj.compiler.trigger really does
+Last activity: 2026-09-23 — Phase 104 execution started
 
 ### v4.5 milestone map
 
@@ -137,6 +137,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 105 P03 | 14min | 2 tasks | 3 files |
 | Phase 105 P04 | 85min | 3 tasks | 4 files |
 | Phase 105 P05 | 15 min | 3 tasks | 1 files |
+| Phase 104 P01 | 30min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,8 @@ decisions:
 - [Phase 105]: [Phase 105]: 105-04: latestLangiumBaseline(document) is the one seam every writer of document.diagnostics reads its "what did Langium last see" input through (recallLangiumSnapshot when Langium has validated this session, else the cycle's own current list stripped of compiler diagnostics) -- replaces three different ad-hoc choices the verdict branch, the bbjcpl fallback, and the USE revalidation each made on their own
 - [Phase 105]: [Phase 105]: 105-04: two independent Langium syntax complaints in one test fixture need the dangling-binary-operator pattern, not an unclosed-parenthesis-plus-line-break combination -- checkLineBreaks bails unconditionally whenever document.parseResult.parserErrors.length > 0, so no real document can carry both a genuine parser error and a genuine line-break complaint at once
 - [Phase 105]: Phase 105: PR #691 retitled and extended to cover phases 98-103 and 105, quoting the measured before/after medians (VS Code 58.9s->5.3s, IntelliJ 66s->6s); pushed by plain fast-forward only. — Milestone PR grows across phases rather than opening a new PR per phase; measured on a real large private workspace against real BBjServices.
+- [Phase 104]: [Phase 104, Plan 01]: leak-guard.mjs applies a 15+ character floor to reject errors[].source patterns (matching details.json source fields) -- unfiltered short fragments produced false positives on ordinary text — Found and fixed during the plan's own leak-guard verify step; necessary for the guard to distinguish real corpus leaks from ordinary English text
+- [Phase 104]: [Phase 104, Plan 01]: closing measurement in this plan reads the pinned Sept-1-2026 baseline (11,898/1,210) from a detached bbj-corpus worktree at cdaf3761 via --data, resolving the mid-milestone corpus rebuild finding without a user checkpoint — The plan's own Task 3 already specified the worktree mitigation as the resolution; reproduced the Phase 103 probe's exact B=31 file set with 0 endpoint failures
 
 ### Tech Debt
 
@@ -297,9 +300,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T18:35:24.119Z
-Stopped at: Phase 104 context gathered
-Resume file: .planning/phases/104-conformance-measurement-milestone-exit/104-CONTEXT.md
+Last session: 2026-09-23T20:13:22.892Z
+Stopped at: Completed 104-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 104` or `/gsd-plan-phase 104` (exit
 measurement, the last v4.5 phase); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
