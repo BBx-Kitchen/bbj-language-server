@@ -1,5 +1,5 @@
 import type { LangiumDocument, LangiumSharedCoreServices } from 'langium';
-import { DocumentValidator, EmptyFileSystem, URI } from 'langium';
+import { DocumentState, DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import { validationHelper } from 'langium/test';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
@@ -71,12 +71,19 @@ function buildHarness(services: ReturnType<typeof createBBjTestServices> = creat
     return { builder, wsManager, interopService, parserService, compileMock, openDocumentUris };
 }
 
-/** A real `TextDocument`-backed `LangiumDocument` stub — `getText()`/`lineCount` are live. */
+/**
+ * A real `TextDocument`-backed `LangiumDocument` stub — `getText()`/`lineCount` are live.
+ * `state: DocumentState.Validated` models a document after a Langium build has already
+ * validated it once, the shape every `debouncedCompile()` cycle in this file is exercised
+ * against -- without it, `publishCycleDiagnostics` would send to the client instead of writing
+ * `document.diagnostics`.
+ */
 function fakeDocument(path: string, text: string, diagnostics: Diagnostic[] = []): LangiumDocument {
     const uri = URI.file(path);
     return {
         uri,
         diagnostics,
+        state: DocumentState.Validated,
         textDocument: TextDocument.create(uri.toString(), 'bbj', 1, text),
     } as unknown as LangiumDocument;
 }

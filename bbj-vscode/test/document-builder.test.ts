@@ -1,5 +1,5 @@
 import type { AstNodeDescription, LangiumDocument, LangiumSharedCoreServices } from 'langium';
-import { EmptyFileSystem, URI, stream } from 'langium';
+import { DocumentState, EmptyFileSystem, URI, stream } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
@@ -78,11 +78,18 @@ function buildHarness() {
     };
 }
 
+/**
+ * These fixtures model a document after a Langium build has already validated it once, the
+ * shape `debouncedCompile()`'s cycles are exercised against throughout this file -- without
+ * `state: DocumentState.Validated`, `publishCycleDiagnostics` would treat every cycle here as an
+ * early, not-yet-validated one and send to the client instead of writing `document.diagnostics`.
+ */
 function fakeDocument(path: string, diagnostics: Diagnostic[] = [], text = ''): LangiumDocument {
     const uri = URI.file(path);
     return {
         uri,
         diagnostics,
+        state: DocumentState.Validated,
         textDocument: TextDocument.create(uri.toString(), 'bbj', 1, text),
     } as unknown as LangiumDocument;
 }

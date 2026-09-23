@@ -1,7 +1,9 @@
 import { AstNode, AstNodeDescription, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
 import type { ServiceRegistry, TextDocumentProvider } from "langium";
+import type { LangiumSharedServices } from "langium/lsp";
 import { CancellationToken } from "vscode-jsonrpc";
-import type { Diagnostic } from 'vscode-languageserver';
+import type { Connection, Diagnostic, Event, TextDocumentChangeEvent } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
@@ -46,6 +48,40 @@ export function isBuildableDocumentUri(
     return serviceRegistry.hasServices(uri);
 }
 
+/**
+ * The shape of a `TextDocuments` provider that also exposes the open/change events -- every
+ * real LSP shared-services instance (`NormalizedTextDocuments`), but not the hand-built
+ * `{ get }`-only test doubles several harnesses construct `BBjDocumentBuilder` with.
+ */
+type TextDocumentEventsProvider = TextDocumentProvider & {
+    readonly onDidOpen: Event<TextDocumentChangeEvent<TextDocument>>;
+    readonly onDidChangeContent: Event<TextDocumentChangeEvent<TextDocument>>;
+};
+
+/**
+ * True only when `provider` exposes both `onDidOpen` and `onDidChangeContent` as functions --
+ * the shape the live-parse event listener needs. The core `TextDocumentProvider` type has only
+ * `get`, and several test harnesses construct `BBjDocumentBuilder` with such a `{ get }`-only
+ * stub; this guard lets the constructor skip the event subscription for those instead of
+ * throwing on a missing method.
+ */
+export function hasTextDocumentEvents(
+    provider: TextDocumentProvider | undefined
+): provider is TextDocumentEventsProvider {
+    const candidate = provider as Partial<TextDocumentEventsProvider> | undefined;
+    return typeof candidate?.onDidOpen === 'function' && typeof candidate?.onDidChangeContent === 'function';
+}
+
+/**
+ * Drops every diagnostic sourced from the save-time compiler (`'BBjCPL'`) or the live parser
+ * ({@link BBJ_PARSER_SOURCE}) from `diagnostics` -- the same pair `debouncedCompile()`'s
+ * compute-first cycle strips before a fresh cycle's result replaces them, computed without
+ * writing the stripped list back to `document.diagnostics` first.
+ */
+export function withoutCompilerDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+    return diagnostics.filter(d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE);
+}
+
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     wsManager: () => WorkspaceManager;
@@ -72,10 +108,31 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     /** Tracks whether BBjCPL is available (lazily detected on first trigger). */
     private bbjcplAvailable: boolean | undefined = undefined;
 
+    /**
+     * Lazy lookup for the shared LSP connection -- resolved on every call, never cached at
+     * construction, since a hand-built test harness may construct `BBjDocumentBuilder` before an
+     * LSP connection exists, and the real one is only ever wired up once, at server startup, by
+     * `startLanguageServer()`. `undefined` when running without an LSP connection (every
+     * non-LSP test harness in this repository) -- `sendDiagnosticsToClient` becomes a no-op then.
+     */
+    private readonly lspConnection: () => Connection | undefined;
+
     constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.wsManager = () => services.workspace.WorkspaceManager;
         this.fileSystemProvider = services.workspace.FileSystemProvider
+        // Resolved lazily on every call (see the field's own doc comment), never at construction.
+        this.lspConnection = () => (services as Partial<LangiumSharedServices>).lsp?.Connection;
+
+        // Arm the live-parse cycle directly from the text-document events Langium's own
+        // DefaultDocumentUpdateHandler listens on -- independent of services.workspace.WorkspaceLock,
+        // so a change while the initial workspace build still holds that lock still reaches BBj's
+        // parser. Additive: the rebuild-driven trigger (buildDocuments -> runBbjcplForDocuments ->
+        // debouncedCompile) is untouched and keeps arming the very same cplDebounceTimers entry.
+        const textDocuments = services.workspace.TextDocuments;
+        if (hasTextDocumentEvents(textDocuments)) {
+            textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document));
+        }
     }
 
     /**
@@ -243,23 +300,81 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Clears a document's verdict state, if one exists, and restores the pre-hierarchy Langium
-     * diagnostics list (with the hierarchy re-applied) as the document's diagnostics — undoing
-     * whatever downgrade or replacement decision that state represented. Called at the start of
-     * every outcome that falls back to the save-time compile (a failed cycle, an unavailable
-     * endpoint, or the latch/trigger being off), so a real Langium error is never left downgraded
-     * without a verdict behind it.
-     *
-     * When no verdict state exists for the document, this does nothing at all — a document that
-     * never had a verdict is left byte-for-byte as it already was, matching 0.16.x behaviour.
+     * Entry point for the constructor's `onDidChangeContent` (and, from a later plan, `onDidOpen`)
+     * listener. The whole body is wrapped so a throw here never propagates into the shared
+     * text-document emitter Langium's own update handler listens on too -- an event listener that
+     * throws would break every OTHER listener registered on the same emitter, not just this one.
+     * Logs only the uri and the error's own message, never document text.
      */
-    private forgetVerdict(document: LangiumDocument): void {
-        if (getVerdictState(document.uri) === undefined) return;
-        clearVerdictState(document.uri);
-        const remembered = recallLangiumDiagnostics(document);
-        if (remembered) {
-            document.diagnostics = applyConfiguredDiagnosticHierarchy(remembered);
+    private armLiveParseFromEvent(textDocument: TextDocument): void {
+        try {
+            if (getCompilerTrigger() === 'off') return;
+            const uri = URI.parse(textDocument.uri);
+            const document = this.langiumDocuments.getDocument(uri);
+            if (!document) {
+                // No LangiumDocument yet for this uri -- the workspace hasn't loaded it. A later
+                // plan in this phase re-arms once the workspace manager reports ready; until then
+                // there is nothing to arm a live-parse cycle for.
+                return;
+            }
+            this.armLiveParseForDocument(document, textDocument);
+        } catch (e) {
+            logger.error(`Live-parse event listener failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
         }
+    }
+
+    /**
+     * Applies the same gates {@link runBbjcplForDocuments} applies to the rebuild-driven trigger
+     * (open in an editor, `file:` scheme, not synthetic, not external, bbjcpl found), binds the
+     * event's live text onto `document` (research Pitfall 1), then arms the existing debounce
+     * cycle -- the same {@link cplDebounceTimers} entry the rebuild path uses, so an event
+     * followed by a rebuild inside the debounce window produces exactly one cycle.
+     */
+    private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument): void {
+        if (!this.shouldCompileWithBbjcpl(document)) return;
+        this.trackBbjcplAvailability();
+        if (this.bbjcplAvailable === false) return;
+        this.bindLiveTextDocument(document, textDocument);
+        this.debouncedCompile(document);
+    }
+
+    /**
+     * Binds the event's live, possibly unsaved `TextDocument` onto `document` without
+     * re-parsing -- the exact property shape `DefaultLangiumDocumentFactory.update()` uses, so a
+     * later real build rebinds it again without error. A never-built document's own
+     * `textDocument` getter lazily snapshots the on-disk text the first time it is read and never
+     * updates itself (research Pitfall 1); without this bind, the live parser would see that
+     * stale snapshot instead of the edit that just fired this event. No re-parse here --
+     * re-parsing outside the workspace lock would mutate the parse result a lock-held build may
+     * still be reading.
+     */
+    private bindLiveTextDocument(document: LangiumDocument, textDocument: TextDocument): void {
+        const descriptor = Object.getOwnPropertyDescriptor(document, 'textDocument');
+        if (descriptor?.value === textDocument) return;
+        try {
+            Object.defineProperty(document, 'textDocument', { value: textDocument });
+        } catch (e) {
+            // The rebuild path still covers this document eventually; losing the live bind for
+            // one cycle is not fatal.
+            logger.debug(`Could not bind the live text document for ${document.uri.toString()}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+
+    /**
+     * Clears a document's verdict state, if one exists, and reports whether one existed. No
+     * longer writes `document.diagnostics` itself: the debounce cycle that calls this now
+     * computes its one publish snapshot at the very end (see {@link publishCycleDiagnostics}), so
+     * a write here would be an intermediate mutation the cycle's own snapshot immediately
+     * supersedes anyway.
+     *
+     * When no verdict state exists for the document, this does nothing at all and returns
+     * `false` — a document that never had a verdict is left byte-for-byte as it already was,
+     * matching 0.16.x behaviour.
+     */
+    private forgetVerdict(document: LangiumDocument): boolean {
+        if (getVerdictState(document.uri) === undefined) return false;
+        clearVerdictState(document.uri);
+        return true;
     }
 
     /**
@@ -267,8 +382,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * On rapid saves, only the last save triggers compilation after
      * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
      *
-     * Clear-then-show: old BBjCPL and live-parser diagnostics are cleared when the cycle
-     * starts, new ones appear when it is done.
+     * Compute-first, publish-once: nothing is written to `document.diagnostics` until the cycle
+     * has decided its whole result -- see {@link publishCycleDiagnostics}, the single write/publish
+     * point every branch below ends at. This callback is also the target of a live-parse debounce
+     * armed directly from a document change/open event (the constructor's `onDidChangeContent`
+     * listener), which can run before this document has ever been through a Langium build, so it
+     * must never assume a prior build already wrote `document.diagnostics` or remembered a
+     * pre-hierarchy list.
      *
      * The live parser is asked first. A verdict for text unchanged since the request went out
      * reconciles Langium's own diagnostics against BBj's and the save-time compile does not run
@@ -276,8 +396,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * text, so with a verdict already in hand it would only add duplicates or stale results.
      *
      * A verdict for text that has since moved on, or a request superseded by a newer one, does
-     * nothing further this cycle: no reconciliation, no state change, no save-time compile — the
-     * edit that changed the text has already scheduled a newer cycle of its own.
+     * nothing further this cycle: no reconciliation, no state change, no save-time compile, and no
+     * publish at all — the edit that changed the text has already scheduled a newer cycle of its
+     * own.
      *
      * Every other outcome (the latch/trigger is off, or the live parse failed) forgets any
      * verdict this document had and falls back to the save-time compile exactly as before the
@@ -293,21 +414,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             this.cplDebounceTimers.delete(key);
 
             try {
-                // Clear-then-show: remove old BBjCPL and live-parser diagnostics together,
-                // before either the BBjCPL merge or the verdict reconciliation runs below.
-                // mergeDiagnostics() matches a cplDiag against any existing diagnostic on the
-                // same line whose source isn't 'BBjCPL' — if a stale live-parser diagnostic
-                // from a previous debounce cycle were still present here, it would get silently
-                // absorbed into a mislabeled 'BBjCPL' entry that keeps the old message text.
-                //
-                // The pre-strip list is kept so the cancelled/stale-verdict no-op branch below
-                // can restore it verbatim: that branch decides nothing changed this cycle, so
-                // the republish at the end of this callback must not drop a previous cycle's
-                // live-parser-sourced diagnostics just because this cycle's strip ran first.
-                const diagnosticsBeforeCycle = document.diagnostics ?? [];
-                document.diagnostics = diagnosticsBeforeCycle.filter(
-                    d => d.source !== 'BBjCPL' && d.source !== BBJ_PARSER_SOURCE
-                );
+                // Computed once, up front, and never written to document.diagnostics directly --
+                // every branch below builds its own final `next` list and this cycle ends with
+                // exactly one publish (publishCycleDiagnostics), never an intermediate write.
+                const langiumOnly = withoutCompilerDiagnostics(document.diagnostics ?? []);
 
                 // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
                 // (BBjDocumentBuilder is a shared service; both are language services)
@@ -315,71 +425,75 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 const cplService = langServices.compiler.BBjCPLService;
                 const bbjParserService = langServices.compiler.BBjParserService;
 
-                // Recorded before the request goes out: the document's text — and therefore this
-                // cycle's cancellation token — may change while the request is in flight, and an
-                // edit that changes it has already scheduled a newer cycle of its own.
-                const versionBeforeRequest = document.textDocument.version;
+                // Recorded before the request goes out: the document's live text document (and
+                // therefore its version) may change while the request is in flight -- an edit
+                // that changes it has already scheduled a newer cycle of its own, or (a
+                // close-and-reopen) swapped the textDocument object outright.
+                const textDocumentBeforeRequest = document.textDocument;
+                const versionBeforeRequest = textDocumentBeforeRequest.version;
                 let liveOutcome: LiveParseOutcome | undefined;
                 if (bbjParserService.isEnabled()) {
                     liveOutcome = await bbjParserService.requestLiveParse(document);
                 }
+                const stillCurrent = document.textDocument === textDocumentBeforeRequest
+                    && document.textDocument.version === versionBeforeRequest;
 
-                if (liveOutcome?.kind === 'verdict' && document.textDocument.version === versionBeforeRequest) {
+                let next: Diagnostic[];
+                if (liveOutcome?.kind === 'verdict' && stillCurrent) {
                     // Reconcile against the pre-hierarchy Langium list, not document.diagnostics
                     // above: the hierarchy may already have hidden linking diagnostics or
                     // warnings because of a parse error the verdict is about to downgrade or
                     // replace, and those need the chance to reappear once it has.
+                    //
+                    // An unremembered pre-hierarchy list is no longer a "should not happen" case:
+                    // an early cycle for a document the startup build hasn't validated yet (this
+                    // phase's whole point) reaches this branch routinely with no remembered list
+                    // at all -- langiumOnly (this cycle's own stripped snapshot, computed above)
+                    // is exactly the right fallback for that case, not a signal of a decoupling
+                    // bug between shouldValidate/shouldCompileWithBbjcpl.
                     const remembered = recallLangiumDiagnostics(document);
-                    if (!remembered) {
-                        // Should not happen: BBjDocumentValidator.validateDocument() remembers
-                        // a pre-hierarchy list unconditionally before this callback can ever
-                        // run. Falling back to document.diagnostics here substitutes an
-                        // already-hierarchy-applied, already-stripped shape for the documented
-                        // pre-hierarchy contract — log so a future decoupling of
-                        // shouldValidate/shouldCompileWithBbjcpl that hits this path is visible
-                        // instead of silently degrading.
-                        logger.debug(`No remembered pre-hierarchy diagnostics for ${document.uri.toString()}; reconciling against the current (possibly hierarchy-applied) list instead.`);
-                    }
-                    const langiumDiagnostics = remembered ?? document.diagnostics ?? [];
+                    const langiumDiagnosticsForReconcile = remembered ?? langiumOnly;
                     const { diagnostics, state } = reconcileWithVerdict(
-                        langiumDiagnostics,
+                        langiumDiagnosticsForReconcile,
                         liveOutcome.diagnostics,
                         documentLineText(document.textDocument)
                     );
                     setVerdictState(document.uri, state);
-                    document.diagnostics = applyConfiguredDiagnosticHierarchy(diagnostics);
+                    next = applyConfiguredDiagnosticHierarchy(diagnostics);
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
                     // A verdict for text that has since moved on, or a request superseded by a
                     // newer one: nothing further this cycle — no reconciliation, no state change,
-                    // no save-time compile. Restore what the clear-then-show strip above removed
-                    // so the republish below really does republish nothing changed, instead of
-                    // silently dropping a previous cycle's live-parser-sourced diagnostics.
-                    document.diagnostics = diagnosticsBeforeCycle;
+                    // no save-time compile, and (publishCycleDiagnostics never runs) no publish at
+                    // all. The edit that changed the text has already scheduled a newer cycle of
+                    // its own.
+                    return;
                 } else {
                     // failed, unavailable, or the latch/trigger is off: forget any verdict first,
                     // so a real Langium error is never left downgraded without one behind it, then
                     // fall back to the save-time compile exactly as before the live parser existed.
-                    this.forgetVerdict(document);
+                    const hadVerdict = this.forgetVerdict(document);
                     if (liveOutcome?.kind === 'unavailable') {
                         // The endpoint just latched off for every document on this connection —
                         // no document may keep a verdict now, not only this one.
                         clearAllVerdictStates();
                     }
                     const cplDiags = await cplService.compile(key);
-                    if (cplDiags.length > 0) {
-                        // Merge BBjCPL diagnostics with current Langium diagnostics
-                        document.diagnostics = mergeDiagnostics(
-                            document.diagnostics ?? [],
-                            cplDiags
-                        );
-                    }
+                    // Read after the compile await, not before: concurrent activity on this
+                    // document (another cycle's publish) may have changed document.diagnostics
+                    // while this cycle waited on the save-time compile.
+                    const rememberedAfter = hadVerdict ? recallLangiumDiagnostics(document) : undefined;
+                    const base = rememberedAfter
+                        ? applyConfiguredDiagnosticHierarchy(rememberedAfter)
+                        : withoutCompilerDiagnostics(document.diagnostics ?? []);
+                    next = cplDiags.length > 0 ? mergeDiagnostics(base, cplDiags) : base;
                 }
 
-                // Re-notify client with the updated diagnostics — a single publish covering
-                // whichever branch above ran.
-                // Use CancellationToken.None — the original build's token may be stale
-                // after the 500ms debounce. Both compiler services handle their own timeout internally.
-                await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+                // A single publish covering whichever branch above ran -- see
+                // publishCycleDiagnostics's own doc comment for why the state check there
+                // matters. CancellationToken.None — the original build's token may be stale
+                // after the 500ms debounce. Both compiler services handle their own timeout
+                // internally.
+                await this.publishCycleDiagnostics(document, next);
             } catch (e) {
                 // The callback runs detached from setTimeout, with no rejection handler of
                 // its own — an uncaught throw here would surface as an unhandled promise
@@ -390,6 +504,40 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
 
         this.cplDebounceTimers.set(key, timer);
+    }
+
+    /**
+     * The single publish point every debounce cycle ends at. At or above the Validated state,
+     * publishes exactly as before this phase: writes `document.diagnostics` and fires the
+     * Validated document phase (the only path that runs `addDiagnosticsHandler`'s publish today).
+     *
+     * Below Validated -- an early cycle for a document the startup build hasn't reached yet --
+     * neither is safe: `DefaultDocumentBuilder.validate()` appends onto an existing diagnostics
+     * list rather than replacing it, so writing here would double up once the real build finally
+     * validates; and firing the Validated phase would resolve every `waitUntil(Validated, uri)`
+     * waiter for this uri (code actions, among others) against a document that was never actually
+     * validated. Sends straight to the client instead.
+     */
+    private async publishCycleDiagnostics(document: LangiumDocument, diagnostics: Diagnostic[]): Promise<void> {
+        if (document.state >= DocumentState.Validated) {
+            document.diagnostics = diagnostics;
+            await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+        } else {
+            this.sendDiagnosticsToClient(document.uri, diagnostics);
+        }
+    }
+
+    /**
+     * Sends `diagnostics` straight to the client over the LSP connection, bypassing
+     * `notifyDocumentPhase`/`document.diagnostics` entirely -- see {@link publishCycleDiagnostics}.
+     * A no-op when no LSP connection is available (every non-LSP test harness in this repository).
+     */
+    protected sendDiagnosticsToClient(uri: URI, diagnostics: Diagnostic[]): void {
+        const connection = this.lspConnection();
+        if (!connection) return;
+        connection.sendDiagnostics({ uri: uri.toString(), diagnostics }).catch(e => {
+            logger.error(`Failed to send early diagnostics for ${uri.toString()}: ${e instanceof Error ? e.message : String(e)}`);
+        });
     }
 
     /**
