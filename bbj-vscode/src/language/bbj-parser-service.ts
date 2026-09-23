@@ -1,6 +1,7 @@
 import { LangiumDocument } from 'langium';
 import { Diagnostic, DiagnosticSeverity, LSPErrorCodes, Range } from 'vscode-languageserver';
 import { getMaxErrors } from './bbj-document-validator.js';
+import { clearAllVerdictStates } from './bbj-diagnostic-reconciliation.js';
 import { JavaInteropService, METHOD_NOT_FOUND, ParseError, ParseProgramParams } from './java-interop.js';
 import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 import { logger } from './logger.js';
@@ -206,11 +207,20 @@ export class BBjParserService {
 
     /**
      * Resets {@link mode} to `'unknown'` and {@link reportedFailureKinds} when the interop
-     * connection has moved on since either was last touched.
+     * connection has moved on since either was last touched. A connection change while the latch
+     * was already decided (a reconnect, or a Java-class cache clear, after `'on'` or `'off'` had
+     * been latched) also clears every document's verdict state, once — the server behind the
+     * socket may not be the same one those verdicts were decided against. Undecided-latch calls
+     * (repeated probes before the first real parse) never repeat that clear: {@link mode} stays
+     * `'unknown'` between them, so the guard below only fires on an actual decided-to-undecided
+     * transition.
      */
     private resetIfGenerationChanged(): void {
         const generation = this.javaInteropService.connectionGeneration;
         if (generation !== this.decidedForGeneration) {
+            if (this.mode !== 'unknown') {
+                clearAllVerdictStates();
+            }
             this.mode = 'unknown';
         }
         if (generation !== this.failureKindsGeneration) {

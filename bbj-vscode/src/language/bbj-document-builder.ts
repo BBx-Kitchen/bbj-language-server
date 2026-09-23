@@ -1,6 +1,7 @@
 import { AstNode, AstNodeDescription, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
 import type { ServiceRegistry, TextDocumentProvider } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
+import type { Diagnostic } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
@@ -13,11 +14,13 @@ import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy } from './bbj-document-validator.js';
 import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.js';
 import {
+    clearAllVerdictStates,
     clearVerdictState,
     documentLineText,
     getVerdictState,
     reconcileWithVerdict,
     recallLangiumDiagnostics,
+    rememberLangiumDiagnostics,
     setVerdictState
 } from './bbj-diagnostic-reconciliation.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
@@ -185,6 +188,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const trigger = getCompilerTrigger();
 
         if (trigger === 'off') {
+            // No cycle can run while the trigger is off, so no document may keep a verdict.
+            clearAllVerdictStates();
             // Clear stale BBjCPL and live-parser diagnostics for all eligible documents.
             for (const document of documents) {
                 if (!this.shouldCompileWithBbjcpl(document)) continue;
@@ -335,6 +340,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // so a real Langium error is never left downgraded without one behind it, then
                     // fall back to the save-time compile exactly as before the live parser existed.
                     this.forgetVerdict(document);
+                    if (liveOutcome?.kind === 'unavailable') {
+                        // The endpoint just latched off for every document on this connection —
+                        // no document may keep a verdict now, not only this one.
+                        clearAllVerdictStates();
+                    }
                     const cplDiags = await cplService.compile(key);
                     if (cplDiags.length > 0) {
                         // Merge BBjCPL diagnostics with current Langium diagnostics
@@ -549,8 +559,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             if (bbjWsManager.isExternalDocument(document.uri)) continue;
             if (!document.diagnostics?.length) continue;
 
-            const originalLength = document.diagnostics.length;
-            document.diagnostics = document.diagnostics.filter(diag => {
+            // Lifted into a named predicate (not just applied inline to document.diagnostics
+            // below) so the exact same resolvability decision can also be applied to the
+            // remembered pre-hierarchy Langium diagnostics list — otherwise a USE diagnostic
+            // this revalidation resolves and drops from document.diagnostics would reappear the
+            // next time a verdict reconciles against that remembered list.
+            const keep = (diag: Diagnostic): boolean => {
                 // LSP 3.18 widened Diagnostic.message to `string | MarkupContent`; our
                 // diagnostics use plain string messages, so read the string form.
                 const message = typeof diag.message === 'string' ? diag.message : diag.message.value;
@@ -582,7 +596,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
                 // If now resolved, remove the diagnostic (return false to filter out)
                 return !nowResolved;
-            });
+            };
+
+            const originalLength = document.diagnostics.length;
+            document.diagnostics = document.diagnostics.filter(keep);
+
+            const remembered = recallLangiumDiagnostics(document);
+            if (remembered) {
+                rememberLangiumDiagnostics(document, remembered.filter(keep));
+            }
 
             // If diagnostics changed, notify the editor
             if (document.diagnostics.length !== originalLength) {

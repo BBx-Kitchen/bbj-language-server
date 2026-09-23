@@ -431,8 +431,7 @@ describe('an older server gets exactly the 0.16.x diagnostics', () => {
 
         const remembered = recallLangiumDiagnostics(document);
         expect(remembered).toBeDefined();
-        const expected = mergeDiagnostics(applyDiagnosticHierarchy(remembered!, true, 20), cplDiags);
-        expect(document.diagnostics).toEqual(expected);
+        expect(document.diagnostics).toEqual(mergeDiagnostics(applyDiagnosticHierarchy(remembered!, true, 20), cplDiags));
 
         const onFirstFlaggedLine = document.diagnostics!.find(d => d.range.start.line === firstFlaggedLine);
         expect(onFirstFlaggedLine!.source).toBe('BBjCPL');
