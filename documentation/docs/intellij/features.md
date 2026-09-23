@@ -57,10 +57,14 @@ With BBj 26.03 or later, the BBj compiler's own parser checks the currently open
 type, and its syntax errors appear in the editor without saving — the same errors the save-time
 compile would report, shown earlier.
 
-This follows the existing `bbj.compiler.trigger` setting: setting it to `off` turns live
-compiler diagnostics off along with the save-time compiler check. With an earlier BBj, or when
-BBjServices is not running, the editor simply keeps the save-time compiler check and nothing
-else changes.
+The plugin has no setting for when these checks run: it always uses the default behaviour, so the
+open file is checked about half a second (500 ms) after you stop typing and when you open it.
+
+With an earlier BBj, or when BBjServices is not running, the save-time compile (`bbjcpl`) compiles
+the saved file instead after the same pause, so its errors reflect the last save.
+
+VS Code's `bbj.compiler.trigger` setting has no IntelliJ equivalent, so the `off` workaround for
+slow code completion in very large workspaces is currently available only in VS Code.
 
 ## Hover Information
 
