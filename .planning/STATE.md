@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 103
 current_phase_name: One Set of Errors — Diagnostic Reconciliation
 status: executing
-stopped_at: Completed 103-02-PLAN.md
-last_updated: "2026-09-23T06:39:02.424Z"
-last_activity: 2026-09-22
+stopped_at: Completed 103-03-PLAN.md
+last_updated: "2026-09-23T07:06:02.490Z"
+last_activity: 2026-09-23
 last_activity_desc: Phase 103 execution started
-state_head: 78e20088a2f54ce349496849347249ec7b380a44
+state_head: bda2566cee6897ff5386dec30823681599863215
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 35
-  completed_plans: 32
+  completed_plans: 33
   percent: 63
 ---
 
@@ -35,10 +35,10 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 ## Current Position
 
 Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-22 — Phase 103 execution started
+Last activity: 2026-09-23 — Phase 103 execution started
 
 ### v4.5 milestone map
 
@@ -128,6 +128,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 102 P04 | 28min | 3 tasks | 1 files |
 | Phase 103 P01 | 48min | 3 tasks | 7 files |
 | Phase 103 P02 | 22min | 2 tasks | 4 files |
+| Phase 103 P03 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -219,6 +220,8 @@ decisions:
 - [Phase 103]: [Phase 103 P01]: a syntax complaint replaced by an overlapping BBj diagnostic is still recorded in the verdict state's seen set, so it carries over like a downgraded complaint between verdicts rather than reappearing as an Error the moment BBj's own diagnostic vanishes on the next edit
 - [Phase 103]: forgetVerdict() is a no-op when no verdict state exists for the document, keeping the never-had-a-verdict path byte-for-byte identical to 0.16.x — avoids unconditionally re-deriving document.diagnostics for documents that never had a verdict
 - [Phase 103]: resetIfGenerationChanged() clears every verdict state only on an actual decided-to-undecided connection transition, not on every undecided-latch probe — prevents redundant clearAllVerdictStates() calls before the first real parse on a fresh connection
+- [Phase 103]: Carry-over reads gate on compiler trigger not being off before checking for stored verdict state, so no-state and trigger-off share one code path
+- [Phase 103]: Two-independent-syntax-error test fixtures use the dangling-binary-operator pattern, not two unclosed-paren statements, since an unclosed paren mid-document swallows everything after it into one diagnostic
 
 ### Tech Debt
 
@@ -276,8 +279,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T06:39:02.165Z
-Stopped at: Completed 103-02-PLAN.md
+Last session: 2026-09-23T07:06:02.206Z
+Stopped at: Completed 103-03-PLAN.md
 Resume file: None
 
 Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
