@@ -45,14 +45,16 @@ The "after" zip was verified to bundle the freshly built language server:
 `unzip -p <after zip> bbj-intellij/lib/language-server/main.cjs | cmp - bbj-vscode/out/language/main.cjs`
 exited 0.
 
-**Tester's machine (fill in before recording samples):**
+**Tester's machine:**
 
-- OS:
-- VS Code version:
-- IntelliJ product and version:
-- LSP4IJ version:
-- Any other client talking to port 5008 during measurement: (must be none — see the Runbook's
-  concurrency note)
+- OS: macOS 27.0 (Darwin 27.0.0), Apple Silicon (arm64), MacBook Pro, 16 cores
+- VS Code version: 1.138.0 (Electron 42.10.0, Node 24.18.1)
+- IntelliJ product and version: IntelliJ IDEA 2026.2.3 Ultimate (IU-262.10968.63), JetBrains
+  Runtime 25.0.4, LSP4IJ 0.21.0, IDE heap 2048 MiB
+- LSP4IJ version: 0.21.0
+- BBjServices version on the tester's machine: not reported
+- Any other client talking to port 5008 during measurement: none — one IDE measured at a time,
+  per the concurrency note below
 
 ## Runbook
 
@@ -128,16 +130,50 @@ corpus source text — only elapsed times, the timestamp resolution, and environ
 
 ## Results
 
-_Filled in by Task 3 from the tester's reported samples (Task 2)._
-
 | IDE | Build | Sample 1 (s) | Sample 2 (s) | Sample 3 (s) | Median (s) | Resolution |
 |---|---|---|---|---|---|---|
-| VS Code | before | | | | | |
-| VS Code | after | | | | | |
-| IntelliJ | before | | | | | |
-| IntelliJ | after | | | | | |
+| VS Code | before | 56.050 | 64.307 | 58.895 | 58.895 | millisecond |
+| VS Code | after | 3.892 | 5.405 | 5.260 | 5.260 | millisecond |
+| IntelliJ | before | 129 | 61 [1] | 66 | 66 | 1 second |
+| IntelliJ | after | 5 | 6 | 7 | 6 | 1 second |
 
-_Comparison sentences (one per IDE) go here once the table above is filled in._
+[1] This IntelliJ "before" sample started from a file whose edited line still carried a previous
+run's edit rather than a fresh invalid line; the tester flagged it. It is recorded as reported;
+excluding it does not change the median (the remaining two samples, 66 and 129, still bracket a
+median of ~97 s worse than the reported 66 s, so keeping the flagged sample is the conservative
+choice).
+
+**VS Code:** the median wait for the `BBj Parser` verdict on an invalid line typed while the
+initial workspace build is still running dropped from 58.895 s to 5.260 s — about 11x faster.
+Every "before" sample's verdict arrived within roughly half a second of the build-finished
+marker (`workspace/inlayHint/refresh` paired with `workspace/codeLens/refresh`); every "after"
+sample's verdict arrived with no build-finished marker anywhere in the trace, i.e. strictly
+while the build was still running.
+
+**IntelliJ:** the median wait dropped from 66 s to 6 s — about 11x faster. As in VS Code, every
+"before" sample's verdict arrived only together with the build-finished marker (same second or
+one second later); no "after" trace contained a build-finished marker at all, confirming every
+"after" sample landed while the build was still in progress.
+
+## Hand-verification results (Task 2)
+
+Checked while measuring with the "after" build, per the Runbook's four questions:
+
+1. **Did a `BBj Parser` diagnostic appear on the invalid line before the initial build
+   finished, in VS Code? In IntelliJ?** Yes in both IDEs — every "after" sample's verdict
+   arrived with no build-finished marker anywhere in the trace.
+2. **After the build finished, does any line show both a `BBj Parser` error and a
+   language-server syntax error, or any diagnostic listed twice, in either IDE?** No overlapping
+   or duplicate diagnostic was observed; the language server's own errors sat on other lines than
+   the `BBj Parser` verdict. Caveat: no "after" run captured the invalid line and the
+   build-finished marker together in the same trace, so the specific post-build state with the
+   invalid line still present is recorded as **not observed**, not as confirmed-clean.
+3. **Keep typing on another line for a few seconds after the build finished: does anything flash
+   red that was yellow, or disappear and come back doubled?** No flash or doubling observed;
+   removing the invalid character cleared the verdict within roughly 0.6 s (0.567 s in one VS
+   Code sample), and re-inserting it brought the verdict back in a comparable time (0.564 s).
+4. **Optional — does the BBjServices log show two connections accepted from the language server
+   while the "after" build runs?** Not checked.
 
 ## Residual server risk
 
@@ -151,4 +187,17 @@ branch.
 
 ## Closing comment for #692
 
-_Drafted by Task 3 once the Results table above is filled in._
+_Draft — post this comment when this issue is closed with the v4.5 milestone, not before._
+
+> Live compiler diagnostics now appear while a large workspace's initial build is still running,
+> in both VS Code and IntelliJ. The live parse is armed directly from document open and change
+> events instead of waiting on the workspace build lock, and it travels over its own dedicated
+> interop connection to the server, falling back silently to the shared connection if a second
+> one can't be opened.
+>
+> Measured on a real large workspace, with three samples per cell: VS Code's median wait for the
+> first parser diagnostic on an invalid line typed during the initial build dropped from 58.9 s
+> to 5.3 s; IntelliJ's dropped from 66 s to 6 s.
+>
+> This fix ships with the v4.5 milestone; this issue closes when that milestone's pull request
+> merges.
