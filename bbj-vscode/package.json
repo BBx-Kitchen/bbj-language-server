@@ -605,7 +605,12 @@
             "off"
           ],
           "default": "debounced",
-          "description": "Controls when the BBjCPL compiler checks for errors. 'debounced' runs after a pause in typing (2s), 'on-save' runs on file save only, 'off' disables BBjCPL checking entirely.",
+          "enumDescriptions": [
+            "Default. Checks about 500 ms after you stop typing.",
+            "Currently behaves the same as 'debounced': checks still run after a pause in typing, not only when you save.",
+            "Turns off both the live compiler check and BBjCPL. The language server's own diagnostics keep running. Use this as a workaround if code completion is slow in a very large workspace."
+          ],
+          "description": "Controls when the BBj compiler checks the open file for errors. Checks run about 500 ms after typing stops (and after opening or saving the file). With BBj 26.03 or later and BBjServices running, the BBj parser checks the current unsaved text; otherwise BBjCPL compiles the saved file. The language server's own error checking is not affected by this setting.",
           "scope": "window"
         },
         "bbj.configPath": {

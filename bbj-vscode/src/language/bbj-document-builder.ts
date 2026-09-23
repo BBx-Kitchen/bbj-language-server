@@ -103,7 +103,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     /** Per-file debounce timers for BBjCPL compilation. */
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-    /** Trailing-edge debounce interval for saves (ms). */
+    /**
+     * Trailing-edge quiet period (ms) before a live-parse / BBjCPL cycle runs. Re-armed by every
+     * open, edit and rebuild of an open document -- not only saves. Fixed; not user-configurable.
+     */
     private static readonly SAVE_DEBOUNCE_MS = 500;
 
     /** Tracks whether BBjCPL is available (lazily detected on first trigger). */
@@ -246,6 +249,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     /**
      * Run BBjCPL compilation for each validated document based on trigger mode.
      * Called from buildDocuments() after Langium validation completes.
+     * Only 'off' is distinguished here; 'debounced' and 'on-save' take the same path.
      *
      * IMPORTANT: This runs INSIDE buildDocuments(), not from onBuildPhase —
      * calling from onBuildPhase causes CPU rebuild loops (see STATE.md).
@@ -441,8 +445,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * Schedule a BBjCPL compilation with trailing-edge debounce.
-     * On rapid saves, only the last save triggers compilation after
-     * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
+     * Every open, edit or rebuild of an open document re-arms the per-file timer, so only the
+     * last event in a burst runs a cycle, after a 500ms quiet period. This prevents CPU spike and
+     * diagnostic flicker.
      *
      * Compute-first, publish-once: nothing is written to `document.diagnostics` until the cycle
      * has decided its whole result -- see {@link publishCycleDiagnostics}, the single write/publish
