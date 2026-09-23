@@ -10,16 +10,23 @@ import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
 import type { ParseError } from '../src/language/java-interop.js';
 import { mergeDiagnostics, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
-import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
+import {
+    clearAllVerdictStates,
+    DOWNGRADED_SYNTAX_CODE,
+    getVerdictState,
+    recallLangiumSnapshot,
+    rememberLangiumDiagnostics
+} from '../src/language/bbj-diagnostic-reconciliation.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
 import type { Program } from '../src/language/generated/ast.js';
+import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
 
 /**
- * Interleaving coverage for a document's concurrent diagnostics writers (D-07/D-12 part b): the
- * live-parse cycle armed directly from a text-document event (plan 01), the pure composition
- * plan 02 built, and Langium's own validation, each finishing in either order and across text
- * versions -- no writer's list is ever lost, doubled or misattributed against another's.
+ * Interleaving coverage for a document's concurrent diagnostics writers: the live-parse cycle
+ * armed directly from a text-document event, the pure diagnostics-list composition, and
+ * Langium's own validation, each finishing in either order and across text versions -- no
+ * writer's list is ever lost, doubled or misattributed against another's.
  *
  * Two independent Langium syntax complaints on distinct lines are needed throughout this file.
  * An unclosed parenthesis mid-document swallows every following statement into a single parser
@@ -129,11 +136,29 @@ describe('live-parse and Langium writers interleaved', () => {
         secondFlaggedLine = flaggedLines.find(l => l !== firstFlaggedLine)!;
     });
 
+    /** The scripted verdict the "order independence" pair of tests shares, flagging only the
+     * first complaint's line -- same shape as the tracer's own scripted error. */
+    function orderIndependenceScriptedError(): ParseError {
+        return {
+            categories: ['SyntaxError'],
+            message: 'order-independence verdict on the first complaint line',
+            editorStartLine: firstFlaggedLine + 1, // ParseError lines are one-based.
+            editorEndLine: firstFlaggedLine + 1,
+            startCharacter: 1,
+            endCharacter: 5,
+        };
+    }
+
+    /** Set by the "verdict first" order-independence test, compared against by the "Langium
+     * first" one -- both reconcile the same fixture and scripted verdict, just in the opposite
+     * arrival order, and must end at the same published list. */
+    let orderIndependenceReference: Diagnostic[] | undefined;
+
     test('BBj\'s verdict first, then Langium\'s validation of the same text, publishes one consistent list', async () => {
         const { shared, builder, privates, interopService, textDocuments } = createHarness();
 
         // BBj's own verdict flags only the first complaint's line -- the second stays something
-        // BBj is silent on, so Langium's carry-over treatment (D-05) must downgrade it instead of
+        // BBj is silent on, so Langium's carry-over treatment must downgrade it instead of
         // dropping it.
         const scriptedError: ParseError = {
             categories: ['SyntaxError'],
@@ -149,7 +174,7 @@ describe('live-parse and Langium writers interleaved', () => {
         const uriString = uri.toString();
         const document = addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
         // A file the startup scan loaded but a build has never touched -- Parsed, not Validated,
-        // exactly the state an early verdict is published against (D-04).
+        // exactly the state an early verdict is published against.
         expect(document.state).toBe(DocumentState.Parsed);
 
         const clientPublishedLists: Diagnostic[][] = [];
@@ -263,5 +288,271 @@ describe('live-parse and Langium writers interleaved', () => {
         await flushRealMacrotask();
 
         expect(document.diagnostics).toEqual(mergeDiagnostics(langiumListForV2, [cplDiagnostic]));
+    });
+
+    test('order independence: verdict first, then Langium validates, ends with the full reconciliation (the reference this file\'s "Langium first" test compares against)', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        const { shared, interopService, textDocuments, builder } = createHarness();
+        interopService.scriptParseProgram({ errors: [orderIndependenceScriptedError()] });
+        const uri = URI.file('/proj/order-verdict-first.bbj');
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        openOrChange(textDocuments, uri.toString(), 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(600);
+        await builder.update([uri], []);
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.diagnostics).toBeDefined();
+        expect(document.diagnostics!.length).toBeGreaterThan(0);
+        expect(hasNoDuplicates(document.diagnostics!)).toBe(true);
+        orderIndependenceReference = document.diagnostics!;
+    });
+
+    test('order independence: Langium first, then the verdict cycle, ends with the same reconciliation as verdict first', async () => {
+        expect(orderIndependenceReference).toBeDefined(); // depends on the previous test's own run
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        const { shared, interopService, textDocuments, builder } = createHarness();
+        interopService.scriptParseProgram({ errors: [orderIndependenceScriptedError()] });
+        const uri = URI.file('/proj/order-langium-first.bbj');
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        openOrChange(textDocuments, uri.toString(), 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await builder.update([uri], []);
+        await vi.advanceTimersByTimeAsync(600);
+        await flushRealMacrotask();
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.diagnostics).toEqual(orderIndependenceReference);
+        expect(hasNoDuplicates(document.diagnostics!)).toBe(true);
+    });
+
+    test('a verdict newer than Langium: an unchanged-line complaint downgrades, the edited-line complaint stays an Error, the complaint on BBj\'s line drops, and re-validating publishes the full reconciliation', async () => {
+        const { shared, builder, textDocuments, interopService } = createHarness();
+
+        const v1Text = TWO_SYNTAX_COMPLAINTS_TEXT;
+        const uri = URI.file('/proj/verdict-newer-than-langium.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, v1Text);
+
+        openOrChange(textDocuments, uriString, 1, v1Text);
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+
+        // A third complaint, hand-placed on a line the real fixture's two parse errors never
+        // land on (confirmed by the throwaway probe above), layered onto the genuinely-validated
+        // snapshot -- the rest of this test exercises the real event/verdict/composition wiring
+        // end to end; only this one complaint's exact line is chosen by hand, to pin the
+        // three-way downgrade/keep/drop split deterministically instead of fighting the parser's
+        // own recovery for a third independent syntax error.
+        const freeLine = firstFlaggedLine === 0 || secondFlaggedLine === 0 ? Math.max(firstFlaggedLine, secondFlaggedLine) + 1 : 0;
+        const handPlacedComplaint: Diagnostic = {
+            range: { start: { line: freeLine, character: 0 }, end: { line: freeLine, character: END_OF_LINE_CHARACTER } },
+            message: 'hand-placed complaint for the interleaving matrix',
+            severity: DiagnosticSeverity.Error,
+            source: 'bbj',
+            data: { code: DocumentValidator.ParsingError },
+        };
+        const realSnapshot = recallLangiumSnapshot(document)!;
+        expect(realSnapshot.validatedText).toBe(v1Text);
+        rememberLangiumDiagnostics(document, [handPlacedComplaint, ...realSnapshot.diagnostics], v1Text);
+
+        // Version 2: only the hand-placed complaint's own line changes; the two real complaint
+        // lines stay byte-identical to version 1.
+        const v1Lines = v1Text.split('\n');
+        v1Lines[freeLine] = 'rem edited\n'.trimEnd();
+        const v2Text = v1Lines.join('\n');
+        expect(v2Text).not.toBe(v1Text);
+
+        const scriptedError: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'bbj verdict for version 2',
+            editorStartLine: firstFlaggedLine + 1,
+            editorEndLine: firstFlaggedLine + 1,
+            startCharacter: 1,
+            endCharacter: 3,
+        };
+        interopService.scriptParseProgram({ errors: [scriptedError] });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uriString, 2, v2Text);
+        await vi.advanceTimersByTimeAsync(600);
+        await flushRealMacrotask();
+
+        const earlyList = document.diagnostics ?? [];
+        const bbjEarly = earlyList.filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjEarly).toHaveLength(1);
+
+        const onFirstFlaggedLine = earlyList.filter(d => d.range.start.line === firstFlaggedLine);
+        expect(onFirstFlaggedLine).toHaveLength(1);
+        expect(onFirstFlaggedLine[0].source).toBe(BBJ_PARSER_SOURCE); // dropped, replaced by BBj's own
+
+        const onSecondFlaggedLine = earlyList.filter(d => d.range.start.line === secondFlaggedLine);
+        expect(onSecondFlaggedLine).toHaveLength(1);
+        expect(onSecondFlaggedLine[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect((onSecondFlaggedLine[0].data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+
+        const onEditedLine = earlyList.filter(d => d.range.start.line === freeLine);
+        expect(onEditedLine).toHaveLength(1);
+        expect(onEditedLine[0].severity).toBe(DiagnosticSeverity.Error);
+        expect(onEditedLine[0].message).toBe(handPlacedComplaint.message);
+
+        expect(hasNoDuplicates(earlyList)).toBe(true);
+
+        // Re-validating version 2 for real publishes the full reconciliation: BBj's diagnostic
+        // still present exactly once, still no duplicates.
+        await builder.update([uri], []);
+        const reconciledList = document.diagnostics ?? [];
+        expect(reconciledList.filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+        expect(hasNoDuplicates(reconciledList)).toBe(true);
+    });
+
+    test('Langium newer than a stale verdict: releasing the held verdict after update() already published version 2 changes nothing', async () => {
+        const { shared, builder, textDocuments, interopService } = createHarness();
+
+        let resolveParseProgram: () => void = () => { /* replaced below */ };
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(params => new Promise(resolve => {
+            resolveParseProgram = () => resolve({
+                version: params.version,
+                errors: [{
+                    categories: ['SyntaxError'],
+                    message: 'a verdict for the version this request was sent for',
+                    editorStartLine: 1,
+                    editorEndLine: 1,
+                    startCharacter: 1,
+                    endCharacter: 3,
+                }],
+            });
+        }));
+
+        const uri = URI.file('/proj/langium-newer-than-verdict.bbj');
+        const uriString = uri.toString();
+        const v1Text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, v1Text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uriString, 1, v1Text);
+        // Fires the cycle: it sends the version-1 request and suspends awaiting it -- the mock
+        // never resolves until resolveParseProgram() is called.
+        await vi.advanceTimersByTimeAsync(600);
+
+        // The user edits to version 2, and Langium validates it for real while the version-1
+        // request is still held.
+        const v2Text = TWO_SYNTAX_COMPLAINTS_TEXT;
+        openOrChange(textDocuments, uriString, 2, v2Text);
+        await builder.update([uri], []);
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const langiumListForV2 = document.diagnostics ?? [];
+        expect(langiumListForV2.length).toBeGreaterThan(0); // precondition
+
+        // The held version-1 request now resolves -- superseded by the edit, so it must publish
+        // nothing and store no verdict state.
+        resolveParseProgram();
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(document.diagnostics).toEqual(langiumListForV2);
+        expect(getVerdictState(uri)).toBeUndefined();
+    });
+
+    test('a stale Langium validation, released after a newer verdict already exists, still holds BBj\'s newer diagnostic exactly once', async () => {
+        const { shared, builder, textDocuments, interopService, BBj } = createHarness();
+
+        let releaseValidation: () => void = () => { /* replaced below */ };
+        const heldValidation = new Promise<void>(resolve => { releaseValidation = resolve; });
+        const validatorService = BBj.validation.DocumentValidator;
+        const originalValidateDocument = validatorService.validateDocument.bind(validatorService);
+        vi.spyOn(validatorService, 'validateDocument').mockImplementation(async (...args) => {
+            await heldValidation;
+            return originalValidateDocument(...(args as Parameters<typeof originalValidateDocument>));
+        });
+
+        const uri = URI.file('/proj/stale-langium-after-newer-verdict.bbj');
+        const uriString = uri.toString();
+        const v1Text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, v1Text);
+
+        const validatedPublishedLists: Diagnostic[][] = [];
+        builder.onDocumentPhase(DocumentState.Validated, doc => {
+            validatedPublishedLists.push(doc.diagnostics ?? []);
+        });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uriString, 1, v1Text);
+        // Starts a build for version 1 -- it parses/links for real and hangs inside the held
+        // validateDocument(). Not awaited here: it only resolves once releaseValidation() runs.
+        const updatePromise = builder.update([uri], []);
+        // Gives that build a chance to reach, and hang on, the held validation.
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state < DocumentState.Validated).toBe(true);
+
+        // While validation is held, the user edits to newer text and the cycle's own verdict for
+        // it arrives, sent to the client without writing document.diagnostics (still below
+        // Validated).
+        const v2Text = TWO_SYNTAX_COMPLAINTS_TEXT;
+        const scriptedError: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'bbj verdict for the newer text',
+            editorStartLine: firstFlaggedLine + 1,
+            editorEndLine: firstFlaggedLine + 1,
+            startCharacter: 1,
+            endCharacter: 3,
+        };
+        interopService.scriptParseProgram({ errors: [scriptedError] });
+        openOrChange(textDocuments, uriString, 2, v2Text);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(document.diagnostics).toBeUndefined(); // still held -- nothing written yet
+
+        releaseValidation();
+        await updatePromise;
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(document.state).toBe(DocumentState.Validated);
+        const finalList = validatedPublishedLists[validatedPublishedLists.length - 1] ?? document.diagnostics ?? [];
+        const bbjDiagnostics = finalList.filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjDiagnostics).toHaveLength(1);
+        expect(hasNoDuplicates(finalList)).toBe(true);
+    });
+
+    test('two consecutive cycles with the same verdict for unchanged text publish deep-equal lists', async () => {
+        const { privates, interopService, shared, textDocuments } = createHarness();
+        const scriptedError: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'idempotent verdict',
+            editorStartLine: 1,
+            editorEndLine: 1,
+            startCharacter: 1,
+            endCharacter: 3,
+        };
+        interopService.scriptParseProgram({ errors: [scriptedError] });
+
+        const uri = URI.file('/proj/idempotent.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        const clientPublishedLists: Diagnostic[][] = [];
+        vi.spyOn(privates, 'sendDiagnosticsToClient').mockImplementation((_uri, diagnostics) => {
+            clientPublishedLists.push(diagnostics);
+        });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        // A relink-driven revalidation of unchanged text still arms a fresh cycle.
+        openOrChange(textDocuments, uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(clientPublishedLists).toHaveLength(2);
+        expect(clientPublishedLists[0]).toEqual(clientPublishedLists[1]);
+        expect(hasNoDuplicates(clientPublishedLists[1])).toBe(true);
     });
 });
