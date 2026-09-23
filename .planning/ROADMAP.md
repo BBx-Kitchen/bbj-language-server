@@ -307,7 +307,7 @@ files describe behaviour and use word lists only.
 - [x] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository (completed 2026-09-22)
 - [x] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x (completed 2026-09-22)
 - [x] **Phase 103: One Set of Errors — Diagnostic Reconciliation** - The compiler's verdict and the language server's own checks stop contradicting and stop duplicating each other (completed 2026-09-23)
-- [ ] **Phase 104: Conformance Measurement & Milestone Exit** - The harness can measure with the endpoint active, the documented procedure exists, and the milestone's exit numbers are on record
+- [x] **Phase 104: Conformance Measurement & Milestone Exit** - The harness can measure with the endpoint active, the documented procedure exists, and the milestone's exit numbers are on record (completed 2026-09-23)
 
 ## Phase Details
 
@@ -570,7 +570,7 @@ Plans:
   3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
   4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
 
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**

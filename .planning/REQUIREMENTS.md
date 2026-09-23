@@ -55,8 +55,8 @@
 ### Conformance measurement
 
 - [x] **CONF-01**: Each construct fixed for PARSE and VALID has a small synthetic regression file that the existing example-files test parses with zero errors
-- [ ] **CONF-02**: The conformance run can include the `bbj-ls` endpoint, reports list B with it, and the way to run it is documented for maintainers
-- [ ] **CONF-03**: On the corpus build of the baseline, the milestone ends with A ≤ 25, A2 ≤ 25, and B ≤ 5 % with the endpoint active, with all existing test suites passing
+- [x] **CONF-02**: The conformance run can include the `bbj-ls` endpoint, reports list B with it, and the way to run it is documented for maintainers
+- [x] **CONF-03**: On the corpus build of the baseline, the milestone ends with A ≤ 25, A2 ≤ 25, and B ≤ 5 % with the endpoint active, with all existing test suites passing
 
 ## Future Requirements
 
@@ -109,8 +109,8 @@
 | PSRV-09 | Phase 102 | Complete |
 | EXMP-01 | Phase 100 | Complete |
 | CONF-01 | Phase 98 | Complete |
-| CONF-02 | Phase 104 | Pending |
-| CONF-03 | Phase 104 | Pending |
+| CONF-02 | Phase 104 | Complete |
+| CONF-03 | Phase 104 | Complete |
 | RESP-01 | Phase 105 | Complete |
 | RESP-02 | Phase 105 | Complete |
 | RESP-03 | Phase 105 | Complete |
