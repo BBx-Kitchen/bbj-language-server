@@ -117,6 +117,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      */
     private readonly lspConnection: () => Connection | undefined;
 
+    /**
+     * Uris with a pending "arm once the workspace reports ready" entry -- at most one per uri,
+     * so five events for the same not-yet-loaded document before `ready` resolves still chain
+     * onto {@link WorkspaceManager.ready} only once. See {@link armWhenWorkspaceReady}.
+     */
+    private readonly pendingReadyUris = new Set<string>();
+
     constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.wsManager = () => services.workspace.WorkspaceManager;
@@ -129,8 +136,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // so a change while the initial workspace build still holds that lock still reaches BBj's
         // parser. Additive: the rebuild-driven trigger (buildDocuments -> runBbjcplForDocuments ->
         // debouncedCompile) is untouched and keeps arming the very same cplDebounceTimers entry.
+        // Langium's text-document store fires onDidOpen immediately followed by
+        // onDidChangeContent for the same open, so both listeners resetting the same debounce
+        // timer on an open is harmless -- the second reset just replaces the first.
         const textDocuments = services.workspace.TextDocuments;
         if (hasTextDocumentEvents(textDocuments)) {
+            textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document));
             textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document));
         }
     }
@@ -300,11 +311,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Entry point for the constructor's `onDidChangeContent` (and, from a later plan, `onDidOpen`)
-     * listener. The whole body is wrapped so a throw here never propagates into the shared
-     * text-document emitter Langium's own update handler listens on too -- an event listener that
-     * throws would break every OTHER listener registered on the same emitter, not just this one.
-     * Logs only the uri and the error's own message, never document text.
+     * Entry point for the constructor's `onDidOpen`/`onDidChangeContent` listeners. The whole
+     * body is wrapped so a throw here never propagates into the shared text-document emitter
+     * Langium's own update handler listens on too -- an event listener that throws would break
+     * every OTHER listener registered on the same emitter, not just this one. Logs only the uri
+     * and the error's own message, never document text.
      */
     private armLiveParseFromEvent(textDocument: TextDocument): void {
         try {
@@ -312,15 +323,46 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             const uri = URI.parse(textDocument.uri);
             const document = this.langiumDocuments.getDocument(uri);
             if (!document) {
-                // No LangiumDocument yet for this uri -- the workspace hasn't loaded it. A later
-                // plan in this phase re-arms once the workspace manager reports ready; until then
-                // there is nothing to arm a live-parse cycle for.
+                // No LangiumDocument yet for this uri -- the workspace hasn't loaded it. Re-arm
+                // once the workspace manager reports ready, since that resolves before the
+                // startup build runs, never through services.workspace.WorkspaceLock.
+                this.armWhenWorkspaceReady(uri);
                 return;
             }
             this.armLiveParseForDocument(document, textDocument);
         } catch (e) {
             logger.error(`Live-parse event listener failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
         }
+    }
+
+    /**
+     * Remembers `uri` and re-checks it once {@link WorkspaceManager.ready} resolves -- the
+     * startup file scan has finished by then, but not the workspace's own build, so a document
+     * this returns for may still be sitting at `Parsed`. At most one pending entry per uri (see
+     * {@link pendingReadyUris}), so a burst of events for the same not-yet-loaded uri chains onto
+     * `ready` only once. When `ready` resolves, the trigger is re-checked (a config change while
+     * waiting may have turned it off), the document and its now-current live `TextDocument` are
+     * looked up again, and the cycle is armed only when both exist. A rejected `ready` (this
+     * repository never rejects it, but a hand-built test double could) is caught and logged, never
+     * left as an unhandled rejection.
+     */
+    private armWhenWorkspaceReady(uri: URI): void {
+        const key = uri.toString();
+        if (this.pendingReadyUris.has(key)) return;
+        this.pendingReadyUris.add(key);
+        this.wsManager().ready
+            .then(() => {
+                this.pendingReadyUris.delete(key);
+                if (getCompilerTrigger() === 'off') return;
+                const document = this.langiumDocuments.getDocument(uri);
+                const liveTextDocument = this.textDocuments?.get(uri);
+                if (document && liveTextDocument) {
+                    this.armLiveParseForDocument(document, liveTextDocument);
+                }
+            })
+            .catch(e => {
+                logger.error(`Live-parse ready deferral failed for ${key}: ${e instanceof Error ? e.message : String(e)}`);
+            });
     }
 
     /**
