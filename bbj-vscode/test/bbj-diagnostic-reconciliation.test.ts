@@ -12,6 +12,7 @@ import {
     reconcileWithVerdict,
     rememberLangiumDiagnostics,
     syntaxComplaintKey,
+    textLineLookup,
     type LineTextLookup,
     type VerdictComposition,
     type VerdictState,
@@ -454,6 +455,261 @@ describe('composeWithVerdict — early verdict against a stale Langium list', ()
             syntaxComplaintKey(line0Error.message, liveLines[0]),
             syntaxComplaintKey(line2Error.message, liveLines[2]),
         ]));
+    });
+
+});
+
+describe('composeWithVerdict — case selection', () => {
+
+    test('no verdict: the result deep-equals the Langium list and seen is undefined', () => {
+        const semanticError = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'bbj', 'semantic error');
+        const result = composeWithVerdict({
+            langiumDiagnostics: [semanticError],
+            liveText: 'x = 1',
+            liveVersion: 1,
+        });
+
+        expect(result.diagnostics).toEqual([semanticError]);
+        expect(result.seen).toBeUndefined();
+    });
+
+    test('a verdict without version is a carry-over-only state: the result equals applyVerdictCarryOver\'s, and none of verdict.diagnostics appears even when the field is set', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'should never appear');
+        const liveText = 'x = (';
+        const verdict: VerdictState = {
+            seen: new Set([syntaxComplaintKey('parse error', 'x = (')]),
+            diagnostics: [bbjDiag],
+            // deliberately no `version`
+        };
+
+        const result = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        const expected = applyVerdictCarryOver([complaint], verdict, textLineLookup(liveText));
+        expect(result.diagnostics).toEqual(expected);
+        expect(result.diagnostics).not.toContainEqual(bbjDiag);
+        expect(result.seen).toBeUndefined();
+    });
+
+    test('a verdict for an older version than the live one: none of its diagnostics appear', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const olderBbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'older verdict diagnostic');
+        const olderVerdict: VerdictState = { seen: new Set(), version: 3, diagnostics: [olderBbjDiag] };
+
+        const result = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            liveText: 'x = (',
+            liveVersion: 4,
+            verdict: olderVerdict,
+        });
+
+        expect(result.diagnostics).not.toContainEqual(olderBbjDiag);
+    });
+
+    test('a verdict for a newer version than the live one: none of its diagnostics appear, but a complaint whose key is already in seen is still downgraded', () => {
+        const seenKey = syntaxComplaintKey('parse error', 'x = (');
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const newerBbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'newer verdict diagnostic');
+        const newerVerdict: VerdictState = { seen: new Set([seenKey]), version: 5, diagnostics: [newerBbjDiag] };
+
+        const result = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            liveText: 'x = (',
+            liveVersion: 4,
+            verdict: newerVerdict,
+        });
+
+        expect(result.diagnostics).not.toContainEqual(newerBbjDiag);
+        expect(result.diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+    });
+
+    test('a verdict for the live version with validatedText equal to the live text matches reconcileWithVerdict', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(1, 1, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const liveText = 'x = (\ny = 2';
+        const verdict: VerdictState = { seen: new Set(), version: 7, diagnostics: [bbjDiag] };
+        const expected = reconcileWithVerdict([complaint], [bbjDiag], textLineLookup(liveText));
+
+        const result = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            validatedText: liveText,
+            liveText,
+            liveVersion: 7,
+            verdict,
+        });
+
+        expect(result.diagnostics).toEqual(expected.diagnostics);
+        expect(result.seen).toEqual(expected.state.seen);
+    });
+
+    test('a verdict for the live version with validatedText undefined matches reconcileWithVerdict against the live text', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(1, 1, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const liveText = 'x = (\ny = 2';
+        const verdict: VerdictState = { seen: new Set(), version: 7, diagnostics: [bbjDiag] };
+        const expected = reconcileWithVerdict([complaint], [bbjDiag], textLineLookup(liveText));
+
+        const result = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            liveText,
+            liveVersion: 7,
+            verdict,
+        });
+
+        expect(result.diagnostics).toEqual(expected.diagnostics);
+        expect(result.seen).toEqual(expected.state.seen);
+    });
+
+});
+
+describe('composeWithVerdict — edges', () => {
+
+    test('empty edge: a zero-diagnostic current verdict against a stale list downgrades matched complaints and leaves unmatched ones as Errors', () => {
+        const matched = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'matched complaint');
+        const unmatched = makeDiag(1, 1, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'unmatched complaint');
+        const validatedText = 'a\nb';
+        const liveText = 'a\nb-changed';
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [matched, unmatched],
+            validatedText,
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics).toHaveLength(2);
+        expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect(diagnostics[1]).toEqual(unmatched);
+    });
+
+    test('empty edge: an empty Langium list with a current verdict yields exactly the verdict\'s diagnostics', () => {
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [bbjDiag] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [],
+            liveText: 'x',
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics).toEqual([bbjDiag]);
+    });
+
+    test('empty edge: both empty yield []', () => {
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [],
+            liveText: '',
+            liveVersion: 1,
+            verdict: { seen: new Set(), version: 1, diagnostics: [] },
+        });
+
+        expect(diagnostics).toEqual([]);
+    });
+
+    test('a CRLF terminator alone does not break a line-text match', () => {
+        const validatedText = 'x = (\r\ny = 2\r\n';
+        const liveText = 'x = (\ny = 2\n';
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(1, 1, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error on line 1');
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [bbjDiag] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            validatedText,
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect((diagnostics[0].data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+    });
+
+    test('a trailing space difference between the validated and the live line stays unmatched — the complaint stays an Error', () => {
+        const validatedText = 'x = 1';
+        const liveText = 'x = 1 ';
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(5, 5, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'unrelated bbj diagnostic');
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [bbjDiag] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            validatedText,
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics).toContainEqual(complaint);
+    });
+
+    test('an accented letter written precomposed in the validated text and decomposed in the live text stays unmatched — the complaint stays an Error', () => {
+        const validatedText = 'café'; // é = precomposed e-acute
+        const liveText = 'café'; // e followed by a combining acute accent (decomposed)
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(5, 5, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'unrelated bbj diagnostic');
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [bbjDiag] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            validatedText,
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics).toContainEqual(complaint);
+    });
+
+    test('a complaint whose line lies past the live text\'s last line does not match and stays an Error', () => {
+        const validatedText = 'a\nb\nc';
+        const liveText = 'a';
+        const complaint = makeDiag(2, 2, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error on line 2');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'unrelated bbj diagnostic');
+        const verdict: VerdictState = { seen: new Set(), version: 1, diagnostics: [bbjDiag] };
+
+        const { diagnostics } = composeWithVerdict({
+            langiumDiagnostics: [complaint],
+            validatedText,
+            liveText,
+            liveVersion: 1,
+            verdict,
+        });
+
+        expect(diagnostics).toContainEqual(complaint);
+    });
+
+    test('idempotency: composing twice with deep-equal inputs gives deep-equal outputs, inputs are unchanged, and the verdict diagnostic appears exactly once in each output', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const bbjDiag = makeDiag(1, 1, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const langium = [complaint];
+        const verdict: VerdictState = { seen: new Set(), version: 3, diagnostics: [bbjDiag] };
+        const langiumBefore = structuredClone(langium);
+        const verdictBefore = structuredClone(verdict);
+        const composition: VerdictComposition = {
+            langiumDiagnostics: langium,
+            validatedText: 'x = (',
+            liveText: 'x = (2',
+            liveVersion: 3,
+            verdict,
+        };
+
+        const first = composeWithVerdict(composition);
+        const second = composeWithVerdict(composition);
+
+        expect(first.diagnostics).toEqual(second.diagnostics);
+        expect(langium).toEqual(langiumBefore);
+        expect(verdict).toEqual(verdictBefore);
+        expect(first.diagnostics.filter(d => d === bbjDiag)).toHaveLength(1);
+        expect(second.diagnostics.filter(d => d === bbjDiag)).toHaveLength(1);
     });
 
 });
