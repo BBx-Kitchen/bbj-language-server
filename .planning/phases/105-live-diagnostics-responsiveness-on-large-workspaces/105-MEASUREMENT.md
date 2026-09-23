@@ -52,7 +52,7 @@ exited 0.
 - IntelliJ product and version: IntelliJ IDEA 2026.2.3 Ultimate (IU-262.10968.63), JetBrains
   Runtime 25.0.4, LSP4IJ 0.21.0, IDE heap 2048 MiB
 - LSP4IJ version: 0.21.0
-- BBjServices version on the tester's machine: not reported
+- BBjServices version on the tester's machine: BBj 26.03 RC, nightly build of 2026-09-23
 - Any other client talking to port 5008 during measurement: none — one IDE measured at a time,
   per the concurrency note below
 
@@ -197,7 +197,8 @@ _Draft — post this comment when this issue is closed with the v4.5 milestone, 
 >
 > Measured on a real large workspace, with three samples per cell: VS Code's median wait for the
 > first parser diagnostic on an invalid line typed during the initial build dropped from 58.9 s
-> to 5.3 s; IntelliJ's dropped from 66 s to 6 s.
+> to 5.3 s; IntelliJ's dropped from 66 s to 6 s. Measured against BBj 26.03 RC (nightly build of
+> 2026-09-23).
 >
 > This fix ships with the v4.5 milestone; this issue closes when that milestone's pull request
 > merges.
