@@ -15,6 +15,7 @@ import {
     clearAllVerdictStates,
     getVerdictState,
     recallLangiumDiagnostics,
+    recallLangiumSnapshot,
     rememberLangiumDiagnostics,
     setVerdictState,
 } from '../src/language/bbj-diagnostic-reconciliation.js';
@@ -286,11 +287,15 @@ describe('revalidateUseFilePathDiagnostics keeps the remembered Langium diagnost
         ];
 
         const doc = fakeDocument('/proj/use-revalidate.bbj', makeDiags());
-        rememberLangiumDiagnostics(doc, makeDiags());
+        const validatedText = 'x = 1\n';
+        rememberLangiumDiagnostics(doc, makeDiags(), validatedText);
 
         await (builder as unknown as BuilderPrivates).revalidateUseFilePathDiagnostics([doc], CancellationToken.None);
 
         expect(doc.diagnostics?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
         expect(recallLangiumDiagnostics(doc)?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
+        // The re-remembered list keeps the snapshot's own validated text -- a later composition
+        // still knows which text this filtered list belongs to.
+        expect(recallLangiumSnapshot(doc)?.validatedText).toBe(validatedText);
     });
 });

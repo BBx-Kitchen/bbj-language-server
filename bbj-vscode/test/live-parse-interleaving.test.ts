@@ -9,7 +9,7 @@ import { DiagnosticSeverity } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
 import type { ParseError } from '../src/language/java-interop.js';
-import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import { mergeDiagnostics, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -68,6 +68,21 @@ function addWorkspaceDocument(shared: ReturnType<typeof createBBjTestServices>['
 /** Fires a combined open+change event for `uri` on the harness's real `TextDocuments` store. */
 function openOrChange(textDocuments: NormalizedTextDocuments, uriString: string, version: number, text: string): void {
     textDocuments.set(TextDocument.create(uriString, 'bbj', version, text));
+}
+
+/**
+ * Drains one real macrotask turn on top of `vi.advanceTimersByTimeAsync`. Needed only for a
+ * cycle that reaches `notifyDocumentPhase` for real (a document already at the Validated state):
+ * Langium's own `interruptAndCheck` compares its `CancellationToken.None` (from
+ * `vscode-languageserver-protocol`) by identity against whatever token is passed in, and this
+ * codebase's own `CancellationToken.None` (from `vscode-jsonrpc`) is a structurally-equal but
+ * distinct object, so the comparison fails and `interruptAndCheck` takes its `delayNextTick()`
+ * branch -- a real `setImmediate`, which `toFake: ['setTimeout', 'clearTimeout']` does not cover.
+ * Pre-existing behaviour, unrelated to this file's own changes (`live-parse-scheduling.test.ts`
+ * established the same helper first).
+ */
+function flushRealMacrotask(): Promise<void> {
+    return new Promise(resolve => setImmediate(resolve));
 }
 
 /** True when no two diagnostics in `diagnostics` share the same source, message, start line and
@@ -190,5 +205,63 @@ describe('live-parse and Langium writers interleaved', () => {
         for (const list of [...clientPublishedLists, ...validatedPublishedLists]) {
             expect(hasNoDuplicates(list)).toBe(true);
         }
+    });
+
+    test('a save-time compile that resolves after Langium validates newer text merges onto that newer Langium list, not onto whatever another writer left in document.diagnostics', async () => {
+        const { shared, BBj, builder, textDocuments, interopService } = createHarness();
+        // The old-server default (MethodNotFound): no verdict, so this cycle falls back to the
+        // save-time compile.
+        interopService.scriptParseProgram('method-not-found');
+
+        let resolveCompile: (diagnostics: Diagnostic[]) => void = () => { /* replaced below */ };
+        vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockImplementation(
+            () => new Promise<Diagnostic[]>(resolve => { resolveCompile = resolve; })
+        );
+
+        const uri = URI.file('/proj/interleave-race.bbj');
+        const uriString = uri.toString();
+        const textV1 = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, textV1);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uriString, 1, textV1);
+        // Fires the debounce cycle: the old-server probe answers, and it suspends awaiting the
+        // save-time compile (still pending -- resolveCompile has not been called yet).
+        await vi.advanceTimersByTimeAsync(600);
+
+        // While the compile is still pending, the document is edited and Langium validates the
+        // new text -- a real validation landing in the middle of this cycle's own wait.
+        const textV2 = 'x = 1 +\nrem ok\ny = 2\n';
+        openOrChange(textDocuments, uriString, 2, textV2);
+        await builder.update([uri], []);
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const langiumListForV2 = document.diagnostics ?? [];
+        // Precondition: the new text really does produce a real Langium diagnostic to merge onto.
+        expect(langiumListForV2.length).toBeGreaterThan(0);
+
+        // A different writer overwrites document.diagnostics between that validation and this
+        // cycle's own save-time compile resolving -- the concurrent-publish race this cycle must
+        // not be fooled by: its own result must come from the latest Langium snapshot, not from
+        // whatever document.diagnostics happens to hold at the moment the compile resolves.
+        const anotherWritersDiagnostic: Diagnostic = {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            message: 'a different cycle\'s own diagnostic, unrelated to this one',
+            severity: DiagnosticSeverity.Warning,
+        };
+        document.diagnostics = [anotherWritersDiagnostic];
+
+        const cplDiagnostic: Diagnostic = {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } },
+            message: 'bbjcpl on the new text',
+            severity: DiagnosticSeverity.Error,
+            source: 'BBjCPL',
+        };
+        resolveCompile([cplDiagnostic]);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(document.diagnostics).toEqual(mergeDiagnostics(langiumListForV2, [cplDiagnostic]));
     });
 });
