@@ -2,43 +2,43 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
-current_phase: 105
-current_phase_name: Live Diagnostics Responsiveness on Large Workspaces
-status: verifying
-stopped_at: Completed 105-05-PLAN.md
-last_updated: "2026-09-23T15:24:27.118Z"
+current_phase: 104
+current_phase_name: Conformance Measurement & Milestone Exit
+status: planning
+stopped_at: Phase 105 complete, ready to plan Phase 104
+last_updated: "2026-09-23T17:53:04.502Z"
 last_activity: 2026-09-23
-last_activity_desc: Phase 105 execution started
-state_head: b3538670644cca5d3638790c3e7551e7a9da6337
+last_activity_desc: Phase 105 complete, transitioned to Phase 104
+state_head: 06292d2d735f0459b4275e1a837789ab98bd7017
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 40
   completed_plans: 40
-  percent: 75
+  percent: 88
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-23 (Phase 103 complete — one set of errors; UAT 2/2 in both IDEs, endpoint present and pre-endpoint jar)
+**Last Updated:** 2026-09-23 (Phase 105 complete — live diagnostics on large workspaces; UAT 1/1, validated, threat-secure; next Phase 104)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-22)
+See: .planning/PROJECT.md (updated 2026-09-23)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 105 — Live Diagnostics Responsiveness on Large Workspaces
+**Current Focus:** Phase 104 — Conformance Measurement & Milestone Exit
 
 ---
 
 ## Current Position
 
-Phase: 105 (Live Diagnostics Responsiveness on Large Workspaces) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 104 — Conformance Measurement & Milestone Exit
+Plan: Not started
+Status: Ready to plan
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-23 — Phase 105 execution started
+Last activity: 2026-09-23 — Phase 105 complete, transitioned to Phase 104
 
 ### v4.5 milestone map
 
@@ -51,6 +51,7 @@ Last activity: 2026-09-23 — Phase 105 execution started
 | 102 | Live Compiler Diagnostics With Backward Compatibility | PSRV-03, -04, -05, -08, -09 | this repo (`bbj-vscode/`, `documentation/`) |
 | 103 | One Set of Errors — Diagnostic Reconciliation | PSRV-06, -07 | this repo (document validator) |
 | 104 | Conformance Measurement & Milestone Exit | CONF-02, -03 | private `bbj-corpus` harness + this repo's gates |
+| 105 | Live Diagnostics Responsiveness on Large Workspaces | RESP-01..05 | this repo (document builder, java-interop parse lane) |
 
 Baseline to beat: A = 168, A2 = 267, B = 658 of 1,210 (54.4 %). Exit: A ≤ 25, A2 ≤ 25, B ≤ 5 %
 with the endpoint active.
@@ -269,7 +270,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 - **Crash detection cannot see a lost language-server connection.** LSP4IJ detaches the client before it publishes `stopped`; the Phase 97 fix failed hand UAT and was reverted. Accepted `86-05-REVIEW` WR-01 is the same defect. Upstream: LSP4IJ #1672/#1673.
 
-- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
 
 - **Phase 101 closed 2026-09-22 with one accepted override** (`101-VERIFICATION.md`): referenced-program resolution through the prefix algorithm is implemented but never invoked by ParserServiceAPI under type checking off (`WINDOWS.md` entry 4 waived). Merged into `bbj-ls` `develop` as `e23d400`. The 2026-09-22 re-review on `cd5bf83` found the stuck overrun marker fixed and 4 critical / 3 warning findings open. **Those are handed off and handled in `bbj-ls` itself, outside the v4.5 GSD flow:** `/home/coder/repos/bbj-ls/HANDOFF-parse-program-hardening.md`. The v4.5 client already tolerates every one of them (any non-MethodNotFound error is logged, never shown as a diagnostic), so they don't block phases 103-105.
 
@@ -295,12 +296,12 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T15:24:26.885Z
-Stopped at: Completed 105-05-PLAN.md
+Last session: 2026-09-23T17:55:00Z
+Stopped at: Phase 105 complete, ready to plan Phase 104
 Resume file: None
 
-Next: plan the remaining v4.5 phases (105 large-workspace responsiveness, then 104 exit
-measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
+Next: `/gsd-discuss-phase 104` or `/gsd-plan-phase 104` (exit
+measurement, the last v4.5 phase); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
 `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` (handoff doc) and is not a v4.5 step.
 
 ## Deferred Items

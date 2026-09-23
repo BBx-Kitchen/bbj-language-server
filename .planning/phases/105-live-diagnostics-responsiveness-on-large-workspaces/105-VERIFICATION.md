@@ -1,11 +1,12 @@
 ---
 phase: 105-live-diagnostics-responsiveness-on-large-workspaces
 verified: 2026-09-23T16:00:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Confirm in a live IDE trace (either VS Code or IntelliJ) that after the initial workspace build finishes, a file whose invalid line is still present shows exactly one diagnostic for that line (the BBj Parser verdict, no doubled or duplicated language-server complaint), rather than relying solely on the hermetic interleaving test suite."
     expected: "Exactly one diagnostic on the invalid line post-build, matching the reconciled result the interleaving tests predict; no flash, no duplicate."
     why_human: "105-MEASUREMENT.md's own hand-verification answer to Q2 records this exact scenario as 'not observed' — none of the tester's 'after' trace samples captured the invalid line and the build-finished marker together in the same trace. The automated interleaving suite (test/live-parse-interleaving.test.ts, 10 tests, including the CR-02 regression for two overlapping debounce cycles) covers the underlying no-lost/doubled/misattributed invariant hermetically and thoroughly, but this one live, real-IDE confirmation of the post-build steady state was explicitly flagged by the phase's own measurement record as unconfirmed, not as clean."

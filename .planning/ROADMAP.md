@@ -620,7 +620,7 @@ the bulk class resolution that build issues. Both IDEs are affected. See issue #
 
 **Requirements**: RESP-01, RESP-02, RESP-03, RESP-04, RESP-05
 **Depends on:** Phase 102 (the live-diagnostics client this makes usable)
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 
 **Success Criteria** (draft, to be firmed at planning):
 
