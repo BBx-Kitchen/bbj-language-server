@@ -1,14 +1,18 @@
 import { DocumentValidator, EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import type { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
-import { applyDiagnosticHierarchy, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import { applyConfiguredDiagnosticHierarchy, applyDiagnosticHierarchy, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
+import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
 import {
     DOWNGRADED_SYNTAX_CODE,
+    LINE_BREAK_DIAGNOSTIC_CODE,
     clearAllVerdictStates,
     documentLineText,
     getVerdictState,
@@ -167,5 +171,96 @@ describe('BBjDocumentValidator: verdict state is cleared on document close', () 
         services.shared.workspace.TextDocuments.delete(uri);
 
         expect(getVerdictState(uri)).toBeUndefined();
+    });
+});
+
+describe('a verdict on real validator output', () => {
+    // An IF whose FI shares a line with a following IF -- the exact fixture
+    // line-break-walk-termination.test.ts pins, reused here because its two line-break
+    // messages and their shared line are already established, known-stable values.
+    const lineBreakFixture = 'if x then\na = 1\nfi if y then\nb = 2\nfi';
+    const isLineBreakDiagnostic = (d: Diagnostic) => codeOf(d) === LINE_BREAK_DIAGNOSTIC_CODE;
+    const isLinkingError = (d: Diagnostic) => codeOf(d) === DocumentValidator.LinkingError;
+
+    test('line-break diagnostics carry the line-break code, Error severity and their pinned messages unchanged', async () => {
+        const result = await validate(lineBreakFixture);
+        const lineBreakDiags = result.diagnostics.filter(isLineBreakDiagnostic);
+        expect(lineBreakDiags).toHaveLength(2);
+        expect(lineBreakDiags.every(d => d.severity === DiagnosticSeverity.Error)).toBe(true);
+        expect(lineBreakDiags.map(d => d.message).sort()).toEqual([
+            'This statement needs to end with a line break: fi',
+            'This statement needs to start in a new line: if y then',
+        ].sort());
+        result.dispose();
+    });
+
+    test('an accepted verdict downgrades both line-break complaints to Warnings with source bbj, and leaves no syntax Error', async () => {
+        const result = await validate(lineBreakFixture);
+        const raw = recallLangiumDiagnostics(result.document);
+        expect(raw).toBeDefined();
+        const lineBreakRaw = raw!.filter(isLineBreakDiagnostic);
+        expect(lineBreakRaw).toHaveLength(2); // precondition
+
+        const lineText = documentLineText(result.document.textDocument);
+        const { diagnostics: reconciled } = reconcileWithVerdict(raw!, [], lineText);
+        const hierarchyApplied = applyConfiguredDiagnosticHierarchy(reconciled);
+
+        const downgraded = hierarchyApplied.filter(d => codeOf(d) === DOWNGRADED_SYNTAX_CODE);
+        expect(downgraded).toHaveLength(2);
+        expect(downgraded.every(d => d.severity === DiagnosticSeverity.Warning)).toBe(true);
+        expect(downgraded.every(d => d.source === 'bbj')).toBe(true);
+        expect(downgraded.map(d => d.message).sort()).toEqual(lineBreakRaw.map(d => d.message).sort());
+
+        const remainingSyntaxErrors = hierarchyApplied.filter(d =>
+            d.severity === DiagnosticSeverity.Error
+            && (codeOf(d) === DocumentValidator.ParsingError
+                || codeOf(d) === DocumentValidator.LexingError
+                || codeOf(d) === LINE_BREAK_DIAGNOSTIC_CODE)
+        );
+        expect(remainingSyntaxErrors).toHaveLength(0);
+        result.dispose();
+    });
+
+    test('a BBj diagnostic spanning the shared line replaces both line-break complaints there', async () => {
+        const result = await validate(lineBreakFixture);
+        const raw = recallLangiumDiagnostics(result.document)!;
+        const lineText = documentLineText(result.document.textDocument);
+        // Both line-break complaints in this fixture sit on line 2 ('fi if y then').
+        const bbjDiagnostic: Diagnostic = {
+            range: { start: { line: 2, character: 0 }, end: { line: 2, character: END_OF_LINE_CHARACTER } },
+            message: 'BBj flags this line',
+            severity: DiagnosticSeverity.Error,
+            source: BBJ_PARSER_SOURCE
+        };
+
+        const { diagnostics: reconciled } = reconcileWithVerdict(raw, [bbjDiagnostic], lineText);
+        const hierarchyApplied = applyConfiguredDiagnosticHierarchy(reconciled);
+
+        const onSharedLine = hierarchyApplied.filter(d => d.range.start.line === 2);
+        expect(onSharedLine).toHaveLength(1);
+        expect(onSharedLine[0].source).toBe(BBJ_PARSER_SOURCE);
+        expect(hierarchyApplied.some(isLineBreakDiagnostic)).toBe(false);
+        result.dispose();
+    });
+
+    test('a linking diagnostic hidden by a parse error becomes visible after an accepted verdict', async () => {
+        // A GOTO to a label that is never declared (a linking error), plus an assignment with
+        // an unclosed parenthesis on another line (a parse error).
+        const text = 'goto missinglabel\nx = (1 + 2\n';
+        const result = await validate(text);
+        const raw = recallLangiumDiagnostics(result.document)!;
+
+        // Preconditions: both a real parse error and a real linking error are present in the
+        // raw list, and Rule 1 hides the linking error today, before any verdict exists.
+        expect(raw.some(isParsingError)).toBe(true);
+        expect(raw.some(isLinkingError)).toBe(true);
+        const beforeVerdict = applyConfiguredDiagnosticHierarchy(raw);
+        expect(beforeVerdict.some(isLinkingError)).toBe(false);
+
+        const lineText = documentLineText(result.document.textDocument);
+        const { diagnostics: reconciled } = reconcileWithVerdict(raw, [], lineText);
+        const afterVerdict = applyConfiguredDiagnosticHierarchy(reconciled);
+        expect(afterVerdict.some(isLinkingError)).toBe(true);
+        result.dispose();
     });
 });
