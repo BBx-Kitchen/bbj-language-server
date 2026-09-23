@@ -188,6 +188,26 @@ export class JavaInteropService {
     /** Simple-name copies already added by loadImplicitImports(), keyed by "package.simpleName", so re-running it adds no duplicate entry to the synthetic classpath document. */
     private readonly implicitImportCopies = new Map<string, Mutable<JavaClass>>();
 
+    /**
+     * The dedicated connection `parseProgram` requests travel over, kept separate from
+     * {@link connection} so class-lookup traffic during a large workspace's initial build never
+     * delays a live parse (issue #692). Built with the service's own {@link createSocket}/
+     * {@link wrapSocket}, so it reads the same `interopHost`/`interopPort` the shared connection
+     * does. Opened lazily on the first parse for a given {@link _connectionGeneration}; retired
+     * and reopened whenever the generation moves on.
+     */
+    private parseLane?: MessageConnection;
+    /** The {@link _connectionGeneration} {@link parseLane} was opened for. */
+    private parseLaneGeneration = -1;
+    /** In-flight open shared by same-tick callers, mirroring {@link connectingPromise}'s role for {@link connect}. */
+    private parseLaneConnecting?: Promise<MessageConnection | undefined>;
+    /**
+     * The generation in which opening {@link parseLane} failed, or a `MethodNotFound` answer
+     * closed it (an older server). No further open attempt is made until
+     * {@link _connectionGeneration} moves past this value.
+     */
+    private parseLaneRetiredGeneration = -1;
+
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
@@ -455,17 +475,99 @@ export class JavaInteropService {
 
     /**
      * Parses `params.text` through the interop service's `parseProgram` endpoint and returns its
-     * result, riding the same connection, circuit breaker and reconnect logic as every other
-     * request. Deliberately NOT routed through {@link sendRequestSafe}: a caller here must be
-     * able to tell a `MethodNotFound` error (older server, no endpoint), an application error
-     * (`-3300x`) and a cancellation (`RequestCancelled`, a superseded request) apart, which a
-     * collapsed fallback value would destroy.
+     * result, riding the shared connection's circuit breaker and reconnect logic (via
+     * {@link connect}) plus a second, dedicated connection reserved for this request alone — so a
+     * burst of `getClassInfo` traffic already queued on the shared connection never delays a
+     * parse. The dedicated connection is opened lazily by {@link parseLaneConnection}; when it
+     * cannot be opened, the request falls back to the shared connection. Deliberately NOT
+     * routed through {@link sendRequestSafe}: a caller here must be able to tell a `MethodNotFound`
+     * error (older server, no endpoint), an application error (`-3300x`) and a cancellation
+     * (`RequestCancelled`, a superseded request) apart, which a collapsed fallback value would
+     * destroy.
      * @param params the parse request — the document's current text plus its resolution context
      * @param token cancellation token for request cancellation
      */
     public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
-        const connection = await this.connect();
-        return connection.sendRequest(parseProgramRequest, params, token);
+        const shared = await this.connect();
+        const lane = await this.parseLaneConnection();
+        return (lane ?? shared).sendRequest(parseProgramRequest, params, token);
+    }
+
+    /**
+     * Returns the dedicated `parseProgram` connection for the current connection generation,
+     * opening it lazily on first use and reusing it for the rest of the generation. Same-tick
+     * callers share the single in-flight {@link parseLaneConnecting} promise, mirroring
+     * {@link connect}'s handling of {@link connectingPromise}. Returns `undefined` — never throws —
+     * when the dedicated connection could not be opened or was retired for this generation; the
+     * caller falls back to the shared connection.
+     */
+    private async parseLaneConnection(): Promise<MessageConnection | undefined> {
+        const generation = this._connectionGeneration;
+        if (this.parseLane && this.parseLaneGeneration === generation) {
+            return this.parseLane;
+        }
+        if (this.parseLane) {
+            // An older generation's connection is still around: retire it before opening a new one.
+            this.disposeParseLane();
+        }
+        if (this.parseLaneRetiredGeneration === generation) {
+            return undefined;
+        }
+        if (this.parseLaneConnecting) {
+            return this.parseLaneConnecting;
+        }
+        this.parseLaneConnecting = this.openParseLane(generation);
+        try {
+            return await this.parseLaneConnecting;
+        } finally {
+            this.parseLaneConnecting = undefined;
+        }
+    }
+
+    /**
+     * Opens a fresh socket and wraps it as the dedicated `parseProgram` connection for
+     * `generation`, registering `close`/`error` listeners that hand the loss to
+     * {@link onParseLaneLost}. Never touches {@link breakerState}, never raises the connection
+     * error notification and never bumps {@link _connectionGeneration} — the server behind it is
+     * the one the shared connection already probed. If {@link _connectionGeneration} moved on
+     * while opening, the new connection is disposed and `undefined` is returned instead of being
+     * stored for a generation that is no longer current.
+     */
+    private async openParseLane(generation: number): Promise<MessageConnection | undefined> {
+        const socket = await this.createSocket();
+        const lane = this.wrapSocket(socket);
+        lane.onClose(() => this.onParseLaneLost(lane));
+        lane.onError(() => this.onParseLaneLost(lane));
+        lane.listen();
+        if (this._connectionGeneration !== generation) {
+            lane.dispose();
+            return undefined;
+        }
+        this.parseLane = lane;
+        this.parseLaneGeneration = generation;
+        return lane;
+    }
+
+    /**
+     * Clears {@link parseLane} once it is lost (closed or errored) — guarded on identity, as
+     * {@link establishConnection} does for {@link connection}, so a stale listener from an
+     * already-replaced lane cannot clear a newer one.
+     */
+    private onParseLaneLost(lane: MessageConnection): void {
+        if (this.parseLane !== lane) {
+            return;
+        }
+        this.parseLane = undefined;
+    }
+
+    /**
+     * Disposes the current dedicated connection, if any, clearing the field first so its own
+     * close listener (routed through {@link onParseLaneLost}) is a no-op once disposal starts.
+     */
+    private disposeParseLane(): void {
+        const lane = this.parseLane;
+        this.parseLane = undefined;
+        lane?.dispose();
     }
 
     /**
