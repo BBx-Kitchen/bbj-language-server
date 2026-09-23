@@ -3,9 +3,9 @@ phase: "99"
 slug: "parser-gaps-the-largest-groups"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-21"
 ---
 
@@ -97,11 +97,34 @@ one piece of Wave 0 test scaffolding this phase needs.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies — the Task 3 corpus runs are manual-only by design and every one sits between automated tasks
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter — set by `/gsd-validate-phase` on 2026-09-23
 
-**Approval:** pending
+**Approval:** approved 2026-09-23 (validate-phase audit).
+
+---
+
+## Validation Audit 2026-09-23
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Each construct group (`LEN=` on the RECORD verbs, `FIELD` as a verb with its `ERR=` tail, the word
+`label` as a name, `IOLIST`) has a case that must parse, a case that must stay flagged, and
+keyword-as-identifier cases in `test/parser-keyword-statements.test.ts`, plus a fixture in the
+conformance folder. The comment-after-continuation validator fix has its own `describe` block in
+`test/line-break-validation.test.ts`. Re-run on the current tree with `RUN_BBJ_TESTS=0`:
+`parser-keyword-statements` 332/332, `parser` 221 passed / 1 skipped, `conformance-regressions` 4/4,
+and the lexer, line-break and example-files files all green. Hook timeouts seen while other suites
+ran in parallel cleared when each file was re-run alone.
+
+Deliberately not fixed, not gaps: the bracketed array-index form of `FIELD` and a lexer quirk
+merging a zero-space `:`-continuation comment into the preceding keyword — no measured file needs
+either (see `deferred-items.md`).

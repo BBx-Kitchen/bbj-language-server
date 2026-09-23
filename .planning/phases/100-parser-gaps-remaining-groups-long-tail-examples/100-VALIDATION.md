@@ -2,7 +2,7 @@
 phase: "100"
 slug: "parser-gaps-remaining-groups-long-tail-examples"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
+status: validated
 nyquist_compliant: true
 wave_0_complete: true
 created: "2026-09-21"
@@ -125,3 +125,21 @@ backend's `getAllClassNames` exposure has drifted since 2026-09-03 (this project
 and `STATE.md`'s documented "Test-harness false positive" blocker). Neither exception touches a file
 this phase's diff modifies; both are independently reproduced, unrelated, and already classified
 out-of-scope by 100-04's and 100-05's own whole-suite runs earlier in this same phase.
+
+---
+
+## Validation Audit 2026-09-23
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+The map reconciled by 100-06 holds on the current tree. Every requirement (PARSE-04, -05, -06, -08,
+-09, EXMP-01) has a test on disk that targets its behaviour. Re-run results:
+`parser-keyword-statements` 332/332, `conformance-regressions` + `examples-compile` 8 passed /
+2 skipped with `RUN_BBJ_TESTS=0`, `examples-compile` 6/6 with `RUN_BBJ_TESTS=1` against a real
+`bbjcpl`, and the `linking` BBjAPI regression guard 3/3. The BBjAPI linking failures recorded above
+did not reproduce in this run. A hook timeout seen while other suites ran in parallel cleared when
+the file was re-run alone.
