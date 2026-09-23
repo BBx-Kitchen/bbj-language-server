@@ -1,14 +1,19 @@
-import { DocumentValidator } from 'langium';
+import { DocumentValidator, type LangiumDocument } from 'langium';
 import { describe, test, expect } from 'vitest';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import {
     DOWNGRADED_SYNTAX_CODE,
     LINE_BREAK_DIAGNOSTIC_CODE,
     applyVerdictCarryOver,
+    composeWithVerdict,
     downgradeSyntaxComplaint,
+    recallLangiumDiagnostics,
+    recallLangiumSnapshot,
     reconcileWithVerdict,
+    rememberLangiumDiagnostics,
     syntaxComplaintKey,
     type LineTextLookup,
+    type VerdictComposition,
     type VerdictState,
 } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { applyDiagnosticHierarchy } from '../src/language/bbj-document-validator.js';
@@ -391,6 +396,64 @@ describe('applyVerdictCarryOver', () => {
         applyVerdictCarryOver([complaint], state, lineText);
 
         expect(complaint).toEqual(before);
+    });
+
+});
+
+describe('composeWithVerdict — early verdict against a stale Langium list', () => {
+
+    test('rememberLangiumDiagnostics/recallLangiumSnapshot round-trip the validated text; recallLangiumDiagnostics returns the same list; remembering with two arguments recalls validatedText as undefined', () => {
+        const list = [makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error')];
+        const documentWithText = {} as LangiumDocument;
+        rememberLangiumDiagnostics(documentWithText, list, 'text v1');
+
+        const snapshot = recallLangiumSnapshot(documentWithText);
+        expect(snapshot?.diagnostics).toBe(list);
+        expect(snapshot?.validatedText).toBe('text v1');
+        expect(recallLangiumDiagnostics(documentWithText)).toBe(list);
+
+        const documentWithoutText = {} as LangiumDocument;
+        rememberLangiumDiagnostics(documentWithoutText, list);
+        expect(recallLangiumSnapshot(documentWithoutText)?.validatedText).toBeUndefined();
+    });
+
+    test('an early verdict for the live version composed against a stale Langium list downgrades a matched complaint, leaves a changed-line complaint an Error, drops the complaint on a line BBj flags, and passes a non-syntax diagnostic through unchanged', () => {
+        const validatedLines = ['a = 1', 'b = (', 'c = 3'];
+        const liveLines = ['a = 1', 'b = (2', 'c = 3', 'd = )'];
+        const validatedText = validatedLines.join('\n');
+        const liveText = liveLines.join('\n');
+
+        const line0Error = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error on line 0');
+        const line1Error = makeDiag(1, 1, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error on line 1');
+        const line2Error = makeDiag(2, 2, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error on line 2');
+        const linkingWarning = makeDiag(1, 1, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+        const langium = [line0Error, line1Error, line2Error, linkingWarning];
+
+        const bbjDiag = makeDiag(2, 2, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error on line 2');
+        const verdict: VerdictState = { seen: new Set(), version: 2, diagnostics: [bbjDiag] };
+
+        const composition: VerdictComposition = {
+            langiumDiagnostics: langium,
+            validatedText,
+            liveText,
+            liveVersion: 2,
+            verdict,
+        };
+        const { diagnostics, seen } = composeWithVerdict(composition);
+
+        expect(diagnostics).toHaveLength(4);
+        expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect((diagnostics[0].data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+        expect(diagnostics[0].message).toBe(line0Error.message);
+        expect(diagnostics[0].range).toEqual(line0Error.range);
+        expect(diagnostics[1]).toEqual(line1Error);
+        expect(diagnostics[2]).toEqual(linkingWarning);
+        expect(diagnostics[3]).toEqual(bbjDiag);
+
+        expect(seen).toEqual(new Set([
+            syntaxComplaintKey(line0Error.message, liveLines[0]),
+            syntaxComplaintKey(line2Error.message, liveLines[2]),
+        ]));
     });
 
 });
