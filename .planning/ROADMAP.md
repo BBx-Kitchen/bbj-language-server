@@ -620,7 +620,7 @@ the bulk class resolution that build issues. Both IDEs are affected. See issue #
 
 **Requirements**: RESP-01, RESP-02, RESP-03, RESP-04, RESP-05
 **Depends on:** Phase 102 (the live-diagnostics client this makes usable)
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 **Success Criteria** (draft, to be firmed at planning):
 
@@ -645,7 +645,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 105-05-PLAN.md — Wave 3: gate, build before/after pairs, corpus measurement in both IDEs (checkpoint), `105-MEASUREMENT.md`, PR #691
+- [x] 105-05-PLAN.md — Wave 3: gate, build before/after pairs, corpus measurement in both IDEs (checkpoint), `105-MEASUREMENT.md`, PR #691
 
 ### v4.5 phase progress
 
@@ -658,7 +658,7 @@ Plans:
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
 | 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
-| 105. Live Diagnostics Responsiveness on Large Workspaces | 4/5 | Not started |  |
+| 105. Live Diagnostics Responsiveness on Large Workspaces | 5/5 | Not started |  |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.
 27/27 requirements mapped to 7 phases, no orphans and no duplicates. Scope, baseline and exit
