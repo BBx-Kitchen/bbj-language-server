@@ -556,10 +556,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     }
                     if (!stillCurrent) {
                         // A newer cycle for the newer text is already in flight or has already
-                        // finished (and, per D-07, may already have published its own verdict):
-                        // no further state change for this document beyond the connection-wide
-                        // clear above, no save-time compile, and no publish over whatever that
-                        // newer cycle already produced.
+                        // finished, and may already have published its own verdict: no further
+                        // state change for this document beyond the connection-wide clear above,
+                        // no save-time compile, and no publish over whatever that newer cycle
+                        // already produced.
                         return;
                     }
                     // Forget this document's verdict so a real Langium error is never left
