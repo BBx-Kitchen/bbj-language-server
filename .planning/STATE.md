@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 105
 current_phase_name: Live Diagnostics Responsiveness on Large Workspaces
 status: executing
-stopped_at: Completed 105-03-PLAN.md
-last_updated: "2026-09-23T12:47:29.014Z"
+stopped_at: Completed 105-04-PLAN.md
+last_updated: "2026-09-23T13:29:52.993Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 105 execution started
-state_head: 70bfe4d8d926d6bd3f9b737e32ac4a4fe5344579
+state_head: 82165612a5bde119bd0e900117928545f1296e40
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 40
-  completed_plans: 37
+  completed_plans: 39
   percent: 75
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 ## Current Position
 
 Phase: 105 (Live Diagnostics Responsiveness on Large Workspaces) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-23 — Phase 105 execution started
@@ -134,6 +134,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 105 P01 | 35min | 2 tasks | 4 files |
 | Phase 105 P02 | 9min | 2 tasks | 2 files |
 | Phase 105 P03 | 14min | 2 tasks | 3 files |
+| Phase 105 P04 | 85min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -233,6 +234,8 @@ decisions:
 - [Phase 105]: Direct listener on TextDocuments.onDidOpen/onDidChangeContent arms the live-parse cycle outside Langium's WorkspaceLock; compute-first publish-once debounce cycle with a state-aware publish path — Removes the first of #692's two serialization points without waiting on or enqueueing into the workspace lock
 - [Phase 105]: 105-02: composeWithVerdict's stale-list case (reconcileEarlyVerdict) drops a complaint on any overlap with a verdict diagnostic even when the line text no longer matches; it only skips recording that complaint in seen when unmatched, since an unconfirmed line was never re-validated
 - [Phase 105]: [Phase 105]: 105-03: The dedicated parser connection is tied to connectionGeneration, opened lazily via a shared in-flight promise (mirroring connect()'s own dedup), and falls back silently to the shared connection on an open failure or a MethodNotFound answer -- reusing the existing breaker/latch machinery instead of building a second one, per the plan's own discretion decision
+- [Phase 105]: [Phase 105]: 105-04: latestLangiumBaseline(document) is the one seam every writer of document.diagnostics reads its "what did Langium last see" input through (recallLangiumSnapshot when Langium has validated this session, else the cycle's own current list stripped of compiler diagnostics) -- replaces three different ad-hoc choices the verdict branch, the bbjcpl fallback, and the USE revalidation each made on their own
+- [Phase 105]: [Phase 105]: 105-04: two independent Langium syntax complaints in one test fixture need the dangling-binary-operator pattern, not an unclosed-parenthesis-plus-line-break combination -- checkLineBreaks bails unconditionally whenever document.parseResult.parserErrors.length > 0, so no real document can carry both a genuine parser error and a genuine line-break complaint at once
 
 ### Tech Debt
 
@@ -290,8 +293,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T12:47:28.676Z
-Stopped at: Completed 105-03-PLAN.md
+Last session: 2026-09-23T13:29:52.728Z
+Stopped at: Completed 105-04-PLAN.md
 Resume file: None
 
 Next: plan the remaining v4.5 phases (105 large-workspace responsiveness, then 104 exit

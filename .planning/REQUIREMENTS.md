@@ -44,7 +44,7 @@
 
 - [ ] **RESP-01**: A live parser diagnostic appears for a document opened or edited while the initial whole-workspace build is still running, in both VS Code and IntelliJ, without waiting for that build to finish
 - [x] **RESP-02**: The live-parse cycle is started from document open and change events, not from inside `buildDocuments()`, so it never waits on Langium's workspace lock; a rebuild of an open document still asks BBj again
-- [ ] **RESP-03**: When the live parse, the save-time `bbjcpl` run and Langium's validation update a document's diagnostics in any order, the result for the latest text version is shown, with no diagnostic lost, doubled or attached to the wrong line or severity
+- [x] **RESP-03**: When the live parse, the save-time `bbjcpl` run and Langium's validation update a document's diagnostics in any order, the result for the latest text version is shown, with no diagnostic lost, doubled or attached to the wrong line or severity
 - [x] **RESP-04**: The live parse travels its own interop connection, apart from the class lookups of the workspace build; if that connection cannot be opened, it falls back to the shared one, logged once, with no dialog and no effect on the endpoint probe
 - [ ] **RESP-05**: The wait from an edit to the first live parser diagnostic, in a file opened during the initial build, is measured before and after on a workspace large enough to show the stall, in both IDEs, and recorded in the phase directory with numbers and environment notes only
 
@@ -113,7 +113,7 @@
 | CONF-03 | Phase 104 | Pending |
 | RESP-01 | Phase 105 | Pending |
 | RESP-02 | Phase 105 | Complete |
-| RESP-03 | Phase 105 | Pending |
+| RESP-03 | Phase 105 | Complete |
 | RESP-04 | Phase 105 | Complete |
 | RESP-05 | Phase 105 | Pending |
 
