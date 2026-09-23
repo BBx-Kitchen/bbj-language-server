@@ -47,8 +47,8 @@ function isParsingError(d: { severity?: DiagnosticSeverity; data?: unknown }): b
  * Validates `text`, derives an accepted (zero-error) verdict's carry-over state from its
  * pre-hierarchy diagnostics -- via `reconcileWithVerdict(<raw>, [], lineText)`, an empty verdict
  * diagnostics list meaning "BBj found nothing on this text" -- and stores it for the document's
- * own uri. Disposes the document afterward: carry-over state lives on the uri (D-08), not the
- * document object, so a later `validate()` at the same uri picks it up even though it is a fresh
+ * own uri. Disposes the document afterward: carry-over state lives on the uri, not the document
+ * object, so a later `validate()` at the same uri picks it up even though it is a fresh
  * `LangiumDocument`.
  */
 async function storeAcceptedVerdict(text: string): Promise<string> {
@@ -87,7 +87,7 @@ describe('BBjDocumentValidator: no verdict state', () => {
     });
 });
 
-describe('BBjDocumentValidator: carry-over between verdicts (D-08)', () => {
+describe('BBjDocumentValidator: carry-over between verdicts', () => {
     test('a syntax complaint the last verdict downgraded stays a Warning on the very next validation', async () => {
         const text = 'rem seen line\nx = (1 + 2\n';
         const uri = await storeAcceptedVerdict(text);
@@ -129,7 +129,11 @@ describe('BBjDocumentValidator: carry-over between verdicts (D-08)', () => {
         const text = 'rem seen line\nx = (1 + 2\n';
         const uri = await storeAcceptedVerdict(text);
 
-        const withNewError = 'rem seen line\nx = (1 + 2\nrem ok\ny = (3 * 4\n';
+        // A genuinely independent second statement (its own dangling-operator syntax error,
+        // resynchronized by the 'rem sep' line) placed before the unchanged, still-last
+        // 'x = (1 + 2' line -- the original line's error message and position are unaffected by
+        // what precedes it.
+        const withNewError = 'z = 5 +\nrem sep\nx = (1 + 2\n';
         const result = await validate(withNewError, { documentUri: uri });
 
         const warnings = result.diagnostics.filter(d => codeOf(d) === DOWNGRADED_SYNTAX_CODE);

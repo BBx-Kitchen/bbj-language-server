@@ -1,11 +1,19 @@
 // This class extends DefaultDocumentValidator
 
 import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
+import type { LangiumServices } from "langium/lsp";
 import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
-import { isDowngradedSyntaxWarning, rememberLangiumDiagnostics } from "./bbj-diagnostic-reconciliation.js";
+import {
+    applyVerdictCarryOver,
+    clearVerdictState,
+    documentLineText,
+    getVerdictState,
+    isDowngradedSyntaxWarning,
+    rememberLangiumDiagnostics
+} from "./bbj-diagnostic-reconciliation.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -203,6 +211,18 @@ export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnosti
 
 export class BBjDocumentValidator extends DefaultDocumentValidator {
 
+    /**
+     * A `LangiumDocument` survives editor close (see `bbj-diagnostic-reconciliation.ts`'s own
+     * doc comment on why its verdict state is uri-keyed, not tied to the document object) --
+     * without this subscription a reopened file would start out colored by a verdict from a
+     * previous editor session instead of showing Langium's own errors until a fresh verdict
+     * arrives.
+     */
+    constructor(services: LangiumServices) {
+        super(services);
+        services.shared.workspace.TextDocuments.onDidClose(event => clearVerdictState(event.document.uri));
+    }
+
     override async validateDocument(
         document: LangiumDocument,
         options?: ValidationOptions,
@@ -213,7 +233,20 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         // against this pre-hierarchy list, not against the already-filtered result below, so a
         // diagnostic the hierarchy hid can still reappear once the verdict arrives.
         rememberLangiumDiagnostics(document, diagnostics);
-        return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+        // Carry-over: re-apply the last verdict's downgrade/replace decisions to this freshly
+        // produced list before the hierarchy runs, so a complaint the last verdict has already
+        // seen doesn't flash back to an Error on every keystroke until the next verdict arrives.
+        // Skipped entirely (leaving `diagnostics` untouched) when the compiler trigger is off or
+        // no verdict exists yet for this document -- both cases must validate exactly as they
+        // did before this phase.
+        let carriedOver = diagnostics;
+        if (getCompilerTrigger() !== 'off') {
+            const state = getVerdictState(document.uri);
+            if (state) {
+                carriedOver = applyVerdictCarryOver(diagnostics, state, documentLineText(document.textDocument));
+            }
+        }
+        return applyDiagnosticHierarchy(carriedOver, suppressCascadingEnabled, maxErrorsDisplayed);
     }
 
     protected override processLinkingErrors(document: LangiumDocument, diagnostics: Diagnostic[], _options: ValidationOptions): void {
