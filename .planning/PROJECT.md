@@ -106,6 +106,8 @@ interop contact). It is run locally at phase boundaries, not in CI.
 
 ## Next Milestone Goals
 
+**Conformance starting point:** the v4.5 exit measurement, its residual list-A, A2 and B entries and the next-milestone baseline are in `.planning/phases/104-conformance-measurement-milestone-exit/104-CONFORMANCE.md` (it moves with the v4.5 phase archive at milestone close).
+
 Deferred while v4.5 runs. Candidates carried out of v4.4:
 
 - **IntelliJ server lifecycle:** make a lost language-server connection visible to crash
