@@ -462,10 +462,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * publish at all — the edit that changed the text has already scheduled a newer cycle of its
      * own.
      *
-     * Every other outcome (the latch/trigger is off, or the live parse failed) forgets any
-     * verdict this document had and falls back to the save-time compile exactly as before the
-     * live parser existed, so a real Langium error is never left downgraded without a verdict
-     * behind it.
+     * Every other outcome (the latch/trigger already off, or the live parse failed or came back
+     * unavailable) is gated on whether this cycle's own request is still for the document's
+     * current text before it forgets a verdict, runs the save-time compile, or publishes anything
+     * — a stale cycle here (superseded by a newer, independent debounce timer that started once
+     * this one's own timer already fired — see {@link cplDebounceTimers}) must not discard or
+     * overwrite a newer cycle's already-stored verdict or its already-published diagnostics. The
+     * one exception is the connection-wide "endpoint just went unavailable" clear: that clear runs
+     * regardless of this cycle's own staleness, because it is a one-time signal tied to the
+     * request that discovered the flip, not to this cycle's text version — every document's
+     * verdict is stale the moment the endpoint that produced it is gone, not only this one's.
      */
     private debouncedCompile(document: LangiumDocument): void {
         const key = document.uri.fsPath;
@@ -537,15 +543,31 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // its own.
                     return;
                 } else {
-                    // failed, unavailable, or the latch/trigger is off: forget any verdict first,
-                    // so a real Langium error is never left downgraded without one behind it, then
-                    // fall back to the save-time compile exactly as before the live parser existed.
-                    this.forgetVerdict(document);
+                    // failed, unavailable, or the latch/trigger already off (liveOutcome
+                    // undefined): when this request is the one that just discovered the
+                    // endpoint is gone, the on/off latch has flipped for the whole connection —
+                    // no document may keep a verdict now, not only this one — so that clear
+                    // always runs, even for a stale cycle: it is a one-time signal tied to the
+                    // request that discovered the flip, not to this cycle's own text version,
+                    // and skipping it here would leave other documents' verdicts trusting an
+                    // endpoint that (per this very request) no longer exists.
                     if (liveOutcome?.kind === 'unavailable') {
-                        // The endpoint just latched off for every document on this connection —
-                        // no document may keep a verdict now, not only this one.
                         clearAllVerdictStates();
                     }
+                    if (!stillCurrent) {
+                        // A newer cycle for the newer text is already in flight or has already
+                        // finished (and, per D-07, may already have published its own verdict):
+                        // no further state change for this document beyond the connection-wide
+                        // clear above, no save-time compile, and no publish over whatever that
+                        // newer cycle already produced.
+                        return;
+                    }
+                    // Forget this document's verdict so a real Langium error is never left
+                    // downgraded without one behind it, then fall back to the save-time compile
+                    // exactly as before the live parser existed. Redundant with the clear above
+                    // when this was also an 'unavailable' outcome, but harmless -- forgetVerdict
+                    // is a no-op once the verdict is already gone.
+                    this.forgetVerdict(document);
                     const cplDiags = await cplService.compile(key);
                     // Read after the compile await, not before: concurrent activity on this
                     // document (another cycle's publish, or a fresh Langium validation) may have

@@ -8,14 +8,15 @@ import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
-import type { ParseError } from '../src/language/java-interop.js';
+import { METHOD_NOT_FOUND, type ParseError } from '../src/language/java-interop.js';
 import { mergeDiagnostics, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import {
     clearAllVerdictStates,
     DOWNGRADED_SYNTAX_CODE,
     getVerdictState,
     recallLangiumSnapshot,
-    rememberLangiumDiagnostics
+    rememberLangiumDiagnostics,
+    setVerdictState
 } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -554,5 +555,146 @@ describe('live-parse and Langium writers interleaved', () => {
         expect(clientPublishedLists).toHaveLength(2);
         expect(clientPublishedLists[0]).toEqual(clientPublishedLists[1]);
         expect(hasNoDuplicates(clientPublishedLists[1])).toBe(true);
+    });
+
+    test('two overlapping cycles for the same document: an older cycle that fails after a newer cycle already published its verdict changes nothing', async () => {
+        const { shared, BBj, privates, interopService, textDocuments } = createHarness();
+
+        const uri = URI.file('/proj/stale-failed-after-newer-verdict.bbj');
+        const uriString = uri.toString();
+        const v1Text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, v1Text);
+
+        // Version 1's request hangs until releaseV1Failure() runs; version 2's request resolves
+        // with a verdict right away -- so the newer cycle finishes, and publishes, first.
+        let releaseV1Failure: () => void = () => { /* replaced below */ };
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(params => {
+            if (params.version === '1') {
+                return new Promise((_resolve, reject) => {
+                    releaseV1Failure = () => reject(Object.assign(
+                        new Error('a parser exception on the endpoint'), { code: -33001 }
+                    ));
+                });
+            }
+            return Promise.resolve({
+                version: params.version,
+                errors: [{
+                    categories: ['SyntaxError'],
+                    message: 'the newer cycle\'s own verdict',
+                    editorStartLine: 1,
+                    editorEndLine: 1,
+                    startCharacter: 1,
+                    endCharacter: 3,
+                }],
+            });
+        });
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile');
+        const sendSpy = vi.spyOn(privates, 'sendDiagnosticsToClient');
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        // Cycle A: armed for version 1, its debounce timer fires and sends the version-1
+        // request, which then hangs -- the cycle is suspended awaiting it.
+        openOrChange(textDocuments, uriString, 1, v1Text);
+        await vi.advanceTimersByTimeAsync(500);
+
+        // The edit that supersedes cycle A: `debouncedCompile`'s timer callback deletes its own
+        // `cplDebounceTimers` entry before its first await (see that method's own doc comment),
+        // so this schedules an independent, second timer for the same document rather than
+        // merging into cycle A's still-pending one.
+        const v2Text = 'x = 1\ny = 2\n';
+        openOrChange(textDocuments, uriString, 2, v2Text);
+
+        // Cycle B: its own timer fires, its request resolves immediately with a verdict for
+        // version 2, and it publishes -- all before cycle A's own request ever resolves.
+        await vi.advanceTimersByTimeAsync(500);
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        const [, publishedForV2] = sendSpy.mock.calls[0];
+        expect(publishedForV2.some(d => d.source === BBJ_PARSER_SOURCE)).toBe(true);
+        const verdictAfterCycleB = getVerdictState(uri);
+        expect(verdictAfterCycleB?.version).toBe(2);
+
+        // Cycle A's stale request now resolves as a real application failure -- not cancelled,
+        // which the server only returns for a request it recognized as superseded.
+        releaseV1Failure();
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        // Cycle A's stale failure must change nothing: no save-time compile ran for it, no
+        // second publish happened (nothing overwrote cycle B's diagnostics), and cycle B's
+        // stored verdict for version 2 is untouched.
+        expect(compileSpy).not.toHaveBeenCalled();
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(getVerdictState(uri)).toEqual(verdictAfterCycleB);
+    });
+
+    test('two overlapping cycles for the same document: an older cycle discovering the endpoint went unavailable still clears every document\'s verdict, but still never publishes over a newer cycle\'s result', async () => {
+        const { shared, BBj, privates, interopService, textDocuments } = createHarness();
+
+        const staleUri = URI.file('/proj/stale-unavailable.bbj');
+        const staleUriString = staleUri.toString();
+        const v1Text = 'x = 1\n';
+        addWorkspaceDocument(shared, staleUri, v1Text);
+
+        // A second, unrelated document with its own already-stored verdict -- proving the
+        // connection-wide clear really is connection-wide, not scoped to the stale cycle's own
+        // document.
+        const otherUri = URI.file('/proj/unrelated-document.bbj');
+        addWorkspaceDocument(shared, otherUri, 'y = 2\n');
+        setVerdictState(otherUri, { seen: new Set<string>(), version: 1, diagnostics: [] });
+
+        let releaseV1Unavailable: () => void = () => { /* replaced below */ };
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(params => {
+            if (params.version === '1') {
+                return new Promise((_resolve, reject) => {
+                    releaseV1Unavailable = () => reject(Object.assign(
+                        new Error('Unsupported request method: parseProgram'), { code: METHOD_NOT_FOUND }
+                    ));
+                });
+            }
+            return Promise.resolve({
+                version: params.version,
+                errors: [{
+                    categories: ['SyntaxError'],
+                    message: 'the newer cycle\'s own verdict',
+                    editorStartLine: 1,
+                    editorEndLine: 1,
+                    startCharacter: 1,
+                    endCharacter: 3,
+                }],
+            });
+        });
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile');
+        const sendSpy = vi.spyOn(privates, 'sendDiagnosticsToClient');
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        openOrChange(textDocuments, staleUriString, 1, v1Text);
+        await vi.advanceTimersByTimeAsync(500);
+
+        const v2Text = 'x = 1\ny = 2\n';
+        openOrChange(textDocuments, staleUriString, 2, v2Text);
+        await vi.advanceTimersByTimeAsync(500);
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(getVerdictState(staleUri)?.version).toBe(2);
+        expect(getVerdictState(otherUri)).toBeDefined();
+
+        // The endpoint just latched off, discovered by the stale version-1 request. Even though
+        // that request is stale for its own document, the on/off latch flip it reports is a
+        // connection-wide fact, not a per-cycle one -- both documents' stored verdicts must be
+        // forgotten, but cycle B's diagnostics, already sent to the client, must not be
+        // recomputed or overwritten.
+        releaseV1Unavailable();
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(getVerdictState(staleUri)).toBeUndefined();
+        expect(getVerdictState(otherUri)).toBeUndefined();
+        expect(compileSpy).not.toHaveBeenCalled();
+        expect(sendSpy).toHaveBeenCalledTimes(1);
     });
 });
