@@ -18,12 +18,13 @@ import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.j
 import {
     clearAllVerdictStates,
     clearVerdictState,
-    documentLineText,
+    composeWithVerdict,
     getVerdictState,
-    reconcileWithVerdict,
-    recallLangiumDiagnostics,
+    recallLangiumSnapshot,
     rememberLangiumDiagnostics,
-    setVerdictState
+    setVerdictState,
+    type LangiumDiagnosticsSnapshot,
+    type VerdictState
 } from './bbj-diagnostic-reconciliation.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
@@ -420,6 +421,19 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
+     * The latest known Langium diagnostics for `document`, together with the text they were
+     * validated against, every debounce cycle composes against instead of `document.diagnostics`
+     * directly -- {@link recallLangiumSnapshot} when a Langium validation has remembered one, else
+     * this cycle's own current list with the compiler-sourced diagnostics stripped (decision 5: a
+     * document Langium has never validated this session has nothing more to offer than "whatever
+     * Langium last published", empty for a never-validated document).
+     */
+    private latestLangiumBaseline(document: LangiumDocument): LangiumDiagnosticsSnapshot {
+        return recallLangiumSnapshot(document)
+            ?? { diagnostics: withoutCompilerDiagnostics(document.diagnostics ?? []) };
+    }
+
+    /**
      * Schedule a BBjCPL compilation with trailing-edge debounce.
      * On rapid saves, only the last save triggers compilation after
      * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
@@ -456,11 +470,6 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             this.cplDebounceTimers.delete(key);
 
             try {
-                // Computed once, up front, and never written to document.diagnostics directly --
-                // every branch below builds its own final `next` list and this cycle ends with
-                // exactly one publish (publishCycleDiagnostics), never an intermediate write.
-                const langiumOnly = withoutCompilerDiagnostics(document.diagnostics ?? []);
-
                 // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
                 // (BBjDocumentBuilder is a shared service; both are language services)
                 const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
@@ -482,26 +491,38 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
                 let next: Diagnostic[];
                 if (liveOutcome?.kind === 'verdict' && stillCurrent) {
-                    // Reconcile against the pre-hierarchy Langium list, not document.diagnostics
+                    // Compose against the latest known Langium snapshot (its pre-hierarchy list
+                    // together with the text it was validated against), not document.diagnostics
                     // above: the hierarchy may already have hidden linking diagnostics or
                     // warnings because of a parse error the verdict is about to downgrade or
                     // replace, and those need the chance to reappear once it has.
                     //
-                    // An unremembered pre-hierarchy list is no longer a "should not happen" case:
-                    // an early cycle for a document the startup build hasn't validated yet (this
-                    // phase's whole point) reaches this branch routinely with no remembered list
-                    // at all -- langiumOnly (this cycle's own stripped snapshot, computed above)
-                    // is exactly the right fallback for that case, not a signal of a decoupling
-                    // bug between shouldValidate/shouldCompileWithBbjcpl.
-                    const remembered = recallLangiumDiagnostics(document);
-                    const langiumDiagnosticsForReconcile = remembered ?? langiumOnly;
-                    const { diagnostics, state } = reconcileWithVerdict(
-                        langiumDiagnosticsForReconcile,
-                        liveOutcome.diagnostics,
-                        documentLineText(document.textDocument)
-                    );
-                    setVerdictState(document.uri, state);
-                    next = applyConfiguredDiagnosticHierarchy(diagnostics);
+                    // No remembered snapshot at all is no longer a "should not happen" case: an
+                    // early cycle for a document the startup build hasn't validated yet (this
+                    // phase's whole point) reaches this branch routinely with no snapshot at all
+                    // -- latestLangiumBaseline's own fallback (this cycle's stripped current list)
+                    // is exactly right for that case, not a signal of a decoupling bug between
+                    // shouldValidate/shouldCompileWithBbjcpl.
+                    //
+                    // The Langium snapshot may still be validated against older text than this
+                    // verdict -- composeWithVerdict itself picks the early-verdict reconciliation
+                    // for that case, so a verdict that lands before Langium catches up still ends
+                    // in one consistent list once Langium does.
+                    const baseline = this.latestLangiumBaseline(document);
+                    const record: VerdictState = {
+                        seen: new Set<string>(),
+                        version: versionBeforeRequest,
+                        diagnostics: liveOutcome.diagnostics
+                    };
+                    const result = composeWithVerdict({
+                        langiumDiagnostics: baseline.diagnostics,
+                        validatedText: baseline.validatedText,
+                        liveText: document.textDocument.getText(),
+                        liveVersion: document.textDocument.version,
+                        verdict: record
+                    });
+                    setVerdictState(document.uri, { ...record, seen: result.seen ?? new Set<string>() });
+                    next = applyConfiguredDiagnosticHierarchy(result.diagnostics);
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
                     // A verdict for text that has since moved on, or a request superseded by a
                     // newer one: nothing further this cycle — no reconciliation, no state change,
@@ -513,7 +534,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // failed, unavailable, or the latch/trigger is off: forget any verdict first,
                     // so a real Langium error is never left downgraded without one behind it, then
                     // fall back to the save-time compile exactly as before the live parser existed.
-                    const hadVerdict = this.forgetVerdict(document);
+                    this.forgetVerdict(document);
                     if (liveOutcome?.kind === 'unavailable') {
                         // The endpoint just latched off for every document on this connection —
                         // no document may keep a verdict now, not only this one.
@@ -521,12 +542,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     }
                     const cplDiags = await cplService.compile(key);
                     // Read after the compile await, not before: concurrent activity on this
-                    // document (another cycle's publish) may have changed document.diagnostics
-                    // while this cycle waited on the save-time compile.
-                    const rememberedAfter = hadVerdict ? recallLangiumDiagnostics(document) : undefined;
-                    const base = rememberedAfter
-                        ? applyConfiguredDiagnosticHierarchy(rememberedAfter)
-                        : withoutCompilerDiagnostics(document.diagnostics ?? []);
+                    // document (another cycle's publish, or a fresh Langium validation) may have
+                    // changed the remembered Langium snapshot while this cycle waited on the
+                    // save-time compile. With the verdict forgotten there is nothing left to
+                    // reconcile, so the latest remembered Langium list with the hierarchy applied
+                    // is the whole 0.16.x-shaped base bbjcpl merges onto.
+                    const baseline = this.latestLangiumBaseline(document);
+                    const base = applyConfiguredDiagnosticHierarchy(baseline.diagnostics);
                     next = cplDiags.length > 0 ? mergeDiagnostics(base, cplDiags) : base;
                 }
 
@@ -811,9 +833,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             const originalLength = document.diagnostics.length;
             document.diagnostics = document.diagnostics.filter(keep);
 
-            const remembered = recallLangiumDiagnostics(document);
-            if (remembered) {
-                rememberLangiumDiagnostics(document, remembered.filter(keep));
+            const snapshot = recallLangiumSnapshot(document);
+            if (snapshot) {
+                rememberLangiumDiagnostics(document, snapshot.diagnostics.filter(keep), snapshot.validatedText);
             }
 
             // If diagnostics changed, notify the editor

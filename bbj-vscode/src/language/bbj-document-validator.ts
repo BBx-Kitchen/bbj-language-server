@@ -7,12 +7,13 @@ import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
 import {
-    applyVerdictCarryOver,
     clearVerdictState,
-    documentLineText,
+    composeWithVerdict,
     getVerdictState,
     isDowngradedSyntaxWarning,
-    rememberLangiumDiagnostics
+    isVerdictForVersion,
+    rememberLangiumDiagnostics,
+    setVerdictState
 } from "./bbj-diagnostic-reconciliation.js";
 
 interface LinkingErrorData extends DiagnosticData {
@@ -231,22 +232,44 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         const diagnostics = await super.validateDocument(document, options, cancelToken);
         // Remembered before the hierarchy runs: the debounce callback reconciles a verdict
         // against this pre-hierarchy list, not against the already-filtered result below, so a
-        // diagnostic the hierarchy hid can still reappear once the verdict arrives.
-        rememberLangiumDiagnostics(document, diagnostics);
-        // Carry-over: re-apply the last verdict's downgrade/replace decisions to this freshly
-        // produced list before the hierarchy runs, so a complaint the last verdict has already
-        // seen doesn't flash back to an Error on every keystroke until the next verdict arrives.
-        // Skipped entirely (leaving `diagnostics` untouched) when the compiler trigger is off or
-        // no verdict exists yet for this document -- both cases must validate exactly as they
-        // did before this phase.
-        let carriedOver = diagnostics;
+        // diagnostic the hierarchy hid can still reappear once the verdict arrives. The text this
+        // list was validated against is remembered alongside it -- a reference into the parse
+        // result's own CST, never a copy -- so a later composition can tell whether the stored
+        // verdict is already for newer text than this validation saw.
+        const validatedText = document.parseResult.value.$cstNode?.root.fullText;
+        rememberLangiumDiagnostics(document, diagnostics, validatedText);
+        // Composition: re-derives this validation's published list from the freshly produced
+        // Langium diagnostics and the stored verdict, if any -- the verdict's own diagnostics are
+        // included only when the verdict is for the live text version (the early-verdict case,
+        // reached whether Langium or the verdict landed first); any other verdict (older, newer,
+        // or a carry-over-only state) only contributes its downgrade/replace decisions, so a
+        // complaint the last verdict has already seen doesn't flash back to an Error on every
+        // keystroke until the next verdict arrives. Skipped entirely (leaving `diagnostics`
+        // untouched) when the compiler trigger is off or no verdict exists yet for this document
+        // -- both cases must validate exactly as they did before this phase.
+        let composed = diagnostics;
         if (getCompilerTrigger() !== 'off') {
-            const state = getVerdictState(document.uri);
-            if (state) {
-                carriedOver = applyVerdictCarryOver(diagnostics, state, documentLineText(document.textDocument));
+            const verdict = getVerdictState(document.uri);
+            if (verdict) {
+                const liveVersion = document.textDocument.version;
+                const result = composeWithVerdict({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    liveVersion,
+                    verdict
+                });
+                composed = result.diagnostics;
+                // The stored verdict's `seen` set is refreshed only when it was actually current
+                // for this validation (isVerdictForVersion) -- so the immediate next keystroke's
+                // carry-over pass uses keys derived from Langium's fresh list, not from an early
+                // verdict's stale one (decision 3).
+                if (isVerdictForVersion(verdict, liveVersion) && result.seen) {
+                    setVerdictState(document.uri, { ...verdict, seen: result.seen });
+                }
             }
         }
-        return applyDiagnosticHierarchy(carriedOver, suppressCascadingEnabled, maxErrorsDisplayed);
+        return applyDiagnosticHierarchy(composed, suppressCascadingEnabled, maxErrorsDisplayed);
     }
 
     protected override processLinkingErrors(document: LangiumDocument, diagnostics: Diagnostic[], _options: ValidationOptions): void {
