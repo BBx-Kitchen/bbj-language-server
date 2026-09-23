@@ -2,129 +2,90 @@
 phase: 104-conformance-measurement-milestone-exit
 reviewed: 2026-09-23T00:00:00Z
 depth: standard
-files_reviewed: 4
+files_reviewed: 5
 files_reviewed_list:
   - bbj-vscode/test/test-data/conformance/README.md
   - /home/coder/repos/bbj-corpus/conformance/run.mjs
   - /home/coder/repos/bbj-corpus/conformance/worker.mts
   - /home/coder/repos/bbj-corpus/conformance/leak-guard.mjs
+  - /home/coder/repos/bbj-corpus/conformance/leak-guard.test.mjs
 findings:
-  critical: 1
+  critical: 0
   warning: 3
-  info: 2
+  info: 3
   total: 6
 status: issues_found
 ---
 
 # Phase 104: Code Review Report
 
-**Reviewed:** 2026-09-23
+**Reviewed:** 2026-09-23 (re-review after gap closure)
 **Depth:** standard
-**Files Reviewed:** 4
+**Files Reviewed:** 5
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the public-repo README pointer plus the three private `bbj-corpus/conformance` harness
-files phase 104 extended (`--endpoint`/`--data`, the `parseProgram` call/retry/reconciliation path
-in `worker.mts`, the classification/summary/history/report additions in `run.mjs`, and the new
-`leak-guard.mjs`), diffed against `cdaf3761` to scope the read to the changed material.
+Re-review scoped to the gap-closure change for the prior CR-01 finding: `leak-guard.mjs` (diffed
+against `16a9e746`) and the new `leak-guard.test.mjs` self-test. `run.mjs`, `worker.mts`, and the
+README were not touched in this round; their prior findings (WR-01, WR-02, WR-03, IN-01, IN-02)
+are carried forward unchanged below.
 
-The flag-off (no `--endpoint`) code path was traced end to end in both `run.mjs` and `worker.mts`:
-every new branch is gated behind `if (endpoint)`/`...(endpoint ? {...} : {})`, the summary object's
-key order is unchanged when the spreads contribute no keys, and the per-job result shape is
-unchanged when `endpoint` is the empty string. That guarantee holds.
+**CR-01 is resolved.** The fix normalizes both sides of every comparison the same way `run.mjs`'s
+`code()` report helper does (trim, then replace every backtick with `'`) before matching, adds a
+110-character (`REPORT_TRUNCATE`) truncated-prefix candidate for every collected pattern so a
+report-truncated excerpt still matches, and adds a 30-character (`QUOTED_PREFIX`) leading-part
+candidate for every corpus source line, matched by sliding a same-width window across each scanned
+line, so a maintainer quoting only the first part of an excerpt is still caught. This directly
+closes both false-negative gaps the prior review demonstrated (truncation mismatch and backtick
+substitution).
 
-The one Critical finding is in `leak-guard.mjs`: its containment-based pattern matching has two
-concrete false-negative gaps against exactly the leak vector it exists to prevent — a maintainer
-pasting an excerpt from `REPORT.md` into a public phase document. Two Warnings concern
-`worker.mts`'s endpoint-retry connection handling and a reporting-accuracy gap where a Langium-only
-fallback is exposed under the same field name as a real endpoint verdict. Two Info items are minor
-documentation/robustness notes.
+Verification performed for this re-review:
+- Ran `node leak-guard.test.mjs` in place: all 7 cases pass (`load-transform`, `fixture-sanity`,
+  `truncated`, `backtick`, `partial`, `clean`, `no-echo`).
+- Independently reproduced the self-test's three leak fixtures (truncated/backtick-substituted,
+  backtick-substituted, and partially-quoted forms of a synthetic corpus-shaped line, generated
+  through `run.mjs`'s own `code()` transform) in a scratch `/tmp` directory and ran them through
+  the **pre-fix** `leak-guard.mjs` (`git show 16a9e746:conformance/leak-guard.mjs`, copied to
+  `/tmp`, never touching the working tree). All three were reported `clean` (exit 0) by the old
+  guard — confirming the self-test genuinely fails against the old guard's behavior and is not a
+  tautology, and that the new guard's fix is the thing making the difference. No corpus data files
+  were read to perform this check; only the two harness scripts and synthetic fixture text were
+  used.
+- Read the new guard's matching logic line by line for false-positive risk (candidate dedup via
+  `seen`, `MIN_PATTERN`/`QUOTED_PREFIX` floors, `ID_SHAPE` left untouched) and found no regression
+  the prior review didn't already note (see IN-01, carried forward).
 
-## Critical Issues
+One new Info-level observation is added below (IN-03) about a residual, pre-existing (not
+introduced by this fix) gap in the guard's threat model: it is scoped to the `REPORT.md` paste
+vector, not to a maintainer copying an arbitrary mid-line substring directly out of raw
+`manifest.jsonl`/`rejects.jsonl`/`details.json` data.
 
-### CR-01: leak-guard.mjs's substring matching has false negatives against the exact text a maintainer would paste from REPORT.md
+## Resolved
 
-**File:** `/home/coder/repos/bbj-corpus/conformance/leak-guard.mjs:60-69, 81-95, 107-121`
-**Issue:**
+### CR-01 (RESOLVED): leak-guard.mjs's substring matching had false negatives against the exact text a maintainer would paste from REPORT.md
 
-`leak-guard.mjs` collects "corpus source line" patterns from two places and matches them against a
-target file with a plain per-line `line.includes(pattern)`:
+**File:** `/home/coder/repos/bbj-corpus/conformance/leak-guard.mjs:48-91, 142-167` (post-fix)
+**Original issue:** Pattern matching required a byte-for-byte full-pattern substring match against
+raw, untruncated `error.source`/`details.json` `source` text, while the only text that can actually
+reach a public file is `run.mjs`'s `code()` output — trimmed, backtick-substituted, and truncated
+to 110 characters, or a further-truncated manual quote of that. Two independent gaps (truncation
+mismatch, backtick substitution) let a leaking file be reported `clean`.
+**Resolution evidence:**
+- `normalize()` (line 58) applies the identical `trim()` + backtick-to-`'` substitution to every
+  collected pattern and to every scanned line before comparison, closing the backtick gap.
+- `addPattern()` (lines 71-77) now stores both the full normalized candidate and its
+  `REPORT_TRUNCATE` (110-char, matching `run.mjs`'s `code()` truncation width) prefix, closing the
+  truncation gap.
+- `addSourceLine()` (lines 84-91) additionally stores a `QUOTED_PREFIX` (30-char) leading-part
+  candidate per corpus source line in a separate `quotedPrefixes` Set, matched via a sliding window
+  over each scanned line (lines 160-167), catching a partial quote of an excerpt.
+- Empirically confirmed against both the in-repo self-test (all 7 cases pass) and an out-of-tree
+  run of the pre-fix guard against the same fixtures (all three false-negative, now correctly
+  caught) — see Summary above for the exact reproduction.
 
-```js
-// pattern source 1: raw, untruncated text from manifest.jsonl/rejects.jsonl
-if (typeof error.source === 'string' && error.source.trim().length >= 15) {
-    addPattern(error.source, 'corpus source line');
-}
-// pattern source 2: this script's own details.json, walked recursively
-if (key === 'source' && typeof value === 'string') {
-    if (value.trim().length >= 15) addPattern(value, 'corpus source line');
-}
-...
-for (const { text: pattern, kind } of patterns) {
-    if (line.includes(pattern)) { ... }
-}
-```
-
-Both pattern sources can carry more text than what actually ends up quoted in a public document,
-because `run.mjs`'s own `code()` helper — the thing that puts corpus source excerpts into
-`REPORT.md` in the first place — truncates to 110 characters and substitutes backticks:
-
-```js
-// run.mjs:192
-const code = text => '`' + String(text ?? '').trim().replace(/`/g, "'").slice(0, 110) + '`';
-```
-
-Two independent ways this produces a false negative when a maintainer copies a `REPORT.md`
-excerpt into a public file (exactly the workflow this phase's own conformance-measurement doc
-follows):
-
-1. **Truncation mismatch.** `details.json`'s `source` fields are pre-truncated to 200 chars by
-   `worker.mts` (`.slice(0, 200)`), and raw `manifest.jsonl`/`rejects.jsonl` `error.source` values
-   are not truncated at all. If the underlying source line is longer than 110 characters, the text
-   that actually appears in `REPORT.md` (and thus in whatever a human pastes from it) is only the
-   first 110 characters — a strict prefix of the stored pattern. `line.includes(pattern)` requires
-   the *full* pattern to occur in the line, so a 110-char prefix of a 150-or-200-char pattern is
-   never detected. BBj lines commonly exceed 110 characters (multiple statements per line is
-   idiomatic), so this is not an edge case.
-2. **Backtick substitution.** Any source line containing a backtick has that backtick replaced with
-   `'` by `code()` before it reaches `REPORT.md`. The stored pattern still has the original
-   backtick, so even a full-length (≤110 char), otherwise-exact copy will fail `.includes()`.
-
-Either gap independently means the tool can report `clean: <file>` for a file that actually leaked
-corpus-derived source text — the opposite of the tool's stated purpose ("Never prints the matched
-text itself" implies it is expected to *always* catch it; the header explicitly says false
-negatives are the danger here).
-
-**Fix:** Normalize both sides the same way before comparing, and match on the leak vector that can
-actually reach a public file (a possibly-truncated, backtick-substituted prefix), not just
-byte-for-byte full-pattern containment. For example:
-
-```js
-// mirror run.mjs's code() transform when building/comparing patterns
-const REPORT_TRUNCATE = 110;
-const normalize = text => text.replace(/`/g, "'");
-
-const addPattern = (text, kind) => {
-    if (text === undefined || text === null) return;
-    const trimmed = normalize(String(text).trim());
-    if (trimmed.length === 0) return;
-    // store both the full pattern and the report-truncated prefix that can actually appear
-    for (const candidate of [trimmed, trimmed.slice(0, REPORT_TRUNCATE)]) {
-        if (candidate.length < 15) continue;
-        const key = `${kind}\0${candidate}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        patterns.push({ text: candidate, kind });
-    }
-};
-```
-
-and normalize each scanned line with the same backtick substitution before calling `.includes()`
-(or match case/backtick-insensitively). Add a regression fixture: a >110-char corpus-shaped source
-line with an embedded backtick, run through `run.mjs`'s `code()`, then through `leak-guard.mjs`,
-asserting a `LEAK` is reported.
+No further action needed; findings count reflects this as resolved (not counted toward the current
+`critical` total).
 
 ## Warnings
 
@@ -211,10 +172,12 @@ module-private, and import it here, eliminating the duplicate.
 
 ### IN-01: `ID_SHAPE` regex assumes lowercase hex in corpus ids
 
-**File:** `/home/coder/repos/bbj-corpus/conformance/leak-guard.mjs:99`
+**File:** `/home/coder/repos/bbj-corpus/conformance/leak-guard.mjs:140` (line renumbered by the
+CR-01 fix; content unchanged)
 **Issue:** `const ID_SHAPE = /\b\d+-[0-9a-f]{8}\.bbj\b/;` only matches lowercase hex digits. If the
 corpus id generator ever produces uppercase hex (or mixed case), this fallback net — which exists
-precisely to catch ids that aren't in the currently-loaded pattern set — would miss them.
+precisely to catch ids that aren't in the currently-loaded pattern set — would miss them. This line
+was not touched by the CR-01 gap-closure change.
 **Fix:** Use a case-insensitive match (`/\b\d+-[0-9a-fA-F]{8}\.bbj\b/i`) unless the id generator is
 verified to always emit lowercase.
 
@@ -224,8 +187,32 @@ verified to always emit lowercase.
 **Issue:** The maintainer pointer documents `--ls` and `--endpoint` but not `run.mjs`'s `--data`
 flag (pointing the read side at another corpus checkout, e.g. a pinned older build), which is a
 supported, documented-in-source option a maintainer reproducing a historical measurement would need.
+Not touched this round.
 **Fix:** Add a one-line mention, e.g. "`--data /path/to/older-checkout` re-runs against a pinned
 corpus snapshot instead of the current one."
+
+### IN-03: Guard's threat model is scoped to the REPORT.md paste vector, not to a direct raw-data copy
+
+**File:** `/home/coder/repos/bbj-corpus/conformance/leak-guard.mjs:79-91`
+**Issue:** The new `QUOTED_PREFIX` candidate is deliberately anchored to the *leading* 30
+characters of each normalized corpus source line, which is correct and sufficient for the actual
+leak vector (`run.mjs`'s `code()` helper always slices from offset 0, so anything that can appear
+in `REPORT.md` — whole, 110-truncated, or a maintainer's further-shortened quote of that — is
+necessarily a prefix of the normalized line, never a mid-line fragment). This is a sound, narrow
+fix for the vector CR-01 was raised against. It does not, however, catch a maintainer who bypasses
+`REPORT.md` entirely and copies an arbitrary non-leading substring straight out of
+`manifest.jsonl`/`rejects.jsonl`/`details.json` (which this same script reads and which a
+maintainer investigating a failure might have open) into a public file — such a fragment is neither
+a match for the full/110-prefix candidates (too short) nor for the leading-30 `quotedPrefixes` set
+(not anchored at offset 0). This is a pre-existing gap in the guard's stated scope, not a
+regression introduced by the CR-01 fix, and the header comment already documents the guard's intent
+as covering "the exact leak vector it exists to prevent" (the REPORT.md paste path) rather than
+every conceivable copy source.
+**Fix:** Optional hardening, not required to close CR-01: extend `quotedPrefixes` to include a
+sliding set of interior N-character windows of each source line (not just the leading one), or add
+a maintainer-facing note in the guard's header comment that raw `manifest.jsonl`/`rejects.jsonl`/
+`details.json` files themselves must never be pasted from directly, only `REPORT.md` excerpts,
+since only the latter is covered.
 
 ---
 
