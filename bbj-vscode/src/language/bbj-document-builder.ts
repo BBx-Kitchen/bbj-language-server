@@ -13,7 +13,9 @@ import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy } from './bbj-document-validator.js';
 import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.js';
 import {
+    clearVerdictState,
     documentLineText,
+    getVerdictState,
     reconcileWithVerdict,
     recallLangiumDiagnostics,
     setVerdictState
@@ -243,13 +245,40 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * Clear-then-show: old BBjCPL and live-parser diagnostics are cleared when the cycle
      * starts, new ones appear when it is done.
      *
-     * The live parser is asked first. A verdict reconciles Langium's own diagnostics against
-     * BBj's and the save-time compile does not run this cycle — bbjcpl is the same BBj parser,
-     * run against the saved file instead of the live text, so with a verdict already in hand it
-     * would only add duplicates or stale results. Every other outcome (the latch is off, the
-     * live parse failed, or it was superseded) falls back to the save-time compile exactly as
-     * before the live parser existed.
+     * The live parser is asked first. A verdict for text unchanged since the request went out
+     * reconciles Langium's own diagnostics against BBj's and the save-time compile does not run
+     * this cycle — bbjcpl is the same BBj parser, run against the saved file instead of the live
+     * text, so with a verdict already in hand it would only add duplicates or stale results.
+     *
+     * A verdict for text that has since moved on, or a request superseded by a newer one, does
+     * nothing further this cycle: no reconciliation, no state change, no save-time compile — the
+     * edit that changed the text has already scheduled a newer cycle of its own.
+     *
+     * Every other outcome (the latch/trigger is off, or the live parse failed) forgets any
+     * verdict this document had and falls back to the save-time compile exactly as before the
+     * live parser existed, so a real Langium error is never left downgraded without a verdict
+     * behind it.
      */
+    /**
+     * Clears a document's verdict state, if one exists, and restores the pre-hierarchy Langium
+     * diagnostics list (with the hierarchy re-applied) as the document's diagnostics — undoing
+     * whatever downgrade or replacement decision that state represented. Called at the start of
+     * every outcome that falls back to the save-time compile (a failed cycle, an unavailable
+     * endpoint, or the latch/trigger being off), so a real Langium error is never left downgraded
+     * without a verdict behind it.
+     *
+     * When no verdict state exists for the document, this does nothing at all — a document that
+     * never had a verdict is left byte-for-byte as it already was, matching 0.16.x behaviour.
+     */
+    private forgetVerdict(document: LangiumDocument): void {
+        if (getVerdictState(document.uri) === undefined) return;
+        clearVerdictState(document.uri);
+        const remembered = recallLangiumDiagnostics(document);
+        if (remembered) {
+            document.diagnostics = applyConfiguredDiagnosticHierarchy(remembered);
+        }
+    }
+
     private debouncedCompile(document: LangiumDocument): void {
         const key = document.uri.fsPath;
         const existing = this.cplDebounceTimers.get(key);
@@ -275,12 +304,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 const cplService = langServices.compiler.BBjCPLService;
                 const bbjParserService = langServices.compiler.BBjParserService;
 
+                // Recorded before the request goes out: the document's text — and therefore this
+                // cycle's cancellation token — may change while the request is in flight, and an
+                // edit that changes it has already scheduled a newer cycle of its own.
+                const versionBeforeRequest = document.textDocument.version;
                 let liveOutcome: LiveParseOutcome | undefined;
                 if (bbjParserService.isEnabled()) {
                     liveOutcome = await bbjParserService.requestLiveParse(document);
                 }
 
-                if (liveOutcome?.kind === 'verdict') {
+                if (liveOutcome?.kind === 'verdict' && document.textDocument.version === versionBeforeRequest) {
                     // Reconcile against the pre-hierarchy Langium list, not document.diagnostics
                     // above: the hierarchy may already have hidden linking diagnostics or
                     // warnings because of a parse error the verdict is about to downgrade or
@@ -293,7 +326,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     );
                     setVerdictState(document.uri, state);
                     document.diagnostics = applyConfiguredDiagnosticHierarchy(diagnostics);
+                } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
+                    // A verdict for text that has since moved on, or a request superseded by a
+                    // newer one: nothing further this cycle — no reconciliation, no state change,
+                    // no save-time compile.
                 } else {
+                    // failed, unavailable, or the latch/trigger is off: forget any verdict first,
+                    // so a real Langium error is never left downgraded without one behind it, then
+                    // fall back to the save-time compile exactly as before the live parser existed.
+                    this.forgetVerdict(document);
                     const cplDiags = await cplService.compile(key);
                     if (cplDiags.length > 0) {
                         // Merge BBjCPL diagnostics with current Langium diagnostics
