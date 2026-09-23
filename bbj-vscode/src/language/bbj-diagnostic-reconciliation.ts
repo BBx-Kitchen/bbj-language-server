@@ -13,7 +13,7 @@
  * so every one of those call sites can import it without creating a cycle.
  */
 
-import { DocumentValidator, LangiumDocument, URI, UriUtils } from 'langium';
+import { DocumentValidator, LangiumDocument, TextDocument, URI, UriUtils } from 'langium';
 import { Diagnostic, DiagnosticSeverity, MarkupContent, Range } from 'vscode-languageserver';
 import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 
@@ -46,6 +46,17 @@ export function documentLineText(textDocument: { getText(range?: Range): string 
         start: { line, character: 0 },
         end: { line, character: END_OF_LINE_CHARACTER }
     });
+}
+
+/**
+ * Builds a {@link LineTextLookup} over a plain text string (a remembered validated text or the
+ * live editor text, neither of which is a `TextDocument` object on its own) by wrapping it in a
+ * throwaway `TextDocument` and reusing {@link documentLineText} — the same line-reading idiom for
+ * a string as for a live document, so a line comparison between the two never depends on which
+ * one happens to already be a `TextDocument`.
+ */
+export function textLineLookup(text: string): LineTextLookup {
+    return documentLineText(TextDocument.create('', '', 0, text));
 }
 
 /**
@@ -104,13 +115,32 @@ export function downgradeSyntaxComplaint(diagnostic: Diagnostic): Diagnostic {
 /**
  * The record of what the last verdict for a document decided, kept so the immediate,
  * per-keystroke validation pass between two verdicts can carry the same decisions forward
- * (`applyVerdictCarryOver`, added in a later plan of this phase) instead of showing a syntax
- * complaint as an Error again until the next verdict arrives.
+ * (`applyVerdictCarryOver`) instead of showing a syntax complaint as an Error again until the
+ * next verdict arrives.
  */
 export interface VerdictState {
     /** Every syntax complaint key ({@link syntaxComplaintKey}) the last verdict downgraded or
      * replaced. A complaint the last verdict has not seen is not in this set. */
     readonly seen: ReadonlySet<string>;
+    /** The live editor version this verdict was computed for, and BBj's own diagnostics for it —
+     * absent on a state that only carries earlier decisions forward (never computed one of its
+     * own, e.g. a carry-over-only state produced by {@link applyVerdictCarryOver}'s caller). */
+    readonly version?: number;
+    /** BBj's own diagnostics for {@link version}'s text. Absent exactly when `version` is. */
+    readonly diagnostics?: Diagnostic[];
+}
+
+/**
+ * True only when `verdict` exists, was computed for a specific text version (both `version` and
+ * `diagnostics` are present), and that version is exactly `version` — "current" in
+ * {@link composeWithVerdict}'s sense. A verdict missing either field (a carry-over-only state), or
+ * one computed for a different version, is not "for" `version` even though it may still exist.
+ */
+export function isVerdictForVersion(verdict: VerdictState | undefined, version: number): boolean {
+    return verdict !== undefined
+        && verdict.version !== undefined
+        && verdict.diagnostics !== undefined
+        && verdict.version === version;
 }
 
 /**
@@ -166,6 +196,65 @@ export function reconcileWithVerdict(
             processed.push(downgradeSyntaxComplaint(diagnostic));
         }
         // else: dropped — BBj's own diagnostic on this line replaces it (still recorded in `seen`).
+    }
+    return {
+        diagnostics: [...processed, ...verdictDiagnostics],
+        state: { seen }
+    };
+}
+
+/**
+ * Reconciles Langium's diagnostics, validated on an older text, against a verdict computed for a
+ * newer, live text — the case {@link reconcileWithVerdict} does not cover, because that function
+ * assumes `langiumDiagnostics` and the verdict were both produced against the same text.
+ *
+ * Pure, non-mutating, same output shape as {@link reconcileWithVerdict}. Every non-syntax
+ * diagnostic passes through unchanged, exactly as in `reconcileWithVerdict`. For each syntax
+ * complaint, its start line's text is compared between the validated text (`validatedLineText`)
+ * and the live text (`liveLineText`) — "matched" means byte-identical:
+ * - its span overlaps a verdict diagnostic's span ({@link lineSpansOverlap}) → dropped (BBj's own
+ *   diagnostic speaks for that line instead); its key ({@link syntaxComplaintKey}, using the
+ *   *live* line text so the next keystroke's carry-over matches it exactly) joins the returned
+ *   state's `seen` set only when the line also matched — an unmatched line's complaint was never
+ *   actually re-confirmed by anything, so remembering it as "seen" would let a real edit on that
+ *   line go unflagged later;
+ * - it does not overlap and the line matched → downgraded ({@link downgradeSyntaxComplaint}),
+ *   keeping its message, range and `source`, and its key joins `seen`;
+ * - it does not overlap and the line did not match (the line was edited since Langium validated
+ *   it) → kept unchanged, as an Error, with no key recorded — trusting a stale complaint's
+ *   position on a line whose text has since changed would risk downgrading or dropping a still-real
+ *   error.
+ *
+ * The result is the surviving/downgraded/unchanged Langium diagnostics, in their original relative
+ * order, followed by `verdictDiagnostics`, in the verdict's own order.
+ */
+export function reconcileEarlyVerdict(
+    langiumDiagnostics: Diagnostic[],
+    verdictDiagnostics: Diagnostic[],
+    validatedLineText: LineTextLookup,
+    liveLineText: LineTextLookup
+): { diagnostics: Diagnostic[]; state: VerdictState } {
+    const seen = new Set<string>();
+    const processed: Diagnostic[] = [];
+    for (const diagnostic of langiumDiagnostics) {
+        if (!isSyntaxComplaint(diagnostic)) {
+            processed.push(diagnostic);
+            continue;
+        }
+        const line = diagnostic.range.start.line;
+        const matched = validatedLineText(line) === liveLineText(line);
+        const overlapsVerdict = verdictDiagnostics.some(verdictDiagnostic => lineSpansOverlap(diagnostic.range, verdictDiagnostic.range));
+        if (overlapsVerdict) {
+            if (matched) {
+                seen.add(syntaxComplaintKey(diagnostic.message, liveLineText(line)));
+            }
+            // dropped either way — BBj's own diagnostic on this line replaces it.
+        } else if (matched) {
+            seen.add(syntaxComplaintKey(diagnostic.message, liveLineText(line)));
+            processed.push(downgradeSyntaxComplaint(diagnostic));
+        } else {
+            processed.push(diagnostic);
+        }
     }
     return {
         diagnostics: [...processed, ...verdictDiagnostics],
@@ -230,20 +319,101 @@ export function clearAllVerdictStates(): void {
 }
 
 /**
+ * A remembered Langium diagnostics list together with the text it was validated against, when
+ * known. `validatedText` is the CST root's full text — a reference to a string the parse result
+ * already holds, never a copy — so remembering it costs nothing beyond the reference itself.
+ * `validatedText` is absent exactly when the caller did not supply one; {@link composeWithVerdict}
+ * then treats that as "assume it is the live text" (an open document's own `textDocument` is
+ * Langium's live, in-place-updated object, so its version can already be ahead of what was parsed
+ * by the time validation finishes — comparing text rather than a version number sidesteps that).
+ */
+export interface LangiumDiagnosticsSnapshot {
+    readonly diagnostics: Diagnostic[];
+    readonly validatedText?: string;
+}
+
+/**
  * The Langium diagnostics list as it stood right after Langium's own validation, before the
  * diagnostic hierarchy (Rule 0-3) ran and possibly hid some of them — remembered per document over
  * a `WeakMap` so it is freed together with the `LangiumDocument` object itself. A `LangiumDocument`
  * survives editor close as long as its file stays in the workspace, so this is not the place to
  * key verdict state that must forget on close; that state is the uri-keyed map above instead.
  */
-const rememberedDiagnosticsByDocument = new WeakMap<LangiumDocument, Diagnostic[]>();
+const rememberedDiagnosticsByDocument = new WeakMap<LangiumDocument, LangiumDiagnosticsSnapshot>();
 
-/** Remembers a document's pre-hierarchy Langium diagnostics for later reconciliation. */
-export function rememberLangiumDiagnostics(document: LangiumDocument, diagnostics: Diagnostic[]): void {
-    rememberedDiagnosticsByDocument.set(document, diagnostics);
+/**
+ * Remembers a document's pre-hierarchy Langium diagnostics for later reconciliation, together with
+ * the text they were validated against. `validatedText` is optional — every existing caller that
+ * remembers a list without it keeps compiling and keeps its original, byte-for-byte meaning
+ * (`recallLangiumSnapshot` reads that state's `validatedText` back as `undefined`).
+ */
+export function rememberLangiumDiagnostics(document: LangiumDocument, diagnostics: Diagnostic[], validatedText?: string): void {
+    rememberedDiagnosticsByDocument.set(document, { diagnostics, validatedText });
 }
 
 /** Recalls a document's pre-hierarchy Langium diagnostics, or `undefined` if none were remembered. */
 export function recallLangiumDiagnostics(document: LangiumDocument): Diagnostic[] | undefined {
+    return rememberedDiagnosticsByDocument.get(document)?.diagnostics;
+}
+
+/** Recalls a document's whole remembered snapshot (diagnostics plus validated text), or
+ * `undefined` if none were remembered. */
+export function recallLangiumSnapshot(document: LangiumDocument): LangiumDiagnosticsSnapshot | undefined {
     return rememberedDiagnosticsByDocument.get(document);
+}
+
+/**
+ * The inputs {@link composeWithVerdict} derives one published diagnostics list from: Langium's
+ * latest pre-hierarchy list, the text it was validated against (if remembered), the live text and
+ * version, and the stored verdict (if any). Every field the composition needs, and nothing else —
+ * the caller applies the diagnostic hierarchy (Rule 0-3) to the result exactly once, since that
+ * logic lives in the validator module this module must not import.
+ */
+export interface VerdictComposition {
+    readonly langiumDiagnostics: Diagnostic[];
+    /** The text `langiumDiagnostics` was validated against, or `undefined` to assume it is
+     * `liveText` (see {@link LangiumDiagnosticsSnapshot}). */
+    readonly validatedText?: string;
+    readonly liveText: string;
+    readonly liveVersion: number;
+    readonly verdict?: VerdictState;
+}
+
+/**
+ * Derives the one diagnostics list every writer of `document.diagnostics` publishes, from one
+ * consistent snapshot: Langium's latest list, the text it was validated against, the live text
+ * and version, and the stored verdict. Never appends to or strips from an earlier published list
+ * — every call re-derives the whole result from scratch, so a result for an older text version
+ * can never overwrite one for a newer version simply by running later.
+ *
+ * Case selection:
+ * - no `verdict` → `langiumDiagnostics` unchanged, no `seen` (nothing to reconcile against).
+ * - `verdict` is {@link isVerdictForVersion} current for `liveVersion` (computed for exactly this
+ *   text): `validatedText` absent or equal to `liveText` → {@link reconcileWithVerdict} (Langium
+ *   and the verdict were validated against the same text); otherwise → {@link reconcileEarlyVerdict}
+ *   (Langium is still validating an older text while the verdict is already for the live one).
+ *   Both return `{ diagnostics, seen: state.seen }`.
+ * - any other `verdict` (for an older or newer version, or missing `version`/`diagnostics` — a
+ *   carry-over-only state) → {@link applyVerdictCarryOver} against `validatedText ?? liveText`,
+ *   with no `seen` in the result: an older text's verdict diagnostics are never shown against
+ *   newer text, only its carry-over decisions.
+ *
+ * Pure and idempotent: neither `langiumDiagnostics` nor any diagnostic in it or in `verdict` is
+ * mutated, and calling this twice with deep-equal inputs gives deep-equal outputs.
+ */
+export function composeWithVerdict(input: VerdictComposition): { diagnostics: Diagnostic[]; seen?: ReadonlySet<string> } {
+    const { langiumDiagnostics, validatedText, liveText, liveVersion, verdict } = input;
+    if (verdict === undefined) {
+        return { diagnostics: langiumDiagnostics };
+    }
+    if (isVerdictForVersion(verdict, liveVersion)) {
+        const verdictDiagnostics = verdict.diagnostics as Diagnostic[];
+        const { diagnostics, state } = validatedText === undefined || validatedText === liveText
+            ? reconcileWithVerdict(langiumDiagnostics, verdictDiagnostics, textLineLookup(liveText))
+            : reconcileEarlyVerdict(langiumDiagnostics, verdictDiagnostics, textLineLookup(validatedText), textLineLookup(liveText));
+        return { diagnostics, seen: state.seen };
+    }
+    return {
+        diagnostics: applyVerdictCarryOver(langiumDiagnostics, verdict, textLineLookup(validatedText ?? liveText))
+    };
 }
