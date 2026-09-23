@@ -14,6 +14,7 @@ import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { clearAllVerdictStates } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
+import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../src/composer-lens-contract.js';
 
 /**
  * End-to-end coverage for the live-parse cycle armed directly from a text-document event,
@@ -51,9 +52,11 @@ function addWorkspaceDocument(shared: ReturnType<typeof createBBjTestServices>['
     return document;
 }
 
-/** Fires a combined open+change event for `uri` on the harness's real `TextDocuments` store. */
-function openOrChange(textDocuments: NormalizedTextDocuments, uriString: string, version: number, text: string): void {
-    textDocuments.set(TextDocument.create(uriString, 'bbj', version, text));
+/** Fires a combined open+change event for `uri` on the harness's real `TextDocuments` store.
+ * `languageId` defaults to `'bbj'`; a caller proving the `bbx-config` exclusion passes
+ * `'bbx-config'` explicitly, regardless of the uri's own file extension. */
+function openOrChange(textDocuments: NormalizedTextDocuments, uriString: string, version: number, text: string, languageId = 'bbj'): void {
+    textDocuments.set(TextDocument.create(uriString, languageId, version, text));
 }
 
 /**
@@ -333,6 +336,35 @@ describe('live-parse scheduling', () => {
         expect(document.diagnostics![0].source).toBe(BBJ_PARSER_SOURCE);
         expect(validatedPhaseSpy).toHaveBeenCalledTimes(1);
         expect(sendSpy).not.toHaveBeenCalled();
+    });
+
+    test('an open event for a document whose language id is bbx-config, even on a .bbj-style uri, arms nothing', async () => {
+        const { shared, builder, interopService, textDocuments } = createHarness();
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: ['SyntaxError'],
+                message: 'must never be requested for a config document',
+                editorStartLine: 1,
+                editorEndLine: 1,
+                startCharacter: 1,
+                endCharacter: 3,
+            }],
+        });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        // Named like an ordinary BBj source file -- isBuildableDocumentUri's own contract is that
+        // the bbx-config exclusion applies regardless of file extension, keyed on the open
+        // document's languageId alone.
+        const uri = URI.file('/proj/myconfig.bbj');
+        const text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, uri.toString(), 1, text, CONFIG_DOCUMENT_LANGUAGE_ID);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+        expect(builder.hasPendingCompile()).toBe(false);
     });
 });
 

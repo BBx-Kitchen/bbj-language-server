@@ -367,13 +367,19 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Applies the same gates {@link runBbjcplForDocuments} applies to the rebuild-driven trigger
-     * (open in an editor, `file:` scheme, not synthetic, not external, bbjcpl found), binds the
-     * event's live text onto `document` (research Pitfall 1), then arms the existing debounce
-     * cycle -- the same {@link cplDebounceTimers} entry the rebuild path uses, so an event
-     * followed by a rebuild inside the debounce window produces exactly one cycle.
+     * Applies {@link isBuildableDocumentUri} first -- the same gate `update()` applies to the
+     * rebuild-driven trigger, so a `bbx-config` document (or a uri with no registered services)
+     * is never live-parsed either, however it reaches this method: directly from an event
+     * (`armLiveParseFromEvent`) or deferred until the workspace is ready (`armWhenWorkspaceReady`),
+     * both of which funnel through here rather than through `update()` itself. Then applies the
+     * same gates {@link runBbjcplForDocuments} applies to the rebuild-driven trigger (open in an
+     * editor, `file:` scheme, not synthetic, not external, bbjcpl found), binds the event's live
+     * text onto `document` (research Pitfall 1), then arms the existing debounce cycle -- the same
+     * {@link cplDebounceTimers} entry the rebuild path uses, so an event followed by a rebuild
+     * inside the debounce window produces exactly one cycle.
      */
     private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument): void {
+        if (!isBuildableDocumentUri(document.uri, this.textDocuments, this.serviceRegistry)) return;
         if (!this.shouldCompileWithBbjcpl(document)) return;
         this.trackBbjcplAvailability();
         if (this.bbjcplAvailable === false) return;
