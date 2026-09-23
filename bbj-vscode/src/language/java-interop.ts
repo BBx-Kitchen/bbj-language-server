@@ -176,11 +176,13 @@ export class JavaInteropService {
     /** Bumped by clearCache() so a connect attempt started before the reset cannot change breaker state or report recovery. */
     private breakerGeneration = 0;
     /**
-     * Bumped every time a fresh `MessageConnection` is created — once inside
-     * {@link establishConnection} right after the new connection is assigned, and once inside
-     * {@link clearCache} beside {@link breakerGeneration}. A change in this value means "a new
-     * connection is now in use", so any per-connection latch (e.g. a probe result) keyed on it
-     * must reset and re-decide on the next request.
+     * Bumped in three places: once inside {@link establishConnection} right after a fresh shared
+     * `MessageConnection` is assigned, once inside {@link clearCache} beside
+     * {@link breakerGeneration}, and once inside {@link onParseLaneLost} when the dedicated
+     * parser connection is lost after having been open. Opening the dedicated connection itself
+     * never bumps this value — the server behind it is the one the shared connection already
+     * probed — but losing it does, so any per-connection latch (e.g. a probe result) or stored
+     * diagnostic verdict keyed on this value resets and re-decides on the next request.
      */
     protected _connectionGeneration = 0;
     /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
@@ -490,7 +492,21 @@ export class JavaInteropService {
     public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
         const shared = await this.connect();
         const lane = await this.parseLaneConnection();
-        return (lane ?? shared).sendRequest(parseProgramRequest, params, token);
+        if (!lane) {
+            return shared.sendRequest(parseProgramRequest, params, token);
+        }
+        try {
+            return await lane.sendRequest(parseProgramRequest, params, token);
+        } catch (e) {
+            if ((e as { code?: number } | undefined)?.code === METHOD_NOT_FOUND) {
+                // An older server behind the dedicated connection: close it for the rest of this
+                // generation so no idle second socket lingers, and let every further parse in
+                // this generation go over the shared connection instead.
+                this.parseLaneRetiredGeneration = this._connectionGeneration;
+                this.disposeParseLane();
+            }
+            throw e;
+        }
     }
 
     /**
@@ -531,10 +547,23 @@ export class JavaInteropService {
      * error notification and never bumps {@link _connectionGeneration} — the server behind it is
      * the one the shared connection already probed. If {@link _connectionGeneration} moved on
      * while opening, the new connection is disposed and `undefined` is returned instead of being
-     * stored for a generation that is no longer current.
+     * stored for a generation that is no longer current. If the socket itself cannot be opened,
+     * retires `generation` (so no further attempt is made until it moves on) and returns
+     * `undefined` after logging one warn line — see the catch block below.
      */
     private async openParseLane(generation: number): Promise<MessageConnection | undefined> {
-        const socket = await this.createSocket();
+        let socket: Socket;
+        try {
+            socket = await this.createSocket();
+        } catch (e) {
+            // The dedicated connection could not be opened, but the shared one keeps working:
+            // fall back silently, logged once per generation, never as a parse failure and
+            // never touching the breaker, a dialog or the endpoint probe latch.
+            this.parseLaneRetiredGeneration = generation;
+            const message = e instanceof Error ? e.message : String(e);
+            logger.warn(`Live compiler diagnostics: could not open a dedicated parser connection (${message}); using the shared interop connection`);
+            return undefined;
+        }
         const lane = this.wrapSocket(socket);
         lane.onClose(() => this.onParseLaneLost(lane));
         lane.onError(() => this.onParseLaneLost(lane));
@@ -551,13 +580,19 @@ export class JavaInteropService {
     /**
      * Clears {@link parseLane} once it is lost (closed or errored) — guarded on identity, as
      * {@link establishConnection} does for {@link connection}, so a stale listener from an
-     * already-replaced lane cannot clear a newer one.
+     * already-replaced lane cannot clear a newer one, and so a connection this service disposed
+     * of itself (its field already cleared first by {@link disposeParseLane}) never reaches this
+     * far. A genuine loss — the dedicated connection dropping after having been open — bumps
+     * {@link _connectionGeneration} once, so every per-connection latch and stored diagnostic
+     * verdict resets and re-decides on the next request, while the shared connection stays in
+     * use with no new socket.
      */
     private onParseLaneLost(lane: MessageConnection): void {
         if (this.parseLane !== lane) {
             return;
         }
         this.parseLane = undefined;
+        this._connectionGeneration++;
     }
 
     /**
@@ -1267,6 +1302,11 @@ export class JavaInteropService {
             this.connection.dispose();
             this.connection = undefined;
         }
+
+        // Disconnect the dedicated parser connection too, and forget any prior open failure so
+        // the next parse attempts it again.
+        this.disposeParseLane();
+        this.parseLaneRetiredGeneration = -1;
 
         logger.info('Java interop cache cleared');
     }
