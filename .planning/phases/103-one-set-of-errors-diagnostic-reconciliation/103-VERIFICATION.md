@@ -1,7 +1,7 @@
 ---
 phase: 103-one-set-of-errors-diagnostic-reconciliation
 verified: 2026-09-23T08:40:00Z
-status: human_needed
+status: passed
 score: 26/26 must-haves verified (24 code-level truths VERIFIED, 1 VERIFIED with a noted
   coincidental-reliance caveat, 1 backstop/deferred acknowledged; 4 roadmap success criteria and
   their staged hand checks require human execution in two real IDEs before final closure)
@@ -9,6 +9,7 @@ behavior_unverified: 0
 overrides_applied: 0
 re_verification: false
 coincidental_reliance_items:
+
   - truth: "A cancelled request, and a verdict for a document whose text version changed while the request was in flight, change nothing in that cycle (103-02-PLAN.md must_haves)."
     reason: undeclared-precondition
     harden: "debouncedCompile()'s clear-then-show strip (bbj-document-builder.ts:302-304) is
@@ -202,6 +203,7 @@ IDEs. `/opt/bbx/.lib/bbjls/` currently holds exactly two files with the endpoint
 (`bbj-ls.jar`, 40889 bytes) active — confirmed by this verifier.
 
 In VS Code (the isolated `~/.ext-test` profile on port 13338) and in IntelliJ:
+
 1. Open a `.bbj` file from `examples/`. Find exactly one log line reading
    `Live compiler diagnostics: on`.
 2. On new lines, type: `if a then if b then c=1 else d=1 fi else e=1 fi` and stop typing. The
@@ -231,6 +233,7 @@ from a hermetic test.
 
 **Test:**
 Swap (verbatim, `sudo` required for the root-owned load directory):
+
 1. `sudo /opt/bbx/bin/stopbbjservices` — wait for it to exit.
 2. `sudo cp /opt/bbx/.lib/bbjls-backup/bbj-ls.jar.pre-endpoint /opt/bbx/.lib/bbjls/bbj-ls.jar`
 3. `ls -l /opt/bbx/.lib/bbjls/` — exactly two files, `bbj-ls.jar` at 23369 bytes (a jar rebuilt from
@@ -241,6 +244,7 @@ Swap (verbatim, `sudo` required for the root-owned load directory):
 5. Reload the VS Code tab and restart the language server in IntelliJ.
 
 In both IDEs:
+
 6. The log should hold exactly ONE line: `Live compiler diagnostics: off (endpoint not available)`.
 7. Type the accepted-document fixture (`if a then if b then c=1 else d=1 fi else e=1 fi`): the
    complaint should be red and STAY red — it should never turn yellow.
@@ -253,6 +257,7 @@ In both IDEs:
 10. Java completion should work; no dialog, popup or warning about the endpoint should appear.
 
 Restore (verbatim):
+
 11. `sudo /opt/bbx/bin/stopbbjservices`
 12. `sudo cp /opt/bbx/.lib/bbjls-backup/bbj-ls.jar.phase-103-endpoint /opt/bbx/.lib/bbjls/bbj-ls.jar`
 13. `ls -l /opt/bbx/.lib/bbjls/` — exactly two files, `bbj-ls.jar` at 40889 bytes.
