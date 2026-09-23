@@ -249,7 +249,7 @@ before this phase) goes to plan 04 as well.
 | 1 each | PROCESS_EVENTS, *(empty)*, METHODEND, FNEND, INPUT, FULLTEXT, ASSERT, ON, METHOD |
 
 The three files that left list A this run, by their own flagged line's real cause: a `use`
-statement whose Java package path ends in the word `print` (`use javax.print`) — fixed by the
+statement whose Java package path ends in a word that also names a standalone-statement keyword — fixed by the
 `PRINT_STANDALONE_NL` grant, since the word at end-of-line was being intercepted by that custom
 token instead of read as the path's last identifier segment; a bare `Var =2` assignment — fixed
 by the lowercase-declared `var` widening; and a binary-operand read ending in `START` (`LET
@@ -476,7 +476,7 @@ path, violating D-27/T-100-06-01. Replaced with a neutral per-row label.
 
 | File | First failing line | What the file shows | Status |
 |------|--------------------|---------------------|--------|
-| Residue file E | 5 (reported as 4, the blank line before it) | The statement `::static.txt::Sample.sample(); rem …` starts its line with `::`. Probe: the same statement as the first line of a program parses with 0 errors; after any earlier line it fails with 1 parser error. A line whose first character is `:` is read as a continuation of the line before, so a statement that begins with a `::file::Class` reference is glued onto its predecessor. The compiler accepts the file. The fix belongs in the line-continuation splitter of the lexer, not in a grammar rule — recorded, not fixed here. | residue, 1 file |
+| Residue file E | 5 (reported as 4, the blank line before it) | The statement is a double-colon file-and-class-qualified method call with a trailing REM comment, and its line starts with `::`. Probe: the same statement as the first line of a program parses with 0 errors; after any earlier line it fails with 1 parser error. A line whose first character is `:` is read as a continuation of the line before, so a statement that begins with a `::file::Class` reference is glued onto its predecessor. The compiler accepts the file. The fix belongs in the line-continuation splitter of the lexer, not in a grammar rule — recorded, not fixed here. | residue, 1 file |
 | Residue file F | 204 | Probes: the class from its header (line 189) through the fields plus this constructor parses with 0 errors; constructors calling `#this!(…)` and `#super!(…)` parse with 0 errors and `bbjcpl` accepts them. The failure therefore needs something in lines 1–188 of the file; it was not isolated in the time allowed. No cause is recorded. | residue, 1 file, cause open |
 
 With these two, all 9 remaining list-A entries are accounted for: 7 by the filled rows above, 1 by the
@@ -668,7 +668,7 @@ with cwd = `bbj-vscode`, `RUN_BBJ_TESTS=0`.
 
 **1. The empty-bracket whole-array form `name[]` parses wherever an array element can stand, with the
 same meaning as `name[all]` — `PRINT` item, `DREAD` target, assignment target, `CALL`/method/function
-argument; the type-side bracket shapes (`declare int[][] two!`, `BBjArray dat[all]`) parse too; the
+argument; the type-side bracket shapes (a two-dimensional empty-bracket array type on a DECLARE, and a whole-array-typed field access using the same all-form) parse too; the
 `PRINT` item forms the original wording named already parsed and keep parsing.** **Holds.** Evidence:
 fixture `bbj-vscode/test/test-data/conformance/array-bracket-forms.bbj`; `npx vitest run
 test/parser-keyword-statements.test.ts test/conformance-regressions.test.ts` — the "empty array
