@@ -570,7 +570,7 @@ Plans:
   3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
   4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -587,7 +587,7 @@ Plans:
 
 **Gap closure** *(from the phase verification)*
 
-- [ ] 104-04-PLAN.md — Gap closure: the leak guard catches report-truncated, backtick-substituted and partly quoted excerpts (with a self-test); every corpus-derived excerpt in the conformance records and the milestone's planning text rephrased in own words, checked on both corpus builds by the guard and a separate prefix scanner
+- [x] 104-04-PLAN.md — Gap closure: the leak guard catches report-truncated, backtick-substituted and partly quoted excerpts (with a self-test); every corpus-derived excerpt in the conformance records and the milestone's planning text rephrased in own words, checked on both corpus builds by the guard and a separate prefix scanner
 
 *Ordering note:* last by necessity — its gate is the whole milestone's number. The run stays local and manual: the corpus contains internal and third-party code and must not enter this repository or its CI.
 
@@ -674,7 +674,7 @@ Plans:
 | 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Complete | 2026-09-22 |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
 | 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
-| 104. Conformance Measurement & Milestone Exit | 3/3 | Planned |  |
+| 104. Conformance Measurement & Milestone Exit | 4/4 | Planned |  |
 | 105. Live Diagnostics Responsiveness on Large Workspaces | 5/5 | Not started |  |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.

@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 104
 current_phase_name: Conformance Measurement & Milestone Exit
 status: executing
-stopped_at: Completed 104-03-PLAN.md
-last_updated: "2026-09-23T21:44:40.920Z"
+stopped_at: "Completed 104-04-PLAN.md (gap closure: leak-guard fix + corpus-text sweep)"
+last_updated: "2026-09-23T22:03:38.896Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 104 execution started
-state_head: d5082fde9fd1615bb07697c0d1860a71b01e857a
+state_head: 40c4f9d5b7e8f869f67b0b2d3afa6ab952f45b4e
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 44
-  completed_plans: 43
+  completed_plans: 44
   percent: 88
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 
 ## Current Position
 
-Phase: 104 (Conformance Measurement & Milestone Exit) — READY TO EXECUTE
-Plan: 3 of 3
+Phase: 104 (Conformance Measurement & Milestone Exit) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-23 — Phase 104 execution started
@@ -140,6 +140,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 104 P01 | 30min | 3 tasks | 8 files |
 | Phase 104 P02 | 19min | 3 tasks | 2 files |
 | Phase 104 P03 | 29min | 3 tasks | 9 files |
+| Phase 104 P04 | 70min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,8 @@ decisions:
 - [Phase 104]: [Phase 104, Plan 01]: closing measurement in this plan reads the pinned Sept-1-2026 baseline (11,898/1,210) from a detached bbj-corpus worktree at cdaf3761 via --data, resolving the mid-milestone corpus rebuild finding without a user checkpoint — The plan's own Task 3 already specified the worktree mitigation as the resolution; reproduced the Phase 103 probe's exact B=31 file set with 0 endpoint failures
 - [Phase 104]: [Phase 104, Plan 02]: D-11 todo's synthetic repro found by walking the two real reject files' ASTs: a bare single instance-access sigil as an Assignment's LHS does NOT reproduce the exception (consumed by the Assignment's own optional flag instead), but TWO consecutive sigils immediately before '=' DOES reproduce it exactly, matching both corpus files' AST shape — Confirms the Phase 103/104 checkUseBeforeAssignment exception caveat with a concrete, invented-text repro rather than leaving it a pure hypothesis; the same shape also crashes an unrelated, uncaught call site (bbj-scope-local.ts) noted for the next investigator
 - [Phase 104]: [Phase 104]: [Phase 104, Plan 03]: v4.5 exit gate passes on the branch HEAD -- A=9 (<=25), A2=22 (<=25), B=31 of 1,210 (2.6%, <=5%), 0 endpoint failures, against the pinned September-1-2026 baseline (11,898/1,210); recorded in 104-CONFORMANCE.md, PR #691 retitled to phases 98-105 with the exit numbers, pushed by fast-forward only
+- [Phase 104]: [Phase 104, Plan 04]: leak-guard.mjs fixed per CR-01 (backtick-normalized whole/110-char/30-char-prefix candidates), proven by a self-test (RED against the unfixed guard, GREEN against the fixed one) that loads run.mjs's own code() transform rather than copying it; the fixed guard now flags exactly the verifier's four 100-CONFORMANCE.md rows on the pinned pre-fix revision
+- [Phase 104]: [Phase 104, Plan 04]: a wider, independently-sourced scanner (corpus/reject file content plus every details-record source ever held, tagged by real source id vs (details)) found 3 more hits in 100-CONFORMANCE.md and 2 in ROADMAP.md beyond what the guard's own pattern set covers; all rephrased in own words; 100-05-SUMMARY.md line 175 (the planner's third expected hit) re-derived as genuinely PUBLIC (matches this repo's own ls-examples content) and left unedited
 
 ### Tech Debt
 
@@ -304,8 +307,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T21:04:01.125Z
-Stopped at: Completed 104-03-PLAN.md
+Last session: 2026-09-23T22:03:38.588Z
+Stopped at: Completed 104-04-PLAN.md (gap closure: leak-guard fix + corpus-text sweep)
 Resume file: None
 
 Next: `/gsd-discuss-phase 104` or `/gsd-plan-phase 104` (exit
