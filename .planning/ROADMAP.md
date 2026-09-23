@@ -570,7 +570,20 @@ Plans:
   3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
   4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 104-01-PLAN.md — Wave 1: harness endpoint mode (`--endpoint`, `--data`, leak guard), flag-off output unchanged, full endpoint run on the baseline build reproducing the Phase 103 probe, probe retired, corpus README
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 104-02-PLAN.md — Wave 2: maintainer README next to the regression files, the scoping-check todo, whole-suite gate in both interop modes by name against origin/main, IntelliJ suite, both distributables
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 104-03-PLAN.md — Wave 3: closing measurement (endpoint off and on) on the September 1 build, `104-CONFORMANCE.md`, PROJECT.md pointer, corpus commit, worktree removed, PR #691 fast-forwarded and updated
 
 *Ordering note:* last by necessity — its gate is the whole milestone's number. The run stays local and manual: the corpus contains internal and third-party code and must not enter this repository or its CI.
 
@@ -657,7 +670,7 @@ Plans:
 | 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Complete | 2026-09-22 |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
 | 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
-| 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
+| 104. Conformance Measurement & Milestone Exit | 0/3 | Planned | - |
 | 105. Live Diagnostics Responsiveness on Large Workspaces | 5/5 | Not started |  |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.

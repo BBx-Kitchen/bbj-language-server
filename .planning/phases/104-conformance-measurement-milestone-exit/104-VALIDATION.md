@@ -40,9 +40,15 @@ created: "2026-09-23"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| filled by planner | 01 | 1 | CONF-02 | — | no corpus content in this repo | integration (private harness) | harness `--endpoint` sample run | ✅ | ⬜ pending |
-| filled by planner | 02 | — | CONF-03 | — | N/A | whole-suite | vitest (both modes) + gradlew test | ✅ | ⬜ pending |
-| filled by planner | 03 | — | CONF-03 | — | no corpus ids/paths/source text in 104-CONFORMANCE.md | integration (private harness) | closing run summary.json gate check | ✅ | ⬜ pending |
+| 104-01-01 | 01 | 1 | CONF-02 | T-104-04, T-104-05 | a run that measures nothing aborts (sanity check); 98-103 results committed by exact path | integration (private harness, tracer) | `node …/bbj-corpus/conformance/run.mjs --ls … --endpoint 127.0.0.1:5008 --limit 20 --shards 2` + summary check (calls > 0, 0 failures) | ✅ | ⬜ pending |
+| 104-01-02 | 01 | 1 | CONF-02 | T-104-01, T-104-02 | leak guard flags a real corpus id and passes a clean file; flag-off output unchanged | integration (private harness) | flag-off `--limit 150` before/after diff; endpoint summary key check; leak-guard self-test | ✅ | ⬜ pending |
+| 104-01-03 | 01 | 1 | CONF-02 | T-104-03 | baseline read from a pristine detached worktree, build-info asserted | integration (private harness, full run) | full endpoint run on `--data` baseline: 11,898/1,210, 0 failures, 0 crashes, B ≤ 60; probe deleted; README grep | ✅ | ⬜ pending |
+| 104-02-01 | 02 | 2 | CONF-02 | T-104-06 | no corpus content or planning id in the test-data README or the todo | docs + targeted vitest (tracer) | leak guard (both data roots); identifier/number greps; `RUN_BBJ_TESTS=0 npx vitest run test/conformance-regressions.test.ts test/example-files.test.ts test/examples-compile.test.ts` | ✅ | ⬜ pending |
+| 104-02-02 | 02 | 2 | CONF-03 | T-104-07, T-104-08 | failures judged by name against origin/main, not relabelled | whole-suite | `npx vitest run --maxWorkers=2 --reporter=json` (interop up and `RUN_BBJ_TESTS=0`) + origin/main name comparison | ✅ | ⬜ pending |
+| 104-02-03 | 02 | 2 | CONF-03 | — | N/A | build + JUnit | `npm run build`; `./gradlew test --rerun-tasks`; `./gradlew buildPlugin` + `cmp` of main.cjs; `vsce package --no-dependencies` | ✅ | ⬜ pending |
+| 104-03-01 | 03 | 3 | CONF-03 | T-104-11, T-104-12 | gate rejects a wrong corpus, a failed call, a crash or a non-final tree | integration (private harness, tracer) | closing runs (endpoint off, endpoint on) + `summary.json` gate check; raw-set equality; `git diff --quiet <measured> HEAD -- bbj-vscode bbj-intellij` | ✅ | ⬜ pending |
+| 104-03-02 | 03 | 3 | CONF-03 | T-104-09 | no corpus ids/paths/source text in 104-CONFORMANCE.md or PROJECT.md | docs | leak guard (both data roots); exit-gate line equals the gate summary; required headings | ✅ | ⬜ pending |
+| 104-03-03 | 03 | 3 | CONF-02, CONF-03 | T-104-09, T-104-10, T-104-13, T-104-14 | exact-path corpus commit; fast-forward push only; PR body free of identifiers and closing keywords | git + GitHub | `merge-base --is-ancestor` on the PR head; `gh pr view 691` state/head/title; body grep; corpus commit path list | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
