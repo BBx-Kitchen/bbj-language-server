@@ -1,6 +1,7 @@
 import { AstNode, AstUtils, CstNode, GrammarUtils, TextDocument, ValidationAcceptor } from "langium";
 import { Range } from 'vscode-languageserver-types';
 import { findLeafNodeAtOffset } from "../bbj-validator.js";
+import { LINE_BREAK_DIAGNOSTIC_CODE } from "../bbj-diagnostic-reconciliation.js";
 import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
 
 type LineBreakMask = {
@@ -69,7 +70,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (!hasLinebreakBefore(cst, textDocument)) {
                         accept('error', 'This statement needs to start in a new line: ' + textDocument.getText(cst.range), {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
@@ -80,7 +82,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (!hasLinebreakAfter(cst, textDocument)) {
                         accept('error', 'This statement needs to end with a line break: ' + textDocument.getText(cst.range), {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
@@ -97,7 +100,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (missingMsg) {
                         accept('error', `${missingMsg}: ${textDocument.getText(cst.range)}`, {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
