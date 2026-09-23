@@ -38,7 +38,7 @@ Phase: 104 — Conformance Measurement & Milestone Exit
 Plan: Not started
 Status: Ready to plan
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-23 — Phase 105 complete, transitioned to Phase 104
+Last activity: 2026-09-23 - Completed quick task 260923-pu7: Document what bbj.compiler.trigger really does
 
 ### v4.5 milestone map
 
@@ -285,6 +285,7 @@ filed 2026-09-21 at the Phase 98 close:
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-pu7 | Document what bbj.compiler.trigger really does (package.json + VS Code/IntelliJ features.md) | 2026-09-23 | 3984e85f | complete | [260923-pu7-document-what-bbj-compiler-trigger-reall](./quick/260923-pu7-document-what-bbj-compiler-trigger-reall/) |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
 
