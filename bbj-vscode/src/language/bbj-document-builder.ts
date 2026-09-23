@@ -243,6 +243,26 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
+     * Clears a document's verdict state, if one exists, and restores the pre-hierarchy Langium
+     * diagnostics list (with the hierarchy re-applied) as the document's diagnostics — undoing
+     * whatever downgrade or replacement decision that state represented. Called at the start of
+     * every outcome that falls back to the save-time compile (a failed cycle, an unavailable
+     * endpoint, or the latch/trigger being off), so a real Langium error is never left downgraded
+     * without a verdict behind it.
+     *
+     * When no verdict state exists for the document, this does nothing at all — a document that
+     * never had a verdict is left byte-for-byte as it already was, matching 0.16.x behaviour.
+     */
+    private forgetVerdict(document: LangiumDocument): void {
+        if (getVerdictState(document.uri) === undefined) return;
+        clearVerdictState(document.uri);
+        const remembered = recallLangiumDiagnostics(document);
+        if (remembered) {
+            document.diagnostics = applyConfiguredDiagnosticHierarchy(remembered);
+        }
+    }
+
+    /**
      * Schedule a BBjCPL compilation with trailing-edge debounce.
      * On rapid saves, only the last save triggers compilation after
      * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
@@ -264,26 +284,6 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * live parser existed, so a real Langium error is never left downgraded without a verdict
      * behind it.
      */
-    /**
-     * Clears a document's verdict state, if one exists, and restores the pre-hierarchy Langium
-     * diagnostics list (with the hierarchy re-applied) as the document's diagnostics — undoing
-     * whatever downgrade or replacement decision that state represented. Called at the start of
-     * every outcome that falls back to the save-time compile (a failed cycle, an unavailable
-     * endpoint, or the latch/trigger being off), so a real Langium error is never left downgraded
-     * without a verdict behind it.
-     *
-     * When no verdict state exists for the document, this does nothing at all — a document that
-     * never had a verdict is left byte-for-byte as it already was, matching 0.16.x behaviour.
-     */
-    private forgetVerdict(document: LangiumDocument): void {
-        if (getVerdictState(document.uri) === undefined) return;
-        clearVerdictState(document.uri);
-        const remembered = recallLangiumDiagnostics(document);
-        if (remembered) {
-            document.diagnostics = applyConfiguredDiagnosticHierarchy(remembered);
-        }
-    }
-
     private debouncedCompile(document: LangiumDocument): void {
         const key = document.uri.fsPath;
         const existing = this.cplDebounceTimers.get(key);
