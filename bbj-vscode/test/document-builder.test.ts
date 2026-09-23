@@ -10,7 +10,14 @@ import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BbjClass } from '../src/language/generated/ast.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from '../src/language/bbj-validator.js';
 import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from '../src/language/bbj-parser-service.js';
-import { clearAllVerdictStates } from '../src/language/bbj-diagnostic-reconciliation.js';
+import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import {
+    clearAllVerdictStates,
+    getVerdictState,
+    recallLangiumDiagnostics,
+    rememberLangiumDiagnostics,
+    setVerdictState,
+} from '../src/language/bbj-diagnostic-reconciliation.js';
 import { logger } from '../src/language/logger.js';
 
 vi.mock('../src/language/bbj-notifications.js', () => ({
@@ -86,6 +93,7 @@ type BuilderPrivates = {
     trackBbjcplAvailability(): void;
     bbjcplAvailable: boolean | undefined;
     revalidateUseFilePathDiagnostics(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
+    runBbjcplForDocuments(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
 };
 
 afterEach(() => {
@@ -95,6 +103,9 @@ afterEach(() => {
     // Verdict state is module-scoped, keyed by document uri; clear it so an earlier test's
     // carried-over state can never leak into a later one.
     clearAllVerdictStates();
+    // The compiler-trigger setting is also module-scoped; restore its default so later tests
+    // in this file (and other files sharing the module) see it.
+    setCompilerTrigger('debounced');
 });
 
 describe('debouncedCompile catches and logs callback errors (P61-D2-017)', () => {
@@ -226,5 +237,53 @@ describe('debouncedCompile clears stale live-parser diagnostics before the BBjCP
         expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
             { source: 'BBjCPL', message: 'current bbjcpl message' },
         ]);
+    });
+});
+
+describe('the compiler trigger being off forgets every verdict', () => {
+    test('setCompilerTrigger("off") followed by runBbjcplForDocuments clears every document\'s verdict state', async () => {
+        const { builder } = buildHarness();
+        const doc = fakeDocument('/proj/trigger-off.bbj');
+        setVerdictState(doc.uri, { seen: new Set(['some-key']) });
+        expect(getVerdictState(doc.uri)).toBeDefined();
+
+        setCompilerTrigger('off');
+        const privates = builder as unknown as BuilderPrivates;
+        await privates.runBbjcplForDocuments([doc], CancellationToken.None);
+
+        expect(getVerdictState(doc.uri)).toBeUndefined();
+    });
+});
+
+describe('revalidateUseFilePathDiagnostics keeps the remembered Langium diagnostics list honest', () => {
+    test('a now-resolved USE diagnostic is dropped from both document.diagnostics and the remembered list; the still-unresolved one survives in both', async () => {
+        const { builder, wsManager, indexManager } = buildHarness();
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: ['/prefix'], classpath: [] };
+
+        const resolvedUri = URI.file('/prefix/Resolved.bbj');
+        const fakeClassDescription = {
+            type: BbjClass.$type,
+            name: 'Resolved',
+            documentUri: resolvedUri,
+        } as unknown as AstNodeDescription;
+
+        vi.spyOn(indexManager, 'allElements').mockReturnValue(stream([fakeClassDescription]));
+
+        const resolvedDiagMessage = `${USE_FILE_NOT_RESOLVED_PREFIX}Resolved.bbj' could not be resolved.`;
+        const unresolvedDiagMessage = `${USE_FILE_NOT_RESOLVED_PREFIX}Missing.bbj' could not be resolved.`;
+        const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+        const makeDiags = (): Diagnostic[] => [
+            { message: resolvedDiagMessage, range, severity: 2 },
+            { message: unresolvedDiagMessage, range, severity: 2 },
+        ];
+
+        const doc = fakeDocument('/proj/use-revalidate.bbj', makeDiags());
+        rememberLangiumDiagnostics(doc, makeDiags());
+
+        await (builder as unknown as BuilderPrivates).revalidateUseFilePathDiagnostics([doc], CancellationToken.None);
+
+        expect(doc.diagnostics?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
+        expect(recallLangiumDiagnostics(doc)?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
     });
 });

@@ -6,7 +6,7 @@ import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity, LSPErrorCodes } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
-import { setMaxErrors } from '../src/language/bbj-document-validator.js';
+import { applyDiagnosticHierarchy, mergeDiagnostics, setMaxErrors } from '../src/language/bbj-document-validator.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BBJ_PARSER_SOURCE, BBjParserService } from '../src/language/bbj-parser-service.js';
 import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
@@ -14,7 +14,9 @@ import {
     clearAllVerdictStates,
     DOWNGRADED_SYNTAX_CODE,
     getVerdictState,
+    recallLangiumDiagnostics,
     rememberLangiumDiagnostics,
+    setVerdictState,
 } from '../src/language/bbj-diagnostic-reconciliation.js';
 import type { ParseError } from '../src/language/java-interop.js';
 import { Program } from '../src/language/generated/ast.js';
@@ -343,6 +345,145 @@ describe('BBjParserService behaves exactly as before against an older server', (
         expect(doc.diagnostics).toHaveLength(1);
         expect(doc.diagnostics![0].source).toBe(BBJ_PARSER_SOURCE);
         expect(compileMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('an older server gets exactly the 0.16.x diagnostics', () => {
+    const validationServices = createBBjTestServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(validationServices.shared);
+        validate = validationHelper<Program>(validationServices.BBj);
+    });
+
+    /**
+     * Builds a validated document with a real Langium parse error, then drives one accepted
+     * (zero-error) verdict cycle so the parse error starts out downgraded to a Warning.
+     */
+    async function acceptedVerdictDocument(
+        harness: ReturnType<typeof buildHarness>
+    ): Promise<LangiumDocument> {
+        const result = await validate('x = (1 + 2\n');
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        expect(parseErrors.length).toBeGreaterThan(0);
+
+        const document = result.document;
+        harness.openDocumentUris.add(document.uri.toString());
+
+        const privates = harness.builder as unknown as BuilderPrivates;
+        harness.interopService.scriptParseProgram({ errors: [] });
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+        expect(document.diagnostics?.some(d => d.severity === DiagnosticSeverity.Error)).toBe(false);
+
+        return document;
+    }
+
+    test('exact equality against the 0.16.x merge: a Langium error bbjcpl also flags is replaced, one bbjcpl does not flag stays an Error, nothing is downgraded, no verdict state', async () => {
+        vi.useFakeTimers();
+        const { builder, compileMock, openDocumentUris } = buildHarness(validationServices);
+        // JavaInteropTestService defaults to the old-server (MethodNotFound) script.
+
+        // Invented text producing two Langium parse errors on two distinct lines: one on
+        // line 1 (the dangling '+' at the end of line 0 forces recovery to fail there) and
+        // one on line 2 (the dangling '*' at the end of line 2 itself).
+        const result = await validate('x = 1 +\nrem ok\ny = 2 *\n');
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        // Precondition: the invented text really does produce parse errors on two distinct lines,
+        // and line 0 (used below as "a line Langium does not flag") is not one of them.
+        const flaggedLines = [...new Set(parseErrors.map(d => d.range.start.line))];
+        expect(flaggedLines.length).toBe(2);
+        const unflaggedLine = 0;
+        expect(flaggedLines).not.toContain(unflaggedLine);
+        const firstFlaggedLine = Math.min(...flaggedLines);
+
+        const document = result.document;
+        openDocumentUris.add(document.uri.toString());
+
+        const cplDiags: Diagnostic[] = [
+            {
+                range: { start: { line: firstFlaggedLine, character: 0 }, end: { line: firstFlaggedLine, character: END_OF_LINE_CHARACTER } },
+                message: 'bbjcpl flags the same line',
+                severity: DiagnosticSeverity.Error,
+                source: 'BBjCPL',
+            },
+            {
+                range: { start: { line: unflaggedLine, character: 0 }, end: { line: unflaggedLine, character: END_OF_LINE_CHARACTER } },
+                message: 'bbjcpl-only diagnostic on a line Langium does not flag',
+                severity: DiagnosticSeverity.Error,
+                source: 'BBjCPL',
+            },
+        ];
+        compileMock.mockResolvedValue(cplDiags);
+
+        const privates = builder as unknown as BuilderPrivates;
+        vi.spyOn(privates, 'notifyDocumentPhase').mockResolvedValue(undefined);
+
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        const remembered = recallLangiumDiagnostics(document);
+        expect(remembered).toBeDefined();
+        const expected = mergeDiagnostics(applyDiagnosticHierarchy(remembered!, true, 20), cplDiags);
+        expect(document.diagnostics).toEqual(expected);
+
+        const onFirstFlaggedLine = document.diagnostics!.find(d => d.range.start.line === firstFlaggedLine);
+        expect(onFirstFlaggedLine!.source).toBe('BBjCPL');
+        expect(onFirstFlaggedLine!.severity).toBe(DiagnosticSeverity.Error);
+        expect(parseErrors.some(pe => pe.message === onFirstFlaggedLine!.message)).toBe(true);
+
+        const secondFlaggedLine = flaggedLines.find(l => l !== firstFlaggedLine)!;
+        const onSecondFlaggedLine = document.diagnostics!.find(d => d.range.start.line === secondFlaggedLine);
+        expect(onSecondFlaggedLine!.source).toBe('bbj');
+        expect(onSecondFlaggedLine!.severity).toBe(DiagnosticSeverity.Error);
+
+        expect(document.diagnostics!.some(
+            d => (d.data as { code?: unknown } | undefined)?.code === DOWNGRADED_SYNTAX_CODE
+        )).toBe(false);
+        expect(getVerdictState(document.uri)).toBeUndefined();
+    });
+
+    test('a MethodNotFound answer clears every document\'s verdict state, not just the one whose cycle produced it', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        const { builder, interopService } = harness;
+        harness.compileMock.mockResolvedValue([]);
+
+        const document = await acceptedVerdictDocument(harness);
+        expect(getVerdictState(document.uri)).toBeDefined();
+
+        const otherUri = URI.file('/proj/hand-set-other-document.bbj');
+        setVerdictState(otherUri, { seen: new Set(['hand-set-key']) });
+
+        interopService.scriptParseProgram('method-not-found');
+        const privates = builder as unknown as BuilderPrivates;
+        privates.debouncedCompile(document);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(getVerdictState(document.uri)).toBeUndefined();
+        expect(getVerdictState(otherUri)).toBeUndefined();
+        expect(document.diagnostics?.some(d => d.severity === DiagnosticSeverity.Error)).toBe(true);
+    });
+
+    test('after simulateReconnect, calling isEnabled() clears the verdict state', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness(validationServices);
+        harness.compileMock.mockResolvedValue([]);
+
+        const document = await acceptedVerdictDocument(harness);
+        expect(getVerdictState(document.uri)).toBeDefined();
+
+        harness.interopService.simulateReconnect();
+        harness.parserService.isEnabled();
+
+        expect(getVerdictState(document.uri)).toBeUndefined();
     });
 });
 
