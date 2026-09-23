@@ -5,11 +5,11 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 105
 current_phase_name: Live Diagnostics Responsiveness on Large Workspaces
 status: executing
-stopped_at: Completed 105-01-PLAN.md
-last_updated: "2026-09-23T12:22:26.926Z"
+stopped_at: Completed 105-02-PLAN.md
+last_updated: "2026-09-23T12:33:12.598Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 105 execution started
-state_head: 36520261d835cf4c45b44f2cdabde2bc02c9e662
+state_head: e2752652e23287b0bd164586fc8839cf58211fc6
 progress:
   total_phases: 8
   completed_phases: 6
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 ## Current Position
 
 Phase: 105 (Live Diagnostics Responsiveness on Large Workspaces) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-23 — Phase 105 execution started
@@ -132,6 +132,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 103 P04 | 55min | 2 tasks | 2 files |
 | Phase 103 P05 | 13min | 3 tasks | 1 files |
 | Phase 105 P01 | 35min | 2 tasks | 4 files |
+| Phase 105 P02 | 9min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,7 @@ decisions:
 - [Phase 103]: [Phase 103 P05]: Plan 05 is a gate/build/ship plan with no source deliverable -- every task verifies or ships plans 01-04's work, so no task-level commit exists, only the final metadata commit
 - [Phase 103]: [Phase 103 P05]: The on-host pre-endpoint jar backup (bbj-ls.jar.26.02) no longer exists after the 2026-09-23 fresh BBj install; rebuilt it from the sibling bbj-ls repository at the commit before the parseProgram endpoint was added, in a scratch worktree, confirmed by unzip -l to carry no parser classes
 - [Phase 105]: Direct listener on TextDocuments.onDidOpen/onDidChangeContent arms the live-parse cycle outside Langium's WorkspaceLock; compute-first publish-once debounce cycle with a state-aware publish path — Removes the first of #692's two serialization points without waiting on or enqueueing into the workspace lock
+- [Phase 105]: 105-02: composeWithVerdict's stale-list case (reconcileEarlyVerdict) drops a complaint on any overlap with a verdict diagnostic even when the line text no longer matches; it only skips recording that complaint in seen when unmatched, since an unconfirmed line was never re-validated
 
 ### Tech Debt
 
@@ -286,8 +288,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T12:22:26.608Z
-Stopped at: Completed 105-01-PLAN.md
+Last session: 2026-09-23T12:33:12.267Z
+Stopped at: Completed 105-02-PLAN.md
 Resume file: None
 
 Next: plan the remaining v4.5 phases (105 large-workspace responsiveness, then 104 exit
