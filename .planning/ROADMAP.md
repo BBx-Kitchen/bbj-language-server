@@ -570,7 +570,7 @@ Plans:
   3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
   4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
 
-**Plans:** 3/3 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -584,6 +584,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 104-03-PLAN.md — Wave 3: closing measurement (endpoint off and on) on the September 1 build, `104-CONFORMANCE.md`, PROJECT.md pointer, corpus commit, worktree removed, PR #691 fast-forwarded and updated
+
+**Gap closure** *(from the phase verification)*
+
+- [ ] 104-04-PLAN.md — Gap closure: the leak guard catches report-truncated, backtick-substituted and partly quoted excerpts (with a self-test); every corpus-derived excerpt in the conformance records and the milestone's planning text rephrased in own words, checked on both corpus builds by the guard and a separate prefix scanner
 
 *Ordering note:* last by necessity — its gate is the whole milestone's number. The run stays local and manual: the corpus contains internal and third-party code and must not enter this repository or its CI.
 
