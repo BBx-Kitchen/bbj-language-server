@@ -73,7 +73,7 @@ boundaries, language words as names, the long tail) or are residue for the triag
 | 1 | This statement needs to end with a line break: LET num = 6.022 |
 | 1 | This statement needs to end with a line break: LET tiny = 1 |
 | 1 | This statement needs to end with a line break: LET val = 1 |
-| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to end with a line break: (an assignment whose right-hand side is a decimal number literal) |
 | 1 | This statement needs to end with a line break: log.DURATION = log.END-log. |
 | 1 | This statement needs to start in a new line: else |
 
@@ -173,7 +173,7 @@ plan closed; they carry over as residue for the long-tail triage.
 | 1 | This statement needs to end with a line break: LET num = 6.022 |
 | 1 | This statement needs to end with a line break: LET tiny = 1 |
 | 1 | This statement needs to end with a line break: LET val = 1 |
-| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to end with a line break: (an assignment whose right-hand side is a decimal number literal) |
 | 1 | This statement needs to end with a line break: log.DURATION = log.END-log. |
 | 1 | This statement needs to start in a new line: else |
 
@@ -276,7 +276,7 @@ triage.
 | 1 | This statement needs to end with a line break: LET num = 6.022 |
 | 1 | This statement needs to end with a line break: LET tiny = 1 |
 | 1 | This statement needs to end with a line break: LET val = 1 |
-| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to end with a line break: (an assignment whose right-hand side is a decimal number literal) |
 | 1 | This statement needs to start in a new line: else |
 
 No message group is new against the plan 02 run. One message group present at the plan 02 run
@@ -416,7 +416,7 @@ follow-up checks completed.
 | 1 | This statement needs to end with a line break: LET num = 6.022 |
 | 1 | This statement needs to end with a line break: LET tiny = 1 |
 | 1 | This statement needs to end with a line break: LET val = 1 |
-| 1 | This statement needs to end with a line break: gravitational_constant = 6.674 |
+| 1 | This statement needs to end with a line break: (an assignment whose right-hand side is a decimal number literal) |
 | 1 | This statement needs to start in a new line: else |
 
 Two message groups present at the plan 03 run no longer appear: "This statement needs to end
