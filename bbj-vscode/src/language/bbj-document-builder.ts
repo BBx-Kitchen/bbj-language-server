@@ -329,7 +329,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // above: the hierarchy may already have hidden linking diagnostics or
                     // warnings because of a parse error the verdict is about to downgrade or
                     // replace, and those need the chance to reappear once it has.
-                    const langiumDiagnostics = recallLangiumDiagnostics(document) ?? document.diagnostics ?? [];
+                    const remembered = recallLangiumDiagnostics(document);
+                    if (!remembered) {
+                        // Should not happen: BBjDocumentValidator.validateDocument() remembers
+                        // a pre-hierarchy list unconditionally before this callback can ever
+                        // run. Falling back to document.diagnostics here substitutes an
+                        // already-hierarchy-applied, already-stripped shape for the documented
+                        // pre-hierarchy contract — log so a future decoupling of
+                        // shouldValidate/shouldCompileWithBbjcpl that hits this path is visible
+                        // instead of silently degrading.
+                        logger.debug(`No remembered pre-hierarchy diagnostics for ${document.uri.toString()}; reconciling against the current (possibly hierarchy-applied) list instead.`);
+                    }
+                    const langiumDiagnostics = remembered ?? document.diagnostics ?? [];
                     const { diagnostics, state } = reconcileWithVerdict(
                         langiumDiagnostics,
                         liveOutcome.diagnostics,
