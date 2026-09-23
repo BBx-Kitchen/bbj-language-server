@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 103
 current_phase_name: One Set of Errors — Diagnostic Reconciliation
 status: executing
-stopped_at: Completed 103-01-PLAN.md
-last_updated: "2026-09-22T22:02:25.148Z"
+stopped_at: Completed 103-02-PLAN.md
+last_updated: "2026-09-23T06:39:02.424Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 103 execution started
-state_head: 3c396fef5680e5abb606947c61a9869b610fde2f
+state_head: 78e20088a2f54ce349496849347249ec7b380a44
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 35
-  completed_plans: 31
+  completed_plans: 32
   percent: 63
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 ## Current Position
 
 Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-22 — Phase 103 execution started
@@ -127,6 +127,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 102 P03 | 10min | 3 tasks | 7 files |
 | Phase 102 P04 | 28min | 3 tasks | 1 files |
 | Phase 103 P01 | 48min | 3 tasks | 7 files |
+| Phase 103 P02 | 22min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,8 @@ decisions:
 - [Phase 102]: Branch pushed and PR #691 opened for phase 102; two IDE hand-verification blocks (live diagnostics endpoint-present; older-server replay/restore) remain outstanding, recorded as a precise runbook in 102-04-SUMMARY.md rather than claimed as observed — This executor cannot see a running IDE; the human_verification_boundary constraint requires the runbook, never a simulated observation
 - [Phase 103]: [Phase 103 P01]: downgradeSyntaxComplaint changes both severity AND data.code together — a severity-only downgrade would leave the diagnostic in the Parse tier and keep suppressing linking diagnostics and counting against the parse-error cap
 - [Phase 103]: [Phase 103 P01]: a syntax complaint replaced by an overlapping BBj diagnostic is still recorded in the verdict state's seen set, so it carries over like a downgraded complaint between verdicts rather than reappearing as an Error the moment BBj's own diagnostic vanishes on the next edit
+- [Phase 103]: forgetVerdict() is a no-op when no verdict state exists for the document, keeping the never-had-a-verdict path byte-for-byte identical to 0.16.x — avoids unconditionally re-deriving document.diagnostics for documents that never had a verdict
+- [Phase 103]: resetIfGenerationChanged() clears every verdict state only on an actual decided-to-undecided connection transition, not on every undecided-latch probe — prevents redundant clearAllVerdictStates() calls before the first real parse on a fresh connection
 
 ### Tech Debt
 
@@ -273,8 +276,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-22T22:02:24.862Z
-Stopped at: Completed 103-01-PLAN.md
+Last session: 2026-09-23T06:39:02.165Z
+Stopped at: Completed 103-02-PLAN.md
 Resume file: None
 
 Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
