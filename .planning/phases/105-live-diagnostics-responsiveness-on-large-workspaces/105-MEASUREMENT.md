@@ -138,10 +138,10 @@ corpus source text — only elapsed times, the timestamp resolution, and environ
 | IntelliJ | after | 5 | 6 | 7 | 6 | 1 second |
 
 [1] This IntelliJ "before" sample started from a file whose edited line still carried a previous
-run's edit rather than a fresh invalid line; the tester flagged it. It is recorded as reported;
-excluding it does not change the median (the remaining two samples, 66 and 129, still bracket a
-median of ~97 s worse than the reported 66 s, so keeping the flagged sample is the conservative
-choice).
+run's edit rather than starting from the original line; it was flagged when the trace was read.
+It is kept, by the tester's choice. Without it the two clean samples (129 s and 66 s) have a
+median of 97.5 s, so keeping it lowers the "before" median and understates the improvement
+rather than inflating it.
 
 **VS Code:** the median wait for the `BBj Parser` verdict on an invalid line typed while the
 initial workspace build is still running dropped from 58.895 s to 5.260 s — about 11x faster.
@@ -169,9 +169,11 @@ Checked while measuring with the "after" build, per the Runbook's four questions
    build-finished marker together in the same trace, so the specific post-build state with the
    invalid line still present is recorded as **not observed**, not as confirmed-clean.
 3. **Keep typing on another line for a few seconds after the build finished: does anything flash
-   red that was yellow, or disappear and come back doubled?** No flash or doubling observed;
+   red that was yellow, or disappear and come back doubled?** No flash or doubling observed.
+   The re-edits that were traced happened while the build was still running, not after it:
    removing the invalid character cleared the verdict within roughly 0.6 s (0.567 s in one VS
-   Code sample), and re-inserting it brought the verdict back in a comparable time (0.564 s).
+   Code sample, the same second in IntelliJ), and re-inserting it brought the verdict back in a
+   comparable time (0.564 s). Typing after the build finished was not captured in a trace.
 4. **Optional — does the BBjServices log show two connections accepted from the language server
    while the "after" build runs?** Not checked.
 
