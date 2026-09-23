@@ -115,7 +115,7 @@ analysis is unchanged.
 |------|------|---------------------|
 | Residue file A | A → A2 | Was on list A for `dread x![]` (line 5). That now parses; the next disagreement in the same file is `clear x![]` (line 14), reported as "This statement needs to end with a line break: clear". `bbjcpl` accepts `clear x![]`. `CLEAR` followed by a variable list is a long-tail shape for plan 04, not a fault of the bracket rule. |
 | Residue file B | caught → B | Compiler's complaint is an undefined label (line 895). The only thing this tree ever flagged was the parse error on `A![]=SN!.split("R")` (line 2527), which the compiler accepts. The earlier "catch" was accidental. |
-| Residue file C | caught → B | Compiler rejects `LET parts$[] = SPLIT(dateStr$, "/")` (line 4). Probes: `parts$[] = "a"` and `parts$[all] = "a"` are both rejected, `parts$[] = q$[]` is accepted. The compiler requires a whole-array right-hand side for a whole-array target; that rule applied to `[all]` before this phase and was never checked here. It is a typed validation rule, not a parser shape; out of scope for the parser plans. |
+| Residue file C | caught → B | Compiler rejects a whole-array assignment target whose right-hand side is a function call rather than another whole array. Probes: `parts$[] = "a"` and `parts$[all] = "a"` are both rejected, `parts$[] = q$[]` is accepted. The compiler requires a whole-array right-hand side for a whole-array target; that rule applied to `[all]` before this phase and was never checked here. It is a typed validation rule, not a parser shape; out of scope for the parser plans. |
 | Residue file D | caught → B | Compiler rejects `FILEOPEN(...)` on line 1 (see the pending file-dialog todo handled in plan 05). Previously flagged only through the `[]` parse error on line 6. Accidental catch. |
 
 Net: no file lost a correct diagnosis. Three accidental catches went away with the parse error that
@@ -728,7 +728,7 @@ expected to produce, including an explicit "none today" marker.** **Holds.** Evi
 `bbj-vscode/test/examples-compile.test.ts` (both the always-on layer and the `RUN_BBJ_TESTS=1`
 BBj-gated layer); `examples/invalid/README.md` documents the sidecar format and the
 `"none-today"`/`ExpectedDiagnostic[]` convention. 92 real programs under `examples/` compile clean; 1
-(`examples/invalid/dim-examples-substring-expressions.bbj`) is deliberately invalid, paired with its
+(a deliberately-invalid substring-expression example under `examples/invalid/`) is paired with its
 own `.expected.json` sidecar carrying the `"none-today"` marker (no LS diagnostic exists yet for the
 construct it demonstrates). The `.bbx` configuration file and the `.bbl` library file are excluded by
 extension, as the criterion allows.
@@ -742,7 +742,7 @@ extension, as the criterion allows.
 | PARSE-06 | `rem-after-block-boundaries.bbj`, `line-numbered-class.bbj` | `parser-keyword-statements.test.ts` — "a comment after a block boundary, and a line number in class code" |
 | PARSE-08 | `language-words-as-names.bbj` | `parser-keyword-statements.test.ts` — "language words as names (oracle sweep against the compiler)" |
 | PARSE-09 | `statement-option-tails.bbj` | `parser-keyword-statements.test.ts` — "the long-tail triage: a verb with no rule at all, and two order-fixed option tails"; plus the shape-level residue table above (not fully closed — see criterion 4) |
-| EXMP-01 | `examples/invalid/dim-examples-substring-expressions.bbj` + sidecar | `examples-compile.test.ts` (always-on and `RUN_BBJ_TESTS=1` layers) |
+| EXMP-01 | the deliberately-invalid substring-expression example under `examples/invalid/` + sidecar | `examples-compile.test.ts` (always-on and `RUN_BBJ_TESTS=1` layers) |
 
 **The two deliberate non-goals.**
 

@@ -182,7 +182,8 @@ does not.
    conformance run above.
 2. **RESTORE/keyword-branch-targets/EXIT/LOAD/SAVE/continued LEN= item (VALID-02).** Mostly
    holds, with one named exception. Evidence: `restore-numeric.bbj`, `keyword-branch-targets.bbj`,
-   `exit-load-save.bbj`, `print-trailing-comma.bbj`; the matching `line-break-validation.test.ts`
+   a synthetic fixture covering the EXIT/LOAD/SAVE line-break forms, `print-trailing-comma.bbj`;
+   the matching `line-break-validation.test.ts`
    and `line-break-single-line-if.test.ts` suites pass; zero RESTORE/GOSUB-GOTO-keyword/EXIT/LOAD
    hits in the final conformance run. The roadmap's own wording for this criterion also names "a
    continued LEN= item" — that construct is **not** fixed (see PARSE-08 residue, section 7); it
