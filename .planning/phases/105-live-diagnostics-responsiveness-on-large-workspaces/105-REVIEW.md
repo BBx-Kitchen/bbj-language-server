@@ -20,7 +20,11 @@ findings:
   warning: 1
   info: 1
   total: 4
-status: issues_found
+status: partially_fixed
+fixed_at: 2026-09-23T15:44:00Z
+fix_summary:
+  fixed: [CR-01, CR-02]
+  deferred: [WR-01, IN-01]
 ---
 
 # Phase 105: Code Review Report
@@ -28,7 +32,7 @@ status: issues_found
 **Reviewed:** 2026-09-23
 **Depth:** standard
 **Files Reviewed:** 11
-**Status:** issues_found
+**Status:** partially_fixed — CR-01 and CR-02 fixed 2026-09-23; WR-01 and IN-01 remain open/deferred
 
 ## Summary
 
@@ -59,6 +63,15 @@ new event-armed trigger reaches that the pre-existing rebuild-driven trigger nev
 ## Critical Issues
 
 ### CR-01: The event-armed live-parse trigger reaches `bbx-config` documents that `update()` explicitly excludes
+
+**Status: fixed.** `armLiveParseForDocument` (the single entry point both `armLiveParseFromEvent`
+and `armWhenWorkspaceReady`'s deferred callback funnel through) now applies
+`isBuildableDocumentUri` first, so a document opened with the composer's `bbx-config` language id
+(regardless of its file extension) is never armed, whichever of the two callers reaches it. A
+regression test in `bbj-vscode/test/live-parse-scheduling.test.ts` opens a `bbx-config`-language
+document on a `.bbj`-style uri and asserts no live-parse request is ever sent and
+`hasPendingCompile()` stays false; the test was confirmed to fail against the pre-fix code before
+the fix was applied.
 
 **File:** `bbj-vscode/src/language/bbj-document-builder.ts:321-337` (`armLiveParseFromEvent`) and
 `:369-382` (`armLiveParseForDocument`)
@@ -103,6 +116,23 @@ The same check should also be added to `armWhenWorkspaceReady`'s deferred callba
 re-enters `armLiveParseForDocument` on the same document once the workspace becomes ready.
 
 ### CR-02: A stale, failed debounce cycle can discard and overwrite a newer cycle's already-published verdict
+
+**Status: fixed.** The fallback branch now checks `stillCurrent` the same way the verdict branch
+already does, and returns without forgetting the document's verdict, running the save-time
+compile, or publishing anything when the cycle's own request is no longer for the document's
+current text.
+
+One outcome deliberately keeps its old, unconditional behaviour: a `liveOutcome.kind ===
+'unavailable'` result still clears every document's stored verdict regardless of this cycle's own
+staleness. That signal is tied to the connection (the on/off latch just flipped for every document
+on it), not to one cycle's text version — gating it on `stillCurrent` would let another, unrelated
+document's stale verdict survive an endpoint that (per this very request) is now known to be gone.
+Two regression tests in `bbj-vscode/test/live-parse-interleaving.test.ts` cover both paths: one
+proves a stale `'failed'` cycle changes nothing once a newer cycle has already published its
+verdict (no save-time compile runs, no second publish happens, the newer verdict is untouched);
+the other proves a stale `'unavailable'` cycle still clears every document's stored verdict
+(including an unrelated document's) while still never republishing over the newer cycle's own
+diagnostics. Both tests were confirmed to fail against the pre-fix code before the fix was applied.
 
 **File:** `bbj-vscode/src/language/bbj-document-builder.ts:464-568` (`debouncedCompile`), the
 fallback branch at `:533-553`
