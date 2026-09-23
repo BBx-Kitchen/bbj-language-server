@@ -570,7 +570,7 @@ Plans:
   3. Every existing test suite is green on the final tree: `npm test` in `bbj-vscode` including all synthetic regression files added in Phases 98-100 and the `examples/` assertions from Phase 100, and the IntelliJ Gradle suite.
   4. The measured result and the residual list-A entries with their reasons are recorded where the next milestone starts from them, with no corpus file content and no proprietary BBj source text in this repository.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
@@ -579,7 +579,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 104-02-PLAN.md — Wave 2: maintainer README next to the regression files, the scoping-check todo, whole-suite gate in both interop modes by name against origin/main, IntelliJ suite, both distributables
+- [x] 104-02-PLAN.md — Wave 2: maintainer README next to the regression files, the scoping-check todo, whole-suite gate in both interop modes by name against origin/main, IntelliJ suite, both distributables
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -670,7 +670,7 @@ Plans:
 | 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Complete | 2026-09-22 |
 | 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
 | 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
-| 104. Conformance Measurement & Milestone Exit | 1/3 | Planned |  |
+| 104. Conformance Measurement & Milestone Exit | 2/3 | Planned |  |
 | 105. Live Diagnostics Responsiveness on Large Workspaces | 5/5 | Not started |  |
 
 **Current milestone:** v4.5 Compiler Conformance (Phases 98-104) — planning, started 2026-09-20.

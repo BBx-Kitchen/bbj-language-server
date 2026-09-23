@@ -5,16 +5,16 @@ milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
 current_phase: 104
 current_phase_name: Conformance Measurement & Milestone Exit
 status: executing
-stopped_at: Completed 104-01-PLAN.md
-last_updated: "2026-09-23T20:13:23.178Z"
+stopped_at: Completed 104-02-PLAN.md
+last_updated: "2026-09-23T20:33:42.919Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 104 execution started
-state_head: e6271b6d9a6fc96698d3a47e25a2b4870494c6d6
+state_head: 3a075645b1e5d6b7e29c7b9b3c7a80cd39c4333b
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 88
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 104 (Conformance Measurement & Milestone Exit) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
 Last activity: 2026-09-23 — Phase 104 execution started
@@ -138,6 +138,7 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 | Phase 105 P04 | 85min | 3 tasks | 4 files |
 | Phase 105 P05 | 15 min | 3 tasks | 1 files |
 | Phase 104 P01 | 30min | 3 tasks | 8 files |
+| Phase 104 P02 | 19min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -242,6 +243,7 @@ decisions:
 - [Phase 105]: Phase 105: PR #691 retitled and extended to cover phases 98-103 and 105, quoting the measured before/after medians (VS Code 58.9s->5.3s, IntelliJ 66s->6s); pushed by plain fast-forward only. — Milestone PR grows across phases rather than opening a new PR per phase; measured on a real large private workspace against real BBjServices.
 - [Phase 104]: [Phase 104, Plan 01]: leak-guard.mjs applies a 15+ character floor to reject errors[].source patterns (matching details.json source fields) -- unfiltered short fragments produced false positives on ordinary text — Found and fixed during the plan's own leak-guard verify step; necessary for the guard to distinguish real corpus leaks from ordinary English text
 - [Phase 104]: [Phase 104, Plan 01]: closing measurement in this plan reads the pinned Sept-1-2026 baseline (11,898/1,210) from a detached bbj-corpus worktree at cdaf3761 via --data, resolving the mid-milestone corpus rebuild finding without a user checkpoint — The plan's own Task 3 already specified the worktree mitigation as the resolution; reproduced the Phase 103 probe's exact B=31 file set with 0 endpoint failures
+- [Phase 104]: [Phase 104, Plan 02]: D-11 todo's synthetic repro found by walking the two real reject files' ASTs: a bare single instance-access sigil as an Assignment's LHS does NOT reproduce the exception (consumed by the Assignment's own optional flag instead), but TWO consecutive sigils immediately before '=' DOES reproduce it exactly, matching both corpus files' AST shape — Confirms the Phase 103/104 checkUseBeforeAssignment exception caveat with a concrete, invented-text repro rather than leaving it a pure hypothesis; the same shape also crashes an unrelated, uncaught call site (bbj-scope-local.ts) noted for the next investigator
 
 ### Tech Debt
 
@@ -300,8 +302,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T20:13:22.892Z
-Stopped at: Completed 104-01-PLAN.md
+Last session: 2026-09-23T20:33:35.555Z
+Stopped at: Completed 104-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 104` or `/gsd-plan-phase 104` (exit
