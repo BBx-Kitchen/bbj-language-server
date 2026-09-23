@@ -35,8 +35,8 @@
 - [x] **PSRV-03**: With a BBjServices that offers the endpoint, the user sees the compiler's syntax errors while typing, without saving *(verified by hand in both IDEs 2026-09-22. Caveat: on a large workspace nothing live appears until the initial whole-workspace build finishes — pre-existing scheduling, exposed rather than caused here; tracked as issue #692 and Phase 105.)*
 - [x] **PSRV-04**: With a BBj older than 26.03, whose `bbj-ls` lacks the endpoint, and with no connection at all, both extensions (VS Code and IntelliJ) keep every feature they have in 0.16.x, including Java completion through the same service and the save-time `bbjcpl` run. The language server finds out by probing the endpoint once per connection, not by comparing version strings, and reports no error, dialog or repeated log line. An automated test runs against a service double that lacks the endpoint *(verified by hand on macOS 2026-09-22 against the pre-endpoint `bbj-ls.jar`: both IDEs behave as before, no error or dialog.)*
 - [x] **PSRV-05**: Compiler diagnostics appear on the correct editor line and range for continuation lines, line-numbered programs, CRLF files and a last line without newline
-- [ ] **PSRV-06**: Compiler diagnostics and the language server's own diagnostics do not duplicate each other on a line, and the save-time `bbjcpl` run does not repeat what the endpoint already reported
-- [ ] **PSRV-07**: When the compiler's parser accepts a document, the user sees no lexer, parser or line-break error from the language server for it
+- [x] **PSRV-06**: Compiler diagnostics and the language server's own diagnostics do not duplicate each other on a line, and the save-time `bbjcpl` run does not repeat what the endpoint already reported
+- [x] **PSRV-07**: When the compiler's parser accepts a document, the user sees no lexer, parser or line-break error from the language server for it
 - [x] **PSRV-08**: A failure of the endpoint (exception, timeout, BBj not running) is never shown as a syntax error in the document; it is visible in the server log or status
 - [x] **PSRV-09**: The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the documentation of both extensions says they need BBj 26.03 or later
 
@@ -95,8 +95,8 @@
 | PSRV-03 | Phase 102 | Complete (caveat) |
 | PSRV-04 | Phase 102 | Complete |
 | PSRV-05 | Phase 102 | Complete |
-| PSRV-06 | Phase 103 | Pending |
-| PSRV-07 | Phase 103 | Pending |
+| PSRV-06 | Phase 103 | Complete |
+| PSRV-07 | Phase 103 | Complete |
 | PSRV-08 | Phase 102 | Complete |
 | PSRV-09 | Phase 102 | Complete |
 | EXMP-01 | Phase 100 | Complete |

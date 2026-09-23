@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Compiler Conformance (Phases 98-104) — IN PROGRESS
-current_phase: 103
-current_phase_name: One Set of Errors — Diagnostic Reconciliation
-status: verifying
-stopped_at: Completed 103-05-PLAN.md
-last_updated: "2026-09-23T08:21:24.256Z"
+current_phase: 105
+current_phase_name: Live Diagnostics Responsiveness on Large Workspaces
+status: planning
+stopped_at: Phase 103 complete, ready to discuss Phase 105
+last_updated: "2026-09-23T10:16:07.874Z"
 last_activity: 2026-09-23
-last_activity_desc: Phase 103 execution started
-state_head: ecb57bbc5585371c8be802d433c613771ed80844
+last_activity_desc: Phase 103 complete (UAT 2/2, validated, secured), transitioned to Phase 105
+state_head: aed8cadc04395f1f1a9e2b460cdc33b6f3bf9cd2
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 35
   completed_plans: 35
-  percent: 63
+  percent: 75
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-21 (Phase 99 complete — A 167 -> 52, A2 27 -> 23, B 666 accepted; verification passed 9/9)
+**Last Updated:** 2026-09-23 (Phase 103 complete — one set of errors; UAT 2/2 in both IDEs, endpoint present and pre-endpoint jar)
 
 ## Project Reference
 
@@ -28,17 +28,17 @@ See: .planning/PROJECT.md (updated 2026-09-22)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 103 — One Set of Errors — Diagnostic Reconciliation
+**Current Focus:** Phase 105 — Live Diagnostics Responsiveness on Large Workspaces
 
 ---
 
 ## Current Position
 
-Phase: 103 (One Set of Errors — Diagnostic Reconciliation) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 105 — Live Diagnostics Responsiveness on Large Workspaces
+Plan: Not started
+Status: Ready to plan
 Phase 101 closed 2026-09-22: `bbj-ls` `parseProgram` endpoint on branch `feat/689-parse-program-endpoint` (10 commits, pushed to BASIS GitLab, MR pending by hand); verification passed 4/4 with 1 override (criterion 2, referenced-program resolution, accepted as a ParserServiceAPI limitation); code review 101-REVIEW.md open with 5 critical findings for a follow-up.
-Last activity: 2026-09-23 — Phase 103 execution started
+Last activity: 2026-09-23 — Phase 103 complete (UAT 2/2 in both IDEs, Nyquist-compliant, 20/20 threats closed), transitioned to Phase 105
 
 ### v4.5 milestone map
 
@@ -284,12 +284,12 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-23T08:21:23.970Z
-Stopped at: Completed 103-05-PLAN.md
+Last session: 2026-09-23T10:20:00Z
+Stopped at: Phase 103 complete, ready to discuss Phase 105
 Resume file: None
 
-Next: plan the remaining v4.5 phases (103 diagnostic reconciliation, 105 large-workspace
-responsiveness, then 104 exit measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
+Next: plan the remaining v4.5 phases (105 large-workspace responsiveness, then 104 exit
+measurement); see `.planning/v4.5-MILESTONE-AUDIT.md`. The
 `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` (handoff doc) and is not a v4.5 step.
 
 ## Deferred Items
@@ -389,7 +389,7 @@ detail for phases 70-97 live with their archived phase artifacts; this file is a
 
 ## Operator Next Steps
 
-- Run `/gsd-discuss-phase 102` (or `/gsd-plan-phase 102`) to start Phase 102 — the language-server client of the `parseProgram` endpoint with the older-BBj fallback. Contract: `.planning/phases/101-bbj-parser-endpoint-in-bbj-ls/101-MR-DESCRIPTION.md`. Do not plan USE/CALL reference diagnostics on the endpoint (Phase 101 override).
+- Run `/gsd-discuss-phase 105` to start Phase 105 — live diagnostics while the initial workspace build is still running (issue #692), then Phase 104 (exit measurement). Phase 103 closed 2026-09-23; local branch is ahead of PR #691 by the code-review fixes and the verification docs (not pushed yet). Note for future jar swaps: `stopbbjservices` on the 2026-09-23 BBj install prompts for host/port/admin login on the console; SIGTERM to the BBjServices JVM (runs as `coder`) and restarting as `coder` works.
 - `bbj-ls` endpoint hardening (4 critical / 3 warning from the re-review) is decoupled from v4.5 and is done in `bbj-ls` directly: `/home/coder/repos/bbj-ls/HANDOFF-parse-program-hardening.md`. Do not run `/gsd-code-review 101 --fix` here; its fixer commits in this repo.
 - Security enforcement is on: Phases 99 and 101 have no SECURITY.md (`/gsd-secure-phase 99`, `/gsd-secure-phase 101`).
 - Re-run the private harness (`bbj-corpus/conformance/run.mjs --ls <this repo>`) at each fix-phase boundary; the numbers named in the roadmap's success criteria come from that run.

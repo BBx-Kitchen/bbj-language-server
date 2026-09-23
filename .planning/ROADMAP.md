@@ -305,8 +305,8 @@ files describe behaviour and use word lists only.
 - [x] **Phase 99: Parser Gaps — the Largest Groups** - The four biggest list-A groups parse: FIELD as a verb, `LEN=` as a channel option of the RECORD verbs, the word `label` as a name, and IOLIST (completed 2026-09-21)
 - [x] **Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples** - The empty-bracket whole-array form `name[]` in every position, `;rem` after class, method and function boundaries, language words used as names checked against the compiler — then every remaining list-A shape is fixed or recorded, and `examples/` agrees with the compiler (completed 2026-09-22)
 - [x] **Phase 101: BBj Parser Endpoint in `bbj-ls`** - BBj's own parser becomes callable on unsaved document text, in the separate `bbj-ls` repository (completed 2026-09-22)
-- [ ] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x
-- [ ] **Phase 103: One Set of Errors — Diagnostic Reconciliation** - The compiler's verdict and the language server's own checks stop contradicting and stop duplicating each other
+- [x] **Phase 102: Live Compiler Diagnostics With Backward Compatibility** - The compiler's syntax errors appear while typing in both IDEs, and an older BBj or no BBj at all behaves exactly like 0.16.x (completed 2026-09-22)
+- [x] **Phase 103: One Set of Errors — Diagnostic Reconciliation** - The compiler's verdict and the language server's own checks stop contradicting and stop duplicating each other (completed 2026-09-23)
 - [ ] **Phase 104: Conformance Measurement & Milestone Exit** - The harness can measure with the endpoint active, the documented procedure exists, and the milestone's exit numbers are on record
 
 ## Phase Details
@@ -641,11 +641,11 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 98. Line-Break & Validation False Alarms (A2) | 10/10 | Complete | 2026-09-21 |
-| 99. Parser Gaps — the Largest Groups | 6/6 | Not started |  |
-| 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Not started |  |
-| 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Not started |  |
-| 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Not started |  |
-| 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Not started |  |
+| 99. Parser Gaps — the Largest Groups | 6/6 | Complete | 2026-09-21 |
+| 100. Parser Gaps — Remaining Groups, Long Tail & Examples | 6/6 | Complete | 2026-09-22 |
+| 101. BBj Parser Endpoint in `bbj-ls` | 4/4 | Complete | 2026-09-22 |
+| 102. Live Compiler Diagnostics With Backward Compatibility | 4/4 | Complete | 2026-09-22 |
+| 103. One Set of Errors — Diagnostic Reconciliation | 5/5 | Complete | 2026-09-23 |
 | 104. Conformance Measurement & Milestone Exit | 0/TBD | Not started | - |
 | 105. Live Diagnostics Responsiveness on Large Workspaces | 0/TBD | Not started | - |
 
