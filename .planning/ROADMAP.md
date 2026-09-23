@@ -618,7 +618,7 @@ inside `buildDocuments()`, so it sits behind Langium's FIFO `WorkspaceLock` unti
 initial whole-workspace build finishes; the request then shares one interop socket with
 the bulk class resolution that build issues. Both IDEs are affected. See issue #692.
 
-**Requirements**: TBD — derive from #692 at planning time
+**Requirements**: RESP-01, RESP-02, RESP-03, RESP-04, RESP-05
 **Depends on:** Phase 102 (the live-diagnostics client this makes usable)
 **Plans:** 0 plans
 

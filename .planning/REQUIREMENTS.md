@@ -40,6 +40,14 @@
 - [x] **PSRV-08**: A failure of the endpoint (exception, timeout, BBj not running) is never shown as a syntax error in the document; it is visible in the server log or status
 - [x] **PSRV-09**: The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the documentation of both extensions says they need BBj 26.03 or later
 
+### Live diagnostics on large workspaces
+
+- [ ] **RESP-01**: A live parser diagnostic appears for a document opened or edited while the initial whole-workspace build is still running, in both VS Code and IntelliJ, without waiting for that build to finish
+- [ ] **RESP-02**: The live-parse cycle is started from document open and change events, not from inside `buildDocuments()`, so it never waits on Langium's workspace lock; a rebuild of an open document still asks BBj again
+- [ ] **RESP-03**: When the live parse, the save-time `bbjcpl` run and Langium's validation update a document's diagnostics in any order, the result for the latest text version is shown, with no diagnostic lost, doubled or attached to the wrong line or severity
+- [ ] **RESP-04**: The live parse travels its own interop connection, apart from the class lookups of the workspace build; if that connection cannot be opened, it falls back to the shared one, logged once, with no dialog and no effect on the endpoint probe
+- [ ] **RESP-05**: The wait from an edit to the first live parser diagnostic, in a file opened during the initial build, is measured before and after on a workspace large enough to show the stall, in both IDEs, and recorded in the phase directory with numbers and environment notes only
+
 ### Examples
 
 - [x] **EXMP-01**: Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, with its expected diagnostics (or an explicit "none today") asserted by a test; configuration and library files are excluded by extension
@@ -103,18 +111,23 @@
 | CONF-01 | Phase 98 | Complete |
 | CONF-02 | Phase 104 | Pending |
 | CONF-03 | Phase 104 | Pending |
+| RESP-01 | Phase 105 | Pending |
+| RESP-02 | Phase 105 | Pending |
+| RESP-03 | Phase 105 | Pending |
+| RESP-04 | Phase 105 | Pending |
+| RESP-05 | Phase 105 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 27 total
-- Mapped to phases: 27
+- v1 requirements: 32 total
+- Mapped to phases: 32
 - Unmapped: 0
 
-Phases 98-104 are defined in `.planning/ROADMAP.md`. Requirements per phase: Phase 98 — 6
+Phases 98-105 are defined in `.planning/ROADMAP.md`. Requirements per phase: Phase 98 — 6
 (VALID-01..05, CONF-01); Phase 99 — 4 (PARSE-01, -02, -03, -07); Phase 100 — 6 (PARSE-04, -05,
 -06, -08, -09, EXMP-01); Phase 101 — 2 (PSRV-01, -02, in the separate `bbj-ls` repository);
 Phase 102 — 5 (PSRV-03, -04, -05, -08, -09); Phase 103 — 2 (PSRV-06, -07); Phase 104 — 2
-(CONF-02, -03). No requirement is mapped to more than one phase.
+(CONF-02, -03); Phase 105 — 5 (RESP-01..05). No requirement is mapped to more than one phase.
 
 CONF-01 is a cross-cutting rule mapped once, to Phase 98 — the first phase that fixes constructs.
 Phases 99 and 100 carry it in their own success criteria: every construct they fix also gets a
@@ -122,4 +135,4 @@ synthetic regression file under `bbj-vscode/test/test-data/`.
 
 ---
 *Requirements defined: 2026-09-20*
-*Last updated: 2026-09-21 — PARSE-02 and PARSE-03 reworded to the real causes found in the Phase 99 discussion (fused `LEN=` literal; the word `label` as a name)*
+*Last updated: 2026-09-23 — RESP-01..05 added for Phase 105 (issue #692). Earlier: 2026-09-21 — PARSE-02 and PARSE-03 reworded to the real causes found in the Phase 99 discussion (fused `LEN=` literal; the word `label` as a name)*
