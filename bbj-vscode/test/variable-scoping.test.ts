@@ -597,5 +597,82 @@ classend
             const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
             expect(hints.some(h => h.message === "'y' used before assignment (first assigned at line 3)")).toBe(true);
         });
+
+        // Every one of these five shapes crashed the check or the build on the base tree,
+        // confirmed via a throwaway probe (run against the pre-fix sources, then restored and
+        // deleted): DREAD ##, READ(1)##, and FOR ## = 1 TO 2 each produced a validation-crash
+        // diagnostic; DREAD ##[ALL] did too; ENTER ##[1] threw and crashed the whole build (the
+        // scope-computation site, same as the plain `ENTER ##` case above).
+        const malformedInputShapes: Array<[string, string]> = [
+            ['DREAD ##', 'DREAD ##\n'],
+            ['READ(1)##', 'READ(1)##\n'],
+            ['ENTER ##[1]', 'ENTER ##[1]\n'],
+            ['DREAD ##[ALL]', 'DREAD ##[ALL]\n'],
+            ['FOR ## = 1 TO 2', 'FOR ## = 1 TO 2\nNEXT\n'],
+        ];
+
+        test.each(malformedInputShapes)('a malformed %s target does not stop validation', async (_label, text) => {
+            const document = await parseHermetic(text, { validation: true });
+            const published = document.diagnostics ?? [];
+            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+        });
+
+        test('a malformed reference inside a class method body still produces the method-scope hint', async () => {
+            const document = await parseHermetic(`
+class public A
+    method public void m()
+        print z
+        z = 1
+        ## = 1
+    methodend
+classend
+            `, { validation: true });
+            const published = document.diagnostics ?? [];
+            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+
+            const remembered = recallLangiumDiagnostics(document);
+            expect(remembered).toBeDefined();
+            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
+            expect(hints.some(h => /^'z' used before assignment/.test(h.message))).toBe(true);
+        });
+
+        test('the check adds nothing for the malformed node itself -- exactly one hint, for the real variable', async () => {
+            const document = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
+            const remembered = recallLangiumDiagnostics(document);
+            expect(remembered).toBeDefined();
+            const usedBeforeAssignmentHints = remembered!.filter(
+                d => d.severity === DiagnosticSeverity.Hint && /used before assignment/i.test(d.message)
+            );
+            expect(usedBeforeAssignmentHints).toHaveLength(1);
+            expect(usedBeforeAssignmentHints[0].message).toBe("'x' used before assignment (first assigned at line 2)");
+        });
+
+        test('the single-sigil `# = 1` shape behaves exactly as before (control case)', async () => {
+            const document = await parseHermetic('# = 1\nprint z\nz = 1\n', { validation: true });
+            const messages = (document.diagnostics ?? []).map(d => d.message);
+            // Confirmed via the same throwaway pre-Task-1 probe: the base tree produces the
+            // identical shape here -- a single `#` never reaches an Assignment or SymbolRef node
+            // this plan's guards touch at all (it is a bare parser-level rejection at the very
+            // first token of the file), so nothing this plan changed can affect it. Compared by
+            // count and by each message's own stable, deterministic text/prefix rather than a
+            // literal multi-kilobyte snapshot of Chevrotain's full alternative-token listing.
+            expect(messages).toHaveLength(2);
+            expect(messages[1]).toBe('Expecting end of file but found `#`.');
+            expect(messages[0]).toMatch(/^Expecting: one of these possible Token sequences:/);
+        });
+
+        test('validating the same malformed input twice in a row yields identical diagnostics both times', async () => {
+            const firstDocument = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
+            const secondDocument = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
+            const firstMessages = (firstDocument.diagnostics ?? []).map(d => d.message);
+            const secondMessages = (secondDocument.diagnostics ?? []).map(d => d.message);
+            expect(firstMessages).toEqual(secondMessages);
+
+            const firstRemembered = recallLangiumDiagnostics(firstDocument)?.map(d => d.message);
+            const secondRemembered = recallLangiumDiagnostics(secondDocument)?.map(d => d.message);
+            expect(firstRemembered).toBeDefined();
+            expect(firstRemembered).toEqual(secondRemembered);
+        });
     });
 });
