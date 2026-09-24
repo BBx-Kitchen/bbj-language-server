@@ -35,6 +35,18 @@ export function isFullyResolvedJavaClass(type: unknown): type is JavaClass {
 }
 
 /**
+ * True when the resolved receiver type is exactly `java.lang.Object` -- the universal supertype a
+ * BBj variable, field or parameter declared as `Object` can legitimately hold ANY runtime value,
+ * including an array (Java's own array-to-Object covariance). An array's own pseudo-members (for
+ * example `.length`) are never in Object's own member list, so no member call reached through a
+ * bare Object-declared receiver is ever certain enough to be reported as missing -- found via the
+ * live-backend corpus review, where a method parameter declared `Object` received an array.
+ */
+export function isUniversalObjectReceiver(type: unknown): boolean {
+    return isJavaClass(type) && type.name === 'Object' && type.packageName === 'java.lang';
+}
+
+/**
  * Read `receiver.symbol.ref` for a SymbolRef, tolerating a cyclic-reference throw. Typed as
  * `unknown` rather than `NamedElement | undefined` (its true static type) because Assignment --
  * one of the shapes callers narrow this to with `isAssignment` -- is a plain AstNode, not a
@@ -133,6 +145,9 @@ export function checkUnknownJavaMember(memberCall: MemberCall, accept: Validatio
     }
     const receiverType = typeInferer.getType(receiver);
     if (!isFullyResolvedJavaClass(receiverType)) {
+        return;
+    }
+    if (isUniversalObjectReceiver(receiverType)) {
         return;
     }
     if (!hasCertainReceiverType(receiver)) {
