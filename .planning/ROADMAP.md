@@ -397,11 +397,19 @@ timings were measured through (`105-MEASUREMENT.md`), which is why criterion 5 r
 **Plans:** 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 107-01-PLAN.md — ELSE-walker counter repair for nested single-line IF/ELSE/FI, regression matrix and clean fixtures (VAL-01)
 - [ ] 107-02-PLAN.md — optional `symbol` reads in the use-before-assignment check and scope computation (VAL-02)
 - [ ] 107-03-PLAN.md — unknown-Java-member Error check, duplicate linking diagnostic removal, guard-case and live BBjAPI() tests (VAL-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 107-04-PLAN.md — harness baseline on the phase base, re-flagged files checked and any remaining shape fixed (VAL-01)
 - [ ] 107-05-PLAN.md — live-backend review of every unknown-member Error over the private corpus, guards for false positives (VAL-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 107-06-PLAN.md — final harness comparison by file set, suites, register and leak checks, todo close-out (VAL-01..03)
 
 *Planning notes:* the todo behind VAL-02 also records the same unguarded `symbol.$refText` read in
