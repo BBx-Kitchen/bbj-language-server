@@ -1,4 +1,4 @@
-import { DocumentValidator, EmptyFileSystem, URI } from 'langium';
+import { DocumentState, DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import type { LangiumDocument } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { validationHelper } from 'langium/test';
@@ -765,5 +765,317 @@ describe('fallback results kept until the next save, end to end', () => {
         document = shared.workspace.LangiumDocuments.getDocument(uri)!;
         expect((document.diagnostics ?? []).some(d => d.source === 'BBjCPL')).toBe(false);
         expect(getKeptCheck(uri)?.diagnostics ?? []).toEqual([]);
+    });
+});
+
+describe('mode switches keep current errors', () => {
+    test('debounced verdict, then switch to on-save, then type: the BBj error stays on its shifted line until the next save', async () => {
+        const { shared, interopService, client, builder } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: [],
+                message: 'undefined variable',
+                editorStartLine: 2, // one-based -- the line 'y = 2' sits on.
+                editorEndLine: 2,
+                startCharacter: 1,
+                endCharacter: 1
+            }]
+        });
+
+        const uri = URI.file('/proj/switch-debounced-to-onsave.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\nz = 3\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        await builder.update([uri], []);
+
+        let document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        let bbjDiagnostics = (document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjDiagnostics).toHaveLength(1);
+        expect(bbjDiagnostics[0].range.start.line).toBe(1);
+
+        setCompilerTrigger('on-save');
+
+        // Typing arms no compiler check under on-save; the kept verdict from before the switch
+        // stays, re-placed on its shifted line.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem inserted\n')]);
+        await builder.update([uri], []);
+
+        document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        bbjDiagnostics = (document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjDiagnostics).toHaveLength(1);
+        expect(bbjDiagnostics[0].range.start.line).toBe(2);
+    });
+
+    test('debounced bbjcpl fallback result, then switch to on-save, then type: the BBjCPL error stays until the next save', async () => {
+        const { shared, BBj, interopService, client, builder, privates } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/switch-debounced-fallback-to-onsave.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\nz = 3\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        // Settles the open-armed cycle (empty compile), then establishes a real, Validated
+        // Langium baseline -- the same two-step setup bbj-cpl-fallback-dedup.test.ts's own
+        // "debounced, file saved" test uses, so the interesting cycle below publishes directly
+        // onto document.diagnostics instead of only reaching sendDiagnosticsToClient.
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        await builder.update([uri], []);
+        await vi.advanceTimersByTimeAsync(600);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(document.state).toBe(DocumentState.Validated);
+
+        // A save under debounced arms nothing directly, but records the version; a rebuild (e.g.
+        // another file's save) is what actually runs the scripted compile here.
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(2, 'Syntax error: debounced fallback probe')]);
+        client.save(uriString);
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(500);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect((document.diagnostics ?? []).filter(d => d.source === 'BBjCPL')).toHaveLength(1);
+
+        setCompilerTrigger('on-save');
+        client.change(uriString, 3, [insertTextAt(0, 0, 'rem inserted\n')]);
+        await builder.update([uri], []);
+
+        const onShiftedLine = (document.diagnostics ?? []).filter(d => d.source === 'BBjCPL' && d.range.start.line === 3);
+        expect(onShiftedLine).toHaveLength(1);
+    });
+
+    test('on-save kept errors, then switch to debounced: a rebuild keeps them, the next edit keeps them until its own check replaces them, and typing afterward behaves like steady-state debounced', async () => {
+        const { shared, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: [],
+                message: 'on-save kept error',
+                editorStartLine: 3, // one-based -- the 'z = 3' line, never edited below.
+                editorEndLine: 3,
+                startCharacter: 1,
+                endCharacter: 1
+            }]
+        });
+
+        const uri = URI.file('/proj/switch-onsave-to-debounced.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\nz = 3\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        await builder.update([uri], []);
+
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+        expect(getKeptCheck(uri)?.storedUnderOnSave).toBe(true);
+
+        setCompilerTrigger('debounced');
+
+        // A rebuild (the settings-change reload) -- builder.update() alone is the rebuild;
+        // runBbjcplForDocuments' own "the trigger just switched" guard (reached from inside
+        // buildDocuments) arms nothing for it, and the kept error from before the switch stays
+        // through this rebuild's own Langium validation.
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+
+        // The next edit (on an unrelated line, so the kept diagnostic's own line is untouched)
+        // arms a debounced cycle, but the kept error stays visible in validation until that
+        // check's own result arrives.
+        interopService.scriptParseProgram({ errors: [] });
+        client.change(uriString, 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+        expect(getKeptCheck(uri)?.storedUnderOnSave).toBe(true);
+
+        // The debounced cycle settles: its own (empty) result replaces the kept error.
+        await vi.advanceTimersByTimeAsync(500);
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(0);
+        expect(getKeptCheck(uri)?.storedUnderOnSave).toBe(false);
+
+        // From here on, typing behaves exactly like steady-state debounced: a verdict's own
+        // diagnostics never show on the very next validation before its own debounce settles.
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: [],
+                message: 'steady-state debounced verdict',
+                editorStartLine: 1,
+                editorEndLine: 1,
+                startCharacter: 1,
+                endCharacter: 1
+            }]
+        });
+        client.change(uriString, 3, [replaceLines(0, 1, 'x = 3\n')]);
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(0);
+
+        await vi.advanceTimersByTimeAsync(500);
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+    });
+
+    test('steady-state debounced, no switch: typing after a verdict never shows the verdict\'s diagnostics on the next validation', async () => {
+        const { shared, interopService, client, builder } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: [],
+                message: 'a verdict about to be superseded by typing',
+                editorStartLine: 1,
+                editorEndLine: 1,
+                startCharacter: 1,
+                endCharacter: 1
+            }]
+        });
+
+        const uri = URI.file('/proj/steady-state-debounced.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        await builder.update([uri], []);
+
+        let document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+        expect(getKeptCheck(uri)?.storedUnderOnSave).toBe(false);
+
+        client.change(uriString, 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await builder.update([uri], []);
+
+        document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(0);
+    });
+
+    test('a switch to off clears every kept check and change log, and validation shows Langium diagnostics only', async () => {
+        const { shared, interopService, client, builder, privates } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram({
+            errors: [{
+                categories: [],
+                message: 'about to be cleared by off',
+                editorStartLine: 1,
+                editorEndLine: 1,
+                startCharacter: 1,
+                endCharacter: 1
+            }]
+        });
+
+        const uri = URI.file('/proj/switch-to-off.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        await builder.update([uri], []);
+        expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(1);
+        expect(getKeptCheck(uri)).toBeDefined();
+
+        setCompilerTrigger('off');
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+
+        expect(getKeptCheck(uri)).toBeUndefined();
+        expect(getVerdictState(uri)).toBeUndefined();
+        expect((document.diagnostics ?? []).some(d => d.source === BBJ_PARSER_SOURCE)).toBe(false);
+    });
+
+    test('close: the document\'s kept check and change log are gone; reopening under on-save runs one open check', async () => {
+        const { shared, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/close-forgets-kept-check.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+        expect(getKeptCheck(uri)).toBeDefined();
+
+        // Forces BBjDocumentValidator's lazy instantiation (its constructor registers the
+        // onDidClose subscription that forgets a closed document's kept check) -- nothing else in
+        // this test reaches a real validation otherwise.
+        await builder.update([uri], []);
+
+        client.close(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(getKeptCheck(uri)).toBeUndefined();
+
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('order independence: a verdict cycle and a Langium validation of the same text, in either order, end with deep-equal document.diagnostics', async () => {
+        const scriptedError: ParseError = {
+            categories: ['SyntaxError'],
+            message: 'order-independence mode-switch verdict',
+            editorStartLine: 1,
+            editorEndLine: 1,
+            startCharacter: 1,
+            endCharacter: 3,
+        };
+        const text = 'x = 1\ny = 2\n';
+
+        async function runVerdictFirst(): Promise<Diagnostic[]> {
+            const { shared, interopService, client, builder } = createHarness();
+            setCompilerTrigger('debounced');
+            interopService.scriptParseProgram({ errors: [scriptedError] });
+            const uri = URI.file('/proj/order-independence-verdict-first.bbj');
+            addWorkspaceDocument(shared, uri, text);
+
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            client.open(uri.toString(), 1, text);
+            await vi.advanceTimersByTimeAsync(600);
+            await builder.update([uri], []);
+
+            const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+            return document.diagnostics ?? [];
+        }
+
+        async function runLangiumFirst(): Promise<Diagnostic[]> {
+            const { shared, interopService, client, builder } = createHarness();
+            setCompilerTrigger('debounced');
+            interopService.scriptParseProgram({ errors: [scriptedError] });
+            const uri = URI.file('/proj/order-independence-langium-first.bbj');
+            addWorkspaceDocument(shared, uri, text);
+
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            client.open(uri.toString(), 1, text);
+            await builder.update([uri], []);
+            await vi.advanceTimersByTimeAsync(600);
+            await flushRealMacrotask();
+            await flushRealMacrotask();
+
+            const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+            return document.diagnostics ?? [];
+        }
+
+        const verdictFirst = await runVerdictFirst();
+        const langiumFirst = await runLangiumFirst();
+
+        expect(verdictFirst.length).toBeGreaterThan(0);
+        expect(langiumFirst).toEqual(verdictFirst);
     });
 });
