@@ -21,7 +21,7 @@ from grammar and validator fixes, a new `parseProgram` endpoint in `bbj-ls` (BBj
 later) that feeds live compiler diagnostics while you type, and a reconciliation layer that
 leaves one set of errors. Against an older or unreachable BBj, behaviour is exactly that of
 0.16.x. Phase 105 made the live diagnostics usable on large workspaces (58.9 s → 5.3 s in VS
-Code, 66 s → 6 s in IntelliJ). The code is on PR #691, which lands on `main` as one piece.
+Code, 66 s → 6 s in IntelliJ). The code landed on `main` as one piece via PR #691 (2026-09-24).
 The `bbj-ls` endpoint is on BASIS GitLab `feat/689-parse-program-endpoint`. Phase artifacts
 for 98-105 are archived under `.planning/milestones/v4.5-phases/` (tracked, no embargo). No
 release has been cut yet.
@@ -80,36 +80,21 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Next Milestone Goals
+## Current Milestone: v4.6 User-Facing Bug Burn-down
 
-Not yet defined — start with `/gsd-new-milestone`. Candidates:
+**Goal:** Fix what still bothers BBj developers in VS Code and IntelliJ — minimal scope, release soon.
 
-- **Release:** merge PR #691 and cut a release carrying v4.5, together with the `bbj-ls`
-  merge request that ships `parseProgram` with BBj 26.03.
-- **Conformance follow-up:** the v4.5 exit measurement, its residual list-A, A2 and B entries
-  and the next baseline are in
-  `.planning/milestones/v4.5-phases/104-conformance-measurement-milestone-exit/104-CONFORMANCE.md`.
-- **v4.5 carried debt:** the live parse still waits on the shared connection's circuit breaker
-  (105 WR-01, todo). The use-before-assignment check throws on a reference with no symbol
-  (todo). Verdict state is never cleared for deleted files (103 WR-01). Open review warnings
-  remain in 98, 99, 100 and 104, and phases 101 and 104 have no SECURITY.md. The `bbj-ls`
-  hardening findings are tracked in that repository.
+**Target features:**
+- A real `on-save` compiler trigger (#696): while typing only the language server's own validation runs; the compiler check runs on open and on save, and its errors stay until the next save. IntelliJ gets the trigger setting too; the docs recommend `on-save` instead of `off` for large workspaces. Default stays `debounced`.
+- No more line-break false alarms from the single-line IF/ELSE balance rule on valid code.
+- IntelliJ notices a lost language-server connection (crash detection), and the status log prints the real previous status — both together.
+- The use-before-assignment check no longer throws and silently skips a file.
+- Completion and type correctness: static-only members after a fully-qualified Java class (#577), the right overload's return type (#556), and completion inside class method bodies (#561, measure the breadth first).
+- Less cold-start interop work: no backend lookups for primitive/array types (#660), nested classes resolved once (#659).
+- The live parse no longer waits on the shared interop connection's circuit breaker.
+- The bbjcpl fallback path applies the diagnostic hierarchy after merging bbjcpl errors (#522 remainder).
 
-Candidates carried out of v4.4:
-
-- **IntelliJ server lifecycle:** make a lost language-server connection visible to crash
-  detection (todo, severity major — the Phase 97 attempt was reverted), and fix the stale
-  previous status in the transition log together with it. Upstream LSP4IJ #1672/#1673 bear on
-  the design.
-- **Phase 97 review follow-ups:** the Node.js download-progress fix is partial for responses
-  without `Content-Length`; three new source guards are comment-unaware.
-- **Test harness:** `linking.test.ts`'s 11 live-interop failures (root cause: the block runs
-  against a hermetic test double) and the bare-TCP `shouldRunBBjTests()` gate.
-- **Deferred since v4.3:** diagnostics and completion accuracy (#522, #561/#578, #577, #556,
-  #527, #526, #466); the remaining IntelliJ parity items (#634, #631); onboarding and docs
-  (#476, #385, #595, #601, #108 follow-up); SETOPTS block discoverability UX (#666); the
-  UAT-log issues #659-#662; CI/dependency hygiene and the tech debt listed in MILESTONES.md.
-- **Release engineering:** the two `manual-release.yml` publish jobs still run in parallel.
+Already handled outside the milestone: #688 (extensionless USE target crashed the server) — PR #698.
 
 ## Requirements
 
@@ -379,8 +364,16 @@ Candidates carried out of v4.4:
 
 ### Active
 
-None — the next milestone defines them (`/gsd-new-milestone`). v4.5's 32 requirements shipped
-and are listed under Validated above (archive: `.planning/milestones/v4.5-REQUIREMENTS.md`).
+v4.6 User-Facing Bug Burn-down — see `.planning/REQUIREMENTS.md` for the REQ-IDs.
+
+- [ ] Compiler trigger `on-save` mode in both IDEs (#696)
+- [ ] Line-break validation false alarms on single-line IF/ELSE
+- [ ] IntelliJ crash detection for a lost language-server connection, with the status-log fix
+- [ ] Use-before-assignment check survives a reference without a symbol
+- [ ] Completion/type correctness (#577, #556, #561)
+- [ ] Interop cold-start lookups (#660, #659)
+- [ ] Live parse independent of the shared connection's breaker
+- [ ] Diagnostic hierarchy on the bbjcpl fallback path (#522)
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -409,7 +402,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.5 Compiler Conformance shipped 2026-09-24 (Phases 98-105, 44 plans, 32/32 requirements); 22 milestones shipped. The v4.5 code is on PR #691, not yet on `main`, and no release has been cut since 0.16.0. v4.5 changed 81 files outside `.planning/` (+8,974 / −278): `bbj-vscode/src` +1,989 / −180, tests +6,813. Whole-suite vitest showed 2,507 passed, 0 failed and 63 skipped at the 104 close, and the IntelliJ suite was green. Live compiler diagnostics need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step. Next milestone not yet defined.
+**Current state:** v4.5 Compiler Conformance shipped 2026-09-24 (Phases 98-105, 44 plans, 32/32 requirements); 22 milestones shipped. The v4.5 code is on `main` via PR #691; no release has been cut since 0.16.0. v4.5 changed 81 files outside `.planning/` (+8,974 / −278): `bbj-vscode/src` +1,989 / −180, tests +6,813. Whole-suite vitest showed 2,507 passed, 0 failed and 63 skipped at the 104 close, and the IntelliJ suite was green. Live compiler diagnostics need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step. v4.6 User-Facing Bug Burn-down started 2026-09-24.
 
 **Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
@@ -648,4 +641,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-24 after v4.5 milestone*
+*Last updated: 2026-09-24 after starting milestone v4.6*

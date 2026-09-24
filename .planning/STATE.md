@@ -1,19 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.5
-milestone_name: Compiler Conformance (Phases 98-105) — SHIPPED 2026-09-24
-status: Awaiting next milestone
-stopped_at: Milestone v4.5 completed and archived; next milestone not yet defined
-last_updated: "2026-09-24T04:46:27.175Z"
+milestone: v4.6
+milestone_name: User-Facing Bug Burn-down
+status: planning
+last_updated: "2026-09-24T06:46:29.368Z"
 last_activity: 2026-09-24
-last_activity_desc: Milestone v4.5 completed and archived
-state_head: d81987364e09bbfad54a5a9b9f054db0868d7b06
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 44
-  completed_plans: 44
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -32,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 ## Current Position
 
-Phase: Milestone v4.5 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-24 — Milestone v4.5 completed and archived
+Status: Defining requirements
+Last activity: 2026-09-24 — Milestone v4.6 started
 
 ### v4.5 milestone map (shipped 2026-09-24)
 
@@ -164,7 +161,6 @@ the Phase 98 one):
 - **Crash detection cannot see a lost language-server connection.** LSP4IJ detaches the client before it publishes `stopped`; the Phase 97 fix failed hand UAT and was reverted. Accepted `86-05-REVIEW` WR-01 is the same defect. Upstream: LSP4IJ #1672/#1673.
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
-
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
