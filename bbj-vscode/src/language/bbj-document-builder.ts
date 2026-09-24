@@ -850,7 +850,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     if (liveOutcome?.kind === 'unavailable') {
                         clearAllVerdictStates();
                     }
-                    if (!stillCurrent) {
+                    if (getCompilerTrigger() === 'on-save') {
+                        // Under on-save a save's own compile still completes even when the user
+                        // typed after the save (the same same-text-document-object relaxation the
+                        // verdict branch above applies), but a newer on-save cycle for this
+                        // document that has already started still supersedes this one entirely.
+                        if (!sameTextDocument || supersededOnSave) {
+                            return;
+                        }
+                    } else if (!stillCurrent) {
                         // A newer cycle for the newer text is already in flight or has already
                         // finished, and may already have published its own verdict: no further
                         // state change for this document beyond the connection-wide clear above,
@@ -873,28 +881,65 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // is the whole 0.16.x-shaped base bbjcpl merges or reconciles onto.
                     const baseline = this.latestLangiumBaseline(document);
                     const base = applyConfiguredDiagnosticHierarchy(baseline.diagnostics);
-                    if (cplDiags.length === 0) {
-                        next = base;
-                    } else if (await this.checkedTextIsOnDisk(document, versionBeforeRequest, checkedText)) {
-                        // The on-disk check runs only once bbjcpl has actually reported
-                        // something, and only after the compile itself -- see
-                        // checkedTextIsOnDisk's own doc comment for what "on disk" proves here.
+
+                    // The on-disk check runs only once bbjcpl has actually reported something,
+                    // and only after the compile itself -- see checkedTextIsOnDisk's own doc
+                    // comment for what "on disk" proves here. Reused below both for the
+                    // debounced-unchanged publish selection and for what this save's kept check
+                    // remembers as already accounted for.
+                    const onDisk = cplDiags.length > 0
+                        && await this.checkedTextIsOnDisk(document, versionBeforeRequest, checkedText);
+                    let reconciledWithFallback: Diagnostic[] | undefined;
+                    let fallbackSeen: ReadonlySet<string> = new Set<string>();
+                    if (onDisk) {
                         // No second pass through applyConfiguredDiagnosticHierarchy: that would
                         // switch on the hierarchy's own BBjCPL-suppresses-parse-errors rule,
                         // which this line-scoped dedup must never trigger on its own.
-                        next = reconcileWithFallbackCheck(
+                        const reconciled = reconcileWithFallbackCheck(
                             base,
                             cplDiags,
                             textLineLookup(baseline.validatedText ?? checkedText),
                             textLineLookup(checkedText)
-                        ).diagnostics;
-                    } else {
-                        // The checked text is not provably on disk (unsaved edits, an unreadable
-                        // file, or bytes that decode to different text) -- merge exactly as
-                        // before this phase, never hiding a real error behind a check of
-                        // different text.
-                        next = mergeDiagnostics(base, cplDiags);
+                        );
+                        reconciledWithFallback = reconciled.diagnostics;
+                        fallbackSeen = reconciled.seen;
                     }
+
+                    // Stored in every mode except 'off' (which this callback is never armed
+                    // under), mirroring the verdict branch above -- read only under 'on-save', but
+                    // keeping it under 'debounced' too means a later runtime switch to 'on-save'
+                    // keeps showing this save's errors instead of starting from nothing. An empty
+                    // cplDiags still stores an empty kept check, clearing whatever the previous
+                    // save's kept fallback result was.
+                    let keptCheck: KeptCheck | undefined;
+                    if (getCompilerTrigger() !== 'off') {
+                        keptCheck = {
+                            kind: 'fallback',
+                            version: versionBeforeRequest,
+                            diagnostics: cplDiags,
+                            seen: fallbackSeen
+                        };
+                        setKeptCheck(document.uri, keptCheck);
+                        pruneContentChangesThrough(document.uri, versionBeforeRequest);
+                    }
+
+                    next = getCompilerTrigger() === 'on-save'
+                        ? composeOnSaveDiagnostics({
+                            langiumDiagnostics: baseline.diagnostics,
+                            validatedText: baseline.validatedText,
+                            liveText: document.textDocument.getText(),
+                            kept: keptCheck!,
+                            changesSinceCheck: contentChangesSince(document.uri, versionBeforeRequest, document.textDocument.version)
+                        })
+                        : cplDiags.length === 0
+                            ? base
+                            : onDisk
+                                ? reconciledWithFallback!
+                                // The checked text is not provably on disk (unsaved edits, an
+                                // unreadable file, or bytes that decode to different text) --
+                                // merge exactly as before this phase, never hiding a real error
+                                // behind a check of different text.
+                                : mergeDiagnostics(base, cplDiags);
                 }
 
                 // A single publish covering whichever branch above ran -- see
