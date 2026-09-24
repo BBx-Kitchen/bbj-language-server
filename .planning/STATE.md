@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 107
 current_phase_name: Validation False Alarms & Silent Skips
 status: executing
-stopped_at: Completed 107-02-PLAN.md
-last_updated: "2026-09-24T20:34:51.296Z"
+stopped_at: Completed 107-03-PLAN.md
+last_updated: "2026-09-24T21:25:28.040Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 107 execution started
-state_head: cf280654f9e810985c486739baef00c833186ddb
+state_head: 5084f0356a87b0ae22a5973118e17ccdda5505c8
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 25
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 107 (Validation False Alarms & Silent Skips) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 107 execution started
 
@@ -110,6 +110,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 106 P07 | 2.5h | 3 tasks | 1 files |
 | Phase 107 P01 | 12min | 2 tasks | 3 files |
 | Phase 107 P02 | 11min | 2 tasks | 3 files |
+| Phase 107-validation-false-alarms-silent-skips P03 | 49min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ decisions:
 - [Phase 107]: Phase 107-01: the colon-continuation blank-message line-break residue needed no separate fix -- the same nested-ELSE counter repair also clears it, since the lexer joins colon-continued lines into one physical line before the walker runs
 - [Phase 107]: Phase 107-02: the '# = 1' control test asserts message count and each message's own stable text/prefix rather than a literal snapshot, since the base-tree probe for that shape produced a >6000-alternative Chevrotain token listing unrelated to this fix
 - [Phase 107]: Phase 107-02: guarded all 8 .symbol reads in check-variable-scoping.ts plus 1 in bbj-scope-local.ts inline with ?. rather than a shared type-guard helper, per D-06
+- [Phase 107]: check-unknown-java-member.ts exempts a class-reference member used as the receiver of a further member access (Tree.Kind.CLASS), since java-interop's JavaClass model carries no nested-class membership data — Found by the whole-suite run flagging examples/javadoc/genjdoc.bbj; fixed before committing Task 2
+- [Phase 107]: The live BBjAPI() functional test reindexes the synthetic classpath document via IndexManager.updateContent after loadImplicitImports, since this bare test harness has no real workspace folder for initializeWorkspace to load classes from before the initial (empty) build — documentBuilder.update() cannot be used instead -- it always re-reads a document's source from disk, and the synthetic classpath document has none
 
 ### Tech Debt
 
@@ -215,8 +218,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T20:34:45.331Z
-Stopped at: Completed 107-02-PLAN.md
+Last session: 2026-09-24T21:25:11.165Z
+Stopped at: Completed 107-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
