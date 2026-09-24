@@ -12,6 +12,7 @@ import {
     isCastExpression,
     isConstructorCall,
     isJavaClass,
+    isMemberCall,
     isMethodCall,
     isStringLiteral,
     isSymbolRef,
@@ -142,6 +143,24 @@ export function checkUnknownJavaMember(memberCall: MemberCall, accept: Validatio
     }
     const fieldMatch = receiverType.fields.some(f => (!isClassRef || f.isStatic) && f.name.toLowerCase() === memberTextLower);
     if (fieldMatch) {
+        return;
+    }
+    // A nested class reference (e.g. `Tree.Kind`, a real Java member class) is not a method or
+    // field, and today's scope provider does not offer it -- so it is always an unresolved
+    // linking Warning already, never an Error this check should add. Reporting it as an unknown
+    // member would be a false positive on legitimate Java syntax this check has no business
+    // judging -- report only what is certain to be missing.
+    const nestedClassMatch = receiverType.classes.some(c => c.name.toLowerCase() === memberTextLower);
+    if (nestedClassMatch) {
+        return;
+    }
+    // A class-reference member used as the receiver of a further member access (`Tree.Kind.CLASS`)
+    // might be a real Java nested class or enum -- java-interop's JavaClass model carries no
+    // nested-class membership data at all (`classes` above is always empty for a reflected
+    // class), so this shape is genuinely unknowable from here, not a confirmed-missing member.
+    // Nested types are only ever reached through a class reference, never an instance, so this
+    // stays scoped to isClassRef.
+    if (isClassRef && isMemberCall(memberCall.$container) && memberCall.$container.receiver === memberCall) {
         return;
     }
 
