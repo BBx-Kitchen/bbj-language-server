@@ -29,6 +29,7 @@ import {
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
+import { BBjServiceRegistry } from './bbj-service-registry.js';
 
 /**
  * False for a uri whose open text document carries the `bbx-config` language id — regardless of
@@ -770,6 +771,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     if (docFileData.text.startsWith('<<bbj>>')) {
                         logger.debug(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
                         continue;
+                    }
+                    // PREFIX programs often have no .bbj extension (#688)
+                    if (this.serviceRegistry instanceof BBjServiceRegistry) {
+                        this.serviceRegistry.registerUseTarget(docFileData.uri);
                     }
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
                     if (!langiumDocuments.hasDocument(document.uri)) {
