@@ -5,7 +5,8 @@ REM IF...THEN RETURN...FI, a nested single-line IF/FI followed on the same line
 REM by the outer ELSE, a nested single-line IF/ELSE/FI followed on the same line
 REM by the outer ELSE, ELSE-only nesting with no inner end-of-IF, and the same
 REM nested one-liner continued over colon-prefixed lines, each in upper, lower
-REM and mixed case.
+REM and mixed case. Also protects a colon-continued ELSE-IF chain inside a
+REM DEF FN body with no explicit FI anywhere, closed only by FNEND.
 loopstart: IF flag THEN count = 1; GOTO loopstart
 loopstart2: if flag then count = 2; goto loopstart2
 LoopStart3: If flag Then count = 3; Goto loopstart3
@@ -33,3 +34,11 @@ if flag then
 If flag Then
 : If other Then count = 37 Else count = 38 Fi
 : Else count = 39 Fi
+
+def fnwidgetlabel$(qty)
+if len(qty)=4 then
+: return str(qty:"9999")
+: else if len(qty)=3 then
+: return str(qty:"999")
+: else return qty
+fnend

@@ -2,7 +2,7 @@ import { AstNode, AstUtils, CstNode, GrammarUtils, TextDocument, ValidationAccep
 import { Range } from 'vscode-languageserver-types';
 import { findLeafNodeAtOffset } from "../bbj-validator.js";
 import { LINE_BREAK_DIAGNOSTIC_CODE } from "../bbj-diagnostic-reconciliation.js";
-import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
+import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isDefReturn, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
 
 type LineBreakMask = {
     before: string[] | boolean;
@@ -280,7 +280,17 @@ function previousStatement(statement: Statement): Statement | undefined {
         return previousStatement(container);
     } else {
         if (statement.$containerIndex && statement.$containerIndex > 0) {
-            const prevSibling = getSiblings(container)[statement.$containerIndex - 1];
+            const siblings = getSiblings(container);
+            // A DEF FN body mixes RETURN (DefReturn) in with ordinary Statement siblings
+            // (DefFunctionStatement = DefReturn | Statement), so DefReturn is never a
+            // Statement itself. Skip transparently past any same-index run of RETURNs to
+            // find the nearest real Statement sibling -- a same-line RETURN is neither an
+            // opener nor a closer for the IF/ELSE/FI balance walk and must not truncate it.
+            let index = statement.$containerIndex - 1;
+            while (index >= 0 && isDefReturn(siblings[index])) {
+                index--;
+            }
+            const prevSibling = index >= 0 ? siblings[index] : undefined;
             if (isCompoundStatement(prevSibling)) {
                 // last child statement in compound statement
                 return prevSibling.statements[prevSibling.statements.length - 1];
