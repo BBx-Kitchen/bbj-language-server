@@ -8,7 +8,8 @@ import { initializeWorkspace } from './test-helper.js';
 import {
     UNKNOWN_JAVA_MEMBER_CODE,
     hasCertainReceiverType,
-    isFullyResolvedJavaClass
+    isFullyResolvedJavaClass,
+    isUniversalObjectReceiver
 } from '../src/language/validations/check-unknown-java-member.js';
 import {
     applyDiagnosticHierarchy,
@@ -175,6 +176,23 @@ describe("Receivers that keep today's diagnostics", () => {
         const document = await validate('declare java.lang.String[] arr!\nx! = arr!.length\n');
         expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('length'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
+
+    test('isUniversalObjectReceiver is true only for java.lang.Object, never for another resolved class', () => {
+        const objectClass = {
+            $type: 'JavaClass',
+            name: 'Object',
+            packageName: 'java.lang',
+            methods: [],
+            fields: []
+        };
+        expect(isUniversalObjectReceiver(objectClass)).toBe(true);
+
+        const stringClass = services.BBj.java.JavaInteropService.getResolvedClass('java.lang.String');
+        expect(isUniversalObjectReceiver(stringClass)).toBe(false);
+
+        const namedObjectSubclass = { $type: 'JavaClass', name: 'Object', packageName: 'com.example', methods: [], fields: [] };
+        expect(isUniversalObjectReceiver(namedObjectSubclass)).toBe(false);
     });
 });
 

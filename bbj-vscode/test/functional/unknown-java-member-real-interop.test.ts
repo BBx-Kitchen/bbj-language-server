@@ -100,4 +100,15 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
         const document = await validate('api! = BBjAPI()\nsg! = api!.getSysGui()\n');
         expect((document.diagnostics ?? []).some(d => d.message.includes('getSysGui'))).toBe(false);
     }, 60000);
+
+    test.runIf(run)('a java.lang.Object receiver never gets the new Error (an array is legitimately reachable through it)', async () => {
+        // Found via the live-backend corpus review: a variable declared as the universal
+        // java.lang.Object supertype can legitimately hold an array at runtime (Java's own
+        // array-to-Object covariance), whose own .length pseudo-field Object's own member list
+        // has no record of -- no member call on a bare Object receiver is ever certain to be
+        // missing. The test double has no fake java.lang.Object class to reproduce this against,
+        // so this guard can only be proven end to end here.
+        const document = await validate('declare java.lang.Object o!\nx! = o!.length\n');
+        expect(unknownMemberDiagnostics(document).some(d => d.message.includes('length'))).toBe(false);
+    }, 60000);
 });
