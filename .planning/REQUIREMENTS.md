@@ -13,7 +13,7 @@
 - [x] **TRIG-01**: With `bbj.compiler.trigger` set to `on-save`, typing in a BBj file starts no live parse and no bbjcpl run; the language server's own validation keeps running as before
 - [ ] **TRIG-02**: With `on-save`, saving a BBj file runs exactly one compiler check of the saved text, without debounce — the live parse first, bbjcpl when the live parse is unavailable — in both VS Code and IntelliJ
 - [x] **TRIG-03**: With `on-save`, opening a BBj file runs one compiler check, so a freshly opened file shows its compiler errors before the first save
-- [ ] **TRIG-04**: With `on-save`, the compiler errors from the last check stay visible while the user types, until the next save replaces them; they are not dropped or shown on the wrong line by the diagnostic reconciliation
+- [x] **TRIG-04**: With `on-save`, the compiler errors from the last check stay visible while the user types, until the next save replaces them; they are not dropped or shown on the wrong line by the diagnostic reconciliation
 - [x] **TRIG-05**: `debounced` (still the default) and `off` behave exactly as before
 - [ ] **TRIG-06**: IntelliJ users can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the chosen value from startup and after a change
 - [x] **TRIG-07**: The VS Code setting description and both IDE feature docs describe the three modes as implemented and recommend `on-save` (instead of `off`) for large workspaces
@@ -25,7 +25,7 @@
 
 ### Diagnostics
 
-- [ ] **DIAG-01**: When the live parse is unavailable and bbjcpl reports an error, a redundant language-server parse error for the same finding is suppressed, as the diagnostic hierarchy already does on the live-parse path (#522)
+- [x] **DIAG-01**: When the live parse is unavailable and bbjcpl reports an error, a redundant language-server parse error for the same finding is suppressed, as the diagnostic hierarchy already does on the live-parse path (#522)
 
 ### IntelliJ server lifecycle
 
@@ -71,13 +71,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIG-01 | Phase 106 | Complete |
 | TRIG-02 | Phase 106 | Pending |
 | TRIG-03 | Phase 106 | Complete |
-| TRIG-04 | Phase 106 | Pending |
+| TRIG-04 | Phase 106 | Complete |
 | TRIG-05 | Phase 106 | Complete |
 | TRIG-06 | Phase 106 | Pending |
 | TRIG-07 | Phase 106 | Complete |
 | VAL-01 | Phase 107 | Pending |
 | VAL-02 | Phase 107 | Pending |
-| DIAG-01 | Phase 106 | Pending |
+| DIAG-01 | Phase 106 | Complete |
 | LIFE-01 | Phase 108 | Pending |
 | LIFE-02 | Phase 108 | Pending |
 | COMP-01 | Phase 109 | Pending |

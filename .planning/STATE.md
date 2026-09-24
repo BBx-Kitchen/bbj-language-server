@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 106
 current_phase_name: On-Save Compiler Check in Both IDEs
 status: executing
-stopped_at: Completed 106-05-PLAN.md
-last_updated: "2026-09-24T13:03:31.937Z"
+stopped_at: Completed 106-06-PLAN.md
+last_updated: "2026-09-24T14:45:58.577Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 106 execution started
-state_head: b72319da88cc1e878ac2e8d801134579c040e166
+state_head: 9117c198d0d388e0f588bed70e31708af0cb6811
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 106 (On-Save Compiler Check in Both IDEs) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 106 execution started
 
@@ -106,6 +106,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 106 P03 | 9min | 3 tasks | 10 files |
 | Phase 106 P04 | 15min | 3 tasks | 5 files |
 | Phase 106 P05 | 105min | 3 tasks | 6 files |
+| Phase 106 P06 | 95min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ decisions:
 - [Phase 106]: Phase 106 Plan 03: IntelliJ's Compiler check dropdown followed the #571 compilerOutputDirectory precedent exactly -- CompilerInitOptions holds the wire constants/normalization, BbjSettingsComponent stays free of BbjSettings references, apply() stores the choice before the debounced restart
 - [Phase 106]: Phase 106-04: reconcileWithFallbackCheck never downgrades a syntax complaint -- a fallback result only ever drops it outright (matched line, overlapping bbjcpl diagnostic) or leaves it untouched, since it is a check of the file on disk, not a live-parser verdict
 - [Phase 106]: Phase 106-04: checkedTextIsOnDisk tries the last-saved-version record first, then a disk read -- covers a save-triggered check in every encoding, and an open/debounced cycle with no unsaved edits, while any mismatch still merges exactly as before this phase
+- [Phase 106]: Phase 106-06: a per-document checkSequence counter plus a widened verdict-branch entrance condition let an on-save save's verdict survive typing and be superseded only by a genuinely newer save, whichever resolves last
+- [Phase 106]: Phase 106-06: KeptCheck.storedUnderOnSave (set from the trigger at store time) lets a runtime switch away from on-save keep showing a file's current compiler errors under debounced until that file's own first debounced check replaces them
+- [Phase 106]: Phase 106-06: two plan-04 bbj-cpl-fallback-dedup tests were updated from their old merge-as-before expectation to the new on-save behavior (kept and shown, not merged) since this plan's kept-check wiring deliberately supersedes that old rule for on-save
 
 ### Tech Debt
 
@@ -203,8 +207,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T13:03:31.901Z
-Stopped at: Completed 106-05-PLAN.md
+Last session: 2026-09-24T14:45:58.546Z
+Stopped at: Completed 106-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
