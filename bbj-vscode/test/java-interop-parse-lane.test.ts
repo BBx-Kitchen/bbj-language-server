@@ -18,7 +18,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { initNotifications } from '../src/language/bbj-notifications.js';
 import { clearAllVerdictStates, getVerdictState, setVerdictState } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { InteropTransportError, isInteropTransportFailure, METHOD_NOT_FOUND } from '../src/language/java-interop.js';
+import {
+    INTEROP_BREAKER_INITIAL_COOLDOWN_MS, InteropTransportError, isInteropTransportFailure, METHOD_NOT_FOUND
+} from '../src/language/java-interop.js';
 import { BBjParserService } from '../src/language/bbj-parser-service.js';
 import { logger } from '../src/language/logger.js';
 import { createFakePeerServices } from './fake-interop-peer.js';
@@ -375,5 +377,197 @@ describe('the shared-connection fallback, the dedicated connection lifecycle, an
 
         parserService.isEnabled();
         expect(getVerdictState(uri)).toBeUndefined();
+    });
+});
+
+describe('breaker-open and half-open: the dedicated lane keeps answering independently of the shared connection', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+        initNotifications(null as unknown as Connection);
+        clearAllVerdictStates();
+    });
+
+    test('half-open: a parse started while the shared breaker is half-open resolves over the existing lane with no new socket attempt', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        // Open the breaker: the shared connection's own first attempt is refused.
+        interop.refusedSocketAttempts.add(1);
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        let warmCaught: unknown;
+        try {
+            await rawClassAccess.getRawClass('test.Warm');
+        } catch (e) {
+            warmCaught = e;
+        }
+        expect(isInteropTransportFailure(warmCaught)).toBe(true);
+
+        // A parse opens the dedicated lane, independent of the still-broken shared connection.
+        await interop.parseProgram({ text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] });
+        const attemptsAfterLaneOpen = interop.socketAttempts;
+
+        // Advance past the cooldown and start a class lookup whose own socket hangs mid-connect:
+        // this becomes the single half-open probe on the shared connection.
+        await vi.advanceTimersByTimeAsync(INTEROP_BREAKER_INITIAL_COOLDOWN_MS + 1);
+        interop.connectDelayMs = 10000;
+        const probePromise = rawClassAccess.getRawClass('test.Probe').catch(() => { /* settled during cleanup below */ });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(interop.socketAttempts).toBe(attemptsAfterLaneOpen + 1);
+
+        // A parse started now — while the shared connection is half-open, still connecting —
+        // must resolve over the already-open lane, with no new socket attempt.
+        const result = await interop.parseProgram({ text: 'x = 2', canonicalName: '/proj/a.bbj', version: '2', prefixes: [], workspaceRoots: [] });
+        expect(result.errors).toEqual([]);
+        expect(interop.socketAttempts).toBe(attemptsAfterLaneOpen + 1);
+
+        // Cleanup: let the hung probe settle.
+        interop.dropConnection();
+        await vi.advanceTimersByTimeAsync(10000);
+        await probePromise;
+    });
+
+    test('two same-tick parses while the shared breaker is open share one dedicated socket and both resolve', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        interop.refusedSocketAttempts.add(1);
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        let warmCaught: unknown;
+        try {
+            await rawClassAccess.getRawClass('test.Warm');
+        } catch (e) {
+            warmCaught = e;
+        }
+        expect(isInteropTransportFailure(warmCaught)).toBe(true);
+
+        const [resultA, resultB] = await Promise.all([
+            interop.parseProgram({ text: 'a', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] }),
+            interop.parseProgram({ text: 'b', canonicalName: '/proj/b.bbj', version: '1', prefixes: [], workspaceRoots: [] })
+        ]);
+
+        expect(resultA.errors).toEqual([]);
+        expect(resultB.errors).toEqual([]);
+        // The refused shared attempt plus exactly one shared dedicated socket for both parses.
+        expect(interop.socketAttempts).toBe(2);
+        const parseRequests = interop.sentRequests.filter(r => r.method === 'parseProgram');
+        expect(parseRequests).toHaveLength(2);
+        expect(parseRequests[0].connectionId).toBe(parseRequests[1].connectionId);
+    });
+
+    test('a parse pending on a hung dedicated connection while the shared breaker is open rejects as a transport failure when that connection drops, bumping the generation', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        interop.refusedSocketAttempts.add(1);
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        let warmCaught: unknown;
+        try {
+            await rawClassAccess.getRawClass('test.Warm');
+        } catch (e) {
+            warmCaught = e;
+        }
+        expect(isInteropTransportFailure(warmCaught)).toBe(true);
+        const generationBefore = interop.connectionGeneration;
+
+        // The refused attempt never wraps a connection, so the dedicated lane opened next is the
+        // very first successfully wrapped connection.
+        interop.hungConnectionIds.add(1);
+        const pendingParse = interop.parseProgram({ text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(interop.socketAttempts).toBe(2);
+        expect(interop.sentRequests.filter(r => r.method === 'parseProgram')).toHaveLength(1);
+
+        interop.dropConnection(1);
+
+        let caught: unknown;
+        try {
+            await pendingParse;
+        } catch (e) {
+            caught = e;
+        }
+        expect(isInteropTransportFailure(caught)).toBe(true);
+        expect(interop.connectionGeneration).toBe(generationBefore + 1);
+    });
+
+    test('a real BBjParserService over the fake peer, with the shared breaker open: requestLiveParse still returns a verdict, and isEnabled() is true', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        interop.refusedSocketAttempts.add(1);
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        let warmCaught: unknown;
+        try {
+            await rawClassAccess.getRawClass('test.Warm');
+        } catch (e) {
+            warmCaught = e;
+        }
+        expect(isInteropTransportFailure(warmCaught)).toBe(true);
+
+        const parserService = new BBjParserService({
+            shared: { workspace: { WorkspaceManager: {} } },
+            java: { JavaInteropService: interop }
+        });
+
+        const uri = URI.file('/proj/breaker-open.bbj');
+        const document = {
+            uri,
+            textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
+        } as unknown as LangiumDocument;
+
+        const outcome = await parserService.requestLiveParse(document);
+        expect(outcome.kind).toBe('verdict');
+        expect(parserService.isEnabled()).toBe(true);
+    });
+
+    test('with the dedicated connection refused and the shared breaker open, a parse rejects with the circuit-open message, makes no socket attempt beyond the refused dedicated one, and requestLiveParse classifies it as failed', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        interop.refusedSocketAttempts.add(1); // the shared connection's own attempt: opens the breaker
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        let warmCaught: unknown;
+        try {
+            await rawClassAccess.getRawClass('test.Warm');
+        } catch (e) {
+            warmCaught = e;
+        }
+        expect(isInteropTransportFailure(warmCaught)).toBe(true);
+
+        interop.refusedSocketAttempts.add(2); // the dedicated lane's own attempt, also refused
+        warnSpy.mockClear();
+        const attemptsBefore = interop.socketAttempts;
+
+        const parserService = new BBjParserService({
+            shared: { workspace: { WorkspaceManager: {} } },
+            java: { JavaInteropService: interop }
+        });
+        const uri = URI.file('/proj/both-refused.bbj');
+        const document = {
+            uri,
+            textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
+        } as unknown as LangiumDocument;
+
+        const outcome = await parserService.requestLiveParse(document);
+        expect(outcome.kind).toBe('failed');
+        // Only the dedicated lane's own refused attempt was made; the shared fallback
+        // short-circuits on the still-open breaker without a further socket attempt.
+        expect(interop.socketAttempts).toBe(attemptsBefore + 1);
+
+        const warnLines = warnSpy.mock.calls.map(call => String(call[0]));
+        expect(warnLines.some(line => line.includes('could not open a dedicated parser connection'))).toBe(true);
+        expect(warnLines.some(line => line.includes('circuit open'))).toBe(true);
     });
 });
