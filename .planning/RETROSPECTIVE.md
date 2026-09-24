@@ -301,6 +301,82 @@
 
 ---
 
+## Milestone: v4.5 — Compiler Conformance
+
+**Shipped:** 2026-09-24
+**Phases:** 8 (98-105) | **Plans:** 44 (124 tasks) | **Sessions:** not tracked
+
+### What Was Built
+- Line-break and validation false alarms fixed at the lexer and validator (A2 267 → 22), with
+  a conformance-regression test harness and a synthetic fixture for every fixed construct.
+- Parser gaps closed at the grammar root (A 168 → 9): FIELD as a verb, `LEN=` split, `label`
+  as a name, IOLIST, empty-bracket whole arrays, comments after block terminators, keyword
+  names probed against `bbjcpl`, and all 92 `examples/` programs compile.
+- A `parseProgram` endpoint in the separate `bbj-ls` repository that runs BBj's own parser on
+  unsaved text, and a client that shows its errors live and falls back to 0.16.x behaviour.
+- Verdict reconciliation, so the compiler's errors and Langium's own checks give one set of
+  errors (B 658 → 31 of 1,210 with the endpoint).
+- Large-workspace responsiveness (issue #692, added mid-milestone): live diagnostics in 5-6 s
+  instead of about 60 s in both IDEs.
+- Exit measurement with the endpoint active, plus a leak guard over the public planning text.
+
+### What Worked
+- A numeric, corpus-based definition of done (A / A2 / B with gates) measured at every
+  phase boundary. Each phase knew whether it was finished, and regressions showed up per file.
+- Letting the compiler's own parser decide invalid code instead of hand-writing strict checks:
+  one endpoint moved B from 54 % to 2.6 %, which no amount of grammar tightening could have done.
+- Probing `bbjcpl` directly for keyword-as-name behaviour instead of guessing. It found `next`
+  broken despite the roadmap's claim, and it turned two risky mechanisms into evidence-backed
+  reverts.
+- Adding Phase 105 mid-milestone once live UAT exposed the large-workspace stall. The feature
+  shipped usable instead of shipping with a caveat.
+- Holding PR #691 until the whole milestone was done kept `main` free of a half-reconciled
+  diagnostics pipeline.
+
+### What Was Inefficient
+- Totals hid per-file churn: a parser fix unmasked validator A2 hits (99-02), and a custom
+  token swallowing its terminator produced new A2 flags (99-06). Only file-set diffs caught
+  them, and Phase 98's first B attribution was refuted per file.
+- The conformance harness overwrote `details.json` on every run, so before/after comparisons
+  needed a manual snapshot first.
+- Executors labelled three real BBjAPI test failures as "env noise" across three plans, and
+  only a run on the phase base in a scratch worktree settled it.
+- A lexer lookbehind (TABLE_DATA) matched inside identifiers while the suite stayed green.
+  Only a before/after parse probe found it.
+- The corpus-text leak guard had false negatives (truncated, backticked and partly quoted
+  excerpts), which needed a gap-closure plan (104-04) and a sweep of the whole milestone's
+  planning text.
+- Cross-repo work (`bbj-ls`) depended on a forwarded VS Code agent for GitLab pushes and a
+  hand-opened MR. It worked, but it was fragile.
+
+### Patterns Established
+- Conformance lists A / A2 / B with per-phase gates, measured locally against a private
+  corpus and never in CI. CI is protected by synthetic regression fixtures.
+- Judge conformance changes by file-set diff, never by totals; snapshot `details.json`
+  before every full run.
+- Lexer token lookbehinds are anchored to statement starts, and every lexer change is tested
+  with keyword-as-identifier cases.
+- Verdict-first reconciliation: an external authority's diagnostics win, overlapping local
+  complaints are downgraded to warnings rather than hidden, and a missing authority falls
+  back to the exact old behaviour, pinned by an equality test.
+- Regression gates compare against the phase base commit, not against a remembered baseline.
+
+### Key Lessons
+1. When an external authority exists (the compiler), put it in the loop instead of imitating
+   it. The imitation plateaus and the authority does not.
+2. Aggregate numbers hide opposite-signed per-file moves. Every measurement step needs a
+   file-level diff.
+3. A leak guard has to be tested against the ways text actually gets copied (truncated,
+   reformatted, partly quoted), not only against exact matches.
+4. "Environment noise" is a claim that needs the same evidence as a fix: reproduce it on the
+   base commit or treat it as a regression.
+
+### Cost Observations
+- Model mix: not tracked
+- Sessions: not tracked
+- Notable: 44 plans in 4 days (~11 plans/day), the fastest plan throughput so far. Phase 98
+  alone needed 10 plans because of gap-closure rounds driven by per-file conformance findings.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -312,6 +388,7 @@
 | v4.2 | n/a | 6 | Seam-plus-source-guard testing pattern; in-phase UAT gap-closure plans; fastest milestone (3 days) |
 | v4.3 | n/a | 9 | Shared-server-first composer layers; installed-artifact proof before UAT; milestone audit run again (no gaps) |
 | v4.4 | n/a | 5 | Fixes and consolidations grouped by subsystem; first tagged release through the verify-before-publish gate; a release-phase rework reverted after failing hand UAT; no milestone audit |
+| v4.5 | n/a | 8 | Corpus-measured conformance gates (A / A2 / B); the compiler's own parser in the loop via a cross-repo endpoint; a phase added mid-milestone; milestone audit run (no gaps) |
 
 ### Cumulative Quality
 
@@ -321,6 +398,7 @@
 | v4.2 | ~1,127 vitest + 504 JUnit | not measured at close | 0 new runtime dependencies (LSP4IJ pin 0.19.0 → 0.21.0, Gradle 8.14.5) |
 | v4.3 | 1,873 vitest + 865 JUnit | not measured at close | 0 new runtime dependencies |
 | v4.4 | 1,895 vitest + 1,101 JUnit | not measured at close | 0 new runtime dependencies (Gradle 9.7.1, IntelliJ Platform plugin 2.18.1, bundled Node.js v22.23.2) |
+| v4.5 | 2,507 vitest (63 skipped) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -336,3 +414,5 @@
    changing code — v4.3 Phase 88 spent two gap-closure rounds on a stale install.
 6. Evidence for an approval must be observed, not derived — v4.3's stale install and v4.4's
    hand-derived status trace both got a wrong conclusion approved by a human.
+7. Judge by per-item diffs, not totals — v4.5's conformance totals hid validator A2 hits
+   unmasked by parser fixes and a lexer token that swallowed its terminator.
