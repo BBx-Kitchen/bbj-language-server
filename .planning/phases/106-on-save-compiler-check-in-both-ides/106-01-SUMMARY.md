@@ -176,6 +176,7 @@ None - no external service configuration required.
 - `fake-text-document-connection.ts` and its `listenOnFakeConnection`/`insertTextAt`/`replaceLines` exports are ready for `106-02` through `106-07` to reuse for their own open/change/save-driven tests.
 - `TRIG-04` (the kept-verdict-across-edits diagnostic reconciliation) and `DIAG-01` (bbjcpl fallback dedup) are explicitly out of scope for this plan and land in `106-04`/`106-06`; `JINT-03` (parse-lane independence) lands in `106-02`; the IntelliJ setting and docs land in `106-03`/`106-07`.
 - A stray `git stash` entry remains in the repository (see Issues Encountered) -- harmless, but worth a manual `git stash drop` at the user's convenience since this plan's own commits already carry the same content.
+- A full whole-suite run (`vitest run --maxWorkers=2`, no file filter) was also taken as an extra precaution beyond the plan's own `<verification>` block: 114/123 files and 1885/2588 tests passed, with exactly 12 failures (11 in `test/linking.test.ts`'s "Interop related tests", 1 in `test/functional/installed-extension-e2e.test.ts`'s SETOPTS-in-code cue). Both are the project's own documented, pre-existing baseline (STATE.md's Test-harness false positive note for the 11 `linking.test.ts` cases; the Deferred Items entry for the installed-extension SETOPTS-in-code case) -- neither touches `bbj-document-builder.ts`, `bbj-module.ts`, or the compiler-trigger scheduling this plan changed.
 
 ---
 *Phase: 106-on-save-compiler-check-in-both-ides*
