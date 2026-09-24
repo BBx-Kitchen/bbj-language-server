@@ -75,6 +75,10 @@ describe('Line break validation: single-line IF/FI forms the compiler accepts', 
             'if a then\n: if b then c=1 else d=1 fi\n: else e=1 fi\n'
         ],
         [
+            'a colon-continued ELSE-IF chain inside a DEF FN body, closed only by FNEND',
+            'def fnwidgetlabel$(qty)\nif len(qty)=4 then\n: return str(qty:"9999")\n: else if len(qty)=3 then\n: return str(qty:"999")\n: else return qty\nfnend\n'
+        ],
+        [
             'identifiers that contain the letters of IF, ELSE and FI',
             'if fix then elsewhere=1 else ifcount=2 fi\n'
         ],
