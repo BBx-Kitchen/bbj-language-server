@@ -2,6 +2,7 @@
 created: 2026-09-23
 title: checkUseBeforeAssignment throws on a reference node without a symbol, silently skipping the check for that file
 area: validation
+resolves_phase: 107
 severity: minor
 files:
 

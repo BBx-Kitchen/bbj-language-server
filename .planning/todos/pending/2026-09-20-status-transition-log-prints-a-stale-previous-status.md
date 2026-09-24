@@ -2,6 +2,7 @@
 created: 2026-09-20T12:00:00.000Z
 title: The server status log line prints a stale previous status
 area: intellij-server-lifecycle
+resolves_phase: 108
 severity: minor
 files:
 

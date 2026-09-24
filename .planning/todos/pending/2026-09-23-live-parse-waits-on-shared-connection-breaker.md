@@ -2,6 +2,7 @@
 created: 2026-09-23
 title: Live parse still waits on the shared interop connection (and its circuit breaker) before using its own
 area: java-interop
+resolves_phase: 106
 severity: minor
 files:
 
