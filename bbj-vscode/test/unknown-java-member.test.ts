@@ -10,6 +10,10 @@ import {
     hasCertainReceiverType,
     isFullyResolvedJavaClass
 } from '../src/language/validations/check-unknown-java-member.js';
+import {
+    applyDiagnosticHierarchy,
+    dropShadowedMemberLinkingDiagnostics
+} from '../src/language/bbj-document-validator.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
@@ -184,5 +188,85 @@ describe('Static-only access through a class reference', () => {
     test('both static and instance fields resolve through an instance receiver', async () => {
         const document = await validate('declare java.lang.String s!\nx! = s!.CASE_INSENSITIVE_ORDER\ny! = s!.someInstanceField\n');
         expect(document.diagnostics ?? []).toHaveLength(0);
+    });
+});
+
+describe('The unknown-member Error in files with other errors', () => {
+    test('the Error for the unknown member coexists with other Errors in the same file, and an unrelated linking warning stays hidden', async () => {
+        const document = await validate('declare java.lang.String s!\ns!.anyInvalidMethod()\na = 1 b = 2\nq = nosuchvar\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
+        expect((document.diagnostics ?? []).some(d => d.message.includes('nosuchvar'))).toBe(false);
+    });
+
+    // A genuine Chevrotain parser error in this grammar consumes the rest of the token stream in
+    // every shape tried (a lone close paren, a stray semicolon chain) -- nothing downstream ever
+    // runs on the following statement, so there is no way to build an integration test proving
+    // survival specifically alongside a *parser* error. An unterminated string literal is a
+    // *lexer* error instead, and recovers cleanly: the following statement still links and
+    // validates, giving a real (non-synthetic) case of the new Error coexisting with another
+    // Error-severity diagnostic. applyDiagnosticHierarchy's own Rule 1/Rule 2 behavior is proven
+    // directly from the rule bodies in the test below.
+    test('the Error survives alongside a lexer error from an unterminated string literal', async () => {
+        const document = await validate('x$ = "abc\ndeclare java.lang.String s!\ns!.anyInvalidMethod()\n');
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+        expect(document.parseResult.lexerErrors.length).toBeGreaterThan(0);
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
+    });
+
+    test('applyDiagnosticHierarchy keeps a parse error and the unknown-member Error, and drops the linking warning', () => {
+        const parseError: Diagnostic = {
+            message: 'Expecting end of file but found `)`.',
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            severity: DiagnosticSeverity.Error,
+            data: { code: DocumentValidator.ParsingError }
+        };
+        const linkingWarning: Diagnostic = {
+            message: "Could not resolve reference to NamedElement named 'foo'.",
+            range: { start: { line: 1, character: 0 }, end: { line: 1, character: 3 } },
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError }
+        };
+        const unknownMemberError: Diagnostic = {
+            message: "Method 'anyInvalidMethod' is not defined on String",
+            range: { start: { line: 2, character: 0 }, end: { line: 2, character: 16 } },
+            severity: DiagnosticSeverity.Error,
+            data: { code: UNKNOWN_JAVA_MEMBER_CODE }
+        };
+        const result = applyDiagnosticHierarchy([parseError, linkingWarning, unknownMemberError], true, 20);
+        expect(result).toContainEqual(parseError);
+        expect(result).toContainEqual(unknownMemberError);
+        expect(result).not.toContainEqual(linkingWarning);
+    });
+
+    test('dropShadowedMemberLinkingDiagnostics removes a same-range linking diagnostic, keeps a different-range one, and returns the input unchanged when there is no unknown-member Error', () => {
+        const range = { start: { line: 1, character: 3 }, end: { line: 1, character: 19 } };
+        const unknownMemberError: Diagnostic = {
+            message: "Method 'anyInvalidMethod' is not defined on String",
+            range,
+            severity: DiagnosticSeverity.Error,
+            data: { code: UNKNOWN_JAVA_MEMBER_CODE }
+        };
+        const sameRangeLinking: Diagnostic = {
+            message: "Could not resolve reference to NamedElement named 'anyInvalidMethod'.",
+            range,
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError }
+        };
+        const otherRangeLinking: Diagnostic = {
+            message: "Could not resolve reference to NamedElement named 'nosuchvar'.",
+            range: { start: { line: 3, character: 0 }, end: { line: 3, character: 9 } },
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError }
+        };
+
+        const result = dropShadowedMemberLinkingDiagnostics([unknownMemberError, sameRangeLinking, otherRangeLinking]);
+        expect(result).toEqual([unknownMemberError, otherRangeLinking]);
+
+        const noUnknownMember = [otherRangeLinking];
+        expect(dropShadowedMemberLinkingDiagnostics(noUnknownMember)).toBe(noUnknownMember);
     });
 });
