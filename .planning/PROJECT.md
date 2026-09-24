@@ -2,13 +2,29 @@
 
 ## What This Is
 
-A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run and compile commands (GUI/BUI/DWC), visual code composers (MSGBOX, addWindow/addChildWindow, CVS(), SETOPTS) with in-editor cues, and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
+A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics (including live compiler diagnostics from BBj's own parser on BBj 26.03 or later), code completion, go-to-definition, signature help, Structure view, run and compile commands (GUI/BUI/DWC), visual code composers (MSGBOX, addWindow/addChildWindow, CVS(), SETOPTS) with in-editor cues, and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
 ## Current State
+
+**v4.5 Compiler Conformance shipped 2026-09-24** (override closeout after a milestone audit
+with status `tech_debt`: 32/32 requirements, 8/8 phases, 7/7 integration seams and 5/5 flows,
+no gaps; three artifacts were acknowledged at close). The language server now agrees with
+BBj's own compiler on a private corpus of 11,898 compiler-accepted and 1,210
+compiler-rejected programs. Valid files it rejects fell from 168 to 9, valid files with a
+false validation error fell from 267 to 22, and invalid files it misses fell from 658
+(54.4 %) to 31 (2.6 %) with the endpoint active, all under the exit gates. The gains come
+from grammar and validator fixes, a new `parseProgram` endpoint in `bbj-ls` (BBj 26.03 or
+later) that feeds live compiler diagnostics while you type, and a reconciliation layer that
+leaves one set of errors. Against an older or unreachable BBj, behaviour is exactly that of
+0.16.x. Phase 105 made the live diagnostics usable on large workspaces (58.9 s → 5.3 s in VS
+Code, 66 s → 6 s in IntelliJ). The code is on PR #691, which lands on `main` as one piece.
+The `bbj-ls` endpoint is on BASIS GitLab `feat/689-parse-program-endpoint`. Phase artifacts
+for 98-105 are archived under `.planning/milestones/v4.5-phases/` (tracked, no embargo). No
+release has been cut yet.
 
 **v4.4 IntelliJ Focus shipped 2026-09-20 as release 0.16.0** (override closeout: all five
 phases verified and 25/25 requirements closed, no milestone-level audit was run, and six
@@ -64,51 +80,22 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Current Milestone: v4.5 Compiler Conformance
-
-**Goal:** Bring what the language server accepts and rejects as close as possible to what the
-BBj compiler (`bbjcpl`) accepts and rejects, measured by a conformance harness over a corpus
-of 11,898 compiler-verified programs and 1,210 compiler-rejected ones.
-
-**Baseline (language server `d8071b24`, compiler build of 2026-09-01):** A = 168 valid files
-the parser rejects (1.4 %), A2 = 267 valid files that get a validation error (2.2 %),
-B = 658 of 1,210 invalid files that get no error (54.4 %).
-
-**Target features:**
-- Parse what the compiler accepts (A): `FIELD` as a verb, `READ RECORD(chan,LEN=n)var$`, a
-  label alone on a line, `DREAD x![]`, `;rem` after `METHODEND` / `METHOD` headers /
-  `CLASSEND`, `IOLIST`, names BBj allows although they are language words, and a triage of
-  the long tail.
-- Stop false alarms on valid code (A2): line-break validation on `TABLE`, `RESTORE 0`,
-  `GOSUB print`, `EXIT err`, multi-line `DEF FN` headers and single-line `IF` forms; the
-  conflicting-`DECLARE` and missing-`METHODRET` checks.
-- Flag what the compiler rejects (B) with the compiler's own parser instead of hand-written
-  checks: a new endpoint in `bbj-ls` (the Java part that runs inside BBjServices, port 5008)
-  calls BBj's `ParserServiceAPI` on the unsaved document text and returns its errors; the
-  language server shows them while typing, detects whether the endpoint exists, and behaves
-  as before when it does not.
-- Make the repository's own `examples/` agree with the compiler (18 of 93 are rejected).
-- Every fixed group gets a small synthetic regression file, so CI protects it without the
-  private corpus.
-
-**Decisions taken while scoping (2026-09-20):** new diagnostics are errors, like the
-compiler's. Hand-written strict checks in the Langium grammar (bare expression statements,
-reserved words, block balance) are not part of v4.5: BBj's parser decides contextually which
-words are verbs, keywords or names and validates parameter shapes and expression types, so
-they could only approximate it. The `bbj-ls` work is a phase of this milestone although it
-lives in a separate repository with BBj's release cycle. No proprietary BBj source text goes
-into this public repository. The endpoint ships with BBj 26.03 or later; both extensions
-must keep working unchanged against an older BBj whose `bbj-ls` lacks it.
-
-**Measurement:** the corpus and harness live outside this repository in the private
-`bbj-corpus` repository (`conformance/run.mjs --ls <this repo>`, about one minute, no Java
-interop contact). It is run locally at phase boundaries, not in CI.
-
 ## Next Milestone Goals
 
-**Conformance starting point:** the v4.5 exit measurement, its residual list-A, A2 and B entries and the next-milestone baseline are in `.planning/phases/104-conformance-measurement-milestone-exit/104-CONFORMANCE.md` (it moves with the v4.5 phase archive at milestone close).
+Not yet defined — start with `/gsd-new-milestone`. Candidates:
 
-Deferred while v4.5 runs. Candidates carried out of v4.4:
+- **Release:** merge PR #691 and cut a release carrying v4.5, together with the `bbj-ls`
+  merge request that ships `parseProgram` with BBj 26.03.
+- **Conformance follow-up:** the v4.5 exit measurement, its residual list-A, A2 and B entries
+  and the next baseline are in
+  `.planning/milestones/v4.5-phases/104-conformance-measurement-milestone-exit/104-CONFORMANCE.md`.
+- **v4.5 carried debt:** the live parse still waits on the shared connection's circuit breaker
+  (105 WR-01, todo). The use-before-assignment check throws on a reference with no symbol
+  (todo). Verdict state is never cleared for deleted files (103 WR-01). Open review warnings
+  remain in 98, 99, 100 and 104, and phases 101 and 104 have no SECURITY.md. The `bbj-ls`
+  hardening findings are tracked in that repository.
+
+Candidates carried out of v4.4:
 
 - **IntelliJ server lifecycle:** make a lost language-server connection visible to crash
   detection (todo, severity major — the Phase 97 attempt was reverted), and fix the stale
@@ -357,11 +344,43 @@ Deferred while v4.5 runs. Candidates carried out of v4.4:
 - ✓ **PLAT-06**: Node.js auto-install is attested by hand on a real Windows machine with no Node.js configured, closing the major-severity gap that no Linux-hosted test can exercise (todo `2026-09-06-live-windows-check-for-node-auto-install-failure`) — v4.4 Phase 96
 - ✓ **REL-01**: Release 0.16.0 is published to both the VS Code Marketplace and JetBrains Marketplace through SEED-002's single verification gate, with no half-released version and no orphaned tag — v4.4 Phase 97
 - ✓ **REL-02**: All 21 issues on GitHub milestone #7 are closed and the milestone itself is closed — v4.4 Phase 97
+- ✓ **PARSE-01**: A program that uses `FIELD` as a verb (`FIELD rec$,"name"=value`) parses without lexer or parser errors — v4.5 Phase 99
+- ✓ **PARSE-02**: `READ RECORD(chan,LEN=n)var$` and the other combined `RECORD` verbs with a `LEN=` channel option parse without errors, and `LEN` is usable as a variable name — v4.5 Phase 99
+- ✓ **PARSE-03**: The word `label` works as a label name — alone on a line or directly followed by a statement (`label:escape`) — as a `GOTO`/`GOSUB` target and as a variable; a label with any other name in front of a statement (`L30: iolist a,b,c`) keeps parsing — v4.5 Phase 99
+- ✓ **PARSE-04**: The empty-bracket whole-array form `name[]` parses wherever an array element can stand — `PRINT` item, assignment target, `CALL`/method/function argument — with the meaning of `name[all]`; `PRINT (chan,err=label) ...`, a trailing-comma item list and the other `PRINT`/`INPUT` item forms that already parse keep parsing — v4.5 Phase 100
+- ✓ **PARSE-05**: `DREAD` into arrays (`dread x![]`, `dread a$[],b[]`) parses without errors, and so do the type-side bracket shapes `declare int[][] name!` and a parameter written `BBjArray name[all]` — v4.5 Phase 100
+- ✓ **PARSE-06**: A `; rem` comment after a `METHOD` header, `METHODEND`, `CLASSEND`, `FNEND` or a single-line `DEF FN`, and line-numbered class code, parse without errors — v4.5 Phase 100
+- ✓ **PARSE-07**: The `IOLIST` statement parses without errors — v4.5 Phase 99
+- ✓ **PARSE-08**: Words BBj accepts as names although they are language words (for example `label`, `text`, `vector`, `state`, `val`) can be used as variables, labels and `GOTO`/`GOSUB` targets without parser errors; the set is established by compiling every grammar keyword in those positions with `bbjcpl`, and each word the compiler accepts and the parser rejects is fixed — v4.5 Phase 100
+- ✓ **PARSE-09**: Every shape that remains on list A is either fixed or recorded in a tracked list with its file count and the reason it stays (not a program, compiler quirk, deliberate, or valid but disproportionate to fix now); the file-by-file mapping stays with the private harness — v4.5 Phase 100
+- ✓ **VALID-01**: A `TABLE` statement gets no line-break error — v4.5 Phase 98
+- ✓ **VALID-02**: `RESTORE n`, `GOSUB`/`GOTO` to a label named like a keyword, `EXIT expr`, `LOAD` and `SAVE` get no line-break error — v4.5 Phase 98
+- ✓ **VALID-03**: A multi-line `DEF FN...(params)` header gets no line-break error — v4.5 Phase 98
+- ✓ **VALID-04**: Single-line `IF` forms and `FI` that the compiler accepts are not reported as "needs to start in a new line" — v4.5 Phase 98
+- ✓ **VALID-05**: The conflicting-`DECLARE` and `METHODRET` checks report no error on code the compiler accepts — v4.5 Phase 98
+- ✓ **PSRV-01**: `bbj-ls` offers an endpoint that runs BBj's parser on supplied document text, without reading or writing the document on disk and with type checking off, and returns each error's category, message and editor line and character range — v4.5 Phase 101
+- ✓ **PSRV-02**: The endpoint uses the supplied text for the active document, wires a prefix algorithm for the configured prefixes and workspace roots, and never returns results of an earlier version of the text *(re-scoped 2026-09-22: BBj's parser API does not invoke the prefix algorithm under type checking off, so referenced-program resolution is not observable through the endpoint; accepted, see 101-VERIFICATION.md override)* — v4.5 Phase 101
+- ✓ **PSRV-03**: With a BBjServices that offers the endpoint, the user sees the compiler's syntax errors while typing, without saving *(verified by hand in both IDEs 2026-09-22. Caveat: on a large workspace nothing live appears until the initial whole-workspace build finishes — pre-existing scheduling, exposed rather than caused here; tracked as issue #692 and Phase 105.)* — v4.5 Phase 102
+- ✓ **PSRV-04**: With a BBj older than 26.03, whose `bbj-ls` lacks the endpoint, and with no connection at all, both extensions (VS Code and IntelliJ) keep every feature they have in 0.16.x, including Java completion through the same service and the save-time `bbjcpl` run. The language server finds out by probing the endpoint once per connection, not by comparing version strings, and reports no error, dialog or repeated log line. An automated test runs against a service double that lacks the endpoint *(verified by hand on macOS 2026-09-22 against the pre-endpoint `bbj-ls.jar`: both IDEs behave as before, no error or dialog.)* — v4.5 Phase 102
+- ✓ **PSRV-05**: Compiler diagnostics appear on the correct editor line and range for continuation lines, line-numbered programs, CRLF files and a last line without newline — v4.5 Phase 102
+- ✓ **PSRV-06**: Compiler diagnostics and the language server's own diagnostics do not duplicate each other on a line, and the save-time `bbjcpl` run does not repeat what the endpoint already reported — v4.5 Phase 103
+- ✓ **PSRV-07**: When the compiler's parser accepts a document, the user sees no lexer, parser or line-break error from the language server for it — v4.5 Phase 103
+- ✓ **PSRV-08**: A failure of the endpoint (exception, timeout, BBj not running) is never shown as a syntax error in the document; it is visible in the server log or status — v4.5 Phase 102
+- ✓ **PSRV-09**: The user can tell which mode is active: the server log states once per connection whether live compiler diagnostics are on, and the documentation of both extensions says they need BBj 26.03 or later — v4.5 Phase 102
+- ✓ **RESP-01**: A live parser diagnostic appears for a document opened or edited while the initial whole-workspace build is still running, in both VS Code and IntelliJ, without waiting for that build to finish — v4.5 Phase 105
+- ✓ **RESP-02**: The live-parse cycle is started from document open and change events, not from inside `buildDocuments()`, so it never waits on Langium's workspace lock; a rebuild of an open document still asks BBj again — v4.5 Phase 105
+- ✓ **RESP-03**: When the live parse, the save-time `bbjcpl` run and Langium's validation update a document's diagnostics in any order, the result for the latest text version is shown, with no diagnostic lost, doubled or attached to the wrong line or severity — v4.5 Phase 105
+- ✓ **RESP-04**: The live parse travels its own interop connection, apart from the class lookups of the workspace build; if that connection cannot be opened, it falls back to the shared one, logged once, with no dialog and no effect on the endpoint probe — v4.5 Phase 105
+- ✓ **RESP-05**: The wait from an edit to the first live parser diagnostic, in a file opened during the initial build, is measured before and after on a workspace large enough to show the stall, in both IDEs, and recorded in the phase directory with numbers and environment notes only — v4.5 Phase 105
+- ✓ **EXMP-01**: Every BBj program file under `examples/` either compiles with `bbjcpl` or lives in `examples/invalid/`, with its expected diagnostics (or an explicit "none today") asserted by a test; configuration and library files are excluded by extension — v4.5 Phase 100
+- ✓ **CONF-01**: Each construct fixed for PARSE and VALID has a small synthetic regression file that the existing example-files test parses with zero errors — v4.5 Phase 98
+- ✓ **CONF-02**: The conformance run can include the `bbj-ls` endpoint, reports list B with it, and the way to run it is documented for maintainers — v4.5 Phase 104
+- ✓ **CONF-03**: On the corpus build of the baseline, the milestone ends with A ≤ 25, A2 ≤ 25, and B ≤ 5 % with the endpoint active, with all existing test suites passing — v4.5 Phase 104
 
 ### Active
 
-v4.5 Compiler Conformance — the requirements are in `.planning/REQUIREMENTS.md`. v4.4's 25 requirements shipped and are listed under
-Validated above (archive: `.planning/milestones/v4.4-REQUIREMENTS.md`).
+None — the next milestone defines them (`/gsd-new-milestone`). v4.5's 32 requirements shipped
+and are listed under Validated above (archive: `.planning/milestones/v4.5-REQUIREMENTS.md`).
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -383,10 +402,14 @@ Carried over, maintainer-owned (not GSD phases):
 - BBj colour customization under Settings › Editor › Color Scheme — TextMate owns BBj highlighting, so the page was inert and was removed rather than wired up (v4.4, #621)
 - Window-focus gating of the java-interop status poll — the plugin uses no focus/activation API, and adding one would introduce a second event source racing editor selection; the poll is gated on editor selection only (v4.4, #593)
 - Reconciling the half-released 0.15.0 across the two marketplaces — settled in SEED-002: the next version simply ships, and 0.16.0 did (v4.4)
+- Hand-written strict checks in the Langium grammar (bare expression statements, reserved words, block balance) — BBj's parser decides contextually which words are verbs, keywords or names, so hand-written checks could only approximate it; the live `parseProgram` endpoint covers invalid code instead (v4.5)
+- Referenced-program resolution in the live parse — `ParserServiceAPI` does not resolve referenced programs; the endpoint reports what BBj's parser sees in the one file (v4.5, PSRV-02 re-scoped)
+- `record`, `classend`, `methodend` and `interfaceend` as ordinary names — accepted residue; they stay keyword-only (v4.5, PARSE-08)
+- Running the conformance corpus in CI — the corpus contains internal and third-party code; it stays in the private `bbj-corpus` repository and runs locally, and CI relies on synthetic regression files (v4.5)
 
 ## Context
 
-**Current state:** v4.4 IntelliJ Focus shipped 2026-09-20 as release 0.16.0 (Phases 93-97, 36 plans, 25/25 requirements); 21 milestones shipped. All v4.4 code is on `origin/main` (PR #679, squash `7ab6b810`; released commit `6101a6b6`, tag `v0.16.0`), and both marketplaces carry 0.16.0. IntelliJ JUnit suite 1,101 tests (865 at v4.4 start); whole-suite vitest green at `numFailedTests: 0` (1,895 passed, 52 skipped with `RUN_BBJ_TESTS=0`). v4.4 changed 170 files outside `.planning/` (+10,763 / −3,218); roughly 15.9k lines of IntelliJ main Java, 23.9k lines of IntelliJ tests and 24.0k lines of hand-written language-server TypeScript. All nine known advisory fixes are merged and released; publication is the maintainer's next step. Next milestone not yet defined.
+**Current state:** v4.5 Compiler Conformance shipped 2026-09-24 (Phases 98-105, 44 plans, 32/32 requirements); 22 milestones shipped. The v4.5 code is on PR #691, not yet on `main`, and no release has been cut since 0.16.0. v4.5 changed 81 files outside `.planning/` (+8,974 / −278): `bbj-vscode/src` +1,989 / −180, tests +6,813. Whole-suite vitest showed 2,507 passed, 0 failed and 63 skipped at the 104 close, and the IntelliJ suite was green. Live compiler diagnostics need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step. Next milestone not yet defined.
 
 **Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
@@ -407,6 +430,7 @@ Carried over, maintainer-owned (not GSD phases):
 - IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
 - FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment
 - Static method return type inference gap — String.valueOf(2) does not assign type to target variable
+- v4.5 carried debt: live parse waits on the shared connection's breaker (105 WR-01, todo); verdict state never cleared for deleted files (103 WR-01); use-before-assignment check throws on a symbol-less reference (todo); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104
 - v4.4 carried debt: lost language-server connection invisible to crash detection and the stale previous status in the transition log (Phase 97 rework reverted; accepted 86-05 WR-01 is the same defect), partial download-progress fix and three comment-unaware source guards (97-REVIEW), `linking.test.ts` live-interop failures, parallel publish jobs in `manual-release.yml` — listed in MILESTONES.md
 - v4.3 audit tech debt: planning identifiers in 21 source/test files, accepted review risks (86-05 WR-01/WR-02, AR-88-12), duplicated SETOPTS initial-selection logic, `document-formatter.ts` import-time listeners, the `.lst` denumber input path — listed in MILESTONES.md
 
@@ -600,6 +624,11 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.4 closed as an override closeout without a milestone-level audit, with six open artifacts acknowledged; phase artifacts and quick tasks archived on-tree; no `v4.4` git tag | Close taken 2026-09-20 with all five phases `passed`, 25/25 requirements checked, the release published and GitHub milestone #7 closed at 0/21. The six items were a `diagnosed` debug session whose gap 96-08 had closed, a record file the scanner reads as a UAT script, and four deliberately filed follow-up todos. The five quick-task directories all date from 2026-09-14..17, so unlike v4.3's they belong to this milestone. Repository tags are release versions — this milestone's is `v0.16.0` | Applied — v4.4 archived 2026-09-20; overrides and debt listed in MILESTONES.md |
 | v4.5 Phase 99: the four largest list-A groups fixed at the grammar root, not per verb — the fused `LEN=` literal split, a `FieldStatement` typed below the relational level with the documented `ERR=` tail only, `'label'` as a feature name plus a narrow `LabelName` rule, an `IolistStatement`; a missed closing gate was closed by a gap plan rather than accepted | Conformance run A 167 → 52, A2 27 → 23, B 666 (one lost accidental catch, accepted until the compiler endpoint). Freed files unmask latent validator false alarms (`checkCommentNewLines`), and its CST-leaf rework had to exempt the one custom token that swallows its own terminator — caught only by the file-set "newly entered" count, not by totals | ✓ Good — Phase 99, 2026-09-21 |
 | v4.5 Phase 101: `bbj-ls` gains a `parseProgram` JSON-RPC request (bare method name, per-connection single-thread worker, latest-wins supersession answered with lsp4j's `RequestCancelled`, five application error codes -33001..-33005 outside both reserved bands, size-cap and timeout guards as `-Dbbj.interop.parse.*` properties); an older server is detected by a once-per-connection MethodNotFound probe, never a version string; success criterion 2 (referenced-program resolution) accepted as a ParserServiceAPI limitation by override | The endpoint is the server half of live compiler diagnostics (Phases 102/103) and had to ship without touching this repository. Plan 02's trace instrumentation showed BBj's parser never calls the wired `PrefixAlgorithmIF.findProgram` through this call sequence, with type checking off or on, so the guarantee was re-scoped rather than faked; the limitation is disclosed in the BASIS merge-request description and `WINDOWS.md` entry 4 was waived. The older-server probe was replayed against the real 26.02 jar (MethodNotFound in 0.244 s, one WARNING line, no stack trace), not a stand-in | ✓ Good — Phase 101, 2026-09-22; `bbj-ls` branch `feat/689-parse-program-endpoint` pushed to BASIS GitLab (MR to be opened by hand); 20 tests green against live BBjServices; code review left 5 critical findings (101-REVIEW.md) open for a follow-up before the MR is merged; Phases 102/103 must not rely on USE/CALL reference diagnostics from the endpoint |
+| v4.5 scope: the compiler's own parser decides invalid code; no hand-written strict checks | Taken 2026-09-20. BBj's parser decides contextually which words are verbs, keywords or names, so grammar-level strict checks could only approximate it. New diagnostics are errors, like the compiler's, and no proprietary BBj source text enters this repository | ✓ Good — B 658 → 31 of 1,210 with the endpoint, no false-positive tail |
+| v4.5 conformance measured locally against a private corpus, never in CI; CI is protected by synthetic regression fixtures (CONF-01) and a leak guard checks the planning text | The corpus contains internal and third-party code | ✓ Good — the exit gate was measured reproducibly from a pinned corpus build, and 104-04 fixed the guard's false negatives |
+| v4.5 Phase 103: one set of errors — Langium diagnostics that duplicate the BBj verdict give way, the rest are downgraded to warnings instead of hidden, and a present verdict skips the save-time `bbjcpl` run | Removes duplicated and contradicting errors without losing Langium's own checks; any failed, cancelled or stale parse falls back to 0.16.x behaviour | ✓ Good — UAT 2/2; 103 WR-01 (deleted-file state) open |
+| v4.5 Phase 105 (added mid-milestone for #692): the live parse is armed from document events outside Langium's `WorkspaceLock` and travels its own interop connection; `composeWithVerdict` converges early verdicts and Langium validation | On a large workspace the live diagnostic waited for the whole initial build (≈60 s) | ✓ Good — 5-6 s in both IDEs; 105 WR-01 (breaker wait) deferred |
+| v4.5 closed as an override closeout after a `tech_debt` audit with three artifacts acknowledged; phase and quick-task artifacts archived on-tree; no `v4.5` git tag | Close taken 2026-09-24: 32/32 requirements, 8/8 phases, no gaps. The three open items are two follow-up todos and a stale-bundle e2e note. Repository tags stay release versions | — Pending (release not cut yet) |
 
 ## Evolution
 
@@ -619,4 +648,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-23 after Phase 105*
+*Last updated: 2026-09-24 after v4.5 milestone*

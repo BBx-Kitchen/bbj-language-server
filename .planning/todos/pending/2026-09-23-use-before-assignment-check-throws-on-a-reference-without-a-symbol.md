@@ -6,6 +6,10 @@ severity: minor
 files:
 
   - bbj-vscode/src/language/validations/check-variable-scoping.ts:62-67 (getSymbolRefName), :97-203 (checkUseBeforeAssignment)
+
+audit_acknowledged:
+  milestone: v4.5
+  at: 2026-09-24
 ---
 
 ## Problem
@@ -71,7 +75,9 @@ author to note, not fixed or filed separately here.
 ## Reproduction
 
 ```bbj
+
 ## = 1
+
 ```
 
 Confirmed (scratch session, `createBBjTestServices(EmptyFileSystem)`, string-input mode) to produce

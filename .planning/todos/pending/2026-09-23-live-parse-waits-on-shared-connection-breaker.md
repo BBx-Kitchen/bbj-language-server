@@ -6,6 +6,10 @@ severity: minor
 files:
 
   - bbj-vscode/src/language/java-interop.ts (parseProgram, openParseLane)
+
+audit_acknowledged:
+  milestone: v4.5
+  at: 2026-09-24
 ---
 
 ## Problem

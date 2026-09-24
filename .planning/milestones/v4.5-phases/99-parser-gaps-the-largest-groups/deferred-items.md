@@ -16,3 +16,4 @@ Out-of-scope discoveries found during plan execution, logged per the executor's 
   was run as part of this plan's tasks); root cause is most likely a stale or unsynced installed
   bundle, not a regression this plan introduced. Out of scope for a grammar-only plan; flagged for
   the orchestrator/phase owner.
+  status: acknowledged
