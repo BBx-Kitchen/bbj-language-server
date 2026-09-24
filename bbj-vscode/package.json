@@ -606,11 +606,11 @@
           ],
           "default": "debounced",
           "enumDescriptions": [
-            "Default. Checks about 500 ms after you stop typing.",
-            "Currently behaves the same as 'debounced': checks still run after a pause in typing, not only when you save.",
-            "Turns off both the live compiler check and BBjCPL. The language server's own diagnostics keep running. Use this as a workaround if code completion is slow in a very large workspace."
+            "Default. Checks about 500 ms after you stop typing, and when you open or save the file.",
+            "Checks only when you open or save the file. Typing runs no compiler check; the last check's errors stay visible until the next save. Recommended for large workspaces. With files.autoSave set to afterDelay, every auto-save counts as a save.",
+            "No compiler checks at all, neither the live compiler check nor BBjCPL. The language server's own error checking keeps running."
           ],
-          "description": "Controls when the BBj compiler checks the open file for errors. Checks run about 500 ms after typing stops (and after opening or saving the file). With BBj 26.03 or later and BBjServices running, the BBj parser checks the current unsaved text; otherwise BBjCPL compiles the saved file. The language server's own error checking is not affected by this setting.",
+          "description": "Controls when the BBj compiler checks the open file for errors. With BBj 26.03 or later and BBjServices running, the BBj parser checks the current text; otherwise BBjCPL compiles the saved file. The language server's own error checking runs in every mode. On-save is recommended for large workspaces.",
           "scope": "window"
         },
         "bbj.configPath": {
