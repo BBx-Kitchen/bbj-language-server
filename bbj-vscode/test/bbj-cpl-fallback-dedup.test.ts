@@ -7,8 +7,8 @@ import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
-import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
-import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
+import { applyConfiguredDiagnosticHierarchy, mergeDiagnostics, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE, recallLangiumSnapshot } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { listenOnFakeConnection } from './fake-text-document-connection.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -143,5 +143,283 @@ describe('bbjcpl fallback dedup', () => {
         expect(onSecondLine).toHaveLength(1);
         expect(onSecondLine[0].severity).toBe(DiagnosticSeverity.Error);
         expect((onSecondLine[0].data as { code?: unknown } | undefined)?.code).not.toBe(DOWNGRADED_SYNTAX_CODE);
+    });
+});
+
+describe('the dedup applies only when bbjcpl checked the editor text', () => {
+    let firstFlaggedLine: number;
+    let secondFlaggedLine: number;
+
+    beforeAll(async () => {
+        const probeServices = createBBjTestServices(EmptyFileSystem);
+        await initializeWorkspace(probeServices.shared);
+        const probeValidate = validationHelper<Program>(probeServices.BBj);
+        const result = await probeValidate(TWO_SYNTAX_COMPLAINTS_TEXT);
+        const parseErrors = result.diagnostics.filter(
+            d => d.severity === DiagnosticSeverity.Error
+                && (d.data as { code?: unknown } | undefined)?.code === DocumentValidator.ParsingError
+        );
+        const flaggedLines = [...new Set(parseErrors.map(d => d.range.start.line))];
+        expect(flaggedLines.length).toBe(2);
+        firstFlaggedLine = Math.min(...flaggedLines);
+        secondFlaggedLine = flaggedLines.find(l => l !== firstFlaggedLine)!;
+    });
+
+    test('debounced, file saved: a save records the version, and the rebuild path dedups an overlapping complaint for that version', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/debounced-save-rebuild.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(600); // settles the open-armed cycle
+
+        await builder.update([uri], []); // real Langium validation -- baseline remembered
+        await vi.advanceTimersByTimeAsync(600); // settles the rebuild-armed cycle update() triggers
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+
+        // A save under debounced arms nothing, but still records the version.
+        parseProgramSpy.mockClear();
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: rebuild probe')]);
+        const privates = builder as unknown as BuilderPrivates;
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(500);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const diagnostics = document.diagnostics ?? [];
+        const onFirstLine = diagnostics.filter(d => d.range.start.line === firstFlaggedLine);
+        // A dedup replaces the Langium complaint outright with bbjcpl's own diagnostic object --
+        // its own message and no data.code -- unlike mergeDiagnostics, which would keep the
+        // Langium complaint's own message and merely recolor its source.
+        expect(onFirstLine).toHaveLength(1);
+        expect(onFirstLine[0].source).toBe('BBjCPL');
+        expect(onFirstLine[0].message).toBe('Syntax error: rebuild probe');
+        expect((onFirstLine[0].data as { code?: unknown } | undefined)?.code).toBeUndefined();
+    });
+
+    test('debounced, unsaved edits: a change arms a cycle whose fallback merges as before when the file cannot be read', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram('method-not-found');
+        vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/debounced-unsaved-edit.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(600);
+        await builder.update([uri], []);
+        await vi.advanceTimersByTimeAsync(600);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const latestLangiumList = document.diagnostics ?? [];
+
+        // No save ever happened for this uri, and the EmptyFileSystemProvider's own readFile
+        // throws synchronously -- both checkedTextIsOnDisk branches say "not on disk".
+        const cplDiag = bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: unsaved-edit probe');
+        vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValueOnce([cplDiag]);
+
+        client.change(uriString, 2, [{ text: 'x = 1 +\nrem edited\ny = 2 *\n' }]);
+        await vi.advanceTimersByTimeAsync(500);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const expected = mergeDiagnostics(applyConfiguredDiagnosticHierarchy(latestLangiumList), [cplDiag]);
+        expect(document.diagnostics).toEqual(expected);
+    });
+
+    test('on-save, an open whose on-disk text matches the checked text dedups an overlapping complaint', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/on-save-open-disk-match.bbj');
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+
+        vi.spyOn(builder.fileSystemProvider, 'readFile').mockResolvedValue(TWO_SYNTAX_COMPLAINTS_TEXT);
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: disk-match probe')]);
+
+        const privates = builder as unknown as BuilderPrivates;
+        privates.armLiveParseForDocument(document, document.textDocument, 'open');
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const diagnostics = document.diagnostics ?? [];
+        const onFirstLine = diagnostics.filter(d => d.range.start.line === firstFlaggedLine);
+        // A dedup replaces the Langium complaint outright with bbjcpl's own diagnostic object --
+        // its own message and no data.code -- unlike mergeDiagnostics, which would keep the
+        // Langium complaint's own message and merely recolor its source.
+        expect(onFirstLine).toHaveLength(1);
+        expect(onFirstLine[0].source).toBe('BBjCPL');
+        expect(onFirstLine[0].message).toBe('Syntax error: disk-match probe');
+        expect((onFirstLine[0].data as { code?: unknown } | undefined)?.code).toBeUndefined();
+    });
+
+    test('on-save, an open whose on-disk text differs by one non-ASCII character merges as before', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/on-save-open-disk-mismatch.bbj');
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const latestLangiumList = document.diagnostics ?? [];
+
+        // A different decoding of the same file -- a single non-ASCII character away from the
+        // checked text, so an exact-string comparison never matches.
+        vi.spyOn(builder.fileSystemProvider, 'readFile').mockResolvedValue(TWO_SYNTAX_COMPLAINTS_TEXT.replace('rem ok', 'rem oké'));
+        const cplDiag = bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: disk-mismatch probe');
+        compileSpy.mockResolvedValueOnce([cplDiag]);
+
+        const privates = builder as unknown as BuilderPrivates;
+        privates.armLiveParseForDocument(document, document.textDocument, 'open');
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const expected = mergeDiagnostics(applyConfiguredDiagnosticHierarchy(latestLangiumList), [cplDiag]);
+        expect(document.diagnostics).toEqual(expected);
+    });
+
+    test('on-save, an open whose on-disk read rejects merges as before', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/on-save-open-disk-reject.bbj');
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const latestLangiumList = document.diagnostics ?? [];
+
+        vi.spyOn(builder.fileSystemProvider, 'readFile').mockRejectedValue(new Error('read failed'));
+        const cplDiag = bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: disk-reject probe');
+        compileSpy.mockResolvedValueOnce([cplDiag]);
+
+        const privates = builder as unknown as BuilderPrivates;
+        privates.armLiveParseForDocument(document, document.textDocument, 'open');
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const expected = mergeDiagnostics(applyConfiguredDiagnosticHierarchy(latestLangiumList), [cplDiag]);
+        expect(document.diagnostics).toEqual(expected);
+    });
+
+    test('a stale Langium snapshot whose flagged line differs from the checked text keeps that complaint even though it overlaps', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+
+        const uri = URI.file('/proj/stale-snapshot-line-diff.bbj');
+        const uriString = uri.toString();
+        const v1Text = TWO_SYNTAX_COMPLAINTS_TEXT;
+        addWorkspaceDocument(shared, uri, v1Text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, v1Text);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect(document.state).toBe(DocumentState.Validated);
+        const snapshot = recallLangiumSnapshot(document)!;
+        expect(snapshot.validatedText).toBe(v1Text);
+
+        // Edits only the first flagged line's own text -- the second flagged line's text stays
+        // byte-identical between v1 and v2, and Langium is never re-validated for v2.
+        const v1Lines = v1Text.split('\n');
+        v1Lines[firstFlaggedLine] = `${v1Lines[firstFlaggedLine]} 2`;
+        const v2Text = v1Lines.join('\n');
+        expect(v2Text).not.toBe(v1Text);
+        client.change(uriString, 2, [{ text: v2Text }]); // 'change' arms nothing under on-save
+
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: stale-line probe')]);
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        const diagnostics = document.diagnostics ?? [];
+        const onFirstLine = diagnostics.filter(d => d.range.start.line === firstFlaggedLine);
+        // The stale complaint stays -- kept as an Error alongside bbjcpl's own diagnostic, not
+        // replaced by it, because the line it sits on no longer matches what bbjcpl actually
+        // checked.
+        expect(onFirstLine.some(d => d.severity === DiagnosticSeverity.Error && d.source !== 'BBjCPL')).toBe(true);
+        expect(onFirstLine.some(d => d.source === 'BBjCPL')).toBe(true);
+    });
+
+    test('bbjcpl returning no diagnostics publishes the hierarchy-applied Langium list unchanged, and the file is never read', async () => {
+        const { shared, BBj, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+        const readFileSpy = vi.spyOn(builder.fileSystemProvider, 'readFile');
+
+        const uri = URI.file('/proj/empty-cpl-result.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        const baselineList = applyConfiguredDiagnosticHierarchy(recallLangiumSnapshot(document)!.diagnostics);
+
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        expect(document.diagnostics).toEqual(baselineList);
+        expect(readFileSpy).not.toHaveBeenCalled();
     });
 });
