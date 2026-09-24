@@ -1,10 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.6
-milestone_name: User-Facing Bug Burn-down
+milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
+current_phase: 106
+current_phase_name: first of v4.6's four phases
 status: planning
-last_updated: "2026-09-24T06:57:27.000Z"
+stopped_at: Phase 106 context gathered
+last_updated: "2026-09-24T08:47:32.861Z"
 last_activity: 2026-09-24
+last_activity_desc: v4.6 roadmap created (Phases 106-109)
+state_head: ff777d547bc1fe4962af2a00e1308fb0e0131689
 progress:
   total_phases: 4
   completed_phases: 0
@@ -184,9 +189,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24
-Stopped at: v4.6 roadmap created — ROADMAP.md, STATE.md and REQUIREMENTS.md traceability written
-Resume file: None
+Last session: 2026-09-24T08:47:32.838Z
+Stopped at: Phase 106 context gathered
+Resume file: .planning/phases/106-on-save-compiler-check-in-both-ides/106-CONTEXT.md
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
