@@ -115,4 +115,41 @@ class CompilerTriggerSourceGuardTest {
         assertEquals(0, countOccurrences(text, "import com.intellij"),
                 "CompilerInitOptions must have no IntelliJ platform import");
     }
+
+    @Test
+    void theComponentDeclaresOneCompilerCheckRowBetweenOutputDirectoryAndNodeJsRuntime() {
+        String text = readSource(BBJ_SETTINGS_COMPONENT_SOURCE);
+        assertTrue(text.contains("compilerTriggerCombo"),
+                "BbjSettingsComponent must declare compilerTriggerCombo");
+        assertEquals(1, countOccurrences(text, "CompilerInitOptions.TRIGGER_DISPLAY_NAMES"),
+                "the combo must be built from CompilerInitOptions.TRIGGER_DISPLAY_NAMES");
+        assertEquals(1, countOccurrences(text, "new JBLabel(\"Compiler check:\")"),
+                "exactly one \"Compiler check:\" row must be declared");
+        int outputDirRowIndex = text.indexOf("new JBLabel(\"Compile output directory:\")");
+        int compilerCheckRowIndex = text.indexOf("new JBLabel(\"Compiler check:\")");
+        int nodeJsSeparatorIndex = text.indexOf("new TitledSeparator(\"Node.js Runtime\")");
+        assertTrue(outputDirRowIndex >= 0, "the Compile output directory row must be present");
+        assertTrue(compilerCheckRowIndex >= 0, "the Compiler check row must be present");
+        assertTrue(nodeJsSeparatorIndex >= 0, "the Node.js Runtime separator must be present");
+        assertTrue(outputDirRowIndex < compilerCheckRowIndex,
+                "the Compiler check row must come after the Compile output directory row");
+        assertTrue(compilerCheckRowIndex < nodeJsSeparatorIndex,
+                "the Compiler check row must come before the Node.js Runtime separator");
+    }
+
+    @Test
+    void theConfigurableReadsGetCompilerTriggerTwiceAndAssignsStateBeforeTheRestart() {
+        String text = readSource(BBJ_SETTINGS_CONFIGURABLE_SOURCE);
+        assertEquals(2, countOccurrences(text, "getCompilerTrigger()"),
+                "isModified and apply must both read getCompilerTrigger()");
+        assertEquals(1, countOccurrences(text, "setCompilerTrigger("),
+                "reset must call setCompilerTrigger( exactly once");
+        int assignIndex = text.indexOf("state.compilerTrigger = myComponent.getCompilerTrigger()");
+        int restartIndex = text.indexOf("scheduleRestart()");
+        assertTrue(assignIndex >= 0, "the compilerTrigger assignment must be present in apply()");
+        assertTrue(restartIndex >= 0, "scheduleRestart() must be present in apply()");
+        assertTrue(assignIndex < restartIndex,
+                "the trigger value must be stored before the restart that re-delivers it as "
+                        + "fresh initialization options");
+    }
 }
