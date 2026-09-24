@@ -75,8 +75,16 @@ export function hasCertainReceiverType(receiver: Expression, depth = 0): boolean
     if (depth > 8) {
         return false;
     }
-    if (isConstructorCall(receiver) || isCastExpression(receiver) || isStringLiteral(receiver)) {
+    if (isConstructorCall(receiver) || isCastExpression(receiver)) {
         return true;
+    }
+    if (isStringLiteral(receiver)) {
+        // An empty string is a common BBj "not yet assigned" sentinel for an auto-declared
+        // variable's first assignment; since every later reference's receiver type traces back to
+        // that same declaring assignment (not whatever the variable was reassigned to since), an
+        // empty-string first assignment is not certain enough to trust -- a non-empty string
+        // literal is still trusted, since that shape has no such placeholder idiom.
+        return receiver.value !== '';
     }
     if (isMethodCall(receiver)) {
         const method = receiver.method;
