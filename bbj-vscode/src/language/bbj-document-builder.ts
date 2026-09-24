@@ -20,9 +20,11 @@ import {
     clearVerdictState,
     composeWithVerdict,
     getVerdictState,
+    reconcileWithFallbackCheck,
     recallLangiumSnapshot,
     rememberLangiumDiagnostics,
     setVerdictState,
+    textLineLookup,
     type LangiumDiagnosticsSnapshot,
     type VerdictState
 } from './bbj-diagnostic-reconciliation.js';
@@ -177,6 +179,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private bbjcplAvailable: boolean | undefined = undefined;
 
     /**
+     * The live text-document version last recorded as saved, per document uri (normalized via
+     * {@link UriUtils.normalize}) — set by {@link onDocumentSaved} in every trigger mode,
+     * including `'off'`, so a later switch into `debounced`/`on-save` still finds an accurate
+     * record. Read by {@link checkedTextIsOnDisk} to decide whether a fallback cycle's checked
+     * text is provably the text bbjcpl compiled: a save-triggered check's own version always
+     * matches here, whatever the file's encoding, since the version is recorded before the very
+     * event that arms that check.
+     */
+    private readonly lastSavedVersion = new Map<string, number>();
+
+    /**
      * Lazy lookup for the shared LSP connection -- resolved on every call, never cached at
      * construction, since a hand-built test harness may construct `BBjDocumentBuilder` before an
      * LSP connection exists, and the real one is only ever wired up once, at server startup, by
@@ -215,9 +228,29 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document, 'open'));
             textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document, 'change'));
             if (typeof textDocuments.onDidSave === 'function') {
-                textDocuments.onDidSave(event => this.armLiveParseFromEvent(event.document, 'save'));
+                textDocuments.onDidSave(event => this.onDocumentSaved(event.document));
             }
         }
+    }
+
+    /**
+     * Handles the constructor's `onDidSave` event: records `textDocument`'s version in
+     * {@link lastSavedVersion} for its uri -- in every trigger mode, including `'off'`, so a
+     * later switch back into `debounced`/`on-save` still finds an accurate last-saved-version
+     * record -- then arms a live-parse cycle for the `'save'` reason exactly as the constructor
+     * did directly before this method existed. Wrapped in the same try/catch-and-log shape as
+     * {@link armLiveParseFromEvent}, for the same reason: an event listener that throws would
+     * break every other listener registered on the same emitter, not just this one. Logs only the
+     * uri and the error's own message, never document text.
+     */
+    private onDocumentSaved(textDocument: TextDocument): void {
+        try {
+            const uri = URI.parse(textDocument.uri);
+            this.lastSavedVersion.set(UriUtils.normalize(uri), textDocument.version);
+        } catch (e) {
+            logger.error(`Recording the saved version failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        this.armLiveParseFromEvent(textDocument, 'save');
     }
 
     /**
@@ -550,6 +583,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
+     * True when `checkedText` (the text a fallback cycle's compile actually ran against) is
+     * provably the text the editor shows for `document` at `checkedVersion` -- covers exactly the
+     * saved-version case for now: `checkedVersion` equals the last version {@link onDocumentSaved}
+     * recorded for this uri, so a save-triggered check is always covered here, whatever the
+     * file's encoding.
+     */
+    private async checkedTextIsOnDisk(document: LangiumDocument, checkedVersion: number, checkedText: string): Promise<boolean> {
+        const key = UriUtils.normalize(document.uri);
+        return this.lastSavedVersion.get(key) === checkedVersion;
+    }
+
+    /**
      * The latest known Langium diagnostics for `document`, together with the text they were
      * validated against, every debounce cycle composes against instead of `document.diagnostics`
      * directly -- {@link recallLangiumSnapshot} when a Langium validation has remembered one, else
@@ -626,6 +671,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // close-and-reopen) swapped the textDocument object outright.
                 const textDocumentBeforeRequest = document.textDocument;
                 const versionBeforeRequest = textDocumentBeforeRequest.version;
+                // The text this cycle checks: the live parse sends exactly this, and bbjcpl
+                // compiles the file on disk instead -- checkedTextIsOnDisk decides whether the
+                // two happen to be the same text.
+                const checkedText = textDocumentBeforeRequest.getText();
                 let liveOutcome: LiveParseOutcome | undefined;
                 if (bbjParserService.isEnabled()) {
                     liveOutcome = await bbjParserService.requestLiveParse(document);
@@ -706,10 +755,31 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // changed the remembered Langium snapshot while this cycle waited on the
                     // save-time compile. With the verdict forgotten there is nothing left to
                     // reconcile, so the latest remembered Langium list with the hierarchy applied
-                    // is the whole 0.16.x-shaped base bbjcpl merges onto.
+                    // is the whole 0.16.x-shaped base bbjcpl merges or reconciles onto.
                     const baseline = this.latestLangiumBaseline(document);
                     const base = applyConfiguredDiagnosticHierarchy(baseline.diagnostics);
-                    next = cplDiags.length > 0 ? mergeDiagnostics(base, cplDiags) : base;
+                    if (cplDiags.length === 0) {
+                        next = base;
+                    } else if (await this.checkedTextIsOnDisk(document, versionBeforeRequest, checkedText)) {
+                        // The on-disk check runs only once bbjcpl has actually reported
+                        // something, and only after the compile itself -- see
+                        // checkedTextIsOnDisk's own doc comment for what "on disk" proves here.
+                        // No second pass through applyConfiguredDiagnosticHierarchy: that would
+                        // switch on the hierarchy's own BBjCPL-suppresses-parse-errors rule,
+                        // which this line-scoped dedup must never trigger on its own.
+                        next = reconcileWithFallbackCheck(
+                            base,
+                            cplDiags,
+                            textLineLookup(baseline.validatedText ?? checkedText),
+                            textLineLookup(checkedText)
+                        ).diagnostics;
+                    } else {
+                        // The checked text is not provably on disk (unsaved edits, an unreadable
+                        // file, or bytes that decode to different text) -- merge exactly as
+                        // before this phase, never hiding a real error behind a check of
+                        // different text.
+                        next = mergeDiagnostics(base, cplDiags);
+                    }
                 }
 
                 // A single publish covering whichever branch above ran -- see
