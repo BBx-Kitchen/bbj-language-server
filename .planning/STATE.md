@@ -39,7 +39,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-09-24 — Phase 106 complete, transitioned to Phase 107
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 25% (1/4 phases)
 
 ### v4.6 milestone map
 
@@ -160,19 +160,19 @@ decisions:
 - IntelliJ TextMate bundle cannot exclude config.bbx at filename level (adjacent to PLAT-01)
 - FQN path static-only filtering deferred — requires JAR redeployment (scheduled: COMP-01, Phase 109)
 - Static method return type inference gap — String.valueOf(2) does not assign type
+- v4.6 Phase 106 review debt (106-REVIEW.md): CR-01 a pending debounced compiler check still runs and publishes after switching the trigger to `off` (pre-existing); WR-01 the bbjcpl fallback branch suppresses Langium warnings before merging the kept BBjCPL error
 - v4.5: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104 (full list in `milestones/v4.5-MILESTONE-AUDIT.md`)
 
 ### Pending Todos
 
-7 pending in `.planning/todos/pending/`, all acknowledged at a milestone close (v4.4: 4, v4.5: 2 plus
-the Phase 98 one). Five are scheduled in v4.6 (marked →); the other two stay unscheduled:
+6 pending in `.planning/todos/pending/`, all acknowledged at a milestone close (v4.4: 4, v4.5: 2 plus
+the Phase 98 one). Four are scheduled in v4.6 (marked →); the other two stay unscheduled:
 
 - `2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection` — severity major; the Phase 97 attempt was reverted → LIFE-01, Phase 108
 - `2026-09-20-status-transition-log-prints-a-stale-previous-status` — only makes sense together with the one above → LIFE-02, Phase 108
 - `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
 - `2026-09-21-loosen-single-line-if-balance-rule-a2-residue` — part of the A2 residue (22 at v4.5 exit) → VAL-01, Phase 107
-- `2026-09-23-live-parse-waits-on-shared-connection-breaker` — 105 WR-01, deferred by the user → JINT-03, Phase 106
 - `2026-09-23-use-before-assignment-check-throws-on-a-reference-without-a-symbol` — reproduced in 104-02 → VAL-02, Phase 107
 
 ### Blockers/Concerns

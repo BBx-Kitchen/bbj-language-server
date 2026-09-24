@@ -366,14 +366,14 @@ Already handled outside the milestone: #688 (extensionless USE target crashed th
 
 v4.6 User-Facing Bug Burn-down — see `.planning/REQUIREMENTS.md` for the REQ-IDs.
 
-- [ ] Compiler trigger `on-save` mode in both IDEs (#696)
+- ✓ Compiler trigger `on-save` mode in both IDEs (#696) — v4.6 Phase 106 (TRIG-01..07)
 - [ ] Line-break validation false alarms on single-line IF/ELSE
 - [ ] IntelliJ crash detection for a lost language-server connection, with the status-log fix
 - [ ] Use-before-assignment check survives a reference without a symbol
 - [ ] Completion/type correctness (#577, #556, #561)
 - [ ] Interop cold-start lookups (#660, #659)
-- [ ] Live parse independent of the shared connection's breaker
-- [ ] Diagnostic hierarchy on the bbjcpl fallback path (#522)
+- ✓ Live parse independent of the shared connection's breaker — v4.6 Phase 106 (JINT-03)
+- ✓ Diagnostic hierarchy on the bbjcpl fallback path (#522) — v4.6 Phase 106 (DIAG-01)
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -622,6 +622,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.5 Phase 103: one set of errors — Langium diagnostics that duplicate the BBj verdict give way, the rest are downgraded to warnings instead of hidden, and a present verdict skips the save-time `bbjcpl` run | Removes duplicated and contradicting errors without losing Langium's own checks; any failed, cancelled or stale parse falls back to 0.16.x behaviour | ✓ Good — UAT 2/2; 103 WR-01 (deleted-file state) open |
 | v4.5 Phase 105 (added mid-milestone for #692): the live parse is armed from document events outside Langium's `WorkspaceLock` and travels its own interop connection; `composeWithVerdict` converges early verdicts and Langium validation | On a large workspace the live diagnostic waited for the whole initial build (≈60 s) | ✓ Good — 5-6 s in both IDEs; 105 WR-01 (breaker wait) deferred |
 | v4.5 closed as an override closeout after a `tech_debt` audit with three artifacts acknowledged; phase and quick-task artifacts archived on-tree; no `v4.5` git tag | Close taken 2026-09-24: 32/32 requirements, 8/8 phases, no gaps. The three open items are two follow-up todos and a stale-bundle e2e note. Repository tags stay release versions | — Pending (release not cut yet) |
+| v4.6 Phase 106: `on-save` is a real trigger — the live parse is armed by reason (open/change/save) with a zero-delay save path, the last save's verdict is kept and re-placed on its line while typing (`composeWithKeptCheck`), a per-document check sequence lets only a newer save supersede it, and the bbjcpl fallback drops a duplicate only when the checked text is provably what bbjcpl compiled; `parseProgram()` tries its own lane before the shared breaker; IntelliJ gets the same `compilerTrigger` init option as a dropdown | #696/#522 and 105 WR-01: under `off` large-workspace users lost compiler errors entirely, the fallback showed bbjcpl and Langium errors twice, and a down or half-open shared connection short-circuited the live parse. Default stays `debounced` | ✓ Good — UAT 13/13 in both IDEs; Phase 105 timing re-check skipped by user decision; 106-REVIEW CR-01 (pending debounced timer survives a switch to `off`, pre-existing) and WR-01 (fallback suppresses warnings before merging the kept error) open |
 
 ## Evolution
 
@@ -641,4 +642,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-24 after starting milestone v4.6*
+*Last updated: 2026-09-24 after Phase 106*
