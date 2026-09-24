@@ -5,6 +5,7 @@ import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 
 /**
  * Find all AST nodes matching a filter in a document.
@@ -43,10 +44,16 @@ function expectNoHints<T extends Program>(
 describe('Variable Scoping', async () => {
     const services = createBBjServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
+    // Conflict checks need both DECLARE types to resolve. The test double preloads
+    // java.lang.String and java.util.HashMap, so these tests pass without a live :5008.
+    const hermeticServices = createBBjTestServices(EmptyFileSystem);
+    let validateHermetic: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
         await initializeWorkspace(services.shared);
         validate = validationHelper<Program>(services.BBj);
+        await initializeWorkspace(hermeticServices.shared);
+        validateHermetic = validationHelper<Program>(hermeticServices.BBj);
     });
 
     // ========================================================================
@@ -281,11 +288,11 @@ PRINT key$
         test('Conflicting DECLARE types produce error inside a method body', async () => {
             // The one deliberate exception: two DECLAREs of one name inside a single method
             // body, whose types both resolve and are unrelated, stays an error on purpose.
-            const result = await validate(`
+            const result = await validateHermetic(`
 class public ConflictTest
     method public void test()
         DECLARE java.lang.String x!
-        DECLARE java.lang.Integer x!
+        DECLARE java.util.HashMap x!
     methodend
 classend
             `);
@@ -356,9 +363,9 @@ classend
             // Subroutines and event handlers share one program-level namespace, and
             // re-declaring a variable per handler is ordinary BBj practice — so an unrelated
             // resolved type pair at program level is a warning, never an error.
-            const result = await validate(`
+            const result = await validateHermetic(`
 DECLARE java.lang.String z!
-DECLARE java.lang.Integer z!
+DECLARE java.util.HashMap z!
             `);
             expectWarning(result, /Conflicting DECLARE/i, {
                 node: findAll(result.document, isVariableDecl, true)[1]
