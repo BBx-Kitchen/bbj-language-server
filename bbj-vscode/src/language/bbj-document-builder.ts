@@ -305,9 +305,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Run BBjCPL compilation for each validated document based on trigger mode.
-     * Called from buildDocuments() after Langium validation completes.
-     * Only 'off' is distinguished here; 'debounced' and 'on-save' take the same path.
+     * Run BBjCPL compilation for each validated document based on trigger mode -- the
+     * rebuild-driven trigger, called from buildDocuments() for every document a rebuild just
+     * revalidated (another file's save, a relink, a config change, or this document's own).
+     * The three modes:
+     *
+     *  - `'off'`: no cycle can run; clears every open document's verdict state and stale
+     *    BBjCPL/live-parser diagnostics.
+     *  - `'on-save'`: never arms a check from here -- a rebuild reruns Langium only, and the
+     *    last verdict or compiler diagnostics stay exactly as they were. Under this trigger the
+     *    only place a check starts is the event-driven arming path (armLiveParseForDocument,
+     *    reached only for an 'open' or 'save' reason), never a rebuild for any other reason.
+     *  - `'debounced'`: arms every eligible open document exactly as before this phase.
      *
      * IMPORTANT: This runs INSIDE buildDocuments(), not from onBuildPhase —
      * calling from onBuildPhase causes CPU rebuild loops (see STATE.md).
@@ -334,6 +343,14 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
                 }
             }
+            return;
+        }
+
+        if (trigger === 'on-save') {
+            // A rebuild -- whatever triggered it -- never starts a check under 'on-save'. Only
+            // the event-driven arming path (an 'open' or 'save' reason reaching
+            // armLiveParseForDocument) starts one; Langium's own validation of these documents
+            // has already run by the time buildDocuments() calls this method, unaffected.
             return;
         }
 
