@@ -347,7 +347,30 @@ corpus text enters this repository.
   4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
   5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
 
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 106-01-PLAN.md — Save capability and on-save scheduling: one immediate check per save and per open, none for typing or unrelated rebuilds, no burst on a mode switch (wave 1)
+- [ ] 106-02-PLAN.md — Live parse uses its own connection first, independent of the shared connection's breaker (JINT-03) (wave 1)
+- [ ] 106-03-PLAN.md — IntelliJ "Compiler check:" setting via initializationOptions; VS Code setting text and both feature docs (TRIG-06, TRIG-07) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 106-04-PLAN.md — bbjcpl fallback shows one error per finding when it checked the saved text (DIAG-01) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 106-05-PLAN.md — Kept errors follow their lines while typing under on-save: change recording, kept checks, composition rules (TRIG-04) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 106-06-PLAN.md — In-flight and superseded save results, kept bbjcpl results, mode-switch semantics, whole suite (TRIG-04) (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 106-07-PLAN.md — Build both distributables, whole suites, hand UAT in both IDEs, Phase 105 timing re-check (wave 5, checkpoint)
 
 *Planning notes:* check whether the server receives `textDocument/didSave` from both clients
 today. The live-parse path currently drops a verdict whose text changed while the request was
