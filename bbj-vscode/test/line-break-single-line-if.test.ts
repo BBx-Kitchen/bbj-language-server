@@ -43,6 +43,10 @@ describe('Line break validation: single-line IF/FI forms the compiler accepts', 
             'if a then if b then c = 1 fi else d = 1 fi\n'
         ],
         [
+            'a nested single-line IF/ELSE/FI followed on the same line by the outer ELSE',
+            'if a then if b then c=1 else d=1 fi else e=1 fi\n'
+        ],
+        [
             'trailing-comma PRINT followed by a multi-line IF block, no trailing whitespace',
             'print a$,\nif x then\nb = 1\nfi\n'
         ],
