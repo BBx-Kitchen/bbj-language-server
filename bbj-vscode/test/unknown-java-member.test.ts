@@ -170,6 +170,15 @@ describe("Receivers that keep today's diagnostics", () => {
         expect(validationCrashed(document.diagnostics)).toBe(false);
     });
 
+    test('an empty-string first assignment does not make a later reassignment to a different type certain', async () => {
+        // Found via the live-backend corpus review: an empty string is a common BBj
+        // "not yet assigned" sentinel for an auto-declared variable, later reassigned to a real
+        // object -- the shared declaring-occurrence-is-the-first-assignment scoping rule means
+        // every reference's receiver type traces back to that placeholder, not the real one.
+        const document = await validate('x! = ""\nx! = new java.util.HashMap()\nx!.anyInvalidMethod()\n');
+        expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
+
     test('a declared array of a Java class keeps its linking warning on .length, not the new Error', async () => {
         // Java's own array .length pseudo-field is not a member of the element class itself -- a
         // declared array receiver is not certain enough to trust an "unknown member" verdict on.
