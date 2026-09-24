@@ -52,12 +52,14 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.addProperty("javaInteropPort", BbjSettings.getInstance().getEffectiveJavaInteropPort());
                 options.addProperty("configPath",
                     state.configPath != null ? state.configPath : "");
-                // Flat key, not nested under BbjLanguageClient.createSettings(): LSP4IJ's
+                // Flat keys, not nested under BbjLanguageClient.createSettings(): LSP4IJ's
                 // settings resolution returns null for this plugin's flat client settings
                 // object, so initialization options are the channel that actually reaches
                 // the server (#571).
                 options.addProperty(CompilerInitOptions.COMPILER_OUTPUT_DIRECTORY_KEY,
                     CompilerInitOptions.normalizeOutputDirectory(state.compilerOutputDirectory));
+                options.addProperty(CompilerInitOptions.COMPILER_TRIGGER_KEY,
+                    CompilerInitOptions.normalizeTrigger(state.compilerTrigger));
                 params.setInitializationOptions(options);
             }
         }

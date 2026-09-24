@@ -34,6 +34,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
         public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
         public String compilerOutputDirectory = "";  // Default: empty (no output directory configured; #571)
+        public String compilerTrigger = "debounced";  // Default: debounced. Options: debounced, on-save, off
     }
 
     private State myState = new State();
