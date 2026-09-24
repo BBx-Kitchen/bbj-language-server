@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 107
 current_phase_name: Validation False Alarms & Silent Skips
 status: executing
-stopped_at: Completed 107-01-PLAN.md
-last_updated: "2026-09-24T20:22:32.864Z"
+stopped_at: Completed 107-02-PLAN.md
+last_updated: "2026-09-24T20:34:51.296Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 107 execution started
-state_head: f2b82de83607104f1ba448e0776288f0f1dd7d96
+state_head: cf280654f9e810985c486739baef00c833186ddb
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
   percent: 25
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 107 (Validation False Alarms & Silent Skips) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 107 execution started
 
@@ -109,6 +109,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 106 P06 | 95min | 3 tasks | 6 files |
 | Phase 106 P07 | 2.5h | 3 tasks | 1 files |
 | Phase 107 P01 | 12min | 2 tasks | 3 files |
+| Phase 107 P02 | 11min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,8 @@ decisions:
 - [Phase 106]: Phase 106: timing re-check of the Phase 105 metric not taken at the user's decision; no regression evidence either way
 - [Phase 107]: Phase 107-01: used the plan's specified two-counter bookkeeping (openIfs/elseClaims) in elseStatementLineBreaks instead of the 98-REVIEW.md WR-A one-line snippet, which a planning-time probe showed reopens the 'second ELSE for one IF' false negative
 - [Phase 107]: Phase 107-01: the colon-continuation blank-message line-break residue needed no separate fix -- the same nested-ELSE counter repair also clears it, since the lexer joins colon-continued lines into one physical line before the walker runs
+- [Phase 107]: Phase 107-02: the '# = 1' control test asserts message count and each message's own stable text/prefix rather than a literal snapshot, since the base-tree probe for that shape produced a >6000-alternative Chevrotain token listing unrelated to this fix
+- [Phase 107]: Phase 107-02: guarded all 8 .symbol reads in check-variable-scoping.ts plus 1 in bbj-scope-local.ts inline with ?. rather than a shared type-guard helper, per D-06
 
 ### Tech Debt
 
@@ -212,8 +215,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T20:22:32.767Z
-Stopped at: Completed 107-01-PLAN.md
+Last session: 2026-09-24T20:34:45.331Z
+Stopped at: Completed 107-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
