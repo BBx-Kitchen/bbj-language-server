@@ -11,11 +11,11 @@
 ### Compiler trigger (#696)
 
 - [x] **TRIG-01**: With `bbj.compiler.trigger` set to `on-save`, typing in a BBj file starts no live parse and no bbjcpl run; the language server's own validation keeps running as before
-- [ ] **TRIG-02**: With `on-save`, saving a BBj file runs exactly one compiler check of the saved text, without debounce — the live parse first, bbjcpl when the live parse is unavailable — in both VS Code and IntelliJ
+- [x] **TRIG-02**: With `on-save`, saving a BBj file runs exactly one compiler check of the saved text, without debounce — the live parse first, bbjcpl when the live parse is unavailable — in both VS Code and IntelliJ
 - [x] **TRIG-03**: With `on-save`, opening a BBj file runs one compiler check, so a freshly opened file shows its compiler errors before the first save
 - [x] **TRIG-04**: With `on-save`, the compiler errors from the last check stay visible while the user types, until the next save replaces them; they are not dropped or shown on the wrong line by the diagnostic reconciliation
 - [x] **TRIG-05**: `debounced` (still the default) and `off` behave exactly as before
-- [ ] **TRIG-06**: IntelliJ users can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the chosen value from startup and after a change
+- [x] **TRIG-06**: IntelliJ users can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the chosen value from startup and after a change
 - [x] **TRIG-07**: The VS Code setting description and both IDE feature docs describe the three modes as implemented and recommend `on-save` (instead of `off`) for large workspaces
 
 ### Validation accuracy
@@ -42,7 +42,7 @@
 
 - [ ] **JINT-01**: Primitive types, `void` and array types are never sent to the java-interop backend as class lookups (#660)
 - [ ] **JINT-02**: A nested Java class is resolved once, whether it is named `Outer.Inner` or `Outer$Inner` (#659)
-- [ ] **JINT-03**: The live parse no longer waits on the shared interop connection or its circuit breaker before using its own connection
+- [x] **JINT-03**: The live parse no longer waits on the shared interop connection or its circuit breaker before using its own connection
 
 ## Future Requirements
 
@@ -69,11 +69,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | TRIG-01 | Phase 106 | Complete |
-| TRIG-02 | Phase 106 | Pending |
+| TRIG-02 | Phase 106 | Complete |
 | TRIG-03 | Phase 106 | Complete |
 | TRIG-04 | Phase 106 | Complete |
 | TRIG-05 | Phase 106 | Complete |
-| TRIG-06 | Phase 106 | Pending |
+| TRIG-06 | Phase 106 | Complete |
 | TRIG-07 | Phase 106 | Complete |
 | VAL-01 | Phase 107 | Pending |
 | VAL-02 | Phase 107 | Pending |
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-03 | Phase 109 | Pending |
 | JINT-01 | Phase 109 | Pending |
 | JINT-02 | Phase 109 | Pending |
-| JINT-03 | Phase 106 | Pending |
+| JINT-03 | Phase 106 | Complete |
 
 **Coverage:**
 

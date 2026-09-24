@@ -326,7 +326,7 @@ runtime status sequence used as evidence comes from a real `idea.log` (v4.4 stan
 Phase 107's conformance comparison runs locally against the private corpus, never in CI, and no
 corpus text enters this repository.
 
-- [ ] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection
+- [x] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection (completed 2026-09-24)
 - [ ] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files
 - [ ] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions
 - [ ] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups
@@ -347,7 +347,7 @@ corpus text enters this repository.
   4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
   5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
 
-**Plans:** 7/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
