@@ -10,11 +10,11 @@
 
 ### Compiler trigger (#696)
 
-- [ ] **TRIG-01**: With `bbj.compiler.trigger` set to `on-save`, typing in a BBj file starts no live parse and no bbjcpl run; the language server's own validation keeps running as before
+- [x] **TRIG-01**: With `bbj.compiler.trigger` set to `on-save`, typing in a BBj file starts no live parse and no bbjcpl run; the language server's own validation keeps running as before
 - [ ] **TRIG-02**: With `on-save`, saving a BBj file runs exactly one compiler check of the saved text, without debounce — the live parse first, bbjcpl when the live parse is unavailable — in both VS Code and IntelliJ
-- [ ] **TRIG-03**: With `on-save`, opening a BBj file runs one compiler check, so a freshly opened file shows its compiler errors before the first save
+- [x] **TRIG-03**: With `on-save`, opening a BBj file runs one compiler check, so a freshly opened file shows its compiler errors before the first save
 - [ ] **TRIG-04**: With `on-save`, the compiler errors from the last check stay visible while the user types, until the next save replaces them; they are not dropped or shown on the wrong line by the diagnostic reconciliation
-- [ ] **TRIG-05**: `debounced` (still the default) and `off` behave exactly as before
+- [x] **TRIG-05**: `debounced` (still the default) and `off` behave exactly as before
 - [ ] **TRIG-06**: IntelliJ users can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the chosen value from startup and after a change
 - [ ] **TRIG-07**: The VS Code setting description and both IDE feature docs describe the three modes as implemented and recommend `on-save` (instead of `off`) for large workspaces
 
@@ -68,11 +68,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TRIG-01 | Phase 106 | Pending |
+| TRIG-01 | Phase 106 | Complete |
 | TRIG-02 | Phase 106 | Pending |
-| TRIG-03 | Phase 106 | Pending |
+| TRIG-03 | Phase 106 | Complete |
 | TRIG-04 | Phase 106 | Pending |
-| TRIG-05 | Phase 106 | Pending |
+| TRIG-05 | Phase 106 | Complete |
 | TRIG-06 | Phase 106 | Pending |
 | TRIG-07 | Phase 106 | Pending |
 | VAL-01 | Phase 107 | Pending |
@@ -88,6 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JINT-03 | Phase 106 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0 ✓

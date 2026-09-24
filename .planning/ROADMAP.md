@@ -347,12 +347,12 @@ corpus text enters this repository.
   4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
   5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
 
-**Plans:** 7 plans
+**Plans:** 1/7 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 106-01-PLAN.md — Save capability and on-save scheduling: one immediate check per save and per open, none for typing or unrelated rebuilds, no burst on a mode switch (wave 1)
+- [x] 106-01-PLAN.md — Save capability and on-save scheduling: one immediate check per save and per open, none for typing or unrelated rebuilds, no burst on a mode switch (wave 1)
 - [ ] 106-02-PLAN.md — Live parse uses its own connection first, independent of the shared connection's breaker (JINT-03) (wave 1)
 - [ ] 106-03-PLAN.md — IntelliJ "Compiler check:" setting via initializationOptions; VS Code setting text and both feature docs (TRIG-06, TRIG-07) (wave 1)
 
@@ -485,7 +485,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 106. On-Save Compiler Check in Both IDEs | 0/TBD | Not started | - |
+| 106. On-Save Compiler Check in Both IDEs | 1/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 0/TBD | Not started | - |
 | 108. IntelliJ Crash Detection | 0/TBD | Not started | - |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |

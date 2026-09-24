@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 106
 current_phase_name: On-Save Compiler Check in Both IDEs
 status: executing
-stopped_at: Phase 106 context gathered
-last_updated: "2026-09-24T10:46:26.368Z"
+stopped_at: Completed 106-01-PLAN.md
+last_updated: "2026-09-24T11:09:01.798Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 106 execution started
-state_head: 74e0bbcca0d6ed5eaa8cc1ca11507b6d8693def6
+state_head: 9035a0e9f359f1a8c17acef8534e455ffefbd675
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 7
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 106 (On-Save Compiler Check in Both IDEs) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 106
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-09-24 — Phase 106 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -97,6 +97,11 @@ Per-plan duration tables for phases 72-105 are archived with their phase artifac
 - Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; landed on `origin/main` via PR #651
 
 Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planning/milestones/v4.5-phases/`.
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 106 P01 | 55min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -131,6 +136,7 @@ decisions:
 - [v4.5, standing]: new diagnostics from the compiler's parser are errors, like the compiler's own; invalid code is decided by BBj's parser, not hand-written strict checks.
 - [v4.5]: PR #691 carried phases 98-105 and merged to `main` as one piece on 2026-09-24.
 - [v4.6 roadmap]: four phases (106-109). DIAG-01 and JINT-03 fold into Phase 106 — DIAG-01's fix site is the `debouncedCompile()` bbjcpl fallback branch the on-save path reshapes, and the save-triggered check asks the live-parse lane first. JINT-01/02 go with completion in Phase 109 (same `resolveClass` as COMP-01's `isStatic` blocker). Phase 108 runs after 106 because both change `BbjLanguageServerFactory`.
+- [Phase 106]: Tasks 2 and 3 verified red-then-green by temporarily disabling their implementation branch in bbj-document-builder.ts, confirming the pinned test failed, then restoring it before the feat commit — Follows the plan's own TDD instruction for tdd=true tasks without needing a separate scratch branch
 
 ### Tech Debt
 
@@ -189,9 +195,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T08:47:32.838Z
-Stopped at: Phase 106 context gathered
-Resume file: .planning/phases/106-on-save-compiler-check-in-both-ides/106-CONTEXT.md
+Last session: 2026-09-24T11:09:01.769Z
+Stopped at: Completed 106-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
