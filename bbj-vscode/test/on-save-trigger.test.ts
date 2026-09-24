@@ -406,3 +406,152 @@ describe('on-save: typing, open and rebuild rules', () => {
         expect(parseProgramSpy).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('mode switches, and debounced/off unchanged', () => {
+    test('on-save then a switch to debounced: the first rebuild after the switch arms nothing; the next edit arms a 500ms cycle', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/switch-to-debounced.bbj');
+        const text = 'x = 1\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        parseProgramSpy.mockClear();
+
+        // Establishes lastRebuildTrigger = 'on-save' via one rebuild under the current mode --
+        // mirrors the real sequence, where buildDocuments()/runBbjcplForDocuments() already ran
+        // at least once while this trigger was current before a user ever switches modes.
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(0);
+        parseProgramSpy.mockClear();
+
+        setCompilerTrigger('debounced');
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        client.change(uri.toString(), 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await vi.advanceTimersByTimeAsync(499);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('debounced then a switch to on-save: the rebuild arms nothing, and typing arms nothing', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/switch-to-on-save.bbj');
+        const text = 'x = 1\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        parseProgramSpy.mockClear();
+
+        setCompilerTrigger('on-save');
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        client.change(uri.toString(), 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+    });
+
+    test('a switch to off clears BBjCPL and BBj Parser diagnostics as before', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({ errors: [] });
+
+        const uri = URI.file('/proj/switch-to-off.bbj');
+        const text = 'x = 1\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+
+        // A stale BBjCPL diagnostic left over from an earlier cycle.
+        document.diagnostics = [
+            ...(document.diagnostics ?? []),
+            {
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+                message: 'stale bbjcpl error',
+                severity: DiagnosticSeverity.Error,
+                source: 'BBjCPL',
+            },
+        ];
+
+        setCompilerTrigger('off');
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+
+        expect(document.diagnostics?.some(d => d.source === 'BBjCPL')).toBe(false);
+    });
+
+    test('debounced without a switch: a save arms nothing, a change arms a 500ms cycle, and the first rebuild on a fresh builder arms as before', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        // Trigger defaults to 'debounced' (set explicitly for clarity).
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/debounced-steady.bbj');
+        const text = 'x = 1\n';
+        const document = addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, text);
+        await vi.advanceTimersByTimeAsync(600);
+        parseProgramSpy.mockClear();
+
+        client.save(uri.toString());
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        client.change(uri.toString(), 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await vi.advanceTimersByTimeAsync(499);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+        parseProgramSpy.mockClear();
+
+        // The first rebuild this fresh builder's runBbjcplForDocuments has ever seen -- no prior
+        // lastRebuildTrigger, so it arms exactly as before this phase.
+        await privates.runBbjcplForDocuments([document], CancellationToken.None);
+        await vi.advanceTimersByTimeAsync(500);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('off: open, change and save events all arm no compiler check', async () => {
+        const { shared, interopService, client } = createHarness();
+        setCompilerTrigger('off');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/off-events.bbj');
+        const text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uri.toString(), 1, text);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        client.change(uri.toString(), 2, [replaceLines(0, 1, 'x = 2\n')]);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+
+        client.save(uri.toString());
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+    });
+});
