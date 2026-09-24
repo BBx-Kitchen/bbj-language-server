@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 106
 current_phase_name: On-Save Compiler Check in Both IDEs
 status: executing
-stopped_at: Completed 106-01-PLAN.md
-last_updated: "2026-09-24T11:09:01.798Z"
+stopped_at: Completed 106-02-PLAN.md
+last_updated: "2026-09-24T11:29:36.458Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 106 execution started
-state_head: 9035a0e9f359f1a8c17acef8534e455ffefbd675
+state_head: e029cb806c6bed98a73bdfe11764dce974535b19
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 106 (On-Save Compiler Check in Both IDEs) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 106 execution started
 
@@ -102,6 +102,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 106 P01 | 55min | 3 tasks | 5 files |
+| Phase 106-on-save-compiler-check-in-both-ides P02 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,7 @@ decisions:
 - [v4.5]: PR #691 carried phases 98-105 and merged to `main` as one piece on 2026-09-24.
 - [v4.6 roadmap]: four phases (106-109). DIAG-01 and JINT-03 fold into Phase 106 — DIAG-01's fix site is the `debouncedCompile()` bbjcpl fallback branch the on-save path reshapes, and the save-triggered check asks the live-parse lane first. JINT-01/02 go with completion in Phase 109 (same `resolveClass` as COMP-01's `isStatic` blocker). Phase 108 runs after 106 because both change `BbjLanguageServerFactory`.
 - [Phase 106]: Tasks 2 and 3 verified red-then-green by temporarily disabling their implementation branch in bbj-document-builder.ts, confirming the pinned test failed, then restoring it before the feat commit — Follows the plan's own TDD instruction for tdd=true tasks without needing a separate scratch branch
+- [Phase 106]: Task 2's five tests were verified red against the pre-Task-1 parseProgram() ordering, then restored green with no production change needed -- Task 1's fix already covers every case.
 
 ### Tech Debt
 
@@ -195,8 +197,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T11:09:01.769Z
-Stopped at: Completed 106-01-PLAN.md
+Last session: 2026-09-24T11:29:36.424Z
+Stopped at: Completed 106-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.

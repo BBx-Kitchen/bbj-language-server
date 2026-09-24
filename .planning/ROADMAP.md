@@ -353,7 +353,7 @@ Plans:
 **Wave 1**
 
 - [x] 106-01-PLAN.md — Save capability and on-save scheduling: one immediate check per save and per open, none for typing or unrelated rebuilds, no burst on a mode switch (wave 1)
-- [ ] 106-02-PLAN.md — Live parse uses its own connection first, independent of the shared connection's breaker (JINT-03) (wave 1)
+- [x] 106-02-PLAN.md — Live parse uses its own connection first, independent of the shared connection's breaker (JINT-03) (wave 1)
 - [ ] 106-03-PLAN.md — IntelliJ "Compiler check:" setting via initializationOptions; VS Code setting text and both feature docs (TRIG-06, TRIG-07) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
