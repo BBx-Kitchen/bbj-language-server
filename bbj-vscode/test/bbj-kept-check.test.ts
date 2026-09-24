@@ -1,10 +1,12 @@
-import { URI } from 'langium';
+import { DocumentValidator, URI } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { afterEach, describe, expect, test } from 'vitest';
 import {
     MAX_RECORDED_CHANGE_BATCHES,
     clearAllContentChanges,
     clearContentChanges,
+    composeWithKeptCheck,
     contentChangesSince,
     createChangeRecordingTextDocumentsConfiguration,
     mapLineThroughBatches,
@@ -14,8 +16,33 @@ import {
     recordContentChanges,
     wholeDocumentChangeAsRange,
     type ContentChangeBatch,
+    type KeptCheck,
     type RangedContentChange
 } from '../src/language/bbj-kept-check.js';
+import {
+    DOWNGRADED_SYNTAX_CODE,
+    reconcileWithVerdict,
+    syntaxComplaintKey,
+    textLineLookup
+} from '../src/language/bbj-diagnostic-reconciliation.js';
+
+/** A diagnostic spanning `line` to `endLine`, in the style of
+ * `bbj-diagnostic-reconciliation.test.ts`'s own `makeDiag`. */
+function makeDiag(
+    line: number,
+    endLine: number,
+    severity: DiagnosticSeverity,
+    code: string | undefined,
+    source: string,
+    message: string
+): Diagnostic {
+    const range: Range = { start: { line, character: 0 }, end: { line: endLine, character: 999 } };
+    const diagnostic: Diagnostic = { range, severity, message, source };
+    if (code !== undefined) {
+        diagnostic.data = { code };
+    }
+    return diagnostic;
+}
 
 /** A ranged change replacing every line from `startLine` up to (not including) `endLineExclusive`
  * with `text`, column 0 to column 0 -- the same idiom `replaceLines` in
@@ -263,5 +290,179 @@ describe('createChangeRecordingTextDocumentsConfiguration', () => {
         expect(batches![0].changes).toHaveLength(1);
         expect(batches![0].changes[0].range).toBeDefined();
         expect(batches![0].changes[0].text).toBe('B\n');
+    });
+});
+
+describe('composeWithKeptCheck', () => {
+    test('no Langium diagnostics gives exactly the placed kept diagnostics', () => {
+        const keptDiag = makeDiag(2, 2, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [keptDiag], seen: new Set() };
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [],
+            liveText: 'a\nb\nc\n',
+            kept,
+            changesSinceCheck: []
+        });
+
+        expect(result).toEqual([keptDiag]);
+    });
+
+    test('a seen complaint on an unchanged line that overlaps a placed verdict diagnostic is dropped; a seen complaint that overlaps none is downgraded', () => {
+        const liveText = 'line0\nline1\nline2\nline3\nline4\nline5\n';
+        const overlapComplaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'overlap complaint');
+        const loneComplaint = makeDiag(5, 5, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'lone complaint');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const kept: KeptCheck = {
+            kind: 'verdict',
+            version: 1,
+            diagnostics: [bbjDiag],
+            seen: new Set([
+                syntaxComplaintKey(overlapComplaint.message, 'line0'),
+                syntaxComplaintKey(loneComplaint.message, 'line5')
+            ])
+        };
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [overlapComplaint, loneComplaint],
+            liveText,
+            kept,
+            changesSinceCheck: []
+        });
+
+        expect(result.find(d => d.message === 'overlap complaint')).toBeUndefined();
+        const downgraded = result.find(d => d.message === 'lone complaint');
+        expect(downgraded?.severity).toBe(DiagnosticSeverity.Warning);
+        expect((downgraded?.data as { code?: unknown } | undefined)?.code).toBe(DOWNGRADED_SYNTAX_CODE);
+    });
+
+    test('an unseen complaint stays an Error, and a complaint beside a kept error that was not seen stays an Error too', () => {
+        const liveText = 'x = 1 +\nnew bad line\n';
+        const newComplaint = makeDiag(1, 1, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'new complaint');
+        const editedLineComplaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'edited line complaint');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'kept bbj error');
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [bbjDiag], seen: new Set() };
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [newComplaint, editedLineComplaint],
+            liveText,
+            kept,
+            changesSinceCheck: []
+        });
+
+        expect(result.find(d => d.message === 'new complaint')?.severity).toBe(DiagnosticSeverity.Error);
+        expect(result.find(d => d.message === 'edited line complaint')?.severity).toBe(DiagnosticSeverity.Error);
+        expect(result.find(d => d.message === 'kept bbj error')).toBeDefined();
+    });
+
+    test('a kept diagnostic whose line was deleted is gone, while a seen complaint elsewhere is still downgraded', () => {
+        const liveText = 'a\nb\nc\n';
+        const elsewhereComplaint = makeDiag(2, 2, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'elsewhere');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'deleted-line error');
+        const kept: KeptCheck = {
+            kind: 'verdict',
+            version: 1,
+            diagnostics: [bbjDiag],
+            seen: new Set([syntaxComplaintKey(elsewhereComplaint.message, 'c')])
+        };
+        const batches: ContentChangeBatch[] = [{
+            fromVersion: 1,
+            toVersion: 2,
+            changes: [replaceLines(0, 1, '')] // deletes line 0, the kept diagnostic's own line.
+        }];
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [elsewhereComplaint],
+            liveText,
+            kept,
+            changesSinceCheck: batches
+        });
+
+        expect(result.find(d => d.message === 'deleted-line error')).toBeUndefined();
+        const downgraded = result.find(d => d.message === 'elsewhere');
+        expect(downgraded?.severity).toBe(DiagnosticSeverity.Warning);
+    });
+
+    test('changesSinceCheck undefined places nothing, and still downgrades a seen complaint', () => {
+        const liveText = 'a\nb\n';
+        const complaint = makeDiag(1, 1, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'seen complaint');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'unplaceable error');
+        const kept: KeptCheck = {
+            kind: 'verdict',
+            version: 1,
+            diagnostics: [bbjDiag],
+            seen: new Set([syntaxComplaintKey(complaint.message, 'b')])
+        };
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [complaint],
+            liveText,
+            kept,
+            changesSinceCheck: undefined
+        });
+
+        expect(result.some(d => d.message === 'unplaceable error')).toBe(false);
+        const downgraded = result.find(d => d.message === 'seen complaint');
+        expect(downgraded?.severity).toBe(DiagnosticSeverity.Warning);
+    });
+
+    test('a complaint whose validated line text differs from its live line text stays an Error, and non-syntax diagnostics pass through', () => {
+        const liveText = 'x = 2\n';
+        const validatedText = 'x = 1\n';
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'stale complaint');
+        const semanticError = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'bbj', 'semantic error');
+        const kept: KeptCheck = {
+            kind: 'verdict',
+            version: 1,
+            diagnostics: [],
+            // Even a matching key must not be trusted once the line text itself has moved on.
+            seen: new Set([syntaxComplaintKey(complaint.message, 'x = 2')])
+        };
+
+        const result = composeWithKeptCheck({
+            langiumDiagnostics: [complaint, semanticError],
+            validatedText,
+            liveText,
+            kept,
+            changesSinceCheck: []
+        });
+
+        expect(result.find(d => d.message === 'stale complaint')?.severity).toBe(DiagnosticSeverity.Error);
+        expect(result).toContainEqual(semanticError);
+    });
+
+    test("with no changes and validatedText equal to liveText, the result deep-equals reconcileWithVerdict's diagnostics for the same verdict; equal inputs give deep-equal outputs and no input is mutated", () => {
+        const liveText = 'x = 1 +\nrem ok\ny = 2 *\n';
+        const complaintA = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'first complaint');
+        const complaintB = makeDiag(2, 2, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'second complaint');
+        const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
+        const langiumDiagnostics = [complaintA, complaintB];
+        const verdictDiagnostics = [bbjDiag];
+
+        const { diagnostics: reconciled, state } = reconcileWithVerdict(langiumDiagnostics, verdictDiagnostics, textLineLookup(liveText));
+
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: verdictDiagnostics, seen: state.seen };
+        const composed = composeWithKeptCheck({
+            langiumDiagnostics,
+            validatedText: liveText,
+            liveText,
+            kept,
+            changesSinceCheck: []
+        });
+
+        expect(composed).toEqual(reconciled);
+
+        // Purity: a second call with structurally-equal (fresh-object) inputs gives a deep-equal
+        // result, and neither original input array was mutated by either call.
+        const composedAgain = composeWithKeptCheck({
+            langiumDiagnostics: [{ ...complaintA }, { ...complaintB }],
+            validatedText: liveText,
+            liveText,
+            kept: { kind: 'verdict', version: 1, diagnostics: [{ ...bbjDiag }], seen: state.seen },
+            changesSinceCheck: []
+        });
+        expect(composedAgain).toEqual(composed);
+        expect(langiumDiagnostics).toEqual([complaintA, complaintB]);
+        expect(verdictDiagnostics).toEqual([bbjDiag]);
     });
 });
