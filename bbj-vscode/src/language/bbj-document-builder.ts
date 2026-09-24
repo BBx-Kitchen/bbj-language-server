@@ -163,6 +163,19 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     /**
+     * Per-file cycle counter, keyed like {@link cplDebounceTimers}. Bumped at the start of every
+     * debounce cycle's own timer callback, before any `await`, to the next integer for that key --
+     * the counter's current value for a key is therefore always this document's most recently
+     * started cycle's own number. Under `on-save`, where a save's zero-delay cycle can genuinely
+     * overlap a still-in-flight earlier one, a cycle whose own number no longer matches the
+     * counter's current value has been superseded by a newer cycle for the same document and must
+     * store and publish nothing -- see {@link debouncedCompile}'s own doc comment. Under
+     * `debounced` this counter is bumped the same way but never consulted: the existing
+     * version-based staleness check already covers that mode, unchanged by this phase.
+     */
+    private readonly checkSequence = new Map<string, number>();
+
+    /**
      * The trigger mode {@link runBbjcplForDocuments} saw on its previous call -- `undefined`
      * until that method has run at least once. Lets it tell a runtime mode switch apart from a
      * rebuild under a steady mode: when the trigger differs from this field, the `debounced`
@@ -667,10 +680,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * this cycle — bbjcpl is the same BBj parser, run against the saved file instead of the live
      * text, so with a verdict already in hand it would only add duplicates or stale results.
      *
-     * A verdict for text that has since moved on, or a request superseded by a newer one, does
-     * nothing further this cycle: no reconciliation, no state change, no save-time compile, and no
-     * publish at all — the edit that changed the text has already scheduled a newer cycle of its
-     * own.
+     * Under `debounced`, a verdict for text that has since moved on is dropped exactly as before
+     * this phase: no reconciliation, no state change, no save-time compile, and no publish at all
+     * — a later edit has already scheduled a newer cycle of its own for the newer text. Under
+     * `on-save`, where typing between saves arms no new cycle at all, the same still-open text
+     * document keeps its verdict instead: the check is reconciled and stored for the version it
+     * actually ran against, and published on whatever line that diagnostic maps to now, through
+     * the change log a later validation pass would otherwise use on its own. Either way, a request
+     * superseded by a newer cycle for the same document — one whose own timer has already fired
+     * since this one's did — stores and publishes nothing: only the newest save's own result may
+     * ever win, whichever of the two finishes last.
      *
      * Every other outcome (the latch/trigger already off, or the live parse failed or came back
      * unavailable) is gated on whether this cycle's own request is still for the document's
@@ -697,6 +716,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
         const timer = setTimeout(async () => {
             this.cplDebounceTimers.delete(key);
+            const mySequence = (this.checkSequence.get(key) ?? 0) + 1;
+            this.checkSequence.set(key, mySequence);
 
             try {
                 // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
@@ -721,9 +742,30 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 }
                 const stillCurrent = document.textDocument === textDocumentBeforeRequest
                     && document.textDocument.version === versionBeforeRequest;
+                // Same text-document object as when this cycle's request went out, whatever its
+                // version is now -- true across typing (the object is updated in place), false
+                // only once the document is closed and reopened. Under 'on-save' this is enough
+                // on its own to let a verdict for text the user has since typed over still be kept
+                // and correctly placed on its (possibly shifted) line, instead of being dropped the
+                // moment the version no longer matches -- the very case the debounced stale-version
+                // guard below exists to enforce for that mode instead.
+                const sameTextDocument = document.textDocument === textDocumentBeforeRequest;
+                // True once a newer cycle for this same document has started since this cycle's
+                // own timer fired -- see checkSequence's own doc comment. Consulted only under
+                // 'on-save', where a save's zero-delay cycle can genuinely overlap a still-in-flight
+                // earlier one; under 'debounced' this always reports false, since the version-based
+                // stillCurrent check above already covers staleness for that mode.
+                const supersededOnSave = getCompilerTrigger() === 'on-save' && this.checkSequence.get(key) !== mySequence;
 
                 let next: Diagnostic[];
-                if (liveOutcome?.kind === 'verdict' && stillCurrent) {
+                if (liveOutcome?.kind === 'verdict' && (stillCurrent || (getCompilerTrigger() === 'on-save' && sameTextDocument))) {
+                    if (supersededOnSave) {
+                        // A newer on-save cycle for this document already started after this one's
+                        // own timer fired -- whichever of the two finishes last, only the newer
+                        // save's own result may ever be stored or published; this one must not
+                        // overwrite it.
+                        return;
+                    }
                     // Compose against the latest known Langium snapshot (its pre-hierarchy list
                     // together with the text it was validated against), not document.diagnostics
                     // above: the hierarchy may already have hidden linking diagnostics or
@@ -747,11 +789,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         version: versionBeforeRequest,
                         diagnostics: liveOutcome.diagnostics
                     };
+                    // Composed against the text and version this cycle actually checked, not the
+                    // document's current live text/version -- so composeWithVerdict's own
+                    // isVerdictForVersion check stays true for this verdict's own version even once
+                    // the user has typed further, and seen reflects exactly what this check
+                    // reconciled. Identical to composing against the live text/version whenever
+                    // stillCurrent is true, since checkedText and the live text are then the same.
                     const result = composeWithVerdict({
                         langiumDiagnostics: baseline.diagnostics,
                         validatedText: baseline.validatedText,
-                        liveText: document.textDocument.getText(),
-                        liveVersion: document.textDocument.version,
+                        liveText: checkedText,
+                        liveVersion: versionBeforeRequest,
                         verdict: record
                     });
                     const seen = result.seen ?? new Set<string>();
@@ -782,11 +830,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         })
                         : applyConfiguredDiagnosticHierarchy(result.diagnostics);
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
-                    // A verdict for text that has since moved on, or a request superseded by a
-                    // newer one: nothing further this cycle — no reconciliation, no state change,
-                    // no save-time compile, and (publishCycleDiagnostics never runs) no publish at
-                    // all. The edit that changed the text has already scheduled a newer cycle of
-                    // its own.
+                    // A verdict for text that has since moved on under 'debounced' (where only an
+                    // exact version match keeps a verdict), or a request superseded by a newer one
+                    // under 'on-save' before this cycle ever reaches the branch above: nothing
+                    // further this cycle — no reconciliation, no state change, no save-time
+                    // compile, and (publishCycleDiagnostics never runs) no publish at all. The edit
+                    // or newer save that superseded this cycle has already scheduled (or already
+                    // completed) a newer cycle of its own.
                     return;
                 } else {
                     // failed, unavailable, or the latch/trigger already off (liveOutcome

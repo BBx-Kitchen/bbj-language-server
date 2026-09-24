@@ -2,13 +2,14 @@ import { DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import type { LangiumDocument } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { validationHelper } from 'langium/test';
+import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
-import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE } from '../src/language/bbj-diagnostic-reconciliation.js';
-import { clearAllContentChanges, clearAllKeptChecks } from '../src/language/bbj-kept-check.js';
+import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE, getVerdictState } from '../src/language/bbj-diagnostic-reconciliation.js';
+import { clearAllContentChanges, clearAllKeptChecks, getKeptCheck } from '../src/language/bbj-kept-check.js';
 import { BBJ_PARSER_SOURCE } from '../src/language/bbj-parser-service.js';
 import type { ParseError } from '../src/language/java-interop.js';
 import type { Program } from '../src/language/generated/ast.js';
@@ -39,6 +40,7 @@ function replaceLineContent(line: number, text: string): ReturnType<typeof inser
 type BuilderPrivates = {
     bbjcplAvailable: boolean | undefined;
     runBbjcplForDocuments(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
+    sendDiagnosticsToClient(uri: URI, diagnostics: Diagnostic[]): void;
 };
 
 function createHarness() {
@@ -108,6 +110,250 @@ describe('on-save kept errors', () => {
         expect(bbjParserDiagnostics).toHaveLength(1);
         expect(bbjParserDiagnostics[0].range.start.line).toBe(2);
         expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('in-flight results and supersession under on-save', () => {
+    test('tracer: a save\'s result that resolves after the user typed is kept and placed on the shifted line', async () => {
+        const { shared, interopService, client, builder } = createHarness();
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
+
+        const uri = URI.file('/proj/in-flight-kept.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\nz = 3\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        // The open check completes right away, with no errors.
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+
+        // The save's own check is held: it will not resolve until the user has already typed.
+        let resolveHeld: (() => void) | undefined;
+        const held = new Promise<void>(resolve => { resolveHeld = resolve; });
+        parseProgramSpy.mockImplementationOnce(async params => {
+            await held;
+            return {
+                version: params.version,
+                errors: [{
+                    categories: [],
+                    message: 'undefined variable',
+                    editorStartLine: 2, // one-based -- the line 'y = 2' sits on in the saved text.
+                    editorEndLine: 2,
+                    startCharacter: 1,
+                    endCharacter: 1
+                }]
+            };
+        });
+
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(2);
+
+        // The user types while the save's own check is still in flight -- inserts a line at the
+        // top, bumping the version. Typing arms no compiler check under on-save.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem added\n')]);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(2);
+
+        // The held check now resolves, for the version-1 text it was actually sent.
+        resolveHeld!();
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        await builder.update([uri], []);
+        let document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        let bbjParserDiagnostics = (document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjParserDiagnostics).toHaveLength(1);
+        expect(bbjParserDiagnostics[0].range.start.line).toBe(2);
+
+        // Another keystroke after that still shows it there, shifted again.
+        client.change(uriString, 3, [insertTextAt(0, 0, 'rem another\n')]);
+        await builder.update([uri], []);
+        document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        bbjParserDiagnostics = (document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE);
+        expect(bbjParserDiagnostics).toHaveLength(1);
+        expect(bbjParserDiagnostics[0].range.start.line).toBe(3);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('supersession, newer first: resolving the newer save before the older one means only the newer result is ever published or kept', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        setCompilerTrigger('on-save');
+
+        const uri = URI.file('/proj/supersession-newer-first.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        let resolveA: ((errors: ParseError[]) => void) | undefined;
+        let resolveB: ((errors: ParseError[]) => void) | undefined;
+        const heldA = new Promise<ParseError[]>(resolve => { resolveA = resolve; });
+        const heldB = new Promise<ParseError[]>(resolve => { resolveB = resolve; });
+        let call = 0;
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(async params => {
+            call++;
+            if (call === 1) {
+                // The open's own check -- resolves right away, with no errors.
+                return { version: params.version, errors: [] };
+            }
+            const errors = await (call === 2 ? heldA : heldB);
+            return { version: params.version, errors };
+        });
+        const publishedLists: Diagnostic[][] = [];
+        vi.spyOn(privates, 'sendDiagnosticsToClient').mockImplementation((_uri, diagnostics) => {
+            publishedLists.push(diagnostics);
+        });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+
+        // Cycle A: save, held.
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        // Typing arms nothing under on-save -- only another save starts a new cycle.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem edit\n')]);
+        // Cycle B: a second save, held too, for the newer text.
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+
+        const errorX: ParseError = { categories: [], message: 'X', editorStartLine: 1, editorEndLine: 1, startCharacter: 1, endCharacter: 1 };
+        const errorY: ParseError = { categories: [], message: 'Y', editorStartLine: 1, editorEndLine: 1, startCharacter: 1, endCharacter: 1 };
+
+        // The newer cycle resolves first...
+        resolveB!([errorX]);
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(getKeptCheck(uri)?.diagnostics[0]?.message).toBe('X');
+
+        // ...then the older, stale cycle resolves -- it must not overwrite B's result.
+        resolveA!([errorY]);
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(getKeptCheck(uri)?.diagnostics[0]?.message).toBe('X');
+        expect(getVerdictState(uri)?.diagnostics?.[0]?.message).toBe('X');
+        expect(publishedLists.every(list => !list.some(d => d.message === 'Y'))).toBe(true);
+    });
+
+    test('supersession, older first: the older cycle publishes and stores nothing, and the newer cycle still wins once it resolves', async () => {
+        const { shared, interopService, client, privates } = createHarness();
+        setCompilerTrigger('on-save');
+
+        const uri = URI.file('/proj/supersession-older-first.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\ny = 2\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        let resolveA: ((errors: ParseError[]) => void) | undefined;
+        let resolveB: ((errors: ParseError[]) => void) | undefined;
+        const heldA = new Promise<ParseError[]>(resolve => { resolveA = resolve; });
+        const heldB = new Promise<ParseError[]>(resolve => { resolveB = resolve; });
+        let call = 0;
+        vi.spyOn(interopService, 'parseProgram').mockImplementation(async params => {
+            call++;
+            if (call === 1) {
+                // The open's own check -- resolves right away, with no errors.
+                return { version: params.version, errors: [] };
+            }
+            const errors = await (call === 2 ? heldA : heldB);
+            return { version: params.version, errors };
+        });
+        const publishedLists: Diagnostic[][] = [];
+        vi.spyOn(privates, 'sendDiagnosticsToClient').mockImplementation((_uri, diagnostics) => {
+            publishedLists.push(diagnostics);
+        });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        await vi.advanceTimersByTimeAsync(0);
+
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem edit\n')]);
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+
+        const errorX: ParseError = { categories: [], message: 'X', editorStartLine: 1, editorEndLine: 1, startCharacter: 1, endCharacter: 1 };
+        const errorY: ParseError = { categories: [], message: 'Y', editorStartLine: 1, editorEndLine: 1, startCharacter: 1, endCharacter: 1 };
+
+        // Snapshot the state right before either save cycle resolves -- still the open's own
+        // check (no errors), from before A or B ever ran.
+        const keptCheckBeforeResolution = getKeptCheck(uri);
+        const verdictBeforeResolution = getVerdictState(uri);
+        const publishedCountBeforeResolution = publishedLists.length;
+
+        // The older cycle resolves first -- superseded before it ever gets here: no change at all.
+        resolveA!([errorY]);
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(getKeptCheck(uri)).toEqual(keptCheckBeforeResolution);
+        expect(getVerdictState(uri)).toEqual(verdictBeforeResolution);
+        expect(publishedLists).toHaveLength(publishedCountBeforeResolution);
+
+        // The newer cycle resolves afterward and publishes/stores as normal.
+        resolveB!([errorX]);
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(getKeptCheck(uri)?.diagnostics[0]?.message).toBe('X');
+        expect(publishedLists.some(list => list.some(d => d.message === 'X'))).toBe(true);
+        expect(publishedLists.every(list => !list.some(d => d.message === 'Y'))).toBe(true);
+    });
+
+    test('debounced regression: a verdict held while the text moves on is still dropped', async () => {
+        const { shared, interopService, client } = createHarness();
+        setCompilerTrigger('debounced');
+        interopService.scriptParseProgram({ errors: [] });
+
+        const uri = URI.file('/proj/debounced-moved-on.bbj');
+        const uriString = uri.toString();
+        const text = 'x = 1\n';
+        addWorkspaceDocument(shared, uri, text);
+
+        let resolveHeld: (() => void) | undefined;
+        const held = new Promise<void>(resolve => { resolveHeld = resolve; });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram').mockImplementationOnce(async params => {
+            await held;
+            return {
+                version: params.version,
+                errors: [{
+                    categories: [],
+                    message: 'a stale verdict for text the user has since moved on from',
+                    editorStartLine: 1,
+                    editorEndLine: 1,
+                    startCharacter: 1,
+                    endCharacter: 1
+                }]
+            };
+        });
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.open(uriString, 1, text);
+        // The debounced cycle fires and hangs, awaiting the held request.
+        await vi.advanceTimersByTimeAsync(600);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
+
+        // The text moves on while the request is still in flight -- no further timer is advanced,
+        // so no second cycle starts; this is purely about the still-in-flight cycle's own outcome.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem edit\n')]);
+
+        resolveHeld!();
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(getKeptCheck(uri)).toBeUndefined();
+        expect(getVerdictState(uri)).toBeUndefined();
     });
 });
 
