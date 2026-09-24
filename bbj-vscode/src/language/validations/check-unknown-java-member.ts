@@ -137,7 +137,13 @@ export function checkUnknownJavaMember(memberCall: MemberCall, accept: Validatio
 
     const isClassRef = isJavaClass(receiverSymbol);
     const memberTextLower = memberText.toLowerCase();
-    const methodMatch = receiverType.methods.some(m => (!isClassRef || m.isStatic) && m.name.toLowerCase() === memberTextLower);
+    // A bare class reference used as a method-call receiver (e.g. `BBjAPI.setClientProperty(...)`,
+    // with no parentheses instantiating an object first) is accepted by the compiler for at least
+    // some of BBj's Java proxy classes, and calls a real instance method -- confirmed against real
+    // documentation-sample code and the live backend's own class description. Field access has no
+    // such carve-out: issue #440's own regression still requires an instance field read through a
+    // class reference to be flagged, so the static-only rule stays for fields only.
+    const methodMatch = receiverType.methods.some(m => m.name.toLowerCase() === memberTextLower);
     if (methodMatch) {
         return;
     }
