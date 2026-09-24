@@ -152,6 +152,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     /**
+     * The trigger mode {@link runBbjcplForDocuments} saw on its previous call -- `undefined`
+     * until that method has run at least once. Lets it tell a runtime mode switch apart from a
+     * rebuild under a steady mode: when the trigger differs from this field, the `debounced`
+     * branch arms nothing for this rebuild (a VS Code settings change rebuilds every open file
+     * document via `reloadJavaClassesAndRevalidate`, and that rebuild must not start one check
+     * per open file the instant `debounced` becomes current) -- the next edit arms as usual. Not
+     * consulted by the `'off'` or `'on-save'` branches: `'off'` already clears on every call
+     * regardless of a switch, and `'on-save'` never arms from a rebuild in the first place.
+     */
+    private lastRebuildTrigger: ReturnType<typeof getCompilerTrigger> | undefined = undefined;
+
+    /**
      * Trailing-edge quiet period (ms) before a debounced live-parse / BBjCPL cycle runs. Re-armed
      * by every open, edit and rebuild of an open document under `debounced` -- not only saves.
      * Fixed; not user-configurable. Kept equal to the exported {@link COMPILER_CHECK_DEBOUNCE_MS}
@@ -227,7 +239,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     /**
      * Whether a BBjCPL debounce timer is currently pending for any document — the second half
      * of the {@link hasPendingWork} quiescence predicate a config reload consults before it is
-     * safe to push a restart request (#486).
+     * safe to push a restart request (#486). Under `debounced` this timer covers the whole
+     * quiet-period-to-callback-start span, exactly as before this phase. Under `on-save` a save
+     * or open still registers the very same `cplDebounceTimers` entry (see {@link armDelayMs}'s
+     * zero-delay result); with the delay at zero the entry only covers the brief moment between
+     * that event and its callback starting, but the contract this method exposes -- "a cycle is
+     * currently pending" -- is unchanged either way.
      */
     public hasPendingCompile(): boolean {
         return this.cplDebounceTimers.size > 0;
@@ -248,6 +265,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      *    point, so without this half the predicate would report "not busy" while that tail is
      *    still actively loading/relinking/re-validating documents ({@link postProcessingDepth}); or
      *  - a BBjCPL debounce timer is pending ({@link hasPendingCompile}).
+     *
+     * Nothing else about this predicate changes under `on-save` -- see {@link hasPendingCompile}'s
+     * own doc comment for the one detail (a much shorter, but still real, pending window) that
+     * does.
      */
     public hasPendingWork(): boolean {
         return this.currentState < DocumentState.Validated
@@ -316,7 +337,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      *    last verdict or compiler diagnostics stay exactly as they were. Under this trigger the
      *    only place a check starts is the event-driven arming path (armLiveParseForDocument,
      *    reached only for an 'open' or 'save' reason), never a rebuild for any other reason.
-     *  - `'debounced'`: arms every eligible open document exactly as before this phase.
+     *  - `'debounced'`: arms every eligible open document exactly as before this phase, unless
+     *    this rebuild is the first one to see a trigger switched from something else -- see
+     *    {@link lastRebuildTrigger}.
      *
      * IMPORTANT: This runs INSIDE buildDocuments(), not from onBuildPhase —
      * calling from onBuildPhase causes CPU rebuild loops (see STATE.md).
@@ -326,6 +349,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         cancelToken: CancellationToken
     ): Promise<void> {
         const trigger = getCompilerTrigger();
+        // False on the very first call (lastRebuildTrigger still undefined) -- see
+        // lastRebuildTrigger's own doc comment for why this is computed once, at the top, before
+        // any branch below runs.
+        const triggerChanged = this.lastRebuildTrigger !== undefined && this.lastRebuildTrigger !== trigger;
+        this.lastRebuildTrigger = trigger;
 
         if (trigger === 'off') {
             // No cycle can run while the trigger is off, so no document may keep a verdict.
@@ -350,7 +378,19 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             // A rebuild -- whatever triggered it -- never starts a check under 'on-save'. Only
             // the event-driven arming path (an 'open' or 'save' reason reaching
             // armLiveParseForDocument) starts one; Langium's own validation of these documents
-            // has already run by the time buildDocuments() calls this method, unaffected.
+            // has already run by the time buildDocuments() calls this method, unaffected. No
+            // burst to guard against on a switch into this mode either -- there was never
+            // anything to arm from a rebuild in the first place.
+            return;
+        }
+
+        if (triggerChanged) {
+            // The trigger just switched to 'debounced' from something else. A VS Code settings
+            // change rebuilds every open file document (main.ts's reloadJavaClassesAndRevalidate)
+            // as part of applying that switch, and this rebuild must not start one check per open
+            // file the instant 'debounced' becomes current -- that would be exactly the burst of
+            // checks a mode switch must not produce. The next edit arms as usual:
+            // armLiveParseFromEvent/armLiveParseForDocument never consult lastRebuildTrigger.
             return;
         }
 
