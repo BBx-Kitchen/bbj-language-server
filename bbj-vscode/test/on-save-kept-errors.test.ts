@@ -577,3 +577,193 @@ describe('composing while typing between saves, end to end', () => {
         expect((document.diagnostics ?? []).filter(d => d.source === BBJ_PARSER_SOURCE)).toHaveLength(0);
     });
 });
+
+/** A whole-line `Diagnostic` in the shape the save-time compiler parser produces, sourced
+ * `'BBjCPL'` -- same idiom as `bbj-cpl-fallback-dedup.test.ts`'s own `bbjcplDiagnostic`. */
+function bbjcplDiagnostic(line: number, message: string): Diagnostic {
+    return {
+        range: { start: { line, character: 0 }, end: { line, character: END_OF_LINE_CHARACTER } },
+        message,
+        severity: DiagnosticSeverity.Error,
+        source: 'BBjCPL',
+    };
+}
+
+/** Drains one real macrotask turn -- needed only once a cycle reaches `notifyDocumentPhase` for
+ * real (a document already at the Validated state). Same idiom as
+ * `bbj-cpl-fallback-dedup.test.ts`'s own `flushRealMacrotask`. */
+function flushRealMacrotask(): Promise<void> {
+    return new Promise(resolve => setImmediate(resolve));
+}
+
+describe('fallback results kept until the next save, end to end', () => {
+    // The zero-based lines TWO_SYNTAX_COMPLAINTS_TEXT's two independent parse errors land on --
+    // derived from a throwaway validation, exactly as the other describe blocks in this file do.
+    let firstFlaggedLine: number;
+    let secondFlaggedLine: number;
+
+    beforeAll(async () => {
+        const probeServices = createBBjTestServices(EmptyFileSystem);
+        await initializeWorkspace(probeServices.shared);
+        const probeValidate = validationHelper<Program>(probeServices.BBj);
+        const result = await probeValidate(TWO_SYNTAX_COMPLAINTS_TEXT);
+        const parseErrors = result.diagnostics.filter(isPlainParsingError);
+        const flaggedLines = [...new Set(parseErrors.map(d => d.range.start.line))];
+        expect(flaggedLines.length).toBe(2);
+        firstFlaggedLine = Math.min(...flaggedLines);
+        secondFlaggedLine = flaggedLines.find(l => l !== firstFlaggedLine)!;
+    });
+
+    /** Opens `uri` on the fake client and validates it once for real, with the compiler trigger
+     * off so the open itself starts no compiler check -- the same helper shape as the sibling
+     * describe block's own `openAndValidateOnce`. */
+    async function openAndValidateOnce(
+        harness: ReturnType<typeof createHarness>,
+        uri: URI,
+        text: string
+    ): Promise<void> {
+        setCompilerTrigger('off');
+        harness.client.open(uri.toString(), 1, text);
+        await harness.builder.update([uri], []);
+    }
+
+    test('on-save save: after inserting a line at the top, the BBjCPL diagnostic shows on the shifted line, the Langium complaint there stays gone, and the other line is still a plain Error', async () => {
+        const harness = createHarness();
+        const { shared, BBj, interopService, client, builder } = harness;
+        const uri = URI.file('/proj/fallback-kept-shift.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await openAndValidateOnce(harness, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: kept probe')]);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        let document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        let diagnostics = document.diagnostics ?? [];
+        expect(diagnostics.filter(d => d.range.start.line === firstFlaggedLine && d.source === 'BBjCPL')).toHaveLength(1);
+        expect(diagnostics.some(d => isPlainParsingError(d) && d.range.start.line === firstFlaggedLine)).toBe(false);
+        expect(diagnostics.filter(d => d.range.start.line === secondFlaggedLine && isPlainParsingError(d))).toHaveLength(1);
+
+        // Insert a line at the top -- typing arms no compiler check under on-save.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem inserted\n')]);
+        await builder.update([uri], []);
+
+        document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        diagnostics = document.diagnostics ?? [];
+        expect(diagnostics.filter(d => d.range.start.line === firstFlaggedLine + 1 && d.source === 'BBjCPL')).toHaveLength(1);
+        expect(diagnostics.some(d => isPlainParsingError(d) && d.range.start.line === firstFlaggedLine + 1)).toBe(false);
+        const onSecondLine = diagnostics.filter(d => d.range.start.line === secondFlaggedLine + 1);
+        expect(onSecondLine.filter(isPlainParsingError)).toHaveLength(1);
+        expect(onSecondLine.some(d => (d.data as { code?: unknown } | undefined)?.code === DOWNGRADED_SYNTAX_CODE)).toBe(false);
+    });
+
+    test('editing the first flagged line to different invalid text keeps the BBjCPL diagnostic and shows a fresh Langium Error for the new text on the same line', async () => {
+        const harness = createHarness();
+        const { shared, BBj, interopService, client, builder } = harness;
+        const uri = URI.file('/proj/fallback-edit-flagged-line.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await openAndValidateOnce(harness, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: kept probe')]);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        // Replacing the flagged line's own text (still a resync point right after the still-
+        // dangling first operator, per this file's other describe block) with different text: the
+        // kept BBjCPL diagnostic stays on that line, and a fresh Langium complaint about the new
+        // text shows as an Error beside it, since the check never saw this exact line text.
+        client.change(uriString, 2, [replaceLineContent(firstFlaggedLine, 'rem changed')]);
+        await builder.update([uri], []);
+
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        const diagnostics = document.diagnostics ?? [];
+        const onFirstLine = diagnostics.filter(d => d.range.start.line === firstFlaggedLine);
+        expect(onFirstLine.some(d => d.source === 'BBjCPL')).toBe(true);
+        expect(onFirstLine.some(isPlainParsingError)).toBe(true);
+    });
+
+    test('a fallback compile held while the user types after the save is kept and placed on the shifted line once it resolves', async () => {
+        const harness = createHarness();
+        const { shared, BBj, interopService, client, builder } = harness;
+        const uri = URI.file('/proj/fallback-held-compile.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await openAndValidateOnce(harness, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        let resolveCompile: ((diagnostics: Diagnostic[]) => void) | undefined;
+        const held = new Promise<Diagnostic[]>(resolve => { resolveCompile = resolve; });
+        vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockImplementationOnce(() => held);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+
+        // The user types while the save's own compile is still in flight -- inserts a line at the
+        // top. Typing arms no compiler check under on-save.
+        client.change(uriString, 2, [insertTextAt(0, 0, 'rem inserted\n')]);
+        await vi.advanceTimersByTimeAsync(1000);
+
+        resolveCompile!([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: held probe')]);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        await builder.update([uri], []);
+        const document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        const bbjcplDiagnostics = (document.diagnostics ?? []).filter(d => d.source === 'BBjCPL');
+        expect(bbjcplDiagnostics).toHaveLength(1);
+        expect(bbjcplDiagnostics[0].range.start.line).toBe(firstFlaggedLine + 1);
+    });
+
+    test('a later save whose compile returns no findings removes the previously kept BBjCPL diagnostic', async () => {
+        const harness = createHarness();
+        const { shared, BBj, interopService, client, builder } = harness;
+        const uri = URI.file('/proj/fallback-clears-on-empty.bbj');
+        const uriString = uri.toString();
+        addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+        await openAndValidateOnce(harness, uri, TWO_SYNTAX_COMPLAINTS_TEXT);
+
+        setCompilerTrigger('on-save');
+        interopService.scriptParseProgram('method-not-found');
+        const compileSpy = vi.spyOn(BBj.compiler.BBjCPLService, 'compile').mockResolvedValue([]);
+        compileSpy.mockResolvedValueOnce([bbjcplDiagnostic(firstFlaggedLine, 'Syntax error: kept probe')]);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        let document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect((document.diagnostics ?? []).some(d => d.source === 'BBjCPL')).toBe(true);
+
+        // A later save whose compile returns no findings at all -- the previous kept check is
+        // replaced with an empty one, clearing the shown diagnostic.
+        client.save(uriString);
+        await vi.advanceTimersByTimeAsync(0);
+        await flushRealMacrotask();
+        await flushRealMacrotask();
+
+        document = shared.workspace.LangiumDocuments.getDocument(uri)!;
+        expect((document.diagnostics ?? []).some(d => d.source === 'BBjCPL')).toBe(false);
+        expect(getKeptCheck(uri)?.diagnostics ?? []).toEqual([]);
+    });
+});

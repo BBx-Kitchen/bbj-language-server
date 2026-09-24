@@ -9,6 +9,7 @@ import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { applyConfiguredDiagnosticHierarchy, mergeDiagnostics, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { clearAllVerdictStates, DOWNGRADED_SYNTAX_CODE, recallLangiumSnapshot } from '../src/language/bbj-diagnostic-reconciliation.js';
+import { clearAllContentChanges, clearAllKeptChecks, getKeptCheck } from '../src/language/bbj-kept-check.js';
 import { createBBjTestServices, JavaInteropTestService } from './bbj-test-module.js';
 import { listenOnFakeConnection } from './fake-text-document-connection.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -79,6 +80,8 @@ afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     clearAllVerdictStates();
+    clearAllKeptChecks();
+    clearAllContentChanges();
     setCompilerTrigger('debounced');
 });
 
@@ -143,6 +146,12 @@ describe('bbjcpl fallback dedup', () => {
         expect(onSecondLine).toHaveLength(1);
         expect(onSecondLine[0].severity).toBe(DiagnosticSeverity.Error);
         expect((onSecondLine[0].data as { code?: unknown } | undefined)?.code).not.toBe(DOWNGRADED_SYNTAX_CODE);
+
+        // The save's own check is remembered as a kept check too -- kind 'fallback' (never
+        // downgrades on its own), and its seen set records the complaint it just deduped.
+        const kept = getKeptCheck(uri);
+        expect(kept?.kind).toBe('fallback');
+        expect(kept?.seen.size).toBeGreaterThan(0);
     });
 });
 
@@ -285,7 +294,7 @@ describe('the dedup applies only when bbjcpl checked the editor text', () => {
         expect((onFirstLine[0].data as { code?: unknown } | undefined)?.code).toBeUndefined();
     });
 
-    test('on-save, an open whose on-disk text differs by one non-ASCII character merges as before', async () => {
+    test('on-save, an open whose on-disk text differs by one non-ASCII character keeps the diagnostic without suppressing anything', async () => {
         const { shared, BBj, interopService, client, builder } = createHarness();
         setCompilerTrigger('on-save');
         interopService.scriptParseProgram('method-not-found');
@@ -315,11 +324,13 @@ describe('the dedup applies only when bbjcpl checked the editor text', () => {
         await flushRealMacrotask();
         await flushRealMacrotask();
 
-        const expected = mergeDiagnostics(applyConfiguredDiagnosticHierarchy(latestLangiumList), [cplDiag]);
-        expect(document.diagnostics).toEqual(expected);
+        // Under on-save, an untrustworthy check (its text not provably on disk) is still kept and
+        // shown -- appended beside every Langium diagnostic, none of which is dropped or
+        // downgraded, since a check of possibly-different text must never hide a real error.
+        expect(document.diagnostics).toEqual([...latestLangiumList, cplDiag]);
     });
 
-    test('on-save, an open whose on-disk read rejects merges as before', async () => {
+    test('on-save, an open whose on-disk read rejects keeps the diagnostic without suppressing anything', async () => {
         const { shared, BBj, interopService, client, builder } = createHarness();
         setCompilerTrigger('on-save');
         interopService.scriptParseProgram('method-not-found');
@@ -347,8 +358,7 @@ describe('the dedup applies only when bbjcpl checked the editor text', () => {
         await flushRealMacrotask();
         await flushRealMacrotask();
 
-        const expected = mergeDiagnostics(applyConfiguredDiagnosticHierarchy(latestLangiumList), [cplDiag]);
-        expect(document.diagnostics).toEqual(expected);
+        expect(document.diagnostics).toEqual([...latestLangiumList, cplDiag]);
     });
 
     test('a stale Langium snapshot whose flagged line differs from the checked text keeps that complaint even though it overlaps', async () => {
