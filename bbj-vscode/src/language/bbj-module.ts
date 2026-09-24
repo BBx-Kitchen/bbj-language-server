@@ -16,6 +16,7 @@ import {
 import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext } from 'langium/lsp';
 import { BBjCodeActionProvider } from './bbj-code-action-provider.js';
 import { BBjCommentProvider } from './bbj-comment-provider.js';
+import { BBjServiceRegistry } from './bbj-service-registry.js';
 import { BBjCompletionProvider } from './bbj-completion-provider.js';
 import { BBjDefinitionProvider } from './bbj-definition-provider.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
@@ -168,6 +169,7 @@ function createBBjCompletionParser(services: LangiumServices): LangiumCompletion
 }
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
+    ServiceRegistry: (services: LangiumSharedServices) => new BBjServiceRegistry(services),
     lsp: {
         NodeKindProvider: () => new BBjNodeKindProvider()
     },
