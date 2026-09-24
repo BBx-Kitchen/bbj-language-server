@@ -13,7 +13,7 @@ import { normalize, resolve, join } from "path";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
-import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy } from './bbj-document-validator.js';
+import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy, composeOnSaveDiagnostics } from './bbj-document-validator.js';
 import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.js';
 import {
     clearAllVerdictStates,
@@ -28,6 +28,14 @@ import {
     type LangiumDiagnosticsSnapshot,
     type VerdictState
 } from './bbj-diagnostic-reconciliation.js';
+import {
+    clearAllContentChanges,
+    clearAllKeptChecks,
+    contentChangesSince,
+    pruneContentChangesThrough,
+    setKeptCheck,
+    type KeptCheck
+} from './bbj-kept-check.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
@@ -398,8 +406,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         this.lastRebuildTrigger = trigger;
 
         if (trigger === 'off') {
-            // No cycle can run while the trigger is off, so no document may keep a verdict.
+            // No cycle can run while the trigger is off, so no document may keep a verdict, a
+            // kept on-save check, or the change log a kept check would otherwise be mapped
+            // through -- there is nothing left for any of them to be kept against.
             clearAllVerdictStates();
+            clearAllKeptChecks();
+            clearAllContentChanges();
             // Clear stale BBjCPL and live-parser diagnostics for all eligible documents.
             for (const document of documents) {
                 if (!this.shouldCompileWithBbjcpl(document)) continue;
@@ -742,8 +754,33 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         liveVersion: document.textDocument.version,
                         verdict: record
                     });
-                    setVerdictState(document.uri, { ...record, seen: result.seen ?? new Set<string>() });
-                    next = applyConfiguredDiagnosticHierarchy(result.diagnostics);
+                    const seen = result.seen ?? new Set<string>();
+                    setVerdictState(document.uri, { ...record, seen });
+
+                    // Stored in every mode, not only 'on-save': it is read only under 'on-save'
+                    // (validateDocument, and this cycle's own publish below), but storing it under
+                    // 'debounced' too means a later runtime switch to 'on-save' keeps showing this
+                    // verdict's errors instead of starting from nothing. Pruned to this version
+                    // right away -- nothing earlier can ever be needed to map a diagnostic from
+                    // this check onward.
+                    const keptCheck: KeptCheck = {
+                        kind: 'verdict',
+                        version: versionBeforeRequest,
+                        diagnostics: liveOutcome.diagnostics,
+                        seen
+                    };
+                    setKeptCheck(document.uri, keptCheck);
+                    pruneContentChangesThrough(document.uri, versionBeforeRequest);
+
+                    next = getCompilerTrigger() === 'on-save'
+                        ? composeOnSaveDiagnostics({
+                            langiumDiagnostics: baseline.diagnostics,
+                            validatedText: baseline.validatedText,
+                            liveText: document.textDocument.getText(),
+                            kept: keptCheck,
+                            changesSinceCheck: contentChangesSince(document.uri, versionBeforeRequest, document.textDocument.version)
+                        })
+                        : applyConfiguredDiagnosticHierarchy(result.diagnostics);
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
                     // A verdict for text that has since moved on, or a request superseded by a
                     // newer one: nothing further this cycle — no reconciliation, no state change,

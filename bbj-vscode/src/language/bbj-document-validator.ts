@@ -15,6 +15,14 @@ import {
     rememberLangiumDiagnostics,
     setVerdictState
 } from "./bbj-diagnostic-reconciliation.js";
+import {
+    clearContentChanges,
+    clearKeptCheck,
+    composeWithKeptCheck,
+    contentChangesSince,
+    getKeptCheck,
+    type KeptCheckComposition
+} from "./bbj-kept-check.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -198,6 +206,28 @@ export function applyConfiguredDiagnosticHierarchy(diagnostics: Diagnostic[]): D
  * complaint outright rather than merely recoloring its source. Behaviour here is otherwise
  * unchanged from before that reconciliation existed.
  */
+/**
+ * Applies {@link composeWithKeptCheck} for a document validated under the `on-save` trigger, with
+ * the diagnostic hierarchy run at the right point for `input.kept.kind`:
+ *
+ * - `'verdict'`: the hierarchy runs once, after composition -- the same order `composeWithVerdict`'s
+ *   own debounced path already uses, so a kept BBj-parser error still suppresses linking errors and
+ *   other warnings exactly as a fresh verdict would.
+ * - `'fallback'`: the hierarchy runs first, on `input.langiumDiagnostics` alone, and never again
+ *   afterwards -- a kept BBjCPL diagnostic must never reach Rule 0 (`applyDiagnosticHierarchy`'s
+ *   own "BBjCPL errors present -> suppress Langium parse errors" rule) a second time, the same
+ *   order today's fallback publish already uses at the builder's own call site.
+ */
+export function composeOnSaveDiagnostics(input: KeptCheckComposition): Diagnostic[] {
+    if (input.kept.kind === 'verdict') {
+        return applyDiagnosticHierarchy(composeWithKeptCheck(input), suppressCascadingEnabled, maxErrorsDisplayed);
+    }
+    return composeWithKeptCheck({
+        ...input,
+        langiumDiagnostics: applyDiagnosticHierarchy(input.langiumDiagnostics, suppressCascadingEnabled, maxErrorsDisplayed)
+    });
+}
+
 export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnostic[]): Diagnostic[] {
     const result: Diagnostic[] = [...langiumDiags];
 
@@ -230,7 +260,11 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
      */
     constructor(services: LangiumServices) {
         super(services);
-        services.shared.workspace.TextDocuments.onDidClose(event => clearVerdictState(event.document.uri));
+        services.shared.workspace.TextDocuments.onDidClose(event => {
+            clearVerdictState(event.document.uri);
+            clearKeptCheck(event.document.uri);
+            clearContentChanges(event.document.uri);
+        });
     }
 
     override async validateDocument(
@@ -256,6 +290,25 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         // keystroke until the next verdict arrives. Skipped entirely (leaving `diagnostics`
         // untouched) when the compiler trigger is off or no verdict exists yet for this document
         // -- both cases must validate exactly as they did before this phase.
+        // Under 'on-save', no fresh verdict ever arrives between saves, so this document's kept
+        // check (if any) is composed instead of the debounced verdict machinery below -- see
+        // composeOnSaveDiagnostics's own doc comment. No kept check yet (before the document's
+        // first open/save check has completed) falls through to a plain hierarchy application,
+        // exactly like the "no verdict" case below.
+        if (getCompilerTrigger() === 'on-save') {
+            const kept = getKeptCheck(document.uri);
+            if (kept) {
+                return composeOnSaveDiagnostics({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    kept,
+                    changesSinceCheck: contentChangesSince(document.uri, kept.version, document.textDocument.version)
+                });
+            }
+            return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+        }
+
         let composed = diagnostics;
         if (getCompilerTrigger() !== 'off') {
             const verdict = getVerdictState(document.uri);
