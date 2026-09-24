@@ -68,12 +68,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| TRIG-01 | Phase 106 | Pending |
+| TRIG-02 | Phase 106 | Pending |
+| TRIG-03 | Phase 106 | Pending |
+| TRIG-04 | Phase 106 | Pending |
+| TRIG-05 | Phase 106 | Pending |
+| TRIG-06 | Phase 106 | Pending |
+| TRIG-07 | Phase 106 | Pending |
+| VAL-01 | Phase 107 | Pending |
+| VAL-02 | Phase 107 | Pending |
+| DIAG-01 | Phase 106 | Pending |
+| LIFE-01 | Phase 108 | Pending |
+| LIFE-02 | Phase 108 | Pending |
+| COMP-01 | Phase 109 | Pending |
+| COMP-02 | Phase 109 | Pending |
+| COMP-03 | Phase 109 | Pending |
+| JINT-01 | Phase 109 | Pending |
+| JINT-02 | Phase 109 | Pending |
+| JINT-03 | Phase 106 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0 ✓
+
+Per phase: Phase 106 — 9 (TRIG-01..07, DIAG-01, JINT-03); Phase 107 — 2 (VAL-01, VAL-02);
+Phase 108 — 2 (LIFE-01, LIFE-02); Phase 109 — 5 (COMP-01..03, JINT-01, JINT-02).
 
 ---
 *Requirements defined: 2026-09-24*
-*Last updated: 2026-09-24 after initial definition*
+*Last updated: 2026-09-24 after roadmap creation (traceability filled, 18/18 mapped)*

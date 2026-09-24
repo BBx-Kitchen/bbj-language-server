@@ -9,11 +9,8 @@ compliant for every phase. There are no gaps against requirements. The close cou
 override only because the pre-close artifact scan found three open items, which were
 acknowledged rather than resolved (see Known verification overrides).
 
-**Where the code lives.** Not on `main` yet. Phases 98-105 are on
-`gsd/phase-103-one-set-of-errors-diagnostic-reconciliation`, and PR #691 (head branch
-`gsd/phase-102-live-compiler-diagnostics-with-backward-compatibility`) carries the whole
-milestone. By standing decision it lands on `main` as one piece now that all eight phases
-are done. Phase 101's `parseProgram` endpoint lives in the separate `bbj-ls` repository on
+**Where the code lives.** On `main` since 2026-09-24: PR #691 carried the whole milestone
+and was squash-merged as one piece (`b1614426`). Phase 101's `parseProgram` endpoint lives in the separate `bbj-ls` repository on
 BASIS GitLab, branch `feat/689-parse-program-endpoint`, with the merge request opened by
 hand. The conformance corpus and harness stay in the private `bbj-corpus` repository and
 never enter this repository or its CI. The phase archive under
