@@ -20,6 +20,7 @@ import { BBjCompletionProvider } from './bbj-completion-provider.js';
 import { BBjDefinitionProvider } from './bbj-definition-provider.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol-provider.js';
+import { BBjDocumentUpdateHandler } from './bbj-document-update-handler.js';
 import { BBjDocumentValidator } from './bbj-document-validator.js';
 import { BBjHoverProvider } from './bbj-hover.js';
 import { BBjIndexManager } from './bbj-index-manager.js';
@@ -169,7 +170,8 @@ function createBBjCompletionParser(services: LangiumServices): LangiumCompletion
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     lsp: {
-        NodeKindProvider: () => new BBjNodeKindProvider()
+        NodeKindProvider: () => new BBjNodeKindProvider(),
+        DocumentUpdateHandler: (services) => new BBjDocumentUpdateHandler(services)
     },
     workspace: {
         DocumentBuilder: (services: LangiumSharedServices) => new BBjDocumentBuilder(services),

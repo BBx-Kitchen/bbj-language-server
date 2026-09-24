@@ -52,12 +52,60 @@ export function isBuildableDocumentUri(
 /**
  * The shape of a `TextDocuments` provider that also exposes the open/change events -- every
  * real LSP shared-services instance (`NormalizedTextDocuments`), but not the hand-built
- * `{ get }`-only test doubles several harnesses construct `BBjDocumentBuilder` with.
+ * `{ get }`-only test doubles several harnesses construct `BBjDocumentBuilder` with. `onDidSave`
+ * is optional here on purpose -- see {@link hasTextDocumentEvents}'s own doc comment for why it
+ * stays out of that guard's check.
  */
 type TextDocumentEventsProvider = TextDocumentProvider & {
     readonly onDidOpen: Event<TextDocumentChangeEvent<TextDocument>>;
     readonly onDidChangeContent: Event<TextDocumentChangeEvent<TextDocument>>;
+    readonly onDidSave?: Event<TextDocumentChangeEvent<TextDocument>>;
 };
+
+/**
+ * The reason an arming call reached {@link BBjDocumentBuilder.armLiveParseFromEvent} --
+ * `'open'`/`'change'` from the constructor's `onDidOpen`/`onDidChangeContent` listeners, `'save'`
+ * from its `onDidSave` listener. Threaded through the whole arming call chain so the `on-save`
+ * gate can tell a save or open apart from a keystroke: both `onDidOpen` and the paired
+ * `onDidChangeContent` Langium fires for the very same open funnel into the same private methods
+ * with no other way to tell them apart.
+ */
+export type LiveParseArmReason = 'open' | 'change' | 'save';
+
+/**
+ * Trailing-edge quiet period (ms) before a debounced live-parse / BBjCPL cycle runs. Re-armed by
+ * every open, edit and rebuild of an open document under `debounced` -- not only saves. Fixed;
+ * not user-configurable. Exported so {@link armDelayMs} and tests can reference the same value
+ * `BBjDocumentBuilder.SAVE_DEBOUNCE_MS` (below) is defined equal to.
+ */
+export const COMPILER_CHECK_DEBOUNCE_MS = 500;
+
+/**
+ * Whether an arming call for `reason`, under the current `trigger` mode, should start a
+ * compiler-check cycle at all. False for trigger `'off'` (no cycle ever starts, whatever the
+ * reason); false for `'on-save'` with reason `'change'` (typing never checks under on-save);
+ * false for `'debounced'` with reason `'save'` (a save never armed a check from an event before
+ * this phase, and `debounced`'s existing behaviour must not change); true otherwise, matching
+ * every arming path's behaviour before this phase for `'debounced'` and `'off'`.
+ */
+export function eventArmsCheck(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): boolean {
+    if (trigger === 'off') return false;
+    if (trigger === 'on-save' && reason === 'change') return false;
+    if (trigger === 'debounced' && reason === 'save') return false;
+    return true;
+}
+
+/**
+ * The debounce delay (ms) a cycle armed for `reason` under `trigger` should use. Zero under
+ * `'on-save'` -- {@link eventArmsCheck} already excludes the only reason (`'change'`) that would
+ * otherwise reach arming there, so `'open'` and `'save'` are the only reasons this is ever called
+ * for under `on-save`, and both an open and a save need to check immediately, with no delay.
+ * Otherwise {@link COMPILER_CHECK_DEBOUNCE_MS}, unchanged from every arming path's behaviour
+ * before this phase.
+ */
+export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): number {
+    return trigger === 'on-save' ? 0 : COMPILER_CHECK_DEBOUNCE_MS;
+}
 
 /**
  * True only when `provider` exposes both `onDidOpen` and `onDidChangeContent` as functions --
@@ -104,10 +152,14 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     /**
-     * Trailing-edge quiet period (ms) before a live-parse / BBjCPL cycle runs. Re-armed by every
-     * open, edit and rebuild of an open document -- not only saves. Fixed; not user-configurable.
+     * Trailing-edge quiet period (ms) before a debounced live-parse / BBjCPL cycle runs. Re-armed
+     * by every open, edit and rebuild of an open document under `debounced` -- not only saves.
+     * Fixed; not user-configurable. Kept equal to the exported {@link COMPILER_CHECK_DEBOUNCE_MS}
+     * so `armDelayMs`'s "otherwise" branch and this default agree. Under `on-save`, a save or open
+     * runs its cycle with no delay instead -- see {@link armDelayMs} and {@link debouncedCompile}'s
+     * `delayMs` parameter.
      */
-    private static readonly SAVE_DEBOUNCE_MS = 500;
+    private static readonly SAVE_DEBOUNCE_MS = COMPILER_CHECK_DEBOUNCE_MS;
 
     /** Tracks whether BBjCPL is available (lazily detected on first trigger). */
     private bbjcplAvailable: boolean | undefined = undefined;
@@ -142,11 +194,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // debouncedCompile) is untouched and keeps arming the very same cplDebounceTimers entry.
         // Langium's text-document store fires onDidOpen immediately followed by
         // onDidChangeContent for the same open, so both listeners resetting the same debounce
-        // timer on an open is harmless -- the second reset just replaces the first.
+        // timer on an open is harmless -- the second reset just replaces the first. Saves arm here
+        // too, with their own 'save' reason: under on-save the change listener's 'change' reason
+        // arms nothing (see eventArmsCheck), so a save is the only way an edit-driven cycle starts
+        // once the file is open.
         const textDocuments = services.workspace.TextDocuments;
         if (hasTextDocumentEvents(textDocuments)) {
-            textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document));
-            textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document));
+            textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document, 'open'));
+            textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document, 'change'));
+            if (typeof textDocuments.onDidSave === 'function') {
+                textDocuments.onDidSave(event => this.armLiveParseFromEvent(event.document, 'save'));
+            }
         }
     }
 
@@ -316,25 +374,25 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Entry point for the constructor's `onDidOpen`/`onDidChangeContent` listeners. The whole
-     * body is wrapped so a throw here never propagates into the shared text-document emitter
-     * Langium's own update handler listens on too -- an event listener that throws would break
-     * every OTHER listener registered on the same emitter, not just this one. Logs only the uri
-     * and the error's own message, never document text.
+     * Entry point for the constructor's `onDidOpen`/`onDidChangeContent`/`onDidSave` listeners.
+     * The whole body is wrapped so a throw here never propagates into the shared text-document
+     * emitter Langium's own update handler listens on too -- an event listener that throws would
+     * break every OTHER listener registered on the same emitter, not just this one. Logs only the
+     * uri and the error's own message, never document text.
      */
-    private armLiveParseFromEvent(textDocument: TextDocument): void {
+    private armLiveParseFromEvent(textDocument: TextDocument, reason: LiveParseArmReason): void {
         try {
-            if (getCompilerTrigger() === 'off') return;
+            if (!eventArmsCheck(getCompilerTrigger(), reason)) return;
             const uri = URI.parse(textDocument.uri);
             const document = this.langiumDocuments.getDocument(uri);
             if (!document) {
                 // No LangiumDocument yet for this uri -- the workspace hasn't loaded it. Re-arm
                 // once the workspace manager reports ready, since that resolves before the
                 // startup build runs, never through services.workspace.WorkspaceLock.
-                this.armWhenWorkspaceReady(uri);
+                this.armWhenWorkspaceReady(uri, reason);
                 return;
             }
-            this.armLiveParseForDocument(document, textDocument);
+            this.armLiveParseForDocument(document, textDocument, reason);
         } catch (e) {
             logger.error(`Live-parse event listener failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -345,24 +403,27 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * startup file scan has finished by then, but not the workspace's own build, so a document
      * this returns for may still be sitting at `Parsed`. At most one pending entry per uri (see
      * {@link pendingReadyUris}), so a burst of events for the same not-yet-loaded uri chains onto
-     * `ready` only once. When `ready` resolves, the trigger is re-checked (a config change while
-     * waiting may have turned it off), the document and its now-current live `TextDocument` are
-     * looked up again, and the cycle is armed only when both exist. A rejected `ready` (this
-     * repository never rejects it, but a hand-built test double could) is caught and logged, never
-     * left as an unhandled rejection.
+     * `ready` only once -- using the `reason` of whichever call first reached this method, since a
+     * later call for the same uri while one is already pending returns before ever reaching here
+     * (see {@link armLiveParseFromEvent}). When `ready` resolves, the trigger/reason pair is
+     * re-checked with {@link eventArmsCheck} (a config change while waiting may have turned the
+     * check off), the document and its now-current live `TextDocument` are looked up again, and
+     * the cycle is armed only when both exist. A rejected `ready` (this repository never rejects
+     * it, but a hand-built test double could) is caught and logged, never left as an unhandled
+     * rejection.
      */
-    private armWhenWorkspaceReady(uri: URI): void {
+    private armWhenWorkspaceReady(uri: URI, reason: LiveParseArmReason): void {
         const key = uri.toString();
         if (this.pendingReadyUris.has(key)) return;
         this.pendingReadyUris.add(key);
         this.wsManager().ready
             .then(() => {
                 this.pendingReadyUris.delete(key);
-                if (getCompilerTrigger() === 'off') return;
+                if (!eventArmsCheck(getCompilerTrigger(), reason)) return;
                 const document = this.langiumDocuments.getDocument(uri);
                 const liveTextDocument = this.textDocuments?.get(uri);
                 if (document && liveTextDocument) {
-                    this.armLiveParseForDocument(document, liveTextDocument);
+                    this.armLiveParseForDocument(document, liveTextDocument, reason);
                 }
             })
             .catch(e => {
@@ -380,15 +441,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * editor, `file:` scheme, not synthetic, not external, bbjcpl found), binds the event's live
      * text onto `document` (research Pitfall 1), then arms the existing debounce cycle -- the same
      * {@link cplDebounceTimers} entry the rebuild path uses, so an event followed by a rebuild
-     * inside the debounce window produces exactly one cycle.
+     * inside the debounce window produces exactly one cycle -- with the delay {@link armDelayMs}
+     * computes for `reason` under the current trigger (zero for an open or save under `on-save`).
      */
-    private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument): void {
+    private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument, reason: LiveParseArmReason): void {
         if (!isBuildableDocumentUri(document.uri, this.textDocuments, this.serviceRegistry)) return;
         if (!this.shouldCompileWithBbjcpl(document)) return;
         this.trackBbjcplAvailability();
         if (this.bbjcplAvailable === false) return;
         this.bindLiveTextDocument(document, textDocument);
-        this.debouncedCompile(document);
+        this.debouncedCompile(document, armDelayMs(getCompilerTrigger(), reason));
     }
 
     /**
@@ -445,17 +507,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * Schedule a BBjCPL compilation with trailing-edge debounce.
-     * Every open, edit or rebuild of an open document re-arms the per-file timer, so only the
-     * last event in a burst runs a cycle, after a 500ms quiet period. This prevents CPU spike and
-     * diagnostic flicker.
+     * Under `debounced`, every open, edit or rebuild of an open document re-arms the per-file
+     * timer, so only the last event in a burst runs a cycle, after a 500ms quiet period -- this
+     * prevents CPU spike and diagnostic flicker. Under `on-save`, an open or save runs its cycle
+     * with `delayMs` of `0` instead -- see the `delayMs` parameter below and {@link armDelayMs}.
      *
      * Compute-first, publish-once: nothing is written to `document.diagnostics` until the cycle
      * has decided its whole result -- see {@link publishCycleDiagnostics}, the single write/publish
      * point every branch below ends at. This callback is also the target of a live-parse debounce
-     * armed directly from a document change/open event (the constructor's `onDidChangeContent`
-     * listener), which can run before this document has ever been through a Langium build, so it
-     * must never assume a prior build already wrote `document.diagnostics` or remembered a
-     * pre-hierarchy list.
+     * armed directly from a document open, change or save event (the constructor's `onDidOpen`/
+     * `onDidChangeContent`/`onDidSave` listeners), which can run before this document has ever been
+     * through a Langium build, so it must never assume a prior build already wrote
+     * `document.diagnostics` or remembered a pre-hierarchy list.
      *
      * The live parser is asked first. A verdict for text unchanged since the request went out
      * reconciles Langium's own diagnostics against BBj's and the save-time compile does not run
@@ -477,8 +540,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * regardless of this cycle's own staleness, because it is a one-time signal tied to the
      * request that discovered the flip, not to this cycle's text version — every document's
      * verdict is stale the moment the endpoint that produced it is gone, not only this one's.
+     *
+     * @param delayMs The quiet period before the cycle runs. Defaults to
+     * {@link BBjDocumentBuilder.SAVE_DEBOUNCE_MS} (the `debounced` behaviour, unchanged from
+     * before this phase); callers pass {@link armDelayMs}'s result, which is `0` for an open or
+     * save under `on-save`. The mode is never consulted inside this callback itself (research
+     * anti-pattern) -- the caller already decided whether and when this cycle runs by choosing
+     * `delayMs`; what the cycle does once it fires is identical regardless of mode.
      */
-    private debouncedCompile(document: LangiumDocument): void {
+    private debouncedCompile(document: LangiumDocument, delayMs: number = BBjDocumentBuilder.SAVE_DEBOUNCE_MS): void {
         const key = document.uri.fsPath;
         const existing = this.cplDebounceTimers.get(key);
         if (existing) clearTimeout(existing);
@@ -588,8 +658,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // A single publish covering whichever branch above ran -- see
                 // publishCycleDiagnostics's own doc comment for why the state check there
                 // matters. CancellationToken.None — the original build's token may be stale
-                // after the 500ms debounce. Both compiler services handle their own timeout
-                // internally.
+                // by the time this cycle's delay (debounced or zero, see delayMs) elapses.
+                // Both compiler services handle their own timeout internally.
                 await this.publishCycleDiagnostics(document, next);
             } catch (e) {
                 // The callback runs detached from setTimeout, with no rejection handler of
@@ -598,7 +668,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // (P61-D2-017). Log and let the build continue.
                 logger.error(`BBjCPL debounced compile failed for ${key}: ${e}`);
             }
-        }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
+        }, delayMs);
 
         this.cplDebounceTimers.set(key, timer);
     }
