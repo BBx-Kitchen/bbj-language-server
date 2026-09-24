@@ -347,7 +347,7 @@ corpus text enters this repository.
   4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
   5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
 
-**Plans:** 4/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -362,7 +362,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 106-05-PLAN.md — Kept errors follow their lines while typing under on-save: change recording, kept checks, composition rules (TRIG-04) (wave 3)
+- [x] 106-05-PLAN.md — Kept errors follow their lines while typing under on-save: change recording, kept checks, composition rules (TRIG-04) (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -485,7 +485,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 106. On-Save Compiler Check in Both IDEs | 4/7 | Not started |  |
+| 106. On-Save Compiler Check in Both IDEs | 5/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 0/TBD | Not started | - |
 | 108. IntelliJ Crash Detection | 0/TBD | Not started | - |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
