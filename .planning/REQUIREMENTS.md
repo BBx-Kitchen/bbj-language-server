@@ -16,7 +16,7 @@
 - [ ] **TRIG-04**: With `on-save`, the compiler errors from the last check stay visible while the user types, until the next save replaces them; they are not dropped or shown on the wrong line by the diagnostic reconciliation
 - [x] **TRIG-05**: `debounced` (still the default) and `off` behave exactly as before
 - [ ] **TRIG-06**: IntelliJ users can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the chosen value from startup and after a change
-- [ ] **TRIG-07**: The VS Code setting description and both IDE feature docs describe the three modes as implemented and recommend `on-save` (instead of `off`) for large workspaces
+- [x] **TRIG-07**: The VS Code setting description and both IDE feature docs describe the three modes as implemented and recommend `on-save` (instead of `off`) for large workspaces
 
 ### Validation accuracy
 
@@ -74,7 +74,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIG-04 | Phase 106 | Pending |
 | TRIG-05 | Phase 106 | Complete |
 | TRIG-06 | Phase 106 | Pending |
-| TRIG-07 | Phase 106 | Pending |
+| TRIG-07 | Phase 106 | Complete |
 | VAL-01 | Phase 107 | Pending |
 | VAL-02 | Phase 107 | Pending |
 | DIAG-01 | Phase 106 | Pending |
