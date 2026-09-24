@@ -39,10 +39,12 @@ created: "2026-09-24"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 107-VAL-01 | TBD | TBD | VAL-01 | — | N/A | unit | `npx vitest run test/line-break-single-line-if.test.ts test/line-break-walk-termination.test.ts` | ✅ | ⬜ pending |
-| 107-VAL-02 | TBD | TBD | VAL-02 | T-107-01 | Malformed `## = 1` no longer disables use-before-assignment or scope computation | unit | `npx vitest run test/variable-scoping.test.ts` | ✅ | ⬜ pending |
-| 107-VAL-03 | TBD | TBD | VAL-03 | T-107-02 | Unknown member Error fires only on fully resolved Java classes | unit | `npx vitest run test/<VAL-03 test file>` | ❌ W0 | ⬜ pending |
-| 107-HARNESS | TBD | last | VAL-01, VAL-03 | — | N/A | harness (local) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` | ✅ | ⬜ pending |
+| 107-VAL-01 | 107-01 | 1 | VAL-01 | T-107-01 | A misplaced ELSE/FI stays flagged while the nested one-liner is clean | unit | `npx vitest run test/line-break-single-line-if.test.ts && npx vitest run test/line-break-walk-termination.test.ts` (one file per run) | ✅ | ⬜ pending |
+| 107-VAL-01-residue | 107-04 | 2 | VAL-01 | T-107-09 | Re-flagged corpus files clean; no corpus text enters the repository | harness (local) + unit | per-file probe `snapshots/phase-107-file-probe.mts`, then `npx vitest run test/line-break-single-line-if.test.ts` | ✅ | ⬜ pending |
+| 107-VAL-02 | 107-02 | 1 | VAL-02 | T-107-04 | Malformed `## = 1` no longer disables use-before-assignment or scope computation | unit | `npx vitest run test/variable-scoping.test.ts` | ✅ | ⬜ pending |
+| 107-VAL-03 | 107-03 | 1 | VAL-03 | T-107-06 | Unknown member Error fires only on fully resolved Java classes with a certain receiver type | unit + live-gated | `npx vitest run test/unknown-java-member.test.ts`; `RUN_BBJ_TESTS=1 npx vitest run test/functional/unknown-java-member-real-interop.test.ts` | ❌ W0 (created in 107-03 Task 1) | ⬜ pending |
+| 107-VAL-03-corpus | 107-05 | 2 | VAL-03 | T-107-13 | Every unknown-member Error on real code is a genuinely unknown member | live probe (local) | `snapshots/phase-107-live-member-probe.mts` over the accepted corpus | ✅ | ⬜ pending |
+| 107-HARNESS | 107-06 | 3 (last) | VAL-01, VAL-02, VAL-03 | T-107-15 | File-set comparison against the base; leak guard over the phase diff | harness (local) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` (same mode as the 107-04 base run) | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
