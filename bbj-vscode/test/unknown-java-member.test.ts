@@ -168,6 +168,14 @@ describe("Receivers that keep today's diagnostics", () => {
         const document = await validate('declare java.lang.String s!\ns!.\n');
         expect(validationCrashed(document.diagnostics)).toBe(false);
     });
+
+    test('a declared array of a Java class keeps its linking warning on .length, not the new Error', async () => {
+        // Java's own array .length pseudo-field is not a member of the element class itself -- a
+        // declared array receiver is not certain enough to trust an "unknown member" verdict on.
+        const document = await validate('declare java.lang.String[] arr!\nx! = arr!.length\n');
+        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('length'))).toBe(true);
+        expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
 });
 
 describe('Static-only access through a class reference', () => {
