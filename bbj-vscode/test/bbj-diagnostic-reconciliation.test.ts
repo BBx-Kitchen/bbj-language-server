@@ -9,6 +9,7 @@ import {
     downgradeSyntaxComplaint,
     recallLangiumDiagnostics,
     recallLangiumSnapshot,
+    reconcileWithFallbackCheck,
     reconcileWithVerdict,
     rememberLangiumDiagnostics,
     syntaxComplaintKey,
@@ -222,6 +223,136 @@ describe('reconcileWithVerdict', () => {
             syntaxComplaintKey(downgradedComplaint.message, 'a'),
             syntaxComplaintKey(replacedComplaint.message, 'b'),
         ]));
+    });
+
+});
+
+describe('reconcileWithFallbackCheck', () => {
+
+    test('an overlapping, matched parse error is dropped and its key (message plus the checked line\'s text) is in seen', () => {
+        const complaint = makeDiag(4, 4, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'langium complaint');
+        const cplDiag = makeDiag(4, 4, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error');
+        const lineText = lineTextFrom(['', '', '', '', 'x = (']);
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck([complaint], [cplDiag], lineText, lineText);
+
+        expect(diagnostics).toEqual([cplDiag]);
+        expect(seen).toEqual(new Set([syntaxComplaintKey(complaint.message, 'x = (')]));
+    });
+
+    test('touching spans that share exactly one line still drop the complaint', () => {
+        const complaint = makeDiag(2, 4, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'langium complaint spanning 2-4');
+        const cplDiag = makeDiag(4, 4, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error on line 4');
+        const lineText = lineTextFrom(['', '', '', '', 'x = (']);
+
+        const { diagnostics } = reconcileWithFallbackCheck([complaint], [cplDiag], lineText, lineText);
+
+        expect(diagnostics).toEqual([cplDiag]);
+    });
+
+    test('an adjacent span with no shared line keeps the complaint as an Error with its original data code', () => {
+        const complaint = makeDiag(5, 5, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'langium complaint on line 5');
+        const cplDiag = makeDiag(4, 4, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error on line 4');
+        const lineText = lineTextFrom(['', '', '', '', 'x = (', 'y = 1']);
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck([complaint], [cplDiag], lineText, lineText);
+
+        expect(diagnostics).toEqual([complaint, cplDiag]);
+        expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Error);
+        expect((diagnostics[0].data as { code?: unknown } | undefined)?.code).toBe(DocumentValidator.ParsingError);
+        expect(seen.size).toBe(0);
+    });
+
+    test('a semantic error, a linking warning and a validator warning on the bbjcpl line pass through unchanged and never enter seen', () => {
+        const semanticError = makeDiag(4, 4, DiagnosticSeverity.Error, undefined, 'bbj', 'semantic error');
+        const linkingWarning = makeDiag(4, 4, DiagnosticSeverity.Warning, DocumentValidator.LinkingError, 'bbj', 'linking warning');
+        const validatorWarning = makeDiag(4, 4, DiagnosticSeverity.Warning, undefined, 'bbj', 'validator warning');
+        const cplDiag = makeDiag(4, 4, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error on line 4');
+        const lineText = lineTextFrom(['', '', '', '', 'x = (']);
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck(
+            [semanticError, linkingWarning, validatorWarning], [cplDiag], lineText, lineText
+        );
+
+        expect(diagnostics).toEqual([semanticError, linkingWarning, validatorWarning, cplDiag]);
+        expect(seen.size).toBe(0);
+    });
+
+    test('a lexer error and a line-break diagnostic are treated as syntax complaints', () => {
+        const lexerError = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.LexingError, 'bbj', 'lexer error');
+        const lineBreakDiag = makeDiag(1, 1, DiagnosticSeverity.Error, LINE_BREAK_DIAGNOSTIC_CODE, 'bbj', 'line break error');
+        const cplDiag = makeDiag(0, 1, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error spanning 0-1');
+        const lineText = lineTextFrom(['a', 'b']);
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck([lexerError, lineBreakDiag], [cplDiag], lineText, lineText);
+
+        expect(diagnostics).toEqual([cplDiag]);
+        expect(seen).toEqual(new Set([
+            syntaxComplaintKey(lexerError.message, 'a'),
+            syntaxComplaintKey(lineBreakDiag.message, 'b'),
+        ]));
+    });
+
+    test('an overlapping complaint whose validated line text differs from the checked line text is kept', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const cplDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error');
+        const validatedLineText = lineTextFrom(['x = (']);
+        const checkedLineText = lineTextFrom(['x = (2']); // edited since Langium validated it
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck([complaint], [cplDiag], validatedLineText, checkedLineText);
+
+        expect(diagnostics).toEqual([complaint, cplDiag]);
+        expect(seen.size).toBe(0);
+    });
+
+    test('both empty: [] with [] gives []', () => {
+        const { diagnostics, seen } = reconcileWithFallbackCheck([], [], lineTextFrom([]), lineTextFrom([]));
+        expect(diagnostics).toEqual([]);
+        expect(seen.size).toBe(0);
+    });
+
+    test('empty Langium list with a bbjcpl list gives exactly the bbjcpl list', () => {
+        const cplDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error');
+        const { diagnostics } = reconcileWithFallbackCheck([], [cplDiag], lineTextFrom(['x']), lineTextFrom(['x']));
+        expect(diagnostics).toEqual([cplDiag]);
+    });
+
+    test('a Langium list with an empty bbjcpl list is unchanged, with an empty seen', () => {
+        const parseError = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const semanticError = makeDiag(1, 1, DiagnosticSeverity.Error, undefined, 'bbj', 'semantic error');
+        const lineText = lineTextFrom(['a', 'b']);
+
+        const { diagnostics, seen } = reconcileWithFallbackCheck([parseError, semanticError], [], lineText, lineText);
+
+        expect(diagnostics).toEqual([parseError, semanticError]);
+        expect(seen.size).toBe(0);
+    });
+
+    test('ordering: survivors keep their input order, then bbjcpl diagnostics in their own input order, with their own message and source', () => {
+        const a = makeDiag(0, 0, DiagnosticSeverity.Warning, undefined, 'bbj', 'a');
+        const b = makeDiag(1, 1, DiagnosticSeverity.Warning, undefined, 'bbj', 'b');
+        const cpl1 = makeDiag(2, 2, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl1');
+        const cpl2 = makeDiag(3, 3, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl2');
+        const lineText = lineTextFrom(['', '', '', '']);
+
+        const { diagnostics } = reconcileWithFallbackCheck([a, b], [cpl1, cpl2], lineText, lineText);
+
+        expect(diagnostics).toEqual([a, b, cpl1, cpl2]);
+    });
+
+    test('purity: inputs are not mutated and equal inputs give equal outputs', () => {
+        const complaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'parse error');
+        const cplDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBjCPL', 'bbjcpl error');
+        const langiumBefore = structuredClone([complaint]);
+        const cplBefore = structuredClone([cplDiag]);
+        const lineText = lineTextFrom(['x = (']);
+
+        const first = reconcileWithFallbackCheck([complaint], [cplDiag], lineText, lineText);
+        const second = reconcileWithFallbackCheck([complaint], [cplDiag], lineText, lineText);
+
+        expect([complaint]).toEqual(langiumBefore);
+        expect([cplDiag]).toEqual(cplBefore);
+        expect(first.diagnostics).toEqual(second.diagnostics);
     });
 
 });
