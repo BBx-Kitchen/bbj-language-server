@@ -189,6 +189,11 @@ describe('Static-only access through a class reference', () => {
         const document = await validate('declare java.lang.String s!\nx! = s!.CASE_INSENSITIVE_ORDER\ny! = s!.someInstanceField\n');
         expect(document.diagnostics ?? []).toHaveLength(0);
     });
+
+    test('an instance method is still reachable through a class reference, unlike an instance field', async () => {
+        const document = await validate('use java.lang.String\nx! = String.charAt(1)\n');
+        expect(document.diagnostics ?? []).toHaveLength(0);
+    });
 });
 
 describe('The unknown-member Error in files with other errors', () => {
