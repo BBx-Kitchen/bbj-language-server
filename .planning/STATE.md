@@ -4,17 +4,17 @@ milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 106
 current_phase_name: On-Save Compiler Check in Both IDEs
-status: executing
-stopped_at: Completed 106-06-PLAN.md
-last_updated: "2026-09-24T14:45:58.577Z"
+status: verifying
+stopped_at: Completed 106-07-PLAN.md
+last_updated: "2026-09-24T17:22:04.140Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 106 execution started
-state_head: 9117c198d0d388e0f588bed70e31708af0cb6811
+state_head: 8d357c297539a710b59d4f06a4f342600822e208
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 Phase: 106 (On-Save Compiler Check in Both IDEs) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-24 — Phase 106 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -107,6 +107,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 106 P04 | 15min | 3 tasks | 5 files |
 | Phase 106 P05 | 105min | 3 tasks | 6 files |
 | Phase 106 P06 | 95min | 3 tasks | 6 files |
+| Phase 106 P07 | 2.5h | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,7 @@ decisions:
 - [Phase 106]: Phase 106-06: a per-document checkSequence counter plus a widened verdict-branch entrance condition let an on-save save's verdict survive typing and be superseded only by a genuinely newer save, whichever resolves last
 - [Phase 106]: Phase 106-06: KeptCheck.storedUnderOnSave (set from the trigger at store time) lets a runtime switch away from on-save keep showing a file's current compiler errors under debounced until that file's own first debounced check replaces them
 - [Phase 106]: Phase 106-06: two plan-04 bbj-cpl-fallback-dedup tests were updated from their old merge-as-before expectation to the new on-save behavior (kept and shown, not merged) since this plan's kept-check wiring deliberately supersedes that old rule for on-save
+- [Phase 106]: Phase 106: timing re-check of the Phase 105 metric not taken at the user's decision; no regression evidence either way
 
 ### Tech Debt
 
@@ -207,8 +209,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T14:45:58.546Z
-Stopped at: Completed 106-06-PLAN.md
+Last session: 2026-09-24T17:22:04.095Z
+Stopped at: Completed 106-07-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.

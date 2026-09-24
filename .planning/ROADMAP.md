@@ -347,7 +347,7 @@ corpus text enters this repository.
   4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
   5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans executed
 
 Plans:
 **Wave 1**
@@ -370,7 +370,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 106-07-PLAN.md — Build both distributables, whole suites, hand UAT in both IDEs, Phase 105 timing re-check (wave 5, checkpoint)
+- [x] 106-07-PLAN.md — Build both distributables, whole suites, hand UAT in both IDEs, Phase 105 timing re-check (wave 5, checkpoint)
 
 *Planning notes:* check whether the server receives `textDocument/didSave` from both clients
 today. The live-parse path currently drops a verdict whose text changed while the request was
@@ -485,7 +485,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 106. On-Save Compiler Check in Both IDEs | 6/7 | Not started |  |
+| 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 0/TBD | Not started | - |
 | 108. IntelliJ Crash Detection | 0/TBD | Not started | - |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
