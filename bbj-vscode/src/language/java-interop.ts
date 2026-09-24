@@ -477,22 +477,27 @@ export class JavaInteropService {
 
     /**
      * Parses `params.text` through the interop service's `parseProgram` endpoint and returns its
-     * result, riding the shared connection's circuit breaker and reconnect logic (via
-     * {@link connect}) plus a second, dedicated connection reserved for this request alone — so a
-     * burst of `getClassInfo` traffic already queued on the shared connection never delays a
-     * parse. The dedicated connection is opened lazily by {@link parseLaneConnection}; when it
-     * cannot be opened, the request falls back to the shared connection. Deliberately NOT
-     * routed through {@link sendRequestSafe}: a caller here must be able to tell a `MethodNotFound`
-     * error (older server, no endpoint), an application error (`-3300x`) and a cancellation
-     * (`RequestCancelled`, a superseded request) apart, which a collapsed fallback value would
-     * destroy.
+     * result. The request tries its own dedicated connection first — opened lazily by
+     * {@link parseLaneConnection} — independent of the shared connection's state and its circuit
+     * breaker: a shared connection that is down, half-open, or still busy with a burst of
+     * `getClassInfo` traffic never delays or short-circuits a parse. The shared connection (via
+     * {@link connect}, with its own breaker and reconnect logic) is used only when the dedicated
+     * one cannot be opened or was retired for the current generation. One side effect of trying
+     * the dedicated connection first: a parse that runs before any shared connection exists opens
+     * the lane under the current generation, and the shared connection's own later first connect
+     * bumps the generation — which retires that lane, so the next parse re-opens it and re-probes
+     * the endpoint (the same "a reset of either connection clears verdict state" rule this
+     * generation already follows). Deliberately NOT routed through {@link sendRequestSafe}: a
+     * caller here must be able to tell a `MethodNotFound` error (older server, no endpoint), an
+     * application error (`-3300x`) and a cancellation (`RequestCancelled`, a superseded request)
+     * apart, which a collapsed fallback value would destroy.
      * @param params the parse request — the document's current text plus its resolution context
      * @param token cancellation token for request cancellation
      */
     public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
-        const shared = await this.connect();
         const lane = await this.parseLaneConnection();
         if (!lane) {
+            const shared = await this.connect();
             return shared.sendRequest(parseProgramRequest, params, token);
         }
         try {
