@@ -62,6 +62,7 @@ type TextDocumentEventsProvider = TextDocumentProvider & {
     readonly onDidOpen: Event<TextDocumentChangeEvent<TextDocument>>;
     readonly onDidChangeContent: Event<TextDocumentChangeEvent<TextDocument>>;
     readonly onDidSave?: Event<TextDocumentChangeEvent<TextDocument>>;
+    readonly onDidClose?: Event<TextDocumentChangeEvent<TextDocument>>;
 };
 
 /**
@@ -229,6 +230,14 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document, 'change'));
             if (typeof textDocuments.onDidSave === 'function') {
                 textDocuments.onDidSave(event => this.onDocumentSaved(event.document));
+            }
+            // Forgets the closed document's last-saved-version record -- a later reopen of the
+            // same uri (a different file, or the same file edited outside this editor) must not
+            // find a stale record from a previous editing session.
+            if (typeof textDocuments.onDidClose === 'function') {
+                textDocuments.onDidClose(event => {
+                    this.lastSavedVersion.delete(UriUtils.normalize(URI.parse(event.document.uri)));
+                });
             }
         }
     }
@@ -584,14 +593,33 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * True when `checkedText` (the text a fallback cycle's compile actually ran against) is
-     * provably the text the editor shows for `document` at `checkedVersion` -- covers exactly the
-     * saved-version case for now: `checkedVersion` equals the last version {@link onDocumentSaved}
-     * recorded for this uri, so a save-triggered check is always covered here, whatever the
-     * file's encoding.
+     * provably the text the editor shows for `document` at `checkedVersion`. Two independent
+     * routes to "true", either is enough:
+     *
+     *  - `checkedVersion` equals the last version {@link onDocumentSaved} recorded for this uri --
+     *    a save-triggered check is always covered here, whatever the file's encoding, since the
+     *    version is recorded synchronously before the very save event that arms that check.
+     *  - the file reads back, from disk, exactly `checkedText` -- covers an open of a clean file
+     *    and a debounced cycle with no unsaved edits, when the saved-version record does not (yet)
+     *    exist or does not match. The read runs inside a `try`, not a promise `.catch()`: a
+     *    provider may throw synchronously instead of returning a rejected promise (the
+     *    `EmptyFileSystemProvider` used throughout this test suite does exactly that), and a
+     *    thrown or rejected read is treated the same way -- "not provably on disk".
+     *
+     * Every other outcome -- unsaved edits, an unreadable file, or bytes that decode to text
+     * other than `checkedText` -- returns false: bbjcpl's line numbers may belong to text other
+     * than what is now open, so the caller must merge exactly as before this phase and can never
+     * hide a real error behind a check of different text.
      */
     private async checkedTextIsOnDisk(document: LangiumDocument, checkedVersion: number, checkedText: string): Promise<boolean> {
         const key = UriUtils.normalize(document.uri);
-        return this.lastSavedVersion.get(key) === checkedVersion;
+        if (this.lastSavedVersion.get(key) === checkedVersion) return true;
+        try {
+            const diskText = await this.fileSystemProvider.readFile(document.uri);
+            return diskText === checkedText;
+        } catch {
+            return false;
+        }
     }
 
     /**

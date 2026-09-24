@@ -101,7 +101,10 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * function again. Rule 0 therefore only ever acts on a list that already carries a `'BBjCPL'`
  * diagnostic if one was already present from an earlier cycle; on the build that first
  * introduces one, Rule 0 does not run against it. This is confirmed, long-standing behaviour,
- * unchanged by this phase.
+ * unchanged by this phase. The save-time compile fallback's own line-scoped dedup
+ * (`reconcileWithFallbackCheck`, called from the builder's debounce callback) never runs its
+ * result back through this function, so it never switches Rule 0 on either -- it only ever drops
+ * or keeps individual complaints line by line, and never on its own downgrades one.
  */
 export function applyDiagnosticHierarchy(
     diagnostics: Diagnostic[],
@@ -188,6 +191,12 @@ export function applyConfiguredDiagnosticHierarchy(diagnostics: Diagnostic[]): D
  * - Same line: prefer Langium message, set source to 'BBjCPL' (compiler confirmed)
  * - BBjCPL-only errors (no Langium match on same line): add with 'BBjCPL' source
  * - Langium-only diagnostics: kept unchanged
+ *
+ * Now used only for a save-time compile fallback whose checked text is not provably the text on
+ * disk (the builder's `checkedTextIsOnDisk` said no) -- once it is, the builder reconciles with
+ * `reconcileWithFallbackCheck` (`bbj-diagnostic-reconciliation.ts`) instead, which drops a
+ * complaint outright rather than merely recoloring its source. Behaviour here is otherwise
+ * unchanged from before that reconciliation existed.
  */
 export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnostic[]): Diagnostic[] {
     const result: Diagnostic[] = [...langiumDiags];
