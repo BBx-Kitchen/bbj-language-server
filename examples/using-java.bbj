@@ -1,5 +1,5 @@
 class public Test
-    method public doTest()
+    method public void doTest()
         appName! = 2; if appName! = "" then appName! = "default"
     methodend
 classend 

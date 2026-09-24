@@ -175,10 +175,40 @@ export class JavaInteropService {
     private breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
     /** Bumped by clearCache() so a connect attempt started before the reset cannot change breaker state or report recovery. */
     private breakerGeneration = 0;
+    /**
+     * Bumped in three places: once inside {@link establishConnection} right after a fresh shared
+     * `MessageConnection` is assigned, once inside {@link clearCache} beside
+     * {@link breakerGeneration}, and once inside {@link onParseLaneLost} when the dedicated
+     * parser connection is lost after having been open. Opening the dedicated connection itself
+     * never bumps this value — the server behind it is the one the shared connection already
+     * probed — but losing it does, so any per-connection latch (e.g. a probe result) or stored
+     * diagnostic verdict keyed on this value resets and re-decides on the next request.
+     */
+    protected _connectionGeneration = 0;
     /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
     private readonly recoveryListeners: Array<() => void | Promise<void>> = [];
     /** Simple-name copies already added by loadImplicitImports(), keyed by "package.simpleName", so re-running it adds no duplicate entry to the synthetic classpath document. */
     private readonly implicitImportCopies = new Map<string, Mutable<JavaClass>>();
+
+    /**
+     * The dedicated connection `parseProgram` requests travel over, kept separate from
+     * {@link connection} so class-lookup traffic during a large workspace's initial build never
+     * delays a live parse (issue #692). Built with the service's own {@link createSocket}/
+     * {@link wrapSocket}, so it reads the same `interopHost`/`interopPort` the shared connection
+     * does. Opened lazily on the first parse for a given {@link _connectionGeneration}; retired
+     * and reopened whenever the generation moves on.
+     */
+    private parseLane?: MessageConnection;
+    /** The {@link _connectionGeneration} {@link parseLane} was opened for. */
+    private parseLaneGeneration = -1;
+    /** In-flight open shared by same-tick callers, mirroring {@link connectingPromise}'s role for {@link connect}. */
+    private parseLaneConnecting?: Promise<MessageConnection | undefined>;
+    /**
+     * The generation in which opening {@link parseLane} failed, or a `MethodNotFound` answer
+     * closed it (an older server). No further open attempt is made until
+     * {@link _connectionGeneration} moves past this value.
+     */
+    private parseLaneRetiredGeneration = -1;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -199,6 +229,11 @@ export class JavaInteropService {
 
     private get resolvedClasses(): LruMap<string, JavaClass> {
         return this._resolvedClasses;
+    }
+
+    /** See {@link _connectionGeneration}. */
+    public get connectionGeneration(): number {
+        return this._connectionGeneration;
     }
 
     /**
@@ -349,6 +384,7 @@ export class JavaInteropService {
         connection.onError(() => { if (this.connection === connection) this.connection = undefined; });
         connection.listen();
         this.connection = connection;
+        this._connectionGeneration++;
         return connection;
     }
 
@@ -437,6 +473,136 @@ export class JavaInteropService {
             requestPromise,
             new Promise<never>((_, reject) => setTimeout(() => reject(new InteropTransportError(`Java class resolution timeout for ${className}`)), 10000))
         ]);
+    }
+
+    /**
+     * Parses `params.text` through the interop service's `parseProgram` endpoint and returns its
+     * result, riding the shared connection's circuit breaker and reconnect logic (via
+     * {@link connect}) plus a second, dedicated connection reserved for this request alone — so a
+     * burst of `getClassInfo` traffic already queued on the shared connection never delays a
+     * parse. The dedicated connection is opened lazily by {@link parseLaneConnection}; when it
+     * cannot be opened, the request falls back to the shared connection. Deliberately NOT
+     * routed through {@link sendRequestSafe}: a caller here must be able to tell a `MethodNotFound`
+     * error (older server, no endpoint), an application error (`-3300x`) and a cancellation
+     * (`RequestCancelled`, a superseded request) apart, which a collapsed fallback value would
+     * destroy.
+     * @param params the parse request — the document's current text plus its resolution context
+     * @param token cancellation token for request cancellation
+     */
+    public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
+        const shared = await this.connect();
+        const lane = await this.parseLaneConnection();
+        if (!lane) {
+            return shared.sendRequest(parseProgramRequest, params, token);
+        }
+        try {
+            return await lane.sendRequest(parseProgramRequest, params, token);
+        } catch (e) {
+            if ((e as { code?: number } | undefined)?.code === METHOD_NOT_FOUND) {
+                // An older server behind the dedicated connection: close it for the rest of this
+                // generation so no idle second socket lingers, and let every further parse in
+                // this generation go over the shared connection instead.
+                this.parseLaneRetiredGeneration = this._connectionGeneration;
+                this.disposeParseLane();
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Returns the dedicated `parseProgram` connection for the current connection generation,
+     * opening it lazily on first use and reusing it for the rest of the generation. Same-tick
+     * callers share the single in-flight {@link parseLaneConnecting} promise, mirroring
+     * {@link connect}'s handling of {@link connectingPromise}. Returns `undefined` — never throws —
+     * when the dedicated connection could not be opened or was retired for this generation; the
+     * caller falls back to the shared connection.
+     */
+    private async parseLaneConnection(): Promise<MessageConnection | undefined> {
+        const generation = this._connectionGeneration;
+        if (this.parseLane && this.parseLaneGeneration === generation) {
+            return this.parseLane;
+        }
+        if (this.parseLane) {
+            // An older generation's connection is still around: retire it before opening a new one.
+            this.disposeParseLane();
+        }
+        if (this.parseLaneRetiredGeneration === generation) {
+            return undefined;
+        }
+        if (this.parseLaneConnecting) {
+            return this.parseLaneConnecting;
+        }
+        this.parseLaneConnecting = this.openParseLane(generation);
+        try {
+            return await this.parseLaneConnecting;
+        } finally {
+            this.parseLaneConnecting = undefined;
+        }
+    }
+
+    /**
+     * Opens a fresh socket and wraps it as the dedicated `parseProgram` connection for
+     * `generation`, registering `close`/`error` listeners that hand the loss to
+     * {@link onParseLaneLost}. Never touches {@link breakerState}, never raises the connection
+     * error notification and never bumps {@link _connectionGeneration} — the server behind it is
+     * the one the shared connection already probed. If {@link _connectionGeneration} moved on
+     * while opening, the new connection is disposed and `undefined` is returned instead of being
+     * stored for a generation that is no longer current. If the socket itself cannot be opened,
+     * retires `generation` (so no further attempt is made until it moves on) and returns
+     * `undefined` after logging one warn line — see the catch block below.
+     */
+    private async openParseLane(generation: number): Promise<MessageConnection | undefined> {
+        let socket: Socket;
+        try {
+            socket = await this.createSocket();
+        } catch (e) {
+            // The dedicated connection could not be opened, but the shared one keeps working:
+            // fall back silently, logged once per generation, never as a parse failure and
+            // never touching the breaker, a dialog or the endpoint probe latch.
+            this.parseLaneRetiredGeneration = generation;
+            const message = e instanceof Error ? e.message : String(e);
+            logger.warn(`Live compiler diagnostics: could not open a dedicated parser connection (${message}); using the shared interop connection`);
+            return undefined;
+        }
+        const lane = this.wrapSocket(socket);
+        lane.onClose(() => this.onParseLaneLost(lane));
+        lane.onError(() => this.onParseLaneLost(lane));
+        lane.listen();
+        if (this._connectionGeneration !== generation) {
+            lane.dispose();
+            return undefined;
+        }
+        this.parseLane = lane;
+        this.parseLaneGeneration = generation;
+        return lane;
+    }
+
+    /**
+     * Clears {@link parseLane} once it is lost (closed or errored) — guarded on identity, as
+     * {@link establishConnection} does for {@link connection}, so a stale listener from an
+     * already-replaced lane cannot clear a newer one, and so a connection this service disposed
+     * of itself (its field already cleared first by {@link disposeParseLane}) never reaches this
+     * far. A genuine loss — the dedicated connection dropping after having been open — bumps
+     * {@link _connectionGeneration} once, so every per-connection latch and stored diagnostic
+     * verdict resets and re-decides on the next request, while the shared connection stays in
+     * use with no new socket.
+     */
+    private onParseLaneLost(lane: MessageConnection): void {
+        if (this.parseLane !== lane) {
+            return;
+        }
+        this.parseLane = undefined;
+        this._connectionGeneration++;
+    }
+
+    /**
+     * Disposes the current dedicated connection, if any, clearing the field first so its own
+     * close listener (routed through {@link onParseLaneLost}) is a no-op once disposal starts.
+     */
+    private disposeParseLane(): void {
+        const lane = this.parseLane;
+        this.parseLane = undefined;
+        lane?.dispose();
     }
 
     /**
@@ -1115,6 +1281,11 @@ export class JavaInteropService {
         // the generation so a connect attempt started before this reset cannot report its
         // outcome (#504).
         this.breakerGeneration++;
+        // A cleared cache forces the next connect() to open a fresh socket (see the dispose()
+        // call below), so the connection generation is bumped here too — otherwise a latch
+        // already sitting at "off" would suppress every request forever, since nothing would
+        // ever call connect() again to reach the establishConnection() bump.
+        this._connectionGeneration++;
         this.breakerState = 'closed';
         this.breakerProbeDueAt = 0;
         this.breakerCooldownMs = INTEROP_BREAKER_INITIAL_COOLDOWN_MS;
@@ -1131,6 +1302,11 @@ export class JavaInteropService {
             this.connection.dispose();
             this.connection = undefined;
         }
+
+        // Disconnect the dedicated parser connection too, and forget any prior open failure so
+        // the next parse attempts it again.
+        this.disposeParseLane();
+        this.parseLaneRetiredGeneration = -1;
 
         logger.info('Java interop cache cleared');
     }
@@ -1277,14 +1453,62 @@ const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('ge
  */
 const getAllClassNamesRequest = new RequestType<null, string[], null>('getAllClassNames');
 
+/**
+ * Request type for parsing a document's current (possibly unsaved) text through BBj's own
+ * parser. Provided only by an augmented bbj-ls (BBj 26.03+); older servers answer with a
+ * MethodNotFound error, which {@link BBjParserService} uses to latch live diagnostics off.
+ */
+const parseProgramRequest = new RequestType<ParseProgramParams, ParseProgramResult, null>('parseProgram');
+
 /** JSON-RPC error code returned by a server that does not implement a requested method. */
-const METHOD_NOT_FOUND = -32601;
+export const METHOD_NOT_FOUND = -32601;
 
 /**
  * Parameters for class information requests.
  */
 interface ClassInfoParams {
     className: string
+}
+
+/**
+ * Parameters for the `parseProgram` request — the wire contract fixed by
+ * `101-MR-DESCRIPTION.md`. Field names and types are not renamed, added to or omitted here.
+ */
+export interface ParseProgramParams {
+    /** The full current text of the active document, including unsaved edits. */
+    text: string;
+    /** The document's path as the language server knows it. */
+    canonicalName: string;
+    /** Opaque to the server and echoed back unchanged. */
+    version: string;
+    /** The PREFIX directories referenced programs should be resolved through. May be empty. */
+    prefixes: string[];
+    /** The workspace roots referenced programs should be resolved through. May be empty. */
+    workspaceRoots: string[];
+}
+
+/** One error reported by BBj's parser through `parseProgram` — editor coordinates, one-based. */
+export interface ParseError {
+    /** BBj's own error-type strings for this error; one error can carry several at once. */
+    categories: string[];
+    /** The parser's own message, unchanged. */
+    message: string;
+    /** BBj's editor starting line, verbatim (one-based). */
+    editorStartLine: number;
+    /** BBj's editor ending line, verbatim (one-based). */
+    editorEndLine: number;
+    /** BBj's starting character position, verbatim (one-based). */
+    startCharacter: number;
+    /** BBj's ending character position, verbatim (one-based) — not always trustworthy, see the converter. */
+    endCharacter: number;
+}
+
+/** Result of a `parseProgram` request. `errors` is always present — empty on a clean parse. */
+export interface ParseProgramResult {
+    /** The request's own `version` token, unchanged. */
+    version: string;
+    /** The parser's errors, in the parser's own order. */
+    errors: ParseError[];
 }
 
 /**

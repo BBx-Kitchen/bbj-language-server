@@ -13,6 +13,9 @@ Before installing the extension, ensure you have:
 
 - **Visual Studio Code** version 1.67.0 or higher
 - **BBj** version 25.00 or higher installed
+- **BBj** version 26.03 or higher for live compiler diagnostics (the compiler's own syntax
+  errors appearing as you type, without saving); an earlier BBj simply keeps the save-time
+  compiler check
 - **BBjServices** running locally (required for full functionality)
 - **Java 17** or higher (for the Java interop service)
 

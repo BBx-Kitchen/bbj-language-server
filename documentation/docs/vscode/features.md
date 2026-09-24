@@ -47,6 +47,31 @@ Real-time error detection:
 
 Errors appear as you type with detailed messages and quick fixes where available.
 
+### Live Compiler Diagnostics
+
+With BBj 26.03 or later, the BBj compiler's own parser checks the currently open file as you
+type, and its syntax errors appear in the editor without saving — the same errors `bbjcpl` would
+report on save, shown earlier.
+
+The `bbj.compiler.trigger` setting controls when these compiler checks run. Each check runs about
+half a second (500 ms) after you stop typing, and also after you open or save a file. The 500 ms
+delay is fixed and cannot be configured.
+
+- `debounced` — the default; behaves exactly as described above.
+- `on-save` — currently behaves the same as `debounced`: checks still run after each pause in
+  typing, not only when you save.
+- `off` — turns off both the live compiler check and `bbjcpl`, so only the language server's own
+  checks remain. Compiler diagnostics already shown disappear the next time you edit or save the
+  file. The Compile BBj Program command still works.
+
+With an earlier BBj, or when BBjServices is not running, `bbjcpl` compiles the saved file instead
+after the same pause, so its errors reflect the last save.
+
+Changing the setting takes effect immediately, without restarting.
+
+If code completion becomes slow in a very large workspace, set `bbj.compiler.trigger` to `off` as
+a workaround while this slowdown is being investigated.
+
 ## Hover Information
 
 Hover over elements to see:

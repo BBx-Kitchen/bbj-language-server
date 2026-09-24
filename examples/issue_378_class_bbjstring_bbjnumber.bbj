@@ -3,8 +3,8 @@ class public ClassA
     field private BBjNumber someNumber
     field private BBjNumber someOtherNumber!
     field private BBjString someString$
-    field private BBjString someString!
-    field private String someString!
+    field private BBjString someStringVal!
+    field private String someStringObj!
     field private Integer someInt!
 
 classend

@@ -1,0 +1,10 @@
+REM Split out of dim-examples.bbj: three bare substring-access expressions used as standalone
+REM statements. The grammar accepts a bare expression as a statement; bbjcpl does not.
+
+let NAME$ = "name"
+dim Y$[10], XYZ$[10,10]
+let A$ = "hello"
+
+A$(1,5); rem substring
+NAME$(10); rem substring
+XYZ$[3,4](1,5); rem substring

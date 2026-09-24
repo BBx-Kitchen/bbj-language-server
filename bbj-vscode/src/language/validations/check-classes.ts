@@ -86,17 +86,83 @@ export function registerClassChecks(registry: ValidationRegistry, services: BBjS
     registry.register(classChecks, validator);
 }
 
-class ClassValidator {
+/** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
+export function classFqn(klass: Class): string {
+    if (isJavaClass(klass)) {
+        const name = (klass as JavaClass).name;
+        if (name.includes('.')) {
+            return name;
+        }
+        const pkg = (klass as JavaClass).packageName;
+        return pkg ? `${pkg}.${name}` : name;
+    }
+    return klass.name;
+}
 
-    /**
-     * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
-     * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
-     * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
-     * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
-     * partially-loaded classpath (or a test double that does not preload them) must not produce a
-     * false positive.
-     */
-    private static readonly KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
+/** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
+export function bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
+    const visited = new Set<Class>();
+    const queue: BbjClass[] = [klass];
+    while (queue.length > 0) {
+        const current = queue.pop()!;
+        if (visited.has(current)) {
+            continue;
+        }
+        visited.add(current);
+        for (const ref of [...current.extends, ...current.implements]) {
+            const superType = getClass(ref);
+            if (!superType) {
+                continue;
+            }
+            if (superType === target) {
+                return true;
+            }
+            if (isBbjClass(superType)) {
+                queue.push(superType);
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
+ * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
+ * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
+ * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
+ * partially-loaded classpath (or a test double that does not preload them) must not produce a
+ * false positive.
+ */
+export const KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
+
+/**
+ * True when two resolved classes are related closely enough that a conflicting-DECLARE
+ * diagnostic between them should stay silent: they are the same class object, they share a
+ * fully-qualified name (case-insensitive), either one is `java.lang.Object` (the universal top
+ * type), or either one is a BBj class whose resolvable supertype chain reaches the other.
+ */
+export function bbjTypesAreRelated(a: Class, b: Class): boolean {
+    if (a === b) {
+        return true;
+    }
+    const aFqn = classFqn(a).toLowerCase();
+    const bFqn = classFqn(b).toLowerCase();
+    if (aFqn === bFqn) {
+        return true;
+    }
+    if (aFqn === 'java.lang.object' || bFqn === 'java.lang.object') {
+        return true;
+    }
+    if (isBbjClass(a) && bbjSupertypesReach(a, b)) {
+        return true;
+    }
+    if (isBbjClass(b) && bbjSupertypesReach(b, a)) {
+        return true;
+    }
+    return false;
+}
+
+class ClassValidator {
 
     constructor(private readonly inferer: TypeInferer, private readonly javaInterop?: JavaInteropService) {
     }
@@ -148,7 +214,7 @@ class ClassValidator {
             return;
         }
         const simpleName = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
-        if(ClassValidator.KNOWN_BBJ_SCALAR_TYPES.has(simpleName)) {
+        if(KNOWN_BBJ_SCALAR_TYPES.has(simpleName)) {
             return;
         }
         accept('warning', `Type '${name}' cannot be resolved.`, info);
@@ -210,10 +276,11 @@ class ClassValidator {
             .filter(ret => ret.return !== undefined)
             .toArray();
 
-        // A void method must not return a value.
+        // A void method must not return a value. The compiler accepts this, so it is a warning
+        // rather than an error.
         if (meth.voidReturn) {
             for (const ret of valueReturns) {
-                accept('error', `Method '${meth.name}' is declared void and must not return a value.`, {
+                accept('warning', `Method '${meth.name}' is declared void and must not return a value.`, {
                     node: ret,
                     property: 'return'
                 });
@@ -225,9 +292,11 @@ class ClassValidator {
             return; // neither void nor an explicit return type — nothing required
         }
 
-        // #372: a non-void method with no value-returning METHODRET is an error.
+        // #372: a non-void method with no value-returning METHODRET disagrees with the compiler,
+        // which accepts this shape, so it is a warning rather than an error. No special case for
+        // an empty or stub-looking body — a plain warning applies uniformly.
         if (valueReturns.length === 0) {
-            accept('error', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
+            accept('warning', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
                 node: meth,
                 property: 'name'
             });
@@ -235,7 +304,7 @@ class ClassValidator {
         }
 
         // Conservative return-type check on returned literals. Array return types are skipped.
-        if (meth.array) {
+        if (meth.arrayDims.length > 0) {
             return;
         }
         for (const ret of valueReturns) {
@@ -297,7 +366,7 @@ class ClassValidator {
      *    unflagged because the Java class hierarchy is not walkable from the AST here.
      */
     private checkReturnTypeAssignable<N extends AstNode>(meth: MethodDecl, returned: Expression, info: DiagnosticInfo<N>, accept: ValidationAcceptor): void {
-        if (!isTypeResolutionWarningsEnabled() || meth.array) {
+        if (!isTypeResolutionWarningsEnabled() || meth.arrayDims.length > 0) {
             return;
         }
         // BBj scalar declared types are handled elsewhere / loosely typed — never flag them here.
@@ -328,8 +397,8 @@ class ClassValidator {
         if (declared === returned) {
             return true;
         }
-        const declaredFqn = this.classFqn(declared).toLowerCase();
-        const returnedFqn = this.classFqn(returned).toLowerCase();
+        const declaredFqn = classFqn(declared).toLowerCase();
+        const returnedFqn = classFqn(returned).toLowerCase();
         if (declaredFqn === returnedFqn) {
             return true;
         }
@@ -341,7 +410,7 @@ class ClassValidator {
         // assignable; otherwise we cannot be certain (the chain may reach Java types we cannot
         // walk), so we defer rather than risk a false positive.
         if (isBbjClass(returned)) {
-            return this.bbjSupertypesReach(returned, declared) ? true : undefined;
+            return bbjSupertypesReach(returned, declared) ? true : undefined;
         }
         // A returned well-known FINAL Java type has a fully-known supertype set: decide definitively.
         if (isJavaClass(returned)) {
@@ -353,48 +422,9 @@ class ClassValidator {
         return undefined; // hierarchy not walkable / unknown — do not flag
     }
 
-    /** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
-    private bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
-        const visited = new Set<Class>();
-        const queue: BbjClass[] = [klass];
-        while (queue.length > 0) {
-            const current = queue.pop()!;
-            if (visited.has(current)) {
-                continue;
-            }
-            visited.add(current);
-            for (const ref of [...current.extends, ...current.implements]) {
-                const superType = getClass(ref);
-                if (!superType) {
-                    continue;
-                }
-                if (superType === target) {
-                    return true;
-                }
-                if (isBbjClass(superType)) {
-                    queue.push(superType);
-                }
-            }
-        }
-        return false;
-    }
-
-    /** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
-    private classFqn(klass: Class): string {
-        if (isJavaClass(klass)) {
-            const name = (klass as JavaClass).name;
-            if (name.includes('.')) {
-                return name;
-            }
-            const pkg = (klass as JavaClass).packageName;
-            return pkg ? `${pkg}.${name}` : name;
-        }
-        return klass.name;
-    }
-
     /** Human-readable class name for diagnostics (FQN for Java types, simple name for BBj types). */
     private classDisplayName(klass: Class): string {
-        return isJavaClass(klass) ? this.classFqn(klass) : klass.name;
+        return isJavaClass(klass) ? classFqn(klass) : klass.name;
     }
 
     /**
@@ -403,7 +433,7 @@ class ClassValidator {
      * literal check as method return types.
      */
     public checkFieldInit(field: FieldDecl, accept: ValidationAcceptor): void {
-        if (!field.init || field.array) {
+        if (!field.init || field.arrayDims.length > 0) {
             return; // no initializer, or an array field — nothing to check here
         }
         const mismatch = this.literalTypeMismatch(field.type, field.init);

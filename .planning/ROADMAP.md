@@ -23,6 +23,7 @@
 - ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; landed on `origin/main` via PR #651 — see MILESTONES.md)
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
+- ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on PR #691, lands on `main` as one piece — see MILESTONES.md)
 
 ## Phases
 
@@ -255,6 +256,28 @@ Shipped as release 0.16.0 (tag `v0.16.0`) on both marketplaces; GitHub milestone
 
 </details>
 
+<details>
+<summary>✅ v4.5 Compiler Conformance (Phases 98-105) — SHIPPED 2026-09-24</summary>
+
+- [x] Phase 98: Line-Break & Validation False Alarms (A2) (10/10 plans) — completed 2026-09-21
+- [x] Phase 99: Parser Gaps — the Largest Groups (6/6 plans) — completed 2026-09-21
+- [x] Phase 100: Parser Gaps — Remaining Groups, Long Tail & Examples (6/6 plans) — completed 2026-09-22
+- [x] Phase 101: BBj Parser Endpoint in `bbj-ls` (4/4 plans, separate repo) — completed 2026-09-22
+- [x] Phase 102: Live Compiler Diagnostics With Backward Compatibility (4/4 plans) — completed 2026-09-22
+- [x] Phase 103: One Set of Errors — Diagnostic Reconciliation (5/5 plans) — completed 2026-09-23
+- [x] Phase 104: Conformance Measurement & Milestone Exit (4/4 plans, 104-04 closed a verifier-found gap) — completed 2026-09-23
+- [x] Phase 105: Live Diagnostics Responsiveness on Large Workspaces (5/5 plans, added for issue #692) — completed 2026-09-23
+
+Exit gate passed with the endpoint active: A 168 → 9, A2 267 → 22, B 658 → 31 of 1,210
+(2.6 %), 0 endpoint failures. Full phase detail: `.planning/milestones/v4.5-ROADMAP.md`;
+requirements (32/32) in `.planning/milestones/v4.5-REQUIREMENTS.md`; audit (`tech_debt`, no
+gaps) in `.planning/milestones/v4.5-MILESTONE-AUDIT.md`; phase artifacts under
+`.planning/milestones/v4.5-phases/` and quick tasks under `.planning/milestones/v4.5-quick/`
+(tracked — no embargo). Override closeout: 3 artifacts acknowledged. Code on PR #691; the
+`bbj-ls` endpoint on BASIS GitLab `feat/689-parse-program-endpoint`.
+
+</details>
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -280,22 +303,18 @@ Shipped as release 0.16.0 (tag `v0.16.0`) on both marketplaces; GitHub milestone
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
 | v4.3 Polish & Quality | 84-92 | 70 | Complete | 2026-09-13 |
 | v4.4 IntelliJ Focus | 93-97 | 36 | Complete | 2026-09-20 |
+| v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
 
-**Total:** 21 milestones shipped, 95 phases complete, 349 plans shipped.
+**Total:** 22 milestones shipped, 103 phases complete, 393 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
 here but have no `.planning/milestones/v4.0-phases/` archive on `main`. v4.1's phase
 artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, excluded from git
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
-v4.3's and v4.4's artifacts (78-97) carry no advisory detail and are tracked normally.
-
-**Current milestone:** none. v4.4 IntelliJ Focus (Phases 93-97) shipped 2026-09-20 and is
-archived; phase numbering continues from 98.
-Next: `/gsd-new-milestone` to define the next milestone (questioning → research →
-requirements → roadmap).
+v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tracked normally.
 
 ---
 
-*Roadmap last updated: 2026-09-20 — v4.4 IntelliJ Focus archived (5 phases, 36 plans, 25/25
-requirements; release 0.16.0).*
+*Roadmap last updated: 2026-09-24 — v4.5 Compiler Conformance archived (Phases 98-105, 32/32
+requirements). Next: `/gsd-new-milestone`.*

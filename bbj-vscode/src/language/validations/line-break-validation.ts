@@ -1,6 +1,7 @@
 import { AstNode, AstUtils, CstNode, GrammarUtils, TextDocument, ValidationAcceptor } from "langium";
 import { Range } from 'vscode-languageserver-types';
 import { findLeafNodeAtOffset } from "../bbj-validator.js";
+import { LINE_BREAK_DIAGNOSTIC_CODE } from "../bbj-diagnostic-reconciliation.js";
 import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
 
 type LineBreakMask = {
@@ -69,7 +70,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (!hasLinebreakBefore(cst, textDocument)) {
                         accept('error', 'This statement needs to start in a new line: ' + textDocument.getText(cst.range), {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
@@ -80,7 +82,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (!hasLinebreakAfter(cst, textDocument)) {
                         accept('error', 'This statement needs to end with a line break: ' + textDocument.getText(cst.range), {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
@@ -97,7 +100,8 @@ export function checkLineBreaks(node: AstNode, accept: ValidationAcceptor): void
                     if (missingMsg) {
                         accept('error', `${missingMsg}: ${textDocument.getText(cst.range)}`, {
                             node,
-                            range: cst.range
+                            range: cst.range,
+                            data: { code: LINE_BREAK_DIAGNOSTIC_CODE }
                         });
                     }
                 }
@@ -162,6 +166,15 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
                     lineBreaks.before = false;
                     break;
                 }
+                if (isLabelDecl(prev)) {
+                    // a label declaration immediately before this IF on the same line is
+                    // always a legal prefix (the same rule isStandaloneStatement already
+                    // applies one function away) -- do not walk past it looking for
+                    // something else, and do not clear on a preceding end-of-IF statement,
+                    // which must stay reported.
+                    lineBreaks.before = false;
+                    break;
+                }
                 prev = previousStatement(prev);
             }
         }
@@ -170,18 +183,27 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
     return [isIfStatement, mask]
 }
 
+// Balance rule shared by elseStatementLineBreaks and ifEndStatementLineBreaks: walking
+// past a same-line closer finds a nested chain's true governing IF, but each closer
+// stepped over consumes one open IF that this node cannot also claim. `openIfs` counts
+// unclaimed closers; an IF found while it is positive belongs to one of them (decrement,
+// keep walking), an IF found at zero governs this node. The same-line guard keeps the
+// walk monotonic and terminating either way.
 function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
     const mask = (node: ElseStatement) => {
         const lineBreaks = { before: false, after: false, both: true };
+        let openIfs = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {
-            if (isIfStatement(prev)) {
-                // ELSE: if previous is IF_THEN - same line
-                lineBreaks.both = false;
-                break;
-            } else if (isElseStatement(prev) || isIfEndStatement(prev)) {
-                // other
-                break;
+            if (isIfEndStatement(prev) || isElseStatement(prev)) {
+                // A prior closer or ELSE already spent one open IF; an ELSE cannot own two.
+                openIfs++;
+            } else if (isIfStatement(prev)) {
+                if (openIfs === 0) {
+                    lineBreaks.both = false;
+                    break;
+                }
+                openIfs--;
             }
             prev = previousStatement(prev);
         }
@@ -193,15 +215,19 @@ function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
 function ifEndStatementLineBreaks(): LineBreakConfig<IfEndStatement> {
     const mask = (node: IfEndStatement) => {
         let lineBreaks = { before: false, after: false, both: true };
+        let openIfs = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {
-            if (isIfStatement(prev) || isElseStatement(prev)) {
-                // ENDIF: if previous is IF_THEN or ELSE same line
-                lineBreaks.both = false;
-                break;
-            } else if (isIfEndStatement(prev)) {
-                // other
-                break;
+            if (isIfEndStatement(prev)) {
+                // ELSE does not increment here: it still belongs to an open IF, so it is a
+                // valid thing for an end-of-IF to close directly.
+                openIfs++;
+            } else if (isIfStatement(prev) || isElseStatement(prev)) {
+                if (openIfs === 0) {
+                    lineBreaks.both = false;
+                    break;
+                }
+                openIfs--;
             }
             prev = previousStatement(prev);
         }
@@ -288,8 +314,20 @@ function getCstNodes(node: CstNode, features: string[] | boolean): CstNode[] {
     }
 }
 
-const lineStartRegex = /^\s*$/;
-const lineEndRegex = /^\s*(;[ \t]*)?(rem[ \t][^\n\r]*)?(\r?\n)?$/i;
+// Tolerates a leading user line number (classic BASIC-style numbering, e.g. `0010 class public
+// a`) immediately before a masked keyword on the same physical line -- a line number followed by
+// whitespace is a legitimate "start of statement" prefix, not code that requires its own line
+// break before the masked keyword. A prefix that is anything other than whitespace or a single
+// leading number stays rejected exactly as before.
+const lineStartRegex = /^\s*(\d+\s+)?$/;
+// The comment-tail group requires a separator (space/tab) plus the comment body when `rem` is
+// followed by more text (`; rem c`), but also accepts a bare `rem` with nothing at all after it
+// (`; rem` / `;rem` at end of line) by making the separator+body group itself optional. An
+// identifier that merely starts with `rem` (`remx=1`) still fails to match: after consuming the
+// literal `rem`, the regex has nothing left to consume the trailing identifier characters with,
+// and backtracking to skip the whole group entirely leaves the same trailing text unconsumed --
+// either way, the required `$` anchor cannot be reached.
+const lineEndRegex = /^\s*(;[ \t]*)?(rem(?:[ \t][^\n\r]*)?)?(\r?\n)?$/i;
 
 function hasLinebreakBefore(node: CstNode, textDocument: TextDocument): boolean {
     const nodeStart = node.range.start;

@@ -1,5 +1,129 @@
 # Project Milestones: BBj Language Server
 
+## v4.5 Compiler Conformance (Shipped: 2026-09-24)
+
+**Closed 2026-09-24** as an override closeout after a milestone audit with status `tech_debt`
+(`milestones/v4.5-MILESTONE-AUDIT.md`): 32/32 requirements satisfied, 8/8 phases verified
+`passed`, 7/7 integration seams connected, 5/5 end-to-end flows complete, and Nyquist coverage
+compliant for every phase. There are no gaps against requirements. The close counts as an
+override only because the pre-close artifact scan found three open items, which were
+acknowledged rather than resolved (see Known verification overrides).
+
+**Where the code lives.** Not on `main` yet. Phases 98-105 are on
+`gsd/phase-103-one-set-of-errors-diagnostic-reconciliation`, and PR #691 (head branch
+`gsd/phase-102-live-compiler-diagnostics-with-backward-compatibility`) carries the whole
+milestone. By standing decision it lands on `main` as one piece now that all eight phases
+are done. Phase 101's `parseProgram` endpoint lives in the separate `bbj-ls` repository on
+BASIS GitLab, branch `feat/689-parse-program-endpoint`, with the merge request opened by
+hand. The conformance corpus and harness stay in the private `bbj-corpus` repository and
+never enter this repository or its CI. The phase archive under
+`.planning/milestones/v4.5-phases/` and the quick-task archive under
+`.planning/milestones/v4.5-quick/` are tracked (no embargo). All corpus-derived text in them
+was reworded and checked by the leak guard in 104-04.
+
+**Delivered:** the language server now agrees with BBj's own compiler. Measured against a
+private corpus of real programs with BBj's live verdict applied, valid code the language
+server rejected fell from 168 files to 9, valid code with a spurious validation error fell
+from 267 to 22, and invalid code it failed to flag fell from 658 of 1,210 (54.4 %) to 31
+(2.6 %), all under the exit gates (≤ 25, ≤ 25, ≤ 5 %), with 0 endpoint failures. Three
+changes produced this. Grammar and validator fixes close the parser gaps and false alarms.
+A new `parseProgram` endpoint in `bbj-ls` runs BBj's own parser over the editor text while
+you type (BBj 26.03 or later). A reconciliation layer merges the two into one set of errors.
+Against an older or unreachable server, behaviour is exactly that of 0.16.x.
+
+**Phases completed:** 98-105 (8 phases, 44 plans, 124 tasks)
+
+| Phase | Name | Plans | Requirements |
+|-------|------|-------|--------------|
+| 98 | Line-Break & Validation False Alarms (A2) | 10 | VALID-01..05, CONF-01 |
+| 99 | Parser Gaps — the Largest Groups | 6 | PARSE-01, -02, -03, -07 |
+| 100 | Parser Gaps — Remaining Groups, Long Tail & Examples | 6 | PARSE-04, -05, -06, -08, -09, EXMP-01 |
+| 101 | BBj Parser Endpoint in `bbj-ls` (separate repo) | 4 | PSRV-01, -02 |
+| 102 | Live Compiler Diagnostics With Backward Compatibility | 4 | PSRV-03, -04, -05, -08, -09 |
+| 103 | One Set of Errors — Diagnostic Reconciliation | 5 | PSRV-06, -07 |
+| 104 | Conformance Measurement & Milestone Exit | 4 | CONF-02, -03 |
+| 105 | Live Diagnostics Responsiveness on Large Workspaces (added mid-milestone, issue #692) | 5 | RESP-01..05 |
+
+**Key accomplishments:**
+
+- Line-break and validation false alarms (A2 267 → 22): new `TableStatement`, `LoadStatement`
+  and widened `RESTORE`/`EXIT` rules, keyword-named branch targets, single-line IF and
+  trailing-comma PRINT masks, an optional closing `FNEND`, and a CST-based comment check.
+  METHODRET and conflicting-DECLARE disagreements with the compiler became warnings, with
+  errors kept only for unrelated resolved types inside a method body. A
+  `conformance-regressions.test.ts` harness and synthetic fixtures under `test/test-data/`
+  protect every fix in CI (CONF-01).
+- Parser gaps (A 168 → 9): a `FieldStatement` verb form with `ERR=`, `label` usable as a
+  label, branch target and variable, a standalone `IOLIST`, the fused `LEN=` split so
+  `LEN` is a usable name, and empty-bracket whole-array references at all eleven call sites
+  plus multi-dimension brackets in DECLARE/FIELD/signatures. `;` comments now work after
+  the class and function terminators, and `SETDRIVE` has its first grammar rule. Keyword
+  names were probed against `bbjcpl` rather than guessed, and twelve words (plus `next`)
+  now parse as ordinary names.
+- All 92 programs under `examples/` compile with `bbjcpl`. The one deliberately invalid
+  program moved to `examples/invalid/` with a sidecar, and a new two-layer
+  `examples-compile.test.ts` enforces this (EXMP-01).
+- The `bbj-ls` `parseProgram` JSON-RPC endpoint (`BbjPrefixAlgorithm`, `ParserWorker`) runs
+  BBj's parser with type checking off and maps its errors to editor coordinates. It is
+  proven over a live socket with supersession and a size cap, and the older-server
+  MethodNotFound path was replayed against the real 26.02 jar.
+- Live compiler diagnostics: `BBjParserService` publishes Error-severity diagnostics under a
+  `BBj Parser` source on a 500 ms debounce, capped by the one `diagnostics.maxErrors`
+  setting, and falls back silently to 0.16.x behaviour. `bbj-diagnostic-reconciliation.ts`
+  then makes one set of errors: Langium diagnostics that duplicate a BBj verdict give way,
+  the rest become warnings, a present verdict skips the save-time `bbjcpl` run, and any
+  failed, cancelled or stale parse falls back to it exactly as before.
+- Large-workspace responsiveness (issue #692): the live-parse cycle is armed from document
+  open/change events outside Langium's `WorkspaceLock`. `parseProgram` gets its own
+  interop connection that falls back to the shared one. `composeWithVerdict` converges
+  early verdicts and Langium validation to one list in either arrival order. The wait for
+  the first live diagnostic fell from 58.9 s to 5.3 s in VS Code and from 66 s to 6 s in
+  IntelliJ on a real large workspace.
+- The private harness gained `--endpoint`/`--data` modes and a `leak-guard.mjs` scanner with a
+  self-test. The exit gate was measured against the pinned September 1, 2026 corpus build
+  (`104-CONFORMANCE.md`).
+- One quick task landed alongside: documenting what `bbj.compiler.trigger` really does
+  (260923-pu7).
+
+**Stats:** 323 commits between 2026-09-20 and 2026-09-23 (4 days). 81 files changed outside
+`.planning/`, +8,974 / −278 lines: `bbj-vscode/src` +1,989 / −180 and `bbj-vscode/test`
++6,813 / −52. `bbj-ls` changes are counted in that repository. At the 104 close, the vitest
+suite showed 2,507 passed, 0 failed, 63 skipped, and the IntelliJ suite was green. UAT was
+done by hand in both IDEs for phases 102 (all pass), 103 (2/2) and 105 (1/1).
+
+**Known verification overrides:** 3 newly acknowledged, 36 carried forward from a prior close
+(see STATE.md Deferred Items). The three are two follow-up todos filed on 2026-09-23 (the live
+parse waiting on the shared connection's breaker, and the use-before-assignment check
+throwing on a reference that has no symbol) and Phase 99's deferred note on the
+installed-extension e2e `SETOPTS-in-code` failure, which comes from a stale installed bundle
+and is not a regression.
+
+### Known Gaps
+
+None against requirements. Overrides and debt carried forward:
+
+- Phase 98 closed with two recorded overrides (B 658 → 665 and A2 = 27 at phase close). Both
+  were resolved by the milestone exit (B 31, A2 22).
+- PSRV-02 re-scoped: `ParserServiceAPI` does not resolve referenced programs, so the
+  endpoint reports only what BBj's parser sees in the one file (recorded override in 101).
+- PARSE-08/-09 accepted residue: `record`/`classend`/`methodend`/`interfaceend` stay
+  keyword-only, and 9 list-A files are recorded by shape.
+- 103 WR-01: verdict state is never cleared for deleted files, so the map grows under long
+  file churn.
+- 105 WR-01 (deferred by the user, todo filed): the live parse still waits on the shared
+  connection's circuit breaker before it takes the dedicated lane.
+- Open review warnings: 98 WR-A/B/C, 99 WR-01, 100 WR-1/WR-2, 104 WR-01..03 (private
+  harness), 105 IN-01.
+- No SECURITY.md for phases 101 and 104.
+- `bbj-ls` hardening (101-REVIEW CR/WR findings) is decoupled from v4.5 and tracked in the
+  `bbj-ls` repository.
+- Pre-existing environment drift: `linking.test.ts`'s 11 live-interop failures against the
+  local :5008 backend (a hermetic run is green).
+- No `v4.5` git tag, following the v4.2-v4.4 precedent (repository tags are release
+  versions).
+
+---
+
 ## v4.4 IntelliJ Focus (Shipped: 2026-09-20)
 
 **Closed 2026-09-20** as an override closeout. No milestone-level audit was run (as at the

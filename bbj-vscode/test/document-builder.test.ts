@@ -1,6 +1,7 @@
 import type { AstNodeDescription, LangiumDocument, LangiumSharedCoreServices } from 'langium';
-import { EmptyFileSystem, URI, stream } from 'langium';
+import { DocumentState, EmptyFileSystem, URI, stream } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
@@ -8,6 +9,16 @@ import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { BbjClass } from '../src/language/generated/ast.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from '../src/language/bbj-validator.js';
+import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from '../src/language/bbj-parser-service.js';
+import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
+import {
+    clearAllVerdictStates,
+    getVerdictState,
+    recallLangiumDiagnostics,
+    recallLangiumSnapshot,
+    rememberLangiumDiagnostics,
+    setVerdictState,
+} from '../src/language/bbj-diagnostic-reconciliation.js';
 import { logger } from '../src/language/logger.js';
 
 vi.mock('../src/language/bbj-notifications.js', () => ({
@@ -27,9 +38,15 @@ function buildHarness() {
     const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
     const compileMock = vi.fn<(filePath: string) => Promise<Diagnostic[]>>();
+    const isEnabledMock = vi.fn<() => boolean>().mockReturnValue(true);
+    const requestLiveParseMock = vi.fn<(document: LangiumDocument) => Promise<LiveParseOutcome>>()
+        .mockResolvedValue({ kind: 'unavailable' });
     const fakeServiceRegistry = {
         getServices: () => ({
-            compiler: { BBjCPLService: { compile: compileMock } },
+            compiler: {
+                BBjCPLService: { compile: compileMock },
+                BBjParserService: { isEnabled: isEnabledMock, requestLiveParse: requestLiveParseMock },
+            },
         }),
     };
 
@@ -51,13 +68,30 @@ function buildHarness() {
     };
 
     const builder = new BBjDocumentBuilder(fakeServices as unknown as LangiumSharedCoreServices);
-    return { builder, wsManager, compileMock, openDocumentUris, indexManager: services.shared.workspace.IndexManager };
+    return {
+        builder,
+        wsManager,
+        compileMock,
+        isEnabledMock,
+        requestLiveParseMock,
+        openDocumentUris,
+        indexManager: services.shared.workspace.IndexManager,
+    };
 }
 
-function fakeDocument(path: string, diagnostics: Diagnostic[] = []): LangiumDocument {
+/**
+ * These fixtures model a document after a Langium build has already validated it once, the
+ * shape `debouncedCompile()`'s cycles are exercised against throughout this file -- without
+ * `state: DocumentState.Validated`, `publishCycleDiagnostics` would treat every cycle here as an
+ * early, not-yet-validated one and send to the client instead of writing `document.diagnostics`.
+ */
+function fakeDocument(path: string, diagnostics: Diagnostic[] = [], text = ''): LangiumDocument {
+    const uri = URI.file(path);
     return {
-        uri: URI.file(path),
+        uri,
         diagnostics,
+        state: DocumentState.Validated,
+        textDocument: TextDocument.create(uri.toString(), 'bbj', 1, text),
     } as unknown as LangiumDocument;
 }
 
@@ -67,12 +101,19 @@ type BuilderPrivates = {
     trackBbjcplAvailability(): void;
     bbjcplAvailable: boolean | undefined;
     revalidateUseFilePathDiagnostics(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
+    runBbjcplForDocuments(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
 };
 
 afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.useRealTimers();
+    // Verdict state is module-scoped, keyed by document uri; clear it so an earlier test's
+    // carried-over state can never leak into a later one.
+    clearAllVerdictStates();
+    // The compiler-trigger setting is also module-scoped; restore its default so later tests
+    // in this file (and other files sharing the module) see it.
+    setCompilerTrigger('debounced');
 });
 
 describe('debouncedCompile catches and logs callback errors (P61-D2-017)', () => {
@@ -163,5 +204,98 @@ describe('trackBbjcplAvailability dedup and debouncedCompile timing (P61-D5-016)
         await vi.advanceTimersByTimeAsync(600);
 
         expect(compileMock).toHaveBeenCalledOnce();
+    });
+});
+
+describe('debouncedCompile clears stale live-parser diagnostics before the BBjCPL merge step', () => {
+    test('a fresh same-line BBjCPL diagnostic from a fallback cycle is not absorbed into a leftover live-parser entry from a prior verdict cycle', async () => {
+        vi.useFakeTimers();
+        const { builder, compileMock, requestLiveParseMock } = buildHarness();
+        const privates = builder as unknown as BuilderPrivates;
+        const doc = fakeDocument('/proj/persistent-error.bbj');
+        const line5Range = { start: { line: 5, character: 0 }, end: { line: 5, character: 10 } };
+
+        // First debounce cycle: a verdict carrying one live-parser diagnostic on line 5. The
+        // save-time compile does not run this cycle.
+        requestLiveParseMock.mockResolvedValueOnce({
+            kind: 'verdict',
+            diagnostics: [
+                { message: 'stale live-parser message', range: line5Range, severity: 1, source: BBJ_PARSER_SOURCE },
+            ],
+        });
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
+            { source: BBJ_PARSER_SOURCE, message: 'stale live-parser message' },
+        ]);
+        expect(compileMock).not.toHaveBeenCalled();
+
+        // Second debounce cycle: the live parse fails, so this cycle falls back to the save-time
+        // compile, which now flags the same line with a new message. The BBjCPL diagnostic must
+        // win with its own current message, not the leftover live-parser text from the previous
+        // cycle's verdict.
+        requestLiveParseMock.mockResolvedValueOnce({ kind: 'failed' });
+        compileMock.mockResolvedValueOnce([
+            { message: 'current bbjcpl message', range: line5Range, severity: 1, source: 'BBjCPL' },
+        ]);
+        privates.debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(doc.diagnostics?.map(d => ({ source: d.source, message: d.message }))).toEqual([
+            { source: 'BBjCPL', message: 'current bbjcpl message' },
+        ]);
+    });
+});
+
+describe('the compiler trigger being off forgets every verdict', () => {
+    test('setCompilerTrigger("off") followed by runBbjcplForDocuments clears every document\'s verdict state', async () => {
+        const { builder } = buildHarness();
+        const doc = fakeDocument('/proj/trigger-off.bbj');
+        setVerdictState(doc.uri, { seen: new Set(['some-key']) });
+        expect(getVerdictState(doc.uri)).toBeDefined();
+
+        setCompilerTrigger('off');
+        const privates = builder as unknown as BuilderPrivates;
+        await privates.runBbjcplForDocuments([doc], CancellationToken.None);
+
+        expect(getVerdictState(doc.uri)).toBeUndefined();
+    });
+});
+
+describe('revalidateUseFilePathDiagnostics keeps the remembered Langium diagnostics list honest', () => {
+    test('a now-resolved USE diagnostic is dropped from both document.diagnostics and the remembered list; the still-unresolved one survives in both', async () => {
+        const { builder, wsManager, indexManager } = buildHarness();
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: ['/prefix'], classpath: [] };
+
+        const resolvedUri = URI.file('/prefix/Resolved.bbj');
+        const fakeClassDescription = {
+            type: BbjClass.$type,
+            name: 'Resolved',
+            documentUri: resolvedUri,
+        } as unknown as AstNodeDescription;
+
+        vi.spyOn(indexManager, 'allElements').mockReturnValue(stream([fakeClassDescription]));
+
+        const resolvedDiagMessage = `${USE_FILE_NOT_RESOLVED_PREFIX}Resolved.bbj' could not be resolved.`;
+        const unresolvedDiagMessage = `${USE_FILE_NOT_RESOLVED_PREFIX}Missing.bbj' could not be resolved.`;
+        const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+        const makeDiags = (): Diagnostic[] => [
+            { message: resolvedDiagMessage, range, severity: 2 },
+            { message: unresolvedDiagMessage, range, severity: 2 },
+        ];
+
+        const doc = fakeDocument('/proj/use-revalidate.bbj', makeDiags());
+        const validatedText = 'x = 1\n';
+        rememberLangiumDiagnostics(doc, makeDiags(), validatedText);
+
+        await (builder as unknown as BuilderPrivates).revalidateUseFilePathDiagnostics([doc], CancellationToken.None);
+
+        expect(doc.diagnostics?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
+        expect(recallLangiumDiagnostics(doc)?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
+        // The re-remembered list keeps the snapshot's own validated text -- a later composition
+        // still knows which text this filtered list belongs to.
+        expect(recallLangiumSnapshot(doc)?.validatedText).toBe(validatedText);
     });
 });

@@ -1,0 +1,19 @@
+REM Protects a RECORD verb's LEN= channel option from being swallowed by a fused
+REM LEN= keyword literal meant only for the INPUT verifier form. Covers all six
+REM sibling verbs (READ, EXTRACT, FIND, INPUT, PRINT, WRITE) with RECORD, spaced
+REM and fused spellings, upper/lower/mixed case, a numeric and a variable LEN
+REM value, the INPUT verifier's own LEN=a,b form, and LEN used as a plain
+REM variable name.
+CHANNO=1
+LENVAR=10
+READ RECORD(CHANNO,LEN=10)REC1$
+EXTRACT RECORD(CHANNO,LEN=10)REC2$
+FIND RECORD(CHANNO,LEN=10)REC3$
+INPUT RECORD(CHANNO,LEN=10)REC4$
+PRINT RECORD(CHANNO,LEN=10)REC5$
+WRITE RECORD(CHANNO,LEN=10)REC6$
+READRECORD(CHANNO,LEN=LENVAR)REC7$
+read record(channo,len=10)rec8$
+Read Record(CHANNO,Len=10)REC9$
+READ(CHANNO)VERIFYVAR$:(LEN=1,10)
+LET LEN=5

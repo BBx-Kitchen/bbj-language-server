@@ -1,0 +1,15 @@
+REM Protects the IOLIST statement: standalone, behind a numeric label, an ordinary named
+REM label and a label named with the word `label`, with an item list mixing a numeric
+REM scalar, a string variable and an all-elements array subscript, a long item list spread
+REM over a continuation line, upper-, lower- and mixed-case spellings, and a channel-option
+REM reference to the leading label of an IOLIST statement.
+IOLIST NUM1,STR1$,ARR1[ALL]
+L10: iolist NUM2,STR2$
+recio: IOLIST NUM3,STR3$
+label: iolist NUM4,STR4$
+IOLIST I1,I2,I3,I4,I5,I6,I7,I8,
+:I9,I10
+iolist NUM5,STR5$
+IoList NUM6,STR6$
+chanio: iolist CHNUM,CHSTR$
+READ(1)IOL=CHANIO

@@ -1,0 +1,22 @@
+REM Protects the word `label` used as a name: a label declaration alone on a line, a
+REM declaration immediately followed by a statement (with and without a space, including a
+REM semicolon-chained pair and an ENTER statement), a GOTO/GOSUB and multi-target ON...GOTO
+REM branch target, including inside a semicolon-chained statement, and a plain variable
+REM written and read inside an expression -- in upper, lower and mixed case, alongside an
+REM ordinary non-keyword label declaration in front of a statement for the general case.
+LET X=0
+GOSUB label
+goto Label
+LET X=0;GOTO LABEL
+ON X GOTO label,other
+LABEL=5
+Y=LABEL+1
+GOTO after
+label:
+RETURN
+LABEL:ESCAPE
+Label: escape;exit
+LABEL: ENTER A$,B$
+other:Z=1
+RETURN
+after:W=1

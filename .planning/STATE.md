@@ -1,59 +1,80 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.4
-milestone_name: IntelliJ Focus (Phases 93-97) — SHIPPED 2026-09-20
+milestone: v4.5
+milestone_name: Compiler Conformance (Phases 98-105) — SHIPPED 2026-09-24
 status: Awaiting next milestone
-stopped_at: "Completed 97-11-PLAN.md (all 21 milestone #7 issues closed with maintainer-approved comments, milestone #7 closed 0/21/closed; REL-02 complete; phase 97 and milestone v4.4 complete)"
-last_updated: "2026-09-20T19:12:53.267Z"
-last_activity: 2026-09-20
-last_activity_desc: Milestone v4.4 completed and archived
-state_head: d8071b24fcfdd25986f26bf71184d4873fc975c6
+stopped_at: Milestone v4.5 completed and archived; next milestone not yet defined
+last_updated: "2026-09-24T04:46:27.175Z"
+last_activity: 2026-09-24
+last_activity_desc: Milestone v4.5 completed and archived
+state_head: d81987364e09bbfad54a5a9b9f054db0868d7b06
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 36
-  completed_plans: 36
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 44
+  completed_plans: 44
   percent: 100
-current_phase: 97
-current_phase_name: Release 0.16.0 & Milestone Close
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-20 (v4.4 IntelliJ Focus archived — release 0.16.0 shipped, override closeout)
+**Last Updated:** 2026-09-24 (v4.5 Compiler Conformance shipped and archived; next milestone not yet defined)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-09-24)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone — run `/gsd-new-milestone`
+**Current Focus:** Planning next milestone (`/gsd-new-milestone`); merge PR #691 first
 
 ---
 
 ## Current Position
 
-Phase: Milestone v4.4 complete
+Phase: Milestone v4.5 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-20 — Milestone v4.4 completed and archived
+Last activity: 2026-09-24 — Milestone v4.5 completed and archived
+
+### v4.5 milestone map (shipped 2026-09-24)
+
+| Phase | Name | Requirements | Repository changed |
+|-------|------|--------------|--------------------|
+| 98 | Line-Break & Validation False Alarms (A2) | VALID-01..05, CONF-01 | this repo (`bbj-vscode/src/language/validations/`) |
+| 99 | Parser Gaps — the Largest Groups | PARSE-01, -02, -03, -07 | this repo (`bbj.langium`, lexer) |
+| 100 | Parser Gaps — Remaining Groups, Long Tail & Examples | PARSE-04, -05, -06, -08, -09, EXMP-01 | this repo (grammar, `examples/`) |
+| 101 | BBj Parser Endpoint in `bbj-ls` | PSRV-01, -02 | **separate `bbj-ls` repo** (Java, BASIS GitLab) |
+| 102 | Live Compiler Diagnostics With Backward Compatibility | PSRV-03, -04, -05, -08, -09 | this repo (`bbj-vscode/`, `documentation/`) |
+| 103 | One Set of Errors — Diagnostic Reconciliation | PSRV-06, -07 | this repo (document validator) |
+| 104 | Conformance Measurement & Milestone Exit | CONF-02, -03 | private `bbj-corpus` harness + this repo's gates |
+| 105 | Live Diagnostics Responsiveness on Large Workspaces | RESP-01..05 | this repo (document builder, java-interop parse lane) |
+
+Baseline A = 168, A2 = 267, B = 658 of 1,210 (54.4 %) → exit A = 9, A2 = 22, B = 31 (2.6 %) with the
+endpoint active, 0 endpoint failures (all gates passed).
 
 ## Performance Metrics
 
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 21
-**Phases completed:** 95
-**Plans completed:** 349
-**Days elapsed:** 231
-**Velocity:** ~1.5 plans/day (lifetime); v4.4 ran at ~9 plans/day over its 4 phase-work days
+**Milestones shipped:** 22
+**Phases completed:** 103
+**Plans completed:** 393
+**Days elapsed:** 236
+**Velocity:** ~1.5 plans/day (lifetime); v4.5 ran at ~11 plans/day over its 4 days
 
-Per-plan duration tables for phases 72-97 are archived with their phase artifacts under
-`.planning/milestones/v4.2-phases/`, `v4.3-phases/` and `v4.4-phases/`.
+Per-plan duration tables for phases 72-105 are archived with their phase artifacts under
+`.planning/milestones/v4.2-phases/` through `v4.5-phases/`.
 
 ### Recent History
+
+**v4.5 (Shipped: 2026-09-24):**
+
+- Duration: 4 days (2026-09-20 → 2026-09-23 phase work, closed 2026-09-24)
+- Phases: 8 (98-105; 105 added mid-milestone for #692)
+- Plans: 44 (124 tasks)
+- Key: compiler conformance. A 168 → 9, A2 267 → 22 and B 658 → 31 of 1,210 with the new `bbj-ls` `parseProgram` endpoint feeding live compiler diagnostics, one set of errors via verdict reconciliation, and large-workspace live diagnostics in 5-6 s. Audit `tech_debt` with no gaps; override closeout (3 artifacts acknowledged). Code on PR #691.
 
 **v4.4 (Shipped: 2026-09-20):**
 
@@ -76,10 +97,16 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 - Plans: 25 (74 tasks)
 - Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; landed on `origin/main` via PR #651
 
+Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planning/milestones/v4.5-phases/`.
+
 ## Accumulated Context
 
 ### Active Constraints
 
+- **v4.5:** the conformance corpus and harness stay outside this repository (private `bbj-corpus`, `conformance/run.mjs --ls <this repo>`), are run locally at phase boundaries and never in CI. CI protection comes from synthetic regression files under `bbj-vscode/test/test-data/` (CONF-01).
+- **v4.5:** no proprietary BBj source text enters this public repository — planning files, tests and regression files describe behaviour and use word lists only.
+- **v4.5:** Phase 101 changes the separate `bbj-ls` repository (Java, runs inside BBjServices on port 5008, BASIS GitLab, ships with BBj 26.03+). Both extensions must keep working unchanged against an older BBj whose `bbj-ls` lacks the endpoint (PSRV-04), decided by a once-per-connection probe, not a version-string comparison.
+- **v4.5:** no hand-written strict checks are added to the Langium grammar (bare expression statements, reserved words, block balance) — BBj's parser decides those contextually; they are deferred as STRICT-01/02.
 - Disclosure constraint: no v4.1 planning artifact on `main` may describe a flaw mechanism, affected file, or exploitation path for any of the 8 unpublished advisories — opaque GHSA-id-only references only. Remediation research (`SECRETS-AND-EXEC.md`, `SUPPLY-CHAIN.md`) stays untracked via `.git/info/exclude`.
 - New work lands via a branch cut from `origin/main` plus a pull request, with a per-commit register check of the source diff for planning identifiers (plan/D-xx/C-xx/COMP/CR-xx tokens) before push.
 - Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
@@ -90,8 +117,8 @@ Per-plan duration tables for phases 72-97 are archived with their phase artifact
 
 ### Decisions
 
-Full decision log in PROJECT.md's Key Decisions table; per-phase decision detail for phases 70-97
-is archived with the phase directories (v4.1 embargoed off `main`; v4.2-v4.4 tracked). Standing
+Full decision log in PROJECT.md's Key Decisions table; per-phase decision detail for phases 70-105
+is archived with the phase directories (v4.1 embargoed off `main`; v4.2-v4.5 tracked). Standing
 decisions:
 
 - [v4.1, standing]: No CVE is requested for any advisory during implementation; CVE and severity are decided by the maintainer at publication time (a deliberate PROC-03 departure).
@@ -100,6 +127,8 @@ decisions:
 - [v4.4, standing]: A runtime status or lifecycle sequence used as UAT evidence must come from a real `idea.log`, not a hand-derived trace (the Phase 97 crash-detection rework was approved on a wrong trace and reverted).
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
+- [v4.5, standing]: new diagnostics from the compiler's parser are errors, like the compiler's own; invalid code is decided by BBj's parser, not hand-written strict checks.
+- [v4.5, standing until merged]: PR #691 carries phases 98-105 and lands on `main` as one piece; scan its commit bodies for closing keywords before the squash merge.
 
 ### Tech Debt
 
@@ -109,15 +138,20 @@ decisions:
 - IntelliJ TextMate bundle cannot exclude config.bbx at filename level (adjacent to PLAT-01)
 - FQN path static-only filtering deferred — requires JAR redeployment
 - Static method return type inference gap — String.valueOf(2) does not assign type
+- v4.5: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104 (full list in `milestones/v4.5-MILESTONE-AUDIT.md`)
 
 ### Pending Todos
 
-4 pending in `.planning/todos/pending/`, all filed 2026-09-20 and acknowledged at the v4.4 close:
+7 pending in `.planning/todos/pending/`, all acknowledged at a milestone close (v4.4: 4, v4.5: 2 plus
+the Phase 98 one):
 
 - `2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection` — severity major; the Phase 97 attempt was reverted
 - `2026-09-20-status-transition-log-prints-a-stale-previous-status` — only makes sense together with the one above
 - `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
+- `2026-09-21-loosen-single-line-if-balance-rule-a2-residue` — part of the A2 residue (22 at v4.5 exit)
+- `2026-09-23-live-parse-waits-on-shared-connection-breaker` — 105 WR-01, deferred by the user
+- `2026-09-23-use-before-assignment-check-throws-on-a-reference-without-a-symbol` — reproduced in 104-02
 
 ### Blockers/Concerns
 
@@ -129,10 +163,12 @@ decisions:
 
 - **Crash detection cannot see a lost language-server connection.** LSP4IJ detaches the client before it publishes `stopped`; the Phase 97 fix failed hand UAT and was reverted. Accepted `86-05-REVIEW` WR-01 is the same defect. Upstream: LSP4IJ #1672/#1673.
 
-- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the documented local baseline of 12 should now be 11 (not re-measured at close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
+- **v4.5 not on `main` yet.** PR #691 carries phases 98-105; the `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand. No release has been cut since 0.16.0.
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
 ### Quick Tasks Completed
@@ -144,13 +180,19 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ---
 
+### Roadmap Evolution
+
+- v4.5 archived 2026-09-24 (Phases 98-105).
+- Phase 105 added: Live diagnostics responsiveness on large workspaces (issue #692) — live-parse timer is armed inside buildDocuments, behind Langium's FIFO WorkspaceLock; observed in both IDEs during phase 102 UAT
+
 ## Session Continuity
 
-Last session: 2026-09-20
-Stopped at: v4.4 IntelliJ Focus archived (override closeout, 6 artifacts acknowledged)
+Last session: 2026-09-24
+Stopped at: v4.5 milestone completed and archived
 Resume file: None
 
-Next: `/gsd-new-milestone` to define the next milestone.
+Next: merge PR #691 (scan commit bodies for closing keywords first), then `/gsd-new-milestone`.
+The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
 
@@ -158,6 +200,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| todos | 2026-09-23-live-parse-waits-on-shared-connection-breaker.md | (presence-only) | 2026-09-24 | v4.5 |
+| todos | 2026-09-23-use-before-assignment-check-throws-on-a-reference-without-a-symbol.md | (presence-only) | 2026-09-24 | v4.5 |
+| deferred_items | 99/deferred-items.md: installed-extension e2e SETOPTS-in-code (#475) fails with "No document found" (stale installed bundle, not a regression) | acknowledged | 2026-09-24 | v4.5 |
 | debug_sessions | g-96-2-too-old-node-no-download-offer | diagnosed (G-96-2 fixed by 96-08, maintainer pass 2026-09-20) | 2026-09-20 | v4.4 |
 | uat_gaps | 97/97-UAT-ARTIFACTS.md | unknown (suite-gate and artifact-hash record, not a UAT script; 0 pending scenarios) | 2026-09-20 | v4.4 |
 | todos | 2026-09-20-linking-interop-failures-survive-class-warmup.md | (presence-only) | 2026-09-20 | v4.4 |
@@ -239,18 +284,15 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | 2026-09-06 |
 | v4.3 Polish & Quality | 84-92 | 70 | 2026-09-13 |
 | v4.4 IntelliJ Focus | 93-97 | 36 | 2026-09-20 |
+| v4.5 Compiler Conformance | 98-105 | 44 | 2026-09-24 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-20 after the v4.4 milestone close. Per-plan metrics and per-phase decision
-detail for phases 70-97 live with their archived phase artifacts; this file is a digest again.*
+*State updated: 2026-09-24 after the v4.5 close. Per-plan metrics and per-phase decision
+detail for phases 70-105 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Run `/gsd-new-milestone` to define the next milestone; phase numbering continues from 98. Candidates are listed in PROJECT.md under Next Milestone Goals.
-- Maintainer-owned: advisory publication (PROC-03) is now unblocked by tag `v0.16.0`.
-- Small follow-up candidate: the published 0.16.0 release notes list #622 under "no observable change", but the fix visibly changed the crash banner's file-type coverage.
-- Carried forward: triage the UAT-log issues #659-#662 and the SETOPTS discoverability follow-up #666.
-- `WINDOWS.md` entry 1 still blocks `/gsd-ship` under `windows_enforce`.
+- Start the next milestone with /gsd-new-milestone

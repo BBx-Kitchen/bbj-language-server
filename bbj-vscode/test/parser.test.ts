@@ -3,7 +3,7 @@ import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -1547,6 +1547,63 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
+    });
+
+    test("TABLE statement at the start of a line produces a TableStatement, with or without a leading label", async () => {
+        const unlabelled = await parse('TABLE ff00aa11\n', { validation: true });
+        expectNoParserLexerErrors(unlabelled);
+        expectNoValidationErrors(unlabelled);
+        const unlabelledProgram = unlabelled.parseResult.value as Program;
+        expect(isTableStatement(unlabelledProgram.statements[0])).toBeTruthy();
+
+        const labelled = await parse('L1: TABLE ff00aa11\n', { validation: true });
+        expectNoParserLexerErrors(labelled);
+        expectNoValidationErrors(labelled);
+        const labelledProgram = labelled.parseResult.value as Program;
+        expect(isTableStatement(labelledProgram.statements[1])).toBeTruthy();
+    });
+
+    test("TABLE statement after a ';' statement separator parses clean as a TableStatement", async () => {
+        const result = await parse('x = 1;TABLE ff00aa11\n', { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+        const program = result.parseResult.value as Program;
+        const compound = program.statements[0] as CompoundStatement;
+        expect(isTableStatement(compound.statements[1])).toBeTruthy();
+    });
+
+    test("an identifier ending in or containing 'table' keeps working as an ordinary name (no lexer/parser errors)", async () => {
+        // Regression coverage: the TABLE_DATA token must only fire when TABLE is the verb
+        // starting a statement. It must never swallow the rest of the line just because some
+        // other identifier ends in or contains "table".
+        const cases: [string, string][] = [
+            ["mytable used in a for-loop bound", 'for i=1 to mytable step 2\nnext i\n'],
+            ["rowtable used in a for-loop bound", 'for i=1 to rowtable step 2\nnext i\n'],
+            ["bare table used in a for-loop bound", 'for i=1 to table step 2\nnext i\n'],
+            ["mytable used in an if condition", 'if mytable then print "x"\n'],
+            ["bare table used in an if condition", 'if table then print "x"\n'],
+            ["table used in a while condition", 'while table\nwend\n'],
+            ["table used mid-expression on the right of an operator", 'x = table - 1\n'],
+            ["table used mid-expression on the right of a plus", 'x = table + 1\n'],
+            ["table printed as a value, still parses as a separate statement", 'print table ; print 1\n'],
+        ];
+        for (const [, src] of cases) {
+            const result = await parse(src, { validation: true });
+            expectNoParserLexerErrors(result);
+        }
+    });
+
+    test("'table' still parses as an ordinary assignment target at the start of a line", async () => {
+        const cases: [string, string][] = [
+            ["table = 5", 'table = 5\n'],
+            ["let table = 5", 'let table = 5\n'],
+            ["mytable = 3", 'mytable = 3\n'],
+        ];
+        for (const [, src] of cases) {
+            const result = await parse(src, { validation: true });
+            expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
+        }
     });
 
     test("Check UPDATELIC statement", async () => {

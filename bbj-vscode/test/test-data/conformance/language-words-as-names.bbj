@@ -1,0 +1,169 @@
+REM Protects the words BBj's own compiler accepts as ordinary names although they are grammar
+REM keywords: each word parses as a plain variable (with every type suffix and with none), as a
+REM label declaration, and as a GOTO/GOSUB/ON...GOTO branch target -- including as the last entry
+REM of a multi-target list -- in upper, lower and mixed case. Covers the fourteen words already
+REM working at the Phase 99 close (a subset needs no grammar literal at all, since they were never
+REM reserved) plus every word this phase's oracle sweep fixed.
+DECLARE=1
+PRINT DECLARE
+declare$="a"
+print declare$
+Declare!=bbjapi()
+Print Declare!
+DECLARE%=1
+PRINT DECLARE%
+AUTO=1
+PRINT AUTO
+auto$="a"
+USE=1
+use$="a"
+VAR=1
+var$="a"
+VOID=1
+void$="a"
+START=1
+PRINT START
+start$="a"
+NEXT=1
+PRINT NEXT
+next$="a"
+METHODRET=1
+PRINT METHODRET
+methodret$="a"
+WRITE=1
+write$="a"
+DELETE=1
+delete$="a"
+SAVE=1
+save$="a"
+ENTER=1
+enter$="a"
+READ=1
+read$="a"
+INPUT=1
+input$="a"
+EXTRACT=1
+extract$="a"
+FIND=1
+find$="a"
+LABEL=1
+label$="a"
+TEXT=1
+text$="a"
+VECTOR=1
+vector$="a"
+STATE=1
+state$="a"
+VAL=1
+val$="a"
+CLASS=1
+class$="a"
+DATA=1
+data$="a"
+DEFAULT=1
+default$="a"
+EXIT=1
+exit$="a"
+STEP=1
+step$="a"
+STR=1
+str$="a"
+TABLE=1
+table$="a"
+TO=1
+to$="a"
+declare:
+x=1
+goto declare
+Declare2:
+y=1
+on x goto Declare2,declare
+auto:
+x=1
+goto auto
+library:
+x=1
+goto library
+use:
+x=1
+goto use
+var:
+x=1
+goto var
+void:
+x=1
+goto void
+start:
+x=1
+goto start
+next:
+x=1
+goto next
+methodret:
+x=1
+goto methodret
+write:
+x=1
+goto write
+delete:
+x=1
+goto delete
+save:
+x=1
+goto save
+enter:
+x=1
+goto enter
+read:
+x=1
+goto read
+extract:
+x=1
+goto extract
+find:
+x=1
+goto find
+input:
+x=1
+goto input
+label:
+x=1
+goto label
+text:
+x=1
+goto text
+vector:
+x=1
+goto vector
+state:
+x=1
+goto state
+val:
+x=1
+goto val
+str:
+x=1
+goto str
+class:
+x=1
+goto class
+data:
+x=1
+goto data
+default:
+x=1
+goto default
+exit:
+x=1
+goto exit
+step:
+x=1
+goto step
+table:
+x=1
+goto table
+to:
+x=1
+Last:
+y=1
+on x goto Last,to,label,var,use,declare,auto,library,void,start,next,methodret,write,delete,save,enter,read,input,extract,find,text,vector,state,val,str,class,data,default,exit,step,table

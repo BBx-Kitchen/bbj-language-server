@@ -1,6 +1,6 @@
 class public Issue
 
-    field protected Issue Test
+    field protected Issue Test!
 
     method public Issue getTest()
         methodret #Test

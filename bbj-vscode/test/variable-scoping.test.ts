@@ -1,6 +1,6 @@
 import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { expectError, expectIssue, parseHelper, validationHelper, ValidationResult } from 'langium/test';
+import { expectError, expectIssue, expectWarning, parseHelper, validationHelper, ValidationResult } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
@@ -278,7 +278,9 @@ PRINT key$
     // ========================================================================
     describe('SCOPE-05: DECLARE type propagation', () => {
 
-        test('Conflicting DECLARE types produce error', async () => {
+        test('Conflicting DECLARE types produce error inside a method body', async () => {
+            // The one deliberate exception: two DECLAREs of one name inside a single method
+            // body, whose types both resolve and are unrelated, stays an error on purpose.
             const result = await validate(`
 class public ConflictTest
     method public void test()
@@ -350,14 +352,103 @@ classend
             expect(conflictErrors).toHaveLength(0);
         });
 
-        test('Conflicting DECLARE at program scope produces error', async () => {
+        test('Conflicting DECLARE at program scope produces a warning, not an error', async () => {
+            // Subroutines and event handlers share one program-level namespace, and
+            // re-declaring a variable per handler is ordinary BBj practice — so an unrelated
+            // resolved type pair at program level is a warning, never an error.
             const result = await validate(`
 DECLARE java.lang.String z!
 DECLARE java.lang.Integer z!
             `);
+            expectWarning(result, /Conflicting DECLARE/i, {
+                node: findAll(result.document, isVariableDecl, true)[1]
+            });
+            const conflictErrors = result.diagnostics.filter(
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+            );
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of related (sub/supertype) BBj classes produces no diagnostic', async () => {
+            const result = await validate(`
+class public ProbeConflictBase
+classend
+
+class public ProbeConflictChild extends ProbeConflictBase
+classend
+
+class public UsesRelatedDeclares
+    method public void test()
+        DECLARE ProbeConflictBase pb!
+        DECLARE ProbeConflictChild pb!
+    methodend
+classend
+
+DECLARE ProbeConflictBase pg!
+DECLARE ProbeConflictChild pg!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE where a type does not resolve produces no diagnostic', async () => {
+            const result = await validate(`
+DECLARE NoSuchProbeClassAtAll q!
+DECLARE AlsoNoSuchProbeClass q!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of two different BBj scalar types at program scope produces a warning, not an error', async () => {
+            // Restores the scalar-vs-scalar conflict this check used to catch with no Java
+            // classpath loaded, without needing either side to resolve to a class first.
+            const result = await validate(`
+DECLARE BBjNumber sv!
+DECLARE BBjString sv!
+            `);
+            expectWarning(result, /Conflicting DECLARE/i, {
+                node: findAll(result.document, isVariableDecl, true)[1]
+            });
+            const conflictErrors = result.diagnostics.filter(
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+            );
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of two different BBj scalar types inside a method body produces an error', async () => {
+            const result = await validate(`
+class public ScalarConflictTest
+    method public void test()
+        DECLARE BBjNumber sv!
+        DECLARE BBjString sv!
+    methodend
+classend
+            `);
             expectError(result, /Conflicting DECLARE/i, {
                 node: findAll(result.document, isVariableDecl, true)[1]
             });
+        });
+
+        test('Conflicting DECLARE of the same BBj scalar type produces no diagnostic', async () => {
+            const result = await validate(`
+DECLARE BBjNumber sameScalar!
+DECLARE BBjNumber sameScalar!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
+        });
+
+        test('Conflicting DECLARE of a BBj scalar type against an unresolvable class produces no diagnostic', async () => {
+            // Only a pair where BOTH sides are scalars is caught without resolution; a mixed
+            // pair still needs both sides to resolve, and the resolution-based rule is
+            // unchanged for it.
+            const result = await validate(`
+DECLARE BBjNumber mixedPair!
+DECLARE NoSuchProbeClassForMixedPair mixedPair!
+            `);
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            expect(conflictErrors).toHaveLength(0);
         });
     });
 

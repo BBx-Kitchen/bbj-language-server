@@ -1,10 +1,20 @@
 // This class extends DefaultDocumentValidator
 
 import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
+import type { LangiumServices } from "langium/lsp";
 import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
+import {
+    clearVerdictState,
+    composeWithVerdict,
+    getVerdictState,
+    isDowngradedSyntaxWarning,
+    isVerdictForVersion,
+    rememberLangiumDiagnostics,
+    setVerdictState
+} from "./bbj-diagnostic-reconciliation.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -34,6 +44,9 @@ export function setSuppressCascading(enabled: boolean): void {
 }
 export function setMaxErrors(max: number): void {
     maxErrorsDisplayed = max;
+}
+export function getMaxErrors(): number {
+    return maxErrorsDisplayed;
 }
 
 // BBjCPL trigger mode configuration
@@ -76,9 +89,21 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * errors to Warning severity, but they must still be identified and suppressed by their
  * data.code when parse errors exist. Without Rule 1, linking errors would only be
  * suppressed when ANY error exists (Rule 2), which is wrong — linking errors should
- * survive when only semantic errors (no parse errors) are present.
+ * survive when only semantic errors (no parse errors) are present. Rule 1 needs no special
+ * case for a downgraded syntax warning: once a syntax complaint is downgraded, its `data.code`
+ * is no longer the parsing-error code, so `getDiagnosticTier()` no longer places it in the
+ * Parse tier and it can no longer make `hasParseErrors` true on its own.
+ *
+ * Note on Rule 0: `applyDiagnosticHierarchy` runs once, synchronously, inside
+ * `validateDocument()` — before the save-time compiler's `'BBjCPL'`-sourced diagnostics exist.
+ * Those are merged later, directly into `document.diagnostics`, by the document builder's
+ * debounce callback (`bbj-document-builder.ts`), a separate code path that never calls this
+ * function again. Rule 0 therefore only ever acts on a list that already carries a `'BBjCPL'`
+ * diagnostic if one was already present from an earlier cycle; on the build that first
+ * introduces one, Rule 0 does not run against it. This is confirmed, long-standing behaviour,
+ * unchanged by this phase.
  */
-function applyDiagnosticHierarchy(
+export function applyDiagnosticHierarchy(
     diagnostics: Diagnostic[],
     suppressEnabled: boolean,
     maxErrors: number
@@ -112,10 +137,12 @@ function applyDiagnosticHierarchy(
         );
     }
 
-    // Rule 2: any Error-severity diagnostic → suppress all warnings/hints
+    // Rule 2: any Error-severity diagnostic → suppress all warnings/hints, except a downgraded
+    // syntax warning — that is Langium's own opinion on a line the compiler-parser verdict
+    // stayed silent about, and must stay visible even while an Error exists elsewhere.
     if (hasAnyError) {
         result = result.filter(
-            d => d.severity === DiagnosticSeverity.Error
+            d => d.severity === DiagnosticSeverity.Error || isDowngradedSyntaxWarning(d)
         );
     }
 
@@ -126,7 +153,32 @@ function applyDiagnosticHierarchy(
         result = [...parseErrors.slice(0, maxErrors), ...nonParseErrors];
     }
 
+    // Rule 3b: downgraded syntax warnings are no longer errors, so they never count against the
+    // parse-error cap above — but they still need their own cap at the same value, so a verdict
+    // with many downgraded complaints can never make the visible list longer than the capped
+    // error list used to be. Kept in their original relative order among themselves and among
+    // every other diagnostic; only excess downgraded warnings past the cap are dropped.
+    const downgradedWarningCount = result.reduce((count, d) => count + (isDowngradedSyntaxWarning(d) ? 1 : 0), 0);
+    if (downgradedWarningCount > maxErrors) {
+        let kept = 0;
+        result = result.filter(d => {
+            if (!isDowngradedSyntaxWarning(d)) return true;
+            kept++;
+            return kept <= maxErrors;
+        });
+    }
+
     return result;
+}
+
+/**
+ * Applies {@link applyDiagnosticHierarchy} using the module's current settings
+ * (`suppressCascadingEnabled`, `maxErrorsDisplayed`) — the shape the document builder's debounce
+ * callback calls after reconciling a verdict, so a verdict's result goes through the same
+ * suppression rules as every other build.
+ */
+export function applyConfiguredDiagnosticHierarchy(diagnostics: Diagnostic[]): Diagnostic[] {
+    return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
 }
 
 /**
@@ -160,13 +212,64 @@ export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnosti
 
 export class BBjDocumentValidator extends DefaultDocumentValidator {
 
+    /**
+     * A `LangiumDocument` survives editor close (see `bbj-diagnostic-reconciliation.ts`'s own
+     * doc comment on why its verdict state is uri-keyed, not tied to the document object) --
+     * without this subscription a reopened file would start out colored by a verdict from a
+     * previous editor session instead of showing Langium's own errors until a fresh verdict
+     * arrives.
+     */
+    constructor(services: LangiumServices) {
+        super(services);
+        services.shared.workspace.TextDocuments.onDidClose(event => clearVerdictState(event.document.uri));
+    }
+
     override async validateDocument(
         document: LangiumDocument,
         options?: ValidationOptions,
         cancelToken?: CancellationToken
     ): Promise<Diagnostic[]> {
         const diagnostics = await super.validateDocument(document, options, cancelToken);
-        return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+        // Remembered before the hierarchy runs: the debounce callback reconciles a verdict
+        // against this pre-hierarchy list, not against the already-filtered result below, so a
+        // diagnostic the hierarchy hid can still reappear once the verdict arrives. The text this
+        // list was validated against is remembered alongside it -- a reference into the parse
+        // result's own CST, never a copy -- so a later composition can tell whether the stored
+        // verdict is already for newer text than this validation saw.
+        const validatedText = document.parseResult.value.$cstNode?.root.fullText;
+        rememberLangiumDiagnostics(document, diagnostics, validatedText);
+        // Composition: re-derives this validation's published list from the freshly produced
+        // Langium diagnostics and the stored verdict, if any -- the verdict's own diagnostics are
+        // included only when the verdict is for the live text version (the early-verdict case,
+        // reached whether Langium or the verdict landed first); any other verdict (older, newer,
+        // or a carry-over-only state) only contributes its downgrade/replace decisions, so a
+        // complaint the last verdict has already seen doesn't flash back to an Error on every
+        // keystroke until the next verdict arrives. Skipped entirely (leaving `diagnostics`
+        // untouched) when the compiler trigger is off or no verdict exists yet for this document
+        // -- both cases must validate exactly as they did before this phase.
+        let composed = diagnostics;
+        if (getCompilerTrigger() !== 'off') {
+            const verdict = getVerdictState(document.uri);
+            if (verdict) {
+                const liveVersion = document.textDocument.version;
+                const result = composeWithVerdict({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    liveVersion,
+                    verdict
+                });
+                composed = result.diagnostics;
+                // The stored verdict's `seen` set is refreshed only when it was actually current
+                // for this validation (isVerdictForVersion) -- so the immediate next keystroke's
+                // carry-over pass uses keys derived from Langium's fresh list, not from an early
+                // verdict's stale one (decision 3).
+                if (isVerdictForVersion(verdict, liveVersion) && result.seen) {
+                    setVerdictState(document.uri, { ...verdict, seen: result.seen });
+                }
+            }
+        }
+        return applyDiagnosticHierarchy(composed, suppressCascadingEnabled, maxErrorsDisplayed);
     }
 
     protected override processLinkingErrors(document: LangiumDocument, diagnostics: Diagnostic[], _options: ValidationOptions): void {

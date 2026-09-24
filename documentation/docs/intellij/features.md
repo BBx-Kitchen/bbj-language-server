@@ -51,6 +51,21 @@ Real-time error detection as you type:
 
 Errors appear as squiggles in the editor with detailed messages.
 
+### Live Compiler Diagnostics
+
+With BBj 26.03 or later, the BBj compiler's own parser checks the currently open file as you
+type, and its syntax errors appear in the editor without saving — the same errors the save-time
+compile would report, shown earlier.
+
+The plugin has no setting for when these checks run: it always uses the default behaviour, so the
+open file is checked about half a second (500 ms) after you stop typing and when you open it.
+
+With an earlier BBj, or when BBjServices is not running, the save-time compile (`bbjcpl`) compiles
+the saved file instead after the same pause, so its errors reflect the last save.
+
+VS Code's `bbj.compiler.trigger` setting has no IntelliJ equivalent, so the `off` workaround for
+slow code completion in very large workspaces is currently available only in VS Code.
+
 ## Hover Information
 
 Hover over elements to see:

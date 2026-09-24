@@ -1,0 +1,34 @@
+REM Protects a semicolon-introduced comment right after every block-boundary marker -- a
+REM method's own end marker, a class's end marker, an interface's end marker, and both
+REM branches of a DEF FN -- at end of file and mid-stream (with more content following on
+REM the same line or the next), in upper, lower and mixed case. Also protects a BARE
+REM comment word with nothing at all after it (no space, no body) right after a block
+REM boundary, both with and without a space before the comment word.
+
+CLASS PUBLIC Gadget
+METHOD PUBLIC VOID paint()
+x=1
+METHODEND; REM comment right after a method's own end marker, mid-stream, upper case
+METHOD PUBLIC VOID resize()
+y=1
+MethodEnd; Rem comment right after a method's own end marker, mixed case, mid-stream
+CLASSEND; rem comment right after the class end marker, lower case, mid-stream
+
+INTERFACE PUBLIC Sizable
+METHOD PUBLIC VOID grow()
+INTERFACEEND; REM comment right after the interface end marker, upper case
+
+DEF FnSquare(n)=n*n; rem comment right after a single-line DEF FN, lower case
+
+DEF FnCube(n)
+RETURN n*n*n
+FNEND; REM comment right after a multi-line DEF FN's end marker, upper case
+
+CLASS PUBLIC BareTail
+METHOD PUBLIC VOID first()
+x=1
+METHODEND; rem bare comment word with a space, no body, mid-stream, lower case
+METHOD PUBLIC VOID second()
+y=1
+methodend;rem bare comment word, no space, no body, mid-stream, lower case
+CLASSEND; REM bare comment word with a space, no body, upper case

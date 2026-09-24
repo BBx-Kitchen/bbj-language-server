@@ -6,9 +6,12 @@
 
 /**
  * A scriptable fake java-interop peer sitting behind the real `connect()` path, for the
- * circuit-breaker regression tests in java-interop-breaker.test.ts (#504). Overrides only
- * `createSocket()` and `wrapSocket()` on `JavaInteropService`, so every other code path — the
- * breaker state machine, the resolution lock, the LRU — runs unmodified under test.
+ * circuit-breaker regression tests in java-interop-breaker.test.ts (#504) and the dedicated
+ * parser connection tests in java-interop-parse-lane.test.ts. Overrides only `createSocket()`
+ * and `wrapSocket()` on `JavaInteropService`, so every other code path — the breaker state
+ * machine, the resolution lock, the LRU, the dedicated `parseProgram` connection — runs
+ * unmodified under test. Every wrapped socket gets its own numeric connection id (assigned in
+ * creation order) so a test can tell which connection a given request or drop belongs to.
  *
  * Never opens a real socket and never reaches port 5008.
  */
@@ -27,10 +30,21 @@ import { JavaInteropService } from '../src/language/java-interop.js';
 export interface SentRequest {
     method: string;
     params: unknown;
+    /** The id (in creation order) of the wrapped connection this request was sent on. */
+    connectionId: number;
 }
 
 interface PendingRequest {
+    connectionId: number;
     reject: (reason: unknown) => void;
+}
+
+/** Per-connection bookkeeping tracked by {@link FakePeerInteropService.wrapSocket}. */
+interface ConnectionRecord {
+    readonly id: number;
+    disposed: boolean;
+    readonly closeListeners: Array<() => void>;
+    readonly errorListeners: Array<() => void>;
 }
 
 /**
@@ -47,6 +61,20 @@ export class FakePeerInteropService extends JavaInteropService {
     public answerRequests = true;
     /** `getClassInfos` answers for a package name, keyed by package. */
     public readonly packageClasses = new Map<string, () => JavaClass[]>();
+    /**
+     * One-based `createSocket()` attempt numbers that are refused with the standard connect
+     * error even while {@link peerUp} is true — for exercising a dedicated connection's own
+     * open failure independently of the shared connection's state.
+     */
+    public readonly refusedSocketAttempts = new Set<number>();
+    /**
+     * Connection ids (assigned in {@link wrapSocket} creation order) whose requests stay
+     * pending forever, exactly like {@link answerRequests} set to false but scoped to one
+     * connection instead of every connection.
+     */
+    public readonly hungConnectionIds = new Set<number>();
+    /** When true, a `parseProgram` request answers with a `MethodNotFound` error (an older server). */
+    public parseProgramMethodMissing = false;
 
     /** Number of times `createSocket()` was invoked. */
     public socketAttempts = 0;
@@ -54,7 +82,8 @@ export class FakePeerInteropService extends JavaInteropService {
     public readonly sentRequests: SentRequest[] = [];
 
     private pendingRequests: PendingRequest[] = [];
-    private closeListener?: () => void;
+    private readonly connections = new Map<number, ConnectionRecord>();
+    private connectionIdCounter = 0;
 
     constructor(services: BBjServices) {
         super(services);
@@ -81,9 +110,12 @@ export class FakePeerInteropService extends JavaInteropService {
 
     protected override createSocket(): Promise<Socket> {
         this.socketAttempts++;
+        const attemptNumber = this.socketAttempts;
         return new Promise((resolve, reject) => {
             const settle = () => {
-                if (this.peerUp) {
+                if (this.refusedSocketAttempts.has(attemptNumber)) {
+                    reject(new Error('connect ECONNREFUSED 127.0.0.1:5008'));
+                } else if (this.peerUp) {
                     resolve({} as Socket);
                 } else if (this.connectDelayMs === 0) {
                     reject(new Error('connect ECONNREFUSED 127.0.0.1:5008'));
@@ -100,22 +132,25 @@ export class FakePeerInteropService extends JavaInteropService {
     }
 
     protected override wrapSocket(_socket: Socket): MessageConnection {
+        const connectionId = ++this.connectionIdCounter;
+        const record: ConnectionRecord = { id: connectionId, disposed: false, closeListeners: [], errorListeners: [] };
+        this.connections.set(connectionId, record);
         const connection = {
             listen: () => { /* no-op */ },
-            dispose: () => { /* no-op */ },
-            onClose: (listener: () => void) => { this.closeListener = listener; },
-            onError: (_listener: () => void) => { /* not exercised by these tests */ },
+            dispose: () => { record.disposed = true; },
+            onClose: (listener: () => void) => { record.closeListeners.push(listener); },
+            onError: (listener: () => void) => { record.errorListeners.push(listener); },
             sendRequest: (type: RequestType<unknown, unknown, unknown>, params: unknown, token?: CancellationToken) =>
-                this.handleSendRequest(type, params, token)
+                this.handleSendRequest(connectionId, type, params, token)
         };
         return connection as unknown as MessageConnection;
     }
 
-    private handleSendRequest(type: RequestType<unknown, unknown, unknown>, params: unknown, token?: CancellationToken): Promise<unknown> {
-        this.sentRequests.push({ method: type.method, params });
-        if (!this.answerRequests) {
+    private handleSendRequest(connectionId: number, type: RequestType<unknown, unknown, unknown>, params: unknown, token?: CancellationToken): Promise<unknown> {
+        this.sentRequests.push({ method: type.method, params, connectionId });
+        if (!this.answerRequests || this.hungConnectionIds.has(connectionId)) {
             return new Promise((_resolve, reject) => {
-                const entry: PendingRequest = { reject };
+                const entry: PendingRequest = { connectionId, reject };
                 this.pendingRequests.push(entry);
                 token?.onCancellationRequested(() => {
                     reject(new Error('Canceled'));
@@ -136,22 +171,45 @@ export class FakePeerInteropService extends JavaInteropService {
                 return Promise.resolve([]);
             case 'getAllClassNames':
                 return Promise.reject({ code: -32601 });
+            case 'parseProgram':
+                if (this.parseProgramMethodMissing) {
+                    return Promise.reject({ code: -32601 });
+                }
+                return Promise.resolve({ version: (params as { version: string }).version, errors: [] });
             default:
                 return Promise.reject(new Error(`FakePeerInteropService: unhandled request '${type.method}'`));
         }
     }
 
     /**
-     * Rejects every pending request as if the connection was disposed, then fires the stored
-     * close listener — mirrors what a real socket close does to in-flight requests.
+     * Rejects every pending request on the named connection as if it was disposed, then fires
+     * that connection's close listeners — mirrors what a real socket close does to in-flight
+     * requests. With no `connectionId`, does this for every connection (today's single-connection
+     * behaviour, unchanged for the breaker suite).
      */
-    dropConnection(): void {
-        const pending = this.pendingRequests;
-        this.pendingRequests = [];
+    dropConnection(connectionId?: number): void {
+        const targets = connectionId === undefined
+            ? [...this.connections.values()]
+            : (this.connections.has(connectionId) ? [this.connections.get(connectionId)!] : []);
+        const pending = connectionId === undefined
+            ? this.pendingRequests
+            : this.pendingRequests.filter(p => p.connectionId === connectionId);
+        this.pendingRequests = connectionId === undefined
+            ? []
+            : this.pendingRequests.filter(p => p.connectionId !== connectionId);
         for (const p of pending) {
             p.reject(new ResponseError(ErrorCodes.PendingResponseRejected, 'Pending response rejected since connection got disposed'));
         }
-        this.closeListener?.();
+        for (const record of targets) {
+            for (const listener of record.closeListeners) {
+                listener();
+            }
+        }
+    }
+
+    /** One `{ id, disposed }` record per connection wrapped so far, in creation order. */
+    connectionRecords(): Array<{ id: number; disposed: boolean }> {
+        return [...this.connections.values()].map(r => ({ id: r.id, disposed: r.disposed }));
     }
 
     /** Seeds the complete class index directly, as a live `getAllClassNames` answer would. */

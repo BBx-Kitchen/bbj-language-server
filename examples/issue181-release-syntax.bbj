@@ -1,12 +1,12 @@
 lol:
-    let exitcode$ = 1
-    RELEASE exitcode$
+    let exitcode = 1
+    RELEASE exitcode
     RELEASE -1
     RELEASE
     RELEASE
     goto lol
 
-release -exitcode$+1
+release -exitcode+1
 
 release
 lbl1: 
@@ -23,7 +23,7 @@ CLASS PUBLIC BBjString
 CLASSEND
 
 CLASS PUBLIC MyClassA
-    FIELD PUBLIC BBjString release
+    FIELD PUBLIC BBjString release!
 CLASSEND
 
 CLASS PUBLIC MyClassB

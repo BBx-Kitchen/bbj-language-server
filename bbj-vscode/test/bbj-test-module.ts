@@ -3,9 +3,9 @@ import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule,
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
-import { JavaInteropService } from "../src/language/java-interop.js";
+import { JavaInteropService, ParseError, ParseProgramParams, ParseProgramResult } from "../src/language/java-interop.js";
 import { Classpath, JavaClass, JavaField, JavaMethod } from "../src/language/generated/ast.js";
-import { CancellationToken, MessageConnection } from "vscode-jsonrpc/node.js";
+import { CancellationToken, ErrorCodes, MessageConnection, ResponseError } from "vscode-jsonrpc/node.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
 
@@ -44,7 +44,21 @@ export class TestableBBjLexer extends BbjLexer {
     }
 }
 
-class JavaInteropTestService extends JavaInteropService {
+/**
+ * The scriptable answers {@link JavaInteropTestService.parseProgram} can be set to give:
+ * the default old-server `MethodNotFound`; a plain rejected `Error` standing in for a transport
+ * failure; a resolved result whose `errors` field is missing (`malformed-result`); a resolved
+ * result carrying a scripted error list; or a JSON-RPC error with an arbitrary code/message
+ * (covers every application error code and, via `-32800`, a `RequestCancelled` cancellation).
+ */
+export type JavaInteropTestServiceParseProgramScript =
+    | 'method-not-found'
+    | 'transport-error'
+    | 'malformed-result'
+    | { errors: ParseError[] }
+    | { code: number; message: string };
+
+export class JavaInteropTestService extends JavaInteropService {
     constructor(services: BBjServices) {
         super(services)
 
@@ -86,6 +100,44 @@ class JavaInteropTestService extends JavaInteropService {
     /** Test seam: revert to the default old-server behaviour (no complete index). */
     public resetCompleteClassIndex(): void {
         this.clearCompleteClassIndex();
+    }
+
+    // --- parseProgram scripting: default answers like an old server (MethodNotFound). ---
+    private parseProgramScript: JavaInteropTestServiceParseProgramScript = 'method-not-found';
+
+    /** Test seam: script the next/every {@link parseProgram} answer. */
+    public scriptParseProgram(script: JavaInteropTestServiceParseProgramScript): void {
+        this.parseProgramScript = script;
+    }
+
+    /**
+     * Never touches {@link connect} (which unconditionally rejects, hermetic): a socket-shaped
+     * failure would produce a transport-failure shape, not the specific MethodNotFound/result/
+     * application-error shapes tests need to script directly.
+     */
+    public override async parseProgram(params: ParseProgramParams): Promise<ParseProgramResult> {
+        const script = this.parseProgramScript;
+        if (script === 'method-not-found') {
+            throw new ResponseError(ErrorCodes.MethodNotFound, 'Unsupported request method: parseProgram');
+        }
+        if (script === 'transport-error') {
+            // Stands in for a plain rejected promise that is not a JSON-RPC error at all — a
+            // failed connect, a closed connection, or a breaker-open short circuit.
+            throw new Error('connection reset');
+        }
+        if (script === 'malformed-result') {
+            // A resolved result whose `errors` property is missing entirely.
+            return { version: params.version, errors: undefined as unknown as ParseError[] };
+        }
+        if ('errors' in script) {
+            return { version: params.version, errors: script.errors };
+        }
+        throw new ResponseError(script.code, script.message);
+    }
+
+    /** Test seam: simulate a post-outage reconnect or cache-clear-forced reconnect. */
+    public simulateReconnect(): void {
+        this._connectionGeneration++;
     }
 
     // Avoid the base class's on-demand package probe (which would resolve uncached FQNs and

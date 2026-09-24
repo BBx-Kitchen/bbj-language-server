@@ -57,6 +57,7 @@ SingleStatement:
     ExecuteStatement |
     ExitToStatement |
     ExitWithNumberStatement |
+    FieldStatement |
     FileOptStatement |
     FileStatement |
     FnErrStatement |
@@ -67,10 +68,12 @@ SingleStatement:
     IfStatement |
     IndexedStatement |
     InitFileStatement |
+    IolistStatement |
     KeyedFileStatement |
     LabelDecl |
     LCheckInStatement |
     LetStatement |
+    LoadStatement |
     LockStatement |
     MethodReturnStatement |
     NextStatement |
@@ -93,6 +96,7 @@ SingleStatement:
     SelectStatement |
     SerialStatement |
     SetDayStatement |
+    SetDriveStatement |
     SetErrorStatement |
     SetOptsStatement |
     SetTerminalStatement |
@@ -107,6 +111,7 @@ SingleStatement:
     StringStatement |
     SwitchStatement |
     SwitchCase |
+    TableStatement |
     ThrowStatement |
     UnlockStatement |
     UntilStatement |
@@ -191,8 +196,11 @@ FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
 ;
 
+// The compiler accepts MODE= and ERR= in either written order; the grammar previously fixed
+// Mode before Err. Widened to an order-independent alternation over the same two existing
+// fragments -- no new option syntax, no new fragment.
 FulltextStatement:
-    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
+    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression (Mode Err? | Err Mode?)?
     ;
 
 IndexedStatement:
@@ -212,7 +220,7 @@ ResourceCloseStatement:
     ;
 
 RestoreStatement:
-    'RESTORE' lineref=LabelRef
+    RESTORE_NO_NL lineref=(LabelRef | NUMBER) | kind='RESTORE'
     ;
 
 DreadStatement:
@@ -231,6 +239,20 @@ SavePStatement:
     'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
     ;
 
+TableStatement:
+    'TABLE' data=TABLE_DATA
+    ;
+
+// The FIELD verb (record, name, value). Distinct from FieldDecl (the class-member declaration,
+// reachable only through ClassMember) -- the two never compete at the same decision point. The
+// name part is typed one level below the relational expression, which otherwise consumes the
+// statement's own '=' as a comparison operator (mirrors Assignment's MemberCall-typed left side).
+// The trailing Err? reuses the same optional error-branch fragment every other verb in this
+// grammar already carries -- the verb's only documented option.
+FieldStatement:
+    'FIELD' record=Expression ',' name=AdditiveExpr '=' value=Expression Err?
+    ;
+
 SelectStatement:
     'SELECT' '(' channelno=Expression Mode? Err? RPAREN_NO_NL
     template=BinaryExpression
@@ -243,6 +265,14 @@ SelectStatement:
 
 SetDayStatement:
     'SETDAY' string=Expression
+    ;
+
+// SETDRIVE fileid{,ERR=lineref} -- no grammar rule existed for this verb at all before this
+// change, so every SETDRIVE line silently split into two unrelated expression statements. The
+// trailing Err? reuses the same optional error-branch fragment every other small verb in this
+// grammar already carries -- the verb's only documented option.
+SetDriveStatement:
+    'SETDRIVE' fileid=Expression Err?
     ;
 
 SetTerminalStatement:
@@ -287,8 +317,12 @@ StringStatement:
 
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? (
-        RPAREN_NO_NL '=' value=Expression
-        | RPAREN_NL (body += (DefReturn | Statement))* FNEND
+        RPAREN_NO_NL '=' value=Expression (';' comments+=CommentStatement)?
+        // FNEND is optional: a multi-line function whose body is never closed (the
+        // compiler accepts this, running the body to end of file) must not force the
+        // parser's fallback ExpressionStatement interpretation of the header just
+        // because a mandatory tail token never arrives.
+        | RPAREN_NL (body += (DefReturn | Statement))* FNEND? (';' comments+=CommentStatement)?
     );
 
 DefReturn:
@@ -311,22 +345,22 @@ Use:
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' auto?='auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
+    'declare' auto?='auto'? type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
 
 ClassDecl returns BbjClass:
-    'CLASS' Visibility Static name=ValidName 
+    'CLASS' Visibility Static name=ValidName
         Extends?
         ('IMPLEMENTS' implements+=QualifiedClass)? (',' implements+=QualifiedClass)*  (';' comments+=CommentStatement)?
-    (members+=ClassMember | Comments)*
-    'CLASSEND'
+    (NUMBER? (members+=ClassMember | Comments))*
+    NUMBER? 'CLASSEND' (';' comments+=CommentStatement)?
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
-        (members+=InterfaceMethodDecl | Comments)*
-    'INTERFACEEND'
+        (NUMBER? (members+=InterfaceMethodDecl | Comments))*
+    NUMBER? 'INTERFACEEND' (';' comments+=CommentStatement)?
 ;
 
 fragment Static:
@@ -353,7 +387,7 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=QualifiedClass (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
@@ -361,12 +395,12 @@ MethodDecl returns MethodDecl:
     Comments?
     (
         (body+=(DefFunction | Statement))*
-        endTag='METHODEND'
+        endTag='METHODEND' (';' comments+=CommentStatement)?
     )?
 ;
 
 fragment MethodDeclStart:
-    'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (array?='[' ']')?) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (arrayDims+='[' ']')*) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
 InterfaceMethodDecl returns MethodDecl:
@@ -378,7 +412,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=QualifiedClass (array?='[' ']')? name=FeatureName
+    {infer ParameterDecl} type=QualifiedClass (arrayDims+='[' ']')* name=FeatureName ('[' 'ALL'? ']')?
 ;
 
 /**
@@ -403,9 +437,32 @@ RedimStatement:
     'REDIM' arrays+=Expression (',' arrays+=Expression)* Err?
 ;
 
-LabelDecl returns LabelDecl:
-    name=ValidName':'
+// The IOLIST statement -- items are ordinary variable references (scalars, strings, arrays with
+// an all-elements subscript), covered by the plain Expression rule; no dedicated item rule is
+// needed. The first item is mandatory, so a trailing comma with nothing after it stays a parser
+// error. A bare 'IOLIST' with no items is not one: the keyword falls back to an ordinary
+// identifier and the line parses as an expression statement.
+IolistStatement:
+    'IOLIST' items+=Expression (',' items+=Expression)*
 ;
+
+LabelDecl returns LabelDecl:
+    name=LabelName':'
+;
+
+// A label declaration's name may be an ordinary identifier or the word 'label' itself -- narrowly
+// scoped (unlike ValidName) so this widening doesn't also let 'label' name a class, method,
+// library function or library variable, all of which are typed by ValidName elsewhere.
+// 'declare' is free here for the same reason it is free in FeatureName above -- a label
+// declaration (`declare:`) is never mistaken for a VariableDecl, which always requires a type.
+// 'auto', 'library', 'use' and 'var' are free here for the same reasons given in FeatureName
+// above -- none of them can start a valid LabelDecl continuation (a label is always immediately
+// followed by ':'), so a label declared with one of these words never competes with the rule it
+// is also a keyword for.
+// 'void' has no label-position conflict either -- FeatureName above already explains why it is
+// free as a variable; a void-return marker never appears where a label declaration is expected.
+LabelName returns string:
+    ID | 'label' | 'declare' | 'auto' | 'library' | 'use' | 'var' | 'void';
 
 ForStatement:
     // TODO check `to` evaluates to a number
@@ -463,7 +520,7 @@ LabelRef infers Expression:
 ;
 
 UserLabelRef infers LabelRef:
-   {infer UserLabelRef} label=[LabelDecl:ValidName]
+   {infer UserLabelRef} label=[LabelDecl:LabelName]
 ;
 
 SymbolicLabelRef infers LabelRef:
@@ -496,6 +553,10 @@ OpenStatement:
 LetStatement:
     'LET'? assignments+=Assignment (',' assignments+=Assignment)*
 ;
+
+LoadStatement:
+    'LOAD' fileid=Expression (',' int=Expression)?
+    ;
 
 PrintStatement:
     PRINT_STANDALONE_NL
@@ -640,7 +701,7 @@ VerifyOption:
 ;
 
 LastVerifyOption:
-    ('LEN=' min=Expression ',' max=Expression) // LEN=intA,intB 
+    ('LEN' '=' min=Expression ',' max=Expression) // LEN=intA,intB
     | min=Expression // numvar:(4) num A numeric expression can impose range and precision on the numeric input
 ;
 
@@ -689,10 +750,24 @@ ThrowStatement:
     'THROW' expression=Expression (',' number=Expression)? Err?
 ;
 
+// The compiler accepts TIM= and ERR= in either written order; the grammar previously fixed Tim
+// before Err. Widened to an order-independent alternation over the same two existing fragments --
+// no new option syntax, no new fragment.
 ProcessEvent:
-    {infer ProcessEvent} 'PROCESS_EVENTS' Tim? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' (Tim Err? | Err Tim?)?
 ;
 
+// Tried widening this rule to also accept a plain comma-separated variable list after CLEAR (the
+// compiler accepts `clear x`, `clear x$,y`, `clear x![]`, in addition to the already-modeled bare
+// and EXCEPT forms) -- reverted. Since the entire tail is optional and a variable list starts
+// with an ordinary Expression, a BARE 'CLEAR'/'BEGIN' immediately followed by an unrelated
+// statement on the next line (no comma, only a line break) got its neighbour's first expression
+// silently swallowed as its own variable list instead of leaving it for the next statement --
+// confirmed by probe (`begin\nx=1\nprint x` lost x's declaration and produced two "could not
+// resolve" errors). Safely disambiguating "more of this statement's list" from "the next
+// statement starts here" needs a same-line-only lexer token (the RESTORE_NO_NL/TABLE_DATA style
+// of committing to an operand only when no line break intervenes), which is lexer work -- recorded
+// as needing more than this small change, not fixed here.
 BeginStatement:
     kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=Expression (','  except+=Expression)*)?
 ;
@@ -789,7 +864,7 @@ MemberCall infers Expression:
     PrimaryExpression
     (
         {infer MemberCall.receiver=current} '.' (member=[NamedElement:FeatureName])?
-        | {infer ArrayElement.receiver=current} "[" (all?="ALL" | indices+=Expression (',' indices+=Expression)*) "]"
+        | {infer ArrayElement.receiver=current} "[" (all?="ALL" "]" | indices+=Expression (',' indices+=Expression)* "]" | all?="]")
         | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? Err? RPAREN
     )*
 ;
@@ -873,7 +948,27 @@ FeatureName returns string:
     // 'void' is a keyword only for a method's void-return marker (MethodDeclStart), which uses
     // ValidName for the method name — so it never conflicts here. Allowing it as a FeatureName
     // lets `void` be used as an ordinary (numeric) variable/field/member name (#439).
-    ID | ID_WITH_SUFFIX | 'void';
+    // 'label' is a keyword only for the library grammar's symbolic-label declaration
+    // (LibSymbolicLabel), which is a separate rule entirely -- so it never conflicts here.
+    // Allowing it as a FeatureName lets `label` be read and assigned as an ordinary variable.
+    // 'declare' is a keyword only as the leading verb of VariableDecl, which is itself typed
+    // by this same FeatureName rule for its OWN name -- a bare `declare=1` never starts a
+    // VariableDecl (that rule always needs a type after the optional 'auto' flag), so the
+    // word is free to also be an ordinary variable name here.
+    // 'auto' is a keyword only as VariableDecl's own optional flag, one token AFTER 'declare' --
+    // a bare `auto=1` can never be mistaken for that flag, since nothing starts a VariableDecl
+    // without the leading 'declare' verb first.
+    // 'library' is deliberately NOT free here: the entry rule (`Model: Library | Program`)
+    // chooses by the first token, and a bare `library` line is how every built-in library
+    // file begins. Accepting it as a variable name makes those files parse as programs and
+    // BBjAPI() stops resolving. It stays usable as a label name (see LabelName).
+    // 'use' is a keyword only as the leading verb of the Use rule, which always requires a file
+    // path or a Java type reference immediately after it -- a bare `use=1` supplies neither, so
+    // the parser falls through to this rule for the assignment/read form, the same shape
+    // 'declare' already relies on above.
+    // 'var' is a keyword only inside LibVariable, itself only reachable through the separate
+    // Library rule, which is unreachable from Program and so cannot compete here.
+    ID | ID_WITH_SUFFIX | 'void' | 'label' | 'declare' | 'auto' | 'use' | 'var';
 
 ValidName returns string:
     ID
@@ -934,6 +1029,8 @@ terminal RPAREN_NL: /_rparen_nl/;
 terminal RELEASE_NL: /_release_nl/;
 terminal RELEASE_NO_NL: /_release_no_nl/;
 terminal EXIT_NO_NL: /_exit_no_nl/;
+terminal TABLE_DATA: /_table_data/;
+terminal RESTORE_NO_NL: /_restore_no_nl/;
 
 terminal ASTERISK_STANDALONE: /_asterisk_standalone/;
 terminal ASTERISK_EXPRESSION: /_asterisk_expression/;
@@ -959,11 +1056,12 @@ interface DefFunction extends NamedElement {
     parameters: NamedElement[];
     value?: Expression;
     body?: DefFunctionStatement[];
+    comments: CommentStatement[]
 }
 
 interface VariableDecl extends NamedElement {
     type?: QualifiedClass
-    array?: boolean
+    arrayDims: string[]
     auto?: boolean
 }
 
@@ -979,7 +1077,7 @@ interface MethodDecl extends NamedElement {
     static?: boolean
     voidReturn?: boolean
     returnType?: QualifiedClass
-    array?: boolean
+    arrayDims: string[]
     comments: CommentStatement[]
     params: VariableDecl[]
     body: (Statement | DefFunction)[];

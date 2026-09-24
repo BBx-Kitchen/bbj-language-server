@@ -6,6 +6,7 @@ import { Program } from "../src/language/generated/ast";
 import { initializeWorkspace } from "./test-helper";
 import { basename } from "path";
 import { afterEach } from "node:test";
+import { DiagnosticSeverity } from "vscode-languageserver";
 
 describe("Classes access-levels", () => {
     let disposables: (() => Promise<void>)[] = [];
@@ -489,7 +490,7 @@ describe("Cyclic inheritance detection", () => {
         `);
         const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
         expect(returnErrors).toHaveLength(2);
-        expect(returnErrors.every(d => d.severity === 1 /* Error */)).toBe(true);
+        expect(returnErrors.every(d => d.severity === DiagnosticSeverity.Warning)).toBe(true);
     });
 
     test("No METHODRET error when method returns a value", async () => {
@@ -580,22 +581,36 @@ describe("Cyclic inheritance detection", () => {
         expect(typeErrors).toHaveLength(0);
     });
 
-    // Combined: the issue's original example — two non-void methods missing METHODRET, one void ok.
-    test("Issue #372 example: two missing-METHODRET errors, void method unaffected", async () => {
+    // Combined: the issue's original example — a missing-METHODRET warning coexists with an
+    // unrelated void method. Asserted in its own document: the diagnostic hierarchy suppresses
+    // warnings whenever any Error-severity diagnostic is present in the same document, so mixing
+    // this warning-severity case with the still-Error return-type mismatch below in one document
+    // would hide it — see the follow-up test for that case.
+    test("Issue #372 example: missing-METHODRET warning, void method unaffected", async () => {
         const { diagnostics } = await validate(`
             class public ClassA
                 method public BBjString getA()
-                methodend
-                method public BBjNumber getB()
-                    methodret "2"
                 methodend
                 method public void doSomething()
                 methodend
             classend
         `);
         const missing = diagnostics.filter(d => d.message.includes('has no METHODRET'));
-        const mismatched = diagnostics.filter(d => d.message.includes('but returns a string'));
         expect(missing).toHaveLength(1);   // getA has no methodret
+        expect(missing[0].severity).toBe(DiagnosticSeverity.Warning);
+    });
+
+    // Issue #372 follow-up, unaffected by the METHODRET severity change: the returned-literal
+    // type mismatch stays an Error.
+    test("Issue #372 follow-up: return type mismatch stays an error", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    methodret "2"
+                methodend
+            classend
+        `);
+        const mismatched = diagnostics.filter(d => d.message.includes('but returns a string'));
         expect(mismatched).toHaveLength(1); // getB returns "2" for a BBjNumber
     });
 
@@ -610,6 +625,7 @@ describe("Cyclic inheritance detection", () => {
         `);
         const voidErrors = diagnostics.filter(d => d.message.includes('declared void and must not return a value'));
         expect(voidErrors).toHaveLength(1);
+        expect(voidErrors[0].severity).toBe(DiagnosticSeverity.Warning);
     });
 
     test("Bare methodret (no value) is valid in a void method", async () => {

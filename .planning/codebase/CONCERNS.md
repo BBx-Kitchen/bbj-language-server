@@ -1,215 +1,261 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-01
+**Analysis Date:** 2026-09-21
 
 ## Tech Debt
 
-**Orphaned AST Instances Workaround:**
-- Issue: Hacky workaround in scope resolution for handling orphaned AST nodes
-- Files: `bbj-vscode/src/language/bbj-scope.ts` (line 207)
-- Code: Comment states "FIXME HACK for orphaned AST Instances"
-- Impact: Code fragility; indicates underlying architecture issue with AST lifecycle management
-- Fix approach: Investigate root cause of orphaned nodes in AST generation and resolve properly instead of working around
+**Library Definition Sync Burden:**
+- Issue: `src/language/lib/functions.ts` (and `variables.ts`, `labels.ts`, `events.ts`) are paired with `.bbl` mirror files; no generator synchronizes them
+- Files: `bbj-vscode/src/language/lib/functions.ts`, `bbj-vscode/src/language/lib/functions.bbl`
+- Impact: Manual edits must be applied to both files or signatures drift. Following issue #179 (function definition corrections), any change to arity, types, or documentation requires careful synchronization
+- Fix approach: Consider adding a pre-build validation step to diff the paired files and warn on mismatch, or generate the `.bbl` from the `.ts` file
 
-**Method Receiver Reference Resolution:**
-- Issue: Deferred resolution to avoid unnecessary work
-- Files: `bbj-vscode/src/language/bbj-linker.ts` (line 67)
-- Code: Comment "FIXME try to not resolve receiver ref"
-- Impact: Potential incomplete linking in complex expression trees
-- Fix approach: Profile impact and determine if full resolution is necessary; document decision if skipping is intentional
+**Java Method Overloading Not Handled:**
+- Issue: `JavadocProvider.getDoc()` resolves Java methods by name only, not by signature/overload
+- Files: `bbj-vscode/src/language/java-javadoc.ts:115`
+- Impact: Hover documentation and completion hints pick the first matching method name, ignoring parameter count/types. Multi-overload methods (e.g., `ArrayList.add(int, E)` vs `ArrayList.add(E)`) show inconsistent or wrong documentation
+- Fix approach: Extend method lookup to match parameter count and types against the call site's argument list
 
-**Unimplemented Binary File Handling:**
-- Issue: Binary BBj files (tokenized format) are skipped with no actual parsing support
-- Files: `bbj-vscode/src/language/bbj-ws-manager.ts` (line 131)
-- Impact: Users cannot work with compiled/binary BBj files; feature incomplete
-- Fix approach: Either implement binary file decompilation/parsing or document non-support clearly
+**Class-Level `USE` Statements Not Inspected:**
+- Issue: Scope collection only gathers top-level `USE` statements; `USE` inside `CLASS` blocks is ignored
+- Files: `bbj-vscode/src/language/bbj-scope.ts:575`
+- Impact: Imported types via class-level `USE` are not resolved, causing false positives on class field and method types
+- Fix approach: Extend `collectUseStatements()` to recurse into class bodies
 
-**File System Access Tightly Coupled to OS Libraries:**
-- Issue: Direct use of `fs` and `os` modules instead of abstracted FileSystemAccess
-- Files: `bbj-vscode/src/language/bbj-ws-manager.ts` (lines 13-17)
-- Impact: Reduces testability, platform abstraction not maintained, mixing concerns
-- Fix approach: Extend FileSystemAccess service or create abstraction wrapper
+**Super Getters/Setters Inaccessible from Scope Provider:**
+- Issue: Auto-generated getter/setter for class fields are registered only in `ScopeComputation` (local scope), not in the main `ScopeProvider`
+- Files: `bbj-vscode/src/language/bbj-scope-local.ts:275`
+- Impact: Inherited getters/setters from superclass fields cannot be linked from derived classes; only local field accessors work
+- Fix approach: Move accessor generation to `ScopeProvider` or provide a separate cross-file lookup path for inherited accessors
 
-**Incomplete Scope Resolution for Prefixes:**
-- Issue: TODO to improve PREFIX folder resolution logic
-- Files: `bbj-vscode/src/language/bbj-scope.ts` (lines 225-228)
-- Impact: PREFIX path resolution is incomplete; may miss valid imports
-- Fix approach: Complete implementation of project root relative path resolution as documented in TODO
+**FileSystemAccess Service Extension Needed:**
+- Issue: `BBjWorkspaceManager` imports `fs` and `os` directly instead of using Langium's `FileSystemAccess`
+- Files: `bbj-vscode/src/language/bbj-ws-manager.ts:15`
+- Impact: Hard-coded file system access bypasses any custom or virtual file system implementations (e.g., in testing or remote scenarios); reduces testability
+- Fix approach: Extend or wrap `FileSystemAccess` to support the config file lookup and workspace folder traversal operations
 
-## Known Bugs
+**Missing Workspace Folder Validation:**
+- Issue: `isExternalDocument()` checks if a URI matches a configured prefix but does not verify the document is part of registered workspace folders
+- Files: `bbj-vscode/src/language/bbj-ws-manager.ts:276`
+- Impact: A document URI could match a prefix yet not be in any workspace, leading to inconsistent behavior across multi-folder workspaces
+- Fix approach: Add a check to ensure the document's root is within a registered workspace folder before marking it external
 
-**Parser Performance Flakiness:**
-- Symptoms: Test timeout fluctuates significantly (5s to 48s)
-- Files: `bbj-vscode/test/parser.test.ts` (line 41)
-- Trigger: Unknown; appears intermittent
-- Impact: Unreliable test execution; affects CI/CD confidence
-- Workaround: None; tests use high timeout threshold (14s)
-- Fix approach: Profile parser under various input sizes; identify performance bottleneck
+**Disabled Line-Break Validation Test:**
+- Issue: A test in `validation.test.ts:103` checking line breaks after `:` is commented out (`FIXME`)
+- Files: `bbj-vscode/test/validation.test.ts:103`
+- Impact: This edge case (colon continuation followed by non-statement) may regress undetected
+- Fix approach: Investigate why the test was disabled and either fix the underlying validation or document the known limitation
 
-**Cancelled Javadoc Provider Operation Not Re-triggered:**
-- Symptoms: Javadoc provider fails silently when cancellation token is signaled
-- Files: `bbj-vscode/src/language/java-javadoc.ts` (line 51)
-- Code: Comment "FIXME will not be re-triggered return;"
-- Impact: User won't receive javadoc unless they manually retry
-- Fix approach: Implement proper retry mechanism for cancelled operations
+## Known Bugs & Runtime Issues
 
-**Newline Validation After Colon (Commented Out):**
-- Symptoms: Validation test disabled/broken
-- Files: `bbj-vscode/test/validation.test.ts` (lines 103-111)
-- Trigger: Single-line statements after colon fail to validate
-- Workaround: Test is skipped (commented out as FIXME)
-- Fix approach: Debug and re-enable validation rule for single-line IF statements
+**Java Interop Cold Resolution Timeout:**
+- Symptoms: Large Java classes (500+ fields) timeout during cold resolution against live :5008 service; methods/fields lack `$container`, causing "AST node has no document" errors during linking
+- Files: `bbj-vscode/src/language/java-interop.ts:492` (linkContentToContainer call)
+- Trigger: E2E tests using live java-interop without pre-warming the class cache (e.g., `BBjHtmlView`, 536 fields)
+- Workaround: Pre-warm large classes in `beforeAll` by calling `resolveClassByName()` and polling until a field has `$container`. This is a test-harness artifact; VS Code pre-warms via `loadImplicitImports()`. See memory note: [[java-interop-cold-resolution-gotcha]]
+- Status: By design; not a production bug
 
-## Security Considerations
+**Test Build Trigger Path Fragility:**
+- Symptoms: Using `DocumentBuilder.build([doc])` in tests triggers BBjCPL validation and reaches for :5008, failing on GitHub CI (no socket) and causing flaky cross-test pollution in dev containers
+- Files: Any test using `services.shared.workspace.DocumentBuilder.build()`
+- Trigger: Integration/acceptance tests that need full validation, particularly those driving LSP features
+- Workaround: Use `parseHelper<Model>(services)(text, { documentUri })` instead (validation defaults OFF), or enable validation selectively. See memory note: [[test-parsehelper-not-documentbuilder]]
+- Status: Known pattern; test harness design constraint
 
-**Default Credentials in Configuration:**
-- Risk: VS Code settings expose default Enterprise Manager credentials
-- Files: `bbj-vscode/package.json` (lines 299-309)
-- Current mitigation: Defaults are obvious test credentials ("admin"/"admin123"), requiring user override
-- Recommendations:
-  - Document security implications clearly
-  - Avoid storing any credentials in settings if possible
-  - Use VS Code's secret storage API for sensitive config
-  - Warn users if default credentials are detected
-
-**Error Messages Exposed to Console:**
-- Risk: Java interop connection failures and other errors logged to console without sanitization
-- Files: `bbj-vscode/src/language/java-interop.ts` (lines 69, 309)
-- Impact: Could leak path information or system details in shared environments
-- Recommendations: Filter error messages; avoid logging sensitive paths
+**Ambiguous Completion Request Race Condition (Fixed):**
+- Symptoms: Two concurrent completion requests on different documents could overwrite each other's cancellation tokens if the provider instance held a single field
+- Files: `bbj-vscode/src/language/bbj-completion-provider.ts:45` (AsyncLocalStorage pattern)
+- Fix: `AsyncLocalStorage` now scopes each request's token independently, preventing overwrites
+- Status: Fixed (issue #498)
 
 ## Performance Bottlenecks
 
-**Recursive Classpath Loading:**
-- Problem: Java interop loads classpath entries sequentially with Promise.all, then processes classes linearly
-- Files: `bbj-vscode/src/language/java-interop.ts` (lines 160-163)
-- Impact: Large classpath entries block language server responsiveness
-- Improvement path: Implement lazy loading; batch process classes; add progress reporting
+**LRU Cache Eviction at 5000 Resolved Classes:**
+- Problem: `JavaInteropService._resolvedClasses` cache grows unbounded without eviction; a long-lived server session against a large/varied classpath would exhaust memory
+- Files: `bbj-vscode/src/language/java-interop.ts:41` (RESOLVED_CLASSES_CACHE_LIMIT constant)
+- Cause: No LRU eviction logic in earlier versions; 5000 limit is discretionary, balancing typical project size vs. steady-state memory
+- Improvement path: Monitor cache hit/miss ratio; if eviction is too aggressive, tune the limit upward or implement a time-based TTL in addition to LRU
 
-**No Lazy Loading of Implicit Java Imports:**
-- Problem: All implicit imports (java.lang, java.sql, etc.) loaded on workspace initialization
-- Files: `bbj-vscode/src/language/java-interop.ts` (lines 156-175)
-- Impact: Long startup time for workspaces with no Java interop needs
-- Improvement path: Load only on-demand when Java class references appear
+**Completion Prefix Cache Staleness Window:**
+- Problem: `BBjCompletionProvider`'s prefix cache (20-entry LRU, 2s TTL) can serve stale results if the Java classpath index grows mid-session (a class resolving after its prefix was cached)
+- Files: `bbj-vscode/src/language/bbj-completion-provider.ts:24-33`
+- Cause: Caching prefix lookups to avoid duplicate work within one request, but the index only grows; a cached "not found" may become "found" later
+- Improvement path: The 2s TTL self-heals; monitor if users report "class not in completion" issues. If common, reduce TTL or warm all known prefixes upfront
 
-**Method Parameter Type Checking Incomplete:**
-- Problem: Parameter types not checked against Javadoc
-- Files: `bbj-vscode/src/language/java-interop.ts` (line 301)
-- Impact: Code completion and type validation may be inaccurate for Java method parameters
-- Improvement path: Extract and validate parameter types from Javadoc
-
-**Method Overloading Not Handled:**
-- Problem: Javadoc lookups don't distinguish overloaded methods
-- Files: `bbj-vscode/src/language/java-javadoc.ts` (line 104)
-- Impact: Incorrect documentation shown for overloaded methods; type hints may be wrong
-- Improvement path: Add signature-based method lookup using parameter type information
+**Large Generated Files:**
+- Problem: `grammar.ts` (12,218 lines) and `ast.ts` (5,743 lines) are auto-generated from the Langium grammar; any changes to grammar require full regeneration, which is a long-running build step
+- Files: `bbj-vscode/src/language/generated/grammar.ts`, `bbj-vscode/src/language/generated/ast.ts`
+- Cause: Langium's auto-generation strategy; cannot be edited directly
+- Improvement path: None; this is by design. Ensure grammar changes are tested locally before pushing to avoid CI overhead
 
 ## Fragile Areas
 
-**Scope Resolution with Class File References:**
-- Files: `bbj-vscode/src/language/bbj-scope.ts` (lines 218-235)
-- Why fragile: Multiple path resolution strategies (same folder, PREFIX, project root) with fallback logic; case sensitivity issues mixed with case-insensitive matching
-- Safe modification: Add comprehensive test coverage for each path resolution scenario before changes
-- Test coverage: Partial; VERBs.md shows many unimplemented verbs with TODO status
+**Lexer Token Lookbehind Anchor Sensitivity:**
+- Files: `bbj-vscode/src/language/bbj-lexer.ts` (custom lexer with line-continuation handling)
+- Why fragile: Custom tokens (e.g., `KEYWORD_STANDALONE`) include their terminators (`;` or newline). Tests can pass with green counts but miss edge cases like keywords inside identifiers. Example: 98-01 regression where `TABLE_DATA` matched inside `mytable`
+- Safe modification: When adding/modifying custom tokens, include keyword-as-identifier test cases in the test suite (e.g., `let mytable = TABLE_DATA(...)`), not just count-based probes
+- Test coverage: Parser and lexer tests exist but are vulnerable to false negatives
 
-**Java Interop Class Caching:**
-- Files: `bbj-vscode/src/language/java-interop.ts` (lines 31-32, 52-104)
-- Why fragile: Complex caching with locks and lazy-loaded maps; no cache invalidation strategy
-- Safe modification: Document cache lifecycle; avoid modifying cache after initialization
-- Test coverage: Limited testing of concurrent access patterns
+**Completion Provider Async Caching:**
+- Files: `bbj-vscode/src/language/bbj-completion-provider.ts` (lines 17-81 document the caching strategy)
+- Why fragile: Caches in-flight promises to deduplicate concurrent requests for the same prefix. If the cache key (prefix only, not per-document) is too broad or if TTL is miscalibrated, concurrent clients could observe stale data
+- Safe modification: Any change to caching logic must account for concurrent requests across multiple documents and the time window in which the classpath index can grow
+- Test coverage: Async cache behavior is complex; ensure E2E tests cover multi-document concurrent completion scenarios
 
-**Grammar and AST Generation:**
-- Files: `bbj-vscode/src/language/generated/grammar.ts` (11,687 lines), `bbj-vscode/src/language/generated/ast.ts` (3,956 lines)
-- Why fragile: Generated code; manual edits lost on regeneration
-- Safe modification: Only edit grammar source; regenerate with `langium:generate`
-- Test coverage: Must be maintained manually via integration tests
+**Scope Computation Local Symbols:**
+- Files: `bbj-vscode/src/language/bbj-scope-local.ts` (458 lines, complex scope computation)
+- Why fragile: Local scope (within a block) is computed separately from global scope; interactions between class-level fields, inherited members, and method-local variables are error-prone. Super accessor generation (line 275 TODO) hints at missing inheritance handling
+- Safe modification: Changes to scope computation should include tests exercising class inheritance, nested scopes, and shadowing patterns
+- Test coverage: `linking.test.ts`, `variable-scoping.test.ts` and `scope-cost-regression.test.ts` provide coverage but may miss edge cases in complex class hierarchies
 
-**Test Fixtures Incomplete:**
-- Files: `bbj-vscode/test/parser.test.ts` (multiple commented-out assertions)
-- Why fragile: Many tests have disabled validation checks (//TODO expectNoValidationErrors)
-- Safe modification: Enable one validation check at a time; debug before committing
-- Test coverage: ~38 locations with disabled validation assertions
+**BBjCPL Integration with Hot-Reload:**
+- Files: `bbj-vscode/src/language/bbj-document-validator.ts`, `bbj-vscode/src/language/config-watcher.ts`
+- Why fragile: Config hot-reload triggers CPL compilation debouncing; timing issues between file watchers, debounce timers, and validation requests can cause out-of-order or missed diagnostics
+- Safe modification: Changes to debounce logic or config watching must consider: (a) a config change arriving while a previous CPL request is in-flight, (b) user typing triggering debounce before config change completes, (c) saved document not matching the config state the validator last saw
+- Test coverage: `config-hot-reload-wiring.test.ts` provides detailed scenario testing
 
-## Scaling Limits
+**Interop Breaker and Retry Strategy:**
+- Files: `bbj-vscode/src/language/java-interop.ts` (lines 49-53 constants, connection logic)
+- Why fragile: Circuit breaker pattern with exponential backoff (5s → 10s → 20s → 30s) means a transient :5008 outage can block completion for 30s per request. Initial cooldown, backoff factor, and max are discretionary with no tuning data
+- Safe modification: Changes must preserve the breaker state machine (open → half-open → closed) and ensure a half-open probe failure re-opens (not immediate full backoff). Monitor production telemetry to validate timing choices
+- Test coverage: `java-interop-breaker.test.ts` (with `java-interop-service.test.ts`, `java-interop-timeouts.test.ts`) covers breaker scenarios but may not exercise all edge cases (e.g., probe race conditions)
 
-**Langium Document Cache:**
-- Current capacity: No documented limits; held entirely in memory
-- Limit: Large workspaces (1000+ files) may cause memory pressure
-- Scaling path: Implement document eviction policy; profile memory usage; add metrics
+## Architectural Constraints
 
-**Java Interop Classpath Size:**
-- Current capacity: Loads all classes from classpath into memory on startup
-- Limit: Large classpath entries (100+ packages) block initialization
-- Scaling path: Implement lazy loading per-package; add progress UI; cache to disk
+**Conservative Validation by Design:**
+- Strategy: Builtin function type checks (`check-function-calls.ts`) only judge unambiguously-typed cases (literals, variables with suffix, nested builtins). Binary operators, Java calls, and casts are deliberately unjudged
+- Rationale: LSP layer provides instant feedback for clear cases; BBjCPL (native compiler integration) is the authoritative type checker and runs on save. Avoiding false positives is the priority
+- Implication: Extending validation must stay conservative; if it requires real expression type inference, defer to bbjcpl instead
+- Files: `bbj-vscode/src/language/validations/check-function-calls.ts`, `bbj-vscode/src/language/bbj-type-inferer.ts`
 
-**Reference Linking Performance:**
-- Current: All references linked synchronously during document load
-- Limit: Documents with 1000+ references show noticeable lag
-- Scaling path: Implement incremental linking; defer non-critical references; add cancellation support
+**Module-Level Type Inference:**
+- Strategy: `TypeInferer` service is injected and used across validation, completion, and hover providers to infer types from expressions
+- Constraint: Type inference is limited to safe, unambiguous cases (lexical suffixes, library signatures, simple assignments). Dynamic typing and context-sensitive inference are out of scope
+- Files: `bbj-vscode/src/language/bbj-type-inferer.ts`
+
+**Shared Language Server Across Platforms:**
+- Strategy: Single `main.cjs` binary consumed by both VS Code and IntelliJ via LSP4IJ
+- Constraint: Any platform-specific behavior (e.g., file paths, environment variables) must be negotiated through LSP and configuration, not compiled into the binary
+- Files: `bbj-vscode/src/extension.ts` (VS Code), `bbj-intellij/` (IntelliJ plugin), `bbj-vscode/src/language/main.ts` (shared LS entry)
+
+## Security Considerations
+
+**Secret Environment Variable Hygiene:**
+- Risk: Secret tokens (API keys, passwords) passed through `process.env` to child processes
+- Mitigation: Tests verify that every child process launcher spreads `process.env` explicitly (not passed alone, which would strip PATH/BBJ_HOME). Secret-bearing builders are tested to ensure they pass env options correctly
+- Files: `bbj-vscode/test/em-secret-env-channel.test.ts`, `bbj-vscode/src/extension.ts:506` (spreads env)
+
+**Tokenized BBj File Format:**
+- Risk: Binary BBj program files (`<<bbj>>` magic) can be decompiled on user request, potentially exposing obfuscated or protected source
+- Mitigation: User is prompted before decompiling; read-only mode available as alternative. No automatic decompilation
+- Files: `bbj-vscode/src/tokenized-bbj.ts`, `bbj-vscode/src/decompile-io.ts`
+
+**EM Login and HTTP Connections:**
+- Risk: Enterprise Manager URL (user setting) may be HTTP (not HTTPS); credentials sent over plaintext
+- Mitigation: No direct credential handling in the LS; credentials are managed by VS Code's auth provider. EM login is a user-initiated workflow that delegates to EM's own security model
+- Files: `bbj-vscode/src/extension.ts` (EM login handler)
 
 ## Dependencies at Risk
 
-**Langium Framework:**
-- Risk: Rapidly evolving framework (v3.2.1); breaking changes between minor versions
-- Impact: Grammar changes may require significant rework
-- Migration plan: Pin version; evaluate breaking changes before upgrade; maintain compatibility matrix
+**Chevrotain 12.0 with Ambiguity Warnings:**
+- Risk: Chevrotain 12.0 uses LLStar lookahead strategy, which emits ambiguity warnings for grammar positions where multiple alternatives are viable. These are benign (pre-existing, no false positives in practice) but noisy
+- Mitigation: Warnings are suppressed via `overrideAmbiguityLogging()` in `bbj-module.ts:130`; debug mode shows details. A known pattern; not a defect
+- Impact: None on correctness; improves log readability
+- Status: Intentional design; see memory note: [[chevrotain-ambiguity-warnings-benign]]
 
-**Chevrotain Parser:**
-- Risk: Parsing library complexity; custom grammar rules may be fragile
-- Impact: Parser bugs difficult to diagnose; grammar evolution risky
-- Migration plan: Document grammar rationale; maintain test coverage; consider Langium's built-in parser
+**Langium 4.3.1 Tight Coupling:**
+- Risk: Langium version is pinned; grammar changes require exact version match. Breaking changes in Langium would require full grammar and service rewrites
+- Mitigation: Langium is stable; minor version updates are checked before applying. Major version upgrades are infrequent and require careful planning
+- Files: `bbj-vscode/package.json` (dependency pinned to `~4.3.1`)
+- Upgrade path: Test major Langium upgrades in a branch; require full test suite pass before applying
 
-**Deprecated Properties File Library:**
-- Risk: `properties-file` v3.6.3 may have vulnerabilities
-- Impact: Configuration parsing security issue
-- Migration plan: Audit for CVEs; consider Node.js native solutions or maintained alternatives
+**Node >=22 Requirement:**
+- Risk: Node 24 breaks `langium generate` (issue observed in Dependabot runs)
+- Mitigation: Pinned to Node >=22 in `package.json:12`. CI and dev container use Node 22 explicitly
+- Files: `bbj-vscode/package.json:12`
+- Note: See memory note: [[dependabot-local-verification-gotchas]]
 
-## Missing Critical Features
+**VSCode Protocol Version Pinning:**
+- Risk: `vscode-languageserver-protocol` is pinned to 3.18.2 via package overrides; mismatches with client version can cause compatibility issues
+- Mitigation: Override in `package.json:719-721` ensures consistent protocol version between client and server
+- Status: Intentional design; verified to be compatible with VS Code 1.101.0 and IntelliJ LSP4IJ
 
-**Binary File Support:**
-- Problem: Tokenized BBj files (<<bbj>> format) are skipped entirely
-- Blocks: Users cannot edit compiled programs; decompilation not implemented
-- Impact: Feature gap for production BBj environments that use compiled files
-- Priority: Medium (affects advanced workflows)
-
-**Constructor Documentation:**
-- Problem: Java constructor javadoc not extracted or displayed
-- Blocks: New object creation hints unavailable
-- Impact: Poor developer experience for Java interop
-- Priority: Medium
-
-**Static Code Analysis for Verbs:**
-- Problem: 40+ BBj language verbs have TODO status (no validation)
-- Blocks: Language validation incomplete; users get no feedback for invalid VERB usage
-- Impact: High error rate in BBj programs; poor language support quality
-- Priority: High (core feature incomplete)
+**BBj 26.03 Parser Endpoint (Future Dependency):**
+- Risk: Requirements PSRV-01 through PSRV-09 (Phase 101+) introduce a dependency on BBj 26.03's parser endpoint. Older BBj versions (≤26.02) will lose compiler diagnostics
+- Mitigation: Graceful degradation: with no endpoint available, the LS keeps all existing features (Java completion, save-time `bbjcpl` run). Probe the endpoint once per connection; do not retry or error
+- Status: Pending implementation (Phase 101+)
+- Files: Will be in `bbj-cpl-service.ts` (when implemented)
 
 ## Test Coverage Gaps
 
-**Validation Rules Untested:**
-- What's not tested: Large portion of VERB validation; error parameter handling; complex scope scenarios
-- Files: `bbj-vscode/test/parser.test.ts` (lines 453, 480, 498, 543, 591, 812, 857, 931, 985)
-- Risk: Regressions in validation logic go undetected
-- Priority: High (validation is critical)
+**Untested Java Method Overloading:**
+- What's not tested: Multiple Java methods with the same name but different arities (e.g., `HashMap.put(K, V)`, `HashMap.put(Object, Object)`)
+- Files: `bbj-vscode/test/javadoc.test.ts`, `bbj-vscode/src/language/java-javadoc.ts`
+- Risk: Completion hints and hover documentation show wrong method signature
+- Priority: Medium (affects Java integration quality)
 
-**Java Interop Concurrency:**
-- What's not tested: Concurrent class resolution; lock contention; cancellation under load
-- Files: `bbj-vscode/src/language/java-interop.ts` (entire service)
-- Risk: Race conditions in multi-threaded scenarios (workspace with many files)
-- Priority: High (reliability issue)
+**Class-Level USE Statement Linking:**
+- What's not tested: Importing a type inside a `CLASS` body and using it in method signatures or field types
+- Files: `bbj-vscode/test/linking.test.ts` (scope tests)
+- Risk: Type resolution fails for class-scoped imports; false positives on method return types
+- Priority: Medium (affects class-heavy codebases)
 
-**Binary File Parsing:**
-- What's not tested: No tests for binary file handling (intentionally skipped)
-- Files: `bbj-vscode/src/language/bbj-ws-manager.ts` (line 131)
-- Risk: Future implementation will have no baseline tests
-- Priority: Medium (depends on feature priority)
+**Inherited Accessor Resolution:**
+- What's not tested: Using a superclass field's auto-generated getter/setter in a derived class
+- Files: `bbj-vscode/test/linking.test.ts`, `bbj-vscode/test/variable-scoping.test.ts`
+- Risk: Inherited accessors are not resolved; field read/write fails in derived classes
+- Priority: High (blocks object-oriented patterns)
 
-**Error Handling Paths:**
-- What's not tested: Connection failure recovery; Java service unavailability; timeout handling
-- Files: `bbj-vscode/src/language/java-interop.ts` (lines 59-75)
-- Risk: Poor user experience when Java interop fails
-- Priority: Medium
+**Concurrent Completion Across Multiple Documents:**
+- What's not tested: Two documents triggering completion simultaneously with identical prefix; cache behavior with overlapping TTLs and requests
+- Files: `bbj-vscode/test/completion-test.test.ts` (single-document tests only)
+- Risk: Race condition in async cache (fixed by AsyncLocalStorage, but cache staleness edge cases may exist)
+- Priority: Low (rare in practice; AsyncLocalStorage mitigates)
+
+**Config Hot-Reload Edge Cases:**
+- What's not tested: Rapid config changes while CPL validation is in-flight; config change during parser initialization
+- Files: `bbj-vscode/test/config-hot-reload-wiring.test.ts` (does test debounce, but not all race scenarios)
+- Risk: Diagnostic mismatch or missed config update
+- Priority: Medium (affects configuration workflow)
+
+**Interop Breaker State Machine:**
+- What's not tested: Probe race conditions (half-open breaker receives multiple requests before probe completes); breaker state persistence across multiple connection attempts
+- Files: `bbj-vscode/test/java-interop-breaker.test.ts`
+- Risk: Breaker gets stuck open or cycles prematurely
+- Priority: Low (breaker logic is robust, but edge cases possible)
+
+## Missing Critical Features
+
+**Empty-Bracket Array Form (PARSE-04):**
+- What's missing: `name[]` syntax for whole-array reference in arguments, assignments, and print items
+- Impact: Blocks: `CALL myFunc(arr[])`, `PRINT (chan) arr[]`, `myvar = othervar[]`
+- Status: Pending (Phase 100)
+- Files: Grammar `bbj-vscode/src/language/bbj.langium` (no `[]` syntax yet)
+
+**Array Parameter Type Declarations (PARSE-05):**
+- What's missing: `DREAD` into arrays, type declarations with brackets (`int[][] name!`), and parameter types like `BBjArray name[all]`
+- Impact: Type inference and validation break on array method parameters and return types
+- Status: Pending (Phase 100)
+- Files: Grammar, type inferer
+
+**Comments After Block Keywords (PARSE-06):**
+- What's missing: `;` comments after `METHOD`, `METHODEND`, `CLASSEND`, `FNEND` headers; line-numbered class code
+- Impact: Common coding style is rejected (false positive)
+- Status: Pending (Phase 100)
+- Files: Grammar lexer (line-break validation)
+
+**Arbitrary Keywords as Names (PARSE-08, PARSE-09):**
+- What's missing: Comprehensive audit of which BBj keywords can be used as names in which contexts; untracked files on list A (parser rejects but compiler accepts)
+- Impact: Limits on variable/function naming reduce expressiveness
+- Status: Pending (Phase 100)
+- Files: Grammar, example files
+
+**Compiler Parser Endpoint (PSRV-01 through PSRV-09):**
+- What's missing: Integration with BBj 26.03's new parser endpoint for live syntax diagnostics, without requiring BBjCPL save-time run
+- Impact: Type checking only works on save; real-time checking is LSP-only (conservative, limited to unambiguous types)
+- Status: Pending (Phase 101-103, in separate `bbj-ls` repository)
+- Files: `bbj-vscode/src/language/bbj-cpl-service.ts` (placeholder)
 
 ---
 
-*Concerns audit: 2026-02-01*
+*Concerns audit: 2026-09-21*

@@ -4,7 +4,7 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { basename, normalize, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
@@ -33,6 +33,14 @@ export function isTypeResolutionWarningsEnabled(): boolean {
 
 /** Prefix of the diagnostic message emitted for unresolvable USE file paths. Used by document builder to identify and reconcile these diagnostics after PREFIX docs are loaded. */
 export const USE_FILE_NOT_RESOLVED_PREFIX = "File '";
+
+// Token types built by bbj-token-builder.ts whose own regex only matches when a trailing ';' or
+// line break directly follows, consuming that terminator into the token's own matched text --
+// so its own leaf never carries the separator, even though the source has one. KEYWORD_STANDALONE
+// is the only such token built from a bare statement keyword (DELETE/SAVE/ENTER/READ/INPUT/
+// EXTRACT/FIND); every other terminator-adjacent custom token only looks ahead at the terminator
+// without consuming it, so its own leaf (';' or a line break) is still there to see.
+const TERMINATOR_CONSUMING_LEAF_TOKENS = new Set(['KEYWORD_STANDALONE']);
 
 /**
  * Register custom validation checks.
@@ -269,21 +277,37 @@ export class BBjValidator {
         if (document.parseResult.parserErrors.length > 0 || isLabelDecl(getPreviousNode(node))) {
             return;
         }
-        if (node.$cstNode) {
-            const text = (node.$cstNode.root as RootCstNode).fullText;
-            const offset = node.$cstNode.offset;
-            for (let i = offset - 1; i >= 0; i--) {
-                const char = text.charAt(i);
-                if (char === '\n' || char === ';') {
-                    return;
-                } else if (char !== ' ' && char !== '\t') {
-                    accept('error', "Comments need to be separated by line breaks or ';'.", {
-                        node
-                    });
-                    return;
-                }
-            }
+        if (!node.$cstNode) {
+            return;
         }
+        // Decide from the CST, not from a raw-text scan: findLeafNodeAtOffset resolves the
+        // preceding leaf against the same tokenized (lexer-rewritten) offsets every CST node
+        // already lives in, so tree lookup stays correct through a ':'-continuation join --
+        // unlike indexing node.$cstNode.root.fullText (the ORIGINAL, pre-rewrite document text)
+        // with an offset that comes from that rewritten text, which is what produced the false
+        // alarms here. The leaf's own tokenType.name is decided once, at tokenize time against
+        // that same rewritten text, so it stays trustworthy post-join too -- unlike the leaf's
+        // own .text, which is (like .root.fullText) sliced from the ORIGINAL text and therefore
+        // corrupted exactly where a join happened. .range stays comparable between nodes because
+        // every node's range is computed from the SAME rewritten-text token stream.
+        const previousLeaf = findLeafNodeAtOffset(node.$cstNode.root, node.$cstNode.offset - 1);
+        const commentStartsNewLine = previousLeaf === undefined
+            || previousLeaf.range.end.line < node.$cstNode.range.start.line;
+        const separatedByStatementSeparator = previousLeaf?.tokenType.name === ';';
+        // A statement legally begins right after a then-branch or an else-branch keyword, the
+        // same precedent isStandaloneStatement already relies on for a preceding label.
+        const afterBranchKeyword = previousLeaf?.tokenType.name === 'THEN' || previousLeaf?.tokenType.name === 'ELSE';
+        // The preceding leaf's own token already swallowed its terminator (see
+        // TERMINATOR_CONSUMING_LEAF_TOKENS above) -- the separator is in the source, just not on
+        // a leaf of its own.
+        const separatorSwallowedByPrecedingToken = previousLeaf !== undefined
+            && TERMINATOR_CONSUMING_LEAF_TOKENS.has(previousLeaf.tokenType.name);
+        if (commentStartsNewLine || separatedByStatementSeparator || afterBranchKeyword || separatorSwallowedByPrecedingToken) {
+            return;
+        }
+        accept('error', "Comments need to be separated by line breaks or ';'.", {
+            node
+        });
     }
 
 
@@ -430,7 +454,7 @@ export class BBjValidator {
         if (ele.body && ele.body.length > 0) {
             ele.body.filter(isKeywordStatement).forEach(statement => {
                 if (statement.kind && statement.kind.toUpperCase() === 'RETURN') {
-                    accept('error', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
+                    accept('warning', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
                 }
             })
             return;

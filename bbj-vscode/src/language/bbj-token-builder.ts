@@ -3,6 +3,15 @@ import { DefaultTokenBuilder, GrammarAST, GrammarUtils, RegExpUtils, stream, Tok
 
 
 export class BBjTokenBuilder extends DefaultTokenBuilder {
+    // METHODEND, CLASSEND and INTERFACEEND are deliberately kept OUT of the generic
+    // uppercase-keyword ID-category fallback below, even though the real compiler accepts all
+    // three as ordinary variable and label names -- tried and reverted: granting them ID
+    // category lets a MALFORMED ClassDecl/MethodDecl/InterfaceDecl that fails to match for an
+    // unrelated reason (for example an invalid name) silently re-parse its own now-ID-category
+    // terminator, plus every other already-ID-category keyword on the same broken line, as a run
+    // of ordinary expression statements with ZERO parser errors -- turning a real syntax problem
+    // into a silent misparse instead of the parser error it produces today (confirmed by
+    // probe: `CLASS PUBLIC label` / `CLASSEND` went from 1 parser error to 0 without the set).
     static EXCLUDED = new Set(['METHODEND', 'CLASSEND', 'INTERFACEEND'])
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const reachableRules = stream(GrammarUtils.getAllReachableRules(grammar, false));
@@ -48,11 +57,70 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         exitNoNl.CATEGORIES = [id];
         exitNoNl.LONGER_ALT = [idWithSuffix, id];
 
+        // START_BREAK is a custom-PATTERN terminal (bare 'START' immediately before a line
+        // break or ';', with no operand) that never enters the generic uppercase loop above at
+        // all -- unlike the EXCLUDED-set words, it was simply never given an explicit category
+        // grant. The real compiler accepts 'start' as an ordinary variable; granting the ID
+        // category here lets the same token also satisfy an identifier position (the read side
+        // of an assignment, a binary operand) while StartStatement's own bare alternative still
+        // wins at the top of the statement list, exactly as RELEASE_NL/RELEASE_NO_NL/EXIT_NO_NL
+        // already do above.
+        const startBreak = terminalTokens.find(e => e.name === 'START_BREAK')!;
+        startBreak.CATEGORIES = [id];
+        startBreak.LONGER_ALT = [idWithSuffix, id];
+
+        // NEXT_BREAK (the bare, no-variable form of NEXT closing a FOR loop) has the identical
+        // defect: 'next' is not a quoted grammar literal at all -- it exists only through this
+        // custom terminal and its sibling NEXT_ID -- so `next` as an ordinary name did not work
+        // until this grant, although it was long believed to. NextStatement's bare alternative is
+        // still matched directly by the NEXT_BREAK token TYPE at the top of a statement, so this
+        // grant only adds a second, identifier-position use -- it does not change which
+        // alternative wins when 'next' stands alone as its own statement.
+        const nextBreak = terminalTokens.find(e => e.name === 'NEXT_BREAK')!;
+        nextBreak.CATEGORIES = [id];
+        nextBreak.LONGER_ALT = [idWithSuffix, id];
+
+        // METHODRET_END (the bare, no-value form of METHODRET) has the identical defect: 'methodret'
+        // is not a quoted grammar literal -- MethodReturnStatement's own value-carrying form uses
+        // the literal 'METHODRET', but the bare no-value form only exists through this custom
+        // terminal, so a variable literally named 'methodret' was unusable. MethodReturnStatement's
+        // bare alternative is still matched directly by the METHODRET_END token TYPE, so this
+        // grant only adds a second, identifier-position use.
+        const methodretEnd = terminalTokens.find(e => e.name === 'METHODRET_END')!;
+        methodretEnd.CATEGORIES = [id];
+        methodretEnd.LONGER_ALT = [idWithSuffix, id];
+
+        // PRINT_STANDALONE_NL matches a bare '?'/'PRINT'/'WRITE' with nothing else on the line --
+        // 'print' and 'write' are both quoted literals elsewhere in PrintStatement's own grammar
+        // (already ID-category via the generic loop for every OTHER position), but this custom
+        // token wins the lexer race specifically when nothing follows, so a variable named
+        // 'print' or 'write' silently produced a spurious extra PrintStatement instead of being
+        // read as this PrintStatement's own item. Granting the category here only adds a second,
+        // identifier-position use; PrintStatement's own PRINT_STANDALONE_NL alternative is still
+        // matched directly by the token TYPE, so a genuinely bare 'print'/'write' statement is
+        // unaffected.
+        const printStandaloneNl = terminalTokens.find(e => e.name === 'PRINT_STANDALONE_NL')!;
+        printStandaloneNl.CATEGORIES = [id];
+        printStandaloneNl.LONGER_ALT = [idWithSuffix, id];
+
+        // KEYWORD_STANDALONE matches DELETE/SAVE/ENTER/READ/INPUT/EXTRACT/FIND with nothing else
+        // on the line -- each of these seven words also has its own full verb grammar elsewhere
+        // (DeleteStatement, SaveStatement, EnterStatement, ReadStatement, ...) that already gets
+        // the generic loop's ID category for every OTHER position, but the bare, no-argument form
+        // of each verb is only reachable through this shared custom token, so a variable named
+        // one of the seven silently produced a spurious extra KeywordStatement instead of being
+        // read as an ordinary identifier. Granting the category here only adds a second,
+        // identifier-position use; KeywordStatement is still the first alternative tried for a
+        // whole statement, so a genuinely bare verb is unaffected.
+        const keywordStandalone = terminalTokens.find(e => e.name === 'KEYWORD_STANDALONE')!;
+        keywordStandalone.CATEGORIES = [id];
+        keywordStandalone.LONGER_ALT = [idWithSuffix, id];
+
         return tokens;
     }
 
     /**
-     * Splices the 14 custom tokens with an explicit priority requirement (line-break markers,
+     * Splices the custom tokens with an explicit priority requirement (line-break markers,
      * standalone-vs-expression disambiguators, etc.) to the front of the token vocabulary
      * (P61-D4-005). Extracted out of buildTokens() so a future edit to this reordering can't
      * accidentally land inside the unrelated CATEGORIES/LONGER_ALT wiring that follows it in
@@ -73,6 +141,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RELEASE_NL');
         this.spliceToken(tokens, 'RELEASE_NO_NL');
         this.spliceToken(tokens, 'EXIT_NO_NL');
+        this.spliceToken(tokens, 'TABLE_DATA');
+        this.spliceToken(tokens, 'RESTORE_NO_NL');
     }
 
     private spliceToken(tokens: TokenType[], name: string) {
@@ -115,15 +185,43 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'EXIT_NO_NL') {
-            // Matches EXIT followed by horizontal whitespace then a numeric expression starter.
-            // Restricting to [0-9(+\-] ensures EXIT_NO_NL does not fire before keywords (like
-            // `else` in `if cond then exit else ...`) or identifiers that begin with letters.
-            // EXITTO keyword is not matched because 'T' is not in [0-9(+\-].
+            // Matches EXIT followed by horizontal whitespace then a numeric expression starter,
+            // OR by an identifier expression that is not one of the words that may legally
+            // follow a bare EXIT on the same line (ELSE, FI, ENDIF, THEN, REM — each checked at
+            // a word boundary, case-insensitive). This lets `EXIT err` (a variable holding an
+            // error code) parse as one exit statement while `IF x THEN EXIT ELSE ...` keeps
+            // treating EXIT as bare, so ELSE stays its own statement.
+            // EXITTO keyword is not matched because there is no whitespace between EXIT and TO.
             // Bare EXIT (at EOL or before flow-control keywords) is handled by the 'EXIT' keyword
             // token generated from the `kind='EXIT'` grammar alternative.
             return {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+[0-9(+\-])/i),
+                PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+(?!(?:ELSE|FI|ENDIF|THEN|REM)\b)[0-9(+\-A-Za-z_])/i),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'RESTORE_NO_NL') {
+            // Matches RESTORE only when an operand actually follows (whitespace then a digit,
+            // letter or underscore, OR an asterisk immediately followed by a letter or
+            // underscore — a symbolic-label name) so the grammar can commit to consuming a
+            // numeric, user-label or symbolic-label line reference. A bare RESTORE (nothing, or
+            // only whitespace, before the next line break or ';') never matches this token, so
+            // it falls through to the plain 'RESTORE' keyword token and the statement's bare
+            // alternative — deciding "has an operand" at the lexer avoids a parser-level
+            // ambiguity between an optional trailing line reference and the next statement
+            // starting right after it.
+            //
+            // The asterisk branch requires a name-start character directly after the '*', with
+            // no whitespace in between: widening the first character class to simply include
+            // '*' would also match an asterisk followed by whitespace, which turns the ordinary
+            // multiplication `x = restore * 2` into a false RESTORE statement. Requiring the
+            // name to start immediately keeps that expression as plain multiplication while
+            // still matching a real symbolic-label target such as `RESTORE *RETRY`. One residual
+            // ambiguity is not resolved by this pattern: an unspaced multiplication written as
+            // `x = restore *foo` is ambiguous in the language itself, and the lexer resolves it
+            // in favour of the statement.
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/RESTORE(?=[ \t]+(?:[0-9A-Za-z_]|\*[A-Za-z_]))/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
@@ -135,22 +233,24 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'START_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/START[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}START[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'FNEND') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/FNEND[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}FNEND[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'NEXT_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                // may match `next` or `<NL>next`, but not `*next`
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n?[^\*][ \t]*)next(?=[ \t]*(?=(;|\r?\n)))/i),
+                // may match `next` or `<NL>next`, but not `*next`, and not a GOTO/GOSUB target
+                PATTERN: this.regexPatternFunction(new RegExp(`(?<=\\r?\\n?[^\\*][ \\t]*)${BRANCH_TARGET_EXCLUSION}next(?=[ \\t]*(?=(;|\\r?\\n)))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
@@ -166,29 +266,57 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}METHODRET[ \\t]*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'ENDLINE_PRINT_COMMA') {
             const token: TokenType = {
                 name: terminal.name,
-                // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/),
+                // The lookahead tolerates horizontal whitespace between the trailing comma and
+                // the line break or semicolon that ends the item list (a trailing comma followed
+                // by a space then a newline was previously left as an ordinary separator, so the
+                // parser reached across the line break for another item). The matched token image
+                // stays the comma alone -- the tolerated whitespace is zero-width lookahead, not
+                // consumed -- so no downstream offset changes. Bounded single character class,
+                // no nested quantifier.
+                PATTERN: this.regexPatternFunction(/,(?=[ \t]*(\r?\n|;))/),
                 LINE_BREAKS: true
             };
             return token;
         } else if (terminal.name === 'PRINT_STANDALONE_NL') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(\?|PRINT|WRITE)\s*(?=(;|\r?\n))/i),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}(\\?|PRINT|WRITE)\\s*(?=(;|\\r?\\n))`, 'i')),
                 LINE_BREAKS: true
             };
             return token;
+        } else if (terminal.name === 'TABLE_DATA') {
+            // Opaque rest-of-line data for the TABLE statement, matched only when TABLE is the
+            // verb starting a statement: the lookbehind requires TABLE, plus at least one
+            // space/tab, to be preceded by nothing but the start of a line (optionally with a
+            // leading numeric line number and/or a "label:" prefix) or by a ';' statement
+            // separator (with optional surrounding whitespace). This keeps a bare identifier
+            // that merely ends in or contains "table" — mytable, rowtable, a `table` variable
+            // used mid-expression — from ever being mistaken for the statement, since none of
+            // those occur at a position immediately preceded by that anchor. Everything after
+            // 'TABLE' plus the whitespace, up to end of line or a trailing ';rem' comment, is one
+            // data token — no hex validation here, the compiler owns that. The negative lookahead
+            // keeps `table = 5` / `x = table + 1` parsing as an ordinary identifier: TABLE_DATA
+            // never matches immediately before an operator or closing bracket, so a
+            // TableStatement is only formed when real data follows.
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/(?<=(?:^|;)[ \t]*(?:\d+[ \t]+)?(?:[A-Za-z_][A-Za-z0-9_]*:[ \t]*)?TABLE[ \t]+)(?![=<>+\-*/,)\]])[^\r\n;]+/im),
+                LINE_BREAKS: false
+            };
         } else if (terminal.name === 'KEYWORD_STANDALONE') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(new RegExp(`(${KEYWORD_STANDALONE})\\s*(\\r?\\n|;)`, 'i')),
+                // excluded right after a GOTO/GOSUB branch target (BRANCH_TARGET_EXCLUSION below)
+                PATTERN: this.regexPatternFunction(new RegExp(`${BRANCH_TARGET_EXCLUSION}(${KEYWORD_STANDALONE})\\s*(\\r?\\n|;)`, 'i')),
                 LINE_BREAKS: true
             };
             return token;
@@ -199,3 +327,15 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 }
 
 const KEYWORD_STANDALONE = 'DELETE|SAVE|ENTER|READ|INPUT|EXTRACT|FIND'
+
+// A label whose name is one of the words above (or START, FNEND, NEXT, METHODRET, PRINT/?/WRITE)
+// is lost as a GOTO/GOSUB/ON...GOTO/GOSUB branch target, because the custom end-of-line tokens
+// above win the lexer's priority race and are not ID-category — the label-reference
+// cross-reference can only match an ID-category token. This lookbehind suppresses each affected
+// token immediately after GOTO or GOSUB (one to eight spaces or tabs, case-insensitive), and
+// through a bounded run of prior comma-separated targets in the same list (so the LAST target of
+// `ON x GOSUB a,b,print` is covered too, not only a single lone target) — leaving the token to
+// fall back to the generic keyword-as-identifier handling used everywhere else, which the
+// cross-reference already understands. Every quantifier here is bounded (never `*`/`+` alone) so
+// the lookbehind cannot backtrack catastrophically.
+const BRANCH_TARGET_EXCLUSION = '(?<!(?:GOTO|GOSUB)[ \\t]{1,8}(?:[_A-Za-z]\\w{0,63}@?[ \\t]{0,8},[ \\t]{0,8}){0,16})'
