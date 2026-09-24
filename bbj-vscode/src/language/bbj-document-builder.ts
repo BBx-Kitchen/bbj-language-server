@@ -810,12 +810,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // 'debounced' too means a later runtime switch to 'on-save' keeps showing this
                     // verdict's errors instead of starting from nothing. Pruned to this version
                     // right away -- nothing earlier can ever be needed to map a diagnostic from
-                    // this check onward.
+                    // this check onward. storedUnderOnSave records the trigger at this exact
+                    // moment, so a later switch away from 'on-save' is told apart from a check that
+                    // was always 'debounced' -- see KeptCheck.storedUnderOnSave's own doc comment.
                     const keptCheck: KeptCheck = {
                         kind: 'verdict',
                         version: versionBeforeRequest,
                         diagnostics: liveOutcome.diagnostics,
-                        seen
+                        seen,
+                        storedUnderOnSave: getCompilerTrigger() === 'on-save'
                     };
                     setKeptCheck(document.uri, keptCheck);
                     pruneContentChangesThrough(document.uri, versionBeforeRequest);
@@ -910,14 +913,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // keeping it under 'debounced' too means a later runtime switch to 'on-save'
                     // keeps showing this save's errors instead of starting from nothing. An empty
                     // cplDiags still stores an empty kept check, clearing whatever the previous
-                    // save's kept fallback result was.
+                    // save's kept fallback result was. storedUnderOnSave records the trigger at
+                    // this exact moment -- see KeptCheck.storedUnderOnSave's own doc comment.
                     let keptCheck: KeptCheck | undefined;
                     if (getCompilerTrigger() !== 'off') {
                         keptCheck = {
                             kind: 'fallback',
                             version: versionBeforeRequest,
                             diagnostics: cplDiags,
-                            seen: fallbackSeen
+                            seen: fallbackSeen,
+                            storedUnderOnSave: getCompilerTrigger() === 'on-save'
                         };
                         setKeptCheck(document.uri, keptCheck);
                         pruneContentChangesThrough(document.uri, versionBeforeRequest);

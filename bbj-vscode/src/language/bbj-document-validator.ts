@@ -309,6 +309,25 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
             return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
         }
 
+        // Under 'debounced', a kept check stored while the trigger was still 'on-save' keeps this
+        // document's current compiler errors visible through the same composition -- a runtime
+        // switch away from on-save must not drop them the instant validation next runs. Once this
+        // file's own first debounced check stores a fresh kept check (storedUnderOnSave false),
+        // this branch stops matching and every later validation falls through to the verdict path
+        // below exactly as steady-state debounced always has.
+        if (getCompilerTrigger() === 'debounced') {
+            const kept = getKeptCheck(document.uri);
+            if (kept?.storedUnderOnSave) {
+                return composeOnSaveDiagnostics({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    kept,
+                    changesSinceCheck: contentChangesSince(document.uri, kept.version, document.textDocument.version)
+                });
+            }
+        }
+
         let composed = diagnostics;
         if (getCompilerTrigger() !== 'off') {
             const verdict = getVerdictState(document.uri);

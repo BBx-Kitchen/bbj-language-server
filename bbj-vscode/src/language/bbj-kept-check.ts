@@ -310,13 +310,22 @@ export function createChangeRecordingTextDocumentsConfiguration(): TextDocuments
  * rules) from a save-time compile fallback (which never downgrades -- it is a check of the file on
  * disk, not a verdict for the live editor text). `version` is the text-document version the check
  * ran against; `seen` is the set of syntax-complaint keys ({@link syntaxComplaintKey}) the check
- * already accounted for, exactly the shape `VerdictState.seen` already has.
+ * already accounted for, exactly the shape `VerdictState.seen` already has. `storedUnderOnSave` is
+ * whether the compiler trigger was `'on-save'` at the moment this check was stored -- every store
+ * site sets it from the trigger it reads at store time, not from whatever the trigger happens to
+ * be later. A document's `validateDocument` pass consults the kept-check composition whenever the
+ * trigger is `'on-save'` (regardless of this flag), and also whenever the trigger is `'debounced'`
+ * and this flag is `true`: a runtime switch from `on-save` to `debounced` must keep showing a
+ * file's current compiler errors until that file's own first debounced check stores a fresh kept
+ * check with this flag `false`, after which steady-state debounced never consults a kept check
+ * again.
  */
 export interface KeptCheck {
     readonly kind: 'verdict' | 'fallback';
     readonly version: number;
     readonly diagnostics: readonly Diagnostic[];
     readonly seen: ReadonlySet<string>;
+    readonly storedUnderOnSave: boolean;
 }
 
 /** Per-document (normalized-uri-keyed) kept check, in the same style as {@link contentChangesByUri}

@@ -296,7 +296,7 @@ describe('createChangeRecordingTextDocumentsConfiguration', () => {
 describe('composeWithKeptCheck', () => {
     test('no Langium diagnostics gives exactly the placed kept diagnostics', () => {
         const keptDiag = makeDiag(2, 2, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'bbj error');
-        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [keptDiag], seen: new Set() };
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [keptDiag], seen: new Set(), storedUnderOnSave: false };
 
         const result = composeWithKeptCheck({
             langiumDiagnostics: [],
@@ -320,7 +320,8 @@ describe('composeWithKeptCheck', () => {
             seen: new Set([
                 syntaxComplaintKey(overlapComplaint.message, 'line0'),
                 syntaxComplaintKey(loneComplaint.message, 'line5')
-            ])
+            ]),
+            storedUnderOnSave: false
         };
 
         const result = composeWithKeptCheck({
@@ -341,7 +342,7 @@ describe('composeWithKeptCheck', () => {
         const newComplaint = makeDiag(1, 1, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'new complaint');
         const editedLineComplaint = makeDiag(0, 0, DiagnosticSeverity.Error, DocumentValidator.ParsingError, 'bbj', 'edited line complaint');
         const bbjDiag = makeDiag(0, 0, DiagnosticSeverity.Error, undefined, 'BBj Parser', 'kept bbj error');
-        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [bbjDiag], seen: new Set() };
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: [bbjDiag], seen: new Set(), storedUnderOnSave: false };
 
         const result = composeWithKeptCheck({
             langiumDiagnostics: [newComplaint, editedLineComplaint],
@@ -363,7 +364,8 @@ describe('composeWithKeptCheck', () => {
             kind: 'verdict',
             version: 1,
             diagnostics: [bbjDiag],
-            seen: new Set([syntaxComplaintKey(elsewhereComplaint.message, 'c')])
+            seen: new Set([syntaxComplaintKey(elsewhereComplaint.message, 'c')]),
+            storedUnderOnSave: false
         };
         const batches: ContentChangeBatch[] = [{
             fromVersion: 1,
@@ -391,7 +393,8 @@ describe('composeWithKeptCheck', () => {
             kind: 'verdict',
             version: 1,
             diagnostics: [bbjDiag],
-            seen: new Set([syntaxComplaintKey(complaint.message, 'b')])
+            seen: new Set([syntaxComplaintKey(complaint.message, 'b')]),
+            storedUnderOnSave: false
         };
 
         const result = composeWithKeptCheck({
@@ -416,7 +419,8 @@ describe('composeWithKeptCheck', () => {
             version: 1,
             diagnostics: [],
             // Even a matching key must not be trusted once the line text itself has moved on.
-            seen: new Set([syntaxComplaintKey(complaint.message, 'x = 2')])
+            seen: new Set([syntaxComplaintKey(complaint.message, 'x = 2')]),
+            storedUnderOnSave: false
         };
 
         const result = composeWithKeptCheck({
@@ -441,7 +445,7 @@ describe('composeWithKeptCheck', () => {
 
         const { diagnostics: reconciled, state } = reconcileWithVerdict(langiumDiagnostics, verdictDiagnostics, textLineLookup(liveText));
 
-        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: verdictDiagnostics, seen: state.seen };
+        const kept: KeptCheck = { kind: 'verdict', version: 1, diagnostics: verdictDiagnostics, seen: state.seen, storedUnderOnSave: false };
         const composed = composeWithKeptCheck({
             langiumDiagnostics,
             validatedText: liveText,
@@ -458,7 +462,7 @@ describe('composeWithKeptCheck', () => {
             langiumDiagnostics: [{ ...complaintA }, { ...complaintB }],
             validatedText: liveText,
             liveText,
-            kept: { kind: 'verdict', version: 1, diagnostics: [{ ...bbjDiag }], seen: state.seen },
+            kept: { kind: 'verdict', version: 1, diagnostics: [{ ...bbjDiag }], seen: state.seen, storedUnderOnSave: false },
             changesSinceCheck: []
         });
         expect(composedAgain).toEqual(composed);
