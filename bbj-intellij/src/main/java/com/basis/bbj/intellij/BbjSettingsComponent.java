@@ -112,7 +112,7 @@ public class BbjSettingsComponent {
         ((JBTextField) compilerOutputDirectoryField.getTextField()).getEmptyText()
                 .setText("Required for \"Compile BBj File\" to run");
 
-        // --- Compiler check dropdown (D-13) ---
+        // --- Compiler check dropdown ---
         compilerTriggerCombo = new ComboBox<>(
                 new CollectionComboBoxModel<>(CompilerInitOptions.TRIGGER_DISPLAY_NAMES));
         compilerTriggerCombo.setSelectedItem("Debounced");
