@@ -6,6 +6,7 @@ import { createBBjServices } from '../src/language/bbj-module.js';
 import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { createBBjTestServices } from './bbj-test-module.js';
+import { recallLangiumDiagnostics } from '../src/language/bbj-diagnostic-reconciliation.js';
 
 /**
  * Find all AST nodes matching a filter in a document.
@@ -556,6 +557,45 @@ classend
             expect(printRef, 'PRINT x! reference must be present').toBeDefined();
             expect(printRef!.symbol.ref).toBe(localDecl);
             expect(printRef!.symbol.ref).not.toBe(fieldDecl);
+        });
+    });
+
+    // ========================================================================
+    // Use before assignment with a reference that has no symbol
+    // ========================================================================
+    describe('Use before assignment with a reference that has no symbol', () => {
+        const parseHermetic = parseHelper<Model>(hermeticServices.BBj);
+
+        test('a malformed double-sigil assignment does not stop the check', async () => {
+            const document = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
+            // The malformed `## = 1` line carries a parser error, so the published
+            // (post-hierarchy) diagnostics list hides hints by design (Rule 2: any Error hides
+            // warnings and hints). Assert on the remembered pre-hierarchy list instead -- that is
+            // what the check itself produced before the hierarchy ran.
+            const published = document.diagnostics ?? [];
+            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+
+            const remembered = recallLangiumDiagnostics(document);
+            expect(remembered).toBeDefined();
+            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
+            expect(hints.some(h => h.message === "'x' used before assignment (first assigned at line 2)")).toBe(true);
+        });
+
+        test('building a malformed double-sigil assignment does not throw', async () => {
+            await expect(parseHermetic('## = 1\n', { validation: true })).resolves.toBeDefined();
+        });
+
+        test('a malformed ENTER target does not crash scope computation', async () => {
+            const document = await parseHermetic('ENTER ##\nprint y\ny = 1\n', { validation: true });
+            const published = document.diagnostics ?? [];
+            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+
+            const remembered = recallLangiumDiagnostics(document);
+            expect(remembered).toBeDefined();
+            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
+            expect(hints.some(h => h.message === "'y' used before assignment (first assigned at line 3)")).toBe(true);
         });
     });
 });

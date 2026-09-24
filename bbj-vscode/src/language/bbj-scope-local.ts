@@ -290,7 +290,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                DREAD A$,B$,C$
                ENTER A$,B$,C$
             */
-            if (isSymbolRef(node)) {
+            if (isSymbolRef(node) && node.symbol) {
                 const scopeHolder = node.$container.$container
                 const inputName = node.symbol.$refText
                 if (scopes.getStream(scopeHolder).toArray().findIndex((descr: AstNodeDescription) => descr.name === inputName) === -1) {
