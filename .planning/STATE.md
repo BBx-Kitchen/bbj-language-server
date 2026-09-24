@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 107
 current_phase_name: Validation False Alarms & Silent Skips
 status: executing
-stopped_at: Phase 107 context gathered
-last_updated: "2026-09-24T20:14:44.696Z"
+stopped_at: Completed 107-01-PLAN.md
+last_updated: "2026-09-24T20:22:32.864Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 107 execution started
-state_head: 9fdbdd460d8c623a657f355bd772030b28fb7179
+state_head: f2b82de83607104f1ba448e0776288f0f1dd7d96
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 107 (Validation False Alarms & Silent Skips) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 107
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-09-24 — Phase 107 execution started
 
-Progress: [██░░░░░░░░] 25% (1/4 phases)
+Progress: [███░░░░░░░] 25% (1/4 phases)
 
 ### v4.6 milestone map
 
@@ -108,6 +108,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 106 P05 | 105min | 3 tasks | 6 files |
 | Phase 106 P06 | 95min | 3 tasks | 6 files |
 | Phase 106 P07 | 2.5h | 3 tasks | 1 files |
+| Phase 107 P01 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,8 @@ decisions:
 - [Phase 106]: Phase 106-06: KeptCheck.storedUnderOnSave (set from the trigger at store time) lets a runtime switch away from on-save keep showing a file's current compiler errors under debounced until that file's own first debounced check replaces them
 - [Phase 106]: Phase 106-06: two plan-04 bbj-cpl-fallback-dedup tests were updated from their old merge-as-before expectation to the new on-save behavior (kept and shown, not merged) since this plan's kept-check wiring deliberately supersedes that old rule for on-save
 - [Phase 106]: Phase 106: timing re-check of the Phase 105 metric not taken at the user's decision; no regression evidence either way
+- [Phase 107]: Phase 107-01: used the plan's specified two-counter bookkeeping (openIfs/elseClaims) in elseStatementLineBreaks instead of the 98-REVIEW.md WR-A one-line snippet, which a planning-time probe showed reopens the 'second ELSE for one IF' false negative
+- [Phase 107]: Phase 107-01: the colon-continuation blank-message line-break residue needed no separate fix -- the same nested-ELSE counter repair also clears it, since the lexer joins colon-continued lines into one physical line before the walker runs
 
 ### Tech Debt
 
@@ -209,9 +212,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-24T18:40:19.606Z
-Stopped at: Phase 107 context gathered
-Resume file: .planning/phases/107-validation-false-alarms-silent-skips/107-CONTEXT.md
+Last session: 2026-09-24T20:22:32.767Z
+Stopped at: Completed 107-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

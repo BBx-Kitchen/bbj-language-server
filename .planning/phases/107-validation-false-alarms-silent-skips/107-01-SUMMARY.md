@@ -148,6 +148,10 @@ None - no external service configuration required.
 - 107-04 and 107-06 also declare VAL-01 in their frontmatter; per the shared-ID gate, VAL-01 is not marked complete in REQUIREMENTS.md until all three plans have a SUMMARY.
 - No blockers for 107-02 (VAL-02) or 107-03/107-05 (VAL-03), which are independent of this plan's files.
 
+## Self-Check: PASSED
+
+All modified files verified present on disk; all three commit hashes (`dddfba78`, `30500588`, `f2b82de8`) verified in git log.
+
 ---
 *Phase: 107-validation-false-alarms-silent-skips*
 *Completed: 2026-09-24*
