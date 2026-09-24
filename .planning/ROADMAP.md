@@ -292,8 +292,10 @@ Already handled outside the milestone: #688 (extensionless USE target), PR #698.
   `java-interop.ts` (`parseProgram`, `openParseLane`), the IntelliJ plugin's trigger setting and
   `CompilerInitOptions`, the VS Code setting description in `bbj-vscode/package.json`, and the two
   feature docs under `documentation/docs/`.
-- Phase 107 changes two validators only (`validations/line-break-validation.ts`,
-  `validations/check-variable-scoping.ts`) plus synthetic regression fixtures.
+- Phase 107 changes two validators (`validations/line-break-validation.ts`,
+  `validations/check-variable-scoping.ts`) plus synthetic regression fixtures; VAL-03 (added
+  2026-09-24) adds a `MemberCall` check in `bbj-validator.ts`, touches `bbj-document-validator.ts`
+  and guards one read in `bbj-scope-local.ts`. It only reads the Phase 109 files.
 - Phase 108 changes `bbj-intellij/` only (`BbjServerService`, `BbjLanguageClient`,
   `BbjLanguageServerFactory`, `ExpectedStopGuard`).
 - Phase 109 changes completion and type inference (`bbj-scope.ts`, `bbj-type-inferer.ts`,
@@ -382,14 +384,15 @@ timings were measured through (`105-MEASUREMENT.md`), which is why criterion 5 r
 
 **Goal**: Valid single-line `IF` code no longer draws line-break errors the compiler would never report, and the use-before-assignment check no longer gives up on a file without a trace.
 **Depends on**: Nothing (validators only; independent of Phase 106)
-**Code**: `bbj-vscode/src/language/validations/line-break-validation.ts` (`elseStatementLineBreaks`, `ifEndStatementLineBreaks`), `validations/check-variable-scoping.ts` (`getSymbolRefName`, `checkUseBeforeAssignment`), synthetic regression fixtures under `bbj-vscode/test/test-data/conformance/`
-**Requirements**: VAL-01, VAL-02
+**Code**: `bbj-vscode/src/language/validations/line-break-validation.ts` (`elseStatementLineBreaks`, `ifEndStatementLineBreaks`), `validations/check-variable-scoping.ts` (`getSymbolRefName`, `checkUseBeforeAssignment`), synthetic regression fixtures under `bbj-vscode/test/test-data/conformance/`; for VAL-03 (added 2026-09-24) `bbj-scope-local.ts` (the same unguarded `symbol.$refText` read), `bbj-validator.ts` (new `MemberCall` check) and `bbj-document-validator.ts` where the duplicate linking warning is dropped
+**Requirements**: VAL-01, VAL-02, VAL-03
 **Success Criteria** (what must be TRUE):
 
   1. Single-line `IF`/`ELSE`/end-of-`IF` shapes the compiler accepts, including the nested one-liner `if a then if b then c=1 else d=1 fi else e=1 fi`, show no "This statement needs to start in a new line" error.
   2. A genuinely misplaced `ELSE` or `FI` with no open `IF` left on its line is still reported with that error, and the existing "still flagged" regression cases stay flagged.
   3. A before/after run of the private conformance harness shows three things. The valid files re-flagged at the Phase 98 close no longer carry the line-break error. A2 is at or below its v4.5 exit count of 22. No file newly enters B, compared by file set rather than totals.
   4. A file containing a reference with no symbol (the malformed `## = 1` shape) gets no "An error occurred during validation" diagnostic, and a use-before-assignment hint elsewhere in the same file still appears.
+  5. `BBjAPI().anyInvalidMethod()` and the same unknown member on any other Java class the language server has fully resolved show one Error on the member name, also when the file has other errors. An unresolved, cold or synthetic receiver, a BBj class receiver and a template-string field access keep today's Warning, and a local conformance run shows no new Error on a member that exists.
 
 **Plans**: TBD
 
@@ -491,7 +494,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
-18/18 requirements mapped to 4 phases, no orphans and no duplicates. Scope is in
+19/19 requirements mapped to 4 phases (VAL-03 added to Phase 107 on 2026-09-24), no orphans and no duplicates. Scope is in
 `.planning/PROJECT.md` under "Current Milestone"; the requirement list and its traceability
 table are in `.planning/REQUIREMENTS.md`.
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.

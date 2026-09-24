@@ -22,6 +22,7 @@
 
 - [ ] **VAL-01**: Single-line `IF`/`ELSE`/end-of-`IF` forms that BBj's compiler accepts (the files re-flagged at the v4.5 phase 98 close) get no "This statement needs to start in a new line" error, while a genuinely misplaced `ELSE` or `FI` with no open `IF` on the line is still reported
 - [ ] **VAL-02**: The use-before-assignment check keeps checking the rest of a file when it meets a reference that has no symbol, instead of throwing and silently skipping the file
+- [ ] **VAL-03**: Calling a method or reading a field that does not exist on a Java class the language server has fully resolved (e.g. `BBjAPI().anyInvalidMethod()`) is reported as an Error that stays visible when the file has other errors, while receivers whose type is not certain keep today's Warning (folded into Phase 107 on 2026-09-24)
 
 ### Diagnostics
 
@@ -77,6 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIG-07 | Phase 106 | Complete |
 | VAL-01 | Phase 107 | Pending |
 | VAL-02 | Phase 107 | Pending |
+| VAL-03 | Phase 107 | Pending |
 | DIAG-01 | Phase 106 | Complete |
 | LIFE-01 | Phase 108 | Pending |
 | LIFE-02 | Phase 108 | Pending |
@@ -89,13 +91,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 18 total
-- Mapped to phases: 18
+- v1 requirements: 19 total
+- Mapped to phases: 19
 - Unmapped: 0 ✓
 
-Per phase: Phase 106 — 9 (TRIG-01..07, DIAG-01, JINT-03); Phase 107 — 2 (VAL-01, VAL-02);
+Per phase: Phase 106 — 9 (TRIG-01..07, DIAG-01, JINT-03); Phase 107 — 3 (VAL-01..03);
 Phase 108 — 2 (LIFE-01, LIFE-02); Phase 109 — 5 (COMP-01..03, JINT-01, JINT-02).
 
 ---
 *Requirements defined: 2026-09-24*
-*Last updated: 2026-09-24 after roadmap creation (traceability filled, 18/18 mapped)*
+*Last updated: 2026-09-24 — VAL-03 added during Phase 107 discussion (19/19 mapped)*

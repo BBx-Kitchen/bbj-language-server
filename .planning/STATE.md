@@ -46,7 +46,7 @@ Progress: [██░░░░░░░░] 25% (1/4 phases)
 | Phase | Name | Requirements | Where it works |
 |-------|------|--------------|----------------|
 | 106 | On-Save Compiler Check in Both IDEs | TRIG-01..07, DIAG-01, JINT-03 | language server (`bbj-document-builder.ts`, save handling, `java-interop.ts` parse lane), IntelliJ trigger setting, VS Code setting description, both feature docs |
-| 107 | Validation False Alarms & Silent Skips | VAL-01, VAL-02 | two validators plus synthetic fixtures; private conformance run for VAL-01 |
+| 107 | Validation False Alarms & Silent Skips | VAL-01..03 | two validators, a new unknown-Java-member check, synthetic fixtures; private conformance run for VAL-01 and VAL-03 |
 | 108 | IntelliJ Crash Detection | LIFE-01, LIFE-02 | `bbj-intellij/` only; runs after 106 (both change `BbjLanguageServerFactory`) |
 | 109 | Completion & Java Class Resolution | COMP-01..03, JINT-01, JINT-02 | scope, type inferer, linker, overload selector, completion provider, `java-interop.ts` `resolveClass` |
 
