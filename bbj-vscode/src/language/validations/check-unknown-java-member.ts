@@ -79,8 +79,12 @@ export function hasCertainReceiverType(receiver: Expression, depth = 0): boolean
             // Class reference, e.g. `String` after `USE java.lang.String`.
             return true;
         }
-        if (isVariableDecl(ref) && !isArrayDecl(ref)) {
-            // DECLARE, a typed field or a typed parameter.
+        if (isVariableDecl(ref) && !isArrayDecl(ref) && ref.arrayDims.length === 0) {
+            // DECLARE, a typed field or a typed parameter -- but not an array of that type.
+            // `declare Type[] var!` (or `Type@[] var!`) parses as a plain VariableDecl/FieldDecl/
+            // ParameterDecl with non-empty arrayDims, not the separate ArrayDecl node the isArrayDecl
+            // guard above already excludes -- an array's own pseudo-members (Java's `.length`) are
+            // not members of the element class itself, so this receiver is not certain either.
             return true;
         }
         if (isAssignment(ref)) {
