@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
 status: executing
-stopped_at: Completed 109-04-PLAN.md
-last_updated: "2026-09-25T18:26:45.896Z"
+stopped_at: Completed 109-05-PLAN.md
+last_updated: "2026-09-25T18:57:14.287Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 109 execution started
-state_head: 9d412415d5dd9194bb4965f10c6341a1a8c846b9
+state_head: db7b73a4a3482ee3529e8fdf6fecf39ef1820c4b
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 75
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 ## Current Position
 
 Phase: 109 (Completion & Java Class Resolution) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 109 execution started
 
@@ -122,6 +122,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 109 P02 | 11min | 2 tasks | 2 files |
 | Phase 109 P03 | 15min | 2 tasks | 4 files |
 | Phase 109 P04 | 10min | 2 tasks | 3 files |
+| Phase 109 P05 | 29min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,8 @@ decisions:
 - [Phase 109]: JINT-01: resolveClassByName's local branch reuses resolveClass's own pipeline (not createStubClass) for primitive/void/array/blank names, keeping the result behaviour-neutral with today's real round trip
 - [Phase 109]: The local-type filter matches whole type names only (a nine-name primitive/void set plus an array suffix), so java.lang.Integer, a bytes package segment, or a class named Voider are never mistaken for a primitive
 - [Phase 109]: The counting test double's BACKEND_PRIMITIVE_NAMES is an independent constant, not shared with production's JAVA_PRIMITIVE_TYPE_NAMES, so the neutrality tests check against a modelled backend rather than a tautology
+- [Phase 109]: Phase 109-05: canonicalJavaClassName returns the whole name unchanged as soon as any $ is directly followed by a digit, rather than normalizing per-$ -- an anonymous/local class name like Foo$1$Bar has no canonical spelling for either segment — Prevents partial rewriting of synthetic class names that have no canonical form
+- [Phase 109]: Phase 109-05: doResolveClassByName gained a second parameter (requestName) instead of re-deriving the original spelling from the canonical key — Canonicalization is one-directional -- a canonical key like com.test.Outer.Inner cannot say whether the caller's original spelling was dotted or $, so only resolveClassByName (which still holds the original string) can supply it
 
 ### Tech Debt
 
@@ -249,8 +252,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T18:26:36.718Z
-Stopped at: Completed 109-04-PLAN.md
+Last session: 2026-09-25T18:57:14.129Z
+Stopped at: Completed 109-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
