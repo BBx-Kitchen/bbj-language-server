@@ -322,23 +322,24 @@ class BbjServerServiceRestartSourceGuardTest {
     }
 
     /**
-     * {@code doRestart} must never clear crash state, and must never unconditionally disarm the
-     * guard either: an unconditional {@code disarm()} right after the bounded wait cannot tell a
-     * delayed exit of the process it just stopped apart from a genuine crash of the one it starts
-     * next, since both would arrive after that disarm already ran. Correlation now happens by pid
-     * ({@code ExpectedStopGuard#notePid}, fed from {@code BbjLanguageServer#stop()}), not by
-     * dropping the token on a timeout.
+     * {@code doRestart} must never clear crash state, and must disarm the guard only when its own
+     * stop completed in time: a token left armed after a clean restart would later absorb a
+     * genuine crash, while a timed-out stop keeps the token (and its noted pid) so a late exit of
+     * the old process is still told apart from a crash of the new one.
      */
     @Test
-    void doRestartNeverClearsCrashStateAndNeverUnconditionallyDisarmsTheGuard() {
+    void doRestartNeverClearsCrashStateAndDisarmsOnlyAfterAStopThatCompletedInTime() {
         String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
         String body = bodyOf(stripped, "private void doRestart()");
 
         assertEquals(0, countOccurrences(body, "clearCrashState("),
                 "doRestart must never clear crash state -- a crash-triggered restart must keep the counter");
-        assertEquals(0, countOccurrences(body, "expectedStop.disarm()"),
-                "doRestart must never call expectedStop.disarm() -- a later report is now told apart "
-                        + "by pid, not by this token's armed/disarmed state");
+        assertEquals(1, countOccurrences(body, "expectedStop.disarm()"),
+                "doRestart must disarm the guard exactly once");
+        assertEquals(1, countOccurrences(body, "if (stoppedInTime) {"),
+                "doRestart's disarm must be gated on the stop having completed in time");
+        assertTrue(body.indexOf("if (stoppedInTime) {") < body.indexOf("expectedStop.disarm()"),
+                "the disarm must sit inside the stoppedInTime branch");
 
         int armIndex = body.indexOf("expectedStop.arm(");
         int stopIndex = body.indexOf(MANAGER_STOP_CALL);

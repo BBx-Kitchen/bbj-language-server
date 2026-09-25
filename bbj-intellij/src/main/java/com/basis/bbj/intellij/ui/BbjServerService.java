@@ -414,9 +414,10 @@ public final class BbjServerService implements Disposable {
         // there is no cost to arming when it turns out not to be needed, but gating the arm on a
         // single, possibly-stale status read risks leaving a genuine expected stop unguarded.
         expectedStop.arm(System.currentTimeMillis());
+        boolean stoppedInTime = false;
         try {
             manager.stop(SERVER_ID, new LanguageServerManager.StopOptions().setWillDisable(false));
-            boolean stoppedInTime = BoundedWait.until(
+            stoppedInTime = BoundedWait.until(
                 () -> isServerObservedDown(manager.getServerStatus(SERVER_ID)),
                 STOP_WAIT_TIMEOUT_MS,
                 STOP_WAIT_POLL_MS,
@@ -430,15 +431,16 @@ public final class BbjServerService implements Disposable {
                     + manager.getServerStatus(SERVER_ID));
             }
         } finally {
-            // Deliberately no unconditional disarm here. The pid that BbjLanguageServer#stop()
-            // attaches to this armed token (see #noteStoppingPid and ExpectedStopGuard#notePid) is
-            // what protects a later crash report from being wrongly swallowed or wrongly
-            // attributed -- not this token's armed/disarmed state. A report that names that pid is
-            // classified as an expected stop no matter how long the old process actually took to
-            // exit; a report naming any other pid, including the freshly started server below, is
-            // still reported as a genuine crash. Disarming unconditionally here would erase the
-            // pid the moment the bounded wait times out, which is exactly the race that let a
-            // delayed exit of the old process get misclassified as a crash of the new one.
+            // A stop that completed in time leaves nothing to correlate: the old process is down and
+            // was stopped deliberately, so no unexpected-exit report can follow for it. Disarm, so
+            // the token cannot linger and later absorb a genuine crash of the server started
+            // below. Only a stop that timed out keeps the token armed, carrying the pid that
+            // BbjLanguageServer#stop() noted for the process being stopped: a late report naming
+            // that pid is still an expected stop, while a report naming the new server's pid is
+            // still a crash.
+            if (stoppedInTime) {
+                expectedStop.disarm();
+            }
             LOG.info("Starting the BBj language server; status before the start: "
                 + manager.getServerStatus(SERVER_ID));
             manager.start(SERVER_ID);

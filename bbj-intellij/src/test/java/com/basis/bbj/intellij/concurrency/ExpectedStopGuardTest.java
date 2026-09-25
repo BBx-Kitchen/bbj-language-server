@@ -159,6 +159,22 @@ class ExpectedStopGuardTest {
             "notePid must attach the pid to the token armed just before it");
     }
 
+    /**
+     * Only the first pid noted after arming sticks. LSP4IJ stops a crashed server before the
+     * crash is reported, so a stale token must not be re-targeted onto the crashed process.
+     */
+    @Test
+    void notePidKeepsTheFirstNotedPidSoALaterStopCannotRetargetTheToken() {
+        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
+
+        guard.arm(0);
+        guard.notePid(1111L);
+        guard.notePid(2222L);
+
+        assertEquals(CRASH, guard.classifyExit(WINDOW_MS * 10, 2222L),
+            "a crash of a different process must stay a crash after its own stop noted its pid");
+    }
+
     /** {@code disarm()} must drop the armed pid along with the timestamp. */
     @Test
     void disarmDropsTheArmedPidToo() {

@@ -69,10 +69,13 @@ public final class ExpectedStopGuard {
      * it becomes known -- callers often cannot supply it to {@link #arm(long)} itself, since
      * knowing which OS process is being stopped requires reaching the connection provider that
      * owns it, a step that happens slightly after arming. A no-op if nothing is currently armed,
-     * so a stray late call can never resurrect an already-consumed or never-armed token.
+     * so a stray late call can never resurrect an already-consumed or never-armed token. Only the
+     * first pid noted after arming sticks: the first stop after arming is the one the token was
+     * armed for, and a later stop -- such as the one LSP4IJ issues for a server that just crashed,
+     * before the crash is reported -- must never re-target the token onto the crashed process.
      */
     public synchronized void notePid(Long pid) {
-        if (armedAtMs != null) {
+        if (armedAtMs != null && armedPid == null) {
             this.armedPid = pid;
         }
     }
