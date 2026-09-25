@@ -379,20 +379,19 @@ Wait for `BBj: Ready`.
 
 | Row | Expected line or UI (substring) | Derived from | Observed? |
 |-----|----------------------------------|---------------|-----------|
-| S7.1 | `Scheduled a BBj language server restart in 500 ms` (config reload path) — or `Scheduled a BBj language server restart in 0 ms` (Refresh Java Classes fallback path) | `BbjLanguageClient.configReloadRequired` → `requestRestart(RESTART_DEBOUNCE_MS)`; or `BbjRefreshJavaClassesAction` → `requestRestart(0)` | derived — not exercised: both 500 ms restarts in this session were Settings Apply (`BbjSettingsConfigurable.scheduleRestart`), not a config reload or the Refresh Java Classes fallback; the `configReloadRequired`/fallback code path reaches the same `requestGatedRestart` entry point observed for scenario 5's Settings Apply |
-| S7.2 | `Restarting the BBj language server; status before the stop: started` | `BbjServerService.doRestart` | derived — not exercised; `doRestart` is the same method observed running for scenarios 5 and 6 |
-| S7.3 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | derived — not exercised; `stop()` is the same method observed running for scenarios 5 and 6 |
-| S7.4 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | derived — not exercised; `updateStatus` is the same method observed logging this transition for scenarios 5 and 6 |
-| S7.5 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | derived — not exercised; same `updateStatus` path as scenarios 5 and 6 |
-| S7.6 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` | derived — not exercised; same `doRestart` path as scenarios 5 and 6 |
-| S7.7 | `BBj language server status: stopped -> stopping` | `BbjServerService.updateStatus` | derived — not exercised; same `updateStatus` path as scenarios 5 and 6 |
-| S7.8 | `BBj language server status: stopping -> starting` | `BbjServerService.updateStatus` | derived — not exercised; same `updateStatus` path as scenarios 5 and 6 |
-| S7.9 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | derived — not exercised; the same constructor logged this line for scenarios 5 and 6 |
-| S7.10 | `BBj language server status: starting -> started` | `BbjServerService.updateStatus` | derived — not exercised; same `updateStatus` path as scenarios 5 and 6 |
-| S7.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | derived — not exercised; `applyCrashPolicy` is not reached on this path, the same as observed for scenarios 5 and 6 |
-| S7.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | derived — not exercised; this is the same `EXPECTED_RESTART_STOP` alternative branch left derived-only for scenarios 5 and 6 |
-| S7.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | derived — not exercised; no rows were logged for this scenario, so there is no chain to check |
-
+| S7.1 | `Scheduled a BBj language server restart in 500 ms` (config reload path) — or `Scheduled a BBj language server restart in 0 ms` (Refresh Java Classes fallback path) | `BbjLanguageClient.configReloadRequired` → `requestRestart(RESTART_DEBOUNCE_MS)`; or `BbjRefreshJavaClassesAction` → `requestRestart(0)` | observed 16:52:47.144 `Scheduled a BBj language server restart in 500 ms` — maintainer changed the PREFIX line of the configured `config.bbx` and saved it (IDE save at 16:52:46) with the Settings dialog closed (no Settings-open lines precede it), so this is the `configReloadRequired` path; the console reload line was not pasted |
+| S7.2 | `Restarting the BBj language server; status before the stop: started` | `BbjServerService.doRestart` | observed 16:52:47.645 |
+| S7.3 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | observed 16:52:47.646 (pid 21464, process alive: true) |
+| S7.4 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | observed 16:52:47.645 |
+| S7.5 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | observed 16:52:47.646 |
+| S7.6 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` | observed 16:52:47.700 |
+| S7.7 | `BBj language server status: stopped -> stopping` | `BbjServerService.updateStatus` | observed 16:52:47.700 |
+| S7.8 | `BBj language server status: stopping -> starting` | `BbjServerService.updateStatus` | missing — no `stopping -> starting`; at 16:52:47.700 the log shows `stopped -> stopping`, `stopping -> stopped`, `stopped -> starting` instead. The chain stays intact and the server reached `started`; the expected line was over-specific about LSP4IJ's intermediate transitions (the 16:27:34 crash restart shows the same `stopping -> stopped` detour). Maintainer decision: recorded as missing, scenario still passes |
+| S7.9 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | observed 16:52:47.700 |
+| S7.10 | `BBj language server status: starting -> started` | `BbjServerService.updateStatus` | observed 16:52:48.041 |
+| S7.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | observed absent (no `exited unexpectedly` in the 16:52:47 window) |
+| S7.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | derived — the race did not occur; `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch |
+| S7.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | observed (`started -> stopping -> stopped -> stopping -> stopped -> starting -> started`, each from-state equal to the previous to-state) |
 ### Scenario excerpts (observed)
 
 **Redaction rule:** before pasting any line from a real `idea.log`, replace the macOS home
@@ -403,10 +402,9 @@ text.
 lines, in run order (7, 5, 3, 4, 6, 1, 2).
 
 The lines below are the maintainer's own `grep "BBj language server" idea.log` output for the
-IDE session starting 16:25:44 on 2026-09-25 (already redacted). Scenario 7 (config reload, or
-the Refresh Java Classes fallback) was not run in this session: both 500 ms restarts present
-are Settings Apply (scenario 5), not scenario 7 — see the Scenario 7 table, which is derived
-only.
+IDE session starting 16:25:44 on 2026-09-25 (already redacted). Both 500 ms restarts in the
+first block are Settings Apply (scenario 5). Scenario 7 was run afterwards in the same session
+(second block): a saved PREFIX change to the configured `config.bbx`, with Settings closed.
 
 ```text
 --- startup (16:25:44) ---
@@ -517,6 +515,23 @@ only.
 16:28:12,931 [ 174885]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
 ```
 
+```text
+--- scenario 7, saved PREFIX change to config.bbx, Settings closed (16:52:47) ---
+16:52:47,144 [1649098]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - Scheduled a BBj language server restart in 500 ms
+16:52:47,645 [1649599]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - Restarting the BBj language server; status before the stop: started
+16:52:47,645 [1649599]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: started -> stopping
+16:52:47,646 [1649600]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - BBj language server connection stop requested (pid 21464, process alive: true)
+16:52:47,646 [1649600]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: stopping -> stopped
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - Starting the BBj language server; status before the start: stopped
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: stopped -> stopping
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: stopping -> stopped
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: stopped -> starting
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Resolving a Node.js executable for the BBj language server. Configured: "/opt/homebrew/opt/node@22/bin/node"; detected on PATH: "/opt/homebrew/opt/node@22/bin/node"; downloaded: <none>; download directory accessible: true
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /opt/homebrew/opt/node@22/bin/node "<home>/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/bbj-intellij/lib/language-server/main.cjs" --stdio (working directory: <home>/<project>)
+16:52:47,700 [1649654]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - BBj language server unexpected-stop handler registered beside LSP4IJ's own
+16:52:48,041 [1649995]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
 ### Criterion 3 check (from-state chain, whole session)
 
 Every status line's from-state equals the previous status line's to-state across the whole
@@ -538,10 +553,10 @@ starts from that instance's own initial `stopped`, not from the disposed instanc
   disarm proof from scenario 6 holds (S1.17).
 - **Scenario 2 (second kill within 30 s):** pass. Crash-2 and give-up WARNs, balloon and banner
   observed (S2.1-S2.5, S2.7); the S2.11 alternative — LSP4IJ restarting the server itself after
-  an editor click, with no `Scheduled` line — was observed at 16:27:44, and confirms an
-  LSP4IJ-driven `started` does not by itself reset the plugin's crash counter or clear the
-  give-up state, by design (the give-up state only cleared on the maintainer's own manual
-  restart at 16:28:12, S2.9-S2.10). The maintainer's extra, unscripted third kill also gave up
+  an editor click, with no `Scheduled` line — was observed at 16:27:44; that `started` cleared the
+  Crashed/give-up display (the maintainer saw `BBj: Ready`) but not the crash counter, by
+  design, so the next kill within the window still counted as a repeat crash. The banner's
+  manual restart at 16:28:12 was observed as well (S2.9-S2.10). The maintainer's extra, unscripted third kill also gave up
   correctly (crash 3, S2.1-S2.2) and reproduced the S2.8 behaviour (clicks did not restart the
   server; the widget stayed Crashed for about 16 s until the manual restart).
 - **Scenario 3 (close the last BBj file):** pass. `started -> stopping` observed (S3.1); the file
@@ -558,20 +573,24 @@ starts from that instance's own initial `stopped`, not from the disposed instanc
   with no `exited unexpectedly` (S6.11); the race alternative (S6.12) again did not occur and
   stays derived; the disarm proof (S6.14) is confirmed by scenario 1's kill 16 s later still
   registering as a crash.
-- **Scenario 7 (config reload / Refresh Java Classes fallback):** not exercised — derived only.
-  No rows in this table are backed by an observed line; both 500 ms restarts present in the
-  session are Settings Apply (scenario 5), not a config reload or the fallback action. This
-  scenario is not counted as passed.
+- **Scenario 7 (config reload):** pass. A saved PREFIX change to the configured `config.bbx`
+  (16:52:46, Settings closed) scheduled the 500 ms restart and ran the full stop/start sequence
+  to `started` with no `exited unexpectedly` (S7.1-S7.7, S7.9-S7.11, S7.13 observed). S7.8 is
+  recorded missing: LSP4IJ went `stopping -> stopped -> starting` rather than
+  `stopping -> starting`; the chain is intact, the expected line was over-specific, and per the
+  maintainer's decision this does not fail the scenario. The Refresh Java Classes fallback entry
+  (`requestRestart(0)`) was not exercised and stays derived; it shares `requestGatedRestart`
+  with scenario 6's observed 0 ms restart.
 
 **Mapping to ROADMAP success criteria 1-4:**
 1. *A first crash is auto-restarted once, quietly; a second within 30 s gives up with the
    balloon and banner* — met by scenarios 1 and 2, both pass, fully observed.
 2. *Deliberate stops and the plugin's own restarts are never crashes* — met by scenarios 3, 4, 5
-   and 6, all pass and observed (with the documented alternatives on 3, 5 and 6); scenario 7 is
-   derived only and was not run.
+   and 6, and 7, all pass and observed (with the documented alternatives on 3, 5 and 6, and S7.8
+   recorded missing as an over-specific expectation).
 3. *Every status line names the real previous status* — met; see the criterion 3 check above,
-   which holds with no gap across the entire session, including both crash windows and the
-   double-start race.
+   which holds with no gap across the entire session, including both crash windows, the
+   double-start race and the 16:52:47 config-reload restart.
 4. *One build passes hand UAT on a running IntelliJ on macOS* — met by this run: build identity
    recorded above, whole IntelliJ suite green with `--rerun-tasks`, and the maintainer ran the
    scenarios against the built zip.
@@ -581,7 +600,9 @@ disappeared on its own once the server restarted, and one needed manual closing.
 notification (LSP4IJ's own vs. the plugin's `BBj Language Server crashed unexpectedly` balloon)
 was which was not established by the maintainer's reply, and is not guessed here.
 
-**Overall verdict: pass**, with scenario 7 left derived only, not run, and not counted as
-passed. Everything else — the crash/no-crash classification, the give-up-after-second-crash
-behavior, the widget/balloon/banner UI, the restart-token disarm proof, and the from-state chain
-across the whole session — is observed and holds.
+**Overall verdict: pass.** All seven scenarios were run and pass. One expected line (S7.8) is
+recorded missing because the script over-specified LSP4IJ's intermediate status steps; the
+maintainer ruled it does not fail scenario 7. The Refresh Java Classes fallback entry to
+scenario 7 was not exercised. Everything else — the crash/no-crash classification, the
+give-up-after-second-crash behavior, the widget/balloon/banner UI, the restart-token disarm
+proof, and the from-state chain across the whole session — is observed and holds.
