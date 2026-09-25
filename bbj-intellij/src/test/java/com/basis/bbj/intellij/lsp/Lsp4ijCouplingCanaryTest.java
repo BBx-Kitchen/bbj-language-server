@@ -352,6 +352,86 @@ class Lsp4ijCouplingCanaryTest {
         assertTrue(StreamConnectionProvider.class.isAssignableFrom(OSProcessStreamConnectionProvider.class));
     }
 
+    /**
+     * Pins every vendor member the unexpected-stop hook depends on: the registration method and
+     * {@code stop()} itself (both public, overridable), the pid and liveness accessors, the
+     * protected process-handler accessor, the package-private stopped flag LSP4IJ's own process
+     * listener reads (documented here, never called from this plugin's own package), the platform's
+     * exit-code accessor, and the vendor listener method that runs the registered handlers.
+     */
+    @Test
+    void theUnexpectedStopMembersThisPluginHooksStillExist() throws Exception {
+        Method addHandler = OSProcessStreamConnectionProvider.class.getMethod(
+            "addUnexpectedServerStopHandler", Runnable.class);
+        assertEquals(void.class, addHandler.getReturnType(),
+            "addUnexpectedServerStopHandler(Runnable) no longer returns void");
+        assertTrue(Modifier.isPublic(addHandler.getModifiers()),
+            "addUnexpectedServerStopHandler must stay public -- this plugin overrides it");
+        assertFalse(Modifier.isFinal(addHandler.getModifiers()),
+            "addUnexpectedServerStopHandler must stay overridable");
+
+        Method stop = OSProcessStreamConnectionProvider.class.getMethod("stop");
+        assertEquals(void.class, stop.getReturnType(), "stop() no longer returns void");
+        assertTrue(Modifier.isPublic(stop.getModifiers()), "stop() must stay public -- this plugin overrides it");
+        assertFalse(Modifier.isFinal(stop.getModifiers()), "stop() must stay overridable");
+
+        Method getPid = OSProcessStreamConnectionProvider.class.getMethod("getPid");
+        assertEquals(Long.class, getPid.getReturnType(), "getPid() no longer returns Long");
+        assertTrue(Modifier.isPublic(getPid.getModifiers()), "getPid() must stay public");
+
+        Method isAlive = OSProcessStreamConnectionProvider.class.getMethod("isAlive");
+        assertEquals(boolean.class, isAlive.getReturnType(), "isAlive() no longer returns boolean");
+        assertTrue(Modifier.isPublic(isAlive.getModifiers()), "isAlive() must stay public");
+
+        Method getProcessHandler = OSProcessStreamConnectionProvider.class.getDeclaredMethod("getProcessHandler");
+        assertEquals(com.intellij.execution.process.OSProcessHandler.class, getProcessHandler.getReturnType(),
+            "getProcessHandler() no longer returns OSProcessHandler");
+        assertTrue(Modifier.isProtected(getProcessHandler.getModifiers()),
+            "getProcessHandler() must stay protected -- this plugin's subclass calls it");
+
+        // Package-private: documented here so a signature change is noticed, but this plugin's own
+        // package (com.basis.bbj.intellij.lsp) can never call it directly -- only LSP4IJ's own
+        // process listener, in a different package, may.
+        Method isStopped = OSProcessStreamConnectionProvider.class.getDeclaredMethod("isStopped");
+        assertEquals(boolean.class, isStopped.getReturnType(), "isStopped() no longer returns boolean");
+        int isStoppedModifiers = isStopped.getModifiers();
+        assertFalse(Modifier.isPublic(isStoppedModifiers) || Modifier.isProtected(isStoppedModifiers)
+                || Modifier.isPrivate(isStoppedModifiers),
+            "isStopped() must stay package-private -- this plugin must never call it directly");
+
+        Method getExitCode = com.intellij.execution.process.ProcessHandler.class.getMethod("getExitCode");
+        assertEquals(Integer.class, getExitCode.getReturnType(), "ProcessHandler.getExitCode() no longer returns Integer");
+
+        Class<?> lspProcessListener = Class.forName("com.redhat.devtools.lsp4ij.server.LSPProcessListener");
+        Method processTerminated = lspProcessListener.getDeclaredMethod(
+            "processTerminated", com.intellij.execution.process.ProcessEvent.class);
+        assertEquals(void.class, processTerminated.getReturnType(),
+            "LSPProcessListener.processTerminated(ProcessEvent) no longer returns void -- this is "
+                + "the method that runs every registered unexpected-stop handler");
+    }
+
+    /**
+     * Pins the two vendor members the status-feed override depends on: this hook is the status
+     * feed for display and logging, not crash detection.
+     */
+    @Test
+    void theClientFeaturesStatusMembersThisPluginOverridesStillExist() throws NoSuchMethodException {
+        Method handleServerStatusChanged = LSPClientFeatures.class.getMethod(
+            "handleServerStatusChanged", ServerStatus.class);
+        assertEquals(void.class, handleServerStatusChanged.getReturnType(),
+            "LSPClientFeatures.handleServerStatusChanged(ServerStatus) no longer returns void -- "
+                + "this plugin's status-feed override depends on this exact signature");
+        assertFalse(Modifier.isFinal(handleServerStatusChanged.getModifiers()),
+            "handleServerStatusChanged must stay overridable");
+
+        // getProject() is the only route back to the Project from inside the override, since
+        // createClientFeatures() itself receives no Project parameter.
+        Method getProject = LSPClientFeatures.class.getMethod("getProject");
+        assertEquals(com.intellij.openapi.project.Project.class, getProject.getReturnType(),
+            "LSPClientFeatures.getProject() no longer returns Project -- the status-feed override "
+                + "can no longer resolve the project it must feed BbjServerService with");
+    }
+
     @Test
     void theFactoryInterfaceMembersThisPluginImplementsStillExist() throws NoSuchMethodException {
         Method createConnectionProvider = LanguageServerFactory.class.getMethod(
