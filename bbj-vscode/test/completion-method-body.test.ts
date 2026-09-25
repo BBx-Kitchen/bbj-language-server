@@ -180,13 +180,22 @@ describe.runIf(!!process.env.MEASURE_COMPLETION_OUT)('method body completion mea
 });
 
 // Pins: one non-skipped test per row measured `works` in the before-fix record; a row measured
-// `broken` stays `test.skip` (with its reason) until a later task fixes or records it.
+// `broken` would stay `test.skip` (with its reason) until fixed or recorded out of reach. Every
+// row in this matrix measured `works` on the unmodified tree (see the phase measurement record),
+// so every row is pinned here.
 describe('completion inside class method bodies (issue #561)', () => {
     for (const row of MATRIX) {
-        test.skip(`${row.name}: broken before any fix, see the phase measurement`, async () => {
+        test(row.name, async () => {
             const inMethodLabels = await labelsAt(inMethod(row.body), row.trigger);
             const controlLabels = await labelsAt(atProgramScope(row.control ?? row.body), row.trigger);
-            expect(verdict(inMethodLabels, controlLabels, row).verdict).toBe('works');
+            const result = verdict(inMethodLabels, controlLabels, row);
+            expect(result.verdict).toBe('works');
+            for (const label of row.expected ?? []) {
+                expect(inMethodLabels.has(label)).toBe(true);
+            }
+            for (const label of row.absent ?? []) {
+                expect(inMethodLabels.has(label)).toBe(false);
+            }
         });
     }
 });

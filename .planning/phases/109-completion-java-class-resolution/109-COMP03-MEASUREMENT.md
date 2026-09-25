@@ -75,12 +75,49 @@ recorded; the corrected matrix in `test/completion-method-body.test.ts` follows 
 
 ## Broken positions
 
-None. Every row in the D-03 matrix (and the verbatim skipped DEF FN test) measured `works` on the
-current, unmodified tree.
+None. Every row in the position matrix (and the verbatim skipped DEF FN test) measured `works` on
+the unmodified tree, and none needed a fix.
+
+## After this plan
+
+The recorder was re-run (`MEASURE_COMPLETION_OUT=/tmp/phase-109-method-body-after-01.jsonl`) after
+this plan's own change (un-skipping the DEF FN test and pinning every position matrix row — no
+completion-provider or grammar change was made, since every row already measured `works`). The
+re-run produced byte-identical output to the before-fix table above: every row still measures
+`works`, with the same in-method/control counts. `test/completion-test.test.ts:186`'s DEF FN test
+now runs un-skipped with its original assertions, unmodified, and passes; only its stale
+0-items-in-method comment block was removed.
 
 ## #561 decision
 
-(filled by Task 2 with the drafted maintainer comment, and by Task 3 with the chosen option)
+**Drafted comment (not posted):**
+
+> Re-measured completion inside class method bodies against the current language server. A matrix
+> of nine positions was tested inside a class method body against the same position at program
+> scope as a control: the start of a statement, right after `=`, a `PRINT` argument, a function-call
+> argument, member access after `.`, inside an `IF` nested in a method, inside a `FOR` nested in a
+> method, a `DEF FN` nested in a method (this issue's own reported scenario), the first line right
+> after `METHOD`, the last line right before `METHODEND`, and an empty method body. Every position
+> now returns the same completion candidates as its program-scope control.
+>
+> The test this issue originally reported against — completion for a `DEF FN`'s own `$`-suffixed
+> parameters inside a method body — now passes unmodified when run. It is pinned, along with the
+> full position matrix, in `test/completion-method-body.test.ts` and
+> `test/completion-test.test.ts`, so a future regression on any of these positions will be caught.
+>
+> No position stayed out of reach; nothing needed a completion-provider or grammar change.
+
+- **Positions measured:** all eleven position-matrix rows (see the Before-fix measurement table
+  above), plus the issue's own DEF FN scenario (the verbatim skipped test).
+- **Positions that work:** all of them — no position stays out of reach.
+- **Positions that stay out of reach:** none.
+- **Pinning test files:** `bbj-vscode/test/completion-method-body.test.ts` (position matrix),
+  `bbj-vscode/test/completion-test.test.ts` (the DEF FN scenario, now un-skipped).
+
+The maintainer's chosen option (recorded at the phase's blocking checkpoint) and the final comment
+text (with any edits) are recorded below.
+
+**Chosen option:** (filled at the checkpoint)
 
 ## Final state
 
