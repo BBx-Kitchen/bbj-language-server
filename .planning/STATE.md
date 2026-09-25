@@ -5,17 +5,17 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
 status: executing
-stopped_at: Phase 109 context gathered
-last_updated: "2026-09-25T17:19:04.404Z"
+stopped_at: Completed 109-01-PLAN.md
+last_updated: "2026-09-25T17:45:32.724Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 109 execution started
-state_head: aaa390c72bdd0ce6bd170d9ca958adf4dfbceb62
+state_head: c71a477f76f5c9a3ba342bd531d4c3cea4f0e113
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_plans: 18
+  percent: 75
 ---
 
 # Project State: BBj Language Server
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 ## Current Position
 
 Phase: 109 (Completion & Java Class Resolution) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 109
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-09-25 — Phase 109 execution started
 
 Progress: [████████░░] 75% (3/4 phases)
@@ -118,6 +118,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 108 P02 | 17min | 2 tasks | 7 files |
 | Phase 108 P03 | 11min | 2 tasks | 5 files |
 | Phase 108 P04 | 25min | 3 tasks | 1 files |
+| Phase 109 P01 | 20min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,8 @@ decisions:
 - [Phase 108]: Phase 108-03: Task 1's tracer feedback gate re-ran the task's automated verify in auto mode and passed, so execution proceeded straight to Task 2 with no checkpoint — workflow.auto_advance=true and the task carries no gate=blocking-human, so the gate followed row 2 of the tracer feedback gate precedence chain
 - [Phase 108]: Scenario 7 (config reload / Refresh Java Classes fallback) was not exercised in the maintainer's UAT session; every S7.k row is marked derived rather than passed, per D-15.
 - [Phase 108]: The maintainer's unscripted extra third kill (crash 3) is folded into Scenario 2's evidence as corroboration, not treated as a script deviation.
+- [Phase 109]: Phase 109-01: every D-03 position (11-row matrix plus the verbatim DEF FN scenario) already worked on the unmodified tree, so branch A applied throughout Task 2 -- no completion-provider or grammar change was made, only un-skipping and pinning
+- [Phase 109]: Phase 109-01: the maintainer chose comment-and-close for issue #561 at the Task 3 checkpoint -- post the drafted comment unchanged and close the issue as completed; nothing posted or closed from this plan, plan 109-06 carries it out after the phase regression gate
 
 ### Tech Debt
 
@@ -237,9 +240,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T16:25:41.228Z
-Stopped at: Phase 109 context gathered
-Resume file: .planning/phases/109-completion-java-class-resolution/109-CONTEXT.md
+Last session: 2026-09-25T17:45:32.517Z
+Stopped at: Completed 109-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

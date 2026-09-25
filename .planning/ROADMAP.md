@@ -471,12 +471,12 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 109-01-PLAN.md — COMP-03: before-fix measurement of completion inside class method bodies recorded in the phase dir, working positions pinned, DEF FN `_f$`/`_t$` test un-skipped, broken positions fixed within budget or recorded; maintainer decides #561 handling (checkpoint)
+- [x] 109-01-PLAN.md — COMP-03: before-fix measurement of completion inside class method bodies recorded in the phase dir, working positions pinned, DEF FN `_f$`/`_t$` test un-skipped, broken positions fixed within budget or recorded; maintainer decides #561 handling (checkpoint)
 - [ ] 109-02-PLAN.md — COMP-01: `isClassRef` also recognises a `MemberCall` receiver naming a Java class, so `java.lang.String.` offers statics only (`class` pseudo-member excluded)
 - [ ] 109-03-PLAN.md — COMP-02: node-preserving overload selection shared with inlay hints; type inferer uses the matching overload's return type, no type on an undecided tie
 - [ ] 109-04-PLAN.md — JINT-01: primitive, `void`, array and blank names answered locally at the top of `resolveClassByName` with today's result; counting test double
@@ -540,7 +540,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Complete | 2026-09-24 |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Complete | 2026-09-25 |
 | 108. IntelliJ Crash Detection | 4/4 | Complete | 2026-09-25 |
-| 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
+| 109. Completion & Java Class Resolution | 1/6 | Not started |  |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
 19/19 requirements mapped to 4 phases (VAL-03 added to Phase 107 on 2026-09-24), no orphans and no duplicates. Scope is in
