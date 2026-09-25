@@ -471,7 +471,7 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -487,7 +487,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 109-06-PLAN.md — Live :5008 cold-start check, whole-suite gate against the base commit, register check, COMP-03 final record, #561 action
+- [x] 109-06-PLAN.md — Live :5008 cold-start check, whole-suite gate against the base commit, register check, COMP-03 final record, #561 action
 
 *Planning notes:* #561's recorded root cause is that the completion engine's grammar follower
 produces no candidate positions inside `MethodDecl.body` at all. COMP-03 may therefore need a
@@ -540,7 +540,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Complete | 2026-09-24 |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Complete | 2026-09-25 |
 | 108. IntelliJ Crash Detection | 4/4 | Complete | 2026-09-25 |
-| 109. Completion & Java Class Resolution | 5/6 | Not started |  |
+| 109. Completion & Java Class Resolution | 6/6 | Not started |  |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
 19/19 requirements mapped to 4 phases (VAL-03 added to Phase 107 on 2026-09-24), no orphans and no duplicates. Scope is in

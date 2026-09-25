@@ -4,17 +4,17 @@ milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
-status: executing
-stopped_at: Completed 109-05-PLAN.md
-last_updated: "2026-09-25T18:57:14.287Z"
+status: verifying
+stopped_at: Completed 109-06-PLAN.md
+last_updated: "2026-09-25T19:22:43.273Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 109 execution started
-state_head: db7b73a4a3482ee3529e8fdf6fecf39ef1820c4b
+state_head: 3132b2ef850926a0ac4095a057d68129e8eff6b5
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
   percent: 75
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 Phase: 109 (Completion & Java Class Resolution) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-25 — Phase 109 execution started
 
 Progress: [████████░░] 75% (3/4 phases)
@@ -123,6 +123,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 109 P03 | 15min | 2 tasks | 4 files |
 | Phase 109 P04 | 10min | 2 tasks | 3 files |
 | Phase 109 P05 | 29min | 2 tasks | 2 files |
+| Phase 109 P06 | 24min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -194,6 +195,9 @@ decisions:
 - [Phase 109]: The counting test double's BACKEND_PRIMITIVE_NAMES is an independent constant, not shared with production's JAVA_PRIMITIVE_TYPE_NAMES, so the neutrality tests check against a modelled backend rather than a tautology
 - [Phase 109]: Phase 109-05: canonicalJavaClassName returns the whole name unchanged as soon as any $ is directly followed by a digit, rather than normalizing per-$ -- an anonymous/local class name like Foo$1$Bar has no canonical spelling for either segment — Prevents partial rewriting of synthetic class names that have no canonical form
 - [Phase 109]: Phase 109-05: doResolveClassByName gained a second parameter (requestName) instead of re-deriving the original spelling from the canonical key — Canonicalization is one-directional -- a canonical key like com.test.Outer.Inner cannot say whether the caller's original spelling was dotted or $, so only resolveClassByName (which still holds the original string) can supply it
+- [Phase 109]: Phase 109-06: the live cold-start evidence was captured for real (backend reachable on :5008), not the record-why-it-could-not-run fallback -- 635 getRawClass requests and 1106 Resolving class debug lines, none for a primitive/void/array/blank name
+- [Phase 109]: Phase 109-06: the regression gate judged live-gated suites by failing test name against a scratch worktree at the phase base, not by count -- the 11 linking.test.ts interop failures on both trees are the pre-existing test-harness false positive, confirmed by name match, never relabeled as noise without that comparison
+- [Phase 109]: Phase 109-06: issue #561 was posted and closed (comment-and-close) only after re-confirming the Final state section still matched the drafted comment's claim that no completion position stayed out of reach
 
 ### Tech Debt
 
@@ -252,8 +256,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T18:57:14.129Z
-Stopped at: Completed 109-05-PLAN.md
+Last session: 2026-09-25T19:22:42.986Z
+Stopped at: Completed 109-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.

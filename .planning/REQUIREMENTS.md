@@ -37,12 +37,12 @@
 
 - [x] **COMP-01**: Completion after a fully-qualified Java class reference typed without `USE` (e.g. `java.lang.String.`) offers only static members, as it already does after a `USE`d class name (#577)
 - [x] **COMP-02**: A call to an overloaded BBj or Java method gets the return type of the overload that matches the call's arguments, so completion and checks on the result use the right type (#556)
-- [ ] **COMP-03**: Completion works inside class method bodies; how far the gap reaches is measured first, and every position found broken is fixed or recorded with its reason (#561)
+- [x] **COMP-03**: Completion works inside class method bodies; how far the gap reaches is measured first, and every position found broken is fixed or recorded with its reason (#561)
 
 ### Java interop
 
-- [ ] **JINT-01**: Primitive types, `void` and array types are never sent to the java-interop backend as class lookups (#660)
-- [ ] **JINT-02**: A nested Java class is resolved once, whether it is named `Outer.Inner` or `Outer$Inner` (#659)
+- [x] **JINT-01**: Primitive types, `void` and array types are never sent to the java-interop backend as class lookups (#660)
+- [x] **JINT-02**: A nested Java class is resolved once, whether it is named `Outer.Inner` or `Outer$Inner` (#659)
 - [x] **JINT-03**: The live parse no longer waits on the shared interop connection or its circuit breaker before using its own connection
 
 ## Future Requirements
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIFE-02 | Phase 108 | Complete |
 | COMP-01 | Phase 109 | Complete |
 | COMP-02 | Phase 109 | Complete |
-| COMP-03 | Phase 109 | Pending |
-| JINT-01 | Phase 109 | Pending |
-| JINT-02 | Phase 109 | Pending |
+| COMP-03 | Phase 109 | Complete |
+| JINT-01 | Phase 109 | Complete |
+| JINT-02 | Phase 109 | Complete |
 | JINT-03 | Phase 106 | Complete |
 
 **Coverage:**
