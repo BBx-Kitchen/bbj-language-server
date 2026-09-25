@@ -160,4 +160,97 @@ class BbjStatusBarWidgetSourceGuardTest {
         }
         return sourceFor(simpleName);
     }
+
+    /**
+     * Copied from {@code lsp.Lsp4ijImportAllowlistTest.stripComments} -- that method is
+     * package-private in another package, so this guard keeps its own copy rather than reach
+     * across packages.
+     */
+    private static String stripComments(String source) {
+        StringBuilder result = new StringBuilder(source.length());
+        int i = 0;
+        int n = source.length();
+        while (i < n) {
+            char c = source.charAt(i);
+            if (c == '/' && i + 1 < n && source.charAt(i + 1) == '/') {
+                int end = source.indexOf('\n', i);
+                if (end == -1) {
+                    break;
+                }
+                i = end;
+                continue;
+            }
+            if (c == '/' && i + 1 < n && source.charAt(i + 1) == '*') {
+                int end = source.indexOf("*/", i + 2);
+                i = (end == -1) ? n : end + 2;
+                continue;
+            }
+            if (c == '"' || c == '\'') {
+                char quote = c;
+                result.append(c);
+                i++;
+                while (i < n) {
+                    char sc = source.charAt(i);
+                    result.append(sc);
+                    i++;
+                    if (sc == '\\' && i < n) {
+                        result.append(source.charAt(i));
+                        i++;
+                        continue;
+                    }
+                    if (sc == quote) {
+                        break;
+                    }
+                }
+                continue;
+            }
+            result.append(c);
+            i++;
+        }
+        return result.toString();
+    }
+
+    /**
+     * Pins the crashed-state rendering: each render hook reads the crashed flag first, the
+     * crashed text literal appears exactly once, and only the tooltip hook also reads the
+     * give-up flag.
+     */
+    @Test
+    void crashedStateIsReadBeforeTheStatusSwitchInEachRenderHookAndRendersOnlyOnce() {
+        String stripped = stripComments(readSource(BBJ_STATUS_BAR_WIDGET_SOURCE));
+
+        String iconForBody = sliceBetween(stripped,
+                "protected Icon iconFor(ServerStatus status) {",
+                "protected String textFor(ServerStatus status) {");
+        assertEquals(1, countOccurrences(iconForBody, "isServerCrashed()"),
+                "iconFor must read isServerCrashed() exactly once");
+        assertTrue(iconForBody.indexOf("isServerCrashed()") < iconForBody.indexOf("switch (status)"),
+                "iconFor must read isServerCrashed() before its switch");
+        assertEquals(0, countOccurrences(iconForBody, "isAutoRestartAbandoned()"),
+                "iconFor must not read isAutoRestartAbandoned()");
+
+        String textForBody = sliceBetween(stripped,
+                "protected String textFor(ServerStatus status) {",
+                "protected String tooltipFor(ServerStatus status, String text) {");
+        assertEquals(1, countOccurrences(textForBody, "isServerCrashed()"),
+                "textFor must read isServerCrashed() exactly once");
+        assertTrue(textForBody.indexOf("isServerCrashed()") < textForBody.indexOf("switch (status)"),
+                "textFor must read isServerCrashed() before its switch");
+        assertEquals(0, countOccurrences(textForBody, "isAutoRestartAbandoned()"),
+                "textFor must not read isAutoRestartAbandoned()");
+
+        String tooltipForBody = sliceBetween(stripped,
+                "protected String tooltipFor(ServerStatus status, String text) {",
+                "protected void addPopupItems(JPopupMenu popup) {");
+        assertEquals(1, countOccurrences(tooltipForBody, "isServerCrashed()"),
+                "tooltipFor must read isServerCrashed() exactly once");
+        assertTrue(tooltipForBody.indexOf("isServerCrashed()")
+                        < tooltipForBody.indexOf("ConfigReloadPresentation.widgetTooltip("),
+                "tooltipFor must read isServerCrashed() before ConfigReloadPresentation.widgetTooltip(");
+        assertEquals(1, countOccurrences(tooltipForBody, "isAutoRestartAbandoned()"),
+                "tooltipFor must read isAutoRestartAbandoned() exactly once");
+
+        assertEquals(1, countOccurrences(stripped, "\"BBj: Crashed\""),
+                "the stripped file must contain the literal \"BBj: Crashed\" exactly once");
+    }
 }
