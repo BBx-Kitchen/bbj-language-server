@@ -36,7 +36,7 @@
 ### Completion and type inference
 
 - [x] **COMP-01**: Completion after a fully-qualified Java class reference typed without `USE` (e.g. `java.lang.String.`) offers only static members, as it already does after a `USE`d class name (#577)
-- [ ] **COMP-02**: A call to an overloaded BBj or Java method gets the return type of the overload that matches the call's arguments, so completion and checks on the result use the right type (#556)
+- [x] **COMP-02**: A call to an overloaded BBj or Java method gets the return type of the overload that matches the call's arguments, so completion and checks on the result use the right type (#556)
 - [ ] **COMP-03**: Completion works inside class method bodies; how far the gap reaches is measured first, and every position found broken is fixed or recorded with its reason (#561)
 
 ### Java interop
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIFE-01 | Phase 108 | Complete |
 | LIFE-02 | Phase 108 | Complete |
 | COMP-01 | Phase 109 | Complete |
-| COMP-02 | Phase 109 | Pending |
+| COMP-02 | Phase 109 | Complete |
 | COMP-03 | Phase 109 | Pending |
 | JINT-01 | Phase 109 | Pending |
 | JINT-02 | Phase 109 | Pending |
