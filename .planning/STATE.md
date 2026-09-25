@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
 status: executing
-stopped_at: Completed 109-01-PLAN.md
-last_updated: "2026-09-25T17:45:32.724Z"
+stopped_at: Completed 109-02-PLAN.md
+last_updated: "2026-09-25T17:58:26.484Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 109 execution started
-state_head: c71a477f76f5c9a3ba342bd531d4c3cea4f0e113
+state_head: ee145d947dee6fedac8d157db1cd80c90e790346
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 18
+  completed_plans: 19
   percent: 75
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 ## Current Position
 
 Phase: 109 (Completion & Java Class Resolution) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 109 execution started
 
@@ -119,6 +119,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 108 P03 | 11min | 2 tasks | 5 files |
 | Phase 108 P04 | 25min | 3 tasks | 1 files |
 | Phase 109 P01 | 20min | 3 tasks | 3 files |
+| Phase 109 P02 | 11min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ decisions:
 - [Phase 108]: The maintainer's unscripted extra third kill (crash 3) is folded into Scenario 2's evidence as corroboration, not treated as a script deviation.
 - [Phase 109]: Phase 109-01: every D-03 position (11-row matrix plus the verbatim DEF FN scenario) already worked on the unmodified tree, so branch A applied throughout Task 2 -- no completion-provider or grammar change was made, only un-skipping and pinning
 - [Phase 109]: Phase 109-01: the maintainer chose comment-and-close for issue #561 at the Task 3 checkpoint -- post the drafted comment unchanged and close the issue as completed; nothing posted or closed from this plan, plan 109-06 carries it out after the phase regression gate
+- [Phase 109]: Phase 109-02: Invoked-trigger completion at a dangling MemberCall position merges in a "start new statement" fallback -- after USE, that fallback additionally offers the bare class name itself as a program-scope symbol with no equivalent in the no-USE form; the Invoked-trigger label-set comparison filters that one known artifact, the dot-trigger comparison needed no allowance
+- [Phase 109]: Phase 109-02: every Task 2 guard (instance access, .class, package, no-static-member class, case-variant receiver, unknown-member validation) already held on the tree Task 1 produced -- hasCertainReceiverType already returns false for a MemberCall receiver, so the unknown-member check can never fire through a fully-qualified class reference regardless of this fix
 
 ### Tech Debt
 
@@ -240,8 +243,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T17:45:32.517Z
-Stopped at: Completed 109-01-PLAN.md
+Last session: 2026-09-25T17:58:26.328Z
+Stopped at: Completed 109-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
