@@ -4,17 +4,17 @@ milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 107
 current_phase_name: Validation False Alarms & Silent Skips
-status: executing
-stopped_at: Completed 107-05-PLAN.md
-last_updated: "2026-09-25T00:35:16.701Z"
+status: verifying
+stopped_at: Completed 107-06-PLAN.md
+last_updated: "2026-09-25T01:44:51.197Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 107 execution started
-state_head: cc7c37cf62ce8bad9769507503ca54b37ccd7ec3
+state_head: fb3f1e63b8e43a9cd0f5b1c8accc5763cdd51b90
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 25
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 Phase: 107 (Validation False Alarms & Silent Skips) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-24 — Phase 107 execution started
 
 Progress: [███░░░░░░░] 25% (1/4 phases)
@@ -113,6 +113,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 107-validation-false-alarms-silent-skips P03 | 49min | 3 tasks | 6 files |
 | Phase 107 P04 | 70min | 2 tasks | 6 files |
 | Phase 107 P05 | 141min | 2 tasks | 3 files |
+| Phase 107 P06 | 59min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,7 @@ decisions:
 - [Phase 107]: Phase 107-04: previousStatement() now skips transparently past a same-line run of DefReturn siblings inside a DEF FN body when finding the governing statement for the IF/ELSE/FI line-break balance walk -- a DEF FN body mixes RETURN (DefReturn, not a Statement) in with ordinary Statement siblings, and a same-line RETURN was stopping the shared backward walk one step early, starving every ELSE/IF on a colon-continued chain of its own governing IF
 - [Phase 107]: Phase 107-04: two newly-exposed raw-B corpus files (a compiler-rejected SELECT...FROM...WHERE construct) were reported in 107-CONFORMANCE.md rather than fixed -- each file's only Error-severity diagnostic was the now-removed false alarm on an unrelated DEF FN inline IF/ELSE/RETURN, and nothing else in the language server ever raised an Error for the rejected SELECT construct; left for 107-06's human check per this plan's own instruction not to re-flag valid code to protect the B gate
 - [Phase 107]: Phase 107-05: live-backend review found and guarded five false-positive shapes in the unknown-Java-member check (class-ref method static filter, array-typed declare .length, java.lang.Object receiver, empty-string sentinel reassignment, constructor-reassignment to a different class); all narrow hasCertainReceiverType/checkUnknownJavaMember only, no scope/linker/interop file touched
+- [Phase 107]: Phase 107-06: Comparable A2 (harness-artifact and accepted-genuine-member files removed) measures 25 on this phase's own same-corpus base, a strict subset of the base's own 33 with zero new files, but 3 above the historical <=22 v4.5 exit number measured on a roughly 3-4x smaller corpus — Recorded as an open human-check item in 107-CONFORMANCE.md rather than resolved either way, matching the precedent already set at the Phase 98 close; VAL-03 left Pending in REQUIREMENTS.md for the same reason while VAL-01 and VAL-02 were marked Complete
 
 ### Tech Debt
 
@@ -223,8 +225,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T00:35:16.633Z
-Stopped at: Completed 107-05-PLAN.md
+Last session: 2026-09-25T01:44:51.110Z
+Stopped at: Completed 107-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
