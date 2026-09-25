@@ -179,6 +179,16 @@ describe("Receivers that keep today's diagnostics", () => {
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
+    test('a variable reconstructed as a different class elsewhere is not certain either', async () => {
+        // Found via the live-backend corpus review: a variable first constructed as one class,
+        // then reconstructed as a completely different class a few lines later -- the shared
+        // declaring-occurrence-is-the-first-assignment scoping rule means every reference's
+        // receiver type still traces back to the FIRST construction, misreporting a member that
+        // may well exist on the class the variable actually held at the point of the call.
+        const document = await validate('x! = new java.util.HashMap()\nx! = new java.lang.String()\nx!.anyInvalidMethod()\n');
+        expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
+
     test('a declared array of a Java class keeps its linking warning on .length, not the new Error', async () => {
         // Java's own array .length pseudo-field is not a member of the element class itself -- a
         // declared array receiver is not certain enough to trust an "unknown member" verdict on.
