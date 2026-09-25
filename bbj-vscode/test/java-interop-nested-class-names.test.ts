@@ -13,6 +13,7 @@
  * never opens a socket. Each test uses a fresh service.
  */
 import { describe, expect, test } from 'vitest';
+import { canonicalJavaClassName } from '../src/language/java-interop.js';
 import { rawMethod } from './counting-java-interop.js';
 import { createCountingInteropServices } from './counting-java-interop.js';
 
@@ -91,5 +92,110 @@ describe('a nested class is resolved once whatever its spelling (issue #659)', (
         const nestedClass = interop.getResolvedClass('com.test.Outer.Inner')!;
         const constructor = nestedClass.constructors[0];
         expect(constructor.resolvedReturnType?.ref).toBe(nested);
+    });
+});
+
+describe('canonicalJavaClassName', () => {
+    const CASES: Array<[string, string]> = [
+        ['com.test.Outer$Inner', 'com.test.Outer.Inner'],
+        ['com.test.A$B$C', 'com.test.A.B.C'],
+        // Anonymous and local classes have no canonical name: a $ directly followed by a digit
+        // anywhere in the name leaves the whole name unchanged.
+        ['com.test.Foo$1', 'com.test.Foo$1'],
+        ['com.test.Foo$1$Bar', 'com.test.Foo$1$Bar'],
+        ['com.test.Foo$1Local', 'com.test.Foo$1Local'],
+        // A $ starting a segment, a $$ run and a trailing $ are part of the name, not a separator.
+        ['com.sun.proxy.$Proxy12', 'com.sun.proxy.$Proxy12'],
+        ['com.test.Foo$$Lambda', 'com.test.Foo$$Lambda'],
+        ['scala.Foo$', 'scala.Foo$'],
+        ['java.lang.String', 'java.lang.String'],
+        ['', ''],
+        ['int', 'int'],
+        ['com.test.Outer$Inner[]', 'com.test.Outer.Inner[]'],
+    ];
+
+    for (const [input, expected] of CASES) {
+        test(`${JSON.stringify(input)} -> ${JSON.stringify(expected)}`, () => {
+            expect(canonicalJavaClassName(input)).toBe(expected);
+        });
+    }
+});
+
+describe('names that must stay distinct', () => {
+    test('com.test.A$B$C then com.test.A.B.C: one request, spelled com.test.A$B$C, same object', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.A$B$C', emptyNestedClassBody);
+        interop.scripts.set('com.test.A.B.C', emptyNestedClassBody);
+
+        const first = await interop.resolveClassByName('com.test.A$B$C');
+        const second = await interop.resolveClassByName('com.test.A.B.C');
+
+        expect(interop.rawClassCalls).toEqual(['com.test.A$B$C']);
+        expect(second).toBe(first);
+    });
+
+    test('com.test.Foo$1 (an anonymous class) and com.test.Foo are two distinct classes', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.Foo$1', emptyNestedClassBody);
+        interop.scripts.set('com.test.Foo', emptyNestedClassBody);
+
+        const anonymous = await interop.resolveClassByName('com.test.Foo$1');
+        const outer = await interop.resolveClassByName('com.test.Foo');
+
+        expect(interop.rawClassCalls).toEqual(['com.test.Foo$1', 'com.test.Foo']);
+        expect(anonymous).not.toBe(outer);
+        expect(interop.getResolvedClass('com.test.Foo$1')).toBeDefined();
+        expect(interop.getResolvedClass('com.test.Foo.1')).toBeUndefined();
+    });
+
+    test('com.sun.proxy.$Proxy12: one request with that exact spelling', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.sun.proxy.$Proxy12', () => ({
+            packageName: 'com.sun.proxy',
+            isDeprecated: false,
+            fields: [],
+            methods: [],
+            constructors: [],
+        }));
+
+        await interop.resolveClassByName('com.sun.proxy.$Proxy12');
+
+        expect(interop.rawClassCalls).toEqual(['com.sun.proxy.$Proxy12']);
+    });
+});
+
+describe('every lookup path agrees', () => {
+    test('concurrent Promise.all of the dotted and the $ spelling: one request, identical objects', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.Outer.Inner', emptyNestedClassBody);
+        interop.scripts.set('com.test.Outer$Inner', emptyNestedClassBody);
+
+        const [dotted, binary] = await Promise.all([
+            interop.resolveClassByName('com.test.Outer.Inner'),
+            interop.resolveClassByName('com.test.Outer$Inner'),
+        ]);
+
+        expect(interop.rawClassCalls).toHaveLength(1);
+        expect(binary).toBe(dotted);
+    });
+
+    test('getResolvedClass answers either spelling with the same object', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.Outer.Inner', emptyNestedClassBody);
+
+        const resolved = await interop.resolveClassByName('com.test.Outer.Inner');
+
+        expect(interop.getResolvedClass('com.test.Outer$Inner')).toBe(resolved);
+        expect(interop.getResolvedClass('com.test.Outer.Inner')).toBe(resolved);
+    });
+
+    test('com.test.Outer$Inner[] adds no request (still a local array type)', async () => {
+        const { interop } = createCountingInteropServices();
+
+        const result = await interop.resolveClassByName('com.test.Outer$Inner[]');
+
+        expect(interop.rawClassCalls).toEqual([]);
+        expect(result.name.endsWith('Inner[]')).toBe(true);
+        expect(result.name).not.toContain('$');
     });
 });
