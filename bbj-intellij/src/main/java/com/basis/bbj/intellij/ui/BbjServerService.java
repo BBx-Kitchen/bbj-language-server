@@ -30,11 +30,17 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Project-level service managing BBj language server lifecycle.
  * Centralizes server start/stop/restart operations, crash recovery with auto-restart logic,
- * and status broadcast to UI components. Every restart trigger — the manual restart action, the
- * crash notification, both status-bar widgets, refresh Java classes, the Node download-success
- * notification, and the settings-apply flow — reaches the server only through the single guarded
- * entry point {@link #requestRestart(long)}, which coalesces overlapping requests into one
- * restart via a {@link RestartGate}.
+ * and status broadcast to UI components. Every user-initiated restart trigger — the manual
+ * restart action, the crash balloon and editor banner Restart actions, both status-bar widgets,
+ * refresh Java classes, the Node download-success notification, and the settings-apply flow —
+ * reaches the server through {@link #requestRestart(long)}, which clears crash state before
+ * handing off to the single guarded gate entry point {@code requestGatedRestart(long)}. The
+ * crash auto-restart reaches that same gate directly, without clearing the counter it just
+ * incremented, so a second crash within the window still gives up even after a successful
+ * restart. Either way, {@link RestartGate} coalesces overlapping requests into one restart.
+ * Crashes are detected only through {@link #reportUnexpectedExit(Long, Integer)}, fed by the
+ * language server's own unexpected-stop hook -- {@link #updateStatus(com.redhat.devtools.lsp4ij.ServerStatus)}
+ * drives display and logging only.
  */
 public final class BbjServerService implements Disposable {
 
@@ -56,17 +62,23 @@ public final class BbjServerService implements Disposable {
     private static final String SERVER_ID = "bbjLanguageServer";
     private static final long STOP_WAIT_TIMEOUT_MS = 5000;
     private static final long STOP_WAIT_POLL_MS = 50;
-    private long lastCrashTime = 0;
-    private int crashCount = 0;
-    private boolean serverCrashed = false;
+    /**
+     * Read from the EDT ({@link #updateStatus}, {@link #applyCrashPolicy}), the gate's pooled
+     * restart thread ({@link #doRestart}) and the editor banner provider, and written from the EDT
+     * -- volatile so a read from any of those threads always sees the latest value.
+     */
+    private volatile long lastCrashTime = 0;
+    private volatile int crashCount = 0;
+    private volatile boolean serverCrashed = false;
 
     /**
      * True once auto-restart has given up after a second crash within the window. The editor
      * banner reads this to decide whether to show itself; a successful {@code started} status or a
      * user-initiated restart (through {@link #clearCrashState()}) clears it. Distinct from {@link
-     * #serverCrashed}, which is already true after the first, auto-restarted crash.
+     * #serverCrashed}, which is already true after the first, auto-restarted crash. Volatile for
+     * the same cross-thread reasons as {@link #serverCrashed}.
      */
-    private boolean autoRestartAbandoned = false;
+    private volatile boolean autoRestartAbandoned = false;
 
     private ConsoleView consoleView;
 
@@ -131,6 +143,9 @@ public final class BbjServerService implements Disposable {
         crashCount = 0;
         autoRestartAbandoned = false;
         ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
             EditorNotifications.getInstance(project).updateAllNotifications();
         });
     }
@@ -150,33 +165,26 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
-     * Update server status and notify all listeners (status bar widget).
-     * Implements crash detection and auto-restart logic.
+     * Update server status and notify all listeners (status bar widget). Display and logging
+     * only: this method no longer classifies anything and no longer decides that something is a
+     * crash -- that verdict arrives only through {@link #reportUnexpectedExit(Long, Integer)}, fed
+     * by the language server's own unexpected-stop hook.
      */
     public void updateStatus(@NotNull ServerStatus status) {
         if (project.isDisposed()) {
             return;
         }
 
-        ExpectedStopGuard.StopKind stopKind =
-            expectedStop.classify(status.name(), currentStatus.name(), System.currentTimeMillis());
+        LOG.info("BBj language server status: " + currentStatus + " -> " + status);
 
-        LOG.info("BBj language server status: " + currentStatus + " -> " + status
-            + " (classified as " + stopKind + ")");
-
-        if (stopKind == ExpectedStopGuard.StopKind.CRASH) {
-            applyCrashPolicy(null, null);
-        } else if (stopKind == ExpectedStopGuard.StopKind.EXPECTED_RESTART_STOP) {
-            logToConsole("Language server stopped for a restart", ConsoleViewContentType.SYSTEM_OUTPUT);
-        }
-
-        // Clear crash state when server successfully starts
+        // A successful start clears the crashed/give-up flags, but never the crash counter --
+        // two crashes within the window still give up even if a restart reached `started` in
+        // between.
         if (status == ServerStatus.started) {
             if (serverCrashed) {
                 logToConsole("Language server started successfully", ConsoleViewContentType.SYSTEM_OUTPUT);
             }
             serverCrashed = false;
-            crashCount = 0;
             autoRestartAbandoned = false;
             ApplicationManager.getApplication().invokeLater(() -> {
                 if (project.isDisposed()) {
@@ -237,9 +245,9 @@ public final class BbjServerService implements Disposable {
 
     /**
      * The crash counter, auto-restart-or-give-up decision, and the console/log/notification work
-     * that follows it. EDT only -- reached from {@link #updateStatus(ServerStatus)}'s crash branch
-     * (Task 2 removes that call site) and from {@link #reportUnexpectedExit(Long, Integer)}'s
-     * {@code invokeLater} hop.
+     * that follows it. EDT only -- reached solely from {@link #reportUnexpectedExit(Long,
+     * Integer)}'s {@code invokeLater} hop, which is itself reachable only from the language
+     * server's own unexpected-stop hook.
      */
     private void applyCrashPolicy(@Nullable Long pid, @Nullable Integer exitCode) {
         serverCrashed = true;
@@ -256,11 +264,12 @@ public final class BbjServerService implements Disposable {
         lastCrashTime = now;
 
         if (crashCount == 1) {
-            // Auto-restart on first crash
+            // Auto-restart on first crash -- through the gate directly, never requestRestart,
+            // which would clear the counter this policy just incremented.
             LOG.warn("BBj language server process exited unexpectedly (" + describeExit(pid, exitCode)
                 + "); auto-restarting (1 of 1)");
             logToConsole("Auto-restarting language server (attempt 1)...", ConsoleViewContentType.SYSTEM_OUTPUT);
-            requestRestart(CRASH_RESTART_DELAY_MS);
+            requestGatedRestart(CRASH_RESTART_DELAY_MS);
         } else {
             // Stop auto-restart after second crash
             autoRestartAbandoned = true;
@@ -327,11 +336,26 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
-     * The single guarded entry point for restarting the language server. Every restart trigger
-     * must call this method rather than performing the stop/start pair directly — overlapping
-     * requests coalesce into exactly one restart via {@link RestartGate}.
+     * The entry point for every user-initiated restart: the manual restart action, both
+     * status-bar widgets, the balloon and banner Restart actions, Settings Apply (via {@link
+     * #scheduleRestart()}), config reload, Refresh Java Classes, and Node download success. Clears
+     * crash state first -- a user asking for a restart always gets a clean slate -- then reaches
+     * the language server through the same gate the crash auto-restart uses.
      */
     public void requestRestart(long delayMs) {
+        clearCrashState();
+        requestGatedRestart(delayMs);
+    }
+
+    /**
+     * The single guarded entry point for restarting the language server. Every restart, whether
+     * user-initiated (via {@link #requestRestart(long)}) or the crash auto-restart (via {@link
+     * #applyCrashPolicy(Long, Integer)}), reaches the server only through this method rather than
+     * performing the stop/start pair directly — overlapping requests coalesce into exactly one
+     * restart via {@link RestartGate}. Unlike {@link #requestRestart(long)}, this method never
+     * clears crash state, so the crash auto-restart keeps the counter it just incremented.
+     */
+    private void requestGatedRestart(long delayMs) {
         boolean scheduled = restartGate.request(delayMs);
         if (!scheduled) {
             logToConsole("A language server restart is already in progress; ignoring the additional request",
@@ -343,10 +367,10 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
-     * Restart the language server immediately. Clears crash state first so a restart always
-     * works. Only reachable through {@link #requestRestart(long)} — never call directly, and
-     * this method only ever runs on the gate's pooled Alarm thread ({@link AlarmScheduler}), so
-     * the bounded wait below never blocks the EDT.
+     * Restart the language server immediately. Only reachable through {@link
+     * #requestGatedRestart(long)} — never call directly, and this method only ever runs on the
+     * gate's pooled Alarm thread ({@link AlarmScheduler}), so the bounded wait below never blocks
+     * the EDT.
      *
      * <p>{@code LanguageServerManager.stop(String)} returns {@code void}, so the manager's
      * reported status is the only completion signal available: after requesting the stop, this
@@ -371,7 +395,6 @@ public final class BbjServerService implements Disposable {
      * further trigger.
      */
     private void doRestart() {
-        clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
         ServerStatus statusBeforeStop = manager.getServerStatus(SERVER_ID);
         LOG.info("Restarting the BBj language server; status before the stop: " + statusBeforeStop);
@@ -396,6 +419,9 @@ public final class BbjServerService implements Disposable {
                     + manager.getServerStatus(SERVER_ID));
             }
         } finally {
+            // The token only covers this restart's own stop -- disarm it here, once the stop has
+            // completed or timed out, so a genuine crash later in the window is never swallowed.
+            expectedStop.disarm();
             LOG.info("Starting the BBj language server; status before the start: "
                 + manager.getServerStatus(SERVER_ID));
             manager.start(SERVER_ID);
