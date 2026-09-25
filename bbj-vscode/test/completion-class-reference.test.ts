@@ -4,9 +4,15 @@ import { parseHelper } from 'langium/test';
 import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
+import { initializeWorkspace } from './test-helper.js';
 import { JavaMethod, Model } from '../src/language/generated/ast.js';
+import { UNKNOWN_JAVA_MEMBER_CODE } from '../src/language/validations/check-unknown-java-member.js';
 
-const bbjServices = createBBjTestServices(EmptyFileSystem).BBj;
+const { shared, BBj: bbjServices } = createBBjTestServices(EmptyFileSystem);
+
+beforeAll(async () => {
+    await initializeWorkspace(shared);
+});
 
 let probeCounter = 0;
 
@@ -87,5 +93,63 @@ describe('completion after a fully-qualified Java class reference (issue #577)',
         const invokedWithUse = (await labels(withUse)).filter(l => l !== USE_ADDED_PROGRAM_SYMBOL);
         expect(await labels(withoutUse)).toEqual(invokedWithUse);
         expect(await labels(withoutUse, '.')).toEqual(await labels(withUse, '.'));
+    });
+});
+
+describe('receivers that keep today\'s member list', () => {
+    test('instance access on a declared variable offers all members', async () => {
+        const text = 'declare java.lang.String s!\ns!.<|>\nprobeTail = 1\n';
+        const dotted = await labels(text, '.');
+        expect(dotted).toContain('someInstanceField');
+        expect(dotted).toContain('charAt()');
+        expect(dotted).toContain('CASE_INSENSITIVE_ORDER');
+    });
+
+    test('a receiver ending in the .class pseudo-member offers java.lang.Class instance members', async () => {
+        const afterUse = await labels(
+            'use java.lang.String\nString.class.<|>\nprobeTail = 1\n', '.');
+        expect(afterUse).toContain('getName()');
+
+        const fullyQualified = await labels(
+            'java.lang.String.class.<|>\nprobeTail = 1\n', '.');
+        expect(fullyQualified).toContain('getName()');
+    });
+
+    test('a package receiver keeps offering its package members', async () => {
+        const dotted = await labels('java.lang.<|>\nprobeTail = 1\n', '.');
+        expect(dotted).toContain('String');
+    });
+
+    test('a fully-qualified class with no static members offers only class', async () => {
+        const dotted = await labels('java.util.HashMap.<|>\nprobeTail = 1\n', '.');
+        expect(dotted).toContain('class');
+        expect(dotted).not.toContain('put()');
+        expect(dotted).not.toContain('getClass()');
+    });
+
+    test('a case-variant fully-qualified receiver never offers an instance-only member', async () => {
+        const dotted = await labels('JAVA.LANG.STRING.<|>\nprobeTail = 1\n', '.');
+        expect(dotted).not.toContain('someInstanceField');
+        expect(dotted).not.toContain('charAt()');
+    });
+});
+
+describe('validation after a fully-qualified class reference', () => {
+    async function unknownMemberDiagnostics(text: string) {
+        const document = await parseHelper<Model>(bbjServices)(
+            text, { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
+        return (document.diagnostics ?? []).filter(d => d.data?.code === UNKNOWN_JAVA_MEMBER_CODE);
+    }
+
+    test('an instance field read through a fully-qualified class reference is not an unknown-member Error', async () => {
+        const diagnostics = await unknownMemberDiagnostics('x! = java.lang.String.someInstanceField\n');
+        expect(diagnostics).toHaveLength(0);
+    });
+
+    test('a static field read through a fully-qualified class reference has no diagnostics', async () => {
+        const document = await parseHelper<Model>(bbjServices)(
+            'x! = java.lang.String.CASE_INSENSITIVE_ORDER\n',
+            { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
+        expect(document.diagnostics ?? []).toHaveLength(0);
     });
 });
