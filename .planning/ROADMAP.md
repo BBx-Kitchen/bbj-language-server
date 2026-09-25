@@ -430,7 +430,7 @@ synthetic, never corpus text.
   3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
   4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -439,7 +439,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 108-02-PLAN.md — Probe verdict gate, then crash detection from the hook: ExpectedStopGuard as filter, first crash auto-restarts once without clearing the counter, second within 30 s gives up, disarm after the plugin's own stop (wave 2)
+- [x] 108-02-PLAN.md — Probe verdict gate, then crash detection from the hook: ExpectedStopGuard as filter, first crash auto-restarts once without clearing the counter, second within 30 s gives up, disarm after the plugin's own stop (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -523,7 +523,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 |-------|----------------|--------|-----------|
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Not started |  |
-| 108. IntelliJ Crash Detection | 1/4 | Not started |  |
+| 108. IntelliJ Crash Detection | 2/4 | Not started |  |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
