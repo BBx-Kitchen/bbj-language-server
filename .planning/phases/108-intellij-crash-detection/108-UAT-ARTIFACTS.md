@@ -606,3 +606,25 @@ maintainer ruled it does not fail scenario 7. The Refresh Java Classes fallback 
 scenario 7 was not exercised. Everything else — the crash/no-crash classification, the
 give-up-after-second-crash behavior, the widget/balloon/banner UI, the restart-token disarm
 proof, and the from-state chain across the whole session — is observed and holds.
+
+## Post-review rebuild and cursory UAT
+
+Code-review fixes landed after the Final UAT (`9ba84bc7`, `0a1633c7`, `1099c119`, corrected in
+`b491c26f`; see `108-REVIEW-FIX.md`). Both distributables were rebuilt from `36a00773`:
+
+- `/tmp/phase-108-uat/bbj-lang.vsix` — sha256
+  `55eb522ad077325bdf6b008b88124be4e5383bf70b107ea17ca81517bc310209`, 2726452 bytes
+- `/tmp/phase-108-uat/bbj-intellij-0.1.0.zip` — sha256
+  `19248356c4a9eedd33659972f1565e6f98276beaa5150808033b753341e65d77`, 1202418 bytes
+- Zip's bundled `main.cjs` byte-identical to `bbj-vscode/out/language/main.cjs`; the plugin jar
+  declares `BbjServerService.reportUnexpectedExit`, `BbjServerService.noteStoppingPid` and
+  `ExpectedStopGuard.notePid`
+- IntelliJ suite: `BUILD SUCCESSFUL`, 1133 tests, 0 failures, 0 errors
+- Previous builds kept under `/tmp/phase-108-uat/pre-fix/`
+
+By the maintainer's choice the re-run was cursory, with no new logs taken: Settings Apply
+(no crash), manual Restart Server then a `kill -9` within 30 s (Crashed, auto-restart to Ready,
+no banner), a second `kill -9` (banner and plugin balloon; banner Restart Server back to Ready),
+and optionally a PREFIX save in `config.bbx` (clean restart). Maintainer verdict: **approved**
+(2026-09-25). These observations are UI-only; the log-level evidence remains the Final UAT
+excerpts above, taken on the pre-fix build.
