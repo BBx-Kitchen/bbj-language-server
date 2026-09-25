@@ -121,6 +121,11 @@ text (with any edits) are recorded below.
 completed. The drafted comment text is unchanged (no edits). Nothing was posted or closed from this
 plan; plan 109-06 carries out this choice after the phase's regression gate.
 
+**Result (2026-09-25, plan 109-06, after the Final state above matched the drafted comment):**
+posted comment https://github.com/BBx-Kitchen/bbj-language-server/issues/561#issuecomment-5838244001
+(unedited drafted text), then closed the issue as completed. `gh issue view 561` confirms
+`state=CLOSED`, `comments=1`.
+
 ## Final state
 
 - **Date:** 2026-09-25
