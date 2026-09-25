@@ -190,4 +190,25 @@ Two earlier kills ran without a terminal timestamp; their times come from the lo
 
 ### Probe verdict
 
-Pending: recorded by the next plan before any behaviour change
+D-01 holds. The unexpected-stop hook line ("process ended without a stop request") appears
+after every one of the four `kill -9` runs and never once inside any of the seven deliberate-stop
+windows (three file closes that were reopened, the one that was not, and the three Settings
+Applies) — the closing falsification condition (a missing P2 after a kill, or a hook line inside a
+P6/P7 window) did not occur anywhere in the excerpt. Every kill line reads `exit code 137, thread
+node`, matching the SIGKILL/128+9 exit-value assumption this plan's `describeExit` format is built
+on. Every status line's from-state equals the previous line's to-state with no gap (P8), across
+both excerpts and every recovery in between.
+
+Three surprises, none of which contradict D-01, all binding on this plan's design (carried
+forward from 108-01-SUMMARY.md's Key Findings, restated here as the verdict this plan's
+precondition and Task 1 depend on): the stop-requested line and the hook line race in the same
+millisecond on every kill, with stop-requested always logged first, so log order between those two
+lines cannot separate a crash from a deliberate stop — only whether the hook line appears at all,
+or equivalently the `process alive: false` reported at the stop-requested line, does. LSP4IJ's own
+recovery after a kill twice launched a server a second time on its own, stopping the first live
+instance (`process alive: true`) with no hook line for that internal stop — this plan's crash
+counting must not read that internal stop as a second crash. And closing the last BBj file returns
+`stopping` directly to `started` on a reopen inside roughly a 30 second grace window, with no stop
+request and no hook line, so `stopping` is not a guaranteed precursor to `stopped` on that path.
+None of this weakens the hook as the crash signal; the hook's presence-or-absence, not the status
+sequence, is what this plan builds on.

@@ -79,4 +79,25 @@ public final class ExpectedStopGuard {
 
         return StopKind.CRASH;
     }
+
+    /**
+     * Classifies one unexpected process exit, reported by the language server's own
+     * unexpected-stop hook -- the hook firing at all is what decides that the process ended
+     * without a stop request; this method only says whether the plugin's own restart armed that
+     * stop. A token armed within {@code windowMs} (inclusive) of {@code nowMs} is consumed and the
+     * verdict is {@link StopKind#EXPECTED_RESTART_STOP}; otherwise any stale token is discarded and
+     * the verdict is {@link StopKind#CRASH}.
+     */
+    public synchronized StopKind classifyExit(long nowMs) {
+        if (armedAtMs != null) {
+            long elapsed = nowMs - armedAtMs;
+            boolean withinWindow = elapsed <= windowMs;
+            armedAtMs = null;
+            if (withinWindow) {
+                return StopKind.EXPECTED_RESTART_STOP;
+            }
+        }
+
+        return StopKind.CRASH;
+    }
 }

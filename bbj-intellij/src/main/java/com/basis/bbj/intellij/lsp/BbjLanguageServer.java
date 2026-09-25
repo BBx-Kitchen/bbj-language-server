@@ -6,6 +6,7 @@ import com.basis.bbj.intellij.BbjNodeVersionCache;
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.NodeActions;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
@@ -51,7 +52,16 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
      */
     private boolean ownStopHandlerRegistered;
 
+    /**
+     * The owning project, kept so {@link #onUnexpectedStop()} can reach {@link BbjServerService}
+     * without a vendor-provided project reference -- the hook it registers with runs off any
+     * request context.
+     */
+    private final Project project;
+
     public BbjLanguageServer(@NotNull Project project) {
+        this.project = project;
+
         // Resolve Node.js path
         String nodePath = resolveNodePath(project);
 
@@ -89,22 +99,27 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
     /**
      * Runs only when the OS process ended without this provider's {@link #stop()} having been
-     * called first (LSP4IJ's own gate on its {@code isStopped()} flag). Reports the pid, the exit
-     * code and the running thread's name -- nothing else. It does not classify the event, does not
-     * restart anything and does not touch any UI state; it runs on the platform's process-wait
-     * thread, not the EDT.
+     * called first (LSP4IJ's own gate on its {@code isStopped()} flag). Reads the pid and the exit
+     * code, then hands both to {@link BbjServerService#reportUnexpectedExit(Long, Integer)} --
+     * nothing here classifies the event, restarts anything or touches UI state; it runs on the
+     * platform's process-wait thread, not the EDT, so the report is a plain synchronous call
+     * guarded against the project already being disposed.
      */
     private void onUnexpectedStop() {
+        if (project.isDisposed()) {
+            return;
+        }
         Long pid = getPid();
         Integer exitCode = null;
         var processHandler = getProcessHandler();
         if (processHandler != null) {
             exitCode = processHandler.getExitCode();
         }
-        LOG.info("BBj language server process ended without a stop request (pid "
-                + (pid == null ? "unknown" : pid)
-                + ", exit code " + (exitCode == null ? "unknown" : exitCode)
-                + ", thread " + Thread.currentThread().getName() + ")");
+        try {
+            BbjServerService.getInstance(project).reportUnexpectedExit(pid, exitCode);
+        } catch (RuntimeException e) {
+            LOG.warn("BBj language server unexpected-stop report failed", e);
+        }
     }
 
     /**

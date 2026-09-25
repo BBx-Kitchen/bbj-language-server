@@ -59,6 +59,15 @@ public final class BbjServerService implements Disposable {
     private long lastCrashTime = 0;
     private int crashCount = 0;
     private boolean serverCrashed = false;
+
+    /**
+     * True once auto-restart has given up after a second crash within the window. The editor
+     * banner reads this to decide whether to show itself; a successful {@code started} status or a
+     * user-initiated restart (through {@link #clearCrashState()}) clears it. Distinct from {@link
+     * #serverCrashed}, which is already true after the first, auto-restarted crash.
+     */
+    private boolean autoRestartAbandoned = false;
+
     private ConsoleView consoleView;
 
     /**
@@ -107,11 +116,20 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
+     * True once auto-restart has given up after a second crash within the window. Cleared by a
+     * successful {@code started} status or a user-initiated restart.
+     */
+    public boolean isAutoRestartAbandoned() {
+        return autoRestartAbandoned;
+    }
+
+    /**
      * Clear crash state (reset crash count and crashed flag).
      */
     public void clearCrashState() {
         serverCrashed = false;
         crashCount = 0;
+        autoRestartAbandoned = false;
         ApplicationManager.getApplication().invokeLater(() -> {
             EditorNotifications.getInstance(project).updateAllNotifications();
         });
@@ -140,8 +158,6 @@ public final class BbjServerService implements Disposable {
             return;
         }
 
-        boolean autoRestartAbandoned = false;
-
         ExpectedStopGuard.StopKind stopKind =
             expectedStop.classify(status.name(), currentStatus.name(), System.currentTimeMillis());
 
@@ -149,36 +165,7 @@ public final class BbjServerService implements Disposable {
             + " (classified as " + stopKind + ")");
 
         if (stopKind == ExpectedStopGuard.StopKind.CRASH) {
-            // This is a crash
-            serverCrashed = true;
-            logToConsole("Language server stopped unexpectedly", ConsoleViewContentType.ERROR_OUTPUT);
-
-            long now = System.currentTimeMillis();
-
-            // Reset crash count if outside crash window
-            if (now - lastCrashTime > CRASH_WINDOW_MS) {
-                crashCount = 0;
-            }
-
-            crashCount++;
-            lastCrashTime = now;
-
-            if (crashCount == 1) {
-                // Auto-restart on first crash
-                logToConsole("Auto-restarting language server (attempt 1)...", ConsoleViewContentType.SYSTEM_OUTPUT);
-                requestRestart(CRASH_RESTART_DELAY_MS);
-            } else if (crashCount >= 2) {
-                // Stop auto-restart after second crash
-                autoRestartAbandoned = true;
-                logToConsole("Language server crashed twice. Stopping auto-restart.", ConsoleViewContentType.ERROR_OUTPUT);
-                notifyCrash();
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (project.isDisposed()) {
-                        return;
-                    }
-                    EditorNotifications.getInstance(project).updateAllNotifications();
-                });
-            }
+            applyCrashPolicy(null, null);
         } else if (stopKind == ExpectedStopGuard.StopKind.EXPECTED_RESTART_STOP) {
             logToConsole("Language server stopped for a restart", ConsoleViewContentType.SYSTEM_OUTPUT);
         }
@@ -190,6 +177,7 @@ public final class BbjServerService implements Disposable {
             }
             serverCrashed = false;
             crashCount = 0;
+            autoRestartAbandoned = false;
             ApplicationManager.getApplication().invokeLater(() -> {
                 if (project.isDisposed()) {
                     return;
@@ -198,7 +186,7 @@ public final class BbjServerService implements Disposable {
             });
         }
 
-        if (ConfigReloadPresentation.clearsReason(status.name(), autoRestartAbandoned)) {
+        if (ConfigReloadPresentation.clearsReason(status.name(), false)) {
             pendingRestartReason = null;
         }
 
@@ -212,6 +200,99 @@ public final class BbjServerService implements Disposable {
                 .syncPublisher(BbjServerStatusListener.TOPIC)
                 .statusChanged(status);
         });
+    }
+
+    /**
+     * Reports one unexpected process exit, fed by {@code BbjLanguageServer}'s unexpected-stop
+     * hook. Callable from any thread -- the guard's verdict is taken on the calling thread so it
+     * reflects the moment the process ended, then the rest of the work (an expected-restart console
+     * line, or the crash policy) runs on the EDT.
+     */
+    public void reportUnexpectedExit(@Nullable Long pid, @Nullable Integer exitCode) {
+        if (project.isDisposed()) {
+            return;
+        }
+
+        ExpectedStopGuard.StopKind verdict = expectedStop.classifyExit(System.currentTimeMillis());
+
+        if (verdict == ExpectedStopGuard.StopKind.EXPECTED_RESTART_STOP) {
+            LOG.info("BBj language server process exited during a plugin restart ("
+                + describeExit(pid, exitCode) + "); treated as an expected stop, not a crash");
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (project.isDisposed()) {
+                    return;
+                }
+                logToConsole("Language server stopped for a restart", ConsoleViewContentType.SYSTEM_OUTPUT);
+            });
+            return;
+        }
+
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            applyCrashPolicy(pid, exitCode);
+        });
+    }
+
+    /**
+     * The crash counter, auto-restart-or-give-up decision, and the console/log/notification work
+     * that follows it. EDT only -- reached from {@link #updateStatus(ServerStatus)}'s crash branch
+     * (Task 2 removes that call site) and from {@link #reportUnexpectedExit(Long, Integer)}'s
+     * {@code invokeLater} hop.
+     */
+    private void applyCrashPolicy(@Nullable Long pid, @Nullable Integer exitCode) {
+        serverCrashed = true;
+        logToConsole("Language server stopped unexpectedly", ConsoleViewContentType.ERROR_OUTPUT);
+
+        long now = System.currentTimeMillis();
+
+        // Reset crash count if outside crash window
+        if (now - lastCrashTime > CRASH_WINDOW_MS) {
+            crashCount = 0;
+        }
+
+        crashCount++;
+        lastCrashTime = now;
+
+        if (crashCount == 1) {
+            // Auto-restart on first crash
+            LOG.warn("BBj language server process exited unexpectedly (" + describeExit(pid, exitCode)
+                + "); auto-restarting (1 of 1)");
+            logToConsole("Auto-restarting language server (attempt 1)...", ConsoleViewContentType.SYSTEM_OUTPUT);
+            requestRestart(CRASH_RESTART_DELAY_MS);
+        } else {
+            // Stop auto-restart after second crash
+            autoRestartAbandoned = true;
+            LOG.warn("BBj language server process exited unexpectedly (" + describeExit(pid, exitCode)
+                + "); crash " + crashCount + " within " + (CRASH_WINDOW_MS / 1000) + " s, not auto-restarting");
+            LOG.warn("BBj language server crashed " + crashCount + " times within " + (CRASH_WINDOW_MS / 1000)
+                + " s; auto-restart stopped until a manual restart");
+            logToConsole("Language server crashed twice. Stopping auto-restart.", ConsoleViewContentType.ERROR_OUTPUT);
+            pendingRestartReason = null;
+            notifyCrash();
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (project.isDisposed()) {
+                    return;
+                }
+                EditorNotifications.getInstance(project).updateAllNotifications();
+            });
+        }
+
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            project.getMessageBus()
+                .syncPublisher(BbjServerStatusListener.TOPIC)
+                .statusChanged(currentStatus);
+        });
+    }
+
+    /** Renders {@code pid <pid>, exit code <code>}, naming an absent value as {@code unknown}. */
+    private static String describeExit(@Nullable Long pid, @Nullable Integer exitCode) {
+        return "pid " + (pid == null ? "unknown" : pid)
+            + ", exit code " + (exitCode == null ? "unknown" : exitCode);
     }
 
     /**
