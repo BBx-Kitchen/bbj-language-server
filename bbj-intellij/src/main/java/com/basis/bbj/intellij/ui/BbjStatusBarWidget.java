@@ -79,7 +79,8 @@ public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatu
     protected String tooltipFor(ServerStatus status, String text) {
         if (service().isServerCrashed()) {
             return service().isAutoRestartAbandoned()
-                    ? "BBj language server crashed again within 30 seconds and was not restarted. Use Restart Server."
+                    ? "BBj language server crashed again within " + (BbjServerService.CRASH_WINDOW_MS / 1000)
+                        + " seconds and was not restarted. Use Restart Server."
                     : "BBj language server stopped unexpectedly and is being restarted.";
         }
         return ConfigReloadPresentation.widgetTooltip(

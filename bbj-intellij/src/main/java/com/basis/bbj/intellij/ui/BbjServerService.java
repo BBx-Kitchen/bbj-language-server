@@ -58,7 +58,9 @@ public final class BbjServerService implements Disposable {
     private final ExpectedStopGuard expectedStop;
     public static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_RESTART_DELAY_MS = 1000;
-    private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
+    static final long CRASH_WINDOW_MS = 30_000; // 30 seconds -- package-visible so the status
+    // bar widget and the crash notification banner (same package) can derive their user-facing
+    // "30 seconds" text from this single constant instead of duplicating the number.
     private static final String SERVER_ID = "bbjLanguageServer";
     private static final long STOP_WAIT_TIMEOUT_MS = 5000;
     private static final long STOP_WAIT_POLL_MS = 50;

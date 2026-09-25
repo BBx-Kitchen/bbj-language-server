@@ -35,8 +35,8 @@ public final class BbjServerCrashNotificationProvider extends BbjNotificationPro
         return fileEditor -> {
             EditorNotificationPanel panel = newPanel(
                     fileEditor, EditorNotificationPanel.Status.Error,
-                    "BBj Language Server crashed again within 30 seconds and was not restarted. "
-                            + "Language features are unavailable.");
+                    "BBj Language Server crashed again within " + (BbjServerService.CRASH_WINDOW_MS / 1000)
+                            + " seconds and was not restarted. Language features are unavailable.");
 
             panel.createActionLabel("Restart Server", () -> {
                 service.requestRestart(0);
