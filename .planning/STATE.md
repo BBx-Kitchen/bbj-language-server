@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
 status: executing
-stopped_at: Completed 109-03-PLAN.md
-last_updated: "2026-09-25T18:16:02.166Z"
+stopped_at: Completed 109-04-PLAN.md
+last_updated: "2026-09-25T18:26:45.896Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 109 execution started
-state_head: f4a1bb85490f129fdd734e0ed26b3d6b2ad07083
+state_head: 9d412415d5dd9194bb4965f10c6341a1a8c846b9
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 75
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 ## Current Position
 
 Phase: 109 (Completion & Java Class Resolution) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 109 execution started
 
@@ -121,6 +121,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 109 P01 | 20min | 3 tasks | 3 files |
 | Phase 109 P02 | 11min | 2 tasks | 2 files |
 | Phase 109 P03 | 15min | 2 tasks | 4 files |
+| Phase 109 P04 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,9 @@ decisions:
 - [Phase 109]: Phase 109-02: Invoked-trigger completion at a dangling MemberCall position merges in a "start new statement" fallback -- after USE, that fallback additionally offers the bare class name itself as a program-scope symbol with no equivalent in the no-USE form; the Invoked-trigger label-set comparison filters that one known artifact, the dot-trigger comparison needed no allowance
 - [Phase 109]: Phase 109-02: every Task 2 guard (instance access, .class, package, no-static-member class, case-variant receiver, unknown-member validation) already held on the tree Task 1 produced -- hasCertainReceiverType already returns false for a MemberCall receiver, so the unknown-member check can never fire through a fully-qualified class reference regardless of this fix
 - [Phase 109]: Phase 109-03: Task 1 proved red-then-green via file copies (not git stash, which this repo's project rules forbid); Task 2's 19 Java/tie-rule/guard cases all passed against the tree Task 1 produced, with no production code change needed, so it was committed as a test-only commit — OverloadCandidate/bestOverloadCandidates already generalize over JavaMethod and MethodDecl candidates, so the Java overload case needed no second re-selection path beyond what Task 1 built
+- [Phase 109]: JINT-01: resolveClassByName's local branch reuses resolveClass's own pipeline (not createStubClass) for primitive/void/array/blank names, keeping the result behaviour-neutral with today's real round trip
+- [Phase 109]: The local-type filter matches whole type names only (a nine-name primitive/void set plus an array suffix), so java.lang.Integer, a bytes package segment, or a class named Voider are never mistaken for a primitive
+- [Phase 109]: The counting test double's BACKEND_PRIMITIVE_NAMES is an independent constant, not shared with production's JAVA_PRIMITIVE_TYPE_NAMES, so the neutrality tests check against a modelled backend rather than a tautology
 
 ### Tech Debt
 
@@ -245,8 +249,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T18:15:54.883Z
-Stopped at: Completed 109-03-PLAN.md
+Last session: 2026-09-25T18:26:36.718Z
+Stopped at: Completed 109-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
