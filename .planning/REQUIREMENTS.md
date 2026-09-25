@@ -30,8 +30,8 @@
 
 ### IntelliJ server lifecycle
 
-- [ ] **LIFE-01**: When the language-server process dies or its connection drops, the IntelliJ plugin recognizes it as a crash (logged and reflected in the server status), instead of it going unnoticed
-- [ ] **LIFE-02**: The server status transition log line shows the real previous status (not one two transitions old); lands together with LIFE-01
+- [x] **LIFE-01**: When the language-server process dies or its connection drops, the IntelliJ plugin recognizes it as a crash (logged and reflected in the server status), instead of it going unnoticed
+- [x] **LIFE-02**: The server status transition log line shows the real previous status (not one two transitions old); lands together with LIFE-01
 
 ### Completion and type inference
 
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VAL-02 | Phase 107 | Complete |
 | VAL-03 | Phase 107 | Complete |
 | DIAG-01 | Phase 106 | Complete |
-| LIFE-01 | Phase 108 | Pending |
-| LIFE-02 | Phase 108 | Pending |
+| LIFE-01 | Phase 108 | Complete |
+| LIFE-02 | Phase 108 | Complete |
 | COMP-01 | Phase 109 | Pending |
 | COMP-02 | Phase 109 | Pending |
 | COMP-03 | Phase 109 | Pending |

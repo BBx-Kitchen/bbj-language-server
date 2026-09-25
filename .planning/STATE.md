@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
-current_phase: 108
-current_phase_name: IntelliJ Crash Detection
-status: executing
-stopped_at: Completed 108-04-PLAN.md
-last_updated: "2026-09-25T14:53:07.796Z"
+current_phase: 109
+current_phase_name: Completion & Java Class Resolution
+status: planning
+stopped_at: Phase 108 complete, ready to plan Phase 109
+last_updated: "2026-09-25T15:54:59.159Z"
 last_activity: 2026-09-25
-last_activity_desc: Phase 108 execution started
-state_head: cf251d9dceaad57adb22787b9e482187e491f903
+last_activity_desc: Phase 108 complete, transitioned to Phase 109
+state_head: ef38a928bd64850e0f097d0d8898aa39605bdd71
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
   completed_plans: 17
-  percent: 50
+  percent: 75
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-25 (Phase 107 complete — VAL-01/02/03 verified; next: Phase 108)
+**Last Updated:** 2026-09-25 (Phase 108 complete — LIFE-01/02 verified, UAT 15/15; next: Phase 109)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-24)
+See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 108 — IntelliJ Crash Detection
+**Current Focus:** Phase 109 — Completion & Java Class Resolution
 
 ---
 
 ## Current Position
 
-Phase: 108 (IntelliJ Crash Detection) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-09-25 — Phase 108 execution started
+Phase: 109 — Completion & Java Class Resolution
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-25 — Phase 108 complete, transitioned to Phase 109
 
-Progress: [█████░░░░░] 50% (2/4 phases)
+Progress: [████████░░] 75% (3/4 phases)
 
 ### v4.6 milestone map
 
@@ -237,11 +237,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T14:52:58.828Z
-Stopped at: Completed 108-04-PLAN.md
+Last session: 2026-09-25T16:00:00Z
+Stopped at: Phase 108 complete, ready to plan Phase 109
 Resume file: None
 
-Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
+Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items

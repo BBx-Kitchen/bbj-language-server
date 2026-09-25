@@ -368,7 +368,7 @@ v4.6 User-Facing Bug Burn-down — see `.planning/REQUIREMENTS.md` for the REQ-I
 
 - ✓ Compiler trigger `on-save` mode in both IDEs (#696) — v4.6 Phase 106 (TRIG-01..07)
 - ✓ Line-break validation false alarms on single-line IF/ELSE — v4.6 Phase 107 (VAL-01)
-- [ ] IntelliJ crash detection for a lost language-server connection, with the status-log fix
+- ✓ IntelliJ crash detection for a lost language-server connection, with the status-log fix — v4.6 Phase 108 (LIFE-01, LIFE-02)
 - ✓ Use-before-assignment check survives a reference without a symbol — v4.6 Phase 107 (VAL-02)
 - ✓ Unknown member on a fully resolved Java class reported as one Error — v4.6 Phase 107 (VAL-03)
 - [ ] Completion/type correctness (#577, #556, #561)
@@ -625,6 +625,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.5 closed as an override closeout after a `tech_debt` audit with three artifacts acknowledged; phase and quick-task artifacts archived on-tree; no `v4.5` git tag | Close taken 2026-09-24: 32/32 requirements, 8/8 phases, no gaps. The three open items are two follow-up todos and a stale-bundle e2e note. Repository tags stay release versions | — Pending (release not cut yet) |
 | v4.6 Phase 106: `on-save` is a real trigger — the live parse is armed by reason (open/change/save) with a zero-delay save path, the last save's verdict is kept and re-placed on its line while typing (`composeWithKeptCheck`), a per-document check sequence lets only a newer save supersede it, and the bbjcpl fallback drops a duplicate only when the checked text is provably what bbjcpl compiled; `parseProgram()` tries its own lane before the shared breaker; IntelliJ gets the same `compilerTrigger` init option as a dropdown | #696/#522 and 105 WR-01: under `off` large-workspace users lost compiler errors entirely, the fallback showed bbjcpl and Langium errors twice, and a down or half-open shared connection short-circuited the live parse. Default stays `debounced` | ✓ Good — UAT 13/13 in both IDEs; Phase 105 timing re-check skipped by user decision; 106-REVIEW CR-01 (pending debounced timer survives a switch to `off`, pre-existing) and WR-01 (fallback suppresses warnings before merging the kept error) open |
 | v4.6 Phase 107: nested one-line IF/ELSE/FI balance uses two counters (open IFs, ELSE claims); the backward walk skips same-line `RETURN` in a `DEF FN`; every `.symbol` read in the scoping check and scope computation is optional; a new `bbj-unknown-java-member` Error fires only on a fully resolved Java class with a certain receiver type, and the duplicate linking warning is dropped | VAL-01/02/03: valid compiler-accepted code drew line-break errors, one malformed reference silently disabled use-before-assignment for the whole file, and an unknown Java member was only a hideable Warning. Live-backend corpus review guarded five false-positive receiver shapes (124 → 76 findings, all genuine) | ✓ Good — UAT 1/1: criterion 3's A2 clause accepted on the file-set reading (25 vs same-corpus base 33, no new entries); 107-REVIEW 3 warnings open (bare nested-class value, BBjAPI detection by name, one unguarded `symbol.$refText` in bbj-scope-local.ts) |
+| v4.6 Phase 108: crash detection comes only from LSP4IJ's unexpected-stop hook (`BbjLanguageServer.onUnexpectedStop` → `BbjServerService.reportUnexpectedExit`), filtered by `ExpectedStopGuard` with pid correlation; the status feed drives display and logging only. The first crash auto-restarts once and keeps the counter; a second within 30 s gives up and shows the banner. The widget shows `BBj: Crashed` for every crash; the status log line prints the real previous status | LIFE-01/02: a crash and a normal stop both arrive as `started -> stopping -> stopped` (Phase 97 finding), so the status sequence cannot classify crashes; a macOS probe build confirmed the hook fires only after `kill -9`, never on a deliberate stop | ✓ Good — seven-scenario macOS hand UAT on the pre-review build (Scenario 7 derived, not exercised), plus the maintainer's cursory re-check of the post-review rebuild; UAT 15/15 |
 
 ## Evolution
 
@@ -644,4 +645,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-25 after Phase 107*
+*Last updated: 2026-09-25 after Phase 108*

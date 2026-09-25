@@ -330,7 +330,7 @@ corpus text enters this repository.
 
 - [x] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection (completed 2026-09-24)
 - [x] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files (completed 2026-09-25)
-- [ ] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions
+- [x] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions (completed 2026-09-25)
 - [ ] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups
 
 ## Phase Details
@@ -430,7 +430,7 @@ synthetic, never corpus text.
   3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
   4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
 
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -521,9 +521,9 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
-| 107. Validation False Alarms & Silent Skips | 6/6 | Not started |  |
-| 108. IntelliJ Crash Detection | 4/4 | Not started |  |
+| 106. On-Save Compiler Check in Both IDEs | 7/7 | Complete | 2026-09-24 |
+| 107. Validation False Alarms & Silent Skips | 6/6 | Complete | 2026-09-25 |
+| 108. IntelliJ Crash Detection | 4/4 | Complete | 2026-09-25 |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
