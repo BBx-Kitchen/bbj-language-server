@@ -22,7 +22,7 @@
 
 - [x] **VAL-01**: Single-line `IF`/`ELSE`/end-of-`IF` forms that BBj's compiler accepts (the files re-flagged at the v4.5 phase 98 close) get no "This statement needs to start in a new line" error, while a genuinely misplaced `ELSE` or `FI` with no open `IF` on the line is still reported
 - [x] **VAL-02**: The use-before-assignment check keeps checking the rest of a file when it meets a reference that has no symbol, instead of throwing and silently skipping the file
-- [ ] **VAL-03**: Calling a method or reading a field that does not exist on a Java class the language server has fully resolved (e.g. `BBjAPI().anyInvalidMethod()`) is reported as an Error that stays visible when the file has other errors, while receivers whose type is not certain keep today's Warning (folded into Phase 107 on 2026-09-24)
+- [x] **VAL-03**: Calling a method or reading a field that does not exist on a Java class the language server has fully resolved (e.g. `BBjAPI().anyInvalidMethod()`) is reported as an Error that stays visible when the file has other errors, while receivers whose type is not certain keep today's Warning (folded into Phase 107 on 2026-09-24)
 
 ### Diagnostics
 
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIG-07 | Phase 106 | Complete |
 | VAL-01 | Phase 107 | Complete |
 | VAL-02 | Phase 107 | Complete |
-| VAL-03 | Phase 107 | Pending |
+| VAL-03 | Phase 107 | Complete |
 | DIAG-01 | Phase 106 | Complete |
 | LIFE-01 | Phase 108 | Pending |
 | LIFE-02 | Phase 108 | Pending |
