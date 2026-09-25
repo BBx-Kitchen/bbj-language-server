@@ -329,7 +329,7 @@ Phase 107's conformance comparison runs locally against the private corpus, neve
 corpus text enters this repository.
 
 - [x] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection (completed 2026-09-24)
-- [ ] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files
+- [x] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files (completed 2026-09-25)
 - [ ] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions
 - [ ] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups
 
@@ -394,7 +394,7 @@ timings were measured through (`105-MEASUREMENT.md`), which is why criterion 5 r
   4. A file containing a reference with no symbol (the malformed `## = 1` shape) gets no "An error occurred during validation" diagnostic, and a use-before-assignment hint elsewhere in the same file still appears.
   5. `BBjAPI().anyInvalidMethod()` and the same unknown member on any other Java class the language server has fully resolved show one Error on the member name, also when the file has other errors. An unresolved, cold or synthetic receiver, a BBj class receiver and a template-string field access keep today's Warning, and a local conformance run shows no new Error on a member that exists.
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**

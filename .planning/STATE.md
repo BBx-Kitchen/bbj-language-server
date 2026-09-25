@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
-current_phase: 107
-current_phase_name: Validation False Alarms & Silent Skips
-status: verifying
-stopped_at: Completed 107-06-PLAN.md
-last_updated: "2026-09-25T01:44:51.197Z"
-last_activity: 2026-09-24
-last_activity_desc: Phase 107 execution started
-state_head: fb3f1e63b8e43a9cd0f5b1c8accc5763cdd51b90
+current_phase: 108
+current_phase_name: IntelliJ Crash Detection
+status: planning
+stopped_at: Phase 107 complete, ready to plan Phase 108
+last_updated: "2026-09-25T06:12:33.232Z"
+last_activity: 2026-09-25
+last_activity_desc: Phase 107 complete, transitioned to Phase 108
+state_head: ae2ae7c5ea65a9eb8bd528e1ce0706e58e4a7001
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 13
   completed_plans: 13
-  percent: 25
+  percent: 50
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-24 (v4.6 roadmapped — Phases 106-109, 18/18 requirements mapped, no orphans)
+**Last Updated:** 2026-09-25 (Phase 107 complete — VAL-01/02/03 verified; next: Phase 108)
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 107 — Validation False Alarms & Silent Skips
+**Current Focus:** Phase 108 — IntelliJ Crash Detection
 
 ---
 
 ## Current Position
 
-Phase: 107 (Validation False Alarms & Silent Skips) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-24 — Phase 107 execution started
+Phase: 108 — IntelliJ Crash Detection
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-25 — Phase 107 complete, transitioned to Phase 108
 
-Progress: [███░░░░░░░] 25% (1/4 phases)
+Progress: [█████░░░░░] 50% (2/4 phases)
 
 ### v4.6 milestone map
 
@@ -166,7 +166,7 @@ decisions:
 - [Phase 107]: Phase 107-04: previousStatement() now skips transparently past a same-line run of DefReturn siblings inside a DEF FN body when finding the governing statement for the IF/ELSE/FI line-break balance walk -- a DEF FN body mixes RETURN (DefReturn, not a Statement) in with ordinary Statement siblings, and a same-line RETURN was stopping the shared backward walk one step early, starving every ELSE/IF on a colon-continued chain of its own governing IF
 - [Phase 107]: Phase 107-04: two newly-exposed raw-B corpus files (a compiler-rejected SELECT...FROM...WHERE construct) were reported in 107-CONFORMANCE.md rather than fixed -- each file's only Error-severity diagnostic was the now-removed false alarm on an unrelated DEF FN inline IF/ELSE/RETURN, and nothing else in the language server ever raised an Error for the rejected SELECT construct; left for 107-06's human check per this plan's own instruction not to re-flag valid code to protect the B gate
 - [Phase 107]: Phase 107-05: live-backend review found and guarded five false-positive shapes in the unknown-Java-member check (class-ref method static filter, array-typed declare .length, java.lang.Object receiver, empty-string sentinel reassignment, constructor-reassignment to a different class); all narrow hasCertainReceiverType/checkUnknownJavaMember only, no scope/linker/interop file touched
-- [Phase 107]: Phase 107-06: Comparable A2 (harness-artifact and accepted-genuine-member files removed) measures 25 on this phase's own same-corpus base, a strict subset of the base's own 33 with zero new files, but 3 above the historical <=22 v4.5 exit number measured on a roughly 3-4x smaller corpus — Recorded as an open human-check item in 107-CONFORMANCE.md rather than resolved either way, matching the precedent already set at the Phase 98 close; VAL-03 left Pending in REQUIREMENTS.md for the same reason while VAL-01 and VAL-02 were marked Complete
+- [Phase 107]: Phase 107-06: Comparable A2 (harness-artifact and accepted-genuine-member files removed) measures 25 on this phase's own same-corpus base, a strict subset of the base's own 33 with zero new files, but 3 above the historical <=22 v4.5 exit number measured on a roughly 3-4x smaller corpus — Recorded as an open human-check item in 107-CONFORMANCE.md rather than resolved either way, matching the precedent already set at the Phase 98 close; resolved at UAT 2026-09-25: the user accepted the file-set reading (comparable A2 25 vs same-corpus base 33, no new entries) and VAL-03 was marked Complete
 
 ### Tech Debt
 
@@ -181,15 +181,15 @@ decisions:
 
 ### Pending Todos
 
-6 pending in `.planning/todos/pending/`, all acknowledged at a milestone close (v4.4: 4, v4.5: 2 plus
-the Phase 98 one). Four are scheduled in v4.6 (marked →); the other two stay unscheduled:
+5 pending in `.planning/todos/pending/`. Two are scheduled in v4.6 (marked →); the rest stay unscheduled:
 
 - `2026-09-20-lost-language-server-connection-is-invisible-to-crash-detection` — severity major; the Phase 97 attempt was reverted → LIFE-01, Phase 108
 - `2026-09-20-status-transition-log-prints-a-stale-previous-status` — only makes sense together with the one above → LIFE-02, Phase 108
 - `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
-- `2026-09-21-loosen-single-line-if-balance-rule-a2-residue` — part of the A2 residue (22 at v4.5 exit) → VAL-01, Phase 107
-- `2026-09-23-use-before-assignment-check-throws-on-a-reference-without-a-symbol` — reproduced in 104-02 → VAL-02, Phase 107
+- `2026-09-24-unknown-java-member-linking-warning-extras` — deferred extras from VAL-03 (Phase 107)
+
+Closed by Phase 107: the single-line IF A2 residue (VAL-01), the use-before-assignment crash on a symbol-less reference (VAL-02), and unknown method on a Java object as an Error (VAL-03).
 
 ### Blockers/Concerns
 
@@ -226,7 +226,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-25T01:44:51.110Z
-Stopped at: Completed 107-06-PLAN.md
+Stopped at: Phase 107 complete, ready to plan Phase 108
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
