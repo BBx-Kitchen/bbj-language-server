@@ -430,7 +430,7 @@ synthetic, never corpus text.
   3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
   4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -447,7 +447,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 108-04-PLAN.md — Final builds, whole suite, register check, seven-scenario macOS hand UAT with observed/derived marks (wave 4, checkpoint)
+- [x] 108-04-PLAN.md — Final builds, whole suite, register check, seven-scenario macOS hand UAT with observed/derived marks (wave 4, checkpoint)
 
 *Planning notes:* the Phase 97 attempt (`bb0a49f0`, `cb3ce7f8`, `a2680319`; reverted in
 `8fe7cb72` and `a22b78ad`) showed that the status sequence alone cannot separate a crash from a
@@ -523,7 +523,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 |-------|----------------|--------|-----------|
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Not started |  |
-| 108. IntelliJ Crash Detection | 3/4 | Not started |  |
+| 108. IntelliJ Crash Detection | 4/4 | Not started |  |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.

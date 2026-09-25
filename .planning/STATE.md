@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 108
 current_phase_name: IntelliJ Crash Detection
 status: executing
-stopped_at: Completed 108-03-PLAN.md
-last_updated: "2026-09-25T13:56:26.647Z"
+stopped_at: Completed 108-04-PLAN.md
+last_updated: "2026-09-25T14:53:07.796Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 108 execution started
-state_head: fed9cc8f7560a3fa56f5142df9bf9f9f672d10e3
+state_head: cf251d9dceaad57adb22787b9e482187e491f903
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 50
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 108 (IntelliJ Crash Detection) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 108 execution started
 
@@ -117,6 +117,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 108 P01 | 6min (+ ~3h49m checkpoint wait) | 3 tasks | 9 files |
 | Phase 108 P02 | 17min | 2 tasks | 7 files |
 | Phase 108 P03 | 11min | 2 tasks | 5 files |
+| Phase 108 P04 | 25min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,8 @@ decisions:
 - [Phase 108]: Phase 108-02: applyCrashPolicy's first-crash branch calls a new private requestGatedRestart directly instead of the public requestRestart, since requestRestart now clears crash state as the user-initiated entry point and the crash auto-restart must keep the counter it just incremented
 - [Phase 108]: Phase 108-03: A private service() accessor was added to BbjStatusBarWidget so all three render hooks read the crashed/give-up flags through one call site — Matches the plan's own suggested shape rather than three separate BbjServerService.getInstance() calls
 - [Phase 108]: Phase 108-03: Task 1's tracer feedback gate re-ran the task's automated verify in auto mode and passed, so execution proceeded straight to Task 2 with no checkpoint — workflow.auto_advance=true and the task carries no gate=blocking-human, so the gate followed row 2 of the tracer feedback gate precedence chain
+- [Phase 108]: Scenario 7 (config reload / Refresh Java Classes fallback) was not exercised in the maintainer's UAT session; every S7.k row is marked derived rather than passed, per D-15.
+- [Phase 108]: The maintainer's unscripted extra third kill (crash 3) is folded into Scenario 2's evidence as corroboration, not treated as a script deviation.
 
 ### Tech Debt
 
@@ -234,8 +237,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T13:56:26.542Z
-Stopped at: Completed 108-03-PLAN.md
+Last session: 2026-09-25T14:52:58.828Z
+Stopped at: Completed 108-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
