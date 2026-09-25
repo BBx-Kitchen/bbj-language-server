@@ -542,4 +542,85 @@ class BbjServerServiceRestartSourceGuardTest {
         }
         return result.toString();
     }
+
+    /**
+     * {@code clearCrashState()} writes its three crash-state fields only inside the
+     * {@code invokeLater(...)} argument, so they change on the EDT like the crash counter's other
+     * writes; no write may sit in the method body outside that hop.
+     */
+    @Test
+    void clearCrashStateWritesAllFieldsOnlyInsideTheInvokeLaterLambda() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "public void clearCrashState()");
+
+        int[] span = invokeLaterArgumentSpan(body);
+        String inside = body.substring(span[0], span[1]);
+        String outside = body.substring(0, span[0]) + body.substring(span[1]);
+
+        for (String field : new String[] {"serverCrashed", "crashCount", "autoRestartAbandoned"}) {
+            assertEquals(1, countOccurrences(inside, field + " ="),
+                    field + " must be written exactly once, inside the invokeLater argument");
+            assertEquals(0, countOccurrences(outside, field + " ="),
+                    field + " must not be written outside the invokeLater argument");
+        }
+    }
+
+    /**
+     * {@code requestRestart(long)} clears crash state, then queues the gated restart through
+     * {@code invokeLater}, so the restart runs after the clear on the EDT; a direct call would
+     * race the clear it now depends on.
+     */
+    @Test
+    void requestRestartDispatchesRequestGatedRestartThroughInvokeLater() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "public void requestRestart(long delayMs)");
+
+        int[] span = invokeLaterArgumentSpan(body);
+        String inside = body.substring(span[0], span[1]);
+        String before = body.substring(0, span[0]);
+        String after = body.substring(span[1]);
+
+        assertEquals(1, countOccurrences(inside, "requestGatedRestart(delayMs)"),
+                "requestGatedRestart(delayMs) must be called inside the invokeLater argument");
+        assertEquals(0, countOccurrences(before + after, "requestGatedRestart("),
+                "requestGatedRestart must not be called directly from requestRestart");
+        assertEquals(1, countOccurrences(before, "clearCrashState()"),
+                "clearCrashState() must be called once, before the gated restart is queued");
+    }
+
+    /**
+     * Returns {@code [start, end)} of the argument list of the first {@code invokeLater(} in
+     * {@code body}, excluding the parentheses themselves. String and char literals are skipped so
+     * a bracket inside one cannot end the span early.
+     */
+    private static int[] invokeLaterArgumentSpan(String body) {
+        int call = body.indexOf("invokeLater(");
+        assertTrue(call >= 0, "the method must dispatch through invokeLater");
+        int open = call + "invokeLater".length();
+        int depth = 0;
+        for (int i = open; i < body.length(); i++) {
+            char c = body.charAt(i);
+            if (c == '"' || c == '\'') {
+                i = endOfLiteral(body, i, c);
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')' && --depth == 0) {
+                return new int[] {open + 1, i};
+            }
+        }
+        fail("unbalanced invokeLater( argument list");
+        return null;
+    }
+
+    private static int endOfLiteral(String text, int quoteIndex, char quote) {
+        for (int i = quoteIndex + 1; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\\') {
+                i++;
+            } else if (c == quote) {
+                return i;
+            }
+        }
+        return text.length();
+    }
 }

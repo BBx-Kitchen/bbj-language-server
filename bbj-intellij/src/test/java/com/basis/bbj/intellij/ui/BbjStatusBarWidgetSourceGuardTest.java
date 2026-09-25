@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -146,6 +148,37 @@ class BbjStatusBarWidgetSourceGuardTest {
                 "BbjFileVisibility must read the resolved file type exactly once");
         assertEquals(0, countOccurrences(text, "getExtension("),
                 "BbjFileVisibility must never derive visibility from a file extension");
+    }
+
+    /**
+     * The give-up tooltip builds its "crashed again within N seconds" text from {@code
+     * BbjServerService.CRASH_WINDOW_MS}, so the wording cannot drift from the window the crash
+     * policy actually uses.
+     */
+    @Test
+    void tooltipForDerivesTheCrashWindowTextFromCrashWindowMsAndNeverHardcodesIt() {
+        String stripped = stripComments(readSource(BBJ_STATUS_BAR_WIDGET_SOURCE));
+        String tooltipForBody = sliceBetween(stripped,
+                "protected String tooltipFor(ServerStatus status, String text) {",
+                "protected void addPopupItems(JPopupMenu popup) {");
+
+        assertEquals(1, countOccurrences(tooltipForBody, "BbjServerService.CRASH_WINDOW_MS / 1000"),
+                "tooltipFor must derive the window in seconds from BbjServerService.CRASH_WINDOW_MS");
+        assertEquals(0, countHardcodedWindowLiterals(tooltipForBody),
+                "tooltipFor must not state the crash window as a literal number of seconds");
+    }
+
+    /** String literals that spell out a 30-second window, e.g. {@code "... within 30 seconds"}. */
+    private static final Pattern HARDCODED_WINDOW_LITERAL =
+            Pattern.compile("\"[^\"\\n]*\\b30\\s*(s|sec|secs|second|seconds)\\b[^\"\\n]*\"");
+
+    private static int countHardcodedWindowLiterals(String text) {
+        Matcher m = HARDCODED_WINDOW_LITERAL.matcher(text);
+        int count = 0;
+        while (m.find()) {
+            count++;
+        }
+        return count;
     }
 
     private static Path sourceFor(String simpleName) {

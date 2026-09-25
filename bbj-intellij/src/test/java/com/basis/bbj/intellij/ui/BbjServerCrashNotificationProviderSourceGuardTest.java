@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -125,5 +127,33 @@ class BbjServerCrashNotificationProviderSourceGuardTest {
         assertEquals(true, javadoc.contains("gives up") || javadoc.contains("given up"),
                 "the class javadoc must say, in plain English, that the banner appears only after "
                         + "auto-restart has given up");
+    }
+
+    /**
+     * The banner builds its "crashed again within N seconds" text from {@code
+     * BbjServerService.CRASH_WINDOW_MS}, so the wording cannot drift from the window the crash
+     * policy actually uses.
+     */
+    @Test
+    void panelTextDerivesTheCrashWindowFromCrashWindowMsAndNeverHardcodesIt() {
+        String stripped = stripComments(readSource(SOURCE));
+
+        assertEquals(1, countOccurrences(stripped, "BbjServerService.CRASH_WINDOW_MS / 1000"),
+                "the panel text must derive the window in seconds from BbjServerService.CRASH_WINDOW_MS");
+        assertEquals(0, countHardcodedWindowLiterals(stripped),
+                "the panel text must not state the crash window as a literal number of seconds");
+    }
+
+    /** String literals that spell out a 30-second window, e.g. {@code "... within 30 seconds"}. */
+    private static final Pattern HARDCODED_WINDOW_LITERAL =
+            Pattern.compile("\"[^\"\\n]*\\b30\\s*(s|sec|secs|second|seconds)\\b[^\"\\n]*\"");
+
+    private static int countHardcodedWindowLiterals(String text) {
+        Matcher m = HARDCODED_WINDOW_LITERAL.matcher(text);
+        int count = 0;
+        while (m.find()) {
+            count++;
+        }
+        return count;
     }
 }
