@@ -1,6 +1,7 @@
 import { AstNode } from 'langium';
 import { MethodData, toMethodData } from './bbj-nodedescription-provider.js';
-import { LibFunction, MethodDecl, isJavaClass, isJavaMethod, isLibFunction, isMethodDecl } from './generated/ast.js';
+import type { TypeInferer } from './bbj-type-inferer.js';
+import { Expression, JavaMethod, LibFunction, MethodDecl, isClass, isJavaClass, isJavaMethod, isLibFunction, isMethodDecl, isNumberLiteral, isPrefixExpression, isStringLiteral } from './generated/ast.js';
 
 /**
  * Overload selection for call sites (#478). The linker resolves an overloaded method
@@ -93,6 +94,74 @@ function typeAffinity(arg: ArgumentType, parameterType: string): number {
 function simpleName(type: string): string {
     const dot = type.lastIndexOf('.');
     return (dot >= 0 ? type.substring(dot + 1) : type).toLowerCase();
+}
+
+/**
+ * The call-site knowledge about an argument's type, used to rank overloads. Shared by the
+ * inlay-hint provider and the type inferer so both derive it the same way (#556).
+ */
+export function argumentTypeOf(expression: Expression, inferer: TypeInferer): ArgumentType {
+    let expr = expression;
+    while (isPrefixExpression(expr) && (expr.operator === '-' || expr.operator === '+')) {
+        expr = expr.expression;
+    }
+    if (isNumberLiteral(expr)) {
+        return 'number';
+    }
+    if (isStringLiteral(expr)) {
+        return 'string';
+    }
+    const type = inferer.getType(expr);
+    return isClass(type) ? { className: type.name } : undefined;
+}
+
+/**
+ * A candidate overload paired with the AstNode it came from. `findBestOverload`'s own
+ * MethodData-only result cannot be resolved back to a Class for a MethodDecl sibling —
+ * `toMethodData()` keeps only string type names, discarding the QualifiedClass node a
+ * return-type lookup needs. This candidate shape keeps both.
+ */
+export interface OverloadCandidate {
+    node: JavaMethod | MethodDecl;
+    data: MethodData;
+}
+
+/**
+ * Like `siblingOverloads`, but keeps the originating node paired with its `MethodData` and
+ * always puts the linked declaration first.
+ */
+export function overloadCandidates(linked: AstNode): OverloadCandidate[] {
+    if (isJavaMethod(linked) && isJavaClass(linked.$container)) {
+        const siblings = linked.$container.methods.filter(m => m !== linked && m.name === linked.name);
+        return [linked, ...siblings].map(node => ({ node, data: node }));
+    }
+    if (isMethodDecl(linked)) {
+        const name = linked.name.toLowerCase();
+        const siblings = linked.$container.members
+            .filter((m): m is MethodDecl => isMethodDecl(m) && m !== linked && m.name.toLowerCase() === name);
+        return [linked, ...siblings].map(node => ({ node, data: toMethodData(node) }));
+    }
+    return [];
+}
+
+/**
+ * The candidates among `candidates` that best fit `argTypes`, scored the same way as
+ * `findBestOverload`. When none of the candidates can take `argTypes.length` arguments,
+ * every candidate is returned unfiltered — the arguments decide nothing. Otherwise only the
+ * candidates sharing the single highest score are returned, in their input order.
+ *
+ * The caller decides what a tie means: the type inferer treats tied candidates with
+ * different return types as undecided and infers no type (#556). `findBestOverload`'s own
+ * tie rule (the linked declaration wins) is unrelated and unchanged by this function.
+ */
+export function bestOverloadCandidates(candidates: OverloadCandidate[], argTypes: ArgumentType[]): OverloadCandidate[] {
+    const fitting = candidates.filter(c => fitsArity(c.data, argTypes.length));
+    const pool = fitting.length > 0 ? fitting : candidates;
+    let bestScore = -Infinity;
+    for (const c of pool) {
+        bestScore = Math.max(bestScore, scoreOverload(c.data, argTypes));
+    }
+    return pool.filter(c => scoreOverload(c.data, argTypes) === bestScore);
 }
 
 /** All other declarations sharing the resolved declaration's name and container. */
