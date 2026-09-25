@@ -200,6 +200,7 @@ Shows the state of the BBj Language Server:
 - **Ready**: Server running normally
 - **Starting**: Server initialization in progress
 - **Stopped**: Server not running
+- **Crashed**: The server process stopped unexpectedly; the plugin restarts it once, and stops restarting after a second crash within 30 seconds
 - **Error**: Server encountered an error
 
 ### Java Interop Status
@@ -219,7 +220,7 @@ Contextual notifications appear at the top of the editor to help with configurat
 - **Missing BBj Home** - Set BBj Home in Settings to enable language features
 - **Missing Node.js** - Install Node.js or let the plugin download it automatically
 - **Java Interop Unavailable** - Start BBjServices or check configuration
-- **Server Crash** - Language server encountered an error; check logs
+- **Server Crash** - The language server crashed twice within 30 seconds and was not restarted automatically; use Restart Server or check the log
 
 Follow the banner instructions to resolve configuration issues.
 
