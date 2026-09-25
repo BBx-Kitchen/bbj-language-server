@@ -1,7 +1,8 @@
-import { ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
+import { AstUtils, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import type { BBjServices } from '../bbj-module.js';
 import { TypeInferer } from '../bbj-type-inferer.js';
 import {
+    Assignment,
     BBjAstType,
     Expression,
     JavaClass,
@@ -66,6 +67,41 @@ function resolveSymbol(receiver: Expression): unknown {
 }
 
 /**
+ * True when `assignment`'s own variable is ALSO the target of another assignment anywhere in the
+ * same file constructing a genuinely different class -- BBj allows a variable to be freely
+ * reassigned to any type, and every reference resolves its receiver type back to the variable's
+ * single declaring occurrence (its first assignment), so a real reassignment to a different class
+ * makes that first assignment's own certainty just as unreliable as an untyped variable. Found via
+ * the live-backend corpus review: a variable first constructed as one class, then reconstructed as
+ * a completely different one a few lines later, misreporting every member the SECOND class
+ * actually has as unknown on the FIRST.
+ */
+function isReassignedToADifferentConstructedClass(assignment: Assignment): boolean {
+    if (!isConstructorCall(assignment.value) || !isSymbolRef(assignment.variable)) {
+        return false;
+    }
+    const name = assignment.variable.symbol?.$refText?.toLowerCase();
+    const ownClass = assignment.value.klass.$cstNode?.text?.trim().toLowerCase();
+    if (!name || !ownClass) {
+        return false;
+    }
+    const root = AstUtils.getDocument(assignment).parseResult.value;
+    for (const node of AstUtils.streamAllContents(root)) {
+        if (!isAssignment(node) || node === assignment || !isConstructorCall(node.value) || !isSymbolRef(node.variable)) {
+            continue;
+        }
+        if (node.variable.symbol?.$refText?.toLowerCase() !== name) {
+            continue;
+        }
+        const otherClass = node.value.klass.$cstNode?.text?.trim().toLowerCase();
+        if (otherClass && otherClass !== ownClass) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * True when the receiver's type is certain enough to trust an "unknown member" verdict on. BBj
  * dispatches an object method call on the runtime object, so a type reached only through a
  * method's return type or a Java field's type is a lower bound, not a guarantee -- such a
@@ -108,7 +144,12 @@ export function hasCertainReceiverType(receiver: Expression, depth = 0): boolean
             return true;
         }
         if (isAssignment(ref)) {
-            // An undeclared variable takes its first assignment's own certainty.
+            // An undeclared variable takes its first assignment's own certainty -- unless the
+            // same variable is reconstructed elsewhere as a different class, in which case this
+            // first assignment is no more reliable than an untyped variable.
+            if (isReassignedToADifferentConstructedClass(ref)) {
+                return false;
+            }
             return hasCertainReceiverType(ref.value, depth + 1);
         }
         return false;
