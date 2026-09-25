@@ -123,4 +123,73 @@ plan; plan 109-06 carries out this choice after the phase's regression gate.
 
 ## Final state
 
-(filled by plan 109-06 after the phase's regression gate)
+- **Date:** 2026-09-25
+- **Measured commit (HEAD of this phase):** `0595f7471dc5d0dbc4f10ba627233ad2a98e1a33` (this
+  plan's Task 1 commit; no completion-provider or `bbj.langium` change exists anywhere in this
+  phase's diff)
+- **Re-run command:**
+  ```
+  rm -f /tmp/phase-109-method-body-final.jsonl
+  cd bbj-vscode && MEASURE_COMPLETION_OUT=/tmp/phase-109-method-body-final.jsonl \
+    npx vitest run test/completion-method-body.test.ts
+  ```
+
+| Row | In method | Control | Control labels missing in method | Verdict |
+| --- | --- | --- | --- | --- |
+| statement start | 147 | 145 | (none) | works |
+| after = | 9 | 6 | (none) | works |
+| PRINT argument | 145 | 143 | (none) | works |
+| function argument | 10 | 7 | (none) | works |
+| member after . | 4 | 4 | (none) | works |
+| inside IF | 145 | 143 | (none) | works |
+| inside FOR | 148 | 146 | (none) | works |
+| DEF FN in a method | 147 | 144 | (none) | works |
+| first line after METHOD | 146 | 139 | (none) | works |
+| last line before METHODEND | 146 | 145 | (none) | works |
+| empty method body | 145 | 139 | (none) | works |
+
+### Before → final comparison
+
+| Row | Before verdict | Final verdict |
+| --- | --- | --- |
+| statement start | works | works (unchanged) |
+| after = | works | works (unchanged) |
+| PRINT argument | works | works (unchanged) |
+| function argument | works | works (unchanged) |
+| member after . | works | works (unchanged) |
+| inside IF | works | works (unchanged) |
+| inside FOR | works | works (unchanged) |
+| DEF FN in a method | works | works (unchanged) |
+| first line after METHOD | works | works (unchanged) |
+| last line before METHODEND | works | works (unchanged) |
+| empty method body | works | works (unchanged) |
+
+Every row's counts are byte-identical to the before-fix table above and to the after-plan-01
+re-run already recorded. No position's verdict changed across the whole phase.
+
+### Positions still out of reach
+
+None. Every position matrix row, and the issue's own verbatim DEF FN scenario, measures `works`
+both before and after the phase.
+
+### Regression gate (against the phase base)
+
+- **Phase base commit:** `0379065c25849d80b4306ba43e30f5938f5c5350` (parent of the first commit
+  whose message contains `(109-01)`)
+- **Whole suite on HEAD** (`RUN_BBJ_TESTS=0 --maxWorkers=2`): `numFailedTests=0`,
+  `numTotalTests=2842`
+- **Live-gated files** (`test/linking.test.ts`, `test/functional/issue440-real-interop.test.ts`,
+  `test/functional/issue447-real-interop.test.ts`,
+  `test/functional/unknown-java-member-real-interop.test.ts`) with `RUN_BBJ_TESTS=1
+  --maxWorkers=1` on both trees: base-failing=11, head-failing=11, head-only=0 — the 11 failing
+  names on HEAD are exactly the pre-existing `linking.test.ts` interop test-double-drift set (the
+  documented local baseline), the same 11 names fail on the base, and no new name fails on HEAD
+- **Register check** (`D-NN`/`COMP-`/`JINT-`/`109-0N`/`CR-`/`WR-`/`IN-`/`T-109-` grep) over the
+  whole phase diff (`base..HEAD`, `bbj-vscode/src` + `bbj-vscode/test`): `register-clean`, no
+  match
+- **Live cold-start evidence (criteria 4 and 5), against the real backend on :5008:** all three
+  `test/functional/java-class-lookups-real-interop.test.ts` tests passed (not skipped) — a real
+  cold start (workspace init + implicit imports) sent 635 `getRawClass` requests and logged 1106
+  `Resolving class` debug lines, none of them for a primitive/void/array/blank name; no canonical
+  class was requested under two spellings; `java.util.AbstractMap.SimpleEntry` resolved once for
+  both its dotted and `$` spellings, sharing one object with a `getKey` method
