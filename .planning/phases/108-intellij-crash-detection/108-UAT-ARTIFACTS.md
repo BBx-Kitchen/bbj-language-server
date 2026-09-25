@@ -212,3 +212,199 @@ counting must not read that internal stop as a second crash. And closing the las
 request and no hook line, so `stopping` is not a guaranteed precursor to `stopped` on that path.
 None of this weakens the hook as the crash signal; the hook's presence-or-absence, not the status
 sequence, is what this plan builds on.
+
+## Final UAT
+
+### Build identity
+
+- Commit: `d6bc0404f2143e05d3c91c0a0af887589407c220`
+- `/tmp/phase-108-uat/bbj-lang.vsix` — sha256
+  `854038f7628dc702ceebb2db1adf167763229e192c8c9cc008dcff8ed10f2862`, 2726452 bytes
+- `/tmp/phase-108-uat/bbj-intellij-0.1.0.zip` — sha256
+  `ade45f94f38952bbe5692d8c12d4b65f3ea760c38eb5c881641f7a314497ed87`, 1201980 bytes
+- Zip's bundled `bbj-intellij/lib/language-server/main.cjs` is byte-identical to
+  `bbj-vscode/out/language/main.cjs` (`cmp` exit 0, from a fresh `npm run build` on this commit)
+- `/tmp/phase-108-uat/plugin.jar` (extracted from the zip) — `javap -p` on
+  `com.basis.bbj.intellij.ui.BbjServerService` finds `reportUnexpectedExit` (3 matches: the
+  method plus its two parameter-type references in the signature)
+- Whole IntelliJ suite: `cd bbj-intellij && ./gradlew test --rerun-tasks --console=plain` —
+  `BUILD SUCCESSFUL`, 1126 tests aggregated from `build/test-results/test/*.xml`, 0 failures
+- Register check: `grep -nE '\b108-[0-9]{2}\b|\bD-[0-9]{2}\b|\bLIFE-0[0-9]\b|\bT-108-[0-9]+\b|\b(CR|WR|IN)-[0-9]{2}\b|Pitfall [0-9]'`
+  over all 16 source/test/doc files this phase changed (`ExpectedStopGuard.java`,
+  `BbjLanguageClient.java`, `BbjLanguageServerFactory.java`, `BbjLanguageServer.java`,
+  `BbjServerCrashNotificationProvider.java`, `BbjServerService.java`, `BbjStatusBarWidget.java`,
+  `ExpectedStopGuardTest.java`, `BbjLanguageServerSourceGuardTest.java`,
+  `BbjServerServiceRestartSourceGuardTest.java`, `BbjStatusFeedSourceGuardTest.java`,
+  `Lsp4ijCouplingCanaryTest.java`, `Lsp4ijImportAllowlistTest.java`,
+  `BbjServerCrashNotificationProviderSourceGuardTest.java`, `BbjStatusBarWidgetSourceGuardTest.java`,
+  `documentation/docs/intellij/features.md`) — prints nothing
+
+### Run order
+
+Note the time (HH:MM:SS) before each scenario begins.
+
+1. **Scenario 7** — config reload or the Refresh Java Classes fallback
+2. **Scenario 5** — Settings Apply
+3. **Scenario 3** — close the last BBj file
+4. **Scenario 4** — close the project with a BBj file open, then **reopen the project
+   afterwards** and wait for `BBj: Ready` before continuing
+5. **Scenario 6** — the manual Restart Server action
+6. **Scenario 1** — kill once, run within 30 s of scenario 6 reaching `started` (this also
+   proves the plugin's own restart token is disarmed after a deliberate restart — D-08)
+7. **Scenario 2** — a second kill within 30 s of scenario 1's crash
+
+### Scenario 1: Kill once
+
+Steps: with the server `BBj: Ready` (within 30 s of scenario 6 reaching `started`), run
+`kill -9 $(pgrep -f 'bbj-intellij/lib/language-server/main.cjs')` once. Watch the status bar,
+wait for it to auto-restart to `BBj: Ready`, and note whether any notification or banner appears.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S1.1 | `BBj language server process exited unexpectedly (pid <pid>, exit code <code>); auto-restarting (1 of 1)` | `BbjServerService.applyCrashPolicy` (`crashCount == 1` branch) | |
+| S1.2 | `BBj language server connection stop requested (pid <pid>, process alive: false)` | `BbjLanguageServer.stop()`, reached via LSP4IJ's own handler → `LanguageServerWrapper.stop(ctx)` → `shutdownAll` → `provider.stop()` | |
+| S1.3 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | |
+| S1.4 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | |
+| S1.5 | `Scheduled a BBj language server restart in 1000 ms` | `BbjServerService.requestGatedRestart`, called from `applyCrashPolicy` with `CRASH_RESTART_DELAY_MS = 1000` | |
+| S1.6 | `Restarting the BBj language server; status before the stop: stopped` | `BbjServerService.doRestart` | |
+| S1.7 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` (`finally` block, after disarming the guard) | |
+| S1.8 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | |
+| S1.9 | a status line ending `-> started` | `BbjServerService.updateStatus` | |
+| S1.10 | widget shows `BBj: Crashed`, tooltip `BBj language server stopped unexpectedly and is being restarted.` | `BbjStatusBarWidget.textFor`/`tooltipFor` (`isServerCrashed()` true, `isAutoRestartAbandoned()` false) | |
+| S1.11 | widget returns to `BBj: Ready` once restarted | `BbjStatusBarWidget.textFor`; `BbjServerService.updateStatus` clears `serverCrashed` on `started` | |
+| S1.12 | must-not: no editor banner appears | `BbjServerCrashNotificationProvider.buildPanel`, gated on `isAutoRestartAbandoned()` (false for a first crash) | |
+| S1.13 | must-not: no `BBj Language Server crashed unexpectedly` balloon | `BbjServerService.notifyCrash`, only called from the `crashCount > 1` branch | |
+| S1.14 | LSP4IJ's own `The server was stopped unexpectedly.` notification may appear and is expected (D-12) | `LanguageServerWrapper.showNotificationStartServerError` (vendor 0.21.0, lines 430-433) | |
+| S1.15 | must-not: `auto-restart stopped until a manual restart` | `BbjServerService.applyCrashPolicy`, only in the `crashCount > 1` branch | |
+| S1.16 | must-not: `exited during a plugin restart` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch (guard was not armed for this kill) | |
+| S1.17 | this kill runs within 30 s of scenario 6 reaching `started`; the crash WARN here (S1.1) proves `ExpectedStopGuard`'s token was disarmed after scenario 6's own restart, not left armed (D-08) | `BbjServerService.doRestart` (`finally`: `expectedStop.disarm()` before starting) | |
+| S1.18 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+
+### Scenario 2: Second kill within 30 s
+
+Steps: immediately after scenario 1 reaches `BBj: Ready` (within 30 s of scenario 1's crash),
+run the same `kill -9` again. Wait 15 s without clicking into an editor and note the banner,
+then press **Restart Server** in the banner.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S2.1 | `BBj language server process exited unexpectedly (pid <pid>, exit code <code>); crash 2 within 30 s, not auto-restarting` | `BbjServerService.applyCrashPolicy` (`crashCount > 1` branch, first WARN) | |
+| S2.2 | `BBj language server crashed 2 times within 30 s; auto-restart stopped until a manual restart` | `BbjServerService.applyCrashPolicy` (`crashCount > 1` branch, give-up WARN) | |
+| S2.3 | must-not: no `Scheduled a BBj language server restart` line after the give-up WARN, until the tester acts | `BbjServerService.applyCrashPolicy` (`requestGatedRestart` not called on this branch) | |
+| S2.4 | balloon `BBj Language Server crashed unexpectedly` with actions `Show Log` and `Restart` | `BbjServerService.notifyCrash` | |
+| S2.5 | editor banner `BBj Language Server crashed again within 30 seconds and was not restarted. Language features are unavailable.` with actions `Restart Server` and `Show Log` | `BbjServerCrashNotificationProvider.buildPanel` | |
+| S2.6 | widget `BBj: Crashed`, give-up tooltip `BBj language server crashed again within 30 seconds and was not restarted. Use Restart Server.` | `BbjStatusBarWidget.tooltipFor` (`isAutoRestartAbandoned()` true branch) | |
+| S2.7 | LSP4IJ's own `The server was stopped unexpectedly.` notification may appear and is expected (D-12) | `LanguageServerWrapper.showNotificationStartServerError` | |
+| S2.8 | after waiting 15 s with no editor click, the banner is still shown (auto-restart never resumes on its own) | `BbjServerCrashNotificationProvider.buildPanel` (state only changes on a restart) | |
+| S2.9 | pressing **Restart Server** in the banner logs `Scheduled a BBj language server restart in 0 ms` | `BbjServerCrashNotificationProvider` → `BbjServerService.requestRestart(0)` → `requestGatedRestart` | |
+| S2.10 | the Crashed state clears: widget returns to `BBj: Ready`, banner disappears | `BbjServerService.updateStatus` (`started` clears `serverCrashed`/`autoRestartAbandoned`); `requestRestart` also calls `clearCrashState()` | |
+| S2.11 | alternative (Phase 97 observation): clicking into an editor before pressing Restart Server may let LSP4IJ start the server on its own, `stopped -> starting` with no `Scheduled` line first; the banner then clears on `started` | LSP4IJ's own lazy retry on the next `start()`; `BbjServerService.updateStatus` | |
+| S2.12 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+
+### Scenario 3: Close the last BBj file
+
+Steps: with the server `BBj: Ready` and one `.bbj` file open, close it (the last BBj editor
+tab) and wait.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S3.1 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | |
+| S3.2 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | |
+| S3.3 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | |
+| S3.4 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — never reached, since `stop()` runs before the process ends, so the hook's `isStopped()` gate is true | |
+| S3.5 | must-not: `Scheduled a BBj language server restart` | `BbjServerService.requestGatedRestart` — not invoked on this path | |
+| S3.6 | derived alternative, not required here: if the file is reopened within roughly 30 s, `status: stopping -> started` may appear instead of ever reaching `stopped` (108-01 probe finding P6) | `BbjServerService.updateStatus`; LSP4IJ's own idle-grace recovery | |
+| S3.7 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+
+### Scenario 4: Close the project with a BBj file open
+
+Steps: with a `.bbj` file still open and the server `BBj: Ready`, close the project (not just
+the file). Then reopen the project (per Run order) and wait for `BBj: Ready` before scenario 6.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S4.1 | a `BBj language server connection stop requested (pid <pid>, process alive: true)` line may appear before the project finishes disposing | `BbjLanguageServer.stop()`, reached through LSP4IJ's own project-close cleanup, which calls `stop()` before the process ends | |
+| S4.2 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached, since project-close cleanup calls `stop()` first, and further status/crash publishing is also suppressed once `project.isDisposed()` | |
+| S4.3 | cross-scenario: every status line logged before disposal has a from-state equal to the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+| S4.4 | procedural: reopen the project afterward and wait for `BBj: Ready` before continuing to scenario 6 | Run order | |
+
+### Scenario 5: Settings Apply after changing a setting
+
+Steps: Settings, Languages & Frameworks, BBj: change one setting (for example Log level) and
+press Apply. Wait for `BBj: Ready`.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S5.1 | `Scheduled a BBj language server restart in 500 ms` | `BbjServerService.scheduleRestart` → `requestRestart(RESTART_DEBOUNCE_MS)` → `requestGatedRestart` | |
+| S5.2 | `Restarting the BBj language server; status before the stop: started` | `BbjServerService.doRestart` | |
+| S5.3 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | |
+| S5.4 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | |
+| S5.5 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | |
+| S5.6 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` | |
+| S5.7 | `BBj language server status: stopped -> stopping` | `BbjServerService.updateStatus` | |
+| S5.8 | `BBj language server status: stopping -> starting` | `BbjServerService.updateStatus` | |
+| S5.9 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | |
+| S5.10 | `BBj language server status: starting -> started` | `BbjServerService.updateStatus` | |
+| S5.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | |
+| S5.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` — the race `ExpectedStopGuard.arm()` covers (D-08) | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | |
+| S5.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+
+### Scenario 6: Manual Restart Server action
+
+Steps: click the BBj status-bar widget and choose Restart Server (or use the BBj Restart
+Server action). Wait for `BBj: Ready`.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S6.1 | `Scheduled a BBj language server restart in 0 ms` | `BbjStatusBarWidget`'s popup item / `BbjRestartServerAction` → `BbjServerService.requestRestart(0)` → `requestGatedRestart` | |
+| S6.2 | `Restarting the BBj language server; status before the stop: started` | `BbjServerService.doRestart` | |
+| S6.3 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | |
+| S6.4 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | |
+| S6.5 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | |
+| S6.6 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` | |
+| S6.7 | `BBj language server status: stopped -> stopping` | `BbjServerService.updateStatus` | |
+| S6.8 | `BBj language server status: stopping -> starting` | `BbjServerService.updateStatus` | |
+| S6.9 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | |
+| S6.10 | `BBj language server status: starting -> started` | `BbjServerService.updateStatus` | |
+| S6.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | |
+| S6.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | |
+| S6.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+| S6.14 | note: scenario 1's kill (Run order) follows within 30 s of this scenario's `-> started` line, so its crash WARN proves the restart token armed by this scenario's own `doRestart` was disarmed rather than left set (D-08) | `BbjServerService.doRestart` (`finally`: `expectedStop.disarm()`) | |
+
+### Scenario 7: Config reload, or the Refresh Java Classes fallback
+
+Steps: either edit and save the configured config file (config reload path), or trigger the
+Refresh Java Classes fallback's `Restart language server` balloon with BBjServices stopped.
+Wait for `BBj: Ready`.
+
+| Row | Expected line or UI (substring) | Derived from | Observed? |
+|-----|----------------------------------|---------------|-----------|
+| S7.1 | `Scheduled a BBj language server restart in 500 ms` (config reload path) — or `Scheduled a BBj language server restart in 0 ms` (Refresh Java Classes fallback path) | `BbjLanguageClient.configReloadRequired` → `requestRestart(RESTART_DEBOUNCE_MS)`; or `BbjRefreshJavaClassesAction` → `requestRestart(0)` | |
+| S7.2 | `Restarting the BBj language server; status before the stop: started` | `BbjServerService.doRestart` | |
+| S7.3 | `BBj language server connection stop requested (pid <pid>, process alive: true)` | `BbjLanguageServer.stop()` | |
+| S7.4 | `BBj language server status: started -> stopping` | `BbjServerService.updateStatus` | |
+| S7.5 | `BBj language server status: stopping -> stopped` | `BbjServerService.updateStatus` | |
+| S7.6 | `Starting the BBj language server; status before the start: stopped` | `BbjServerService.doRestart` | |
+| S7.7 | `BBj language server status: stopped -> stopping` | `BbjServerService.updateStatus` | |
+| S7.8 | `BBj language server status: stopping -> starting` | `BbjServerService.updateStatus` | |
+| S7.9 | `Launching the BBj language server: …` | `BbjLanguageServer` constructor | |
+| S7.10 | `BBj language server status: starting -> started` | `BbjServerService.updateStatus` | |
+| S7.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | |
+| S7.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | |
+| S7.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | |
+
+### Scenario excerpts (observed)
+
+**Redaction rule:** before pasting any line from a real `idea.log`, replace the macOS home
+directory with `<home>` and the project directory with `<project>`. Never paste BBj source
+text.
+
+**Marker format:** one `--- scenario N (HH:MM:SS) ---` line before each scenario's pasted
+lines, in run order (7, 5, 3, 4, 6, 1, 2).
+
+```text
+```
+
+### Verdict
+
+Pending.
