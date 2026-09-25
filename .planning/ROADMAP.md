@@ -471,7 +471,23 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 109-01-PLAN.md — COMP-03: before-fix measurement of completion inside class method bodies recorded in the phase dir, working positions pinned, DEF FN `_f$`/`_t$` test un-skipped, broken positions fixed within budget or recorded; maintainer decides #561 handling (checkpoint)
+- [ ] 109-02-PLAN.md — COMP-01: `isClassRef` also recognises a `MemberCall` receiver naming a Java class, so `java.lang.String.` offers statics only (`class` pseudo-member excluded)
+- [ ] 109-03-PLAN.md — COMP-02: node-preserving overload selection shared with inlay hints; type inferer uses the matching overload's return type, no type on an undecided tie
+- [ ] 109-04-PLAN.md — JINT-01: primitive, `void`, array and blank names answered locally at the top of `resolveClassByName` with today's result; counting test double
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 109-05-PLAN.md — JINT-02: `canonicalJavaClassName`, `Outer.Inner` as the single cache key, request keeps the arriving spelling
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 109-06-PLAN.md — Live :5008 cold-start check, whole-suite gate against the base commit, register check, COMP-03 final record, #561 action
 
 *Planning notes:* #561's recorded root cause is that the completion engine's grammar follower
 produces no candidate positions inside `MethodDecl.body` at all. COMP-03 may therefore need a
