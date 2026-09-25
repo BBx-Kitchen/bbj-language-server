@@ -394,7 +394,7 @@ timings were measured through (`105-MEASUREMENT.md`), which is why criterion 5 r
   4. A file containing a reference with no symbol (the malformed `## = 1` shape) gets no "An error occurred during validation" diagnostic, and a use-before-assignment hint elsewhere in the same file still appears.
   5. `BBjAPI().anyInvalidMethod()` and the same unknown member on any other Java class the language server has fully resolved show one Error on the member name, also when the file has other errors. An unresolved, cold or synthetic receiver, a BBj class receiver and a template-string field access keep today's Warning, and a local conformance run shows no new Error on a member that exists.
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -406,7 +406,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 107-04-PLAN.md — harness baseline on the phase base, re-flagged files checked and any remaining shape fixed (VAL-01)
-- [ ] 107-05-PLAN.md — live-backend review of every unknown-member Error over the private corpus, guards for false positives (VAL-03)
+- [x] 107-05-PLAN.md — live-backend review of every unknown-member Error over the private corpus, guards for false positives (VAL-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -505,7 +505,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
-| 107. Validation False Alarms & Silent Skips | 4/6 | Not started |  |
+| 107. Validation False Alarms & Silent Skips | 5/6 | Not started |  |
 | 108. IntelliJ Crash Detection | 0/TBD | Not started | - |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
