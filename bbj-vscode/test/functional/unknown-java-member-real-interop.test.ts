@@ -97,7 +97,7 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
     }, 60000);
 
     test.runIf(run)('a real BBjAPI method stays clean', async () => {
-        const document = await validate('api! = BBjAPI()\nsg! = api!.getSysGui()\n');
+        const document = await validate('bbjApiHandle! = BBjAPI()\nsysGuiHandle! = bbjApiHandle!.getSysGui()\n');
         expect((document.diagnostics ?? []).some(d => d.message.includes('getSysGui'))).toBe(false);
     }, 60000);
 

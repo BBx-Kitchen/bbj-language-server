@@ -560,9 +560,9 @@ classend
         });
     });
 
-    // ========================================================================
+    // --- section ---
     // Use before assignment with a reference that has no symbol
-    // ========================================================================
+    // --- section ---
     describe('Use before assignment with a reference that has no symbol', () => {
         const parseHermetic = parseHelper<Model>(hermeticServices.BBj);
 

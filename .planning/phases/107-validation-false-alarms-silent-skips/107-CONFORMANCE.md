@@ -126,3 +126,175 @@ prints 2 — the "before" and the "both" call sites, exactly as before this plan
   (parses every fixture in `test-data/`, including the new one) passes. The leak guard reports
   every changed tracked file clean, and the source-diff register check for this plan's own
   changes to `bbj-vscode/src`/`bbj-vscode/test` reports no planning-identifier tokens.
+
+## 4. Final measurement
+
+- Date: 2026-09-25. Commit: `674e4096` (phase HEAD, all six plans' fixes present). Mode: `validate`
+  with `--endpoint 127.0.0.1:5008` — the same mode the base run (§1, commit `77c967ce`) used, so the
+  two are directly comparable. Same corpus checkout as the base run (16,884 accepted-corpus files,
+  4,615 rejected-corpus files). 582 seconds (base: 584 seconds).
+- No other harness run or probe was active before this run started; the local `details.json`/
+  `summary.json` sitting next to the harness at the time (a stale non-endpoint re-measure from an
+  earlier plan) already matched an existing `phase-107-*` snapshot, so nothing further needed
+  snapshotting before this run. Outputs copied to `phase-107-final-details.json`,
+  `phase-107-final-summary.json` and `phase-107-final-run.log`.
+
+### Gate table (base → final)
+
+| Measure | Base (`77c967ce`) | Final (`674e4096`) | Delta |
+|---|---|---|---|
+| A (valid code rejected) | 26 | 26 | 0 |
+| A2 raw (`falseAlarms`) | 33 | 7,411 | +7,378 |
+| A2 without harness-artifact files | 33 | 36 | +3 |
+| A2 comparable (harness artifacts *and* accepted genuinely-unknown members removed) | 33 | 25 | -8 |
+| B raw (`missed`) | 1,618 | 1,473 | -145 |
+| B reconciled (`missedReconciled`, endpoint verdict applied) | 75 | 53 | -22 |
+| `checkExceptions` (rejects) | 6 | 0 | -6 |
+| `checkExceptions` (corpus) | 0 | 0 | 0 |
+
+The A2 raw jump is entirely the new unknown-Java-member check (VAL-03, added by 107-03/107-05 in
+this same phase) firing against the harness's own small fake Java classpath, which lacks most real
+members of the classes it stands in for — the classification below accounts for every one of the
+7,411 files by file set, not by this raw total.
+
+### VAL-01 target set (D-03)
+
+The 7-file target set from §2 (6 blank-message + 1 `: else`-message, the files re-flagged at the
+Phase 98 close) was re-probed against the current tree with the same per-file harness services:
+**0 of 7 carry any `bbj-line-break` Error.** The target set stays fully cleared (matches §3's own
+re-measure, which used a different tree snapshot mid-phase before VAL-03 existed).
+
+Two of the seven now separately carry an unrelated `bbj-unknown-java-member` Error (a harness
+artifact — the fake classpath's `BBjAPI` class lacks a real method the live backend has; see the
+classification below) — this is VAL-03 harness noise, not a VAL-01 line-break regression. Verdict:
+**re-flagged files clean — PASS.**
+
+### File-set comparison: A2
+
+- **Newly entered A2 (`falseAlarms`), by id: 7,383.** Every one of the 7,383 was re-probed with the
+  harness's own per-file test-double services (all Error-severity diagnostics, not just the first),
+  after first confirming and correcting a cold-start artifact in the probe's own document-build
+  order (the very first document built in a fresh probe process links differently than every
+  document after it — reproduced, understood, and fixed by warming the probe with one throwaway
+  build first, mirroring the harness's own `--endpoint`-mode sanity check; unrelated to any of this
+  phase's fixes). Classified by comparing each Error's id+line against
+  `phase-107-live-member-probe.jsonl` (the full-corpus live-backend findings left after 107-05's
+  five guards):
+  - **Harness artifact** (every Error is `bbj-unknown-java-member` and none of its lines are in the
+    live-backend findings — i.e. the real backend resolves that member, only the fake classpath is
+    missing it): **7,372 files.**
+  - **Accepted genuinely-unknown member** (every Error is `bbj-unknown-java-member` and every one of
+    its lines IS in the live-backend findings — class (a) from 107-05's own review): **8 files.**
+  - **Both, in the same file** (every Error is still `bbj-unknown-java-member`, but the file has at
+    least one harness-artifact line and at least one already-accepted genuinely-unknown line): **3
+    files.** Every diagnostic in these 3 files individually falls into one of the two accepted
+    dispositions above (none is unclassified), so they are excluded from the comparable-A2 count on
+    the same basis as the two pure buckets.
+  - **Regression (would stop the plan):** **0 files.** No newly entered A2 file carries an Error
+    that is neither `bbj-unknown-java-member` nor accounted for by the classification above.
+- **Left A2, by id: 5.** All 5 are members of the VAL-01 target set (§2) — the same 5 files the
+  balance-rule fix (107-01/107-04) was expected to clear once the 2 remaining unclearable-in-§3
+  files (see above) picked up their own unrelated harness-artifact reason instead. No file left A2
+  for any other reason.
+- **Still present in A2 (in both base and final), by id: 28.** Re-probed the same way:
+  - **22 files** carry no `bbj-unknown-java-member` Error at all — their A2 membership is entirely
+    for the same unrelated pre-existing reason as at the base (12 are the line-break-message family
+    §3 already described as out of this phase's scope — "end with a line break" on a bare
+    assignment/`GOSUB`/`RETURN`-without-parens/`clear`, and one array-element shape; the other 10
+    split across the CASE-outside-SWITCH, DECLARE-placement, field-type/initializer,
+    member-visibility and MKEYED-MODE families §1 already named).
+  - **3 files** are now purely `bbj-unknown-java-member` harness-artifact noise (their own line-break
+    reason cleared by 107-01/107-04, replaced by an unrelated fake-classpath gap) — excluded from
+    comparable A2 on the same basis as the "harness artifact" bucket above.
+  - **3 files** carry *both* an unrelated pre-existing Error (2 are line-break-family residue, 1 is
+    the DECLARE-placement message) *and* one or more harness-artifact `bbj-unknown-java-member`
+    Errors — since not every Error in these 3 is accounted for by the VAL-03 classification, they
+    stay counted in comparable A2 exactly as they already were at the base (their own pre-existing,
+    unrelated reason, unchanged by this phase).
+- **Comparable A2 = 25** (22 + 3, both from the "still present" set above). **Every one of these 25
+  files was already present in this phase's own same-corpus base measurement (33)** — zero new files
+  enter comparable A2. Net change vs. base: 33 → 25 (8 fewer), from 5 VAL-01 target-set clearances
+  plus 3 base files whose only current reason is now-excluded harness noise.
+- **Message-group shape (diagnostic level, public Java/BBj API names only — no corpus text):** the
+  harness-artifact bucket's 13,353 `bbj-unknown-java-member` diagnostics span 242 distinct messages;
+  the ten largest are all on the fake `BBjAPI`/`HashMap` classes (`getSysGui`, `openSysGui`,
+  `makeVector`, `getAdmin`, the `TRUE`/`FALSE` fields, `getMDI`, `ON_BUTTON_PUSH`, `getLastEvent`,
+  `makeColor`, `getBBjPrinter`, `HashMap.get` — real members the live backend has, absent only from
+  the harness's own small fake classpath). Of the 76 genuinely-unknown findings 107-05 accepted
+  corpus-wide, 13 distinct ones also surface in this harness run (the rest never reach an Error here
+  because the fake classpath does not resolve their receiver as a fully-resolved Java class at all).
+
+### File-set comparison: B
+
+- **Raw `missed`, newly entered: 2 files.** The same 2 files §3 already reported (a compiler-rejected
+  `SELECT ... FROM ... WHERE ...`-shaped construct with no Error-severity diagnostic anywhere in this
+  language server) — re-confirmed identical by id, not a new discovery. Left exactly as §3 left them,
+  for this same human check, per the plan's own instruction not to re-flag valid code to protect this
+  gate.
+- **Reconciled `missedReconciled` (the endpoint-verdict gate this phase's criterion actually reads),
+  newly entered: 0 files.** **PASS.**
+
+### `checkExceptions` (VAL-02 corroboration)
+
+Base: 6 reject-set files, all the same `getSymbolRefName`/`checkUseBeforeAssignment` crash message
+(the exact mechanism 107-02 fixed). Final: 0 corpus, 0 rejects. **Falls to 0 — PASS.**
+
+### Suites (D-12)
+
+- Whole suite, `RUN_BBJ_TESTS=0 --maxWorkers=2`: `numFailedTests=0`, `numTotalTests=2728` (4 failed
+  test *suites* out of 554 — the known `beforeAll` contention pattern, judged on `numFailedTests`
+  per the standing decision).
+- `test/linking.test.ts`, `RUN_BBJ_TESTS=1`: 11 failed, 30 passed, 1 skipped on both HEAD and a
+  scratch worktree pinned to the base commit (`77c967ce`, symlinked `node_modules`, the generated
+  parser copied unchanged since `bbj.langium` is byte-identical between the two commits). The 11
+  failing names are identical on both trees — the known "Interop related tests" backend-drift
+  baseline, unrelated to this phase.
+- `test/functional/issue440-real-interop.test.ts`, `RUN_BBJ_TESTS=1`: 1 passed (1) on HEAD.
+- `test/functional/unknown-java-member-real-interop.test.ts`, `RUN_BBJ_TESTS=1`: 5 passed (5) on
+  HEAD (did not exist at the base commit).
+
+### Register check and leak guard (D-13, T-107-15/T-107-17)
+
+- Register check over the whole phase source/test diff (`bbj-vscode/src`, `bbj-vscode/test`,
+  base `77c967ce` → HEAD): `register-clean`.
+- Leak guard over every line the phase added to a tracked file: found and resolved 4 hits, all
+  investigated and traced to their root cause before this section was written (none is genuine
+  corpus-derived content):
+  - One test fixture line coincidentally overlapped (≥15 contiguous characters) with a real corpus
+    source line surfaced by this same task's own fresh `details.json` (a common, independently-named
+    BBj idiom — calling a real `BBjAPI()` method already named in this phase's own planning
+    discussion months before this measurement ever ran). Confirmed the hit disappears once
+    `details.json` is set aside (i.e. it is not present in the stable manifest/rejects ground
+    truth). Resolved by renaming the fixture's two local variables to less generic names, with no
+    change to test behavior — all 5 tests in the file still pass.
+  - A pre-existing decorative comment divider (added by an earlier plan in this phase, a run of `=`
+    characters used file-wide as a section marker) coincidentally matched a generic-shape corpus
+    line the same way this plan's own instructions already flagged for `ROADMAP.md`'s table
+    separator row. Resolved by shortening the divider at its one phase-added occurrence; the file's
+    other pre-existing occurrences of the same convention are outside this phase's diff and
+    untouched. All 49 tests in the file still pass.
+  - Three lines (in an earlier plan's SUMMARY and in `STATE.md`) quoted the literal path of a real,
+    already-public example file that lives in this same repository's own `examples/` tree —
+    verified directly against this checkout. The private corpus's own bookkeeping happens to record
+    that same public path as one of its "origin" metadata values, which is what the guard matched;
+    quoting a file this repository already ships is not a confidentiality leak, but the wording was
+    still changed to describe the file without repeating its literal path, removing the ambiguity.
+  - Final guard run over every added line (including the four fixes above): **exit 0, all files
+    clean.**
+
+### Verdicts (ROADMAP criterion 3, plus criterion 4 and 5's corpus clause)
+
+- **Re-flagged files carry no line-break error:** PASS (0 of 7, confirmed by direct per-file probe).
+- **Comparable A2 at or below 22:** comparable A2 measures 25 on this phase's own same-corpus base —
+  3 above the ≤22 number from the v4.5 exit gate, which was measured on an older, roughly 3-4x
+  smaller corpus checkout (§1) and is not directly comparable in raw magnitude. By file-set
+  comparison (the method this phase and 107-04 have used throughout): **zero new files enter
+  comparable A2** — every one of the 25 was already present in this phase's own base (33), and the
+  number fell by 8, not rose. **Human check: approve the file-set reading, or hold to the raw ≤22
+  number and treat the 3 residual files (2 line-break-family, 1 DECLARE-placement — all pre-existing
+  and unrelated to this phase's three fixes) as carried-forward residue, matching the precedent
+  already set for the Phase 98 close.**
+- **No file newly enters B:** PASS on the criterion's own measure (reconciled `missedReconciled`, 0
+  newcomers). The 2 raw-`missed` newcomers are pre-existing, already-reported findings from §3, not
+  a new regression.
+- **`checkExceptions` falls to 0 (VAL-02 corroboration):** PASS.
