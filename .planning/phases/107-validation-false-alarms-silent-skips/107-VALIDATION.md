@@ -2,9 +2,9 @@
 phase: "107"
 slug: "validation-false-alarms-silent-skips"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-24"
 ---
 
@@ -39,12 +39,12 @@ created: "2026-09-24"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 107-VAL-01 | 107-01 | 1 | VAL-01 | T-107-01 | A misplaced ELSE/FI stays flagged while the nested one-liner is clean | unit | `npx vitest run test/line-break-single-line-if.test.ts && npx vitest run test/line-break-walk-termination.test.ts` (one file per run) | ✅ | ⬜ pending |
-| 107-VAL-01-residue | 107-04 | 2 | VAL-01 | T-107-09 | Re-flagged corpus files clean; no corpus text enters the repository | harness (local) + unit | per-file probe `snapshots/phase-107-file-probe.mts`, then `npx vitest run test/line-break-single-line-if.test.ts` | ✅ | ⬜ pending |
-| 107-VAL-02 | 107-02 | 1 | VAL-02 | T-107-04 | Malformed `## = 1` no longer disables use-before-assignment or scope computation | unit | `npx vitest run test/variable-scoping.test.ts` | ✅ | ⬜ pending |
-| 107-VAL-03 | 107-03 | 1 | VAL-03 | T-107-06 | Unknown member Error fires only on fully resolved Java classes with a certain receiver type | unit + live-gated | `npx vitest run test/unknown-java-member.test.ts`; `RUN_BBJ_TESTS=1 npx vitest run test/functional/unknown-java-member-real-interop.test.ts` | ❌ W0 (created in 107-03 Task 1) | ⬜ pending |
-| 107-VAL-03-corpus | 107-05 | 2 | VAL-03 | T-107-13 | Every unknown-member Error on real code is a genuinely unknown member | live probe (local) | `snapshots/phase-107-live-member-probe.mts` over the accepted corpus | ✅ | ⬜ pending |
-| 107-HARNESS | 107-06 | 3 (last) | VAL-01, VAL-02, VAL-03 | T-107-15 | File-set comparison against the base; leak guard over the phase diff | harness (local) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` (same mode as the 107-04 base run) | ✅ | ⬜ pending |
+| 107-VAL-01 | 107-01 | 1 | VAL-01 | T-107-01 | A misplaced ELSE/FI stays flagged while the nested one-liner is clean | unit | `npx vitest run test/line-break-single-line-if.test.ts && npx vitest run test/line-break-walk-termination.test.ts` (one file per run) | ✅ | ✅ green |
+| 107-VAL-01-residue | 107-04 | 2 | VAL-01 | T-107-09 | Re-flagged corpus files clean; no corpus text enters the repository | harness (local) + unit | per-file probe `snapshots/phase-107-file-probe.mts`, then `npx vitest run test/line-break-single-line-if.test.ts` | ✅ | ✅ green |
+| 107-VAL-02 | 107-02 | 1 | VAL-02 | T-107-04 | Malformed `## = 1` no longer disables use-before-assignment or scope computation | unit | `npx vitest run test/variable-scoping.test.ts` | ✅ | ✅ green |
+| 107-VAL-03 | 107-03 | 1 | VAL-03 | T-107-06 | Unknown member Error fires only on fully resolved Java classes with a certain receiver type | unit + live-gated | `npx vitest run test/unknown-java-member.test.ts`; `RUN_BBJ_TESTS=1 npx vitest run test/functional/unknown-java-member-real-interop.test.ts` | ✅ | ✅ green |
+| 107-VAL-03-corpus | 107-05 | 2 | VAL-03 | T-107-13 | Every unknown-member Error on real code is a genuinely unknown member | live probe (local) | `snapshots/phase-107-live-member-probe.mts` over the accepted corpus | ✅ | ✅ green |
+| 107-HARNESS | 107-06 | 3 (last) | VAL-01, VAL-02, VAL-03 | T-107-15 | File-set comparison against the base; leak guard over the phase diff | harness (local) | `node /home/coder/repos/bbj-corpus/conformance/run.mjs --ls /home/coder/repos/bbj-language-server` (same mode as the 107-04 base run) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,7 +54,7 @@ created: "2026-09-24"
 
 ## Wave 0 Requirements
 
-- [ ] VAL-03 guard-case test file (or describe block) covering D-12: interop down, synthetic BBjAPI, BBj class receiver, static vs instance, inherited method, `.class`, template-string field, case-insensitive match, duplicate-warning suppression
+- [x] VAL-03 guard-case test file (or describe block) covering D-12: interop down, synthetic BBjAPI, BBj class receiver, static vs instance, inherited method, `.class`, template-string field, case-insensitive match, duplicate-warning suppression
 
 *The existing vitest infrastructure covers VAL-01 and VAL-02.*
 
@@ -71,11 +71,23 @@ created: "2026-09-24"
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-25
+
+---
+
+## Validation Audit 2026-09-25
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Re-run at HEAD: `line-break-single-line-if.test.ts` 23/23, `line-break-walk-termination.test.ts` 28/28, `variable-scoping.test.ts` 49/49, `unknown-java-member.test.ts` 29/29, `RUN_BBJ_TESTS=1 functional/unknown-java-member-real-interop.test.ts` 5/5. Corpus rows (107-VAL-01-residue, 107-VAL-03-corpus, 107-HARNESS) were run by 107-04/107-05/107-06 (see 107-CONFORMANCE.md §3-4); the A2 ≤ 22 clause was accepted by the user on the file-set reading (107-UAT.md). Note: `line-break-single-line-if.test.ts` intermittently skips all 23 when its `initializeWorkspace` beforeAll exceeds the 10 s hook timeout (1 of 5 runs) — the known shared-hook contention pattern, not a phase regression.
