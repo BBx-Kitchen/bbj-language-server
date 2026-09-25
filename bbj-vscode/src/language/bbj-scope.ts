@@ -196,12 +196,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return EMPTY_SCOPE;
             }
             // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
-            // (e.g., `String.` after `USE java.lang.String`) — show only static methods.
+            // (e.g., `String.` after `USE java.lang.String`), or a fully-qualified MemberCall whose
+            // last segment names the class itself (e.g., `java.lang.String.`, no USE) — either way,
+            // show only static members. A receiver ending in the `class` pseudo-member (`String.class`,
+            // `java.lang.String.class`) is an instance of java.lang.Class, not a class reference, and
+            // keeps offering its instance members.
             let isClassRef = false;
             if (isSymbolRef(receiver)) {
                 try {
                     const ref = receiver.symbol.ref;
                     isClassRef = isJavaClass(ref);
+                } catch {
+                    // cyclic reference, ignore
+                }
+            } else if (isMemberCall(receiver) && receiver.member && receiver.member.$refText.toLowerCase() !== 'class') {
+                try {
+                    isClassRef = isJavaClass(receiver.member.ref);
                 } catch {
                     // cyclic reference, ignore
                 }
