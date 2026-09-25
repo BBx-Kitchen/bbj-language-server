@@ -1,11 +1,12 @@
 ---
 phase: 107-validation-false-alarms-silent-skips
 verified: 2026-09-25T02:01:03Z
-status: human_needed
+status: passed
 score: 6/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Approve or reject the comparable-A2 reading for ROADMAP criterion 3's numeric gate (A2 ≤ 22)"
     expected: "One of two readings is accepted as satisfying criterion 3's A2 clause: (a) the file-set reading — comparable A2 measures 25 on this phase's own same-corpus base, but every one of those 25 files was already present in the base (33); the count fell by 8 and zero new files entered comparable A2, so the phase caused no regression and made a net improvement; or (b) the raw-number reading — the historical ≤22 exit gate (measured on a corpus roughly 3-4x smaller) is held as the letter of the criterion, and the 3 residual files above it (2 line-break-family, 1 DECLARE-placement, all pre-existing and unrelated to this phase's three fixes) are carried forward as residue, matching the precedent set at the Phase 98 close (98-VERIFICATION.md's own override)."
     why_human: "This is a judgment call about which of two legitimate readings of a numeric roadmap gate governs, when the corpus itself grew between the historical measurement and this one; 107-06 and 107-CONFORMANCE.md §4 both explicitly declined to resolve it either way and routed it to a human check, following the same precedent already used at the Phase 98 close. No grep or test can adjudicate which reading the roadmap author intended."
@@ -99,6 +100,7 @@ No orphaned requirements: ROADMAP.md's "Requirements: VAL-01, VAL-02, VAL-03" fo
 No `TBD`/`FIXME`/`XXX`/`HACK`/`PLACEHOLDER` markers, no empty stub implementations, and no hardcoded-empty-data patterns found in any file this phase modified (`line-break-validation.ts`, `check-variable-scoping.ts`, `bbj-scope-local.ts`, `check-unknown-java-member.ts`, `bbj-validator.ts`, `bbj-document-validator.ts`).
 
 **Code review findings (107-REVIEW.md, advisory — 0 critical, 3 warnings, 2 info):** All five findings describe the check being *more conservative than necessary* (additional false negatives), never a false positive or a crash — consistent with D-11's explicit design bias ("flag only what is certain"). None invalidates a must-have truth:
+
 - **WR-01** (nested-Java-type bare-reference gap) and **WR-02** (BBjAPI text-match instead of resolved-symbol check) are narrow, unproven-reachable false-negative gaps in the new check.
 - **WR-03** (an unguarded `symbol.$refText` remains in `bbj-scope-local.ts`'s `isAssignment` branch, one function away from the guard this phase added to the `isInputVariable` branch) — confirmed present at the code location the review names (line 240-241 above). The reviewer's own investigation (14 malformed-LHS shapes tried) could not reach this line with `symbol` undefined; it is a real but currently-unproven crash path, not a demonstrated regression of VAL-02's specific `## = 1`/`ENTER ##` repro cases, which this verification confirms are fixed. **Recommend as a WARNING-level follow-up, not a phase blocker.**
 - **IN-01, IN-02** are false-negative-only scoping/literal edge cases in the new check, explicitly info-level per the reviewer.
