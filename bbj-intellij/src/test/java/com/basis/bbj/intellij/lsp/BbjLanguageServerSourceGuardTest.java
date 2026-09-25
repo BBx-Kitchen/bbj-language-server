@@ -185,6 +185,28 @@ class BbjLanguageServerSourceGuardTest {
     }
 
     /**
+     * {@code onUnexpectedStop} must check the project is not disposed before it reports, report
+     * exactly once, and read the pid and the process handler exactly once each.
+     */
+    @Test
+    void onUnexpectedStopChecksDisposedBeforeReportingAndReadsPidAndProcessHandlerOnceEach() {
+        String stripped = stripComments(readGuardedSource());
+        String body = bodyOf(stripped, "private void onUnexpectedStop()");
+
+        int disposedIndex = body.indexOf("isDisposed()");
+        int reportIndex = body.indexOf("reportUnexpectedExit(");
+        assertTrue(disposedIndex >= 0, "isDisposed() is not present in onUnexpectedStop");
+        assertTrue(reportIndex >= 0, "reportUnexpectedExit( is not present in onUnexpectedStop");
+        assertTrue(disposedIndex < reportIndex, "the disposed guard must be checked before reporting");
+        assertEquals(1, countOccurrences(body, "reportUnexpectedExit("),
+                "onUnexpectedStop must report exactly once");
+        assertEquals(1, countOccurrences(body, "getPid()"),
+                "onUnexpectedStop must read the pid exactly once");
+        assertEquals(1, countOccurrences(body, "getProcessHandler()"),
+                "onUnexpectedStop must read the process handler exactly once");
+    }
+
+    /**
      * The whole file reaches no vendor internals through reflection: no {@code setAccessible(},
      * no {@code getDeclaredField(}, no {@code getDeclaredMethod(} and no attempt to call the
      * package-private {@code isStopped(} directly.

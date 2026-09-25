@@ -60,6 +60,11 @@ class BbjServerServiceRestartSourceGuardTest {
             "concurrency", "AlarmScheduler.java")
             .toAbsolutePath();
 
+    private static final Path EXPECTED_STOP_GUARD = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij",
+            "concurrency", "ExpectedStopGuard.java")
+            .toAbsolutePath();
+
     private static String readGuardedSource(Path resolved) {
         if (!Files.exists(resolved)) {
             fail("Guarded source file not found at " + resolved);
@@ -156,10 +161,10 @@ class BbjServerServiceRestartSourceGuardTest {
     void theScheduledCrashRestartIsInsideTheFirstCrashBranch() {
         String text = readGuardedSource(SERVER_SERVICE);
         int firstCrashBranchIndex = text.indexOf("crashCount == 1");
-        int scheduledRestartIndex = text.indexOf("requestRestart(CRASH_RESTART_DELAY_MS)");
+        int scheduledRestartIndex = text.indexOf("requestGatedRestart(CRASH_RESTART_DELAY_MS)");
         assertTrue(firstCrashBranchIndex >= 0, "crashCount == 1 is not present in BbjServerService.java");
         assertTrue(scheduledRestartIndex >= 0,
-                "requestRestart(CRASH_RESTART_DELAY_MS) is not present in BbjServerService.java");
+                "requestGatedRestart(CRASH_RESTART_DELAY_MS) is not present in BbjServerService.java");
         assertTrue(firstCrashBranchIndex < scheduledRestartIndex,
                 "the scheduled crash restart must be inside the first-crash branch");
     }
@@ -225,17 +230,21 @@ class BbjServerServiceRestartSourceGuardTest {
     }
 
     @Test
-    void theClassificationCallPrecedesTheFirstCrashBranchAndTheCrashVerdictIsPinnedOnce() {
-        String text = readGuardedSource(SERVER_SERVICE);
-        int classifyIndex = text.indexOf("expectedStop.classify(");
-        int firstCrashBranchIndex = text.indexOf("crashCount == 1");
-        assertTrue(classifyIndex >= 0, "expectedStop.classify( is not present in BbjServerService.java");
-        assertTrue(firstCrashBranchIndex >= 0, "crashCount == 1 is not present in BbjServerService.java");
-        assertTrue(classifyIndex < firstCrashBranchIndex,
-                "the classification call must appear before the first-crash branch");
-        assertEquals(1, countOccurrences(text, "StopKind.CRASH"),
-                "the classifier's CRASH verdict constant must appear exactly once so the crash branch "
-                        + "cannot be silently deleted");
+    void reportUnexpectedExitConsultsTheGuardBeforeItsFirstInvokeLaterHopAndNamesTheExpectedVerdictOnce() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "public void reportUnexpectedExit(");
+
+        int classifyIndex = body.indexOf("expectedStop.classifyExit(");
+        int firstInvokeLaterIndex = body.indexOf("invokeLater(");
+        assertTrue(classifyIndex >= 0, "expectedStop.classifyExit( is not present in reportUnexpectedExit");
+        assertTrue(firstInvokeLaterIndex >= 0, "invokeLater( is not present in reportUnexpectedExit");
+        assertTrue(classifyIndex < firstInvokeLaterIndex,
+                "the guard's verdict must be taken before the first invokeLater hop");
+        assertEquals(2, countOccurrences(body, "invokeLater("),
+                "reportUnexpectedExit must hop to the EDT exactly twice: the expected-stop console "
+                        + "line and the crash hop");
+        assertEquals(1, countOccurrences(body, "StopKind.EXPECTED_RESTART_STOP"),
+                "the expected-restart verdict constant must appear exactly once");
     }
 
     @Test
@@ -243,5 +252,268 @@ class BbjServerServiceRestartSourceGuardTest {
         String text = readGuardedSource(SERVER_SERVICE);
         assertEquals(1, countOccurrences(text, "BoundedWait.until("),
                 "BoundedWait.until( must appear exactly once so a future edit cannot add a second unbounded wait");
+    }
+
+    @Test
+    void updateStatusBodyNoLongerClassifiesOrTouchesTheCrashCounter() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "public void updateStatus(@NotNull ServerStatus status)");
+
+        assertEquals(0, countOccurrences(body, "classify"),
+                "updateStatus must no longer classify anything -- the hook decides crashes now");
+        assertEquals(0, countOccurrences(body, "StopKind"),
+                "updateStatus must not reference StopKind");
+        assertEquals(0, countOccurrences(body, "crashCount"),
+                "updateStatus must not touch the crash counter");
+        assertEquals(0, countOccurrences(body, "applyCrashPolicy("),
+                "updateStatus must not call applyCrashPolicy");
+    }
+
+    @Test
+    void applyCrashPolicyIsDeclaredOnceAndCalledOnlyFromReportUnexpectedExit() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        assertEquals(2, countOccurrences(stripped, "applyCrashPolicy("),
+                "applyCrashPolicy( must appear exactly twice: its declaration and its single call site");
+
+        String body = bodyOf(stripped, "public void reportUnexpectedExit(");
+        assertEquals(1, countOccurrences(body, "applyCrashPolicy("),
+                "the one call to applyCrashPolicy must sit inside reportUnexpectedExit");
+    }
+
+    @Test
+    void crashCountIsIncrementedOnlyInsideApplyCrashPolicyWhichNeverClearsCrashStateOrCallsUserRestart() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        assertEquals(1, countOccurrences(stripped, "crashCount++"),
+                "crashCount++ must appear exactly once in the whole file");
+
+        String body = bodyOf(stripped, "private void applyCrashPolicy(");
+        assertEquals(1, countOccurrences(body, "crashCount++"),
+                "applyCrashPolicy must be the sole place incrementing the crash counter");
+        assertEquals(1, countOccurrences(body, "requestGatedRestart(CRASH_RESTART_DELAY_MS)"),
+                "applyCrashPolicy's first-crash branch must call requestGatedRestart, not requestRestart");
+        assertEquals(0, countOccurrences(body, "requestRestart("),
+                "applyCrashPolicy must never call the user-restart entry point, or it would clear crash state");
+        assertEquals(0, countOccurrences(body, "clearCrashState("),
+                "applyCrashPolicy must never clear crash state -- only a user-initiated restart may");
+    }
+
+    @Test
+    void restartGateRequestIsCalledOnlyFromRequestGatedRestart() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        assertEquals(1, countOccurrences(stripped, "restartGate.request("),
+                "restartGate.request( must appear exactly once in the whole file");
+
+        String body = bodyOf(stripped, "private void requestGatedRestart(long delayMs)");
+        assertEquals(1, countOccurrences(body, "restartGate.request("),
+                "the single restartGate.request( call must sit inside requestGatedRestart");
+    }
+
+    @Test
+    void requestRestartClearsCrashStateBeforeReachingTheGate() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "public void requestRestart(long delayMs)");
+
+        assertEquals(1, countOccurrences(body, "clearCrashState()"),
+                "requestRestart must clear crash state exactly once");
+        int clearIndex = body.indexOf("clearCrashState()");
+        int gateIndex = body.indexOf("requestGatedRestart(delayMs)");
+        assertTrue(gateIndex >= 0, "requestRestart must call requestGatedRestart(delayMs)");
+        assertTrue(clearIndex < gateIndex, "crash state must be cleared before the gated restart is requested");
+    }
+
+    @Test
+    void doRestartNeverClearsCrashStateAndDisarmsTheGuardAfterItsOwnBoundedWaitBeforeStarting() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+        String body = bodyOf(stripped, "private void doRestart()");
+
+        assertEquals(0, countOccurrences(body, "clearCrashState("),
+                "doRestart must never clear crash state -- a crash-triggered restart must keep the counter");
+        assertEquals(1, countOccurrences(body, "expectedStop.disarm()"),
+                "doRestart must disarm the guard exactly once after its own stop completes");
+
+        int waitIndex = body.indexOf("BoundedWait.until(");
+        int disarmIndex = body.indexOf("expectedStop.disarm()");
+        int startIndex = body.indexOf("manager.start(SERVER_ID)");
+        assertTrue(waitIndex >= 0 && disarmIndex >= 0 && startIndex >= 0,
+                "BoundedWait.until(, expectedStop.disarm() and manager.start(SERVER_ID) must all be present");
+        assertTrue(waitIndex < disarmIndex, "the disarm must happen after the bounded wait");
+        assertTrue(disarmIndex < startIndex, "the disarm must happen before the start");
+    }
+
+    @Test
+    void expectedStopGuardKeepsOnlyTheExitClassifierAndNoImports() {
+        String stripped = stripComments(readGuardedSource(EXPECTED_STOP_GUARD));
+        assertTrue(countOccurrences(stripped, "classifyExit(") >= 1,
+                "ExpectedStopGuard must still expose classifyExit(");
+        assertEquals(0, countOccurrences(stripped, "classify(String"),
+                "the three-argument status-name classifier must be gone");
+        assertEquals(0, countOccurrences(stripped, "NOT_A_STOP"),
+                "NOT_A_STOP must be gone -- the guard only answers armed-or-not now");
+        assertEquals(0, countOccurrences(stripped, "import "),
+                "ExpectedStopGuard must stay plain Java with no imports");
+    }
+
+    /**
+     * Locates {@code declarationMarker} in {@code source}, then returns the substring from that
+     * declaration's opening brace through its matching closing brace (inclusive), by counting
+     * brace depth. String literals, char literals, line comments, and block comments are skipped
+     * while counting. Copied from {@code BbjLanguageServerSourceGuardTest} per this project's
+     * per-guard-private-helper convention rather than shared, so each guard's scanner stays
+     * independently verifiable.
+     */
+    private static String bodyOf(String source, String declarationMarker) {
+        int declarationStart = source.indexOf(declarationMarker);
+        if (declarationStart < 0) {
+            fail("declaration not found: " + declarationMarker);
+        }
+        int openBrace = source.indexOf('{', declarationStart);
+        assertTrue(openBrace >= 0, "no opening brace found after declaration: " + declarationMarker);
+        int depth = 0;
+        int i = openBrace;
+        boolean inString = false;
+        boolean inChar = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+        for (; i < source.length(); i++) {
+            char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+
+            if (inLineComment) {
+                if (c == '\n') {
+                    inLineComment = false;
+                }
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inString) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '\'') {
+                    inChar = false;
+                }
+                continue;
+            }
+
+            if (c == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+                continue;
+            }
+            if (c == '\'') {
+                inChar = true;
+                continue;
+            }
+
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    break;
+                }
+            }
+        }
+        assertTrue(depth == 0, "unbalanced braces while scanning body of: " + declarationMarker);
+        return source.substring(openBrace, i + 1);
+    }
+
+    /**
+     * Removes line and block comments from {@code source} while leaving string and char literals
+     * intact, using the same literal-aware state machine as {@link #bodyOf(String, String)}.
+     * Copied from {@code BbjLanguageServerSourceGuardTest} per this project's
+     * per-guard-private-helper convention.
+     */
+    private static String stripComments(String source) {
+        StringBuilder result = new StringBuilder(source.length());
+        boolean inString = false;
+        boolean inChar = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+        for (int i = 0; i < source.length(); i++) {
+            char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+
+            if (inLineComment) {
+                if (c == '\n') {
+                    inLineComment = false;
+                    result.append(c);
+                }
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inString) {
+                result.append(c);
+                if (c == '\\' && i + 1 < source.length()) {
+                    i++;
+                    result.append(source.charAt(i));
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                result.append(c);
+                if (c == '\\' && i + 1 < source.length()) {
+                    i++;
+                    result.append(source.charAt(i));
+                } else if (c == '\'') {
+                    inChar = false;
+                }
+                continue;
+            }
+
+            if (c == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+                result.append(c);
+                continue;
+            }
+            if (c == '\'') {
+                inChar = true;
+                result.append(c);
+                continue;
+            }
+
+            result.append(c);
+        }
+        return result.toString();
     }
 }
