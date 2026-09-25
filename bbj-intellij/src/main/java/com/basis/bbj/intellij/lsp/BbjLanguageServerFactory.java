@@ -2,10 +2,13 @@ package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.composer.BbjComposerServer;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.LanguageServerFactory;
+import com.redhat.devtools.lsp4ij.ServerStatus;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
@@ -61,6 +64,25 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.addProperty(CompilerInitOptions.COMPILER_TRIGGER_KEY,
                     CompilerInitOptions.normalizeTrigger(state.compilerTrigger));
                 params.setInitializationOptions(options);
+            }
+
+            // This is the status-feed site: LSP4IJ calls the client features for every status
+            // change, but only calls the language client while it is non-null, and nulls that
+            // reference before publishing the stopped status. BbjLanguageClient keeps only its
+            // console line; this override is what actually reaches BbjServerService.
+            @Override
+            public void handleServerStatusChanged(@NotNull ServerStatus status) {
+                super.handleServerStatusChanged(status);
+                Project project = getProject();
+                if (project.isDisposed()) {
+                    return;
+                }
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (project.isDisposed()) {
+                        return;
+                    }
+                    BbjServerService.getInstance(project).updateStatus(status);
+                });
             }
         }
         .setDocumentLinkFeature(new LSPDocumentLinkFeature() {

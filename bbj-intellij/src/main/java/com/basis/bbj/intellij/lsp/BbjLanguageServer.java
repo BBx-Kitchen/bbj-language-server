@@ -44,6 +44,13 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
      */
     private static final Logger LOG = Logger.getInstance(BbjLanguageServer.class);
 
+    /**
+     * Set the first time this provider's own unexpected-stop handler is registered, so a second
+     * registration on the same instance never adds a duplicate. LSP4IJ constructs a fresh provider
+     * for every {@code start()}, so this field never carries state across restarts.
+     */
+    private boolean ownStopHandlerRegistered;
+
     public BbjLanguageServer(@NotNull Project project) {
         // Resolve Node.js path
         String nodePath = resolveNodePath(project);
@@ -60,6 +67,59 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
                 + " (working directory: " + cmd.getWorkDirectory() + ")");
 
         super.setCommandLine(cmd);
+    }
+
+    /**
+     * Forwards LSP4IJ's own handler to {@code super} first, unchanged, so its own recovery (its
+     * own error notification and stop handling) runs before anything of ours. Then, only the first
+     * time this instance is asked, registers this provider's own handler beside it -- never
+     * wrapping, replacing or dropping LSP4IJ's handler. This method itself adds no behaviour beyond
+     * logging: what happens when the process ends without a stop request is entirely inside
+     * {@link #onUnexpectedStop()}.
+     */
+    @Override
+    public void addUnexpectedServerStopHandler(Runnable handler) {
+        super.addUnexpectedServerStopHandler(handler);
+        if (!ownStopHandlerRegistered) {
+            ownStopHandlerRegistered = true;
+            super.addUnexpectedServerStopHandler(this::onUnexpectedStop);
+            LOG.info("BBj language server unexpected-stop handler registered beside LSP4IJ's own");
+        }
+    }
+
+    /**
+     * Runs only when the OS process ended without this provider's {@link #stop()} having been
+     * called first (LSP4IJ's own gate on its {@code isStopped()} flag). Reports the pid, the exit
+     * code and the running thread's name -- nothing else. It does not classify the event, does not
+     * restart anything and does not touch any UI state; it runs on the platform's process-wait
+     * thread, not the EDT.
+     */
+    private void onUnexpectedStop() {
+        Long pid = getPid();
+        Integer exitCode = null;
+        var processHandler = getProcessHandler();
+        if (processHandler != null) {
+            exitCode = processHandler.getExitCode();
+        }
+        LOG.info("BBj language server process ended without a stop request (pid "
+                + (pid == null ? "unknown" : pid)
+                + ", exit code " + (exitCode == null ? "unknown" : exitCode)
+                + ", thread " + Thread.currentThread().getName() + ")");
+    }
+
+    /**
+     * Logs the pid and whether the process is still alive at the moment a stop was requested, then
+     * delegates to the vendor superclass's stop handling exactly once. LSP4IJ calls this for every
+     * deliberate stop, and again after its own unexpected-stop handling runs -- so whether this
+     * line appears before or after the process actually ended is what tells a deliberate stop apart
+     * from a crash in the log.
+     */
+    @Override
+    public void stop() {
+        LOG.info("BBj language server connection stop requested (pid "
+                + (getPid() == null ? "unknown" : getPid())
+                + ", process alive: " + isAlive() + ")");
+        super.stop();
     }
 
     private String resolveNodePath(@NotNull Project project) {

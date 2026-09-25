@@ -19,8 +19,11 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * BBj language client implementation.
- * Provides initialization options (BBj home, classpath) to the language server
- * and handles server status changes.
+ * Provides initialization options (BBj home, classpath) to the language server, and logs status
+ * changes to the console. The status feed that drives {@code BbjServerService} runs from the
+ * client-features hook in {@link BbjLanguageServerFactory}, not from this class -- LSP4IJ nulls
+ * the language client before publishing a stopped status on certain disconnects, while it always
+ * calls the client features.
  */
 public final class BbjLanguageClient extends LanguageClientImpl {
 
@@ -51,7 +54,6 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             }
             BbjServerService service = BbjServerService.getInstance(project);
             service.logToConsole("Server status: " + serverStatus, com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
-            service.updateStatus(serverStatus);
         });
     }
 
