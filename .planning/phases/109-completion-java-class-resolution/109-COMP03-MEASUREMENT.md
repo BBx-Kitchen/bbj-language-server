@@ -117,7 +117,9 @@ now runs un-skipped with its original assertions, unmodified, and passes; only i
 The maintainer's chosen option (recorded at the phase's blocking checkpoint) and the final comment
 text (with any edits) are recorded below.
 
-**Chosen option:** (filled at the checkpoint)
+**Chosen option:** `comment-and-close` — post the drafted comment above and close issue #561 as
+completed. The drafted comment text is unchanged (no edits). Nothing was posted or closed from this
+plan; plan 109-06 carries out this choice after the phase's regression gate.
 
 ## Final state
 
