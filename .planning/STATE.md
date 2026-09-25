@@ -5,11 +5,11 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 108
 current_phase_name: IntelliJ Crash Detection
 status: planning
-stopped_at: Phase 107 complete, ready to plan Phase 108
-last_updated: "2026-09-25T06:12:33.232Z"
+stopped_at: Phase 108 context gathered
+last_updated: "2026-09-25T07:34:10.032Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 107 complete, transitioned to Phase 108
-state_head: ae2ae7c5ea65a9eb8bd528e1ce0706e58e4a7001
+state_head: 92ad80d7aee27ea418a6ff6801b23b163956fb66
 progress:
   total_phases: 4
   completed_phases: 2
@@ -225,9 +225,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T01:44:51.110Z
-Stopped at: Phase 107 complete, ready to plan Phase 108
-Resume file: None
+Last session: 2026-09-25T07:34:09.920Z
+Stopped at: Phase 108 context gathered
+Resume file: .planning/phases/108-intellij-crash-detection/108-CONTEXT.md
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
