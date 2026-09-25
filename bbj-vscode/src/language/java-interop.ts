@@ -84,6 +84,64 @@ export function isInteropTransportFailure(error: unknown): boolean {
     return false;
 }
 
+/** The eight Java primitive type names plus `void` — never classes on the backend's classpath. */
+export const JAVA_PRIMITIVE_TYPE_NAMES: ReadonlySet<string> = new Set([
+    'boolean', 'byte', 'char', 'double', 'float', 'int', 'long', 'short', 'void'
+]);
+
+/**
+ * True for a type name that is never a class on the java-interop backend's classpath: one of the
+ * eight Java primitives or `void` (whole-name match only — `java.lang.Integer`, a package segment
+ * `bytes`, or a class named `Voider` are real class names and are not matched here), a name ending
+ * in `[]` (an array type, at any dimension), or a name that is empty once trimmed. A primitive or
+ * `void` keeps the backend's own answer (package `java.lang`, no members, no error); an array or
+ * blank name keeps its not-found answer. Both are built locally instead of sent as a class lookup
+ * (issue #660).
+ */
+export function isLocalJavaTypeName(name: string): boolean {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) {
+        return true;
+    }
+    return JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed) || trimmed.endsWith('[]');
+}
+
+/**
+ * Builds the raw, backend-shaped DTO for a name {@link isLocalJavaTypeName} recognizes, so it can
+ * be fed straight into {@link JavaInteropService.resolveClass}'s existing pipeline instead of
+ * {@link JavaInteropService.createStubClass}'s failed-resolution shape (which carries an `error`
+ * today's real primitive/void/array round trip never sets). A primitive or `void` gets the
+ * backend's own answer (packageName `java.lang`, no error, no members); an array or blank name
+ * gets its not-found answer (empty members, the same "Class not found" text `getRawClass` would
+ * have produced) with no `packageName`, so `resolveClass` derives one exactly as it does for
+ * today's real answer.
+ */
+function localJavaTypeDto(name: string): Mutable<JavaClass> {
+    const trimmed = name.trim();
+    if (JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed)) {
+        return {
+            $type: JavaClass.$type,
+            name,
+            simpleName: name,
+            packageName: 'java.lang',
+            isDeprecated: false,
+            fields: [],
+            methods: [],
+            classes: [],
+            constructors: [],
+        } as unknown as Mutable<JavaClass>;
+    }
+    return {
+        $type: JavaClass.$type,
+        name,
+        fields: [],
+        methods: [],
+        classes: [],
+        constructors: [],
+        error: `Class not found: ${name}`,
+    } as unknown as Mutable<JavaClass>;
+}
+
 /**
  * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
  * exceeded (P61-D3-001). Recency is refreshed on both `get` and `set` by deleting and
@@ -887,11 +945,19 @@ export class JavaInteropService {
     /**
      * Resolves a Java class by its fully qualified name, fetching from the Java backend if not already cached.
      * This method acquires a lock to prevent concurrent resolution of the same class.
+     * A primitive, `void`, array or blank name is resolved locally instead, with no backend request (issue #660).
      * @param className fully qualified class name (e.g., "java.lang.String")
      * @param token cancellation token for request cancellation
      * @returns the resolved JavaClass with all dependencies linked
      */
     async resolveClassByName(className: string, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
+        // A primitive, void, array or blank name is never a class on the backend's classpath
+        // (issue #660): build the same zero-member result locally, with no round trip, and feed
+        // it through the real resolveClass pipeline below — its own cache and in-flight checks
+        // then make every later or concurrent lookup of the same name return the identical object.
+        if (isLocalJavaTypeName(className)) {
+            return this.resolveClass(localJavaTypeDto(className), token, _depth);
+        }
         // Fast path: already fully resolved. Checked *before* the depth limit because a
         // cached class triggers no further recursion — the depth limit is irrelevant to it,
         // and returning it here avoids re-stubbing already-resolved leaf types (int, void,
@@ -1009,6 +1075,7 @@ export class JavaInteropService {
     /**
      * Resolves and links a Java class with its dependencies including fields, methods, parameters, and documentation.
      * This method processes the raw class data, resolves type references, links Javadoc, and stores the class in the AST hierarchy.
+     * The "Resolving class ..." debug line is skipped for a primitive, `void`, array or blank name (issue #660).
      * @param javaClass the Java class to resolve and link
      * @param token cancellation token for request cancellation
      * @returns the resolved and linked JavaClass
@@ -1029,7 +1096,9 @@ export class JavaInteropService {
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
-        logger.debug(() => `Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
+        if (!isLocalJavaTypeName(className)) {
+            logger.debug(() => `Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
+        }
 
         if (!javaClass.packageName) {
             // can happen if the class was not found by Java backend
