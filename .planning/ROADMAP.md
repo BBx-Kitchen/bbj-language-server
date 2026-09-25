@@ -471,7 +471,7 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/7 plans executed (1 gap-closure plan pending)
 
 Plans:
 **Wave 1**
@@ -488,6 +488,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 109-06-PLAN.md — Live :5008 cold-start check, whole-suite gate against the base commit, register check, COMP-03 final record, #561 action
+
+**Gap closure**
+
+- [ ] 109-07-PLAN.md — COMP-01 gap: a fully-qualified reference to the class named `Class` (`java.lang.Class.`) offers statics only; `.class` pseudo-member told apart by the preceding segment (package vs class/value)
 
 *Planning notes:* #561's recorded root cause is that the completion engine's grammar follower
 produces no candidate positions inside `MethodDecl.body` at all. COMP-03 may therefore need a
