@@ -321,23 +321,48 @@ class BbjServerServiceRestartSourceGuardTest {
         assertTrue(clearIndex < gateIndex, "crash state must be cleared before the gated restart is requested");
     }
 
+    /**
+     * {@code doRestart} must never clear crash state, and must never unconditionally disarm the
+     * guard either: an unconditional {@code disarm()} right after the bounded wait cannot tell a
+     * delayed exit of the process it just stopped apart from a genuine crash of the one it starts
+     * next, since both would arrive after that disarm already ran. Correlation now happens by pid
+     * ({@code ExpectedStopGuard#notePid}, fed from {@code BbjLanguageServer#stop()}), not by
+     * dropping the token on a timeout.
+     */
     @Test
-    void doRestartNeverClearsCrashStateAndDisarmsTheGuardAfterItsOwnBoundedWaitBeforeStarting() {
+    void doRestartNeverClearsCrashStateAndNeverUnconditionallyDisarmsTheGuard() {
         String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
         String body = bodyOf(stripped, "private void doRestart()");
 
         assertEquals(0, countOccurrences(body, "clearCrashState("),
                 "doRestart must never clear crash state -- a crash-triggered restart must keep the counter");
-        assertEquals(1, countOccurrences(body, "expectedStop.disarm()"),
-                "doRestart must disarm the guard exactly once after its own stop completes");
+        assertEquals(0, countOccurrences(body, "expectedStop.disarm()"),
+                "doRestart must never call expectedStop.disarm() -- a later report is now told apart "
+                        + "by pid, not by this token's armed/disarmed state");
 
-        int waitIndex = body.indexOf("BoundedWait.until(");
-        int disarmIndex = body.indexOf("expectedStop.disarm()");
-        int startIndex = body.indexOf("manager.start(SERVER_ID)");
-        assertTrue(waitIndex >= 0 && disarmIndex >= 0 && startIndex >= 0,
-                "BoundedWait.until(, expectedStop.disarm() and manager.start(SERVER_ID) must all be present");
-        assertTrue(waitIndex < disarmIndex, "the disarm must happen after the bounded wait");
-        assertTrue(disarmIndex < startIndex, "the disarm must happen before the start");
+        int armIndex = body.indexOf("expectedStop.arm(");
+        int stopIndex = body.indexOf(MANAGER_STOP_CALL);
+        assertTrue(armIndex >= 0 && stopIndex >= 0, "expectedStop.arm( and " + MANAGER_STOP_CALL
+                + " must both be present");
+        assertTrue(armIndex < stopIndex, "the guard must be armed before every stop, unconditionally");
+    }
+
+    /**
+     * The pid correlation this restart depends on is supplied from {@code BbjLanguageServer#stop()}
+     * via {@code noteStoppingPid}, not read directly by {@code doRestart} -- {@code
+     * LanguageServerManager} exposes no pid, only the connection provider instance does.
+     */
+    @Test
+    void noteStoppingPidForwardsStraightToTheGuardAndIsNeverCalledFromDoRestart() {
+        String stripped = stripComments(readGuardedSource(SERVER_SERVICE));
+
+        String noteBody = bodyOf(stripped, "public void noteStoppingPid(@Nullable Long pid)");
+        assertEquals(1, countOccurrences(noteBody, "expectedStop.notePid(pid)"),
+                "noteStoppingPid must forward the pid straight to the guard");
+
+        String doRestartBody = bodyOf(stripped, "private void doRestart()");
+        assertEquals(0, countOccurrences(doRestartBody, "noteStoppingPid("),
+                "doRestart must never call noteStoppingPid itself -- only BbjLanguageServer#stop() does");
     }
 
     @Test

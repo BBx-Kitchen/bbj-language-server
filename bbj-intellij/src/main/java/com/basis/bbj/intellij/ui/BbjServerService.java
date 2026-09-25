@@ -226,7 +226,7 @@ public final class BbjServerService implements Disposable {
             return;
         }
 
-        ExpectedStopGuard.StopKind verdict = expectedStop.classifyExit(System.currentTimeMillis());
+        ExpectedStopGuard.StopKind verdict = expectedStop.classifyExit(System.currentTimeMillis(), pid);
 
         if (verdict == ExpectedStopGuard.StopKind.EXPECTED_RESTART_STOP) {
             LOG.info("BBj language server process exited during a plugin restart ("
@@ -408,11 +408,10 @@ public final class BbjServerService implements Disposable {
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
         ServerStatus statusBeforeStop = manager.getServerStatus(SERVER_ID);
         LOG.info("Restarting the BBj language server; status before the stop: " + statusBeforeStop);
-        if (statusBeforeStop == ServerStatus.started
-                || statusBeforeStop == ServerStatus.starting
-                || statusBeforeStop == ServerStatus.stopping) {
-            expectedStop.arm(System.currentTimeMillis());
-        }
+        // Arm unconditionally, before every stop -- the token is one-shot and self-disarming, so
+        // there is no cost to arming when it turns out not to be needed, but gating the arm on a
+        // single, possibly-stale status read risks leaving a genuine expected stop unguarded.
+        expectedStop.arm(System.currentTimeMillis());
         try {
             manager.stop(SERVER_ID, new LanguageServerManager.StopOptions().setWillDisable(false));
             boolean stoppedInTime = BoundedWait.until(
@@ -429,13 +428,32 @@ public final class BbjServerService implements Disposable {
                     + manager.getServerStatus(SERVER_ID));
             }
         } finally {
-            // The token only covers this restart's own stop -- disarm it here, once the stop has
-            // completed or timed out, so a genuine crash later in the window is never swallowed.
-            expectedStop.disarm();
+            // Deliberately no unconditional disarm here. The pid that BbjLanguageServer#stop()
+            // attaches to this armed token (see #noteStoppingPid and ExpectedStopGuard#notePid) is
+            // what protects a later crash report from being wrongly swallowed or wrongly
+            // attributed -- not this token's armed/disarmed state. A report that names that pid is
+            // classified as an expected stop no matter how long the old process actually took to
+            // exit; a report naming any other pid, including the freshly started server below, is
+            // still reported as a genuine crash. Disarming unconditionally here would erase the
+            // pid the moment the bounded wait times out, which is exactly the race that let a
+            // delayed exit of the old process get misclassified as a crash of the new one.
             LOG.info("Starting the BBj language server; status before the start: "
                 + manager.getServerStatus(SERVER_ID));
             manager.start(SERVER_ID);
         }
+    }
+
+    /**
+     * Attaches the pid of the process actually being stopped to any currently armed expected-stop
+     * token, called from {@code BbjLanguageServer#stop()} once it knows its own pid -- {@link
+     * #doRestart()} itself cannot read that pid directly, since it reaches the language server
+     * only through the vendor's {@link LanguageServerManager}, not the connection provider
+     * instance. Forwards straight to {@link ExpectedStopGuard#notePid(Long)}, which is itself
+     * synchronized and a no-op when nothing is currently armed, so a stop invoked outside a
+     * {@link #doRestart()} cycle (nothing armed) leaves the guard untouched.
+     */
+    public void noteStoppingPid(@Nullable Long pid) {
+        expectedStop.notePid(pid);
     }
 
     /**

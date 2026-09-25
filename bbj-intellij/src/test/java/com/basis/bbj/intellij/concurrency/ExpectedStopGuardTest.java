@@ -86,6 +86,91 @@ class ExpectedStopGuardTest {
         assertEquals(CRASH, guard.classifyExit(100));
     }
 
+    /**
+     * Pid identity is authoritative and overrides the time window entirely: a report bearing the
+     * pid the token was armed for is expected however long it takes to arrive, well past the
+     * nominal window -- this is what lets a delayed exit of the process a restart actually stopped
+     * still be told apart from a crash, without relying on a disarm-on-timeout race.
+     */
+    @Test
+    void classifyExitWithAMatchingPidPastTheWindowIsStillAnExpectedRestartStop() {
+        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
+
+        guard.arm(0, 4242L);
+
+        assertEquals(EXPECTED_RESTART_STOP, guard.classifyExit(WINDOW_MS * 10, 4242L),
+            "a report bearing the armed pid must be expected no matter how far past the window "
+                + "it arrives");
+    }
+
+    /**
+     * The mirror image: a report bearing a pid other than the one the token was armed for is
+     * always a crash, even inside the window -- this is what lets a genuine crash of a freshly
+     * started server be reported as a crash even while a restart's token for the previous process
+     * is still technically armed.
+     */
+    @Test
+    void classifyExitWithAMismatchedPidInsideTheWindowIsStillACrash() {
+        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
+
+        guard.arm(0, 4242L);
+
+        assertEquals(CRASH, guard.classifyExit(100, 9999L),
+            "a report bearing a different pid than the armed token must be a crash, even inside "
+                + "the window");
+    }
+
+    /**
+     * When either side's pid is unavailable, classification falls back to the plain time window,
+     * exactly as it did before pid correlation existed.
+     */
+    @Test
+    void classifyExitFallsBackToTheWindowWhenEitherPidIsUnknown() {
+        ExpectedStopGuard armedWithoutPid = new ExpectedStopGuard(WINDOW_MS);
+        armedWithoutPid.arm(0);
+        assertEquals(EXPECTED_RESTART_STOP, armedWithoutPid.classifyExit(100, 4242L),
+            "a report with a pid must still be expected when the token itself carries no pid");
+
+        ExpectedStopGuard armedWithPid = new ExpectedStopGuard(WINDOW_MS);
+        armedWithPid.arm(0, 4242L);
+        assertEquals(EXPECTED_RESTART_STOP, armedWithPid.classifyExit(100, null),
+            "a report with no pid must still be expected, within the window, when the token "
+                + "carries a pid");
+        assertEquals(CRASH, armedWithPid.classifyExit(WINDOW_MS + 1, null),
+            "a report with no pid past the window must still be a crash even when the token "
+                + "carries a pid");
+    }
+
+    /**
+     * {@link ExpectedStopGuard#notePid(Long)} attaches a pid to an already-armed token, and is a
+     * no-op when nothing is armed -- it never resurrects an already-consumed or never-armed token.
+     */
+    @Test
+    void notePidAttachesToAnArmedTokenAndIsANoOpWhenNothingIsArmed() {
+        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
+
+        guard.notePid(4242L);
+        assertEquals(CRASH, guard.classifyExit(100, 4242L),
+            "notePid must not arm a token by itself");
+
+        guard.arm(0);
+        guard.notePid(4242L);
+        assertEquals(EXPECTED_RESTART_STOP, guard.classifyExit(WINDOW_MS * 10, 4242L),
+            "notePid must attach the pid to the token armed just before it");
+    }
+
+    /** {@code disarm()} must drop the armed pid along with the timestamp. */
+    @Test
+    void disarmDropsTheArmedPidToo() {
+        ExpectedStopGuard guard = new ExpectedStopGuard(WINDOW_MS);
+
+        guard.arm(0, 4242L);
+        guard.disarm();
+
+        assertEquals(CRASH, guard.classifyExit(100, 4242L),
+            "disarm must drop the armed pid, not only the timestamp");
+    }
+
     @Test
     void oneArmedTokenClassifiedByEightConcurrentExitsYieldsExactlyOneExpectedVerdict()
             throws InterruptedException {

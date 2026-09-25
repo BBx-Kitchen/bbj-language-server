@@ -127,13 +127,20 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
      * delegates to the vendor superclass's stop handling exactly once. LSP4IJ calls this for every
      * deliberate stop, and again after its own unexpected-stop handling runs -- so whether this
      * line appears before or after the process actually ended is what tells a deliberate stop apart
-     * from a crash in the log.
+     * from a crash in the log. Also hands this instance's own pid to {@link
+     * BbjServerService#noteStoppingPid(Long)}, so a restart in progress can correlate a later
+     * {@link #onUnexpectedStop()} report against the exact process this stop targets, rather than
+     * against a disarm-on-timeout race.
      */
     @Override
     public void stop() {
+        Long pid = getPid();
         LOG.info("BBj language server connection stop requested (pid "
-                + (getPid() == null ? "unknown" : getPid())
+                + (pid == null ? "unknown" : pid)
                 + ", process alive: " + isAlive() + ")");
+        if (!project.isDisposed()) {
+            BbjServerService.getInstance(project).noteStoppingPid(pid);
+        }
         super.stop();
     }
 
