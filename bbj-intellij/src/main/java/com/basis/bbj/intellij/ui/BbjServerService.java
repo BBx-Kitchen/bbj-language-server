@@ -136,13 +136,18 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
-     * Clear crash state (reset crash count and crashed flag).
+     * Clear crash state (reset crash count and crashed flag). Dispatched through {@code
+     * invokeLater} so every write to {@link #serverCrashed}, {@link #crashCount} and {@link
+     * #autoRestartAbandoned} genuinely happens on the EDT, as those fields' own Javadoc requires --
+     * this method is reachable from {@link #requestRestart(long)}, which in turn is reachable from
+     * the LSP dispatch thread (see {@code BbjLanguageClient#configReloadRequired}), not only the
+     * EDT.
      */
     public void clearCrashState() {
-        serverCrashed = false;
-        crashCount = 0;
-        autoRestartAbandoned = false;
         ApplicationManager.getApplication().invokeLater(() -> {
+            serverCrashed = false;
+            crashCount = 0;
+            autoRestartAbandoned = false;
             if (project.isDisposed()) {
                 return;
             }
@@ -340,11 +345,16 @@ public final class BbjServerService implements Disposable {
      * status-bar widgets, the balloon and banner Restart actions, Settings Apply (via {@link
      * #scheduleRestart()}), config reload, Refresh Java Classes, and Node download success. Clears
      * crash state first -- a user asking for a restart always gets a clean slate -- then reaches
-     * the language server through the same gate the crash auto-restart uses.
+     * the language server through the same gate the crash auto-restart uses. {@link
+     * #clearCrashState()} now dispatches its field writes through {@code invokeLater} to honor
+     * those fields' EDT-only invariant, so the gated restart request is also dispatched through
+     * {@code invokeLater} here -- queued from the same calling thread immediately afterward, it
+     * runs strictly after the clear on the EDT's FIFO event queue, preserving the "cleared before
+     * the restart runs" guarantee without requiring this method itself to run on the EDT.
      */
     public void requestRestart(long delayMs) {
         clearCrashState();
-        requestGatedRestart(delayMs);
+        ApplicationManager.getApplication().invokeLater(() -> requestGatedRestart(delayMs));
     }
 
     /**
