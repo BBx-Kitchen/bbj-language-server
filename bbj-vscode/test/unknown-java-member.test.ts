@@ -256,6 +256,15 @@ describe('Static-only access through a class reference', () => {
         const document = await validate('use java.lang.String\nx! = String.charAt(1)\n');
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
+
+    test('a bare nested-type-shaped reference on a class ref does not become a false-positive Error', async () => {
+        // java-interop's JavaClass model never reports nested-class membership (`classes` is
+        // always empty), so a PascalCase member name that is neither a known method nor a known
+        // field might still be a real nested type or enum used as a value on its own -- not just
+        // when chained into a further member access.
+        const document = await validate('use java.lang.String\nx! = String.SomeNestedThing\n');
+        expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
 });
 
 describe('The unknown-member Error in files with other errors', () => {

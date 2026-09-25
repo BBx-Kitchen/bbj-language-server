@@ -13,7 +13,6 @@ import {
     isCastExpression,
     isConstructorCall,
     isJavaClass,
-    isMemberCall,
     isMethodCall,
     isStringLiteral,
     isSymbolRef,
@@ -246,13 +245,16 @@ export function checkUnknownJavaMember(memberCall: MemberCall, accept: Validatio
     if (nestedClassMatch) {
         return;
     }
-    // A class-reference member used as the receiver of a further member access (`Tree.Kind.CLASS`)
+    // A class-reference member that looks like a Java type name (PascalCase, e.g. `Tree.Kind`)
     // might be a real Java nested class or enum -- java-interop's JavaClass model carries no
     // nested-class membership data at all (`classes` above is always empty for a reflected
     // class), so this shape is genuinely unknowable from here, not a confirmed-missing member.
     // Nested types are only ever reached through a class reference, never an instance, so this
-    // stays scoped to isClassRef.
-    if (isClassRef && isMemberCall(memberCall.$container) && memberCall.$container.receiver === memberCall) {
+    // stays scoped to isClassRef. This covers both a nested type used as the receiver of a further
+    // member access (`Tree.Kind.CLASS`) and a bare nested-type reference used as a value on its
+    // own (assigned, passed as an argument, compared) -- the same PascalCase-name heuristic
+    // `bbj-scope-local.ts`'s `isPotentiallyJavaFqn` already relies on for this class of ambiguity.
+    if (isClassRef && /^[A-Z]/.test(memberText)) {
         return;
     }
 
