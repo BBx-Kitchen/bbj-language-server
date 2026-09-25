@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 108
 current_phase_name: IntelliJ Crash Detection
 status: executing
-stopped_at: Completed 108-02-PLAN.md
-last_updated: "2026-09-25T13:10:52.024Z"
+stopped_at: Completed 108-03-PLAN.md
+last_updated: "2026-09-25T13:56:26.647Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 108 execution started
-state_head: 9586f87f7364f24d06fc6c87847a50eeedd9bb21
+state_head: fed9cc8f7560a3fa56f5142df9bf9f9f672d10e3
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 50
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 ## Current Position
 
 Phase: 108 (IntelliJ Crash Detection) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 108 execution started
 
@@ -116,6 +116,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 107 P06 | 59min | 2 tasks | 8 files |
 | Phase 108 P01 | 6min (+ ~3h49m checkpoint wait) | 3 tasks | 9 files |
 | Phase 108 P02 | 17min | 2 tasks | 7 files |
+| Phase 108 P03 | 11min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,8 @@ decisions:
 - [Phase 108]: Phase 108-02: the maintainer's real macOS idea.log excerpt confirms D-01 unconditionally -- the hook line appears after every kill -9 and never inside any deliberate-stop window, so the design proceeds unchanged into implementation
 - [Phase 108]: Phase 108-02: Task 1 kept the old status-driven classify(String,String,long) call site routed through the new applyCrashPolicy for one commit so existing source guards stayed green mid-refactor, then Task 2 deleted that call site and the three-argument classifier together
 - [Phase 108]: Phase 108-02: applyCrashPolicy's first-crash branch calls a new private requestGatedRestart directly instead of the public requestRestart, since requestRestart now clears crash state as the user-initiated entry point and the crash auto-restart must keep the counter it just incremented
+- [Phase 108]: Phase 108-03: A private service() accessor was added to BbjStatusBarWidget so all three render hooks read the crashed/give-up flags through one call site — Matches the plan's own suggested shape rather than three separate BbjServerService.getInstance() calls
+- [Phase 108]: Phase 108-03: Task 1's tracer feedback gate re-ran the task's automated verify in auto mode and passed, so execution proceeded straight to Task 2 with no checkpoint — workflow.auto_advance=true and the task carries no gate=blocking-human, so the gate followed row 2 of the tracer feedback gate precedence chain
 
 ### Tech Debt
 
@@ -231,8 +234,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T13:10:51.905Z
-Stopped at: Completed 108-02-PLAN.md
+Last session: 2026-09-25T13:56:26.542Z
+Stopped at: Completed 108-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
