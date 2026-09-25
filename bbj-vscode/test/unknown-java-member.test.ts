@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { isConstructorCall, isMemberCall, Model } from '../src/language/generated/ast.js';
+import { Expression, isConstructorCall, isMemberCall, Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import {
     UNKNOWN_JAVA_MEMBER_CODE,
@@ -151,6 +151,21 @@ describe("Receivers that keep today's diagnostics", () => {
         const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\n');
         expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
+    });
+
+    test('hasCertainReceiverType does not trust a resolved symbol named "bbjapi" that is not the real built-in', () => {
+        // The name-only check used to trust any `bbjapi(...)` call by its reference text alone.
+        // Simulate what a shadowing user-declared symbol resolving to something else entirely
+        // would look like, to prove the guard now checks what the reference actually resolves to.
+        const shadowingSymbol = { $type: 'DefFunction', name: 'bbjapi' };
+        const shadowedReceiver = {
+            $type: 'MethodCall',
+            method: {
+                $type: 'SymbolRef',
+                symbol: { $refText: 'bbjapi', ref: shadowingSymbol }
+            }
+        } as unknown as Expression;
+        expect(hasCertainReceiverType(shadowedReceiver)).toBe(false);
     });
 
     test('hasCertainReceiverType is false for a method-return receiver and true for a constructor call', async () => {

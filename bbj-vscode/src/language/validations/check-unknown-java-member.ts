@@ -1,4 +1,4 @@
-import { AstUtils, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
+import { AstUtils, isAstNode, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import type { BBjServices } from '../bbj-module.js';
 import { TypeInferer } from '../bbj-type-inferer.js';
 import {
@@ -124,8 +124,26 @@ export function hasCertainReceiverType(receiver: Expression, depth = 0): boolean
     }
     if (isMethodCall(receiver)) {
         const method = receiver.method;
-        if (isSymbolRef(method)) {
-            return method.symbol?.$refText?.toLowerCase() === 'bbjapi';
+        if (isSymbolRef(method) && method.symbol?.$refText?.toLowerCase() === 'bbjapi') {
+            // The linker's own getCandidate special-cases every `bbjapi(...)` method-call name
+            // (case-insensitively) to resolve to the interop JavaClass BBjAPI when Java interop is
+            // reachable, or otherwise to the synthetic stub declared in lib/bbj-api.ts, which is
+            // always loaded under the fixed virtual document bbjlib:///bbj-api.bbl -- never to a
+            // user-declared symbol, even one also named "bbjapi". Confirm the resolved element is
+            // really one of those two built-ins rather than trusting the reference text alone.
+            const resolved = resolveSymbol(method);
+            if (isJavaClass(resolved)) {
+                return true;
+            }
+            if (!isAstNode(resolved)) {
+                return false;
+            }
+            try {
+                return AstUtils.getDocument(resolved).uri.toString() === 'bbjlib:///bbj-api.bbl';
+            } catch {
+                // Detached/synthetic node with no owning document -- not the real built-in.
+                return false;
+            }
         }
         return false;
     }
