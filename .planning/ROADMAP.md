@@ -430,12 +430,12 @@ synthetic, never corpus text.
   3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
   4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 108-01-PLAN.md — Probe build with no behaviour change: unexpected-stop hook and stop() INFO logging, status feed moved to client features, real from-state log line (LIFE-02); maintainer's macOS idea.log excerpt (wave 1, checkpoint)
+- [x] 108-01-PLAN.md — Probe build with no behaviour change: unexpected-stop hook and stop() INFO logging, status feed moved to client features, real from-state log line (LIFE-02); maintainer's macOS idea.log excerpt (wave 1, checkpoint)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -523,7 +523,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 |-------|----------------|--------|-----------|
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Not started |  |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Not started |  |
-| 108. IntelliJ Crash Detection | 0/TBD | Not started | - |
+| 108. IntelliJ Crash Detection | 1/4 | Not started |  |
 | 109. Completion & Java Class Resolution | 0/TBD | Not started | - |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.

@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 108
 current_phase_name: IntelliJ Crash Detection
 status: executing
-stopped_at: Phase 108 context gathered
-last_updated: "2026-09-25T08:18:43.898Z"
+stopped_at: Completed 108-01-PLAN.md
+last_updated: "2026-09-25T12:51:38.059Z"
 last_activity: 2026-09-25
-last_activity_desc: Phase 107 complete, transitioned to Phase 108
-state_head: 3d47381f345534ea4614448f6ad9f34dd4e5f135
+last_activity_desc: Phase 108 execution started
+state_head: 3f26ed62a271f6ef135d2fbd7ad4601ce2fcdd82
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
   percent: 50
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 ## Current Position
 
-Phase: 108 (IntelliJ Crash Detection) — READY TO EXECUTE
-Plan: Not started
+Phase: 108 (IntelliJ Crash Detection) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-25 — Phase 107 complete, transitioned to Phase 108
+Last activity: 2026-09-25 — Phase 108 execution started
 
 Progress: [█████░░░░░] 50% (2/4 phases)
 
@@ -114,6 +114,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 107 P04 | 70min | 2 tasks | 6 files |
 | Phase 107 P05 | 141min | 2 tasks | 3 files |
 | Phase 107 P06 | 59min | 2 tasks | 8 files |
+| Phase 108 P01 | 6min (+ ~3h49m checkpoint wait) | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,7 @@ decisions:
 - [Phase 107]: Phase 107-04: two newly-exposed raw-B corpus files (a compiler-rejected SELECT...FROM...WHERE construct) were reported in 107-CONFORMANCE.md rather than fixed -- each file's only Error-severity diagnostic was the now-removed false alarm on an unrelated DEF FN inline IF/ELSE/RETURN, and nothing else in the language server ever raised an Error for the rejected SELECT construct; left for 107-06's human check per this plan's own instruction not to re-flag valid code to protect the B gate
 - [Phase 107]: Phase 107-05: live-backend review found and guarded five false-positive shapes in the unknown-Java-member check (class-ref method static filter, array-typed declare .length, java.lang.Object receiver, empty-string sentinel reassignment, constructor-reassignment to a different class); all narrow hasCertainReceiverType/checkUnknownJavaMember only, no scope/linker/interop file touched
 - [Phase 107]: Phase 107-06: Comparable A2 (harness-artifact and accepted-genuine-member files removed) measures 25 on this phase's own same-corpus base, a strict subset of the base's own 33 with zero new files, but 3 above the historical <=22 v4.5 exit number measured on a roughly 3-4x smaller corpus — Recorded as an open human-check item in 107-CONFORMANCE.md rather than resolved either way, matching the precedent already set at the Phase 98 close; resolved at UAT 2026-09-25: the user accepted the file-set reading (comparable A2 25 vs same-corpus base 33, no new entries) and VAL-03 was marked Complete
+- [Phase 108]: Phase 108-01: real macOS idea.log confirms D-01 -- the unexpected-stop hook fires only after kill -9, never during a deliberate stop or restart — P3's stop-requested/hook-line ordering races in the same millisecond and is not a usable signal; LSP4IJ's own recovery sometimes double-launches, stopping a first instance while alive with no hook line; closing and reopening the last BBj file within ~30s returns stopping directly to started with no stop request -- all three narrow plan 02's crash-signal design
 
 ### Tech Debt
 
@@ -225,9 +227,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T07:34:09.920Z
-Stopped at: Phase 108 context gathered
-Resume file: .planning/phases/108-intellij-crash-detection/108-CONTEXT.md
+Last session: 2026-09-25T12:51:37.946Z
+Stopped at: Completed 108-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
