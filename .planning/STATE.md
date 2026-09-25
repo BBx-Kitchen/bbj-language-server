@@ -4,16 +4,16 @@ milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 108
 current_phase_name: IntelliJ Crash Detection
-status: planning
+status: executing
 stopped_at: Phase 108 context gathered
-last_updated: "2026-09-25T07:34:10.032Z"
+last_updated: "2026-09-25T08:18:43.898Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 107 complete, transitioned to Phase 108
-state_head: 92ad80d7aee27ea418a6ff6801b23b163956fb66
+state_head: 3d47381f345534ea4614448f6ad9f34dd4e5f135
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 13
+  total_plans: 17
   completed_plans: 13
   percent: 50
 ---
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 ## Current Position
 
-Phase: 108 — IntelliJ Crash Detection
+Phase: 108 (IntelliJ Crash Detection) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-09-25 — Phase 107 complete, transitioned to Phase 108
 
 Progress: [█████░░░░░] 50% (2/4 phases)

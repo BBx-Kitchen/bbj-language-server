@@ -430,7 +430,24 @@ synthetic, never corpus text.
   3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
   4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 108-01-PLAN.md — Probe build with no behaviour change: unexpected-stop hook and stop() INFO logging, status feed moved to client features, real from-state log line (LIFE-02); maintainer's macOS idea.log excerpt (wave 1, checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 108-02-PLAN.md — Probe verdict gate, then crash detection from the hook: ExpectedStopGuard as filter, first crash auto-restarts once without clearing the counter, second within 30 s gives up, disarm after the plugin's own stop (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 108-03-PLAN.md — BBj: Crashed widget state for every crash; editor banner only on give-up; feature docs (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 108-04-PLAN.md — Final builds, whole suite, register check, seven-scenario macOS hand UAT with observed/derived marks (wave 4, checkpoint)
 
 *Planning notes:* the Phase 97 attempt (`bb0a49f0`, `cb3ce7f8`, `a2680319`; reverted in
 `8fe7cb72` and `a22b78ad`) showed that the status sequence alone cannot separate a crash from a

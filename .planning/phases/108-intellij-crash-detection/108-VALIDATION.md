@@ -40,15 +40,18 @@ created: "2026-09-25"
 
 Filled by the planner/executor per task; requirement → test map from RESEARCH.md §Validation Architecture:
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
-|-------------|----------|-----------|-------------------|-------------|--------|
-| LIFE-01 | `BbjLanguageServer.addUnexpectedServerStopHandler` override forwards LSP4IJ's handler and registers ours | source guard | `./gradlew test --tests "*BbjLanguageServer*SourceGuard*"` | ❌ W0 | ⬜ pending |
-| LIFE-01 | Vendor members (`addUnexpectedServerStopHandler`, `stop`, `getPid`, `getProcessHandler`, `LSPClientFeatures#handleServerStatusChanged`) still exist | reflective canary | `./gradlew test --tests "*Lsp4ijCouplingCanaryTest*"` | ✅ (extend) | ⬜ pending |
-| LIFE-01 | `ExpectedStopGuard` reshaped to armed-token filter (D-03/D-08) | unit | `./gradlew test --tests "*ExpectedStopGuardTest*"` | ✅ (revise) | ⬜ pending |
-| LIFE-01 | Crash window ignores `started`; crash restart skips `clearCrashState()` (D-07) | source guard / unit | `./gradlew test --tests "*BbjServerServiceRestartSourceGuardTest*"` | ✅ (extend) | ⬜ pending |
-| LIFE-01 | Status feed in `createClientFeatures()`; `BbjLanguageClient` keeps console line only (D-04) | source guard | new `*StatusFeed*SourceGuard*` | ❌ W0 | ⬜ pending |
-| LIFE-01 | Widget crashed state (D-10); banner only on give-up (D-11) | source guard | `./gradlew test --tests "*BbjStatusBarWidgetSourceGuardTest*"` | ✅ (extend) | ⬜ pending |
-| LIFE-02 | Transition log line prints real from-state (`currentStatus`) | source guard | `./gradlew test --tests "*BbjServerServiceRestartSourceGuardTest*"` | ✅ (extend) | ⬜ pending |
+| Task | Requirement | Behavior | Test Type | Automated Command (from `bbj-intellij/`) | File Exists | Status |
+|------|-------------|----------|-----------|-------------------|-------------|--------|
+| 108-01-01 | LIFE-01, LIFE-02 | Probe wiring (hook, stop() log, feed move, real from-state) keeps existing guards and the allowlist green | source guard / allowlist | `./gradlew test --tests "com.basis.bbj.intellij.lsp.Lsp4ijImportAllowlistTest" --tests "com.basis.bbj.intellij.lsp.Lsp4ijOverrideSiteSourceGuardTest" --tests "com.basis.bbj.intellij.lsp.BbjServerServiceRestartSourceGuardTest" --tests "com.basis.bbj.intellij.lsp.BbjLanguageServerSourceGuardTest"` | ✅ | ⬜ pending |
+| 108-01-02 | LIFE-01 | Vendor members (`addUnexpectedServerStopHandler`, `stop`, `getPid`, `isAlive`, `getProcessHandler`, `isStopped`, `ProcessHandler.getExitCode`, `LSPProcessListener.processTerminated`, `LSPClientFeatures#handleServerStatusChanged`/`getProject`) still exist | reflective canary | `./gradlew test --tests "com.basis.bbj.intellij.lsp.Lsp4ijCouplingCanaryTest"` | ✅ (extend) | ⬜ pending |
+| 108-01-02 | LIFE-01 | `addUnexpectedServerStopHandler` override forwards LSP4IJ's handler first and registers ours once; `stop()` calls super once; no reflection | source guard | `./gradlew test --tests "com.basis.bbj.intellij.lsp.BbjLanguageServerSourceGuardTest"` | ✅ (extend) | ⬜ pending |
+| 108-01-02 | LIFE-01, LIFE-02 | One status-feed site in `createClientFeatures()`; `BbjLanguageClient` console line only; log line prints the real from-state | source guard | `./gradlew test --tests "com.basis.bbj.intellij.lsp.BbjStatusFeedSourceGuardTest"` | ❌ W0 (created in 108-01-02) | ⬜ pending |
+| 108-01-03 | LIFE-01, LIFE-02 | Hook fires on `kill -9`, not on deliberate stops (probe) | manual | checkpoint: real macOS idea.log excerpt in `108-UAT-ARTIFACTS.md` | — | ⬜ pending |
+| 108-02-01 | LIFE-01 | `ExpectedStopGuard.classifyExit` armed-token filter (one-shot, time-boxed, concurrent-safe) | unit | `./gradlew test --tests "com.basis.bbj.intellij.concurrency.ExpectedStopGuardTest"` | ✅ (revise) | ⬜ pending |
+| 108-02-02 | LIFE-01 | Crash counter ignores `started`; crash restart skips `clearCrashState()`; one gate site; disarm after own stop; `updateStatus` never classifies | source guard | `./gradlew test --tests "com.basis.bbj.intellij.lsp.BbjServerServiceRestartSourceGuardTest" --tests "com.basis.bbj.intellij.lsp.BbjLanguageServerSourceGuardTest"` | ✅ (extend) | ⬜ pending |
+| 108-03-01 | LIFE-01 | Widget crashed state read from `isServerCrashed()` | source guard | `./gradlew test --tests "com.basis.bbj.intellij.ui.BbjStatusBarWidgetSourceGuardTest"` | ✅ (extend) | ⬜ pending |
+| 108-03-02 | LIFE-01 | Banner only on give-up (`isAutoRestartAbandoned()`) | source guard | `./gradlew test --tests "com.basis.bbj.intellij.ui.BbjServerCrashNotificationProviderSourceGuardTest"` | ❌ W0 (created in 108-03-02) | ⬜ pending |
+| 108-04-01..03 | LIFE-01, LIFE-02 | Seven hand-UAT scenarios on macOS, every expected line marked observed/derived/missing | manual + whole suite | `./gradlew test --rerun-tasks` plus checkpoint | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -56,10 +59,11 @@ Filled by the planner/executor per task; requirement → test map from RESEARCH.
 
 ## Wave 0 Requirements
 
-- [ ] `BbjLanguageServer` source guard pinning the `addUnexpectedServerStopHandler` override shape
-- [ ] New `Lsp4ijCouplingCanaryTest` methods for connection-provider members this phase couples to
-- [ ] Status-feed source guard for `createClientFeatures()`'s `handleServerStatusChanged` override (new content; not `a2680319` as-is)
-- [ ] `108-UAT-ARTIFACTS.md` to receive D-13 probe output and D-14/D-15 scenario excerpts
+- [ ] `BbjLanguageServer` source guard pinning the `addUnexpectedServerStopHandler` override shape (108-01 Task 2, extends `BbjLanguageServerSourceGuardTest`)
+- [ ] New `Lsp4ijCouplingCanaryTest` methods for connection-provider members this phase couples to (108-01 Task 2)
+- [ ] Status-feed source guard for `createClientFeatures()`'s `handleServerStatusChanged` override (new `BbjStatusFeedSourceGuardTest`, 108-01 Task 2; not `a2680319` as-is)
+- [ ] `BbjServerCrashNotificationProviderSourceGuardTest` for the give-up banner gate (108-03 Task 2)
+- [ ] `108-UAT-ARTIFACTS.md` to receive D-13 probe output (108-01) and D-14/D-15 scenario excerpts (108-04)
 
 ---
 
