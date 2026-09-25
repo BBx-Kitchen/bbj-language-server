@@ -235,7 +235,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             await this.tryResolveJavaReference(javaClassName, this.javaInterop);
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
-            if (isSymbolRef(node.variable)) {
+            if (isSymbolRef(node.variable) && node.variable.symbol) {
                 // case: `foo$ = ""` without declaring foo$
                 const symbol = node.variable.symbol
                 if (scopes.getStream(scopeHolder).toArray().findIndex((descr: AstNodeDescription) => descr.name === symbol.$refText) === -1) {
