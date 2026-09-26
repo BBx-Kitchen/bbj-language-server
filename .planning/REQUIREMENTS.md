@@ -113,12 +113,75 @@ None deferred. Every still-open audit issue is in scope.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SEC-01 | Phase 110 | Pending |
+| SEC-02 | Phase 110 | Pending |
+| SEC-03 | Phase 111 | Pending |
+| SEC-04 | Phase 111 | Pending |
+| SEC-05 | Phase 111 | Pending |
+| SEC-06 | Phase 110 | Pending |
+| SEC-07 | Phase 110 | Pending |
+| SEC-08 | Phase 110 | Pending |
+| SEC-09 | Phase 110 | Pending |
+| SEC-10 | Phase 113 | Pending |
+| SEC-11 | Phase 113 | Pending |
+| SEC-12 | Phase 112 | Pending |
+| SEC-13 | Phase 112 | Pending |
+| SEC-14 | Phase 112 | Pending |
+| FIX-01 | Phase 119 | Pending |
+| FIX-02 | Phase 111 | Pending |
+| FIX-03 | Phase 111 | Pending |
+| FIX-04 | Phase 114 | Pending |
+| DEP-01 | Phase 117 | Pending |
+| DEP-02 | Phase 117 | Pending |
+| DEP-03 | Phase 115 | Pending |
+| DEP-04 | Phase 117 | Pending |
+| DEP-05 | Phase 117 | Pending |
+| CI-01 | Phase 122 | Pending |
+| CI-02 | Phase 122 | Pending |
+| CI-03 | Phase 122 | Pending |
+| CI-04 | Phase 117 | Pending |
+| CI-05 | Phase 122 | Pending |
+| CI-06 | Phase 122 | Pending |
+| CI-07 | Phase 122 | Pending |
+| CI-08 | Phase 122 | Pending |
+| CI-09 | Phase 122 | Pending |
+| TEST-01 | Phase 114 | Pending |
+| TEST-02 | Phase 114 | Pending |
+| TEST-03 | Phase 114 | Pending |
+| TEST-04 | Phase 116 | Pending |
+| TEST-05 | Phase 116 | Pending |
+| TEST-06 | Phase 116 | Pending |
+| TEST-07 | Phase 114 | Pending |
+| TEST-08 | Phase 116 | Pending |
+| TEST-09 | Phase 112 | Pending |
+| TEST-10 | Phase 113 | Pending |
+| TEST-11 | Phase 114 | Pending |
+| HARN-01 | Phase 115 | Pending |
+| HARN-02 | Phase 115 | Pending |
+| HARN-03 | Phase 115 | Pending |
+| HARN-04 | Phase 115 | Pending |
+| HARN-05 | Phase 115 | Pending |
+| HARN-06 | Phase 115 | Pending |
+| REF-01 | Phase 118 | Pending |
+| REF-02 | Phase 110 | Pending |
+| REF-03 | Phase 113 | Pending |
+| REF-04 | Phase 118 | Pending |
+| REF-05 | Phase 118 | Pending |
+| REF-06 | Phase 118 | Pending |
+| REF-07 | Phase 113 | Pending |
+| REF-08 | Phase 113 | Pending |
+| REF-09 | Phase 121 | Pending |
+| REF-10 | Phase 120 | Pending |
+| REF-11 | Phase 120 | Pending |
+| REF-12 | Phase 121 | Pending |
+| REF-13 | Phase 119 | Pending |
+| DOC-01 | Phase 113 | Pending |
 
 **Coverage:**
 - v4.7 requirements: 63 total
-- Mapped to phases: 0
-- Unmapped: 63 (filled in by the roadmapper)
+- Mapped to phases: 63
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-09-26*
-*Last updated: 2026-09-26 after the requirements definition*
+*Last updated: 2026-09-26 after the v4.7 roadmap (traceability filled, 63/63 mapped to Phases 110-122)*

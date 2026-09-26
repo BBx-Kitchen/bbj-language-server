@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down
 status: planning
-last_updated: "2026-09-26T10:18:21.503Z"
+last_updated: "2026-09-26T10:41:38.000Z"
 last_activity: 2026-09-26
 progress:
-  total_phases: 0
+  total_phases: 13
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,7 +15,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-26 (v4.6 User-Facing Bug Burn-down shipped and archived — 4 phases, 25 plans, 19/19 requirements; next: `/gsd-new-milestone`)
+**Last Updated:** 2026-09-26 (v4.7 roadmapped — Phases 110-122, 63/63 requirements mapped, no orphans)
 
 ## Project Reference
 
@@ -23,16 +23,40 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning the next milestone (v4.6 shipped 2026-09-26)
+**Current Focus:** Phase 110 — Workspace Settings & Filesystem Trust (ready to discuss/plan)
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-26 — Milestone v4.7 started
+Phase: 110 of 122 (first of v4.7's thirteen phases)
+Plan: — (none created)
+Status: Ready to plan
+Last activity: 2026-09-26 — v4.7 roadmap created (Phases 110-122)
+
+Progress: [░░░░░░░░░░] 0%
+
+### v4.7 milestone map
+
+| Phase | Name | Requirements | Issues (Closes) |
+|-------|------|--------------|-----------------|
+| 110 | Workspace Settings & Filesystem Trust | SEC-01, SEC-02, SEC-06..09, REF-02 | #509 #510 #511 #526 #579 #585 #605 #581 |
+| 111 | Java Class Data from the Interop Peer | SEC-03..05, FIX-02, FIX-03 | #523 #524 #525 #676 (+ todo) |
+| 112 | EM Login & Web Launch Fail Closed | SEC-12..14, TEST-09 | #546 #548 #553 #565 |
+| 113 | Composer Webview Hardening & Consolidation | SEC-10, SEC-11, TEST-10, REF-03, REF-07, REF-08, DOC-01 | #604 #626 #628 #582 #533 #534 #595 |
+| 114 | Lint, Type-Check & Test-Suite Gates | TEST-01..03, TEST-07, TEST-11, FIX-04 | #574 #516 #519 #562 #629 (+ todo) |
+| 115 | Honest Interop Test Harness | HARN-01..06, DEP-03 | #514 #575 #596 #599 #601 #635 #520 |
+| 116 | Java-Interop Test Coverage | TEST-04..06, TEST-08 | #528 #559 #560 #563 |
+| 117 | Dependency Hygiene & Dependabot Coverage | DEP-01, DEP-02, DEP-04, DEP-05, CI-04 | #501 #507 #521 #551 |
+| 118 | Small Dedup & Drift Guards | REF-01, REF-04..06 | #580 #583 #603 #606 |
+| 119 | Grammar — DECLARE File Paths & Shared Channel Opening | FIX-01, REF-13 | #527 #602 |
+| 120 | ClassValidator & activate() Splits | REF-10, REF-11 | #625 #564 |
+| 121 | Java Interop Service Decomposition | REF-09, REF-12 | #624 #558 |
+| 122 | Release & CI Pipeline Hardening | CI-01..03, CI-05..09 | #547 #549 #550 #518 #573 #515 #598 #600 |
+
+Ordering: security first (110-113), then the test gates (114-116) before the large refactors
+(119-121, with the `JavaInteropService` split last among them), and the publish pipeline (122)
+last, because every push to `main` publishes previews to both marketplaces.
 
 ## Performance Metrics
 
@@ -55,7 +79,7 @@ Per-plan duration tables for phases 72-109 are archived with their phase artifac
 - Duration: 3 days (2026-09-24 → 2026-09-26)
 - Phases: 4 (106-109)
 - Plans: 25 (60 tasks)
-- Key: user-facing bug burn-down. `on-save` really waits for a save in both IDEs and keeps the last save's compiler errors visible; one error per finding on the bbjcpl fallback; the live parse gets its own connection first; single-line IF false alarms and the use-before-assignment crash fixed; unknown Java members on resolved classes are Errors; IntelliJ detects a crashed server via LSP4IJ's unexpected-stop hook; completion fixes for FQN statics, overloads, method bodies and Java class resolution. Audit `tech_debt` with no gaps; override closeout (2 artifacts acknowledged). PR #699 open against `main` (opened 2026-09-26).
+- Key: user-facing bug burn-down. `on-save` really waits for a save in both IDEs and keeps the last save's compiler errors visible; one error per finding on the bbjcpl fallback; the live parse gets its own connection first; single-line IF false alarms and the use-before-assignment crash fixed; unknown Java members on resolved classes are Errors; IntelliJ detects a crashed server via LSP4IJ's unexpected-stop hook; completion fixes for FQN statics, overloads, method bodies and Java class resolution. Audit `tech_debt` with no gaps; override closeout (2 artifacts acknowledged). On `main` via PR #699 (merged 2026-09-26).
 
 **v4.5 (Shipped: 2026-09-24):**
 
@@ -91,7 +115,11 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 
 ### Active Constraints
 
-- **v4.5:** the conformance corpus and harness stay outside this repository (private `bbj-corpus`, `conformance/run.mjs --ls <this repo>`), are run locally at phase boundaries and never in CI. CI protection comes from synthetic regression files under `bbj-vscode/test/test-data/` (CONF-01).
+- **v4.7:** the milestone PR carries one `Closes #N` line per issue (61 issues across Phases 110-122); an issue table does not close issues. Before the squash merge, scan the branch's commit bodies for closing keywords.
+- **v4.7:** Phase 122 changes `preview.yml`, `manual-release.yml` and `vscode:prepublish`, which publish to both marketplaces on every push to `main`. The publish workflows cannot be run from the branch without publishing: check them statically, run packaging only up to the publish step, and watch the first preview run after the merge.
+- **v4.7:** do not install or run langium 4.4 inside `bbj-vscode`; the DEP-05 upstream repro lives outside this repository.
+- **v4.7:** "unchanged behaviour" in the refactor phases (113's consolidation, 118-121) means the existing suites pass without assertion changes, compared against the phase base when in doubt.
+- **v4.5:** the conformance corpus and harness stay outside this repository (private `bbj-corpus`, `conformance/run.mjs --ls <this repo>`), are run locally at phase boundaries and never in CI. CI protection comes from synthetic regression files under `bbj-vscode/test/test-data/` (CONF-01). v4.7 Phase 119 (grammar) uses it.
 - **v4.5:** no proprietary BBj source text enters this public repository — planning files, tests and regression files describe behaviour and use word lists only.
 - **v4.5:** Phase 101 changes the separate `bbj-ls` repository (Java, runs inside BBjServices on port 5008, BASIS GitLab, ships with BBj 26.03+). Both extensions must keep working unchanged against an older BBj whose `bbj-ls` lacks the endpoint (PSRV-04), decided by a once-per-connection probe, not a version-string comparison.
 - **v4.5:** no hand-written strict checks are added to the Langium grammar (bare expression statements, reserved words, block balance) — BBj's parser decides those contextually; they are deferred as STRICT-01/02.
@@ -100,7 +128,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 - Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
 - No live IntelliJ UI test coverage exists in CI. Verification pattern is plain-Java seams under plain JUnit 5, whole-file source guards for IDE-only wiring, and hand UAT in a running IDE per phase — build both distributables first, and again from the final tree after code-review fixes.
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
-- 3 parser.test.ts assertions DISABLED — require a Java classpath unavailable in the EmptyFileSystem test environment
+- 3 parser.test.ts assertions DISABLED — require a Java classpath unavailable in the EmptyFileSystem test environment (TEST-04, Phase 116, re-enables them)
 
 ### Decisions
 
@@ -117,7 +145,10 @@ decisions:
 - [v4.5, standing]: new diagnostics from the compiler's parser are errors, like the compiler's own; invalid code is decided by BBj's parser, not hand-written strict checks.
 - [v4.5]: PR #691 carried phases 98-105 and merged to `main` as one piece on 2026-09-24.
 - [v4.6, standing]: an LSP4IJ unexpected-stop hook is the only IntelliJ crash signal; the status sequence alone cannot tell a crash from a stop.
-- [v4.6, standing until merged]: PR #699 (`gsd/v4.6-user-facing-bug-burndown`) carries phases 106-109 and lands on `main` as one PR; scan its commit bodies for closing keywords before the squash merge.
+- [v4.6]: PR #699 (`gsd/v4.6-user-facing-bug-burndown`) carried phases 106-109 and merged to `main` as one piece on 2026-09-26.
+- [v4.7 roadmap]: #559's own diagnosis is superseded by the 2026-09-20 todo (the hermetic test double lacks the classes; the describe block never reaches :5008); TEST-05 follows the todo.
+- [v4.7 roadmap]: #511 is fixed by gating only a workspace-scoped `bbj.configPath` behind VS Code Workspace Trust; `configPath` stays deliberately un-anchored to the workspace folder for system-wide config files.
+- [v4.7 roadmap]: all workflow and packaging-script changes (CI-01..03, CI-05..09) are one late phase (122) so each workflow file is rewritten once; DEP-01 and CI-04 land earlier in Phase 117 because they do not change what a publish run does.
 
 ### Tech Debt
 
@@ -132,11 +163,11 @@ decisions:
 
 ### Pending Todos
 
-3 pending in `.planning/todos/pending/`, all unscheduled:
+3 pending in `.planning/todos/pending/`, all now scheduled in v4.7:
 
-- `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards
-- `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed
-- `2026-09-24-unknown-java-member-linking-warning-extras` — deferred extras from VAL-03 (acknowledged at the v4.6 close)
+- `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards → FIX-04, Phase 114
+- `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
+- `2026-09-24-unknown-java-member-linking-warning-extras` — deferred extras from VAL-03 → FIX-03, Phase 111
 
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
 
@@ -148,11 +179,13 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 - **0.15.0 stays half-released** (VS Code only) — deliberately not reconciled (SEED-002); 0.16.0 is on both marketplaces. `manual-release.yml`'s two publish jobs still run in parallel; the by-hand runbook is `milestones/v4.4-phases/97-release-0-16-0-milestone-close/97-RECONCILIATION-RUNBOOK.md`.
 
-- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`.
+- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`. v4.7 Phase 116 (TEST-05) removes this allowance.
 
-- **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
+- **v4.7 human gates.** DEP-02 (#507, Phase 117) needs the maintainer to name the library and version behind the vendored formatter JAR. DEP-05's upstream langium report may only be filed with the maintainer's approval. FIX-01 (#527, Phase 119) may already be effectively fixed per the tests research; Phase 119 starts by testing it on the phase base.
 
-- **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24); the `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand. v4.6 is complete in PR #699 (`gsd/v4.6-user-facing-bug-burndown`, opened 2026-09-26); it needs its merge, then a release.
+- **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed, scheduled as FIX-04). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
+
+- **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24) and v4.6 via PR #699 (merged 2026-09-26); both still need a release. The `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand.
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
 ### Quick Tasks Completed
@@ -166,6 +199,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ### Roadmap Evolution
 
+- v4.7 roadmap created 2026-09-26: Phases 110-122 for 63 requirements (61 GitHub issues plus three carried-over todos). REF-02 folded into 110, FIX-02/03 into 111, TEST-09 into 112, TEST-10/DOC-01 into 113, FIX-04 into 114, DEP-03 into 115, TEST-08 into 116, DEP-01/CI-04 into 117, FIX-01 into 119, REF-09 into 121.
 - v4.6 archived 2026-09-26 (Phases 106-109).
 - v4.6 roadmap created 2026-09-24: Phases 106-109 for 18 requirements (DIAG-01 and JINT-03 folded into 106, JINT-01/02 into 109).
 - v4.5 archived 2026-09-24 (Phases 98-105).
@@ -174,10 +208,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-26
-Stopped at: Milestone v4.6 complete and archived
+Stopped at: v4.7 roadmap created — ROADMAP.md, STATE.md and REQUIREMENTS.md traceability written
 Resume file: None
 
-Next: merge PR #699 (scan commit bodies for closing keywords first), then `/gsd-new-milestone`.
+Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -279,9 +313,9 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-26 after the v4.6 close. Per-plan metrics and per-phase decision
+*State updated: 2026-09-26 after the v4.7 roadmap. Per-plan metrics and per-phase decision
 detail for phases 70-109 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Discuss or plan the first v4.7 phase with `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`

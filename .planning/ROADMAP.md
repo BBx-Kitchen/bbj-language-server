@@ -24,7 +24,8 @@
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
-- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; PR #699 open against `main` — see MILESTONES.md)
+- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on `main` via PR #699, merged 2026-09-26 — see MILESTONES.md)
+- 🔷 **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (in progress, started 2026-09-26)
 
 ## Phases
 
@@ -294,6 +295,412 @@ Full phase detail: `.planning/milestones/v4.6-ROADMAP.md`; requirements (19/19) 
 
 </details>
 
+### 🔷 v4.7 Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
+
+Scope is the 63 requirements in `.planning/REQUIREMENTS.md`: close the 2026-08-20 audit
+backlog, each issue re-verified against `main` (`a1c041e9`) on 2026-09-26, plus the three
+carried-over todos. The phases close 61 GitHub issues. The milestone PR needs one
+`Closes #N` line per issue, because an issue table does not close anything. Already closed on
+GitHub before this roadmap: #529, #566, #586 and #627 (fixed), #555 (duplicate of #528) and
+#572 (documented trade-off). Out of scope: #631, #634, #693, #694, feature requests, and
+upgrading to langium 4.4. Evidence with file:line references is in
+`.planning/research/AUDIT-VERIFY-{A-SECURITY,B-CI-DEPS,C-TESTS,D-REFACTORS}.md`.
+
+**Where each phase works.**
+
+- Phase 110 changes the interop host/port path (`java-interop.ts` `setConnectionConfig`,
+  `bbj-ws-manager.ts`, `main.ts`), `config-path-resolver.ts` and the VS Code client's
+  Workspace Trust handling, the USE-path resolution in `bbj-document-builder.ts` and
+  `bbj-scope.ts`, `isExternalDocument()`, `decompile-io.ts` and `document-formatter.ts`.
+- Phase 111 changes `java-interop.ts` `resolveClass()`/`storeJavaClass()`, `bbj-hover.ts`,
+  `bbj-completion-provider.ts`, `bbj-code-action-provider.ts`, `bbj-document-validator.ts`
+  (Rule 2) and `bbj-linker.ts`.
+- Phase 112 changes `bbj-vscode/tools/web.bbj` (also bundled into the IntelliJ plugin),
+  `extension.ts` `isTokenExpired()` and adds execution tests for `Commands.cjs`.
+- Phase 113 changes the four composer webviews, `webview-panel-lifecycle.ts`, the composer
+  logic and `*-ui.ts` files, moves `composer-commands.ts` out of `src/language/`, and fixes two
+  IntelliJ class docs.
+- Phase 114 changes `eslint.config.js` plus the ~214 violations it surfaces across `src/` and
+  `test/`, `tsconfig.test.json`, `vitest.config.ts`, `initializeWorkspace()`, a PR workflow
+  step, and the IntelliJ Node.js download with its guard tests.
+- Phase 115 changes `bbj-vscode/tools/interop-test-harness/` and its tooling scope.
+- Phase 116 changes `test/bbj-test-module.ts`, `parser.test.ts`, `linking.test.ts`, adds a
+  fake-socket suite for `java-interop.ts`, and extracts the `main.ts` handler bodies.
+- Phase 117 changes `bbj-vscode/package.json`, the formatter JAR's provenance record,
+  `java-interop/build.gradle` and `.github/dependabot.yml`; the langium repro lives outside this
+  repository.
+- Phase 118 changes the signature-help and inlay-hint providers, the four catalog files under
+  `src/language/lib/`, and adds two drift tests.
+- Phase 119 changes `bbj.langium` (and the lexer if the DECLARE file-path token is lexed there).
+- Phase 120 changes `validations/check-classes.ts`, `extension.ts` `activate()` and
+  `Commands.cjs`.
+- Phase 121 changes `java-interop.ts` (1,642 lines), `java-javadoc.ts`, `bbj-module.ts` and
+  `test/bbj-test-module.ts`.
+- Phase 122 changes all seven workflows under `.github/workflows/`, adds a composite action
+  (or reusable workflow), and changes the packaging scripts in `bbj-vscode/package.json` and
+  `langium-config.json`.
+
+**Grouping.**
+
+- REF-02 (#581) sits with SEC-01 in Phase 110. The validated host/port fallback becomes the
+  only copy of the defaults, which today disagree three ways (`'localhost'` at both call sites,
+  `'127.0.0.1'` inside `setConnectionConfig`).
+- FIX-02 (#676) and FIX-03 sit in Phase 111. The "has no container" log line is inside
+  `resolveClass()`, the function SEC-03 bounds, and FIX-03 is about how an unresolved Java
+  member is shown, next to the hover and completion escaping.
+- TEST-09 (#565) sits in Phase 112. `Commands.cjs` is the code that launches `web.bbj` for
+  BUI/DWC, and covering it there pins the run path that REF-11 reshapes in Phase 120.
+- TEST-10 (#628) and DOC-01 (#595) sit in Phase 113. The three untested composer `*-ui.ts`
+  files get tests before REF-08 consolidates their helpers in the same phase.
+- FIX-04 sits in Phase 114. Three of its four parts are guard tests that check source text
+  instead of behaviour, and the download-progress fix belongs with the guard that pins it.
+- DEP-03 (#520) sits with the harness in Phase 115: pinning `tsx` is how the harness gets a
+  declared toolchain for HARN-02.
+- TEST-08 (#563) sits in Phase 116. The `main.ts` handlers refresh Java classes and apply
+  interop configuration changes, so they are java-interop entry points.
+- CI-04 (#551) sits with DEP-05 in Phase 117. Both edit `dependabot.yml`, and the
+  `github-actions` entry must exist before Phase 122 pins actions to SHAs, so the pins do not
+  go stale.
+- DEP-01 (#501) sits in Phase 117, not in the pipeline phase. `.vscodeignore` excludes
+  `node_modules`, so moving `@vscode/vsce` to devDependencies changes the declared production
+  set, not the VSIX contents.
+- FIX-01 (#527) sits with REF-13 in Phase 119: one grammar regeneration and one conformance run
+  cover both.
+- REF-09 (#624) sits with REF-12 in Phase 121. Both reshape how the Java class services are
+  wired into `BBjServices`, and `JavaInteropService` fills javadoc during class resolution.
+- Every workflow and packaging-script change (CI-01, CI-02, CI-03, CI-05 to CI-09) sits in
+  Phase 122, so each workflow file is rewritten once.
+
+**Ordering.**
+
+- Phases 110-113 come first. They are security hardening, independent of each other and of the
+  test work.
+- Phase 114 follows them, so its lint fix pass also covers their code. Every later phase runs
+  under the lint and type-check gates.
+- Phase 115 follows Phase 114, whose ESLint and tsconfig setup HARN-02 extends to the harness.
+- Phase 116 comes before any large refactor. TEST-06 pins the connection code before REF-12,
+  TEST-08 (and Phase 112's TEST-09) come before REF-11, and TEST-04 strengthens the parser
+  suite that REF-13 regresses against. TEST-05 moves the whole-suite baseline to zero known
+  failures, which tightens the gate for every later phase.
+- Phases 117 and 118 are low-risk and independent.
+- Phases 119-121 are the large refactors, each regressing against the strengthened suite.
+  Phase 121 (REF-12, the hottest path in the language server) is the last code refactor.
+- Phase 122 is last. Every push to `main` publishes previews to both marketplaces, so the
+  pipeline changes land after everything else is stable.
+
+**Verification.**
+
+- Whole-suite gate: project-wide `numFailedTests: 0` plus targeted-file runs (standing v4.1
+  decision). Until Phase 116, the local baseline allows the 11 known `linking.test.ts` interop
+  failures when BBjServices is up on :5008 (green with `RUN_BBJ_TESTS=0`). From Phase 116 on,
+  there is no known-failure allowance.
+- "Unchanged behaviour" in the refactor phases (113's consolidation, 118-121) means the
+  existing suites pass without changes to their assertions, compared against the phase base in
+  a scratch worktree when a failure is in doubt.
+- Phase 119 adds a before/after parse probe and a local run of the private conformance corpus
+  (never in CI, and no corpus text enters this repository).
+- Phases with a user-visible path end with a hand check. Build both distributables first, and
+  again from the final tree after the code-review fixes. That covers 110 (formatter, Workspace
+  Trust), 111 (hover, completion, quick fix), 112 (BUI/DWC launch in both IDEs), 113
+  (composers), 114 (IntelliJ Node.js download), 120 (run commands, EM login) and 121 (Java
+  features in both IDEs).
+- Before every push, grep the source diff for planning identifiers (plan/D-xx/CR-xx tokens).
+
+- [ ] **Phase 110: Workspace Settings & Filesystem Trust** - The interop host/port, `bbj.configPath`, USE-statement paths, prefix checks, file probes and the formatter's Java binary can no longer point somewhere the user did not choose
+- [ ] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message
+- [ ] **Phase 112: EM Login & Web Launch Fail Closed** - No default EM credentials, a visible error for every failing EM call, undecidable tokens treated as expired, and `Commands.cjs` executed by tests
+- [ ] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each
+- [ ] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups
+- [ ] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI
+- [ ] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures
+- [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
+- [ ] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift
+- [ ] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses
+- [ ] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed
+- [ ] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged
+- [ ] **Phase 122: Release & CI Pipeline Hardening** - Least-privilege, SHA-pinned, cached workflows that share one preamble, and a minified VSIX built once without dead scripts, verified with care because every push to `main` publishes
+
+## Phase Details
+
+### Phase 110: Workspace Settings & Filesystem Trust
+
+**Goal**: Values that a workspace controls (the interop host and port, `bbj.configPath`, USE-statement paths, and the files the extension probes or spawns) can no longer send the language server or the extension somewhere the user did not choose.
+**Depends on**: Nothing (first phase of v4.7)
+**Code**: `bbj-vscode/src/language/java-interop.ts` (`setConnectionConfig`), `bbj-ws-manager.ts` (interop initialization options, `isExternalDocument()`), `main.ts` (configuration-change handler), `config-path-resolver.ts`, the VS Code client's settings handoff (`extension.ts`), `bbj-document-builder.ts` (`addImportedBBjDocuments`), `bbj-scope.ts` (prefix lookup), `bbj-vscode/src/decompile-io.ts`, `bbj-vscode/src/document-formatter.ts`, `bbj-vscode/package.json` (new formatter setting)
+**Requirements**: SEC-01, SEC-02, SEC-06, SEC-07, SEC-08, SEC-09, REF-02
+**Issues**: Closes #509, #510, #511, #526, #579, #585, #605, #581
+**Success Criteria** (what must be TRUE):
+
+  1. An interop host that is not a non-empty string, or a port that is not an integer from 1 to 65535, arriving through the initialization options or through a configuration change, makes the language server use the default host and port and log a warning. Tests drive both entry paths through one shared validator, which also holds the only copy of the default values.
+  2. In an untrusted VS Code workspace, a workspace-level `bbj.configPath` is ignored and the user-level value (or the default) is used. In a trusted workspace, and for user-level settings, behaviour is unchanged.
+  3. A USE statement whose path resolves outside every configured PREFIX root (for example through `..` segments) reads no file, in both the document builder and the scope lookup, and a test asserts that nothing outside the roots is opened.
+  4. Prefix membership is decided on path segments, so a document under `/libs/foo2/` is not treated as inside the prefix `/libs/foo`. `isTokenizedFile` and `statSize` return their not-a-file result for a symlink, a directory or a FIFO. Tests pin both.
+  5. When the new formatter Java setting is set, the formatter checks that the binary exists and is executable before spawning it, and an invalid value shows an error instead of silently falling back to PATH. When the setting is empty, the resolved default binary is checked the same way.
+
+**Plans**: TBD
+
+*Planning notes:* SEC-02 meets a documented design decision: `config-path-resolver.ts` says
+`configPath` is deliberately not anchored to a workspace folder, so system-wide config files keep
+working. Gating only the workspace-scoped value behind Workspace Trust keeps that use case. #511
+is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
+
+### Phase 111: Java Class Data from the Interop Peer
+
+**Goal**: Java class data supplied by the java-interop peer reaches the AST, hover, completion and quick fixes only after it is bounded, escaped and validated. Java class problems also read correctly: no spurious "has no container" log line, and an unresolved Java member stays visible with a message a BBj developer can understand.
+**Depends on**: Phase 110 (both change `java-interop.ts`)
+**Code**: `bbj-vscode/src/language/java-interop.ts` (`resolveClass()`, `storeJavaClass()`, `extractPackageName()`, and the caller that passes a bare package name), `bbj-hover.ts` (`tryParseJavaDoc`), `bbj-completion-provider.ts` (`createReferenceCompletionItem`, `completeAutoImportClasses`), `bbj-code-action-provider.ts` (`createUseAction`), `bbj-document-validator.ts` (hierarchy Rule 2), `bbj-linker.ts` (`createLinkingError`)
+**Requirements**: SEC-03, SEC-04, SEC-05, FIX-02, FIX-03
+**Issues**: Closes #523, #524, #525, #676 (FIX-03 comes from the pending todo `2026-09-24-unknown-java-member-linking-warning-extras`, which has no issue)
+**Success Criteria** (what must be TRUE):
+
+  1. A peer response whose fields have the wrong type or exceed a fixed length is rejected or truncated before anything is copied into the class's documentation. A test feeds such a response and asserts what is stored.
+  2. Javadoc text containing Markdown control characters (`[`, `]`, `(`, `)`, backtick, `!`) shows literally in hover and completion documentation, so a link or image written into javadoc does not render as one.
+  3. The missing-USE quick fix and auto-import completion insert nothing for a class name that does not match the Java qualified-identifier pattern (for example one containing `;`, whitespace or a line break). Valid names still get their `use` line.
+  4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
+  5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
+
+**Plans**: TBD
+
+*Planning notes:* one shared escape/bound helper can serve SEC-03 and SEC-04. The research traced
+FIX-02's log line to a package/class name collision in `storeJavaClass()`'s `childrenOfByName`
+map but did not find the caller; since #698 the line is harmless, so the fix is to stop the bad
+request, not only to lower the log level.
+
+### Phase 112: EM Login & Web Launch Fail Closed
+
+**Goal**: Launching a BUI or DWC program through Enterprise Manager never falls back to default credentials, never trusts a token whose expiry cannot be read, and reports every EM failure visibly in both IDEs. The `Commands.cjs` code that drives these launches is executed by tests.
+**Depends on**: Nothing (independent of Phases 110-111)
+**Code**: `bbj-vscode/tools/web.bbj` (also bundled into the IntelliJ plugin), `bbj-vscode/src/extension.ts` (`isTokenExpired()`), `bbj-vscode/src/Commands/Commands.cjs`, new vitest coverage with a loader approach for the CJS file
+**Requirements**: SEC-12, SEC-13, SEC-14, TEST-09
+**Issues**: Closes #546, #548, #553, #565
+**Success Criteria** (what must be TRUE):
+
+  1. Running `web.bbj` with no credentials and no token ends on the login-failure path with a message, and the file has no `admin`/`admin123` fallback.
+  2. Each EM call after login (`getRemoteConfiguration`, `createApplication`, `getConfigFileName`, `commit`, the DWC/BUI URL lookup and `browse`) has its own error handler that shows which step failed, instead of failing silently.
+  3. VS Code treats a malformed, unsigned or exp-less EM token as expired and asks the user to log in again. Tests cover all three shapes and a valid, unexpired token.
+  4. `Commands.cjs` is loaded and executed under vitest, not only scanned as text, and its run, compile and BUI/DWC command bodies show execution coverage.
+  5. A hand check with valid EM credentials launches a BUI and a DWC program from VS Code and from IntelliJ, and both still open in the browser.
+
+**Plans**: TBD
+
+*Planning notes:* Node's native loader resolves `Commands.cjs`, so it cannot see
+`vi.mock('vscode')`. The tests need a `vscode` shim in Node's module resolution, or the remaining
+command bodies extracted into ESM the way `process-args.ts` was. The IntelliJ side already fails
+closed on undecidable JWTs (v4.2 TOKEN-01).
+
+### Phase 113: Composer Webview Hardening & Consolidation
+
+**Goal**: Every composer webview validates the messages it receives before touching the document, and msgbox validates its `assignTo` field like every other field. Once the remaining composer UI files are covered by tests, the duplicated CSP, call-locator, argument-scanner and UI helpers exist once each, and `composer-commands.ts` lives outside the language-server directory.
+**Depends on**: Nothing (independent of Phases 110-112)
+**Code**: `bbj-vscode/src/webview-panel-lifecycle.ts`, the four `*-composer-webview.ts` files, `webview-nonce.ts`, `msgbox-composer.ts`, `addwindow-composer.ts`, `addchildwindow-composer.ts`, the `*-composer-ui.ts` files, `src/language/composer-commands.ts` (moves to `src/`) and its import in `main.ts`; docs only in `bbj-intellij/.../AddWindowComposerDialog.java` and `ComposerLauncher.java`
+**Requirements**: SEC-10, SEC-11, TEST-10, REF-03, REF-07, REF-08, DOC-01
+**Issues**: Closes #604, #626, #628, #582, #533, #534, #595
+**Success Criteria** (what must be TRUE):
+
+  1. A message of the wrong shape posted to any of the four composer webviews (msgbox, addWindow, addChildWindow, SETOPTS) is dropped before `build()` or a WorkspaceEdit runs, and a test posts one to each.
+  2. An invalid `assignTo` in the msgbox composer marks the preview invalid and blocks insertion, like an invalid message or title does.
+  3. The addWindow, addChildWindow and SETOPTS `*-composer-ui.ts` files are executed by tests (their code actions, code lenses and commands), not only mocked, and those tests pass before and after the consolidation.
+  4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
+  5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
+
+**Plans**: TBD
+**UI hint**: yes
+
+*Planning notes:* the UI hint comes from the keyword scan (composer webviews and `*-ui.ts`
+files). The phase changes no visual design, and `workflow.ui_phase` is off. Write the TEST-10
+tests first, using `test/msgbox-composer-ui.test.ts` as the template, then consolidate.
+
+### Phase 114: Lint, Type-Check & Test-Suite Gates
+
+**Goal**: Lint, the test-tree type check and test discovery become real gates that CI enforces. The whole suite runs without workspace-initialization hook timeouts, the bbx language configuration is tested like the bbj one, and the phase 97 follow-ups close. Every later phase, and every large refactor, then runs under these gates.
+**Depends on**: Phases 110-113 (the lint fix pass covers their code)
+**Code**: `bbj-vscode/eslint.config.js` and the ~214 violations it surfaces across `src/` and `test/`, `tsconfig.test.json`, `package.json` scripts, `vitest.config.ts`, `bbj-ws-manager.ts` (`initializeWorkspace()`), `test/language-configuration.test.ts`, a lint and type-check step in a PR workflow (`pr-validation.yml` or `build.yml`, not a publish workflow), `bbj-intellij/.../BbjNodeDownloader.java`, `BbjNodeDownloaderSourceGuardTest.java`, `Lsp4ijOverrideSiteSourceGuardTest.java`, `test/functional/issue447-real-interop.test.ts`
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-07, TEST-11, FIX-04
+**Issues**: Closes #574, #516, #519, #562, #629 (FIX-04 comes from the pending todo `2026-09-20-phase-97-code-review-follow-ups`, which has no issue)
+**Success Criteria** (what must be TRUE):
+
+  1. `npm run lint` applies the `typescript-eslint` recommended rules to `src` and `test` and reports zero errors, and a PR's CI fails when the PR introduces a lint error.
+  2. A type-check script over the `test/` tree exits 0 and runs in CI, and a type error introduced in a test file fails it.
+  3. `vitest.config.ts` declares explicit include and exclude patterns that resolve the same test files as today, and a whole-suite run at the default worker count shows no `initializeWorkspace()` hook timeout.
+  4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
+  5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
+
+**Plans**: TBD
+
+*Planning notes:* `vscode:prepublish` runs `npm run lint`, so the new rules also gate packaging.
+The ~214 count (213 errors) was measured on 2026-09-26 with the non-type-checked preset; the
+type-checked preset is out of scope. Lint fixes must not change behaviour, and the suite is the
+check. The issue447 guard should assert a definitive outcome plus a forced-fallback case.
+
+### Phase 115: Honest Interop Test Harness
+
+**Goal**: The interop test harness reports what really happened, gates on exactly the fields it declares, runs from a pinned dependency, and is type-checked, linted and tested in CI like the rest of the code.
+**Depends on**: Phase 114 (HARN-02 extends its lint and type-check setup to the harness)
+**Code**: `bbj-vscode/tools/interop-test-harness/run-tests.ts` (plus its split-out report template), `bbj-vscode/package.json` (`tsx` devDependency and a harness script), the tsconfig and ESLint scope, and the PR workflow that already triggers on `bbj-vscode/tools/**`
+**Requirements**: HARN-01, HARN-02, HARN-03, HARN-04, HARN-05, HARN-06, DEP-03
+**Issues**: Closes #514, #575, #596, #599, #601, #635, #520
+**Success Criteria** (what must be TRUE):
+
+  1. Every harness case derives its status from its assertions: a case with a failing assertion reports `fail`, and no case hard-codes `status: 'pass'`.
+  2. The pass/fail gate checks exactly the declared `criticalFields` list, and the header comment names those fields and documents `--timeout`.
+  3. The HTML report colours JSON keys and string values correctly, including values that contain escaped quotes.
+  4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
+  5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
+
+**Plans**: TBD
+
+*Planning notes:* fix HARN-01 through HARN-06's shared scaffold, since the duplicated scaffold is
+how #514 happened. Turn on the type-check and lint scope (HARN-02) last, after the mechanical
+fixes. The harness talks to a live java-interop, so its own CI tests must not need :5008.
+
+### Phase 116: Java-Interop Test Coverage
+
+**Goal**: The suite exercises the real java-interop connection code and the language server's LSP handlers instead of test doubles and text scans. The disabled parser assertions and the failing linking tests are green, and the whole-suite baseline has no known failures, all before Phases 119-121 refactor this code.
+**Depends on**: Phase 114 (test discovery, the test type-check and workspace-initialization timing)
+**Code**: `bbj-vscode/test/bbj-test-module.ts` (`JavaInteropTestService` preloaded classes), `test/parser.test.ts`, `test/linking.test.ts`, a new fake-socket suite for `java-interop.ts`, `bbj-vscode/src/language/main.ts` (handler bodies extracted into testable functions), and `test/test-helper.ts` (`shouldRunBBjTests()`) if the rewrite needs it
+**Requirements**: TEST-04, TEST-05, TEST-06, TEST-08
+**Issues**: Closes #528, #559, #560, #563
+**Success Criteria** (what must be TRUE):
+
+  1. The three previously disabled `parser.test.ts` validation assertions (the substring parse, the `BBjAPI()` method chain and the `String[]`/`byte[]` fields) run and pass.
+  2. The 11 `linking.test.ts` interop tests pass, or are deliberately rewritten following the 2026-09-20 root cause, and the whole suite reports zero failed tests both with BBjServices up on :5008 and with it down.
+  3. Tests run `java-interop.ts`'s real connect, timeout and request-lock code against a local fake socket server, covering a refused connection, a response that times out and concurrent requests serialized by the lock.
+  4. The `main.ts` handlers for Java class refresh and configuration change run in tests without a module-load `createConnection()`, and their bodies show execution coverage.
+
+**Plans**: TBD
+
+*Planning notes:* #559's own diagnosis is wrong. Follow the pending todo
+`2026-09-20-linking-interop-failures-survive-class-warmup`: the describe block never reaches :5008,
+because `JavaInteropTestService` rejects `connect()` and lacks `java.util.Date`, `List`,
+`LinkedList`, `Map`/`Map.Entry`, `java.sql.Date` and `java.lang.Boolean`. The TEST-06 fake peer
+may become shared test infrastructure. Keep the `bbj-notifications.ts` isolation: importing
+`main.ts` from shared services crashes tests.
+
+### Phase 117: Dependency Hygiene & Dependabot Coverage
+
+**Goal**: The production dependencies contain only what the extension runs, every vendored or pinned dependency can be checked against advisory databases, and Dependabot watches every dependency tree while holding langium at 4.3.
+**Depends on**: Nothing (independent; must precede Phase 122 so the `github-actions` Dependabot entry exists before actions are SHA-pinned)
+**Code**: `bbj-vscode/package.json` and `package-lock.json`, `bbj-vscode/tools/formatter/lib/` (provenance record), `java-interop/build.gradle`, `.github/dependabot.yml`; the langium repro lives outside this repository
+**Requirements**: DEP-01, DEP-02, DEP-04, DEP-05, CI-04
+**Issues**: Closes #501, #507, #521, #551 (DEP-05 tracks the langium 4.4 regression from the closed Dependabot PRs #682 and #684, which has no issue)
+**Success Criteria** (what must be TRUE):
+
+  1. `npm ls --omit=dev` no longer lists `@vscode/vsce` or its transitive packages, and the PR VSIX workflow still packages an extension that installs and activates.
+  2. The formatter JAR has a committed provenance record (library, version, vendor, SHA-256) that an advisory check can run against.
+  3. java-interop builds and runs with a Guava release that neither CVE-2023-2976 nor CVE-2020-8908 affects, and an OSV query for the new coordinate returns no match.
+  4. `dependabot.yml` watches `github-actions` and the `/documentation` npm tree alongside `bbj-vscode` npm and `bbj-intellij` Gradle, and ignores langium and langium-cli 4.4.x.
+  5. A minimal repro outside this repository shows, on langium 4.4 versus 4.3, the parse-recovery slowdown on an unclosed call and the lost DEF FN parameters in completion. It is ready to file upstream, and filing waits for the maintainer's approval.
+
+**Plans**: TBD
+
+*Planning notes:* DEP-02 needs an answer only the maintainer (BASIS) can give: which library and
+version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-ls` mirrors
+`java-interop/`; if it pins the same Guava, that is a `bbj-ls` follow-up, not a step here.
+
+### Phase 118: Small Dedup & Drift Guards
+
+**Goal**: Small duplicated helpers and catalog shapes exist once, and the two hand-synced copies, the `.bbl` catalog files and the `package.json` compiler-option contributions, fail a test as soon as they drift from their source.
+**Depends on**: Phase 114 (runs under the lint and type-check gates)
+**Code**: `bbj-vscode/src/language/bbj-signature-help-provider.ts`, `bbj-inlay-hint-provider.ts`, a shared home such as `bbj-nodedescription-provider.ts`, `src/language/lib/{events,functions,labels,variables}.ts` and their `.bbl` counterparts, `src/language/compiler-options.ts`, `bbj-vscode/package.json` (`bbj.compiler.*`), two new drift tests
+**Requirements**: REF-01, REF-04, REF-05, REF-06
+**Issues**: Closes #580, #583, #603, #606
+**Success Criteria** (what must be TRUE):
+
+  1. `getFunctionReference` is defined once and used by both the signature-help and inlay-hint providers, and both suites pass unchanged.
+  2. The four built-in catalog `.ts` files end with one closing shape, and the catalog tests pass unchanged.
+  3. Changing a `.bbl` catalog file so that it no longer matches its `.ts` source makes a test fail.
+  4. A compiler option added to, removed from, or given a different default in the shared options table without the matching `bbj.compiler.*` change in `package.json` (or the other way round) makes a test fail.
+
+**Plans**: TBD
+
+### Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening
+
+**Goal**: Two DECLARE statements with library file paths on one line parse as two declarations, and the channel/options/RPAREN opening shared by the output-item and input-item statements is one grammar rule, with every other parse unchanged.
+**Depends on**: Phases 114 and 116 (the lint gate and the re-enabled parser assertions)
+**Code**: `bbj-vscode/src/language/bbj.langium` (the `WithChannelAndOptionsAndOutputItems`/`WithChannelAndOptionsAndInputItems` fragments and the DECLARE file-path token), `bbj-lexer.ts` if that token is lexed there, the regenerated `src/language/generated/`, and a regression file under `test/test-data/`
+**Requirements**: FIX-01, REF-13
+**Issues**: Closes #527, #602
+**Success Criteria** (what must be TRUE):
+
+  1. `declare ::lib1::ClassA a; declare ::lib2::ClassB b` on one line parses as two declarations, each with its own file-path token, with no parse or validation errors, and a regression file under `test/test-data/` pins it.
+  2. The two fragments that open with channel, options and RPAREN share one rule, with the output variant's extra alternative kept or its necessity documented. `npm run langium:generate` and the whole suite, including `example-files.test.ts`, pass with no new failures.
+  3. A before/after parse probe over the repository's examples and test data, and a local run of the private conformance corpus, show no changed parse outcome, compared by file set rather than totals.
+
+**Plans**: TBD
+
+*Planning notes:* the tests research suggested #527 might already be effectively fixed. Start
+with a test on the phase base: if it already passes, keep it as the regression file and close
+#527 on that evidence. Anchor any lexer lookbehind to the statement and probe
+keyword-as-identifier cases (a v4.5 lesson). `npm run build` does not regenerate the grammar; run
+`langium:generate` on Node 22.
+
+### Phase 120: ClassValidator & activate() Splits
+
+**Goal**: The two remaining god objects outside java-interop, `ClassValidator` and the VS Code `activate()` function, are split along their responsibilities and produce identical diagnostics and identical extension behaviour.
+**Depends on**: Phases 112, 114 and 116 (`Commands.cjs` coverage, the lint gate, and `main.ts` handler coverage)
+**Code**: `bbj-vscode/src/language/validations/check-classes.ts` and new sibling modules, `bbj-vscode/src/extension.ts` (`activate()`, EM validate and EM login), `bbj-vscode/src/Commands/Commands.cjs` (`execWithProgress`, `runWeb`)
+**Requirements**: REF-10, REF-11
+**Issues**: Closes #625, #564
+**Success Criteria** (what must be TRUE):
+
+  1. `ClassValidator`'s class-reference, return-type/field-initializer, constructor and cyclic-inheritance checks live in separate modules, and the class-validation and inheritance-cycle suites report identical diagnostics without assertion changes.
+  2. `activate()` calls single-purpose registration functions, and EM validate, EM login and the `Commands.cjs` run path share one exec-wrapping helper that has its own unit tests.
+  3. The unused `bbj.em.credentials` secret fallback and the unreachable legacy `bbj.web.username`/`bbj.web.password` branch are gone. The activation, `Commands.cjs` and EM tests pass unchanged, and every contributed command is still registered after activation.
+  4. A hand check in VS Code runs a GUI, a BUI and a DWC program, logs into EM and compiles a file, and each behaves as before.
+
+**Plans**: TBD
+
+*Planning notes:* `activate()` is 352 lines now (the issue says about 250) and `ClassValidator`
+about 414. REF-10 moves `FINAL_TYPE_ASSIGNABLE_TO`, which the open feature request #466 would
+extend, so keep the move behaviour-neutral.
+
+### Phase 121: Java Interop Service Decomposition
+
+**Goal**: The Java class services are decomposed and injected: `JavadocProvider` is a DI service, and `JavaInteropService` is split along its five responsibilities, with unchanged behaviour on the language server's hottest path.
+**Depends on**: Phases 111 and 116 (the last behaviour changes in `java-interop.ts`, and the fake-socket suite that pins its connection code)
+**Code**: `bbj-vscode/src/language/java-interop.ts` (1,642 lines; `JavaInteropService` starts at line 222), new modules for the connection, the resolution cache, the request lock, classpath loading and the complete class index, `java-javadoc.ts`, `bbj-module.ts`, `test/bbj-test-module.ts`
+**Requirements**: REF-09, REF-12
+**Issues**: Closes #624, #558
+**Success Criteria** (what must be TRUE):
+
+  1. `JavadocProvider` is registered in `BBjServices` and constructor-injected. `getInstance()` and the test module's `isInitialized()` workaround are gone, and a test builds two independently configured providers that share no state.
+  2. The connection lifecycle, class resolution and cache, request lock, classpath loading and complete class index each live in their own module, each importable and testable on its own.
+  3. The `java-interop-*.test.ts` suites, the Phase 116 fake-socket suite and the whole suite pass without assertion changes.
+  4. Against a live BBjServices, hover, completion, the missing-USE quick fix and Refresh Java Classes behave as before in VS Code and IntelliJ.
+
+**Plans**: TBD
+
+*Planning notes:* do REF-09 first; it is small and touches the same DI wiring. Extract one
+responsibility at a time with the suite green after each step. Live-interop tests must warm up
+large classes first (cold resolution returns "no document").
+
+### Phase 122: Release & CI Pipeline Hardening
+
+**Goal**: Every workflow runs with least privilege, SHA-pinned actions, cached installs and one shared setup preamble, and `build.yml` stops duplicating the PR checks. The VSIX is built once, minified, from a `package.json` without dead scripts. The phase lands last and is verified with care, because every push to `main` publishes previews to both marketplaces.
+**Depends on**: Phases 114, 115 and 117 (the lint, type-check and harness CI steps to fold in, and the `github-actions` Dependabot entry that keeps SHA pins current)
+**Code**: all seven workflows under `.github/workflows/` (`build.yml`, `pr-validation.yml`, `pr-vsix.yml`, `preview.yml`, `manual-release.yml`, `deploy-docs.yml`, `workflow-hygiene.yml`), a new composite action under `.github/actions/` (or a reusable workflow), `bbj-vscode/package.json` (`prepare`, `vscode:prepublish`, dead scripts, `activationEvents`), `bbj-vscode/esbuild.mjs`, `bbj-vscode/langium-config.json`
+**Requirements**: CI-01, CI-02, CI-03, CI-05, CI-06, CI-07, CI-08, CI-09
+**Issues**: Closes #547, #549, #550, #518, #573, #515, #598, #600
+**Success Criteria** (what must be TRUE):
+
+  1. A scan of the workflow files finds every workflow declaring a least-privilege `permissions:` block (per job where jobs need different scopes) and every `uses:` reference pinned to a full commit SHA with its version in a comment.
+  2. The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it with npm and Gradle caching. A rerun with an unchanged lockfile shows cache hits.
+  3. `build.yml` no longer repeats the build and test that another PR workflow already runs, it has a concurrency group, and every PR to `main` still passes through at least one build-and-test gate.
+  4. `vscode:prepublish` builds only the shipped bundles, minified, and `prepare` no longer runs the full generate, type-check and bundle pipeline that CI runs explicitly. The packaged VSIX installs, activates and carries the bumped version.
+  5. The unreachable npm scripts, the unused TextMate generator directive and the contradictory `activationEvents` entries are gone, and `npm run build`, `npm run langium:generate` and the whole suite still pass.
+
+**Plans**: TBD
+
+*Planning notes:* `preview.yml` and `manual-release.yml` hold the marketplace tokens and push
+commits and tags, so under-scoping `contents: write` would break them silently on their next run.
+The PR workflows exercise the new preamble on the milestone PR itself. The publish workflows
+cannot run from the branch without publishing, so check them statically, run packaging only up to
+the point before any publish, and watch the first preview run after the merge (SEED-002: the
+first real run is the true test). In `preview.yml` and `manual-release.yml` the version bump sits
+between `npm ci` and the explicit build, so narrowing `prepare` must keep the post-bump version in
+the VSIX. `preview.yml`'s bump-before-publish order is a ratified trade-off (#572, closed) and
+out of scope.
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -321,6 +728,7 @@ Full phase detail: `.planning/milestones/v4.6-ROADMAP.md`; requirements (19/19) 
 | v4.4 IntelliJ Focus | 93-97 | 36 | Complete | 2026-09-20 |
 | v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
+| v4.7 Audit Hygiene Burn-down | 110-122 | TBD | In progress | — |
 
 **Total:** 23 milestones shipped, 107 phases complete, 418 plans shipped.
 
@@ -331,9 +739,31 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
 v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail and are tracked normally.
 
-No milestone is active. Next: `/gsd-new-milestone`.
+### v4.7 phase progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 110. Workspace Settings & Filesystem Trust | 0/TBD | Not started | - |
+| 111. Java Class Data from the Interop Peer | 0/TBD | Not started | - |
+| 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
+| 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
+| 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
+| 115. Honest Interop Test Harness | 0/TBD | Not started | - |
+| 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
+| 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
+| 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
+| 119. Grammar — DECLARE File Paths & Shared Channel Opening | 0/TBD | Not started | - |
+| 120. ClassValidator & activate() Splits | 0/TBD | Not started | - |
+| 121. Java Interop Service Decomposition | 0/TBD | Not started | - |
+| 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
+
+**Current milestone:** v4.7 Audit Hygiene Burn-down (Phases 110-122), started 2026-09-26.
+63/63 requirements mapped to 13 phases, no orphans and no duplicates; 61 GitHub issues to close.
+Scope is in `.planning/PROJECT.md` under "Current Milestone"; the requirement list and its
+traceability table are in `.planning/REQUIREMENTS.md`.
+Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
 
 ---
 
-*Roadmap last updated: 2026-09-26 — v4.6 User-Facing Bug Burn-down shipped and archived
-(Phases 106-109, 25 plans, 19/19 requirements).*
+*Roadmap last updated: 2026-09-26 — v4.7 Audit Hygiene Burn-down roadmapped (Phases 110-122,
+63/63 requirements mapped, no orphans).*
