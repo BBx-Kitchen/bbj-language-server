@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 110
-current_phase_name: Workspace Settings & Filesystem Trust
-status: verifying
-stopped_at: Completed 110-02-PLAN.md
-last_updated: "2026-09-26T12:50:14.900Z"
+current_phase: 111
+current_phase_name: Java Class Data from the Interop Peer
+status: planning
+stopped_at: Phase 110 complete, ready to plan Phase 111
+last_updated: "2026-09-26T14:37:24.971Z"
 last_activity: 2026-09-26
-last_activity_desc: Phase 110 execution started
-state_head: f72a45625c39409a6adb4d30ec847dba2f3e710a
+last_activity_desc: Phase 110 complete, transitioned to Phase 111
+state_head: ec6f44bc1bce31c7cb453571b2161cd7d3c24364
 progress:
   total_phases: 13
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 8
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-26 (v4.7 roadmapped — Phases 110-122, 63/63 requirements mapped, no orphans)
+**Last Updated:** 2026-09-26 (Phase 110 complete — UAT 2/2, validated, threat-secure; next Phase 111)
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 110 — Workspace Settings & Filesystem Trust
+**Current Focus:** Phase 111 — Java Class Data from the Interop Peer
 
 ---
 
 ## Current Position
 
-Phase: 110 (Workspace Settings & Filesystem Trust) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-09-26 — Phase 110 execution started
+Phase: 111 — Java Class Data from the Interop Peer
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-26 — Phase 110 complete, transitioned to Phase 111
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 8% (1/13 phases)
 
 ### v4.7 milestone map
 
@@ -168,6 +168,7 @@ decisions:
 - [Phase 110]: 110-04: bbj.formatter.javaPath (scope: machine) resolved/verified by formatter-java-resolver.ts before every spawn; a set value never falls back to PATH, an empty value is resolved by the module's own checked PATH walk — Closes issue #605: the formatter spawned a bare java from PATH with no check
 - [Phase 110]: 110-05: bbj.configPath's workspace-scoped value is gated behind Workspace Trust in the VS Code client (effectiveConfigPath); initializationOptions, the settings push/pull, and the client's own config-association fallback all read through it; configPath itself stays un-anchored
 - [Phase 110]: 110-02: One plain path-containment.ts module (isPathInside/containedPrefixCandidates) decides every PREFIX-membership check lexically via path.relative, Windows-only case-insensitive; the document builder, scope provider, USE-file validator, revalidation and isExternalDocument() all filter through it, closing issues #526 and #579.
+- [Phase 110 UAT]: G-110-1 (formatter no-op with `javaPath` empty) is a pre-existing crash in the vendored formatter jar under `--single-line-if` on block IFs, only logged; deferred out of the phase. The user is considering moving the formatter into bbj-ls behind RPC and MCP (many Bugzilla formatter bugs).
 
 ### Tech Debt
 
@@ -200,7 +201,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts`) gates on a bare TCP connect to :5008, so with BBjServices up 11 `linking.test.ts` interop tests switch on and fail. The issue447 capability test was rewritten backend-agnostic in 97-03, so the local baseline is 11 (re-measured 2026-09-23 at the Phase 105 close); green with `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`. v4.7 Phase 116 (TEST-05) removes this allowance.
 
-- **v4.7 human gates.** DEP-02 (#507, Phase 117) needs the maintainer to name the library and version behind the vendored formatter JAR. DEP-05's upstream langium report may only be filed with the maintainer's approval. FIX-01 (#527, Phase 119) may already be effectively fixed per the tests research; Phase 119 starts by testing it on the phase base.
+- **v4.7 human gates.** DEP-02 (#507, Phase 117) needs the maintainer to name the library and version behind the vendored formatter JAR (lead found 2026-09-26: it is BASIS's `com.basis.bbjutilities.bbjcodeformatter`; a 2024 build ships in the BDT plugin under `/opt/bbx/BDTStudio/plugins/` and still has the `--single-line-if` crash). DEP-05's upstream langium report may only be filed with the maintainer's approval. FIX-01 (#527, Phase 119) may already be effectively fixed per the tests research; Phase 119 starts by testing it on the phase base.
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed, scheduled as FIX-04). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
@@ -226,11 +227,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T12:50:14.860Z
-Stopped at: Completed 110-02-PLAN.md
+Last session: 2026-09-26T15:30:00Z
+Stopped at: Phase 110 complete, ready to plan Phase 111
 Resume file: None
 
-Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
+Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -332,9 +333,9 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-26 after the v4.7 roadmap. Per-plan metrics and per-phase decision
+*State updated: 2026-09-26 after Phase 110. Per-plan metrics and per-phase decision
 detail for phases 70-109 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Discuss or plan the first v4.7 phase with `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`
+- Discuss or plan Phase 111 with `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`

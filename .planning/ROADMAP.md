@@ -406,7 +406,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
   features in both IDEs).
 - Before every push, grep the source diff for planning identifiers (plan/D-xx/CR-xx tokens).
 
-- [ ] **Phase 110: Workspace Settings & Filesystem Trust** - The interop host/port, `bbj.configPath`, USE-statement paths, prefix checks, file probes and the formatter's Java binary can no longer point somewhere the user did not choose
+- [x] **Phase 110: Workspace Settings & Filesystem Trust** - The interop host/port, `bbj.configPath`, USE-statement paths, prefix checks, file probes and the formatter's Java binary can no longer point somewhere the user did not choose (completed 2026-09-26)
 - [ ] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message
 - [ ] **Phase 112: EM Login & Web Launch Fail Closed** - No default EM credentials, a visible error for every failing EM call, undecidable tokens treated as expired, and `Commands.cjs` executed by tests
 - [ ] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each
@@ -437,7 +437,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
   4. Prefix membership is decided on path segments, so a document under `/libs/foo2/` is not treated as inside the prefix `/libs/foo`. `isTokenizedFile` and `statSize` return their not-a-file result for a symlink, a directory or a FIFO. Tests pin both.
   5. When the new formatter Java setting is set, the formatter checks that the binary exists and is executable before spawning it, and an invalid value shows an error instead of silently falling back to PATH. When the setting is empty, the resolved default binary is checked the same way.
 
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 **Wave 1**

@@ -1,11 +1,12 @@
 ---
 phase: 110-workspace-settings-filesystem-trust
 verified: 2026-09-26T13:20:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Set an invalid bbj.formatter.javaPath (e.g. a non-existent absolute path) in real VS Code user settings, with the built VSIX installed, and run Format Document on a .bbj file"
     expected: "An error notification appears naming the configured path and the reason (e.g. not found), and the document is not reformatted; PATH is never used as a fallback"
     why_human: "resolveFormatterJava and the document-formatter.ts refusal path are covered by unit tests with mocked vscode.window.showErrorMessage, but the plan's own <verification> section and 110-VALIDATION.md's Manual-Only Verifications table both defer the real-VS-Code toast/UX confirmation to a manual UAT step that has not been recorded as performed anywhere in the phase artifacts (VALIDATION.md Sign-Off is still 'pending', status: draft)"
