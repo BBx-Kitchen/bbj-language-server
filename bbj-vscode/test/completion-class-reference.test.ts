@@ -1,7 +1,7 @@
 
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
+import { CompletionParams, CompletionTriggerKind, DiagnosticSeverity } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -170,6 +170,16 @@ describe('receivers that keep today\'s member list', () => {
         expect(dotted).not.toContain('someInstanceField');
         expect(dotted).not.toContain('charAt()');
     });
+
+    test('the .class pseudo-member after the class named Class or after a value offers java.lang.Class instance members', async () => {
+        const afterClassNamedClass = await labels(
+            'java.lang.Class.class.<|>\nprobeTail = 1\n', '.');
+        expect(afterClassNamedClass).toEqual(['class', STATIC_FOR_NAME, 'getName()']);
+
+        const afterValue = await labels(
+            'declare java.lang.String s!\ns!.class.<|>\nprobeTail = 1\n', '.');
+        expect(afterValue).toEqual(['class', STATIC_FOR_NAME, 'getName()']);
+    });
 });
 
 describe('validation after a fully-qualified class reference', () => {
@@ -187,6 +197,35 @@ describe('validation after a fully-qualified class reference', () => {
     test('a static field read through a fully-qualified class reference has no diagnostics', async () => {
         const document = await parseHelper<Model>(bbjServices)(
             'x! = java.lang.String.CASE_INSENSITIVE_ORDER\n',
+            { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
+        expect(document.diagnostics ?? []).toHaveLength(0);
+    });
+
+    test('a static method called through the fully-qualified class named Class has no diagnostics', async () => {
+        const document = await parseHelper<Model>(bbjServices)(
+            'x! = java.lang.Class.forName()\n',
+            { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
+        expect(document.diagnostics ?? []).toHaveLength(0);
+    });
+
+    // An instance method reached through a fully-qualified class reference is not reachable that
+    // way (the same treatment java.lang.String.charAt() already gets) -- a Warning-severity
+    // linking diagnostic is expected here and must not be suppressed, only its severity is
+    // asserted, never a zero-diagnostics count.
+    test('an instance method called through the fully-qualified class named Class is not an Error', async () => {
+        const diagnostics = await unknownMemberDiagnostics('x! = java.lang.Class.getName()\n');
+        expect(diagnostics).toHaveLength(0);
+
+        const document = await parseHelper<Model>(bbjServices)(
+            'x! = java.lang.Class.getName()\n',
+            { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
+        const errors = (document.diagnostics ?? []).filter(d => d.severity === DiagnosticSeverity.Error);
+        expect(errors).toHaveLength(0);
+    });
+
+    test('.class after the fully-qualified class named Class still links its instance members', async () => {
+        const document = await parseHelper<Model>(bbjServices)(
+            'x! = java.lang.Class.class.getName()\n',
             { documentUri: `file:///class-reference-validation-${probeCounter++}.bbj`, validation: true });
         expect(document.diagnostics ?? []).toHaveLength(0);
     });
