@@ -21,6 +21,7 @@ vi.mock('vscode', () => {
                     keywordsToUppercase: false,
                     removeLineContinuation: false,
                     splitSingleLineIF: false,
+                    javaPath: '',
                 },
             })),
             onDidChangeTextDocument: vi.fn((cb: (event: unknown) => void) => {
@@ -51,10 +52,20 @@ vi.mock('../src/formatter-verifier.js', () => ({
     FORMATTER_TOOLS_DIR: '/fake/tools/formatter',
 }));
 
+// The wiring under test here is "does runFormatter call resolveFormatterJava and spawn (or
+// refuse) based on its result" — the resolver's own resolution/verification logic is exercised
+// for real, against the real filesystem and injected probes, by
+// test/formatter-java-resolver.test.ts. Default to an accepted path in beforeEach so every
+// pre-existing test above (which never sets javaPath) keeps its current behaviour unmodified.
+vi.mock('../src/formatter-java-resolver.js', () => ({
+    resolveFormatterJava: vi.fn(),
+}));
+
 import * as cp from 'child_process';
 import * as vscodeMocked from 'vscode';
 import { DocumentFormatter } from '../src/document-formatter.js';
 import { verifyFormatterArtifacts } from '../src/formatter-verifier.js';
+import { resolveFormatterJava } from '../src/formatter-java-resolver.js';
 
 /** A minimal fake ChildProcess: an EventEmitter with stdout/stderr/stdin. */
 function makeFakeProcess() {
@@ -78,7 +89,38 @@ describe('DocumentFormatter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ ok: true });
+        (resolveFormatterJava as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ path: '/fake/jdk/bin/java' });
     });
+
+    // The `integrityNoticeShown`/`javaResolutionNoticesShown` once-per-session state is
+    // module-level in document-formatter.ts, so any test that depends on its starting value
+    // needs its own fresh module instance — otherwise an earlier test in this file trips the
+    // flag and a later test observes it already set. vi.resetModules() forces vi.mock factories
+    // to re-run on the next dynamic import, so 'vscode', 'child_process',
+    // '../src/formatter-verifier.js' and '../src/formatter-java-resolver.js' all come back as
+    // fresh mock instances too; grab all of them freshly rather than mixing fresh and
+    // outer-scope handles.
+    async function freshEnv() {
+        vi.resetModules();
+        const freshCp = await import('child_process');
+        const freshVscode = await import('vscode');
+        const freshVerifierModule = await import('../src/formatter-verifier.js');
+        const freshJavaResolverModule = await import('../src/formatter-java-resolver.js');
+        const freshDocumentFormatterModule = await import('../src/document-formatter.js');
+        (freshJavaResolverModule.resolveFormatterJava as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+            path: '/fake/jdk/bin/java',
+        });
+        return {
+            cp: freshCp as unknown as { spawn: ReturnType<typeof vi.fn> },
+            vscode: freshVscode as unknown as {
+                window: { showErrorMessage: ReturnType<typeof vi.fn> };
+                workspace: { getConfiguration: ReturnType<typeof vi.fn> };
+            },
+            verifyFormatterArtifacts: freshVerifierModule.verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>,
+            resolveFormatterJava: freshJavaResolverModule.resolveFormatterJava as unknown as ReturnType<typeof vi.fn>,
+            DocumentFormatter: freshDocumentFormatterModule.DocumentFormatter,
+        };
+    }
 
     test('P62-D2-010: rejects the format promise on a non-ENOENT spawn error', async () => {
         const proc = makeFakeProcess();
@@ -288,27 +330,6 @@ describe('DocumentFormatter', () => {
     });
 
     describe('formatter artefact verification gate', () => {
-        // The `integrityNoticeShown` once-per-session flag is module-level state in
-        // document-formatter.ts, so any test that depends on its starting value (every mismatch
-        // test below) needs its own fresh module instance — otherwise an earlier mismatch test in
-        // this file trips the flag and a later test observes it already set. vi.resetModules()
-        // forces vi.mock factories to re-run on the next dynamic import, so 'vscode',
-        // 'child_process' and '../src/formatter-verifier.js' all come back as fresh mock
-        // instances too; grab all four freshly rather than mixing fresh and outer-scope handles.
-        async function freshEnv() {
-            vi.resetModules();
-            const freshCp = await import('child_process');
-            const freshVscode = await import('vscode');
-            const freshVerifierModule = await import('../src/formatter-verifier.js');
-            const freshDocumentFormatterModule = await import('../src/document-formatter.js');
-            return {
-                cp: freshCp as unknown as { spawn: ReturnType<typeof vi.fn> },
-                vscode: freshVscode as unknown as { window: { showErrorMessage: ReturnType<typeof vi.fn> } },
-                verifyFormatterArtifacts: freshVerifierModule.verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>,
-                DocumentFormatter: freshDocumentFormatterModule.DocumentFormatter,
-            };
-        }
-
         test('when the verifier reports ok, cp.spawn is called exactly once and synchronously, and formatting resolves as before', async () => {
             (verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ ok: true });
             const proc = makeFakeProcess();
@@ -416,6 +437,106 @@ describe('DocumentFormatter', () => {
             ).rejects.toBeTruthy();
 
             expect(fresh.vscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('formatter java executable', () => {
+        test('resolveFormatterJava receives the configured bbj.formatter.javaPath', async () => {
+            (vscodeMocked.workspace.getConfiguration as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+                formatter: {
+                    indentWidth: 4,
+                    keywordsToUppercase: false,
+                    removeLineContinuation: false,
+                    splitSingleLineIF: false,
+                    javaPath: '/opt/jdk/bin/java',
+                },
+            });
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/java-exec-configured.bbj', 'rem hi');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(resolveFormatterJava).toHaveBeenCalledWith('/opt/jdk/bin/java');
+
+            proc.stdout.emit('data', 'formatted');
+            proc.emit('close', 0);
+            await formatPromise;
+        });
+
+        test('an accepted resolution is passed as the first argument of cp.spawn, with the argument list unchanged, synchronously', async () => {
+            (resolveFormatterJava as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ path: '/opt/jdk/bin/java' });
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/java-exec-accepted.bbj', 'rem hi');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            // Synchronous: no await before this assertion.
+            expect(cp.spawn).toHaveBeenCalledTimes(1);
+            const [spawnedPath, spawnedArgs] = (cp.spawn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+            expect(spawnedPath).toBe('/opt/jdk/bin/java');
+            expect(spawnedArgs).toEqual(expect.arrayContaining(['-jar', '-p', '-i', '-w']));
+
+            proc.stdout.emit('data', 'formatted');
+            proc.emit('close', 0);
+            await formatPromise;
+        });
+
+        test('a refusal rejects the format promise, never spawns, and shows an error message with the refusal reason', async () => {
+            (resolveFormatterJava as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+                reason: 'bbj.formatter.javaPath is set to "/bad/java", which does not exist. Formatting was cancelled.',
+            });
+
+            const doc = makeDocument('/tmp/java-exec-refused.bbj', 'rem hi');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(cp.spawn).not.toHaveBeenCalled();
+            await expect(formatPromise).rejects.toBeTruthy();
+            expect(vscodeMocked.window.showErrorMessage).toHaveBeenCalledWith(
+                expect.stringContaining('/bad/java')
+            );
+        });
+
+        test('the real resolver refuses a non-executable configured file and accepts an executable one, end to end', async () => {
+            const fresh = await freshEnv();
+            const realResolver = await vi.importActual<typeof import('../src/formatter-java-resolver.js')>(
+                '../src/formatter-java-resolver.js'
+            );
+            fresh.resolveFormatterJava.mockImplementation(realResolver.resolveFormatterJava);
+            fresh.verifyFormatterArtifacts.mockReturnValue({ ok: true });
+
+            const fsReal = await import('fs');
+            const osReal = await import('os');
+            const pathReal = await import('path');
+            const tmpDir = fsReal.mkdtempSync(pathReal.join(osReal.tmpdir(), 'formatter-java-resolver-dfmt-test-'));
+            const executablePath = pathReal.join(tmpDir, 'java');
+            fsReal.writeFileSync(executablePath, '#!/bin/sh\n');
+            fsReal.chmodSync(executablePath, 0o755);
+
+            (fresh.vscode as any).workspace.getConfiguration = vi.fn(() => ({
+                formatter: {
+                    indentWidth: 4,
+                    keywordsToUppercase: false,
+                    removeLineContinuation: false,
+                    splitSingleLineIF: false,
+                    javaPath: executablePath,
+                },
+            }));
+
+            const proc = makeFakeProcess();
+            fresh.cp.spawn.mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/java-exec-real.bbj', 'rem hi');
+            const formatPromise = fresh.DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(fresh.cp.spawn).toHaveBeenCalledWith(executablePath, expect.any(Array));
+
+            proc.stdout.emit('data', 'formatted');
+            proc.emit('close', 0);
+            await formatPromise;
+
+            fsReal.rmSync(tmpDir, { recursive: true, force: true });
         });
     });
 });

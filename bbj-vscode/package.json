@@ -431,6 +431,12 @@
           "description": "Enable/disable single line IF statements",
           "scope": "window"
         },
+        "bbj.formatter.javaPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the java executable the formatter runs. It must exist and be executable or formatting is cancelled with an error; PATH is never used as a fallback for an invalid value. When empty, the formatter looks up java on PATH.",
+          "scope": "machine"
+        },
         "bbj.compiler.typeChecking.enabled": {
           "type": "boolean",
           "default": false,

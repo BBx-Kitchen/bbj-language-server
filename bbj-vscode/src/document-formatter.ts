@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { logger } from './language/logger.js';
 import { verifyFormatterArtifacts, FORMATTER_TOOLS_DIR, type FormatterVerificationResult } from './formatter-verifier.js';
+import { resolveFormatterJava } from './formatter-java-resolver.js';
 
 // Mirrors each open document's live content, kept in sync by the onDidChangeTextDocument
 // listener below. document.getText() already returns VS Code's live in-memory buffer for a
@@ -27,8 +28,16 @@ const inFlightFormats = new Map<string, { content: string; promise: Promise<stri
 // already fired once.
 let integrityNoticeShown = false;
 
-// Rejection value for a verification refusal, distinguished from the underlying `java` process's
-// own error/stderr rejections so the reject handler below re-throws it without a second
+// A refusal to resolve/verify the configured or PATH-found java executable (issue #605) toasts
+// once per exact message per extension-host session, the same once-per-session posture as the
+// checksum toast above — format-on-save fires constantly, and a per-invocation notification for
+// an unchanged misconfiguration would be noise, not signal. Keyed by message text (not a single
+// boolean) so a different refusal reason still gets its own toast.
+const javaResolutionNoticesShown = new Set<string>();
+
+// Rejection value for any pre-spawn refusal (a failed artefact verification, or a
+// resolveFormatterJava refusal), distinguished from the underlying `java` process's own
+// error/stderr rejections so the reject handler below re-throws it without a second
 // logger.warn.
 class FormatterArtifactError extends Error {}
 
@@ -63,7 +72,7 @@ export const DocumentFormatter = {
     if (inFlight && inFlight.content === documentContent) {
       formatPromise = inFlight.promise;
     } else {
-      formatPromise = this.runFormatter(args, documentContent) as Promise<string>;
+      formatPromise = this.runFormatter(args, documentContent, config.javaPath) as Promise<string>;
       inFlightFormats.set(uriKey, { content: documentContent, promise: formatPromise });
       const clearInFlight = () => {
         if (inFlightFormats.get(uriKey)?.promise === formatPromise) {
@@ -99,7 +108,7 @@ export const DocumentFormatter = {
     );
   },
 
-  runFormatter(formatFlags: string[], documentContent: string): Thenable<string> {
+  runFormatter(formatFlags: string[], documentContent: string, configuredJavaPath?: unknown): Thenable<string> {
     return new Promise<string>((resolve, reject) => {
       // Verify the bundled formatter JAR against its committed
       // SHA-256 immediately before spawning it. Placed here (inside runFormatter, one check per
@@ -136,12 +145,28 @@ export const DocumentFormatter = {
         return reject(new FormatterArtifactError(`Formatter artefact verification failed: ${verification.reason}`));
       }
 
+      // Resolve and verify the java executable to spawn (issue #605): a configured
+      // bbj.formatter.javaPath is checked and used as-is, or its refusal cancels formatting —
+      // PATH is never consulted as a fallback for a set-but-invalid value. An empty setting is
+      // resolved by the module's own PATH walk instead. Synchronous, so cp.spawn below is still
+      // reached in the same tick this Promise executor runs.
+      const javaResolution = resolveFormatterJava(configuredJavaPath);
+      if (javaResolution.reason) {
+        const message = javaResolution.reason;
+        logger.warn(message);
+        if (!javaResolutionNoticesShown.has(message)) {
+          javaResolutionNoticesShown.add(message);
+          vscode.window.showErrorMessage(message);
+        }
+        return reject(new FormatterArtifactError(`Formatter java executable resolution failed: ${message}`));
+      }
+
       let t0 = Date.now();
       let stdout = '';
       let stderr = '';
 
       // Use spawn instead of exec to avoid maxBufferExceeded error
-      const p = cp.spawn('java', formatFlags);
+      const p = cp.spawn(javaResolution.path as string, formatFlags);
       p.stdout.setEncoding('utf8');
       p.stdout.on('data', (data) => (stdout += data));
       p.stderr.on('data', (data) => (stderr += data));
