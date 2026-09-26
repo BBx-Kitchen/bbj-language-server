@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 111
 current_phase_name: Java Class Data from the Interop Peer
-status: executing
-stopped_at: Completed 111-04-PLAN.md
-last_updated: "2026-09-26T17:51:21.471Z"
+status: verifying
+stopped_at: Completed 111-05-PLAN.md
+last_updated: "2026-09-26T18:03:53.282Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 111 execution started
-state_head: 4a8ec1c0aeb980fe80dc7109155d133b4dd87a9a
+state_head: 174d75687cd29f4232885bdbb73f7535a8ebbdbd
 progress:
   total_phases: 13
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 10
   percent: 8
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 Phase: 111 (Java Class Data from the Interop Peer) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-26 — Phase 111 execution started
 
 Progress: [█░░░░░░░░░] 8% (1/13 phases)
@@ -128,6 +128,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 111 P02 | 14min | 2 tasks | 2 files |
 | Phase 111 P03 | 20min | 3 tasks | 4 files |
 | Phase 111 P04 | 21min | 2 tasks | 3 files |
+| Phase 111 P05 | 12min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,7 @@ decisions:
 - [Phase 111]: 111-03: escapeMarkdown/toFenceSafeLine in java-peer-guard.ts applied once at hover's and completion's render boundary, neutralizing Markdown link/image syntax and fenced-code break-out in Java documentation (SEC-04, #524); the less-than sign is deliberately left unescaped (2026-09-26 user decision) so javadoc HTML tags stay readable
 - [Phase 111]: 111-04: isKnownJavaPackage(qualifiedName) on JavaInteropService answers from the in-memory package tree only (never sends a request); tryResolveJavaReference in bbj-scope-local.ts returns before any class request when the name is already a known package, covering the USE branch, its $ fallback, the qualified JavaTypeRef branch and the MemberCall FQN preload alike — addresses issue #676: "Java class java.io has no container" log line
 - [Phase 111]: 111-04: storeJavaClass's leaf step keeps an existing JavaPackage intact on a colliding class name (defence in depth): the class lands on the classpath fallback instead of overwriting the package; the "has no container" console.error stays for any other genuinely unexpected missing container, not downgraded as the fix
+- [Phase 111]: 111-05: isJavaQualifiedName in java-peer-guard.ts gates both createUseAction and completeAutoImportClasses before either builds a use TextEdit; filtering happens before ranking/indexing so the preferred flag naturally moves to the next valid candidate when the top-ranked one is dropped (SEC-05, #525)
 
 ### Tech Debt
 
@@ -236,8 +238,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T17:51:21.386Z
-Stopped at: Completed 111-04-PLAN.md
+Last session: 2026-09-26T18:03:53.212Z
+Stopped at: Completed 111-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.
