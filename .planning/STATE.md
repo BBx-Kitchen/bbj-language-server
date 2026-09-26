@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 110
 current_phase_name: Workspace Settings & Filesystem Trust
 status: executing
-stopped_at: Completed 110-04-PLAN.md
-last_updated: "2026-09-26T12:06:29.365Z"
+stopped_at: Completed 110-05-PLAN.md
+last_updated: "2026-09-26T12:27:02.217Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 110 execution started
-state_head: cf82bbf7a985158ceb86e4844eb7cec192121d40
+state_head: 4fb5cdabab1a8d6966ac9a3ffc6742deeef83dbd
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 ## Current Position
 
 Phase: 110 (Workspace Settings & Filesystem Trust) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-26 — Phase 110 execution started
 
@@ -122,6 +122,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 110 P01 | 9min | 2 tasks | 5 files |
 | Phase 110 P03 | 7min | 2 tasks | 2 files |
 | Phase 110 P04 | 8min | 3 tasks | 7 files |
+| Phase 110 P05 | 14min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,7 @@ decisions:
 - [Phase 110]: 110-01: interop host/port validated through one shared module (interop-config.ts); default host consolidated to 'localhost' everywhere
 - [Phase 110]: 110-03: isTokenizedFile and statSize both lstat-first and reject non-regular files; O_NOFOLLOW/O_NONBLOCK requested where the platform defines them, with an explicit typeof-number check to avoid silent Windows coercion — Closes issue #585: a symlink, directory or FIFO placed at the decompile probe path could redirect the read or block the extension host
 - [Phase 110]: 110-04: bbj.formatter.javaPath (scope: machine) resolved/verified by formatter-java-resolver.ts before every spawn; a set value never falls back to PATH, an empty value is resolved by the module's own checked PATH walk — Closes issue #605: the formatter spawned a bare java from PATH with no check
+- [Phase 110]: 110-05: bbj.configPath's workspace-scoped value is gated behind Workspace Trust in the VS Code client (effectiveConfigPath); initializationOptions, the settings push/pull, and the client's own config-association fallback all read through it; configPath itself stays un-anchored
 
 ### Tech Debt
 
@@ -222,8 +224,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T12:06:29.332Z
-Stopped at: Completed 110-04-PLAN.md
+Last session: 2026-09-26T12:27:02.180Z
+Stopped at: Completed 110-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
