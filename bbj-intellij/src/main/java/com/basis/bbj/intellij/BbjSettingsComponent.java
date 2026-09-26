@@ -3,6 +3,7 @@ package com.basis.bbj.intellij;
 import com.basis.bbj.intellij.concurrency.AlarmScheduler;
 import com.basis.bbj.intellij.concurrency.KeystrokeDebouncer;
 import com.basis.bbj.intellij.concurrency.Scheduler;
+import com.basis.bbj.intellij.lsp.CompilerInitOptions;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
@@ -41,6 +42,8 @@ public class BbjSettingsComponent {
     private final JPanel mainPanel;
     private final TextFieldWithBrowseButton bbjHomeField;
     private final TextFieldWithBrowseButton compilerOutputDirectoryField;
+    private final ComboBox<String> compilerTriggerCombo;
+    private final JBLabel compilerTriggerHintLabel;
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
@@ -108,6 +111,12 @@ public class BbjSettingsComponent {
                 new TextBrowseFolderListener(compilerOutputFolderDescriptor, null));
         ((JBTextField) compilerOutputDirectoryField.getTextField()).getEmptyText()
                 .setText("Required for \"Compile BBj File\" to run");
+
+        // --- Compiler check dropdown ---
+        compilerTriggerCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(CompilerInitOptions.TRIGGER_DISPLAY_NAMES));
+        compilerTriggerCombo.setSelectedItem("Debounced");
+        compilerTriggerHintLabel = new JBLabel("On save is recommended for large workspaces.");
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
@@ -294,6 +303,8 @@ public class BbjSettingsComponent {
 
             .addComponent(new TitledSeparator("BBj Compiler"))
             .addLabeledComponent(new JBLabel("Compile output directory:"), compilerOutputDirectoryField, 1, false)
+            .addLabeledComponent(new JBLabel("Compiler check:"), compilerTriggerCombo, 1, false)
+            .addComponent(compilerTriggerHintLabel)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -524,6 +535,15 @@ public class BbjSettingsComponent {
 
     public void setCompilerOutputDirectory(@NotNull String path) {
         compilerOutputDirectoryField.setText(path);
+    }
+
+    public @NotNull String getCompilerTrigger() {
+        Object selected = compilerTriggerCombo.getSelectedItem();
+        return CompilerInitOptions.triggerFromDisplayName(selected != null ? selected.toString() : null);
+    }
+
+    public void setCompilerTrigger(@NotNull String wireValue) {
+        compilerTriggerCombo.setSelectedItem(CompilerInitOptions.triggerDisplayName(wireValue));
     }
 
     public @NotNull String getEmUrl() {

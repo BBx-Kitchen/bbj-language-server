@@ -40,6 +40,7 @@ import {
     isLibFunction,
     isMemberCall,
     isMethodCall,
+    isMethodDecl,
     isParameterCall,
     isProgram,
     isRemoveCallbackStatement,
@@ -47,7 +48,7 @@ import {
     JavaSymbol,
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
-    Statement, Use
+    Statement, Use, VariableDecl
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -196,7 +197,17 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return EMPTY_SCOPE;
             }
             // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
-            // (e.g., `String.` after `USE java.lang.String`) — show only static methods.
+            // (e.g., `String.` after `USE java.lang.String`), or a fully-qualified MemberCall whose
+            // last segment names the class itself (e.g., `java.lang.String.`, no USE) — either way,
+            // show only static members.
+            //
+            // The member text alone cannot tell the `class` pseudo-member (`String.class`,
+            // `java.lang.String.class`) apart from a fully-qualified reference to a class literally
+            // named `Class` (`java.lang.Class.`): BBj is case-insensitive, and the pseudo-member's
+            // own linked reference is the very same java.lang.Class node. So the segment before it
+            // decides instead: after a Java package, `class` names a class in that package and is a
+            // class reference (static members only); after a class or a value, it is the pseudo-
+            // member, an instance of java.lang.Class (all instance members, per issue #577).
             let isClassRef = false;
             if (isSymbolRef(receiver)) {
                 try {
@@ -204,6 +215,16 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     isClassRef = isJavaClass(ref);
                 } catch {
                     // cyclic reference, ignore
+                }
+            } else if (isMemberCall(receiver) && receiver.member) {
+                const isPseudoClassMember = receiver.member.$refText.toLowerCase() === 'class'
+                    && !isJavaPackage(this.typeInferer.getType(receiver.receiver));
+                if (!isPseudoClassMember) {
+                    try {
+                        isClassRef = isJavaClass(receiver.member.ref);
+                    } catch {
+                        // cyclic reference, ignore
+                    }
                 }
             }
             if (isJavaClass(receiverType)) {
@@ -268,7 +289,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const program = AstUtils.getContainerOfType(context.container, isProgram);
             const memberAndImports = new StreamScopeWithPredicate(
                 stream(this.importedBBjClasses(program)),
-                this.superGetScope(context)
+                this.lexicalScope(context)
             );
 
             if (context.container.$containerProperty === 'left' // left side of an assignment
@@ -348,6 +369,48 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const globals = this.getGlobalScope(Class.$type, context);
             return this.createScope(stream(imports).concat(locals), globals);
         }
+    }
+
+    /**
+     * A class METHOD body is its own BBj variable scope
+     * (https://documentation.basis.cloud/BASISHelp/WebHelp/commands/method_verb.htm): "The only
+     * variables that are visible within that scope are the parameters specified in the method
+     * parameter list and the fields defined in the class." Program-level variables — implicit
+     * assignments, READ/DREAD/ENTER targets, FOR loop variables, DIM arrays and program-level
+     * DECLAREs — are therefore not visible from inside a method. Class-keyed entries (fields,
+     * methods, this!/super!, accessors), class names, USE'd Java classes and program-level DEF FN
+     * functions stay visible: only Program-level variable descriptions are excluded, and only
+     * when the reference sits inside a MethodDecl. Program variables are collected on the
+     * Program node on purpose (see the local-symbol collection), so the boundary belongs here,
+     * in resolution, not in collection.
+     *
+     * Mirrors Langium's DefaultScopeProvider.getScope ancestor walk exactly, except for that one
+     * exclusion, so every reference outside a method keeps today's exact path unchanged.
+     */
+    private lexicalScope(context: ReferenceInfo): Scope {
+        if (!AstUtils.getContainerOfType(context.container, isMethodDecl)) {
+            return this.superGetScope(context);
+        }
+        const scopes: Stream<AstNodeDescription>[] = [];
+        const referenceType = this.astReflection.getReferenceType(context);
+        const localSymbols = AstUtils.getDocument(context.container).localSymbols;
+        if (localSymbols) {
+            let currentNode: AstNode | undefined = context.container;
+            do {
+                if (localSymbols.has(currentNode)) {
+                    const dropProgramVariables = isProgram(currentNode);
+                    scopes.push(localSymbols.getStream(currentNode).filter(desc =>
+                        this.astReflection.isSubtype(desc.type, referenceType)
+                        && !(dropProgramVariables && this.astReflection.isSubtype(desc.type, VariableDecl.$type))));
+                }
+                currentNode = currentNode.$container;
+            } while (currentNode);
+        }
+        let result = this.getGlobalScope(referenceType, context);
+        for (let i = scopes.length - 1; i >= 0; i--) {
+            result = this.createScope(scopes[i], result);
+        }
+        return result;
     }
 
     private superGetScope(context: ReferenceInfo) {

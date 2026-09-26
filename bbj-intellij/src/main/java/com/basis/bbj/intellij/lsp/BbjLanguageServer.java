@@ -6,6 +6,7 @@ import com.basis.bbj.intellij.BbjNodeVersionCache;
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.NodeActions;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
@@ -44,7 +45,23 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
      */
     private static final Logger LOG = Logger.getInstance(BbjLanguageServer.class);
 
+    /**
+     * Set the first time this provider's own unexpected-stop handler is registered, so a second
+     * registration on the same instance never adds a duplicate. LSP4IJ constructs a fresh provider
+     * for every {@code start()}, so this field never carries state across restarts.
+     */
+    private boolean ownStopHandlerRegistered;
+
+    /**
+     * The owning project, kept so {@link #onUnexpectedStop()} can reach {@link BbjServerService}
+     * without a vendor-provided project reference -- the hook it registers with runs off any
+     * request context.
+     */
+    private final Project project;
+
     public BbjLanguageServer(@NotNull Project project) {
+        this.project = project;
+
         // Resolve Node.js path
         String nodePath = resolveNodePath(project);
 
@@ -60,6 +77,71 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
                 + " (working directory: " + cmd.getWorkDirectory() + ")");
 
         super.setCommandLine(cmd);
+    }
+
+    /**
+     * Forwards LSP4IJ's own handler to {@code super} first, unchanged, so its own recovery (its
+     * own error notification and stop handling) runs before anything of ours. Then, only the first
+     * time this instance is asked, registers this provider's own handler beside it -- never
+     * wrapping, replacing or dropping LSP4IJ's handler. This method itself adds no behaviour beyond
+     * logging: what happens when the process ends without a stop request is entirely inside
+     * {@link #onUnexpectedStop()}.
+     */
+    @Override
+    public void addUnexpectedServerStopHandler(Runnable handler) {
+        super.addUnexpectedServerStopHandler(handler);
+        if (!ownStopHandlerRegistered) {
+            ownStopHandlerRegistered = true;
+            super.addUnexpectedServerStopHandler(this::onUnexpectedStop);
+            LOG.info("BBj language server unexpected-stop handler registered beside LSP4IJ's own");
+        }
+    }
+
+    /**
+     * Runs only when the OS process ended without this provider's {@link #stop()} having been
+     * called first (LSP4IJ's own gate on its {@code isStopped()} flag). Reads the pid and the exit
+     * code, then hands both to {@link BbjServerService#reportUnexpectedExit(Long, Integer)} --
+     * nothing here classifies the event, restarts anything or touches UI state; it runs on the
+     * platform's process-wait thread, not the EDT, so the report is a plain synchronous call
+     * guarded against the project already being disposed.
+     */
+    private void onUnexpectedStop() {
+        if (project.isDisposed()) {
+            return;
+        }
+        Long pid = getPid();
+        Integer exitCode = null;
+        var processHandler = getProcessHandler();
+        if (processHandler != null) {
+            exitCode = processHandler.getExitCode();
+        }
+        try {
+            BbjServerService.getInstance(project).reportUnexpectedExit(pid, exitCode);
+        } catch (RuntimeException e) {
+            LOG.warn("BBj language server unexpected-stop report failed", e);
+        }
+    }
+
+    /**
+     * Logs the pid and whether the process is still alive at the moment a stop was requested, then
+     * delegates to the vendor superclass's stop handling exactly once. LSP4IJ calls this for every
+     * deliberate stop, and again after its own unexpected-stop handling runs -- so whether this
+     * line appears before or after the process actually ended is what tells a deliberate stop apart
+     * from a crash in the log. Also hands this instance's own pid to {@link
+     * BbjServerService#noteStoppingPid(Long)}, so a restart in progress can correlate a later
+     * {@link #onUnexpectedStop()} report against the exact process this stop targets, rather than
+     * against a disarm-on-timeout race.
+     */
+    @Override
+    public void stop() {
+        Long pid = getPid();
+        LOG.info("BBj language server connection stop requested (pid "
+                + (pid == null ? "unknown" : pid)
+                + ", process alive: " + isAlive() + ")");
+        if (!project.isDisposed()) {
+            BbjServerService.getInstance(project).noteStoppingPid(pid);
+        }
+        super.stop();
     }
 
     private String resolveNodePath(@NotNull Project project) {

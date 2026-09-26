@@ -2,6 +2,7 @@
 created: 2026-09-20T12:00:00.000Z
 title: A lost language-server connection is invisible to the plugin's crash detection
 area: intellij-server-lifecycle
+resolves_phase: 108
 severity: major
 files:
 

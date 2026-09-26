@@ -84,6 +84,89 @@ export function isInteropTransportFailure(error: unknown): boolean {
     return false;
 }
 
+/** The eight Java primitive type names plus `void` — never classes on the backend's classpath. */
+export const JAVA_PRIMITIVE_TYPE_NAMES: ReadonlySet<string> = new Set([
+    'boolean', 'byte', 'char', 'double', 'float', 'int', 'long', 'short', 'void'
+]);
+
+/**
+ * True for a type name that is never a class on the java-interop backend's classpath: one of the
+ * eight Java primitives or `void` (whole-name match only — `java.lang.Integer`, a package segment
+ * `bytes`, or a class named `Voider` are real class names and are not matched here), a name ending
+ * in `[]` (an array type, at any dimension), or a name that is empty once trimmed. A primitive or
+ * `void` keeps the backend's own answer (package `java.lang`, no members, no error); an array or
+ * blank name keeps its not-found answer. Both are built locally instead of sent as a class lookup
+ * (issue #660).
+ */
+export function isLocalJavaTypeName(name: string): boolean {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) {
+        return true;
+    }
+    return JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed) || trimmed.endsWith('[]');
+}
+
+/**
+ * Builds the raw, backend-shaped DTO for a name {@link isLocalJavaTypeName} recognizes, so it can
+ * be fed straight into {@link JavaInteropService.resolveClass}'s existing pipeline instead of
+ * {@link JavaInteropService.createStubClass}'s failed-resolution shape (which carries an `error`
+ * today's real primitive/void/array round trip never sets). A primitive or `void` gets the
+ * backend's own answer (packageName `java.lang`, no error, no members); an array or blank name
+ * gets its not-found answer (empty members, the same "Class not found" text `getRawClass` would
+ * have produced) with no `packageName`, so `resolveClass` derives one exactly as it does for
+ * today's real answer.
+ */
+function localJavaTypeDto(name: string): Mutable<JavaClass> {
+    const trimmed = name.trim();
+    if (JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed)) {
+        return {
+            $type: JavaClass.$type,
+            name,
+            simpleName: name,
+            packageName: 'java.lang',
+            isDeprecated: false,
+            fields: [],
+            methods: [],
+            classes: [],
+            constructors: [],
+        } as unknown as Mutable<JavaClass>;
+    }
+    return {
+        $type: JavaClass.$type,
+        name,
+        fields: [],
+        methods: [],
+        classes: [],
+        constructors: [],
+        error: `Class not found: ${name}`,
+    } as unknown as Mutable<JavaClass>;
+}
+
+/**
+ * Canonicalizes a nested Java class name to the Java source spelling (`Outer.Inner`), the single
+ * identity `java-interop.ts` uses for a class: the key of `resolvedClasses`, the in-flight
+ * registry and the pending-resolution map, and the display name shown in hover, completion detail
+ * and messages. The backend echoes back whichever spelling was requested — a member type's own
+ * name via `getCanonicalName` (dotted) but a constructor's return type via `getName` (`$`) — so
+ * without this normalization the two spellings are fetched and cached as two distinct classes
+ * (issue #659).
+ *
+ * Anonymous and local classes (`Foo$1`, `Foo$1$Bar`, `Foo$1Local`) have no canonical name and are
+ * left entirely unchanged: a `$` directly followed by a digit anywhere in the name means the whole
+ * name is returned as is. Otherwise, a `$` that directly follows a letter, digit or underscore and
+ * directly precedes a letter or underscore is a nested-class separator and becomes `.`; a `$`
+ * starting a segment (`$Proxy12`), a `$$` run, and a trailing `$` are part of the name, not a
+ * separator, and are left untouched.
+ */
+export function canonicalJavaClassName(name: string): string {
+    if (/\$[0-9]/.test(name)) {
+        return name;
+    }
+    // Capture the preceding character instead of a lookbehind, so the "follows a letter, digit or
+    // underscore" check works the same on every supported JS engine.
+    return name.replace(/([A-Za-z0-9_])\$(?=[A-Za-z_])/g, '$1.');
+}
+
 /**
  * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
  * exceeded (P61-D3-001). Recency is refreshed on both `get` and `set` by deleting and
@@ -445,7 +528,7 @@ export class JavaInteropService {
             // called very often, so cache it
             return this.javaLangObject()
         }
-        return this.resolvedClasses.get(className);
+        return this.resolvedClasses.get(canonicalJavaClassName(className));
     }
 
     private JAVA_LANG_OBJECT: JavaClass | undefined = undefined;
@@ -477,22 +560,27 @@ export class JavaInteropService {
 
     /**
      * Parses `params.text` through the interop service's `parseProgram` endpoint and returns its
-     * result, riding the shared connection's circuit breaker and reconnect logic (via
-     * {@link connect}) plus a second, dedicated connection reserved for this request alone — so a
-     * burst of `getClassInfo` traffic already queued on the shared connection never delays a
-     * parse. The dedicated connection is opened lazily by {@link parseLaneConnection}; when it
-     * cannot be opened, the request falls back to the shared connection. Deliberately NOT
-     * routed through {@link sendRequestSafe}: a caller here must be able to tell a `MethodNotFound`
-     * error (older server, no endpoint), an application error (`-3300x`) and a cancellation
-     * (`RequestCancelled`, a superseded request) apart, which a collapsed fallback value would
-     * destroy.
+     * result. The request tries its own dedicated connection first — opened lazily by
+     * {@link parseLaneConnection} — independent of the shared connection's state and its circuit
+     * breaker: a shared connection that is down, half-open, or still busy with a burst of
+     * `getClassInfo` traffic never delays or short-circuits a parse. The shared connection (via
+     * {@link connect}, with its own breaker and reconnect logic) is used only when the dedicated
+     * one cannot be opened or was retired for the current generation. One side effect of trying
+     * the dedicated connection first: a parse that runs before any shared connection exists opens
+     * the lane under the current generation, and the shared connection's own later first connect
+     * bumps the generation — which retires that lane, so the next parse re-opens it and re-probes
+     * the endpoint (the same "a reset of either connection clears verdict state" rule this
+     * generation already follows). Deliberately NOT routed through {@link sendRequestSafe}: a
+     * caller here must be able to tell a `MethodNotFound` error (older server, no endpoint), an
+     * application error (`-3300x`) and a cancellation (`RequestCancelled`, a superseded request)
+     * apart, which a collapsed fallback value would destroy.
      * @param params the parse request — the document's current text plus its resolution context
      * @param token cancellation token for request cancellation
      */
     public async parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
-        const shared = await this.connect();
         const lane = await this.parseLaneConnection();
         if (!lane) {
+            const shared = await this.connect();
             return shared.sendRequest(parseProgramRequest, params, token);
         }
         try {
@@ -882,29 +970,41 @@ export class JavaInteropService {
     /**
      * Resolves a Java class by its fully qualified name, fetching from the Java backend if not already cached.
      * This method acquires a lock to prevent concurrent resolution of the same class.
+     * A primitive, `void`, array or blank name is resolved locally instead, with no backend request (issue #660).
      * @param className fully qualified class name (e.g., "java.lang.String")
      * @param token cancellation token for request cancellation
      * @returns the resolved JavaClass with all dependencies linked
      */
     async resolveClassByName(className: string, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
+        // The canonical spelling is the single key used by resolvedClasses, the in-flight
+        // registry and the pending-resolution map: a nested class resolved once as `Outer.Inner`
+        // and again as `Outer$Inner` is one class, one request, one object (issue #659).
+        const key = canonicalJavaClassName(className);
+        // A primitive, void, array or blank name is never a class on the backend's classpath
+        // (issue #660): build the same zero-member result locally, with no round trip, and feed
+        // it through the real resolveClass pipeline below — its own cache and in-flight checks
+        // then make every later or concurrent lookup of the same name return the identical object.
+        if (isLocalJavaTypeName(key)) {
+            return this.resolveClass(localJavaTypeDto(key), token, _depth);
+        }
         // Fast path: already fully resolved. Checked *before* the depth limit because a
         // cached class triggers no further recursion — the depth limit is irrelevant to it,
         // and returning it here avoids re-stubbing already-resolved leaf types (int, void,
         // java.lang.Object, ...) that are reached deep inside a legitimate type graph.
-        if (this.resolvedClasses.has(className)) {
-            return this.resolvedClasses.get(className)!;
+        if (this.resolvedClasses.has(key)) {
+            return this.resolvedClasses.get(key)!;
         }
 
         // A class the LRU evicted mid-Phase-2 of its own cyclic resolution (#497): return the
         // same in-flight object instead of falling through to a redundant, timing-out refetch.
-        const inFlightClass = this._inFlightPhase2.get(className);
+        const inFlightClass = this._inFlightPhase2.get(key);
         if (inFlightClass) {
             return inFlightClass;
         }
 
         // Safeguard 3: deduplicate — if another caller is already resolving this class, wait for it.
         // Also checked before the depth limit: the in-flight resolution owns the recursion budget.
-        const pending = this._pendingResolutions.get(className);
+        const pending = this._pendingResolutions.get(key);
         if (pending) {
             return pending;
         }
@@ -914,26 +1014,35 @@ export class JavaInteropService {
         // classes are broken by the resolvedClasses cache above (resolveClass registers a class
         // before recursing into its member types).
         if (_depth > JavaInteropService.MAX_RESOLUTION_DEPTH) {
-            logger.warn(`Java class resolution depth limit (${JavaInteropService.MAX_RESOLUTION_DEPTH}) exceeded for '${className}', returning partial class`);
+            logger.warn(`Java class resolution depth limit (${JavaInteropService.MAX_RESOLUTION_DEPTH}) exceeded for '${key}', returning partial class`);
             // Do NOT cache this stub: a later, shallower resolution of the same class must still be
             // able to resolve it fully. Caching here would permanently freeze the class as a
             // member-less stub for every subsequent reference (via the fast path above).
-            return this.createStubClass(className, false);
+            return this.createStubClass(key, false);
         }
 
-        const resolutionPromise = this.doResolveClassByName(className, token, _depth);
-        this._pendingResolutions.set(className, resolutionPromise);
+        // The backend is asked with the spelling that arrived (className), not the canonical key:
+        // a `$` spelling is the binary name Class.forName accepts directly, and a dotted spelling
+        // goes out exactly as today, resolved by the backend's own nested-class fallback — no
+        // backend version check either way.
+        const resolutionPromise = this.doResolveClassByName(key, className, token, _depth);
+        this._pendingResolutions.set(key, resolutionPromise);
         try {
             return await resolutionPromise;
         } finally {
-            this._pendingResolutions.delete(className);
+            this._pendingResolutions.delete(key);
         }
     }
 
-    private async doResolveClassByName(className: string, token: CancellationToken | undefined, depth: number): Promise<JavaClass> {
+    /**
+     * `key` is the canonical spelling — used for every cache/in-flight check, log line and stub —
+     * while `requestName` is the exact spelling that arrived at {@link resolveClassByName} and is
+     * sent to the backend unchanged (issue #659, no backend version check either way).
+     */
+    private async doResolveClassByName(key: string, requestName: string, token: CancellationToken | undefined, depth: number): Promise<JavaClass> {
         // Safeguard 4: timeout to prevent indefinitely stuck resolution chains
         const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new InteropTransportError(`Java class resolution chain timed out after ${JavaInteropService.RESOLUTION_TIMEOUT_MS}ms for '${className}'`)), JavaInteropService.RESOLUTION_TIMEOUT_MS)
+            setTimeout(() => reject(new InteropTransportError(`Java class resolution chain timed out after ${JavaInteropService.RESOLUTION_TIMEOUT_MS}ms for '${key}'`)), JavaInteropService.RESOLUTION_TIMEOUT_MS)
         );
 
         // Create a lock token scoped to this top-level resolution chain.
@@ -942,15 +1051,15 @@ export class JavaInteropService {
         const release = await this.acquireLock(lockToken);
         try {
             // Double-check after acquiring lock
-            if (this.resolvedClasses.has(className)) {
-                return this.resolvedClasses.get(className)!;
+            if (this.resolvedClasses.has(key)) {
+                return this.resolvedClasses.get(key)!;
             }
-            const inFlightClass = this._inFlightPhase2.get(className);
+            const inFlightClass = this._inFlightPhase2.get(key);
             if (inFlightClass) {
                 return inFlightClass;
             }
             const javaClass: Mutable<JavaClass> = await Promise.race([
-                this.getRawClass(className, token),
+                this.getRawClass(requestName, token),
                 timeoutPromise
             ]);
             return await Promise.race([
@@ -958,13 +1067,13 @@ export class JavaInteropService {
                 timeoutPromise
             ]);
         } catch (e) {
-            logger.warn(`Failed to resolve Java class '${className}': ${e}`);
+            logger.warn(`Failed to resolve Java class '${key}': ${e}`);
             // A cancellation is a routine, frequent event (e.g. every keystroke cancels an
             // in-flight completion/hover request) and carries no information about whether the
             // class actually exists. Treat it the same as a transport failure so the stub is never
             // cached, letting a later, uncancelled lookup resolve the class normally.
             const cancelled = token?.isCancellationRequested === true;
-            return this.createStubClass(className, !(cancelled || isInteropTransportFailure(e)));
+            return this.createStubClass(key, !(cancelled || isInteropTransportFailure(e)));
         } finally {
             release();
         }
@@ -1004,11 +1113,16 @@ export class JavaInteropService {
     /**
      * Resolves and links a Java class with its dependencies including fields, methods, parameters, and documentation.
      * This method processes the raw class data, resolves type references, links Javadoc, and stores the class in the AST hierarchy.
+     * The "Resolving class ..." debug line is skipped for a primitive, `void`, array or blank name (issue #660).
      * @param javaClass the Java class to resolve and link
      * @param token cancellation token for request cancellation
      * @returns the resolved and linked JavaClass
      */
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
+        // The backend echoes back whichever spelling was requested; canonicalize it here too so
+        // the bulk implicit-import path (which calls resolveClass directly, not through
+        // resolveClassByName) also caches and displays the class under its canonical spelling.
+        javaClass.name = canonicalJavaClassName(javaClass.name);
         const className = javaClass.name
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
@@ -1024,7 +1138,9 @@ export class JavaInteropService {
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
-        logger.debug(() => `Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
+        if (!isLocalJavaTypeName(className)) {
+            logger.debug(() => `Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
+        }
 
         if (!javaClass.packageName) {
             // can happen if the class was not found by Java backend

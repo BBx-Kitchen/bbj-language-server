@@ -14,8 +14,9 @@ import javax.swing.*;
 import java.util.function.Function;
 
 /**
- * Editor banner shown when the BBj language server is in crashed state.
- * Provides actions to restart the server or view the log.
+ * Editor banner shown only after auto-restart has given up on the BBj language server -- a
+ * quiet, auto-restarted first crash never shows this banner. Provides actions to restart the
+ * server or view the log.
  */
 public final class BbjServerCrashNotificationProvider extends BbjNotificationProviderBase {
 
@@ -24,9 +25,9 @@ public final class BbjServerCrashNotificationProvider extends BbjNotificationPro
         @NotNull Project project,
         @NotNull VirtualFile file
     ) {
-        // Check if server is crashed
+        // Only show once auto-restart has given up -- never for a quiet, auto-restarted first crash
         BbjServerService service = BbjServerService.getInstance(project);
-        if (!service.isServerCrashed()) {
+        if (!service.isAutoRestartAbandoned()) {
             return null;
         }
 
@@ -34,7 +35,8 @@ public final class BbjServerCrashNotificationProvider extends BbjNotificationPro
         return fileEditor -> {
             EditorNotificationPanel panel = newPanel(
                     fileEditor, EditorNotificationPanel.Status.Error,
-                    "BBj Language Server has crashed. Language features are unavailable.");
+                    "BBj Language Server crashed again within " + (BbjServerService.CRASH_WINDOW_MS / 1000)
+                            + " seconds and was not restarted. Language features are unavailable.");
 
             panel.createActionLabel("Restart Server", () -> {
                 service.requestRestart(0);

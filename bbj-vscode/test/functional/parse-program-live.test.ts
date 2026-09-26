@@ -212,10 +212,13 @@ describe('reconciliation against the live endpoint (real interop)', async () => 
     }, 60000);
 
     test.runIf(run)('a document the BBj parser accepts carries no language-server syntax error', async () => {
-        // The pending A2 todo's invented nested single-line IF/ELSE/FI repro: Langium flags it
-        // ("needs to start in a new line: else"), the compiler accepts it. Confirmed verbatim
-        // for plan 05's hand check in both IDEs.
-        const text = 'if a then if b then c=1 else d=1 fi else e=1 fi';
+        // A classic-BASIC-style numeric GOSUB target inside a REPEAT/UNTIL loop: the compiler
+        // accepts jumping to a bare line number with no matching label anywhere in the file, but
+        // the language server's grammar does not parse a numeric GOSUB target as part of the
+        // GOSUB statement itself, so the number falls through as its own statement -- Langium
+        // flags both the GOSUB ("needs to end with a line break") and the number ("needs to start
+        // in a new line"), and the compiler flags neither.
+        const text = 'flag=0\nrepeat\ngosub 1000\nuntil flag=1\n';
 
         const result = await bbjServices.BBj.java.JavaInteropService.parseProgram({
             text,

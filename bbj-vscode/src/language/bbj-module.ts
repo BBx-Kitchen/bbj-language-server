@@ -13,7 +13,7 @@ import {
     inject,
     prepareLangiumParser
 } from 'langium';
-import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext } from 'langium/lsp';
+import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext, NormalizedTextDocuments } from 'langium/lsp';
 import { BBjCodeActionProvider } from './bbj-code-action-provider.js';
 import { BBjCommentProvider } from './bbj-comment-provider.js';
 import { BBjServiceRegistry } from './bbj-service-registry.js';
@@ -21,6 +21,7 @@ import { BBjCompletionProvider } from './bbj-completion-provider.js';
 import { BBjDefinitionProvider } from './bbj-definition-provider.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol-provider.js';
+import { BBjDocumentUpdateHandler } from './bbj-document-update-handler.js';
 import { BBjDocumentValidator } from './bbj-document-validator.js';
 import { BBjHoverProvider } from './bbj-hover.js';
 import { BBjIndexManager } from './bbj-index-manager.js';
@@ -43,6 +44,7 @@ import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 import { BBjCPLService } from './bbj-cpl-service.js';
 import { BBjParserService } from './bbj-parser-service.js';
 import { BBjComposerCodeLensProvider } from './composer-codelens.js';
+import { createChangeRecordingTextDocumentsConfiguration } from './bbj-kept-check.js';
 import { logger } from './logger.js';
 
 
@@ -171,12 +173,17 @@ function createBBjCompletionParser(services: LangiumServices): LangiumCompletion
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     ServiceRegistry: (services: LangiumSharedServices) => new BBjServiceRegistry(services),
     lsp: {
-        NodeKindProvider: () => new BBjNodeKindProvider()
+        NodeKindProvider: () => new BBjNodeKindProvider(),
+        DocumentUpdateHandler: (services) => new BBjDocumentUpdateHandler(services)
     },
     workspace: {
         DocumentBuilder: (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
         WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services),
-        IndexManager: (services: LangiumSharedServices) => new BBjIndexManager(services)
+        IndexManager: (services: LangiumSharedServices) => new BBjIndexManager(services),
+        // Records every incremental (or whole-document) change the client sends into
+        // bbj-kept-check.ts's per-document change log, so a kept compiler check's diagnostics
+        // can be re-placed on their shifted lines between saves under the on-save trigger.
+        TextDocuments: () => new NormalizedTextDocuments(createChangeRecordingTextDocumentsConfiguration())
     },
 }
 

@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-09-21
+**Analysis Date:** 2026-09-24
 
 ## APIs & External Services
 
@@ -12,11 +12,12 @@
 - **Config env vars**: `bbj.interop.host` (default "localhost"), `bbj.interop.port` (default 5008)
 - **Circuit breaker**: Handles outages with exponential backoff (initial 5s, max 30s cooldown, P61-D3-001)
 - **Caching**: LRU cache of 5,000 resolved classes; survives ~30 minutes of typical editing
+- **Implicit imports**: Auto-imports `java.lang`, `com.basis.startup.type`, `com.basis.bbj.proxies`, `com.basis.bbj.proxies.sysgui`, `com.basis.bbj.proxies.event`, `com.basis.startup.type.sysgui`, `com.basis.bbj.proxies.servlet`
 
 **BBj Compiler (bbjcpl):**
 - **Service**: Native BBj compiler binary (`bbjcpl`)
 - **What it's used for**: Syntax validation, error diagnostics, compile-time checks
-- **Location**: Discovered via `bbj.home` setting; spawned as child process in `bbj-cpl-service.ts`
+- **Location**: Discovered via `bbj.home` setting; spawned as child process in `bbj-vscode/src/language/bbj-cpl-service.ts`
 - **Integration**: Runs on file save or debounced typing (configurable via `bbj.compiler.trigger`)
 - **Timeout**: 30 seconds (configurable via `BBjCPLService.setTimeout()`)
 - **Config env vars**: `bbj.home` (BBj installation path), `bbj.compiler.trigger` ("debounced"/"on-save"/"off")
@@ -32,7 +33,7 @@
 
 **BBj Runtime (GUI/DWC Execution):**
 - **Service**: BBj runtime services for executing programs
-- **What it's used for**: Running .bbj programs as GUI, BUI, or DWC applications
+- **What it's used for**: Running `.bbj` programs as GUI, BUI, or DWC applications
 - **Classpath**: Configured via `bbj.classpath` setting (e.g., "bbj_default", "addon", "barista")
 - **Integration**: VS Code commands and right-click context menus trigger program execution
 
@@ -43,15 +44,15 @@
 
 **File Storage:**
 - Local filesystem only
-- Virtual library files served via `BBjLibraryFileSystemProvider` (`src/language/lib/fs-provider.ts`)
-  - Provides synthetic `classpath:/bbj.bbl` with built-in BBj function signatures
+- Virtual library files served via `BBjLibraryFileSystemProvider` (`bbj-vscode/src/language/lib/fs-provider.ts`)
+  - Provides synthetic `classpath:/bbj.bbl` with built-in BBj function signatures (synchronized with `bbj-vscode/src/language/lib/functions.ts`)
 - BBj config files (config.bbx) read from disk
 
 **Caching:**
-- **Java classpath cache**: LRU map, 5,000-entry limit, per-session memory only
-- **Resolved class cache**: In-memory, evicts least-recently-used classes
-- **Config file path cache**: Memory cache with watcher for disk changes (`config-path-cache.ts`, `config-watcher.ts`)
-- **Implicit imports cache**: Cached after first load from java-interop service
+- **Java classpath cache**: LRU map bounded to 5,000 entries (see `RESOLVED_CLASSES_CACHE_LIMIT` in `java-interop.ts`), per-session memory only
+- **Resolved class cache**: In-memory LRU, evicts least-recently-used classes via `LruMap<K, V>` utility class
+- **Config file path cache**: Memory cache with filesystem watcher (`bbj-vscode/src/config-path-cache.ts`, `bbj-vscode/src/config-watcher.ts`)
+- **Implicit imports cache**: Cached after first load from java-interop service; expires on breaker recovery
 
 **Session Persistence:**
 - No persistent session storage
@@ -65,7 +66,7 @@
 - No OAuth, SAML, or external identity providers
 
 **Implementation:**
-- EM credentials stored in VS Code's secret storage (`secretStorage` API)
+- EM credentials stored in VS Code's secret storage (`secretStorage` API) — platform-specific: macOS Keychain, Windows Credential Manager, Linux libsecret
 - BBj-side credentials managed by EM system
 - Login flow triggered by `bbj.loginEM` command
 
@@ -81,6 +82,7 @@
   - `LogLevel.WARN` - normal operation (default)
 - **Console output**: Errors logged to `console.error()` (captured by VS Code)
 - **Java interop logs**: Connection failures, timeouts, circuit breaker state transitions
+- **Logger instance**: Centralized in `bbj-vscode/src/language/logger.ts`
 
 **Metrics:**
 - No metrics collection or telemetry
@@ -100,7 +102,7 @@
   - `pr-validation.yml` - Lint, test, build validation for PRs
   - `pr-vsix.yml` - Build VSIX artifact on PR (for manual testing)
   - `preview.yml` - Build preview releases (dev channel)
-  - `manual-release.yml` - Manual release trigger
+  - `manual-release.yml` - Manual release trigger (workflow_dispatch)
   - `deploy-docs.yml` - Docusaurus site deployment
   - `workflow-hygiene.yml` - Gradle/dependencies checks
 
@@ -109,9 +111,9 @@
 npm install                    # Install dependencies
 npm run langium:generate       # Generate AST/grammar from .langium
 npm run build                  # Compile TypeScript + bundle
-npm run test                   # Run all vitest suites
+npm test                       # Run all vitest suites
 npm run lint                   # ESLint check
-vsce package                   # Create VSIX for VS Code
+npx vsce package               # Create VSIX for VS Code
 ./gradlew buildPlugin          # Create ZIP for IntelliJ
 ```
 
@@ -168,15 +170,16 @@ vsce package                   # Create VSIX for VS Code
 **Outgoing Webhooks/Callbacks:**
 
 **Configuration Watcher:**
-- Watches `config.bbx` file for changes
+- Watches `config.bbx` file for changes via filesystem watcher
 - Triggers `bbj/configReloadRequired` notification to client
 - Client requests language server restart to pick up new config
-- Integration: `createConfigWatcher()` in `main.ts`, armed after first workspace build
+- Integration: `createConfigWatcher()` in `bbj-vscode/src/extension.ts`, armed after first workspace build
 
 **Java Class Reload Notifications:**
 - `bbj/javaClassesRefreshed` - Fired when `bbj.refreshJavaClasses` command completes
 - `bbj/javaConnectionError` - Fired when java-interop service becomes unavailable
 - Recovery callback: `onConnectionRecovered()` listener re-validates open documents silently
+- Handler in `bbj-vscode/src/language/bbj-notifications.ts`
 
 **Config Reload Notifications:**
 - `bbj/resolvedConfigPath` - Pushed when config path is resolved or changes
@@ -198,16 +201,24 @@ vsce package                   # Create VSIX for VS Code
 
 **Java Interop Circuit Breaker (P61-D3-001):**
 - State machine: closed → half-open → open → half-open → closed
-- Initial cooldown: 5 seconds, backoff factor: 2×, max: 30 seconds
+- Initial cooldown: 5 seconds (`INTEROP_BREAKER_INITIAL_COOLDOWN_MS = 5_000`), backoff factor: 2× (`INTEROP_BREAKER_BACKOFF_FACTOR = 2`), max: 30 seconds (`INTEROP_BREAKER_MAX_COOLDOWN_MS = 30_000`)
 - Behavior:
   - **Closed**: Requests proceed normally
   - **Open**: Requests fail immediately with "circuit open" error
   - **Half-open**: One probe per cooldown window; if it succeeds, transition to closed and notify recovery listeners
   - On recovery: silent re-validation (no popup), implicit imports reloaded, documents re-checked
+- Implementation: `CircuitBreaker` class in `bbj-vscode/src/language/java-interop.ts`
+
+**Transport Failure Classification:**
+- `InteropTransportError` - Transport-level failure (breaker short-circuit, failed connect, timeout); MUST NOT be cached as "class not found"
+- `ConnectionError` (vscode-jsonrpc) - Connection transport failure
+- `ResponseError` with `ErrorCodes.PendingResponseRejected` - Dropped connection rejecting in-flight requests
+- Helper: `isInteropTransportFailure()` function in `java-interop.ts`
 
 **Compile Timeout:**
 - bbjcpl process killed after 30 seconds (configurable)
 - Returns empty diagnostics array; logs warning
+- Safe cancellation: `CompileHandle.cancel()` checks PID validity before sending SIGKILL
 
 **Config File Issues:**
 - If config file not found: uses BBj home defaults, logs warning
@@ -215,4 +226,4 @@ vsce package                   # Create VSIX for VS Code
 
 ---
 
-*Integration audit: 2026-09-21*
+*Integration audit: 2026-09-24*

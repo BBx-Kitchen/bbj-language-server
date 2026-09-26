@@ -2,7 +2,7 @@ import { AstNode, AstUtils, CstNode, GrammarUtils, TextDocument, ValidationAccep
 import { Range } from 'vscode-languageserver-types';
 import { findLeafNodeAtOffset } from "../bbj-validator.js";
 import { LINE_BREAK_DIAGNOSTIC_CODE } from "../bbj-diagnostic-reconciliation.js";
-import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
+import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isDefReturn, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
 
 type LineBreakMask = {
     before: string[] | boolean;
@@ -185,25 +185,41 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
 
 // Balance rule shared by elseStatementLineBreaks and ifEndStatementLineBreaks: walking
 // past a same-line closer finds a nested chain's true governing IF, but each closer
-// stepped over consumes one open IF that this node cannot also claim. `openIfs` counts
-// unclaimed closers; an IF found while it is positive belongs to one of them (decrement,
-// keep walking), an IF found at zero governs this node. The same-line guard keeps the
-// walk monotonic and terminating either way.
+// stepped over consumes one open IF that this node cannot also claim. Both walkers count
+// a same-line end-of-IF statement they step over and match each one against an IF found
+// later on the walk. The ELSE walker also counts a same-line ELSE met while no end-of-IF
+// is pending, because the IF that ELSE belongs to cannot also own a second ELSE; an ELSE
+// met while an end-of-IF is still pending belongs to that inner group instead and spends
+// nothing. An IF found while an end-of-IF is pending belongs to that pending group
+// (decrement it); an IF found with no end-of-IF pending but an earlier ELSE claim pending
+// belongs to that claim instead (decrement the claim); an IF found with neither pending
+// governs this node. The same-line guard keeps the walk monotonic and terminating either
+// way.
 function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
     const mask = (node: ElseStatement) => {
         const lineBreaks = { before: false, after: false, both: true };
         let openIfs = 0;
+        let elseClaims = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {
-            if (isIfEndStatement(prev) || isElseStatement(prev)) {
-                // A prior closer or ELSE already spent one open IF; an ELSE cannot own two.
+            if (isIfEndStatement(prev)) {
                 openIfs++;
-            } else if (isIfStatement(prev)) {
+            } else if (isElseStatement(prev)) {
                 if (openIfs === 0) {
+                    // An ELSE met with no end-of-IF pending claims one earlier IF -- the
+                    // same-line closer chain has already accounted for any inner group's
+                    // own ELSE via the openIfs count above.
+                    elseClaims++;
+                }
+            } else if (isIfStatement(prev)) {
+                if (openIfs > 0) {
+                    openIfs--;
+                } else if (elseClaims > 0) {
+                    elseClaims--;
+                } else {
                     lineBreaks.both = false;
                     break;
                 }
-                openIfs--;
             }
             prev = previousStatement(prev);
         }
@@ -264,7 +280,17 @@ function previousStatement(statement: Statement): Statement | undefined {
         return previousStatement(container);
     } else {
         if (statement.$containerIndex && statement.$containerIndex > 0) {
-            const prevSibling = getSiblings(container)[statement.$containerIndex - 1];
+            const siblings = getSiblings(container);
+            // A DEF FN body mixes RETURN (DefReturn) in with ordinary Statement siblings
+            // (DefFunctionStatement = DefReturn | Statement), so DefReturn is never a
+            // Statement itself. Skip transparently past any same-index run of RETURNs to
+            // find the nearest real Statement sibling -- a same-line RETURN is neither an
+            // opener nor a closer for the IF/ELSE/FI balance walk and must not truncate it.
+            let index = statement.$containerIndex - 1;
+            while (index >= 0 && isDefReturn(siblings[index])) {
+                index--;
+            }
+            const prevSibling = index >= 0 ? siblings[index] : undefined;
             if (isCompoundStatement(prevSibling)) {
                 // last child statement in compound statement
                 return prevSibling.statements[prevSibling.statements.length - 1];

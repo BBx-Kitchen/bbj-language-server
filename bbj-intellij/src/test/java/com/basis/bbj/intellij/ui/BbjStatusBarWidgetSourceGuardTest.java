@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -148,6 +150,37 @@ class BbjStatusBarWidgetSourceGuardTest {
                 "BbjFileVisibility must never derive visibility from a file extension");
     }
 
+    /**
+     * The give-up tooltip builds its "crashed again within N seconds" text from {@code
+     * BbjServerService.CRASH_WINDOW_MS}, so the wording cannot drift from the window the crash
+     * policy actually uses.
+     */
+    @Test
+    void tooltipForDerivesTheCrashWindowTextFromCrashWindowMsAndNeverHardcodesIt() {
+        String stripped = stripComments(readSource(BBJ_STATUS_BAR_WIDGET_SOURCE));
+        String tooltipForBody = sliceBetween(stripped,
+                "protected String tooltipFor(ServerStatus status, String text) {",
+                "protected void addPopupItems(JPopupMenu popup) {");
+
+        assertEquals(1, countOccurrences(tooltipForBody, "BbjServerService.CRASH_WINDOW_MS / 1000"),
+                "tooltipFor must derive the window in seconds from BbjServerService.CRASH_WINDOW_MS");
+        assertEquals(0, countHardcodedWindowLiterals(tooltipForBody),
+                "tooltipFor must not state the crash window as a literal number of seconds");
+    }
+
+    /** String literals that spell out a 30-second window, e.g. {@code "... within 30 seconds"}. */
+    private static final Pattern HARDCODED_WINDOW_LITERAL =
+            Pattern.compile("\"[^\"\\n]*\\b30\\s*(s|sec|secs|second|seconds)\\b[^\"\\n]*\"");
+
+    private static int countHardcodedWindowLiterals(String text) {
+        Matcher m = HARDCODED_WINDOW_LITERAL.matcher(text);
+        int count = 0;
+        while (m.find()) {
+            count++;
+        }
+        return count;
+    }
+
     private static Path sourceFor(String simpleName) {
         return "BbjJavaInteropStatusBarWidget".equals(simpleName)
                 ? BBJ_JAVA_INTEROP_STATUS_BAR_WIDGET_SOURCE
@@ -159,5 +192,98 @@ class BbjStatusBarWidgetSourceGuardTest {
             return BBJ_STATUS_BAR_WIDGET_BASE_SOURCE;
         }
         return sourceFor(simpleName);
+    }
+
+    /**
+     * Copied from {@code lsp.Lsp4ijImportAllowlistTest.stripComments} -- that method is
+     * package-private in another package, so this guard keeps its own copy rather than reach
+     * across packages.
+     */
+    private static String stripComments(String source) {
+        StringBuilder result = new StringBuilder(source.length());
+        int i = 0;
+        int n = source.length();
+        while (i < n) {
+            char c = source.charAt(i);
+            if (c == '/' && i + 1 < n && source.charAt(i + 1) == '/') {
+                int end = source.indexOf('\n', i);
+                if (end == -1) {
+                    break;
+                }
+                i = end;
+                continue;
+            }
+            if (c == '/' && i + 1 < n && source.charAt(i + 1) == '*') {
+                int end = source.indexOf("*/", i + 2);
+                i = (end == -1) ? n : end + 2;
+                continue;
+            }
+            if (c == '"' || c == '\'') {
+                char quote = c;
+                result.append(c);
+                i++;
+                while (i < n) {
+                    char sc = source.charAt(i);
+                    result.append(sc);
+                    i++;
+                    if (sc == '\\' && i < n) {
+                        result.append(source.charAt(i));
+                        i++;
+                        continue;
+                    }
+                    if (sc == quote) {
+                        break;
+                    }
+                }
+                continue;
+            }
+            result.append(c);
+            i++;
+        }
+        return result.toString();
+    }
+
+    /**
+     * Pins the crashed-state rendering: each render hook reads the crashed flag first, the
+     * crashed text literal appears exactly once, and only the tooltip hook also reads the
+     * give-up flag.
+     */
+    @Test
+    void crashedStateIsReadBeforeTheStatusSwitchInEachRenderHookAndRendersOnlyOnce() {
+        String stripped = stripComments(readSource(BBJ_STATUS_BAR_WIDGET_SOURCE));
+
+        String iconForBody = sliceBetween(stripped,
+                "protected Icon iconFor(ServerStatus status) {",
+                "protected String textFor(ServerStatus status) {");
+        assertEquals(1, countOccurrences(iconForBody, "isServerCrashed()"),
+                "iconFor must read isServerCrashed() exactly once");
+        assertTrue(iconForBody.indexOf("isServerCrashed()") < iconForBody.indexOf("switch (status)"),
+                "iconFor must read isServerCrashed() before its switch");
+        assertEquals(0, countOccurrences(iconForBody, "isAutoRestartAbandoned()"),
+                "iconFor must not read isAutoRestartAbandoned()");
+
+        String textForBody = sliceBetween(stripped,
+                "protected String textFor(ServerStatus status) {",
+                "protected String tooltipFor(ServerStatus status, String text) {");
+        assertEquals(1, countOccurrences(textForBody, "isServerCrashed()"),
+                "textFor must read isServerCrashed() exactly once");
+        assertTrue(textForBody.indexOf("isServerCrashed()") < textForBody.indexOf("switch (status)"),
+                "textFor must read isServerCrashed() before its switch");
+        assertEquals(0, countOccurrences(textForBody, "isAutoRestartAbandoned()"),
+                "textFor must not read isAutoRestartAbandoned()");
+
+        String tooltipForBody = sliceBetween(stripped,
+                "protected String tooltipFor(ServerStatus status, String text) {",
+                "protected void addPopupItems(JPopupMenu popup) {");
+        assertEquals(1, countOccurrences(tooltipForBody, "isServerCrashed()"),
+                "tooltipFor must read isServerCrashed() exactly once");
+        assertTrue(tooltipForBody.indexOf("isServerCrashed()")
+                        < tooltipForBody.indexOf("ConfigReloadPresentation.widgetTooltip("),
+                "tooltipFor must read isServerCrashed() before ConfigReloadPresentation.widgetTooltip(");
+        assertEquals(1, countOccurrences(tooltipForBody, "isAutoRestartAbandoned()"),
+                "tooltipFor must read isAutoRestartAbandoned() exactly once");
+
+        assertEquals(1, countOccurrences(stripped, "\"BBj: Crashed\""),
+                "the stripped file must contain the literal \"BBj: Crashed\" exactly once");
     }
 }

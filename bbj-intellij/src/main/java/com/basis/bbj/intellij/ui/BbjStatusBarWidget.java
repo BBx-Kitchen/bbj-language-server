@@ -39,6 +39,9 @@ public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatu
 
     @Override
     protected Icon iconFor(ServerStatus status) {
+        if (service().isServerCrashed()) {
+            return BbjIcons.STATUS_ERROR;
+        }
         switch (status) {
             case started:
                 return BbjIcons.STATUS_READY;
@@ -55,6 +58,9 @@ public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatu
 
     @Override
     protected String textFor(ServerStatus status) {
+        if (service().isServerCrashed()) {
+            return "BBj: Crashed";
+        }
         switch (status) {
             case started:
                 return "BBj: Ready";
@@ -71,9 +77,18 @@ public final class BbjStatusBarWidget extends BbjStatusBarWidgetBase<ServerStatu
 
     @Override
     protected String tooltipFor(ServerStatus status, String text) {
+        if (service().isServerCrashed()) {
+            return service().isAutoRestartAbandoned()
+                    ? "BBj language server crashed again within " + (BbjServerService.CRASH_WINDOW_MS / 1000)
+                        + " seconds and was not restarted. Use Restart Server."
+                    : "BBj language server stopped unexpectedly and is being restarted.";
+        }
         return ConfigReloadPresentation.widgetTooltip(
-                text, ConfigReloadPresentation.reasonLabel(
-                        BbjServerService.getInstance(project).getRestartReason()));
+                text, ConfigReloadPresentation.reasonLabel(service().getRestartReason()));
+    }
+
+    private BbjServerService service() {
+        return BbjServerService.getInstance(project);
     }
 
     @Override

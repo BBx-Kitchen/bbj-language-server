@@ -58,4 +58,54 @@ class CompilerInitOptionsTest {
         assertEquals("/does/not/exist",
                 CompilerInitOptions.normalizeOutputDirectory("/does/not/exist"));
     }
+
+    @Test
+    void theTriggerKeyIsTheFlatNameTheServerReads() {
+        assertEquals("compilerTrigger", CompilerInitOptions.COMPILER_TRIGGER_KEY);
+    }
+
+    @Test
+    void eachWireValueNormalisesToItself() {
+        assertEquals("debounced", CompilerInitOptions.normalizeTrigger("debounced"));
+        assertEquals("on-save", CompilerInitOptions.normalizeTrigger("on-save"));
+        assertEquals("off", CompilerInitOptions.normalizeTrigger("off"));
+    }
+
+    @Test
+    void nullEmptyBlankAndUnknownTriggerValuesNormaliseToDebounced() {
+        assertEquals("debounced", CompilerInitOptions.normalizeTrigger(null));
+        assertEquals("debounced", CompilerInitOptions.normalizeTrigger(""));
+        assertEquals("debounced", CompilerInitOptions.normalizeTrigger("   "));
+        assertEquals("debounced", CompilerInitOptions.normalizeTrigger("sometimes"));
+    }
+
+    @Test
+    void aPaddedTriggerValueIsTrimmed() {
+        assertEquals("on-save", CompilerInitOptions.normalizeTrigger("  on-save  "));
+    }
+
+    @Test
+    void normalizingTheTriggerTwiceIsStable() {
+        String[] inputs = {"debounced", "on-save", "off", null, "", "   ", "sometimes", "  on-save  "};
+        for (String input : inputs) {
+            String once = CompilerInitOptions.normalizeTrigger(input);
+            String twice = CompilerInitOptions.normalizeTrigger(once);
+            assertEquals(once, twice, "normalizing trigger \"" + input + "\" twice must be stable");
+        }
+    }
+
+    @Test
+    void triggerDisplayNamesRoundTripThroughFromDisplayName() {
+        for (String wireValue : new String[] {"debounced", "on-save", "off"}) {
+            String displayName = CompilerInitOptions.triggerDisplayName(wireValue);
+            assertEquals(wireValue, CompilerInitOptions.triggerFromDisplayName(displayName),
+                    "round trip for " + wireValue + " must return the original wire value");
+        }
+    }
+
+    @Test
+    void triggerDisplayNamesAreExactlyDebouncedOnSaveOffInOrder() {
+        assertEquals(java.util.List.of("Debounced", "On save", "Off"),
+                CompilerInitOptions.TRIGGER_DISPLAY_NAMES);
+    }
 }

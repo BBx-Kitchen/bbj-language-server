@@ -61,7 +61,7 @@ function walkStatements(statements: ReadonlyArray<AstNode>, callback: (stmt: Ast
  */
 function getSymbolRefName(expr: AstNode): string | undefined {
     if (isSymbolRef(expr)) {
-        return expr.symbol.$refText?.toLowerCase();
+        return expr.symbol?.$refText?.toLowerCase();
     }
     return undefined;
 }
@@ -138,13 +138,13 @@ function checkUseBeforeAssignment(
             for (const item of stmt.items) {
                 if (isInputVariable(item)) {
                     if (isSymbolRef(item)) {
-                        const name = item.symbol.$refText?.toLowerCase();
+                        const name = item.symbol?.$refText?.toLowerCase();
                         const offset = stmt.$cstNode?.offset;
                         recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(item)) {
                         // DREAD COLOR$[ALL] -- extract receiver variable name
                         if (isSymbolRef(item.receiver)) {
-                            const name = item.receiver.symbol.$refText?.toLowerCase();
+                            const name = item.receiver.symbol?.$refText?.toLowerCase();
                             const offset = stmt.$cstNode?.offset;
                             recordFirst(declPositions, name, offset);
                         }
@@ -158,12 +158,12 @@ function checkUseBeforeAssignment(
             for (const item of stmt.items) {
                 if (isInputVariable(item)) {
                     if (isSymbolRef(item)) {
-                        const name = item.symbol.$refText?.toLowerCase();
+                        const name = item.symbol?.$refText?.toLowerCase();
                         const offset = stmt.$cstNode?.offset;
                         recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(item)) {
                         if (isSymbolRef(item.receiver)) {
-                            const name = item.receiver.symbol.$refText?.toLowerCase();
+                            const name = item.receiver.symbol?.$refText?.toLowerCase();
                             const offset = stmt.$cstNode?.offset;
                             recordFirst(declPositions, name, offset);
                         }
@@ -177,12 +177,12 @@ function checkUseBeforeAssignment(
             for (const variable of stmt.variables) {
                 if (isInputVariable(variable)) {
                     if (isSymbolRef(variable)) {
-                        const name = variable.symbol.$refText?.toLowerCase();
+                        const name = variable.symbol?.$refText?.toLowerCase();
                         const offset = stmt.$cstNode?.offset;
                         recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(variable)) {
                         if (isSymbolRef(variable.receiver)) {
-                            const name = variable.receiver.symbol.$refText?.toLowerCase();
+                            const name = variable.receiver.symbol?.$refText?.toLowerCase();
                             const offset = stmt.$cstNode?.offset;
                             recordFirst(declPositions, name, offset);
                         }
@@ -226,7 +226,7 @@ function checkUseBeforeAssignment(
         }
 
         const usageOffset = child.$cstNode?.offset;
-        const varName = child.symbol.$refText?.toLowerCase();
+        const varName = child.symbol?.$refText?.toLowerCase();
 
         if (usageOffset === undefined || varName === undefined) {
             contentsResult = contentsIterator.next();

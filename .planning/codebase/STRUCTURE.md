@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-09-21
+**Analysis Date:** 2026-09-24
 
 ## Directory Layout
 
@@ -9,6 +9,7 @@ bbj-language-server/
 ├── bbj-vscode/                    # Main VS Code extension + language server (TypeScript, Langium)
 │   ├── src/
 │   │   ├── language/              # Core language server services
+│   │   │   ├── main.ts            # LSP server entry point (creates connection, wires services)
 │   │   │   ├── bbj.langium        # Grammar definition (case-insensitive BBj syntax)
 │   │   │   ├── bbj-module.ts      # Dependency injection wiring for all services
 │   │   │   ├── generated/         # Auto-generated from grammar (never edit directly)
@@ -35,47 +36,59 @@ bbj-language-server/
 │   │   │   ├── Type Analysis
 │   │   │   │   ├── bbj-type-inferer.ts       # Variable/expression type inference
 │   │   │   │   └── bbj-value-converter.ts    # Langium value conversion
-│   │   │   ├── Validation
+│   │   │   ├── Validation & Error Diagnostics
 │   │   │   │   ├── bbj-validator.ts          # Main validation service + check registration
-│   │   │   │   └── bbj-document-validator.ts # Document-level validation + CPL compiler integration
+│   │   │   │   ├── bbj-document-validator.ts # Document-level validation + CPL compiler integration
+│   │   │   │   ├── bbj-parser-service.ts     # Bridge to live BBj parser backend for parse errors
+│   │   │   │   ├── bbj-diagnostic-reconciliation.ts  # Merge live parser diagnostics with Langium errors
+│   │   │   │   └── bbj-kept-check.ts         # Incremental change tracking for error re-placement
 │   │   │   ├── Java Integration
 │   │   │   │   ├── java-interop.ts           # Java class resolution via socket :5008
 │   │   │   │   ├── java-javadoc.ts           # Javadoc parsing and formatting
-│   │   │   │   ├── java-class-reload.ts      # Hot reload for classpath changes
-│   │   │   │   └── java-types.langium        # Java class/method/field AST definitions
+│   │   │   │   └── java-class-reload.ts      # Hot reload for classpath changes
 │   │   │   ├── Compiler Integration
 │   │   │   │   ├── bbj-cpl-service.ts        # BBj compiler (CPL) integration for diagnostics
 │   │   │   │   └── bbj-cpl-parser.ts         # CPL error message parsing
 │   │   │   ├── Workspace Management
 │   │   │   │   ├── bbj-ws-manager.ts         # Workspace document tracking
-│   │   │   │   ├── bbj-document-builder.ts   # Document lifecycle (parse → link → validate)
+│   │   │   │   ├── bbj-document-builder.ts   # Document lifecycle (parse → link → validate → reconcile)
 │   │   │   │   └── bbj-index-manager.ts      # Symbol index for workspace-wide lookups
 │   │   │   ├── LSP Feature Providers
 │   │   │   │   ├── bbj-completion-provider.ts        # Autocompletion (keywords, variables, classes)
 │   │   │   │   ├── bbj-hover.ts                      # Hover tooltip with type/doc info
+│   │   │   │   ├── bbj-hover-handler.ts              # Config-aware hover rendering
 │   │   │   │   ├── bbj-definition-provider.ts        # Go-to-definition
 │   │   │   │   ├── bbj-semantic-token-provider.ts    # Syntax highlighting token ranges
 │   │   │   │   ├── bbj-signature-help-provider.ts    # Function/method parameter hints
 │   │   │   │   ├── bbj-inlay-hint-provider.ts        # Inline type/parameter annotations
 │   │   │   │   ├── bbj-code-action-provider.ts       # Quick fixes and refactorings
+│   │   │   │   ├── bbj-code-action-handler.ts        # Code action execution
 │   │   │   │   ├── bbj-document-symbol-provider.ts   # Outline and breadcrumb navigation
 │   │   │   │   ├── composer-codelens.ts              # Code lens for composers (UI builder)
 │   │   │   │   └── bbj-comment-provider.ts           # JSDoc-style documentation parsing
 │   │   │   ├── Code Lens Handlers (Composers)
 │   │   │   │   ├── composer-codelens-handler.ts
 │   │   │   │   └── composer-commands.ts
-│   │   │   ├── Configuration
+│   │   │   ├── Configuration & File Watching
 │   │   │   │   ├── config-path-resolver.ts    # Resolves BBx config file path
 │   │   │   │   ├── config-watcher.ts          # Watches config file for changes
+│   │   │   │   ├── config-reload-notification.ts # Sends config change notifications
 │   │   │   │   ├── compiler-options.ts        # BBj compiler option definitions
-│   │   │   │   └── compile-command.ts         # Compile command builder
+│   │   │   │   ├── resolved-config-path-request.ts # Handles config path requests
+│   │   │   │   └── compile-command.ts         # Compile on-demand handler
+│   │   │   ├── Request/Notification Handlers
+│   │   │   │   ├── bbj-notifications.ts       # Server→client notifications
+│   │   │   │   ├── setopts-in-code-request.ts # SETOPTS inline request handler
+│   │   │   │   ├── setopts-code-scanner.ts    # Parse SETOPTS in source
+│   │   │   │   ├── bbj-document-update-handler.ts   # Save event handling
+│   │   │   │   └── run-call-target.ts         # RUN target resolution
 │   │   │   ├── Utilities
 │   │   │   │   ├── bbj-node-kind.ts           # LSP node kind provider
 │   │   │   │   ├── bbj-nodedescription-provider.ts  # AST node descriptions for indexing
 │   │   │   │   ├── bbj-use-insert.ts          # Automatic USE statement insertion
-│   │   │   │   ├── bbj-hover-handler.ts       # Hover rendering helpers
 │   │   │   │   ├── bbj-overload-selector.ts   # Function overload selection
-│   │   │   │   ├── bbj-notifications.ts       # Server-to-client notifications
+│   │   │   │   ├── lsp-position.ts            # LSP position utilities
+│   │   │   │   ├── utils.ts                   # General utilities
 │   │   │   │   ├── constants.ts               # Shared constants
 │   │   │   │   └── logger.ts                  # Logging utility
 │   │   ├── Commands/                # VS Code command implementations
@@ -110,6 +123,7 @@ bbj-language-server/
 │   │   ├── images/                  # Icons and visual assets
 │   │   ├── test/
 │   │   │   ├── bbj-test-module.ts            # Test service factory (mock Java interop)
+│   │   │   ├── test-helper.ts               # Test utilities
 │   │   │   ├── test-data/
 │   │   │   │   ├── *.bbj                    # Example BBj files for parsing regression
 │   │   │   │   ├── conformance/             # Conformance test suite (details.json, flagged.txt)
@@ -117,9 +131,11 @@ bbj-language-server/
 │   │   │   ├── *.test.ts                    # Unit/integration tests (Vitest)
 │   │   │   ├── functional/                  # Functional tests
 │   │   │   └── support/                     # Test helpers
+│   │   ├── tools/                   # Development tools and scripts
 │   │   ├── package.json              # VS Code extension manifest + npm build config
 │   │   ├── tsconfig.json             # TypeScript configuration
-│   │   └── esbuild.mjs               # esbuild bundler script (vitest.config.ts holds test config)
+│   │   ├── vitest.config.ts          # Vitest test runner configuration
+│   │   └── esbuild.mjs               # esbuild bundler script
 │   ├── bbj-language-configuration.json  # VS Code language config (indentation, brackets)
 │   ├── bbx-language-configuration.json  # BBx config language config
 │   └── out/                             # Build output (generated by npm run build)
@@ -129,7 +145,8 @@ bbj-language-server/
 ├── java-interop/                    # Java backend for classpath resolution (Java, Gradle)
 │   ├── src/main/java/
 │   │   └── com/basis/bbj/interop/   # JSON-RPC socket service on port 5008
-│   └── build.gradle.kts             # Gradle build config
+│   ├── build.gradle.kts             # Gradle build config
+│   └── gradle/                      # Gradle wrapper and settings
 │
 ├── bbj-intellij/                    # IntelliJ IDEA plugin (Kotlin, LSP4IJ)
 │   ├── src/main/
@@ -141,26 +158,37 @@ bbj-language-server/
 ├── documentation/                   # Docusaurus docs site
 │   ├── docs/                        # Markdown documentation
 │   ├── src/                         # Custom components
+│   ├── static/                      # Static assets
 │   └── package.json                 # Docusaurus build config
 │
 ├── examples/                        # Real-world BBj sample files
 │   ├── issue*.bbj                   # Files named after GitHub issues (regression tests)
+│   ├── imports/                     # Import examples
+│   ├── invalid/                     # Invalid syntax examples
+│   ├── javadoc/                     # Javadoc examples
+│   ├── test/                        # Test examples
 │   └── [subdirs]/
 │
 ├── QA/                              # Manual testing checklists
 │   └── test-runs/                   # Smoke/full test results
 │
 ├── .planning/                       # GSD milestones, phases, research
-│   ├── codebase/                    # These analysis documents (ARCHITECTURE.md, etc.)
+│   ├── codebase/                    # These analysis documents (ARCHITECTURE.md, STRUCTURE.md, etc.)
 │   ├── phases/                      # Work phases (phase-NN-*.md)
 │   ├── milestones/                  # Release milestones
-│   └── research/                    # Investigation notes
+│   ├── research/                    # Investigation notes
+│   ├── debug/                       # Debug/trace notes
+│   ├── quick/                       # Quick tasks and notes
+│   ├── seeds/                       # Seed ideas
+│   ├── todos/                       # TODO tracking
+│   └── ui-reviews/                  # UI review notes
 │
 ├── .devcontainer/                   # Dev container config (BBj :8888, java-interop :5008)
 ├── .claude/                         # Claude Code project settings
 │   └── worktrees/                   # Git worktrees for parallel work
 │
 ├── .gsd/                            # GSD tool state (milestones, phases, state tracking)
+├── .vscode/                         # VS Code workspace settings
 │
 ├── CLAUDE.md                        # Project guidelines (this repository)
 └── README.md                        # Project overview
@@ -173,7 +201,7 @@ bbj-language-server/
 The primary development directory. Contains the Langium-based language server and VS Code extension client in TypeScript. Built and bundled to `out/language/main.cjs`, which is consumed by both the VS Code extension and the IntelliJ plugin (via LSP4IJ).
 
 **bbj-vscode/src/language/:**
-Core language server implementation. Every major subsystem (lexer, parser, validator, Java interop, LSP providers) is here. Services are wired via dependency injection in `bbj-module.ts`.
+Core language server implementation. Entry point is `main.ts`, which creates the LSP connection and wires services via `bbj-module.ts`. Every major subsystem (lexer, parser, validator, Java interop, LSP providers, diagnostic reconciliation) lives here. Services are wired via dependency injection in `bbj-module.ts`.
 
 **bbj-vscode/src/language/validations/:**
 Separate validation checks (classes, scoping, function calls, line breaks) to keep the validator modular and testable.
@@ -199,17 +227,21 @@ IntelliJ plugin wrapping the same language server (`out/language/main.cjs`) via 
 **examples/:**
 Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-switch-case.bbj`) to track syntax regression tests.
 
+**.planning/:**
+GSD project management and research. Phases track work items; milestones track releases; research notes document investigations; codebase docs live here.
+
 ## Key File Locations
 
 **Entry Points:**
+- `bbj-vscode/src/language/main.ts` — Language server LSP entry point; creates connection, wires services
 - `bbj-vscode/src/extension.ts` — VS Code extension activates here; starts LanguageClient
-- `bbj-vscode/src/language/bbj-module.ts` — Language server entry point; wires all services via DI
 - `bbj-intellij/build.gradle.kts` — IntelliJ plugin build (wraps language server)
 
 **Configuration:**
 - `bbj-vscode/package.json` — VS Code extension manifest (language, commands, settings, key bindings)
 - `bbj-vscode/tsconfig.json` — TypeScript compiler options
-- `bbj-vscode/esbuild.mjs` — esbuild bundler script producing `out/language/main.cjs`; `bbj-vscode/vitest.config.ts` — test runner config
+- `bbj-vscode/esbuild.mjs` — esbuild bundler script producing `out/language/main.cjs`
+- `bbj-vscode/vitest.config.ts` — test runner config
 - `bbj-vscode/bbj-language-configuration.json` — VS Code language behavior (indentation, brackets, block comments)
 
 **Grammar & Parsing:**
@@ -225,6 +257,11 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 - `bbj-vscode/src/language/bbj-type-inferer.ts` — Type inference
 - `bbj-vscode/src/language/bbj-validator.ts` — Main validator + check registration
 
+**Parser Integration:**
+- `bbj-vscode/src/language/bbj-parser-service.ts` — Bridge to live BBj parser backend
+- `bbj-vscode/src/language/bbj-diagnostic-reconciliation.ts` — Merge live parser diagnostics with Langium errors
+- `bbj-vscode/src/language/bbj-kept-check.ts` — Incremental change tracking for error re-placement
+
 **Validation Checks:**
 - `bbj-vscode/src/language/validations/check-classes.ts` — Class/interface validations
 - `bbj-vscode/src/language/validations/check-variable-scoping.ts` — Variable scope checking
@@ -234,6 +271,7 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 **Java Integration:**
 - `bbj-vscode/src/language/java-interop.ts` — Main Java interop service (socket :5008, LRU cache)
 - `bbj-vscode/src/language/java-javadoc.ts` — Javadoc parsing and formatting
+- `bbj-vscode/src/language/java-class-reload.ts` — Refresh Java classpath on file changes
 - `java-interop/src/main/java/com/basis/bbj/interop/` — Java backend implementation
 
 **LSP Feature Providers:**
@@ -244,10 +282,11 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 - `bbj-vscode/src/language/bbj-signature-help-provider.ts` — Parameter hints
 - `bbj-vscode/src/language/bbj-inlay-hint-provider.ts` — Inlay hints
 - `bbj-vscode/src/language/bbj-code-action-provider.ts` — Quick fixes
+- `bbj-vscode/src/language/bbj-code-action-handler.ts` — Code action execution
 - `bbj-vscode/src/language/bbj-document-symbol-provider.ts` — Outline
 
 **Workspace & Document Management:**
-- `bbj-vscode/src/language/bbj-document-builder.ts` — Parse → Link → Validate lifecycle
+- `bbj-vscode/src/language/bbj-document-builder.ts` — Parse → Link → Validate → Reconcile lifecycle
 - `bbj-vscode/src/language/bbj-ws-manager.ts` — Workspace document tracking
 - `bbj-vscode/src/language/bbj-index-manager.ts` — Symbol indexing
 
@@ -256,12 +295,18 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 - `bbj-vscode/src/language/bbj-document-validator.ts` — Document-level validation + CPL integration
 - `bbj-vscode/src/language/compiler-options.ts` — Compiler option definitions
 
+**Configuration & File Watching:**
+- `bbj-vscode/src/language/config-watcher.ts` — Watches config file for changes
+- `bbj-vscode/src/language/config-path-resolver.ts` — Resolves BBx config file path
+- `bbj-vscode/src/language/config-reload-notification.ts` — Sends config change notifications
+
 **Syntax Highlighting:**
 - `bbj-vscode/syntaxes/bbj.tmLanguage.json` — TextMate grammar for `.bbj/.bbl` files
 - `bbj-vscode/syntaxes/bbx.tmLanguage.json` — TextMate grammar for config files
 
 **Testing:**
 - `bbj-vscode/test/bbj-test-module.ts` — Test service factory with mock Java interop
+- `bbj-vscode/test/test-helper.ts` — Test utilities
 - `bbj-vscode/test/test-data/` — Example `.bbj` files for regression testing
 - `bbj-vscode/test/*.test.ts` — Unit/integration tests (Vitest)
 
@@ -269,6 +314,8 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 
 **Files:**
 - Services: `bbj-*.ts` (e.g., `bbj-validator.ts`, `bbj-completion-provider.ts`)
+- Providers: `*-provider.ts` (e.g., `bbj-completion-provider.ts`, `bbj-hover.ts`)
+- Handlers: `*-handler.ts` (e.g., `bbj-hover-handler.ts`, `bbj-code-action-handler.ts`)
 - Test data: `.bbj`, `.bbjt`, `.src`, `.bbx`, `.bbl` for source files
 - Test files: `*.test.ts` (Vitest convention)
 - Grammar: `*.langium` (Langium syntax definition)
@@ -293,7 +340,7 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 - Create `bbj-codelens-provider.ts` in `src/language/`
 - Extend Langium's `DefaultCodeLensProvider` or implement `CodeLensProvider` interface
 - Register in `BBjModule.lsp` in `bbj-module.ts`
-- Wire into `extension.ts` via `client.start()`
+- Wire into `main.ts` via `createBBjServices()` (already auto-wired if registered in BBjModule)
 
 **New Validation Check:**
 - Create `validations/check-new-area.ts` with a function `registerNewAreaChecks(registry: ValidationRegistry)`
@@ -311,6 +358,11 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 - Add command entry to `package.json` (`contributes.commands`)
 - Implement handler in `src/Commands/` or directly in `extension.ts`
 - Register handler in `extension.ts` via `context.subscriptions.push(vscode.commands.registerCommand(...))`
+
+**New Request/Notification Handler:**
+- Create handler in `src/language/` (e.g., `new-feature-request.ts`)
+- Register in `main.ts` via `connection.onRequest()` or `connection.onNotification()`
+- Export handler function and call it during server initialization in `main.ts`
 
 **New Test:**
 - Create `test/feature-name.test.ts` using Vitest
@@ -347,7 +399,7 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 
 **.planning/:**
 - Purpose: GSD milestone/phase/research tracking
-- Subdirs: `phases/` (work plans), `milestones/` (releases), `research/` (investigation), `codebase/` (these docs)
+- Subdirs: `phases/` (work plans), `milestones/` (releases), `research/` (investigation), `codebase/` (these docs), `debug/` (debugging notes), `quick/` (quick tasks)
 - Committed: Yes (project documentation)
 
 **syntaxes/:**
@@ -363,4 +415,4 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 
 ---
 
-*Structure analysis: 2026-09-21*
+*Structure analysis: 2026-09-24*

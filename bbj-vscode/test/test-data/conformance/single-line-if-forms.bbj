@@ -1,8 +1,12 @@
 REM Protects single-line IF/FI forms the compiler accepts from a false line-break
 REM diagnostic: a labelled single-line IF with a semicolon-chained branch and a
 REM jump back to its own label, a nested single-line IF closed by two chained FI,
-REM IF...THEN RETURN...FI, and a nested single-line IF/FI followed on the same
-REM line by the outer ELSE, each in upper, lower and mixed case.
+REM IF...THEN RETURN...FI, a nested single-line IF/FI followed on the same line
+REM by the outer ELSE, a nested single-line IF/ELSE/FI followed on the same line
+REM by the outer ELSE, ELSE-only nesting with no inner end-of-IF, and the same
+REM nested one-liner continued over colon-prefixed lines, each in upper, lower
+REM and mixed case. Also protects a colon-continued ELSE-IF chain inside a
+REM DEF FN body with no explicit FI anywhere, closed only by FNEND.
 loopstart: IF flag THEN count = 1; GOTO loopstart
 loopstart2: if flag then count = 2; goto loopstart2
 LoopStart3: If flag Then count = 3; Goto loopstart3
@@ -15,3 +19,26 @@ If flag Then Return 3 Fi
 IF flag THEN IF other THEN count = 7 FI ELSE count = 8 FI
 if flag then if other then count = 9 fi else count = 10 fi
 If flag Then If other Then count = 11 Fi Else count = 12 Fi
+IF flag THEN IF other THEN count = 13 ELSE count = 14 FI ELSE count = 15 FI
+if flag then if other then count = 16 else count = 17 fi else count = 18 fi
+If flag Then If other Then count = 19 Else count = 20 Fi Else count = 21 Fi
+IF flag THEN IF other THEN count = 22 ELSE count = 23 ELSE count = 24
+if flag then if other then count = 25 else count = 26 else count = 27
+If flag Then If other Then count = 28 Else count = 29 Else count = 30
+IF flag THEN
+: IF other THEN count = 31 ELSE count = 32 FI
+: ELSE count = 33 FI
+if flag then
+: if other then count = 34 else count = 35 fi
+: else count = 36 fi
+If flag Then
+: If other Then count = 37 Else count = 38 Fi
+: Else count = 39 Fi
+
+def fnwidgetlabel$(qty)
+if len(qty)=4 then
+: return str(qty:"9999")
+: else if len(qty)=3 then
+: return str(qty:"999")
+: else return qty
+fnend

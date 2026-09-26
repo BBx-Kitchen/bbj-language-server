@@ -57,14 +57,22 @@ With BBj 26.03 or later, the BBj compiler's own parser checks the currently open
 type, and its syntax errors appear in the editor without saving — the same errors the save-time
 compile would report, shown earlier.
 
-The plugin has no setting for when these checks run: it always uses the default behaviour, so the
-open file is checked about half a second (500 ms) after you stop typing and when you open it.
+The **Compiler check** setting (Settings, `Languages & Frameworks > BBj`, under **BBj Compiler**)
+controls when these compiler checks run:
+
+- **Debounced** — the default; checks about 500 ms after you stop typing, and when you open or
+  save a file.
+- **On save** — checks only when you open or save a file. Typing runs no compiler work; lines you
+  type or change are checked by the language server's own diagnostics instead. The last check's
+  errors stay visible on their lines while you edit, until the next save replaces them.
+- **Off** — no compiler checks at all; only the language server's own checks remain.
+
+Applying a change restarts the language server, which then uses the new choice. On save is
+recommended for large workspaces. IntelliJ's own automatic saves (for example when the IDE is idle
+or loses focus) count as saves, so on-save then checks about as often as debounced.
 
 With an earlier BBj, or when BBjServices is not running, the save-time compile (`bbjcpl`) compiles
 the saved file instead after the same pause, so its errors reflect the last save.
-
-VS Code's `bbj.compiler.trigger` setting has no IntelliJ equivalent, so the `off` workaround for
-slow code completion in very large workspaces is currently available only in VS Code.
 
 ## Hover Information
 
@@ -192,6 +200,7 @@ Shows the state of the BBj Language Server:
 - **Ready**: Server running normally
 - **Starting**: Server initialization in progress
 - **Stopped**: Server not running
+- **Crashed**: The server process stopped unexpectedly; the plugin restarts it once, and stops restarting after a second crash within 30 seconds
 - **Error**: Server encountered an error
 
 ### Java Interop Status
@@ -211,7 +220,7 @@ Contextual notifications appear at the top of the editor to help with configurat
 - **Missing BBj Home** - Set BBj Home in Settings to enable language features
 - **Missing Node.js** - Install Node.js or let the plugin download it automatically
 - **Java Interop Unavailable** - Start BBjServices or check configuration
-- **Server Crash** - Language server encountered an error; check logs
+- **Server Crash** - The language server crashed twice within 30 seconds and was not restarted automatically; use Restart Server or check the log
 
 Follow the banner instructions to resolve configuration issues.
 

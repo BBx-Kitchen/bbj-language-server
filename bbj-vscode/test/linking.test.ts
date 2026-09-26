@@ -416,8 +416,10 @@ describe('Linking Tests', async () => {
                 x! = String.someInstanceField
             `)
             const linkingErr = findLinkingErrors(document)
-            expect(linkingErr.length).toBe(1)
-            expect(linkingErr[0].message).toContain("someInstanceField")
+            expect(linkingErr.length).toBe(0)
+            const errors = (document.diagnostics ?? []).filter(d => d.severity === DiagnosticSeverity.Error)
+            expect(errors.length).toBe(1)
+            expect(errors[0].message).toBe("Static field 'someInstanceField' is not defined on String")
         });
 
         test('Package scope as most outer scope', async () => {

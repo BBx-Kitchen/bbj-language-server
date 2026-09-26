@@ -6,6 +6,7 @@ import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, Diagnostic
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
+import { UNKNOWN_JAVA_MEMBER_CODE } from "./validations/check-unknown-java-member.js";
 import {
     clearVerdictState,
     composeWithVerdict,
@@ -15,6 +16,14 @@ import {
     rememberLangiumDiagnostics,
     setVerdictState
 } from "./bbj-diagnostic-reconciliation.js";
+import {
+    clearContentChanges,
+    clearKeptCheck,
+    composeWithKeptCheck,
+    contentChangesSince,
+    getKeptCheck,
+    type KeptCheckComposition
+} from "./bbj-kept-check.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -101,7 +110,10 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * function again. Rule 0 therefore only ever acts on a list that already carries a `'BBjCPL'`
  * diagnostic if one was already present from an earlier cycle; on the build that first
  * introduces one, Rule 0 does not run against it. This is confirmed, long-standing behaviour,
- * unchanged by this phase.
+ * unchanged by this phase. The save-time compile fallback's own line-scoped dedup
+ * (`reconcileWithFallbackCheck`, called from the builder's debounce callback) never runs its
+ * result back through this function, so it never switches Rule 0 on either -- it only ever drops
+ * or keeps individual complaints line by line, and never on its own downgrades one.
  */
 export function applyDiagnosticHierarchy(
     diagnostics: Diagnostic[],
@@ -188,7 +200,35 @@ export function applyConfiguredDiagnosticHierarchy(diagnostics: Diagnostic[]): D
  * - Same line: prefer Langium message, set source to 'BBjCPL' (compiler confirmed)
  * - BBjCPL-only errors (no Langium match on same line): add with 'BBjCPL' source
  * - Langium-only diagnostics: kept unchanged
+ *
+ * Now used only for a save-time compile fallback whose checked text is not provably the text on
+ * disk (the builder's `checkedTextIsOnDisk` said no) -- once it is, the builder reconciles with
+ * `reconcileWithFallbackCheck` (`bbj-diagnostic-reconciliation.ts`) instead, which drops a
+ * complaint outright rather than merely recoloring its source. Behaviour here is otherwise
+ * unchanged from before that reconciliation existed.
  */
+/**
+ * Applies {@link composeWithKeptCheck} for a document validated under the `on-save` trigger, with
+ * the diagnostic hierarchy run at the right point for `input.kept.kind`:
+ *
+ * - `'verdict'`: the hierarchy runs once, after composition -- the same order `composeWithVerdict`'s
+ *   own debounced path already uses, so a kept BBj-parser error still suppresses linking errors and
+ *   other warnings exactly as a fresh verdict would.
+ * - `'fallback'`: the hierarchy runs first, on `input.langiumDiagnostics` alone, and never again
+ *   afterwards -- a kept BBjCPL diagnostic must never reach Rule 0 (`applyDiagnosticHierarchy`'s
+ *   own "BBjCPL errors present -> suppress Langium parse errors" rule) a second time, the same
+ *   order today's fallback publish already uses at the builder's own call site.
+ */
+export function composeOnSaveDiagnostics(input: KeptCheckComposition): Diagnostic[] {
+    if (input.kept.kind === 'verdict') {
+        return applyDiagnosticHierarchy(composeWithKeptCheck(input), suppressCascadingEnabled, maxErrorsDisplayed);
+    }
+    return composeWithKeptCheck({
+        ...input,
+        langiumDiagnostics: applyDiagnosticHierarchy(input.langiumDiagnostics, suppressCascadingEnabled, maxErrorsDisplayed)
+    });
+}
+
 export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnostic[]): Diagnostic[] {
     const result: Diagnostic[] = [...langiumDiags];
 
@@ -210,6 +250,34 @@ export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnosti
     return result;
 }
 
+function sameRange(a: Range, b: Range): boolean {
+    return a.start.line === b.start.line && a.start.character === b.start.character
+        && a.end.line === b.end.line && a.end.character === b.end.character;
+}
+
+/**
+ * The unknown-Java-member check (`bbj-unknown-java-member`) targets the same member CST node
+ * the linker's own diagnostic does, so an equal range identifies the same reference. Removing
+ * the duplicate linking diagnostic here, before the list is remembered, keeps exactly one
+ * diagnostic per unknown member on every later path (hierarchy, verdict composition, kept-check
+ * composition) -- without this, a member the check already flagged as an Error would also still
+ * carry its old linking Warning, showing the user two diagnostics for one problem.
+ */
+export function dropShadowedMemberLinkingDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+    const unknownMemberRanges = diagnostics
+        .filter(d => (d.data as DiagnosticData | undefined)?.code === UNKNOWN_JAVA_MEMBER_CODE)
+        .map(d => d.range);
+    if (unknownMemberRanges.length === 0) {
+        return diagnostics;
+    }
+    return diagnostics.filter(d => {
+        if ((d.data as DiagnosticData | undefined)?.code !== DocumentValidator.LinkingError) {
+            return true;
+        }
+        return !unknownMemberRanges.some(r => sameRange(r, d.range));
+    });
+}
+
 export class BBjDocumentValidator extends DefaultDocumentValidator {
 
     /**
@@ -221,7 +289,11 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
      */
     constructor(services: LangiumServices) {
         super(services);
-        services.shared.workspace.TextDocuments.onDidClose(event => clearVerdictState(event.document.uri));
+        services.shared.workspace.TextDocuments.onDidClose(event => {
+            clearVerdictState(event.document.uri);
+            clearKeptCheck(event.document.uri);
+            clearContentChanges(event.document.uri);
+        });
     }
 
     override async validateDocument(
@@ -229,7 +301,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         options?: ValidationOptions,
         cancelToken?: CancellationToken
     ): Promise<Diagnostic[]> {
-        const diagnostics = await super.validateDocument(document, options, cancelToken);
+        const diagnostics = dropShadowedMemberLinkingDiagnostics(await super.validateDocument(document, options, cancelToken));
         // Remembered before the hierarchy runs: the debounce callback reconciles a verdict
         // against this pre-hierarchy list, not against the already-filtered result below, so a
         // diagnostic the hierarchy hid can still reappear once the verdict arrives. The text this
@@ -247,6 +319,44 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         // keystroke until the next verdict arrives. Skipped entirely (leaving `diagnostics`
         // untouched) when the compiler trigger is off or no verdict exists yet for this document
         // -- both cases must validate exactly as they did before this phase.
+        // Under 'on-save', no fresh verdict ever arrives between saves, so this document's kept
+        // check (if any) is composed instead of the debounced verdict machinery below -- see
+        // composeOnSaveDiagnostics's own doc comment. No kept check yet (before the document's
+        // first open/save check has completed) falls through to a plain hierarchy application,
+        // exactly like the "no verdict" case below.
+        if (getCompilerTrigger() === 'on-save') {
+            const kept = getKeptCheck(document.uri);
+            if (kept) {
+                return composeOnSaveDiagnostics({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    kept,
+                    changesSinceCheck: contentChangesSince(document.uri, kept.version, document.textDocument.version)
+                });
+            }
+            return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+        }
+
+        // Under 'debounced', a kept check stored while the trigger was still 'on-save' keeps this
+        // document's current compiler errors visible through the same composition -- a runtime
+        // switch away from on-save must not drop them the instant validation next runs. Once this
+        // file's own first debounced check stores a fresh kept check (storedUnderOnSave false),
+        // this branch stops matching and every later validation falls through to the verdict path
+        // below exactly as steady-state debounced always has.
+        if (getCompilerTrigger() === 'debounced') {
+            const kept = getKeptCheck(document.uri);
+            if (kept?.storedUnderOnSave) {
+                return composeOnSaveDiagnostics({
+                    langiumDiagnostics: diagnostics,
+                    validatedText,
+                    liveText: document.textDocument.getText(),
+                    kept,
+                    changesSinceCheck: contentChangesSince(document.uri, kept.version, document.textDocument.version)
+                });
+            }
+        }
+
         let composed = diagnostics;
         if (getCompilerTrigger() !== 'off') {
             const verdict = getVerdictState(document.uri);

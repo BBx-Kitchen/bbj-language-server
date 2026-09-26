@@ -1,0 +1,49 @@
+diff --git a/bbj-vscode/src/language/bbj-scope.ts b/bbj-vscode/src/language/bbj-scope.ts
+index 58d5971f..6f033d4a 100644
+--- a/bbj-vscode/src/language/bbj-scope.ts
++++ b/bbj-vscode/src/language/bbj-scope.ts
+@@ -288,7 +288,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
+             const program = AstUtils.getContainerOfType(context.container, isProgram);
+             const memberAndImports = new StreamScopeWithPredicate(
+                 stream(this.importedBBjClasses(program)),
+-                this.superGetScope(context)
++                this.experimentLexicalScope(context)
+             );
+ 
+             if (context.container.$containerProperty === 'left' // left side of an assignment
+@@ -370,6 +370,35 @@ export class BbjScopeProvider extends DefaultScopeProvider {
+         }
+     }
+ 
++    private experimentLexicalScope(context: ReferenceInfo): Scope {
++        // EXPERIMENT (debug G-109-1): inside a MethodDecl, drop Program-level variable descriptions
++        const inMethod = !!AstUtils.getContainerOfType(context.container, (n): n is MethodDecl => n.$type === 'MethodDecl');
++        if (!inMethod || !this.isReferenceProperty(context)) {
++            return this.superGetScope(context);
++        }
++        const scopes: Stream<AstNodeDescription>[] = [];
++        const referenceType = this.astReflection.getReferenceType(context);
++        const localSymbols = AstUtils.getDocument(context.container).localSymbols;
++        const VARIABLE_TYPES = new Set(['FieldDecl', 'VariableDecl', 'ArrayDecl']);
++        if (localSymbols) {
++            let currentNode: AstNode | undefined = context.container;
++            do {
++                if (localSymbols.has(currentNode)) {
++                    const atProgram = isProgram(currentNode);
++                    scopes.push(localSymbols.getStream(currentNode).filter(desc =>
++                        this.astReflection.isSubtype(desc.type, referenceType)
++                        && !(atProgram && VARIABLE_TYPES.has(desc.type))));
++                }
++                currentNode = currentNode.$container;
++            } while (currentNode);
++        }
++        let result = this.getGlobalScope(referenceType, context);
++        for (let i = scopes.length - 1; i >= 0; i--) {
++            result = this.createScope(scopes[i], result);
++        }
++        return result;
++    }
++
+     private superGetScope(context: ReferenceInfo) {
+         // Extracted one point access to super impl for performance and debugging purposes
+         if (!this.isReferenceProperty(context)) {

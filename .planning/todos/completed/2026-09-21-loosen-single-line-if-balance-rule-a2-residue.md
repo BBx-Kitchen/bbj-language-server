@@ -2,6 +2,7 @@
 created: 2026-09-21
 title: Loosen single-line IF balance rule for the 5 re-flagged valid files (A2 27 → ≤ 25)
 area: line-break-validation
+resolves_phase: 107
 severity: minor
 files:
 

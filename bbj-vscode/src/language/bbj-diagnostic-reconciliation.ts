@@ -1,5 +1,6 @@
 /**
- * Reconciles Langium's own diagnostics against a verdict from the BBj parser endpoint.
+ * Reconciles Langium's own diagnostics against a verdict from the BBj parser endpoint, or against
+ * a save-time compile that stands in for it when the live parser is unavailable.
  *
  * A verdict is the set of diagnostics BBj's own parser reports for a document's current text.
  * Once a verdict exists for a document, this module decides which of Langium's lexer, parser and
@@ -7,6 +8,12 @@
  * warnings, and which give way entirely to BBj's own diagnostic on the same line. Every other
  * Langium diagnostic (semantic checks, linking errors, ordinary validator warnings) passes through
  * untouched — the compiler's parser has no opinion on those.
+ *
+ * A second, narrower reconciliation ({@link reconcileWithFallbackCheck}) covers the save-time
+ * compile fallback branch: a syntax complaint only ever gives way to the fallback's own diagnostic
+ * on an overlapping line, never downgraded on its own — a fallback result reflects the file on
+ * disk, not a verdict for the live editor text, so it never gets to speak for a line it stays
+ * silent on.
  *
  * This module is deliberately isolated from the validator, the builder, the parser service and the
  * validations folder: it imports only from `langium`, `vscode-languageserver` and `./lsp-position.js`,
@@ -146,10 +153,12 @@ export function isVerdictForVersion(verdict: VerdictState | undefined, version: 
 /**
  * True when the editor line spans of `a` and `b` share at least one whole line — inclusive of the
  * boundary, so two spans that only touch at a single shared line still count. Character positions
- * are ignored on purpose (unlike `mergeDiagnostics`' start-line equality, which stays as-is for
- * the save-time compiler path): a colon-continued statement can have BBj reporting on one line of
- * the statement and Langium on another line of the same statement, and both still need to be
- * recognized as the same complaint.
+ * are ignored on purpose: a colon-continued statement can have BBj reporting on one line of the
+ * statement and Langium on another line of the same statement, and both still need to be
+ * recognized as the same complaint. Used both by the live-parser verdict reconciliation below and,
+ * once the checked text is confirmed to be on disk, by the save-time compile fallback's own
+ * reconciliation ({@link reconcileWithFallbackCheck}) — `mergeDiagnostics` (`bbj-document-validator.ts`)
+ * and its start-line equality stay in use only for a fallback check of text that is not on disk.
  */
 export function lineSpansOverlap(a: Range, b: Range): boolean {
     return a.start.line <= b.end.line && b.start.line <= a.end.line;
@@ -259,6 +268,65 @@ export function reconcileEarlyVerdict(
     return {
         diagnostics: [...processed, ...verdictDiagnostics],
         state: { seen }
+    };
+}
+
+/**
+ * Reconciles Langium's diagnostics against a save-time compile that stands in for the live parser
+ * — the fallback branch's own, narrower reconciliation, used only once the caller has already
+ * confirmed the checked text is the text the compile actually ran against (whatever it read from
+ * disk, or the last saved version). Pure, non-mutating, same output shape as
+ * {@link reconcileWithVerdict}, but never downgrades: a fallback result is a check of the file on
+ * disk, not a verdict for the live editor text, so unlike a verdict it never gets to speak for a
+ * line it stays silent on — every complaint that does not give way to the fallback's own
+ * diagnostic is kept exactly as it was, at its original severity, never turned into a warning.
+ *
+ * Every non-syntax diagnostic in `langiumDiagnostics` passes through unchanged and is never
+ * compared against `cplDiagnostics`, exactly as in `reconcileWithVerdict`. For each syntax
+ * complaint, its start line's text is compared between `validatedLineText` (the text Langium
+ * validated it against) and `checkedLineText` (the text the fallback check actually covered) —
+ * "matched" means byte-identical, mirroring {@link reconcileEarlyVerdict}'s own guard against a
+ * stale line number:
+ * - matched, and its span overlaps a fallback diagnostic's span ({@link lineSpansOverlap}) →
+ *   dropped (the fallback's own diagnostic speaks for that line instead); its key
+ *   ({@link syntaxComplaintKey}, using `checkedLineText` so a later carry-over pass matches it
+ *   exactly) joins the returned `seen` set;
+ * - every other case (unmatched, or matched with no overlap) → kept exactly as it was, with no key
+ *   recorded — trusting a stale complaint's position on a line the fallback check never actually
+ *   covered, or handing it a downgrade the fallback result never earned, would risk hiding or
+ *   misrepresenting a still-real error.
+ *
+ * The result is the surviving Langium diagnostics, in their original relative order, followed by
+ * `cplDiagnostics`, in their own order — nothing is re-sorted, and `cplDiagnostics` keep their own
+ * message and source untouched.
+ */
+export function reconcileWithFallbackCheck(
+    langiumDiagnostics: Diagnostic[],
+    cplDiagnostics: Diagnostic[],
+    validatedLineText: LineTextLookup,
+    checkedLineText: LineTextLookup
+): { diagnostics: Diagnostic[]; seen: ReadonlySet<string> } {
+    const seen = new Set<string>();
+    const processed: Diagnostic[] = [];
+    for (const diagnostic of langiumDiagnostics) {
+        if (!isSyntaxComplaint(diagnostic)) {
+            processed.push(diagnostic);
+            continue;
+        }
+        const line = diagnostic.range.start.line;
+        const matched = validatedLineText(line) === checkedLineText(line);
+        const overlapsCheck = matched
+            && cplDiagnostics.some(cplDiagnostic => lineSpansOverlap(diagnostic.range, cplDiagnostic.range));
+        if (overlapsCheck) {
+            seen.add(syntaxComplaintKey(diagnostic.message, checkedLineText(line)));
+            // dropped — the fallback's own diagnostic on this line replaces it.
+        } else {
+            processed.push(diagnostic);
+        }
+    }
+    return {
+        diagnostics: [...processed, ...cplDiagnostics],
+        seen
     };
 }
 

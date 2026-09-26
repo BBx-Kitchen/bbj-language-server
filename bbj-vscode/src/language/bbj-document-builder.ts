@@ -13,19 +13,29 @@ import { normalize, resolve, join } from "path";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
-import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy } from './bbj-document-validator.js';
+import { mergeDiagnostics, getCompilerTrigger, applyConfiguredDiagnosticHierarchy, composeOnSaveDiagnostics } from './bbj-document-validator.js';
 import { BBJ_PARSER_SOURCE, type LiveParseOutcome } from './bbj-parser-service.js';
 import {
     clearAllVerdictStates,
     clearVerdictState,
     composeWithVerdict,
     getVerdictState,
+    reconcileWithFallbackCheck,
     recallLangiumSnapshot,
     rememberLangiumDiagnostics,
     setVerdictState,
+    textLineLookup,
     type LangiumDiagnosticsSnapshot,
     type VerdictState
 } from './bbj-diagnostic-reconciliation.js';
+import {
+    clearAllContentChanges,
+    clearAllKeptChecks,
+    contentChangesSince,
+    pruneContentChangesThrough,
+    setKeptCheck,
+    type KeptCheck
+} from './bbj-kept-check.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
 import type { BBjServices } from './bbj-module.js';
@@ -53,12 +63,61 @@ export function isBuildableDocumentUri(
 /**
  * The shape of a `TextDocuments` provider that also exposes the open/change events -- every
  * real LSP shared-services instance (`NormalizedTextDocuments`), but not the hand-built
- * `{ get }`-only test doubles several harnesses construct `BBjDocumentBuilder` with.
+ * `{ get }`-only test doubles several harnesses construct `BBjDocumentBuilder` with. `onDidSave`
+ * is optional here on purpose -- see {@link hasTextDocumentEvents}'s own doc comment for why it
+ * stays out of that guard's check.
  */
 type TextDocumentEventsProvider = TextDocumentProvider & {
     readonly onDidOpen: Event<TextDocumentChangeEvent<TextDocument>>;
     readonly onDidChangeContent: Event<TextDocumentChangeEvent<TextDocument>>;
+    readonly onDidSave?: Event<TextDocumentChangeEvent<TextDocument>>;
+    readonly onDidClose?: Event<TextDocumentChangeEvent<TextDocument>>;
 };
+
+/**
+ * The reason an arming call reached {@link BBjDocumentBuilder.armLiveParseFromEvent} --
+ * `'open'`/`'change'` from the constructor's `onDidOpen`/`onDidChangeContent` listeners, `'save'`
+ * from its `onDidSave` listener. Threaded through the whole arming call chain so the `on-save`
+ * gate can tell a save or open apart from a keystroke: both `onDidOpen` and the paired
+ * `onDidChangeContent` Langium fires for the very same open funnel into the same private methods
+ * with no other way to tell them apart.
+ */
+export type LiveParseArmReason = 'open' | 'change' | 'save';
+
+/**
+ * Trailing-edge quiet period (ms) before a debounced live-parse / BBjCPL cycle runs. Re-armed by
+ * every open, edit and rebuild of an open document under `debounced` -- not only saves. Fixed;
+ * not user-configurable. Exported so {@link armDelayMs} and tests can reference the same value
+ * `BBjDocumentBuilder.SAVE_DEBOUNCE_MS` (below) is defined equal to.
+ */
+export const COMPILER_CHECK_DEBOUNCE_MS = 500;
+
+/**
+ * Whether an arming call for `reason`, under the current `trigger` mode, should start a
+ * compiler-check cycle at all. False for trigger `'off'` (no cycle ever starts, whatever the
+ * reason); false for `'on-save'` with reason `'change'` (typing never checks under on-save);
+ * false for `'debounced'` with reason `'save'` (a save never armed a check from an event before
+ * this phase, and `debounced`'s existing behaviour must not change); true otherwise, matching
+ * every arming path's behaviour before this phase for `'debounced'` and `'off'`.
+ */
+export function eventArmsCheck(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): boolean {
+    if (trigger === 'off') return false;
+    if (trigger === 'on-save' && reason === 'change') return false;
+    if (trigger === 'debounced' && reason === 'save') return false;
+    return true;
+}
+
+/**
+ * The debounce delay (ms) a cycle armed for `reason` under `trigger` should use. Zero under
+ * `'on-save'` -- {@link eventArmsCheck} already excludes the only reason (`'change'`) that would
+ * otherwise reach arming there, so `'open'` and `'save'` are the only reasons this is ever called
+ * for under `on-save`, and both an open and a save need to check immediately, with no delay.
+ * Otherwise {@link COMPILER_CHECK_DEBOUNCE_MS}, unchanged from every arming path's behaviour
+ * before this phase.
+ */
+export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): number {
+    return trigger === 'on-save' ? 0 : COMPILER_CHECK_DEBOUNCE_MS;
+}
 
 /**
  * True only when `provider` exposes both `onDidOpen` and `onDidChangeContent` as functions --
@@ -105,13 +164,53 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     /**
-     * Trailing-edge quiet period (ms) before a live-parse / BBjCPL cycle runs. Re-armed by every
-     * open, edit and rebuild of an open document -- not only saves. Fixed; not user-configurable.
+     * Per-file cycle counter, keyed like {@link cplDebounceTimers}. Bumped at the start of every
+     * debounce cycle's own timer callback, before any `await`, to the next integer for that key --
+     * the counter's current value for a key is therefore always this document's most recently
+     * started cycle's own number. Under `on-save`, where a save's zero-delay cycle can genuinely
+     * overlap a still-in-flight earlier one, a cycle whose own number no longer matches the
+     * counter's current value has been superseded by a newer cycle for the same document and must
+     * store and publish nothing -- see {@link debouncedCompile}'s own doc comment. Under
+     * `debounced` this counter is bumped the same way but never consulted: the existing
+     * version-based staleness check already covers that mode, unchanged by this phase.
      */
-    private static readonly SAVE_DEBOUNCE_MS = 500;
+    private readonly checkSequence = new Map<string, number>();
+
+    /**
+     * The trigger mode {@link runBbjcplForDocuments} saw on its previous call -- `undefined`
+     * until that method has run at least once. Lets it tell a runtime mode switch apart from a
+     * rebuild under a steady mode: when the trigger differs from this field, the `debounced`
+     * branch arms nothing for this rebuild (a VS Code settings change rebuilds every open file
+     * document via `reloadJavaClassesAndRevalidate`, and that rebuild must not start one check
+     * per open file the instant `debounced` becomes current) -- the next edit arms as usual. Not
+     * consulted by the `'off'` or `'on-save'` branches: `'off'` already clears on every call
+     * regardless of a switch, and `'on-save'` never arms from a rebuild in the first place.
+     */
+    private lastRebuildTrigger: ReturnType<typeof getCompilerTrigger> | undefined = undefined;
+
+    /**
+     * Trailing-edge quiet period (ms) before a debounced live-parse / BBjCPL cycle runs. Re-armed
+     * by every open, edit and rebuild of an open document under `debounced` -- not only saves.
+     * Fixed; not user-configurable. Kept equal to the exported {@link COMPILER_CHECK_DEBOUNCE_MS}
+     * so `armDelayMs`'s "otherwise" branch and this default agree. Under `on-save`, a save or open
+     * runs its cycle with no delay instead -- see {@link armDelayMs} and {@link debouncedCompile}'s
+     * `delayMs` parameter.
+     */
+    private static readonly SAVE_DEBOUNCE_MS = COMPILER_CHECK_DEBOUNCE_MS;
 
     /** Tracks whether BBjCPL is available (lazily detected on first trigger). */
     private bbjcplAvailable: boolean | undefined = undefined;
+
+    /**
+     * The live text-document version last recorded as saved, per document uri (normalized via
+     * {@link UriUtils.normalize}) — set by {@link onDocumentSaved} in every trigger mode,
+     * including `'off'`, so a later switch into `debounced`/`on-save` still finds an accurate
+     * record. Read by {@link checkedTextIsOnDisk} to decide whether a fallback cycle's checked
+     * text is provably the text bbjcpl compiled: a save-triggered check's own version always
+     * matches here, whatever the file's encoding, since the version is recorded before the very
+     * event that arms that check.
+     */
+    private readonly lastSavedVersion = new Map<string, number>();
 
     /**
      * Lazy lookup for the shared LSP connection -- resolved on every call, never cached at
@@ -143,12 +242,46 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // debouncedCompile) is untouched and keeps arming the very same cplDebounceTimers entry.
         // Langium's text-document store fires onDidOpen immediately followed by
         // onDidChangeContent for the same open, so both listeners resetting the same debounce
-        // timer on an open is harmless -- the second reset just replaces the first.
+        // timer on an open is harmless -- the second reset just replaces the first. Saves arm here
+        // too, with their own 'save' reason: under on-save the change listener's 'change' reason
+        // arms nothing (see eventArmsCheck), so a save is the only way an edit-driven cycle starts
+        // once the file is open.
         const textDocuments = services.workspace.TextDocuments;
         if (hasTextDocumentEvents(textDocuments)) {
-            textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document));
-            textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document));
+            textDocuments.onDidOpen(event => this.armLiveParseFromEvent(event.document, 'open'));
+            textDocuments.onDidChangeContent(event => this.armLiveParseFromEvent(event.document, 'change'));
+            if (typeof textDocuments.onDidSave === 'function') {
+                textDocuments.onDidSave(event => this.onDocumentSaved(event.document));
+            }
+            // Forgets the closed document's last-saved-version record -- a later reopen of the
+            // same uri (a different file, or the same file edited outside this editor) must not
+            // find a stale record from a previous editing session.
+            if (typeof textDocuments.onDidClose === 'function') {
+                textDocuments.onDidClose(event => {
+                    this.lastSavedVersion.delete(UriUtils.normalize(URI.parse(event.document.uri)));
+                });
+            }
         }
+    }
+
+    /**
+     * Handles the constructor's `onDidSave` event: records `textDocument`'s version in
+     * {@link lastSavedVersion} for its uri -- in every trigger mode, including `'off'`, so a
+     * later switch back into `debounced`/`on-save` still finds an accurate last-saved-version
+     * record -- then arms a live-parse cycle for the `'save'` reason exactly as the constructor
+     * did directly before this method existed. Wrapped in the same try/catch-and-log shape as
+     * {@link armLiveParseFromEvent}, for the same reason: an event listener that throws would
+     * break every other listener registered on the same emitter, not just this one. Logs only the
+     * uri and the error's own message, never document text.
+     */
+    private onDocumentSaved(textDocument: TextDocument): void {
+        try {
+            const uri = URI.parse(textDocument.uri);
+            this.lastSavedVersion.set(UriUtils.normalize(uri), textDocument.version);
+        } catch (e) {
+            logger.error(`Recording the saved version failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        this.armLiveParseFromEvent(textDocument, 'save');
     }
 
     /**
@@ -170,7 +303,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     /**
      * Whether a BBjCPL debounce timer is currently pending for any document — the second half
      * of the {@link hasPendingWork} quiescence predicate a config reload consults before it is
-     * safe to push a restart request (#486).
+     * safe to push a restart request (#486). Under `debounced` this timer covers the whole
+     * quiet-period-to-callback-start span, exactly as before this phase. Under `on-save` a save
+     * or open still registers the very same `cplDebounceTimers` entry (see {@link armDelayMs}'s
+     * zero-delay result); with the delay at zero the entry only covers the brief moment between
+     * that event and its callback starting, but the contract this method exposes -- "a cycle is
+     * currently pending" -- is unchanged either way.
      */
     public hasPendingCompile(): boolean {
         return this.cplDebounceTimers.size > 0;
@@ -191,6 +329,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      *    point, so without this half the predicate would report "not busy" while that tail is
      *    still actively loading/relinking/re-validating documents ({@link postProcessingDepth}); or
      *  - a BBjCPL debounce timer is pending ({@link hasPendingCompile}).
+     *
+     * Nothing else about this predicate changes under `on-save` -- see {@link hasPendingCompile}'s
+     * own doc comment for the one detail (a much shorter, but still real, pending window) that
+     * does.
      */
     public hasPendingWork(): boolean {
         return this.currentState < DocumentState.Validated
@@ -248,9 +390,20 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Run BBjCPL compilation for each validated document based on trigger mode.
-     * Called from buildDocuments() after Langium validation completes.
-     * Only 'off' is distinguished here; 'debounced' and 'on-save' take the same path.
+     * Run BBjCPL compilation for each validated document based on trigger mode -- the
+     * rebuild-driven trigger, called from buildDocuments() for every document a rebuild just
+     * revalidated (another file's save, a relink, a config change, or this document's own).
+     * The three modes:
+     *
+     *  - `'off'`: no cycle can run; clears every open document's verdict state and stale
+     *    BBjCPL/live-parser diagnostics.
+     *  - `'on-save'`: never arms a check from here -- a rebuild reruns Langium only, and the
+     *    last verdict or compiler diagnostics stay exactly as they were. Under this trigger the
+     *    only place a check starts is the event-driven arming path (armLiveParseForDocument,
+     *    reached only for an 'open' or 'save' reason), never a rebuild for any other reason.
+     *  - `'debounced'`: arms every eligible open document exactly as before this phase, unless
+     *    this rebuild is the first one to see a trigger switched from something else -- see
+     *    {@link lastRebuildTrigger}.
      *
      * IMPORTANT: This runs INSIDE buildDocuments(), not from onBuildPhase —
      * calling from onBuildPhase causes CPU rebuild loops (see STATE.md).
@@ -260,10 +413,19 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         cancelToken: CancellationToken
     ): Promise<void> {
         const trigger = getCompilerTrigger();
+        // False on the very first call (lastRebuildTrigger still undefined) -- see
+        // lastRebuildTrigger's own doc comment for why this is computed once, at the top, before
+        // any branch below runs.
+        const triggerChanged = this.lastRebuildTrigger !== undefined && this.lastRebuildTrigger !== trigger;
+        this.lastRebuildTrigger = trigger;
 
         if (trigger === 'off') {
-            // No cycle can run while the trigger is off, so no document may keep a verdict.
+            // No cycle can run while the trigger is off, so no document may keep a verdict, a
+            // kept on-save check, or the change log a kept check would otherwise be mapped
+            // through -- there is nothing left for any of them to be kept against.
             clearAllVerdictStates();
+            clearAllKeptChecks();
+            clearAllContentChanges();
             // Clear stale BBjCPL and live-parser diagnostics for all eligible documents.
             for (const document of documents) {
                 if (!this.shouldCompileWithBbjcpl(document)) continue;
@@ -277,6 +439,26 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
                 }
             }
+            return;
+        }
+
+        if (trigger === 'on-save') {
+            // A rebuild -- whatever triggered it -- never starts a check under 'on-save'. Only
+            // the event-driven arming path (an 'open' or 'save' reason reaching
+            // armLiveParseForDocument) starts one; Langium's own validation of these documents
+            // has already run by the time buildDocuments() calls this method, unaffected. No
+            // burst to guard against on a switch into this mode either -- there was never
+            // anything to arm from a rebuild in the first place.
+            return;
+        }
+
+        if (triggerChanged) {
+            // The trigger just switched to 'debounced' from something else. A VS Code settings
+            // change rebuilds every open file document (main.ts's reloadJavaClassesAndRevalidate)
+            // as part of applying that switch, and this rebuild must not start one check per open
+            // file the instant 'debounced' becomes current -- that would be exactly the burst of
+            // checks a mode switch must not produce. The next edit arms as usual:
+            // armLiveParseFromEvent/armLiveParseForDocument never consult lastRebuildTrigger.
             return;
         }
 
@@ -317,25 +499,25 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * Entry point for the constructor's `onDidOpen`/`onDidChangeContent` listeners. The whole
-     * body is wrapped so a throw here never propagates into the shared text-document emitter
-     * Langium's own update handler listens on too -- an event listener that throws would break
-     * every OTHER listener registered on the same emitter, not just this one. Logs only the uri
-     * and the error's own message, never document text.
+     * Entry point for the constructor's `onDidOpen`/`onDidChangeContent`/`onDidSave` listeners.
+     * The whole body is wrapped so a throw here never propagates into the shared text-document
+     * emitter Langium's own update handler listens on too -- an event listener that throws would
+     * break every OTHER listener registered on the same emitter, not just this one. Logs only the
+     * uri and the error's own message, never document text.
      */
-    private armLiveParseFromEvent(textDocument: TextDocument): void {
+    private armLiveParseFromEvent(textDocument: TextDocument, reason: LiveParseArmReason): void {
         try {
-            if (getCompilerTrigger() === 'off') return;
+            if (!eventArmsCheck(getCompilerTrigger(), reason)) return;
             const uri = URI.parse(textDocument.uri);
             const document = this.langiumDocuments.getDocument(uri);
             if (!document) {
                 // No LangiumDocument yet for this uri -- the workspace hasn't loaded it. Re-arm
                 // once the workspace manager reports ready, since that resolves before the
                 // startup build runs, never through services.workspace.WorkspaceLock.
-                this.armWhenWorkspaceReady(uri);
+                this.armWhenWorkspaceReady(uri, reason);
                 return;
             }
-            this.armLiveParseForDocument(document, textDocument);
+            this.armLiveParseForDocument(document, textDocument, reason);
         } catch (e) {
             logger.error(`Live-parse event listener failed for ${textDocument.uri}: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -346,24 +528,27 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * startup file scan has finished by then, but not the workspace's own build, so a document
      * this returns for may still be sitting at `Parsed`. At most one pending entry per uri (see
      * {@link pendingReadyUris}), so a burst of events for the same not-yet-loaded uri chains onto
-     * `ready` only once. When `ready` resolves, the trigger is re-checked (a config change while
-     * waiting may have turned it off), the document and its now-current live `TextDocument` are
-     * looked up again, and the cycle is armed only when both exist. A rejected `ready` (this
-     * repository never rejects it, but a hand-built test double could) is caught and logged, never
-     * left as an unhandled rejection.
+     * `ready` only once -- using the `reason` of whichever call first reached this method, since a
+     * later call for the same uri while one is already pending returns before ever reaching here
+     * (see {@link armLiveParseFromEvent}). When `ready` resolves, the trigger/reason pair is
+     * re-checked with {@link eventArmsCheck} (a config change while waiting may have turned the
+     * check off), the document and its now-current live `TextDocument` are looked up again, and
+     * the cycle is armed only when both exist. A rejected `ready` (this repository never rejects
+     * it, but a hand-built test double could) is caught and logged, never left as an unhandled
+     * rejection.
      */
-    private armWhenWorkspaceReady(uri: URI): void {
+    private armWhenWorkspaceReady(uri: URI, reason: LiveParseArmReason): void {
         const key = uri.toString();
         if (this.pendingReadyUris.has(key)) return;
         this.pendingReadyUris.add(key);
         this.wsManager().ready
             .then(() => {
                 this.pendingReadyUris.delete(key);
-                if (getCompilerTrigger() === 'off') return;
+                if (!eventArmsCheck(getCompilerTrigger(), reason)) return;
                 const document = this.langiumDocuments.getDocument(uri);
                 const liveTextDocument = this.textDocuments?.get(uri);
                 if (document && liveTextDocument) {
-                    this.armLiveParseForDocument(document, liveTextDocument);
+                    this.armLiveParseForDocument(document, liveTextDocument, reason);
                 }
             })
             .catch(e => {
@@ -381,15 +566,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * editor, `file:` scheme, not synthetic, not external, bbjcpl found), binds the event's live
      * text onto `document` (research Pitfall 1), then arms the existing debounce cycle -- the same
      * {@link cplDebounceTimers} entry the rebuild path uses, so an event followed by a rebuild
-     * inside the debounce window produces exactly one cycle.
+     * inside the debounce window produces exactly one cycle -- with the delay {@link armDelayMs}
+     * computes for `reason` under the current trigger (zero for an open or save under `on-save`).
      */
-    private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument): void {
+    private armLiveParseForDocument(document: LangiumDocument, textDocument: TextDocument, reason: LiveParseArmReason): void {
         if (!isBuildableDocumentUri(document.uri, this.textDocuments, this.serviceRegistry)) return;
         if (!this.shouldCompileWithBbjcpl(document)) return;
         this.trackBbjcplAvailability();
         if (this.bbjcplAvailable === false) return;
         this.bindLiveTextDocument(document, textDocument);
-        this.debouncedCompile(document);
+        this.debouncedCompile(document, armDelayMs(getCompilerTrigger(), reason));
     }
 
     /**
@@ -432,6 +618,37 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
+     * True when `checkedText` (the text a fallback cycle's compile actually ran against) is
+     * provably the text the editor shows for `document` at `checkedVersion`. Two independent
+     * routes to "true", either is enough:
+     *
+     *  - `checkedVersion` equals the last version {@link onDocumentSaved} recorded for this uri --
+     *    a save-triggered check is always covered here, whatever the file's encoding, since the
+     *    version is recorded synchronously before the very save event that arms that check.
+     *  - the file reads back, from disk, exactly `checkedText` -- covers an open of a clean file
+     *    and a debounced cycle with no unsaved edits, when the saved-version record does not (yet)
+     *    exist or does not match. The read runs inside a `try`, not a promise `.catch()`: a
+     *    provider may throw synchronously instead of returning a rejected promise (the
+     *    `EmptyFileSystemProvider` used throughout this test suite does exactly that), and a
+     *    thrown or rejected read is treated the same way -- "not provably on disk".
+     *
+     * Every other outcome -- unsaved edits, an unreadable file, or bytes that decode to text
+     * other than `checkedText` -- returns false: bbjcpl's line numbers may belong to text other
+     * than what is now open, so the caller must merge exactly as before this phase and can never
+     * hide a real error behind a check of different text.
+     */
+    private async checkedTextIsOnDisk(document: LangiumDocument, checkedVersion: number, checkedText: string): Promise<boolean> {
+        const key = UriUtils.normalize(document.uri);
+        if (this.lastSavedVersion.get(key) === checkedVersion) return true;
+        try {
+            const diskText = await this.fileSystemProvider.readFile(document.uri);
+            return diskText === checkedText;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
      * The latest known Langium diagnostics for `document`, together with the text they were
      * validated against, every debounce cycle composes against instead of `document.diagnostics`
      * directly -- {@link recallLangiumSnapshot} when a Langium validation has remembered one, else
@@ -446,27 +663,34 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * Schedule a BBjCPL compilation with trailing-edge debounce.
-     * Every open, edit or rebuild of an open document re-arms the per-file timer, so only the
-     * last event in a burst runs a cycle, after a 500ms quiet period. This prevents CPU spike and
-     * diagnostic flicker.
+     * Under `debounced`, every open, edit or rebuild of an open document re-arms the per-file
+     * timer, so only the last event in a burst runs a cycle, after a 500ms quiet period -- this
+     * prevents CPU spike and diagnostic flicker. Under `on-save`, an open or save runs its cycle
+     * with `delayMs` of `0` instead -- see the `delayMs` parameter below and {@link armDelayMs}.
      *
      * Compute-first, publish-once: nothing is written to `document.diagnostics` until the cycle
      * has decided its whole result -- see {@link publishCycleDiagnostics}, the single write/publish
      * point every branch below ends at. This callback is also the target of a live-parse debounce
-     * armed directly from a document change/open event (the constructor's `onDidChangeContent`
-     * listener), which can run before this document has ever been through a Langium build, so it
-     * must never assume a prior build already wrote `document.diagnostics` or remembered a
-     * pre-hierarchy list.
+     * armed directly from a document open, change or save event (the constructor's `onDidOpen`/
+     * `onDidChangeContent`/`onDidSave` listeners), which can run before this document has ever been
+     * through a Langium build, so it must never assume a prior build already wrote
+     * `document.diagnostics` or remembered a pre-hierarchy list.
      *
      * The live parser is asked first. A verdict for text unchanged since the request went out
      * reconciles Langium's own diagnostics against BBj's and the save-time compile does not run
      * this cycle — bbjcpl is the same BBj parser, run against the saved file instead of the live
      * text, so with a verdict already in hand it would only add duplicates or stale results.
      *
-     * A verdict for text that has since moved on, or a request superseded by a newer one, does
-     * nothing further this cycle: no reconciliation, no state change, no save-time compile, and no
-     * publish at all — the edit that changed the text has already scheduled a newer cycle of its
-     * own.
+     * Under `debounced`, a verdict for text that has since moved on is dropped exactly as before
+     * this phase: no reconciliation, no state change, no save-time compile, and no publish at all
+     * — a later edit has already scheduled a newer cycle of its own for the newer text. Under
+     * `on-save`, where typing between saves arms no new cycle at all, the same still-open text
+     * document keeps its verdict instead: the check is reconciled and stored for the version it
+     * actually ran against, and published on whatever line that diagnostic maps to now, through
+     * the change log a later validation pass would otherwise use on its own. Either way, a request
+     * superseded by a newer cycle for the same document — one whose own timer has already fired
+     * since this one's did — stores and publishes nothing: only the newest save's own result may
+     * ever win, whichever of the two finishes last.
      *
      * Every other outcome (the latch/trigger already off, or the live parse failed or came back
      * unavailable) is gated on whether this cycle's own request is still for the document's
@@ -478,14 +702,23 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * regardless of this cycle's own staleness, because it is a one-time signal tied to the
      * request that discovered the flip, not to this cycle's text version — every document's
      * verdict is stale the moment the endpoint that produced it is gone, not only this one's.
+     *
+     * @param delayMs The quiet period before the cycle runs. Defaults to
+     * {@link BBjDocumentBuilder.SAVE_DEBOUNCE_MS} (the `debounced` behaviour, unchanged from
+     * before this phase); callers pass {@link armDelayMs}'s result, which is `0` for an open or
+     * save under `on-save`. The mode is never consulted inside this callback itself (research
+     * anti-pattern) -- the caller already decided whether and when this cycle runs by choosing
+     * `delayMs`; what the cycle does once it fires is identical regardless of mode.
      */
-    private debouncedCompile(document: LangiumDocument): void {
+    private debouncedCompile(document: LangiumDocument, delayMs: number = BBjDocumentBuilder.SAVE_DEBOUNCE_MS): void {
         const key = document.uri.fsPath;
         const existing = this.cplDebounceTimers.get(key);
         if (existing) clearTimeout(existing);
 
         const timer = setTimeout(async () => {
             this.cplDebounceTimers.delete(key);
+            const mySequence = (this.checkSequence.get(key) ?? 0) + 1;
+            this.checkSequence.set(key, mySequence);
 
             try {
                 // Resolve BBjCPLService/BBjParserService lazily via serviceRegistry
@@ -500,15 +733,40 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // close-and-reopen) swapped the textDocument object outright.
                 const textDocumentBeforeRequest = document.textDocument;
                 const versionBeforeRequest = textDocumentBeforeRequest.version;
+                // The text this cycle checks: the live parse sends exactly this, and bbjcpl
+                // compiles the file on disk instead -- checkedTextIsOnDisk decides whether the
+                // two happen to be the same text.
+                const checkedText = textDocumentBeforeRequest.getText();
                 let liveOutcome: LiveParseOutcome | undefined;
                 if (bbjParserService.isEnabled()) {
                     liveOutcome = await bbjParserService.requestLiveParse(document);
                 }
                 const stillCurrent = document.textDocument === textDocumentBeforeRequest
                     && document.textDocument.version === versionBeforeRequest;
+                // Same text-document object as when this cycle's request went out, whatever its
+                // version is now -- true across typing (the object is updated in place), false
+                // only once the document is closed and reopened. Under 'on-save' this is enough
+                // on its own to let a verdict for text the user has since typed over still be kept
+                // and correctly placed on its (possibly shifted) line, instead of being dropped the
+                // moment the version no longer matches -- the very case the debounced stale-version
+                // guard below exists to enforce for that mode instead.
+                const sameTextDocument = document.textDocument === textDocumentBeforeRequest;
+                // True once a newer cycle for this same document has started since this cycle's
+                // own timer fired -- see checkSequence's own doc comment. Consulted only under
+                // 'on-save', where a save's zero-delay cycle can genuinely overlap a still-in-flight
+                // earlier one; under 'debounced' this always reports false, since the version-based
+                // stillCurrent check above already covers staleness for that mode.
+                const supersededOnSave = getCompilerTrigger() === 'on-save' && this.checkSequence.get(key) !== mySequence;
 
                 let next: Diagnostic[];
-                if (liveOutcome?.kind === 'verdict' && stillCurrent) {
+                if (liveOutcome?.kind === 'verdict' && (stillCurrent || (getCompilerTrigger() === 'on-save' && sameTextDocument))) {
+                    if (supersededOnSave) {
+                        // A newer on-save cycle for this document already started after this one's
+                        // own timer fired -- whichever of the two finishes last, only the newer
+                        // save's own result may ever be stored or published; this one must not
+                        // overwrite it.
+                        return;
+                    }
                     // Compose against the latest known Langium snapshot (its pre-hierarchy list
                     // together with the text it was validated against), not document.diagnostics
                     // above: the hierarchy may already have hidden linking diagnostics or
@@ -532,21 +790,57 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         version: versionBeforeRequest,
                         diagnostics: liveOutcome.diagnostics
                     };
+                    // Composed against the text and version this cycle actually checked, not the
+                    // document's current live text/version -- so composeWithVerdict's own
+                    // isVerdictForVersion check stays true for this verdict's own version even once
+                    // the user has typed further, and seen reflects exactly what this check
+                    // reconciled. Identical to composing against the live text/version whenever
+                    // stillCurrent is true, since checkedText and the live text are then the same.
                     const result = composeWithVerdict({
                         langiumDiagnostics: baseline.diagnostics,
                         validatedText: baseline.validatedText,
-                        liveText: document.textDocument.getText(),
-                        liveVersion: document.textDocument.version,
+                        liveText: checkedText,
+                        liveVersion: versionBeforeRequest,
                         verdict: record
                     });
-                    setVerdictState(document.uri, { ...record, seen: result.seen ?? new Set<string>() });
-                    next = applyConfiguredDiagnosticHierarchy(result.diagnostics);
+                    const seen = result.seen ?? new Set<string>();
+                    setVerdictState(document.uri, { ...record, seen });
+
+                    // Stored in every mode, not only 'on-save': it is read only under 'on-save'
+                    // (validateDocument, and this cycle's own publish below), but storing it under
+                    // 'debounced' too means a later runtime switch to 'on-save' keeps showing this
+                    // verdict's errors instead of starting from nothing. Pruned to this version
+                    // right away -- nothing earlier can ever be needed to map a diagnostic from
+                    // this check onward. storedUnderOnSave records the trigger at this exact
+                    // moment, so a later switch away from 'on-save' is told apart from a check that
+                    // was always 'debounced' -- see KeptCheck.storedUnderOnSave's own doc comment.
+                    const keptCheck: KeptCheck = {
+                        kind: 'verdict',
+                        version: versionBeforeRequest,
+                        diagnostics: liveOutcome.diagnostics,
+                        seen,
+                        storedUnderOnSave: getCompilerTrigger() === 'on-save'
+                    };
+                    setKeptCheck(document.uri, keptCheck);
+                    pruneContentChangesThrough(document.uri, versionBeforeRequest);
+
+                    next = getCompilerTrigger() === 'on-save'
+                        ? composeOnSaveDiagnostics({
+                            langiumDiagnostics: baseline.diagnostics,
+                            validatedText: baseline.validatedText,
+                            liveText: document.textDocument.getText(),
+                            kept: keptCheck,
+                            changesSinceCheck: contentChangesSince(document.uri, versionBeforeRequest, document.textDocument.version)
+                        })
+                        : applyConfiguredDiagnosticHierarchy(result.diagnostics);
                 } else if (liveOutcome?.kind === 'verdict' || liveOutcome?.kind === 'cancelled') {
-                    // A verdict for text that has since moved on, or a request superseded by a
-                    // newer one: nothing further this cycle — no reconciliation, no state change,
-                    // no save-time compile, and (publishCycleDiagnostics never runs) no publish at
-                    // all. The edit that changed the text has already scheduled a newer cycle of
-                    // its own.
+                    // A verdict for text that has since moved on under 'debounced' (where only an
+                    // exact version match keeps a verdict), or a request superseded by a newer one
+                    // under 'on-save' before this cycle ever reaches the branch above: nothing
+                    // further this cycle — no reconciliation, no state change, no save-time
+                    // compile, and (publishCycleDiagnostics never runs) no publish at all. The edit
+                    // or newer save that superseded this cycle has already scheduled (or already
+                    // completed) a newer cycle of its own.
                     return;
                 } else {
                     // failed, unavailable, or the latch/trigger already off (liveOutcome
@@ -560,7 +854,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     if (liveOutcome?.kind === 'unavailable') {
                         clearAllVerdictStates();
                     }
-                    if (!stillCurrent) {
+                    if (getCompilerTrigger() === 'on-save') {
+                        // Under on-save a save's own compile still completes even when the user
+                        // typed after the save (the same same-text-document-object relaxation the
+                        // verdict branch above applies), but a newer on-save cycle for this
+                        // document that has already started still supersedes this one entirely.
+                        if (!sameTextDocument || supersededOnSave) {
+                            return;
+                        }
+                    } else if (!stillCurrent) {
                         // A newer cycle for the newer text is already in flight or has already
                         // finished, and may already have published its own verdict: no further
                         // state change for this document beyond the connection-wide clear above,
@@ -580,17 +882,77 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // changed the remembered Langium snapshot while this cycle waited on the
                     // save-time compile. With the verdict forgotten there is nothing left to
                     // reconcile, so the latest remembered Langium list with the hierarchy applied
-                    // is the whole 0.16.x-shaped base bbjcpl merges onto.
+                    // is the whole 0.16.x-shaped base bbjcpl merges or reconciles onto.
                     const baseline = this.latestLangiumBaseline(document);
                     const base = applyConfiguredDiagnosticHierarchy(baseline.diagnostics);
-                    next = cplDiags.length > 0 ? mergeDiagnostics(base, cplDiags) : base;
+
+                    // The on-disk check runs only once bbjcpl has actually reported something,
+                    // and only after the compile itself -- see checkedTextIsOnDisk's own doc
+                    // comment for what "on disk" proves here. Reused below both for the
+                    // debounced-unchanged publish selection and for what this save's kept check
+                    // remembers as already accounted for.
+                    const onDisk = cplDiags.length > 0
+                        && await this.checkedTextIsOnDisk(document, versionBeforeRequest, checkedText);
+                    let reconciledWithFallback: Diagnostic[] | undefined;
+                    let fallbackSeen: ReadonlySet<string> = new Set<string>();
+                    if (onDisk) {
+                        // No second pass through applyConfiguredDiagnosticHierarchy: that would
+                        // switch on the hierarchy's own BBjCPL-suppresses-parse-errors rule,
+                        // which this line-scoped dedup must never trigger on its own.
+                        const reconciled = reconcileWithFallbackCheck(
+                            base,
+                            cplDiags,
+                            textLineLookup(baseline.validatedText ?? checkedText),
+                            textLineLookup(checkedText)
+                        );
+                        reconciledWithFallback = reconciled.diagnostics;
+                        fallbackSeen = reconciled.seen;
+                    }
+
+                    // Stored in every mode except 'off' (which this callback is never armed
+                    // under), mirroring the verdict branch above -- read only under 'on-save', but
+                    // keeping it under 'debounced' too means a later runtime switch to 'on-save'
+                    // keeps showing this save's errors instead of starting from nothing. An empty
+                    // cplDiags still stores an empty kept check, clearing whatever the previous
+                    // save's kept fallback result was. storedUnderOnSave records the trigger at
+                    // this exact moment -- see KeptCheck.storedUnderOnSave's own doc comment.
+                    let keptCheck: KeptCheck | undefined;
+                    if (getCompilerTrigger() !== 'off') {
+                        keptCheck = {
+                            kind: 'fallback',
+                            version: versionBeforeRequest,
+                            diagnostics: cplDiags,
+                            seen: fallbackSeen,
+                            storedUnderOnSave: getCompilerTrigger() === 'on-save'
+                        };
+                        setKeptCheck(document.uri, keptCheck);
+                        pruneContentChangesThrough(document.uri, versionBeforeRequest);
+                    }
+
+                    next = getCompilerTrigger() === 'on-save'
+                        ? composeOnSaveDiagnostics({
+                            langiumDiagnostics: baseline.diagnostics,
+                            validatedText: baseline.validatedText,
+                            liveText: document.textDocument.getText(),
+                            kept: keptCheck!,
+                            changesSinceCheck: contentChangesSince(document.uri, versionBeforeRequest, document.textDocument.version)
+                        })
+                        : cplDiags.length === 0
+                            ? base
+                            : onDisk
+                                ? reconciledWithFallback!
+                                // The checked text is not provably on disk (unsaved edits, an
+                                // unreadable file, or bytes that decode to different text) --
+                                // merge exactly as before this phase, never hiding a real error
+                                // behind a check of different text.
+                                : mergeDiagnostics(base, cplDiags);
                 }
 
                 // A single publish covering whichever branch above ran -- see
                 // publishCycleDiagnostics's own doc comment for why the state check there
                 // matters. CancellationToken.None — the original build's token may be stale
-                // after the 500ms debounce. Both compiler services handle their own timeout
-                // internally.
+                // by the time this cycle's delay (debounced or zero, see delayMs) elapses.
+                // Both compiler services handle their own timeout internally.
                 await this.publishCycleDiagnostics(document, next);
             } catch (e) {
                 // The callback runs detached from setTimeout, with no rejection handler of
@@ -599,7 +961,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // (P61-D2-017). Log and let the build continue.
                 logger.error(`BBjCPL debounced compile failed for ${key}: ${e}`);
             }
-        }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
+        }, delayMs);
 
         this.cplDebounceTimers.set(key, timer);
     }

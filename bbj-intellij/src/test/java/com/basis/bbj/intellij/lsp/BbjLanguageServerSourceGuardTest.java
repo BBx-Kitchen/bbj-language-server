@@ -140,6 +140,86 @@ class BbjLanguageServerSourceGuardTest {
         }
     }
 
+    /**
+     * LSP4IJ's own handler must be forwarded to {@code super} unchanged and first; this plugin's
+     * own handler is registered beside it exactly once, guarded by the registration flag so a
+     * second call to this method on the same instance never adds a duplicate.
+     */
+    @Test
+    void addUnexpectedServerStopHandlerForwardsToSuperOnceThenRegistersOwnHandlerOnceGuardedByTheFlag() {
+        String stripped = stripComments(readGuardedSource());
+        String body = bodyOf(stripped, "public void addUnexpectedServerStopHandler(");
+
+        assertEquals(2, countOccurrences(body, "super.addUnexpectedServerStopHandler("),
+                "the vendor's own handler and this plugin's own handler must both go through super");
+        assertEquals(1, countOccurrences(body, "super.addUnexpectedServerStopHandler(handler)"),
+                "LSP4IJ's own handler must be forwarded exactly once, unchanged");
+        assertEquals(1, countOccurrences(body, "super.addUnexpectedServerStopHandler(this::onUnexpectedStop)"),
+                "this plugin's own handler must be registered exactly once");
+
+        int forwardIndex = body.indexOf("super.addUnexpectedServerStopHandler(handler)");
+        int ownIndex = body.indexOf("super.addUnexpectedServerStopHandler(this::onUnexpectedStop)");
+        assertTrue(forwardIndex < ownIndex,
+                "LSP4IJ's own handler must be forwarded before this plugin's own handler is registered");
+
+        int flagIndex = body.indexOf("ownStopHandlerRegistered");
+        assertTrue(flagIndex >= 0 && flagIndex < ownIndex,
+                "the registration guard flag must be checked before the own handler is registered");
+    }
+
+    /**
+     * {@code stop()} must log before delegating to the vendor superclass, and delegate exactly
+     * once -- the excerpt this line feeds shows whether a stop() came before or after the process
+     * ended.
+     */
+    @Test
+    void stopLogsBeforeDelegatingToSuperExactlyOnce() {
+        String stripped = stripComments(readGuardedSource());
+        String body = bodyOf(stripped, "public void stop()");
+
+        assertEquals(1, countOccurrences(body, "super.stop()"),
+                "stop() must delegate to the vendor superclass exactly once");
+        int logIndex = body.indexOf("LOG.info(");
+        int superIndex = body.indexOf("super.stop()");
+        assertTrue(logIndex >= 0 && logIndex < superIndex, "stop() must log before calling super.stop()");
+    }
+
+    /**
+     * {@code onUnexpectedStop} must check the project is not disposed before it reports, report
+     * exactly once, and read the pid and the process handler exactly once each.
+     */
+    @Test
+    void onUnexpectedStopChecksDisposedBeforeReportingAndReadsPidAndProcessHandlerOnceEach() {
+        String stripped = stripComments(readGuardedSource());
+        String body = bodyOf(stripped, "private void onUnexpectedStop()");
+
+        int disposedIndex = body.indexOf("isDisposed()");
+        int reportIndex = body.indexOf("reportUnexpectedExit(");
+        assertTrue(disposedIndex >= 0, "isDisposed() is not present in onUnexpectedStop");
+        assertTrue(reportIndex >= 0, "reportUnexpectedExit( is not present in onUnexpectedStop");
+        assertTrue(disposedIndex < reportIndex, "the disposed guard must be checked before reporting");
+        assertEquals(1, countOccurrences(body, "reportUnexpectedExit("),
+                "onUnexpectedStop must report exactly once");
+        assertEquals(1, countOccurrences(body, "getPid()"),
+                "onUnexpectedStop must read the pid exactly once");
+        assertEquals(1, countOccurrences(body, "getProcessHandler()"),
+                "onUnexpectedStop must read the process handler exactly once");
+    }
+
+    /**
+     * The whole file reaches no vendor internals through reflection: no {@code setAccessible(},
+     * no {@code getDeclaredField(}, no {@code getDeclaredMethod(} and no attempt to call the
+     * package-private {@code isStopped(} directly.
+     */
+    @Test
+    void theWholeFileReachesNoVendorInternalsThroughReflection() {
+        String stripped = stripComments(readGuardedSource());
+        assertEquals(0, countOccurrences(stripped, "setAccessible("));
+        assertEquals(0, countOccurrences(stripped, "getDeclaredField("));
+        assertEquals(0, countOccurrences(stripped, "getDeclaredMethod("));
+        assertEquals(0, countOccurrences(stripped, "isStopped("));
+    }
+
     private static int countOccurrences(String text, String literal) {
         int count = 0;
         int index = 0;

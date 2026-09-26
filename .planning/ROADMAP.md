@@ -23,7 +23,8 @@
 - ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; landed on `origin/main` via PR #651 — see MILESTONES.md)
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
-- ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on PR #691, lands on `main` as one piece — see MILESTONES.md)
+- ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
+- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; PR #699 open against `main` — see MILESTONES.md)
 
 ## Phases
 
@@ -273,8 +274,23 @@ Exit gate passed with the endpoint active: A 168 → 9, A2 267 → 22, B 658 →
 requirements (32/32) in `.planning/milestones/v4.5-REQUIREMENTS.md`; audit (`tech_debt`, no
 gaps) in `.planning/milestones/v4.5-MILESTONE-AUDIT.md`; phase artifacts under
 `.planning/milestones/v4.5-phases/` and quick tasks under `.planning/milestones/v4.5-quick/`
-(tracked — no embargo). Override closeout: 3 artifacts acknowledged. Code on PR #691; the
-`bbj-ls` endpoint on BASIS GitLab `feat/689-parse-program-endpoint`.
+(tracked — no embargo). Override closeout: 3 artifacts acknowledged. Code on `main` via PR #691
+(merged 2026-09-24); the `bbj-ls` endpoint on BASIS GitLab `feat/689-parse-program-endpoint`.
+
+</details>
+
+<details>
+<summary>✅ v4.6 User-Facing Bug Burn-down (Phases 106-109) — SHIPPED 2026-09-26</summary>
+
+- [x] Phase 106: On-Save Compiler Check in Both IDEs (7/7 plans) — completed 2026-09-24
+- [x] Phase 107: Validation False Alarms & Silent Skips (6/6 plans, VAL-03 added 2026-09-24) — completed 2026-09-25
+- [x] Phase 108: IntelliJ Crash Detection (4/4 plans) — completed 2026-09-25
+- [x] Phase 109: Completion & Java Class Resolution (8/8 plans, 109-07/-08 closed verifier and UAT gaps) — completed 2026-09-26
+
+Full phase detail: `.planning/milestones/v4.6-ROADMAP.md`; requirements (19/19) in
+`.planning/milestones/v4.6-REQUIREMENTS.md`; audit (`tech_debt`, no gaps) in
+`.planning/milestones/v4.6-MILESTONE-AUDIT.md`; phase artifacts under
+`.planning/milestones/v4.6-phases/` (tracked). Override closeout: 2 artifacts acknowledged.
 
 </details>
 
@@ -304,17 +320,20 @@ gaps) in `.planning/milestones/v4.5-MILESTONE-AUDIT.md`; phase artifacts under
 | v4.3 Polish & Quality | 84-92 | 70 | Complete | 2026-09-13 |
 | v4.4 IntelliJ Focus | 93-97 | 36 | Complete | 2026-09-20 |
 | v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
+| v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 
-**Total:** 22 milestones shipped, 103 phases complete, 393 plans shipped.
+**Total:** 23 milestones shipped, 107 phases complete, 418 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
 here but have no `.planning/milestones/v4.0-phases/` archive on `main`. v4.1's phase
 artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, excluded from git
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
-v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tracked normally.
+v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail and are tracked normally.
+
+No milestone is active. Next: `/gsd-new-milestone`.
 
 ---
 
-*Roadmap last updated: 2026-09-24 — v4.5 Compiler Conformance archived (Phases 98-105, 32/32
-requirements). Next: `/gsd-new-milestone`.*
+*Roadmap last updated: 2026-09-26 — v4.6 User-Facing Bug Burn-down shipped and archived
+(Phases 106-109, 25 plans, 19/19 requirements).*

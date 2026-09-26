@@ -16,6 +16,7 @@ import { getStaticRunCallTarget, hasRunCallProjectContext, resolveRunCallPath, t
 import { registerClassChecks } from './validations/check-classes.js';
 import { registerVariableScopingChecks } from './validations/check-variable-scoping.js';
 import { registerFunctionCallChecks } from './validations/check-function-calls.js';
+import { registerUnknownJavaMemberChecks } from './validations/check-unknown-java-member.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
 import { NegativeLabelIdList } from './constants.js';
 import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
@@ -72,6 +73,7 @@ export function registerValidationChecks(services: BBjServices) {
     registerClassChecks(registry, services);
     registerVariableScopingChecks(registry);
     registerFunctionCallChecks(registry);
+    registerUnknownJavaMemberChecks(registry, services);
 }
 
 
