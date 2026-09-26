@@ -16,6 +16,7 @@ import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
+import { sanitizeJavaClassDto } from './java-peer-guard.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -1149,6 +1150,13 @@ export class JavaInteropService {
 
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
+        }
+
+        // Bound and type-check the peer-supplied class description before any of its fields are
+        // copied onto the node (issue #523): no field is stored before this call runs.
+        const sanitationNotes = sanitizeJavaClassDto(javaClass);
+        if (sanitationNotes.length > 0) {
+            logger.warn(`Java class ${className} peer data adjusted: ${sanitationNotes.join(', ')}`);
         }
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
