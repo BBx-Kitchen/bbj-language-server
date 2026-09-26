@@ -31,7 +31,7 @@ import {
 import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
-import { createConfigPathTrustMiddleware, effectiveConfigPath } from './config-path-trust.js';
+import { createConfigPathTrustMiddleware, effectiveConfigPath, registerTrustGrantRepush } from './config-path-trust.js';
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
@@ -1140,5 +1140,14 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
         console.error('BBj language server failed to start:', error);
         vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
     });
+
+    // Granting Workspace Trust makes the workspace-scoped bbj.configPath take effect without a
+    // reload: re-send the gated settings through the same builder the push path uses (issue #511).
+    context.subscriptions.push(
+        registerTrustGrantRepush(sendBbjSettings, error => {
+            const detail = error instanceof Error ? error.message : String(error);
+            appendOutputLine(`Re-sending settings after the workspace trust grant failed: ${detail}`);
+        })
+    );
     return client;
 }

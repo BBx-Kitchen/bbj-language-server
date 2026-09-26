@@ -162,3 +162,21 @@ export function createConfigPathTrustMiddleware(
         },
     };
 }
+
+/**
+ * Subscribes to `workspace.onDidGrantWorkspaceTrust` and, when trust is granted, re-sends the
+ * gated `bbj` settings through the same {@link SendBbjSettings} builder the push path uses —
+ * so the workspace-scoped `configPath` takes effect without a reload. The server's existing
+ * `onDidChangeConfiguration` path re-resolves the config path and re-arms the watcher on its
+ * own; this function only has to get the corrected settings there. A rejected `send` is routed
+ * to `onError` rather than left as an unhandled rejection inside the event listener.
+ */
+export function registerTrustGrantRepush(
+    send: SendBbjSettings,
+    onError: (error: unknown) => void,
+    workspace: TrustAwareWorkspace = defaultWorkspace()
+): vscode.Disposable {
+    return workspace.onDidGrantWorkspaceTrust(() => {
+        send({ bbj: gatedBbjSettings(workspace) }).catch(onError);
+    });
+}
