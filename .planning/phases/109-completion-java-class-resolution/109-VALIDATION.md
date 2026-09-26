@@ -2,9 +2,9 @@
 phase: "109"
 slug: "completion-java-class-resolution"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-25"
 ---
 
@@ -41,11 +41,11 @@ Filled in by the planner and executors. Expected coverage by requirement (from 1
 
 | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
 |-------------|----------|-----------|-------------------|-------------|--------|
-| COMP-01 | `java.lang.String.` (no USE) offers statics only, same list as `String.` after USE | unit | `npx vitest run test/completion-test.test.ts` | ✅ file, ❌ W0 test | ⬜ pending |
-| COMP-02 | overloaded BBj and Java calls infer the matching overload's return type; ambiguous tie with differing return types gives no type | unit | `npx vitest run test/method-return-java-type.test.ts` (or new overload-return-type test) | ❌ W0 fixtures | ⬜ pending |
-| COMP-03 | measured positions inside class method bodies offer candidates; skipped `_f$`/`_t$` test un-skipped or kept with reason | unit + measurement record | `npx vitest run test/completion-test.test.ts` | ✅ (skipped) | ⬜ pending |
-| JINT-01 | no backend request for primitive/void/array names; same zero-member result as before | unit (counting fake) | `npx vitest run test/<counting-interop>.test.ts` | ❌ W0 double | ⬜ pending |
-| JINT-02 | `Outer.Inner` / `Outer$Inner` fetched once, same members, displayed as `Outer.Inner` | unit (counting fake) | same file | ❌ W0 double | ⬜ pending |
+| COMP-01 | `java.lang.String.` / `java.lang.Class.` (no USE) offer statics only, same list as after USE | unit | `npx vitest run test/completion-class-reference.test.ts test/unknown-java-member.test.ts` | ✅ | ✅ green |
+| COMP-02 | overloaded BBj and Java calls infer the matching overload's return type; undecided overload gives no type | unit | `npx vitest run test/overload-return-type.test.ts` | ✅ | ✅ green |
+| COMP-03 | method-body positions offer the program-scope candidates minus program variables; `_f$`/`_t$` un-skipped; program variables stay out of METHOD scope | unit + measurement record | `npx vitest run test/completion-method-body.test.ts test/method-body-scope.test.ts test/completion-test.test.ts` | ✅ | ✅ green |
+| JINT-01 | no backend request for primitive/void/array/blank names; same zero-member result | unit (counting fake) + real interop | `npx vitest run test/java-interop-local-types.test.ts`; `RUN_BBJ_TESTS=1 npx vitest run test/functional/java-class-lookups-real-interop.test.ts` | ✅ | ✅ green |
+| JINT-02 | `Outer.Inner` / `Outer$Inner` fetched once, one object | unit (counting fake) + real interop | `npx vitest run test/java-interop-nested-class-names.test.ts`; real-interop file as above | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,28 +53,38 @@ Filled in by the planner and executors. Expected coverage by requirement (from 1
 
 ## Wave 0 Requirements
 
-- [ ] Counting Java-interop test double that overrides only `getRawClass` (the standard `JavaInteropTestService` overrides `resolveClassByName` and bypasses the code under test)
-- [ ] `MethodDecl` overload pair with differing return types (COMP-02, BBj side)
-- [ ] `JavaMethod` overload pair with differing return types on the fake classpath (COMP-02, Java side)
-- [ ] COMP-03 measurement record committed in the phase directory before any fix
+- [x] Counting Java-interop test double that overrides only `getRawClass` (the standard `JavaInteropTestService` overrides `resolveClassByName` and bypasses the code under test)
+- [x] `MethodDecl` overload pair with differing return types (COMP-02, BBj side)
+- [x] `JavaMethod` overload pair with differing return types on the fake classpath (COMP-02, Java side)
+- [x] COMP-03 measurement record committed in the phase directory before any fix
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Cold start with `bbj.debug` shows no `Resolving class` line for primitives/void/arrays and no `Outer.Inner`/`Outer$Inner` pair | JINT-01, JINT-02 | needs a real backend on :5008 and a real workspace | start the LS against :5008 with `bbj.debug` on, grep the output channel; unit tests with the counting fake are the automated proxy |
+None. The cold-start check planned as manual (JINT-01, JINT-02) is automated by `test/functional/java-class-lookups-real-interop.test.ts` (109-06), gated on `RUN_BBJ_TESTS=1` and a backend on :5008.
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-09-26
+
+---
+
+## Validation Audit 2026-09-26
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Run on the final tree: 9 phase test files, 188 passed, 11 skipped (the env-gated `MEASURE_COMPLETION_OUT` recorder in `completion-method-body.test.ts`, which makes no assertions); the real-interop file passed 3/3 with `RUN_BBJ_TESTS=1` against :5008.
