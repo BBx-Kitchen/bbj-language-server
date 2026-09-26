@@ -3,18 +3,19 @@ gsd_state_version: 1.0
 milestone: v4.6
 milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
-status: completed
-stopped_at: Phase 109 complete — all phases complete
-last_updated: "2026-09-26T04:55:22.259Z"
+current_phase_name: Completion & Java Class Resolution
+status: executing
+stopped_at: Completed 109-08-PLAN.md (gap closure G-109-1, COMP-03)
+last_updated: "2026-09-26T07:24:14.674Z"
 last_activity: 2026-09-26
-last_activity_desc: Phase 109 complete
-state_head: d8c68048154ce83c3c6dc5c4fbe5cf2133f64488
+last_activity_desc: Phase 109 execution started
+state_head: 6441b29679c2af185de7bfcfdba4db9f71c026cd
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 24
+  total_plans: 25
   completed_plans: 24
-  percent: 100
+  percent: 96
 ---
 
 # Project State: BBj Language Server
@@ -33,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 ## Current Position
 
-Phase: 109
-Plan: 7 of 7 (incl. gap closure 109-07)
-Status: All phases complete
-Last activity: 2026-09-26 — Phase 109 complete
+Phase: 109 (Completion & Java Class Resolution) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-09-26 — Phase 109 execution started
 
-Progress: [██████████] 100% (4/4 phases)
+Progress: [██████████] 96% (4/4 phases)
 
 ### v4.6 milestone map
 
@@ -124,6 +125,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 109 P05 | 29min | 2 tasks | 2 files |
 | Phase 109 P06 | 24min | 3 tasks | 2 files |
 | Phase 109 P07 | 12min | 2 tasks | 2 files |
+| Phase 109 P08 | 27min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -199,6 +201,7 @@ decisions:
 - [Phase 109]: Phase 109-06: the regression gate judged live-gated suites by failing test name against a scratch worktree at the phase base, not by count -- the 11 linking.test.ts interop failures on both trees are the pre-existing test-harness false positive, confirmed by name match, never relabeled as noise without that comparison
 - [Phase 109]: Phase 109-06: issue #561 was posted and closed (comment-and-close) only after re-confirming the Final state section still matched the drafted comment's claim that no completion position stayed out of reach
 - [Phase 109]: Phase 109-07: narrowed bbj-scope.ts's class-pseudo-member exclusion by the preceding segment's inferred type (JavaPackage vs not) rather than by member text alone, closing the 109-VERIFICATION.md gap against COMP-01 for a class literally named Class -- no bbj-type-inferer.ts, java-interop.ts or bbj-test-module.ts change needed, per D-11's scope boundary.
+- [Phase 109]: Phase 109-08: combined Task 1's and Task 2's method-body-scope.test.ts pins into a single Task 1 commit (all six tests authored together against the same fixtures); Task 2 contributed only the completion-method-body.test.ts matrix extension and the measurement-file addendum -- no functional gap, just a different commit split than the plan's task-by-task sequencing
 
 ### Tech Debt
 
@@ -257,8 +260,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T04:44:32.311Z
-Stopped at: Phase 109 complete — all phases complete
+Last session: 2026-09-26T07:24:14.474Z
+Stopped at: Completed 109-08-PLAN.md (gap closure G-109-1, COMP-03)
 Resume file: None
 
 Next: `/gsd-audit-milestone` then `/gsd-complete-milestone` (v4.6).
