@@ -61,7 +61,7 @@ Per-plan duration tables for phases 72-109 are archived with their phase artifac
 - Duration: 3 days (2026-09-24 → 2026-09-26)
 - Phases: 4 (106-109)
 - Plans: 25 (60 tasks)
-- Key: user-facing bug burn-down. `on-save` really waits for a save in both IDEs and keeps the last save's compiler errors visible; one error per finding on the bbjcpl fallback; the live parse gets its own connection first; single-line IF false alarms and the use-before-assignment crash fixed; unknown Java members on resolved classes are Errors; IntelliJ detects a crashed server via LSP4IJ's unexpected-stop hook; completion fixes for FQN statics, overloads, method bodies and Java class resolution. Audit `tech_debt` with no gaps; override closeout (2 artifacts acknowledged). On branch `gsd/v4.6-user-facing-bug-burndown`, not yet pushed.
+- Key: user-facing bug burn-down. `on-save` really waits for a save in both IDEs and keeps the last save's compiler errors visible; one error per finding on the bbjcpl fallback; the live parse gets its own connection first; single-line IF false alarms and the use-before-assignment crash fixed; unknown Java members on resolved classes are Errors; IntelliJ detects a crashed server via LSP4IJ's unexpected-stop hook; completion fixes for FQN statics, overloads, method bodies and Java class resolution. Audit `tech_debt` with no gaps; override closeout (2 artifacts acknowledged). PR #699 open against `main` (opened 2026-09-26).
 
 **v4.5 (Shipped: 2026-09-24):**
 
@@ -123,7 +123,7 @@ decisions:
 - [v4.5, standing]: new diagnostics from the compiler's parser are errors, like the compiler's own; invalid code is decided by BBj's parser, not hand-written strict checks.
 - [v4.5]: PR #691 carried phases 98-105 and merged to `main` as one piece on 2026-09-24.
 - [v4.6, standing]: an LSP4IJ unexpected-stop hook is the only IntelliJ crash signal; the status sequence alone cannot tell a crash from a stop.
-- [v4.6, standing until merged]: `gsd/v4.6-user-facing-bug-burndown` carries phases 106-109 and lands on `main` as one PR; scan its commit bodies for closing keywords before the squash merge.
+- [v4.6, standing until merged]: PR #699 (`gsd/v4.6-user-facing-bug-burndown`) carries phases 106-109 and lands on `main` as one PR; scan its commit bodies for closing keywords before the squash merge.
 
 ### Tech Debt
 
@@ -158,7 +158,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
-- **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24); the `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand. v4.6 is complete on `gsd/v4.6-user-facing-bug-burndown` (not yet pushed); it needs its PR and merge, then a release.
+- **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24); the `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand. v4.6 is complete in PR #699 (`gsd/v4.6-user-facing-bug-burndown`, opened 2026-09-26); it needs its merge, then a release.
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
 ### Quick Tasks Completed
@@ -183,7 +183,7 @@ Last session: 2026-09-26
 Stopped at: Milestone v4.6 complete and archived
 Resume file: None
 
-Next: push `gsd/v4.6-user-facing-bug-burndown` and open its PR, then `/gsd-new-milestone`.
+Next: merge PR #699 (scan commit bodies for closing keywords first), then `/gsd-new-milestone`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items

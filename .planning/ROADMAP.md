@@ -24,7 +24,7 @@
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
-- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on branch `gsd/v4.6-user-facing-bug-burndown`, to land on `main` as one PR — see MILESTONES.md)
+- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; PR #699 open against `main` — see MILESTONES.md)
 
 ## Phases
 

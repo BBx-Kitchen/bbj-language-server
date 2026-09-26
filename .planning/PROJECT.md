@@ -23,7 +23,7 @@ unexpected-stop hook. Completion offers statics only after a fully-qualified Jav
 uses the matching overload's return type (#556) and works inside class method bodies (#561),
 where program variables are no longer visible. Java lookups skip primitives and arrays (#660)
 and resolve nested classes once (#659). The code is on branch
-`gsd/v4.6-user-facing-bug-burndown`, not yet pushed or merged. Phase artifacts for 106-109 are
+`gsd/v4.6-user-facing-bug-burndown`, open as PR #699 against `main`. Phase artifacts for 106-109 are
 archived under `.planning/milestones/v4.6-phases/` (tracked). No release has been cut since
 0.16.0.
 
@@ -415,7 +415,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.6 User-Facing Bug Burn-down shipped 2026-09-26 (Phases 106-109, 25 plans, 19/19 requirements); 23 milestones shipped. v4.6 is on branch `gsd/v4.6-user-facing-bug-burndown` (not yet pushed); v4.5 is on `main` via PR #691; no release has been cut since 0.16.0. v4.6 changed 63 files outside `.planning/` (+9,247 / −374): `bbj-vscode/src` +1,774 / −144, `bbj-vscode/test` +5,459, `bbj-intellij` +1,983 / −181. The 109-08 whole suite ran 2,854 vitest tests with no new failures against the phase base. Compiler diagnostics from BBj's parser need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step.
+**Current state:** v4.6 User-Facing Bug Burn-down shipped 2026-09-26 (Phases 106-109, 25 plans, 19/19 requirements); 23 milestones shipped. v4.6 is on branch `gsd/v4.6-user-facing-bug-burndown` (PR #699, open); v4.5 is on `main` via PR #691; no release has been cut since 0.16.0. v4.6 changed 63 files outside `.planning/` (+9,247 / −374): `bbj-vscode/src` +1,774 / −144, `bbj-vscode/test` +5,459, `bbj-intellij` +1,983 / −181. The 109-08 whole suite ran 2,854 vitest tests with no new failures against the phase base. Compiler diagnostics from BBj's parser need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step.
 
 **Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 

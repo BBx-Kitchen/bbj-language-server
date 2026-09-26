@@ -10,8 +10,8 @@ override only because the pre-close artifact scan found two open items, which we
 acknowledged rather than resolved (see Known verification overrides). A third item, the
 G-109-1 debug session, was already fixed by 109-08 and was closed as `resolved`.
 
-**Where the code lives.** On branch `gsd/v4.6-user-facing-bug-burndown` at close, not yet
-pushed or merged. As with v4.5, the milestone is meant to land on `main` as one PR. The
+**Where the code lives.** On branch `gsd/v4.6-user-facing-bug-burndown`, open as PR #699 against
+`main` (2026-09-26). As with v4.5, the milestone lands on `main` as one PR. The
 private-corpus measurements in 107 ran locally only. No corpus text entered this repository.
 
 **Delivered:** five user-reported problem areas fixed across both IDEs. `on-save` now really
