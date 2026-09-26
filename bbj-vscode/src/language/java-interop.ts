@@ -16,7 +16,7 @@ import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
-import { sanitizeJavaClassDto } from './java-peer-guard.js';
+import { isUsableJavaClassName, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto } from './java-peer-guard.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -760,9 +760,24 @@ export class JavaInteropService {
         try {
             const connection = await this.connect();
             await Promise.all(implicitJavaImports.concat('java.sql').map(async pack => {
-                const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
+                const classInfosResponse = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
+                // A getClassInfos answer that is not an array is treated as empty (issue #523):
+                // the package simply contributes nothing this round, rather than throwing.
+                const classInfos = Array.isArray(classInfosResponse) ? classInfosResponse : [];
                 await Promise.all(classInfos.map(async javaClass => {
+                    const rawEntry = javaClass as unknown;
+                    if (typeof rawEntry !== 'object' || rawEntry === null) {
+                        // Not a class-shaped entry at all: skip without ever calling resolveClass.
+                        return;
+                    }
                     await this.resolveClass(javaClass, token)
+
+                    if (!isUsableJavaClassName(javaClass.name)) {
+                        // resolveClass's own entry guard already logged and returned an uncached
+                        // stub for this entry; no simple-name copy can be built from a name that
+                        // is not usable, and no exception should escape this Promise.all.
+                        return;
+                    }
 
                     if (pack !== 'java.sql') { // Not an implicit import but sql package preload.
                         // add as implicit Java package import
@@ -1135,6 +1150,25 @@ export class JavaInteropService {
      * @returns the resolved and linked JavaClass
      */
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
+        // A class entry whose name is not a string, is empty or is over the identifier limit is
+        // rejected before canonicalJavaClassName (which throws on a non-string) or the package
+        // tree ever sees it (issue #523): it is treated as unresolved via the existing uncached
+        // stub path, and no field of the entry is ever copied onto a node.
+        const rawEntry = javaClass as unknown;
+        if (typeof rawEntry !== 'object' || rawEntry === null || !isUsableJavaClassName(javaClass.name)) {
+            const rawName: unknown = (rawEntry !== null && typeof rawEntry === 'object')
+                ? (rawEntry as { name?: unknown }).name
+                : undefined;
+            const message = `The Java interop peer returned a class entry whose name is not a string, is empty or is longer than ${MAX_JAVA_IDENTIFIER_LENGTH} characters; it is treated as unresolved.`;
+            if (rawName === '') {
+                // The local blank-type path (localJavaTypeDto('')) produces an empty name
+                // routinely; this is not itself an indication of a broken or hostile peer.
+                logger.debug(message);
+            } else {
+                logger.warn(message);
+            }
+            return this.createStubClass('', false);
+        }
         // The backend echoes back whichever spelling was requested; canonicalize it here too so
         // the bulk implicit-import path (which calls resolveClass directly, not through
         // resolveClassByName) also caches and displays the class under its canonical spelling.

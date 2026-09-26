@@ -25,14 +25,41 @@
  */
 export const MAX_JAVA_IDENTIFIER_LENGTH = 1024;
 
+/**
+ * The bound applied to javadoc text (a class's or a method's documentation, once converted to
+ * Markdown) copied from the peer. Measured against the installed BBj javadoc corpus: the longest
+ * documentation text found was 11,615 characters (`BBjRecordSet.getMappingDescription`); a
+ * representative large class (`java.util.HashMap`) measured 5,250 characters of class-level text.
+ * This limit clears every measured real value with wide margin.
+ */
+export const MAX_JAVADOC_LENGTH = 32768;
+
+/** The bound applied to the class-level `error` string the peer reports for a failed resolution. */
+export const MAX_PEER_ERROR_LENGTH = 1024;
+
+/** Appended to a value truncated by {@link truncateText}, so a truncated value is always visibly
+ * incomplete rather than silently cut off. */
+export const TRUNCATION_MARKER = '…';
+
+/** Stored in place of a peer-supplied `error` value that is present but not text, so the class
+ * still counts as unresolved without ever storing or logging the wrongly typed value itself. */
+export const UNREADABLE_PEER_ERROR = 'The Java interop service returned an error value that is not text.';
+
 /** A plain object, as opposed to `null`, an array, or a primitive. */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Whether `name` is usable as the name of a member (field, method, constructor, parameter): a
- * non-empty string of at most {@link MAX_JAVA_IDENTIFIER_LENGTH} characters. */
-function isUsableMemberName(name: unknown): name is string {
+/** `undefined`/`null` (the field was never sent, or was sent as JSON `null`) counts as absent —
+ * left untouched so a caller's own `??`/`??=` defaulting still applies to it. Anything else,
+ * including an empty string or `0`, counts as present. */
+function isPresent(value: unknown): boolean {
+    return value !== undefined && value !== null;
+}
+
+/** Whether `name` is usable as the name of a class or a member (field, method, constructor,
+ * parameter): a non-empty string of at most {@link MAX_JAVA_IDENTIFIER_LENGTH} characters. */
+export function isUsableJavaClassName(name: unknown): name is string {
     return typeof name === 'string' && name.length > 0 && name.length <= MAX_JAVA_IDENTIFIER_LENGTH;
 }
 
@@ -42,19 +69,70 @@ function isUsableTypeName(type: unknown): type is string {
     return typeof type === 'string' && type.length <= MAX_JAVA_IDENTIFIER_LENGTH;
 }
 
+/** Whether `code` is the leading (high) half of a UTF-16 surrogate pair. */
+function isHighSurrogate(code: number): boolean {
+    return code >= 0xD800 && code <= 0xDBFF;
+}
+
+/**
+ * Bounds free text (javadoc, a peer error message, a javadoc parameter's real name) to at most
+ * `limit` UTF-16 code units, never rejecting it outright. Text at or under the limit is returned
+ * unchanged. Longer text is cut to `limit - 1` code units — one fewer when the last kept unit
+ * would be the high half of a surrogate pair, so a pair is never split — followed by
+ * {@link TRUNCATION_MARKER}; the result is always at most `limit` characters long.
+ */
+export function truncateText(text: string, limit: number): string {
+    if (text.length <= limit) {
+        return text;
+    }
+    let cut = Math.max(limit - TRUNCATION_MARKER.length, 0);
+    if (cut > 0 && isHighSurrogate(text.charCodeAt(cut - 1))) {
+        cut -= 1;
+    }
+    return text.slice(0, cut) + TRUNCATION_MARKER;
+}
+
+/** If `obj[key]` is present but not a boolean, replaces it with `false` and appends a note naming
+ * `path`. An absent value is left untouched, so a caller's own `?? false` defaulting still applies
+ * to it. */
+function sanitizeBooleanFlag(obj: Record<string, unknown>, key: string, path: string, notes: string[]): void {
+    const value = obj[key];
+    if (isPresent(value) && typeof value !== 'boolean') {
+        obj[key] = false;
+        notes.push(`${path} defaulted to false`);
+    }
+}
+
+/**
+ * If `obj[key]` is present but not an array, replaces it with `[]` and appends a note naming
+ * `path`. An absent value is left untouched, so a caller's own `??= []` defaulting still applies
+ * to it. Returns whether `obj[key]` is (now, or already was) an array.
+ */
+function defaultArrayIfPresentButInvalid(obj: Record<string, unknown>, key: string, path: string, notes: string[]): boolean {
+    const value = obj[key];
+    if (Array.isArray(value)) {
+        return true;
+    }
+    if (isPresent(value)) {
+        obj[key] = [];
+        notes.push(`${path} defaulted to []`);
+    }
+    return Array.isArray(obj[key]);
+}
+
 /**
  * Keeps only the parameters of a kept method/constructor whose `name` and `type` are both usable.
- * Mutates `owner.parameters` in place when present and an array; leaves anything else alone.
- * Appends one note per dropped parameter, naming only the field path — never the rejected value.
+ * A present but non-array `parameters` becomes `[]`; an absent one is left alone. Appends one note
+ * per dropped parameter, naming only the field path — never the rejected value.
  */
 function sanitizeParameters(owner: Record<string, unknown>, ownerPath: string, notes: string[]): void {
-    const parameters = owner.parameters;
-    if (!Array.isArray(parameters)) {
+    if (!defaultArrayIfPresentButInvalid(owner, 'parameters', `${ownerPath}.parameters`, notes)) {
         return;
     }
+    const parameters = owner.parameters as unknown[];
     const kept: unknown[] = [];
     parameters.forEach((parameter, index) => {
-        if (isPlainObject(parameter) && isUsableMemberName(parameter.name) && isUsableTypeName(parameter.type)) {
+        if (isPlainObject(parameter) && isUsableJavaClassName(parameter.name) && isUsableTypeName(parameter.type)) {
             kept.push(parameter);
         } else {
             notes.push(`${ownerPath}.parameters[${index}] dropped`);
@@ -66,29 +144,36 @@ function sanitizeParameters(owner: Record<string, unknown>, ownerPath: string, n
 }
 
 /**
- * Keeps only the entries of `dto[arrayName]` that are usable: a non-null
- * object whose `name` is a non-empty string of at most {@link MAX_JAVA_IDENTIFIER_LENGTH}, and
- * whose `typeField` (`type` for a field, `returnType` for a method/constructor) is a string of at
- * most {@link MAX_JAVA_IDENTIFIER_LENGTH}. For every kept entry, also sanitizes its `parameters`
- * array when `sanitizeParams` is true. The array is replaced only when something was dropped, so a
- * clean class keeps the identical array objects it arrived with.
+ * Keeps only the entries of `dto[arrayName]` that are usable: a non-null object whose `name` is
+ * usable per {@link isUsableJavaClassName}, and whose `typeField` (`type` for a field,
+ * `returnType` for a method/constructor) is usable per {@link isUsableTypeName}. A present but
+ * non-array `dto[arrayName]` becomes `[]`; an absent one is left alone. For every kept entry, also
+ * sanitizes its `isDeprecated` flag, its `isStatic` flag when `sanitizeIsStatic` is true, and its
+ * `parameters` array when `sanitizeParams` is true. The array is replaced only when something was
+ * dropped, so a clean class keeps the identical array objects it arrived with.
  */
 function sanitizeMemberArray(
     dto: Record<string, unknown>,
     arrayName: string,
     typeField: string,
     sanitizeParams: boolean,
+    sanitizeIsStatic: boolean,
     notes: string[]
 ): void {
-    const members = dto[arrayName];
-    if (!Array.isArray(members)) {
+    if (!defaultArrayIfPresentButInvalid(dto, arrayName, arrayName, notes)) {
         return;
     }
+    const members = dto[arrayName] as unknown[];
     const kept: unknown[] = [];
     members.forEach((member, index) => {
-        if (isPlainObject(member) && isUsableMemberName(member.name) && isUsableTypeName(member[typeField])) {
+        if (isPlainObject(member) && isUsableJavaClassName(member.name) && isUsableTypeName(member[typeField])) {
+            const path = `${arrayName}[${index}]`;
+            sanitizeBooleanFlag(member, 'isDeprecated', `${path}.isDeprecated`, notes);
+            if (sanitizeIsStatic) {
+                sanitizeBooleanFlag(member, 'isStatic', `${path}.isStatic`, notes);
+            }
             if (sanitizeParams) {
-                sanitizeParameters(member, `${arrayName}[${index}]`, notes);
+                sanitizeParameters(member, path, notes);
             }
             kept.push(member);
         } else {
@@ -100,22 +185,81 @@ function sanitizeMemberArray(
     }
 }
 
+/** Keeps only the object entries of `dto.classes`; a present but non-array `classes` becomes `[]`.
+ * An absent `classes` is left alone. */
+function sanitizeClassesArray(dto: Record<string, unknown>, notes: string[]): void {
+    if (!defaultArrayIfPresentButInvalid(dto, 'classes', 'classes', notes)) {
+        return;
+    }
+    const classes = dto.classes as unknown[];
+    const kept = classes.filter((entry, index) => {
+        if (isPlainObject(entry)) {
+            return true;
+        }
+        notes.push(`classes[${index}] dropped`);
+        return false;
+    });
+    if (kept.length !== classes.length) {
+        dto.classes = kept;
+    }
+}
+
+/** Truncates or replaces a present class-level `error` value, never rejecting the class over it. */
+function sanitizeErrorField(dto: Record<string, unknown>, notes: string[]): void {
+    const error = dto.error;
+    if (!isPresent(error)) {
+        return;
+    }
+    if (typeof error !== 'string') {
+        dto.error = UNREADABLE_PEER_ERROR;
+        notes.push('error replaced (not text)');
+        return;
+    }
+    if (error.length > MAX_PEER_ERROR_LENGTH) {
+        dto.error = truncateText(error, MAX_PEER_ERROR_LENGTH);
+        notes.push('error truncated');
+    }
+}
+
+/** Deletes a present `dto[key]` (`packageName`/`simpleName`) that is not a usable identifier
+ * string, so a caller's own derivation logic for a missing value applies to it instead. */
+function sanitizeIdentifierStringField(dto: Record<string, unknown>, key: string, notes: string[]): void {
+    const value = dto[key];
+    if (!isPresent(value)) {
+        return;
+    }
+    if (!isUsableJavaClassName(value)) {
+        delete dto[key];
+        notes.push(`${key} removed`);
+    }
+}
+
 /**
  * Bounds and type-checks a java-interop peer class description in place before any of its fields
- * are copied onto a `JavaClass` AST node (issue #523). A field, method
- * or constructor whose `name`/`type`(`returnType`) is missing, wrongly typed or over
- * {@link MAX_JAVA_IDENTIFIER_LENGTH} characters is dropped from its array, and a parameter of a
- * kept method/constructor is dropped under the same rule. Returns human-readable notes naming the
- * affected field paths only — never the rejected values, which may be attacker-controlled or
- * simply huge.
+ * are copied onto a `JavaClass` AST node (issue #523). A class-level `isDeprecated` that is
+ * present but not a boolean defaults to `false`; a present but non-string/over-long `packageName`
+ * or `simpleName` is removed so the caller's own derivation applies; a present but non-string
+ * `error` is replaced by {@link UNREADABLE_PEER_ERROR}, and an over-long one is truncated. A
+ * field, method or constructor whose `name`/`type`(`returnType`) is missing, wrongly typed or over
+ * {@link MAX_JAVA_IDENTIFIER_LENGTH} characters is dropped from its array; a parameter of a kept
+ * method/constructor is dropped under the same rule; a kept member's non-boolean `isDeprecated`
+ * (and, for a field or method, `isStatic`) defaults to `false`. `fields`, `methods`,
+ * `constructors` and `classes` that are present but not arrays default to `[]`. Returns
+ * human-readable notes naming the affected field paths only — never the rejected values, which
+ * may be attacker-controlled or simply huge.
  */
 export function sanitizeJavaClassDto(dto: object): string[] {
     const notes: string[] = [];
     if (!isPlainObject(dto)) {
         return notes;
     }
-    sanitizeMemberArray(dto, 'fields', 'type', false, notes);
-    sanitizeMemberArray(dto, 'methods', 'returnType', true, notes);
-    sanitizeMemberArray(dto, 'constructors', 'returnType', true, notes);
+    sanitizeBooleanFlag(dto, 'isDeprecated', 'isDeprecated', notes);
+    sanitizeIdentifierStringField(dto, 'packageName', notes);
+    sanitizeIdentifierStringField(dto, 'simpleName', notes);
+    sanitizeErrorField(dto, notes);
+    sanitizeClassesArray(dto, notes);
+    sanitizeMemberArray(dto, 'fields', 'type', false, true, notes);
+    sanitizeMemberArray(dto, 'methods', 'returnType', true, true, notes);
+    sanitizeMemberArray(dto, 'constructors', 'returnType', true, false, notes);
     return notes;
 }
