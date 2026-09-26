@@ -1,9 +1,10 @@
 // This class extends DefaultDocumentValidator
 
 import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
-import type { LangiumServices } from "langium/lsp";
+import type { BBjServices } from "./bbj-module.js";
+import type { TypeInferer } from "./bbj-type-inferer.js";
 import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
-import { isSymbolRef } from "./generated/ast.js";
+import { isJavaClass, isMemberCall, isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
 import { UNKNOWN_JAVA_MEMBER_CODE } from "./validations/check-unknown-java-member.js";
@@ -35,6 +36,20 @@ interface LinkingErrorData extends DiagnosticData {
      * one is a definite bug and stays at Error severity rather than being downgraded to a warning.
      */
     instanceMemberAccess?: boolean;
+    /**
+     * True when the unresolved reference is the member of a `MemberCall` whose receiver's
+     * inferred type is a Java class. Such a Warning stays visible next to an unrelated Error
+     * (see the Rule 2 exemption in {@link applyDiagnosticHierarchy}), because it names a real
+     * problem on an uncertain-but-Java-typed receiver, not ordinary BBj-symbol noise.
+     */
+    javaMemberAccess?: boolean;
+    /** The unresolved member's own name, set only alongside {@link javaMemberAccess}. */
+    memberName?: string;
+    /**
+     * The receiver Java class's simple name (its last dot segment), set only alongside
+     * {@link javaMemberAccess} and only when the receiver type is fully resolved.
+     */
+    ownerSimpleName?: string;
 }
 
 interface ValidationOptions {
@@ -90,7 +105,8 @@ function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
  * Apply the BBj diagnostic hierarchy rules:
  *
  * - Parse errors present → suppress ALL linking errors (identified by data.code, NOT severity)
- * - Any Error-severity diagnostic present → suppress all warnings/hints
+ * - Any Error-severity diagnostic present → suppress all warnings/hints, except a downgraded
+ *   syntax warning or a flagged Java-member linking Warning (see Rule 2 below)
  * - Cap parse errors at maxErrors
  *
  * IMPORTANT: Rule 1 matches linking errors by data.code (DocumentValidator.LinkingError),
@@ -151,10 +167,13 @@ export function applyDiagnosticHierarchy(
 
     // Rule 2: any Error-severity diagnostic → suppress all warnings/hints, except a downgraded
     // syntax warning — that is Langium's own opinion on a line the compiler-parser verdict
-    // stayed silent about, and must stay visible even while an Error exists elsewhere.
+    // stayed silent about, and must stay visible even while an Error exists elsewhere — or a
+    // flagged Java-member linking Warning, an unresolved member on an uncertain Java receiver,
+    // which names a real problem the certain-receiver case already reports as an Error and must
+    // not be hidden just because some unrelated Error exists elsewhere in the file.
     if (hasAnyError) {
         result = result.filter(
-            d => d.severity === DiagnosticSeverity.Error || isDowngradedSyntaxWarning(d)
+            d => d.severity === DiagnosticSeverity.Error || isDowngradedSyntaxWarning(d) || isJavaMemberLinkingWarning(d)
         );
     }
 
@@ -256,6 +275,30 @@ function sameRange(a: Range, b: Range): boolean {
 }
 
 /**
+ * True only for a linking-error diagnostic flagged by {@link BBjDocumentValidator.processLinkingErrors}
+ * as an unresolved member of a Java-typed receiver ({@link LinkingErrorData.javaMemberAccess}).
+ * The model for this predicate is `isDowngradedSyntaxWarning`, the existing Rule 2 exemption it
+ * sits beside.
+ */
+export function isJavaMemberLinkingWarning(d: Diagnostic): boolean {
+    const data = d.data as LinkingErrorData | undefined;
+    return data?.code === DocumentValidator.LinkingError && data.javaMemberAccess === true;
+}
+
+/**
+ * The last dot segment of a Java class's own name, used as a diagnostic's owner label -- the
+ * same idiom `java-interop.ts` already uses when it builds a class's own simple name. Returns
+ * undefined for anything that is not a fully resolved JavaClass (a stub carries `error`) or
+ * whose name is empty.
+ */
+export function javaMemberOwnerName(type: unknown): string | undefined {
+    if (!isJavaClass(type) || type.error || !type.name) {
+        return undefined;
+    }
+    return type.name.split('.').pop() || undefined;
+}
+
+/**
  * The unknown-Java-member check (`bbj-unknown-java-member`) targets the same member CST node
  * the linker's own diagnostic does, so an equal range identifies the same reference. Removing
  * the duplicate linking diagnostic here, before the list is remembered, keeps exactly one
@@ -287,8 +330,11 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
      * previous editor session instead of showing Langium's own errors until a fresh verdict
      * arrives.
      */
-    constructor(services: LangiumServices) {
+    protected readonly typeInferer: TypeInferer;
+
+    constructor(services: BBjServices) {
         super(services);
+        this.typeInferer = services.types.Inferer;
         services.shared.workspace.TextDocuments.onDidClose(event => {
             clearVerdictState(event.document.uri);
             clearKeptCheck(event.document.uri);
@@ -389,6 +435,32 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                 const container = linkingError.info.container;
                 const instanceMemberAccess = (isSymbolRef(container) && container.instanceAccess)
                     || isInstanceAccessAssignment(container);
+                const refText = linkingError.info.reference.$refText;
+
+                // Flag an unresolved member of a Java-typed receiver. The inferer call is
+                // wrapped in try/catch so a throw simply leaves the diagnostic unflagged -- it
+                // must never abort validation.
+                let javaMemberAccess = false;
+                let memberName: string | undefined;
+                let ownerSimpleName: string | undefined;
+                if (
+                    linkingError.info.property === 'member' &&
+                    isMemberCall(container) &&
+                    refText.length > 0 &&
+                    !linkingError.message.includes('Cyclic reference')
+                ) {
+                    try {
+                        const receiverType = this.typeInferer.getType(container.receiver);
+                        if (isJavaClass(receiverType)) {
+                            javaMemberAccess = true;
+                            memberName = refText;
+                            ownerSimpleName = javaMemberOwnerName(receiverType);
+                        }
+                    } catch {
+                        // Not flagged -- see comment above.
+                    }
+                }
+
                 const info: DiagnosticInfo<AstNode, string> = {
                     node: container,
                     range: reference.$refNode?.range,
@@ -398,8 +470,11 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                         code: DocumentValidator.LinkingError,
                         containerType: container.$type,
                         property: linkingError.info.property,
-                        refText: linkingError.info.reference.$refText,
-                        instanceMemberAccess
+                        refText,
+                        instanceMemberAccess,
+                        javaMemberAccess,
+                        memberName,
+                        ownerSimpleName
                     } satisfies LinkingErrorData
                 };
 

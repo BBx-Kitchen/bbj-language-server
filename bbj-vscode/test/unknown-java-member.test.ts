@@ -13,7 +13,8 @@ import {
 } from '../src/language/validations/check-unknown-java-member.js';
 import {
     applyDiagnosticHierarchy,
-    dropShadowedMemberLinkingDiagnostics
+    dropShadowedMemberLinkingDiagnostics,
+    isJavaMemberLinkingWarning
 } from '../src/language/bbj-document-validator.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
@@ -344,5 +345,82 @@ describe('The unknown-member Error in files with other errors', () => {
 
         const noUnknownMember = [otherRangeLinking];
         expect(dropShadowedMemberLinkingDiagnostics(noUnknownMember)).toBe(noUnknownMember);
+    });
+});
+
+describe('An unresolved member on an uncertain Java receiver stays visible next to an unrelated Error', () => {
+    test('the flagged Warning survives next to bbj-line-break Errors from an unrelated statement', async () => {
+        const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\na = 1 b = 2\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].severity).toBe(DiagnosticSeverity.Warning);
+        expect(matches[0].data?.code).toBe(DocumentValidator.LinkingError);
+        expect(isJavaMemberLinkingWarning(matches[0])).toBe(true);
+        const errorCount = (document.diagnostics ?? []).filter(d => d.severity === DiagnosticSeverity.Error).length;
+        expect(errorCount).toBe(2);
+    });
+
+    test('the flagged Warning is present, and flagged, even with no other Error in the file', async () => {
+        const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(isJavaMemberLinkingWarning(matches[0])).toBe(true);
+    });
+
+    test('a chained getClass().anyInvalidMethod() receiver also keeps its flagged Warning', async () => {
+        const document = await validate('declare java.util.HashMap h!\nx! = h!.getClass().anyInvalidMethod()\na = 1 b = 2\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(isJavaMemberLinkingWarning(matches[0])).toBe(true);
+    });
+
+    test('an ordinary unresolved variable still follows Rule 2 and stays hidden next to an Error', async () => {
+        const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\na = 1 b = 2\nq = nosuchvar\n');
+        expect((document.diagnostics ?? []).some(d => d.message.includes('nosuchvar'))).toBe(false);
+    });
+});
+
+describe('applyDiagnosticHierarchy Rule 2 exempts a flagged Java-member linking Warning', () => {
+    test('keeps a semantic Error, the flagged Java-member Warning, and drops an unflagged linking Warning', () => {
+        const semanticError: Diagnostic = {
+            message: "Method 'anyInvalidMethod' is not defined on String",
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 16 } },
+            severity: DiagnosticSeverity.Error,
+            data: { code: UNKNOWN_JAVA_MEMBER_CODE }
+        };
+        const flaggedWarning: Diagnostic = {
+            message: "'anyInvalidMethod' is not a known method or field of HashMap",
+            range: { start: { line: 1, character: 0 }, end: { line: 1, character: 3 } },
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError, javaMemberAccess: true }
+        };
+        const unflaggedWarning: Diagnostic = {
+            message: "Could not resolve reference to NamedElement named 'nosuchvar'.",
+            range: { start: { line: 2, character: 0 }, end: { line: 2, character: 9 } },
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError }
+        };
+        const result = applyDiagnosticHierarchy([semanticError, flaggedWarning, unflaggedWarning], true, 20);
+        expect(result).toContainEqual(semanticError);
+        expect(result).toContainEqual(flaggedWarning);
+        expect(result).not.toContainEqual(unflaggedWarning);
+    });
+
+    test('Rule 1 is unchanged: a parse error still drops the flagged Java-member Warning', () => {
+        const parseError: Diagnostic = {
+            message: 'Expecting end of file but found `)`.',
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            severity: DiagnosticSeverity.Error,
+            data: { code: DocumentValidator.ParsingError }
+        };
+        const flaggedWarning: Diagnostic = {
+            message: "'anyInvalidMethod' is not a known method or field of HashMap",
+            range: { start: { line: 1, character: 0 }, end: { line: 1, character: 3 } },
+            severity: DiagnosticSeverity.Warning,
+            data: { code: DocumentValidator.LinkingError, javaMemberAccess: true }
+        };
+        const result = applyDiagnosticHierarchy([parseError, flaggedWarning], true, 20);
+        expect(result).toContainEqual(parseError);
+        expect(result).not.toContainEqual(flaggedWarning);
     });
 });
