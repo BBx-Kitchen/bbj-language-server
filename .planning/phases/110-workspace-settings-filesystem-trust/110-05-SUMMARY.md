@@ -165,8 +165,8 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 - SEC-02 is complete; issue #511 is addressed via the roadmap's trust-gate decision (not the issue's own containment proposal, per D-05) — the closing keyword goes in the milestone PR, not in these commits.
-- This was the last plan in Phase 110 (Workspace Settings & Filesystem Trust): all five plans (110-01 interop validation, 110-02 path containment, 110-03 decompile probe hardening, 110-04 formatter Java binary trust, 110-05 this plan) are now complete, closing out SEC-01, SEC-02, SEC-06, SEC-07, SEC-08, SEC-09, and REF-02.
-- No blockers for Phase 111 (Java Class Data from the Interop Peer).
+- **Phase 110 is NOT yet fully complete.** `110-02-PLAN.md` (path containment, SEC-06/SEC-07, `wave: 2`, `depends_on: ["110-01"]`) exists on disk with no matching `110-02-SUMMARY.md` — it has not been executed. This plan (110-05) touches a disjoint file set from 110-02 (`config-path-trust.ts`/`extension.ts`/`config-path-cache.ts`/`config-path-resolver.ts` vs. `path-containment.ts`/`bbj-document-builder.ts`/`bbj-scope.ts`/`bbj-validator.ts`/`bbj-ws-manager.ts`), so there is no merge conflict, but the phase-level `roadmap.update-plan-progress` check after this plan reports 4/5 summaries and `status: "In Progress"` for Phase 110 — do not treat the phase as closed until 110-02 is executed too.
+- No blockers for Phase 111 (Java Class Data from the Interop Peer) from this plan's own changes, but Phase 110's own close-out (milestone PR readiness) is still pending 110-02.
 
 ---
 *Phase: 110-workspace-settings-filesystem-trust*
