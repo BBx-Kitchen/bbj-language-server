@@ -437,7 +437,19 @@ upgrading to langium 4.4. Evidence with file:line references is in
   4. Prefix membership is decided on path segments, so a document under `/libs/foo2/` is not treated as inside the prefix `/libs/foo`. `isTokenizedFile` and `statSize` return their not-a-file result for a symlink, a directory or a FIFO. Tests pin both.
   5. When the new formatter Java setting is set, the formatter checks that the binary exists and is executable before spawning it, and an invalid value shows an error instead of silently falling back to PATH. When the setting is empty, the resolved default binary is checked the same way.
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 110-01-PLAN.md — One shared interop host/port validator holding the only copy of the defaults, used by the initialization options and the configuration-change handler (SEC-01, REF-02) (wave 1)
+- [ ] 110-03-PLAN.md — `isTokenizedFile` and `statSize` refuse symlinks, directories and FIFOs (SEC-08) (wave 1)
+- [ ] 110-04-PLAN.md — Machine-scoped `bbj.formatter.javaPath`; the formatter spawns only a verified absolute java path, from the setting or its own PATH walk (SEC-09) (wave 1)
+- [ ] 110-05-PLAN.md — Workspace Trust gate for `bbj.configPath` on every VS Code client handoff: initializationOptions, the settings push and pull, the association fallback, and a re-push on trust grant (SEC-02) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 110-02-PLAN.md — Segment-aware PREFIX containment: USE reads, scope lookup and USE validation skip escaping candidates, and `isExternalDocument()` stops matching sibling directories (SEC-06, SEC-07) (wave 2, shares bbj-ws-manager.ts with 110-01)
 
 *Planning notes:* SEC-02 meets a documented design decision: `config-path-resolver.ts` says
 `configPath` is deliberately not anchored to a workspace folder, so system-wide config files keep

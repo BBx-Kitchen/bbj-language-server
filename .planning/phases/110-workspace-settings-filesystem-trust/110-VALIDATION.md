@@ -42,15 +42,21 @@ Never pass `--reporter=basic`. Never call `DocumentBuilder.build` in a new test 
 
 Filled by the planner/executor with real task ids. Requirement → test mapping (from RESEARCH.md):
 
-| Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|-------------|-----------------|-----------|-------------------|-------------|--------|
-| SEC-01 / REF-02 | Invalid host/port → per-field default + warning; both entry paths via one validator | unit | `npx vitest run test/interop-config.test.ts` | ❌ W0 | ⬜ pending |
-| SEC-01 / REF-02 | `setConnectionConfig` validates itself | unit | `npx vitest run test/java-interop-service.test.ts` | ✅ extend | ⬜ pending |
-| SEC-02 | Untrusted → workspace `configPath` ignored in initializationOptions AND the settings push; re-push on trust grant | unit (stubbed vscode) | `npx vitest run test/extension-config-trust.test.ts` | ❌ W0 | ⬜ pending |
-| SEC-06 | No `readFile` outside PREFIX roots (`..`, absolute) in document builder; scope prefix candidates filtered | unit | `npx vitest run test/use-path-containment.test.ts test/classes.test.ts` | ❌ W0 / ✅ extend | ⬜ pending |
-| SEC-07 | `/libs/foo2/` not inside `/libs/foo`; isPathInside helper | unit | `npx vitest run test/path-containment.test.ts` | ❌ W0 | ⬜ pending |
-| SEC-08 | `statSize`/`isTokenizedFile` reject symlink, dir, FIFO | unit | `npx vitest run test/decompile-io.test.ts` | ✅ extend | ⬜ pending |
-| SEC-09 | javaPath invalid → error, no spawn; valid → exact path; empty → PATH walk + check | unit | `npx vitest run test/formatter-java-resolver.test.ts test/document-formatter.test.ts` | ❌ W0 / ✅ extend | ⬜ pending |
+| Task | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|------|-------------|-----------------|-----------|-------------------|-------------|--------|
+| 110-01 T1 | SEC-01 / REF-02 | Validator table; initialization-options path (host alone, port alone, both, neither) via `LanguageServer.initialize`; `setConnectionConfig` validates itself | unit | `npx vitest run test/interop-config.test.ts test/java-interop-timeouts.test.ts test/ws-manager.test.ts` | ❌ created in task | ⬜ pending |
+| 110-01 T2 | SEC-01 / REF-02 | Configuration-change path per field; main.ts call-site pin; defaults exist once | unit + source pin | `npx vitest run test/interop-config.test.ts test/config-hot-reload-wiring.test.ts test/java-interop-service.test.ts` | ✅ after T1 | ⬜ pending |
+| 110-02 T1 | SEC-06 / SEC-07 | `isPathInside` (incl. `/libs/foo2/` vs `/libs/foo`, win32); builder never reads outside PREFIX roots (`..`, absolute, transitive), asserted on recorded `readFile` targets | unit | `npx vitest run test/path-containment.test.ts test/use-path-containment.test.ts test/lazy-prefix-loading.test.ts test/document-builder.test.ts` | ❌ created in task | ⬜ pending |
+| 110-02 T2 | SEC-06 | Scope and USE validator ignore escaping PREFIX candidates; document-relative and workspace-root unchanged | unit | `npx vitest run test/use-path-containment.test.ts test/use-project-root.test.ts test/classes.test.ts test/imports.test.ts test/extensionless-use-target.test.ts test/lazy-prefix-loading.test.ts` | ✅ after T1 | ⬜ pending |
+| 110-02 T3 | SEC-07 | Direct `isExternalDocument()` cases (sibling, trailing separator, prefix dir, empty prefix) | unit | `npx vitest run test/path-containment.test.ts test/ws-manager.test.ts test/lazy-prefix-loading.test.ts test/use-path-containment.test.ts test/document-builder.test.ts` | ✅ after T1 | ⬜ pending |
+| 110-03 T1 | SEC-08 | `isTokenizedFile` rejects symlink, dir, FIFO; O_NOFOLLOW/O_NONBLOCK flags; fstat re-check | unit | `npx vitest run test/decompile-io.test.ts test/tokenized-bbj.test.ts` | ✅ extend | ⬜ pending |
+| 110-03 T2 | SEC-08 | `statSize` rejects symlink, dir, FIFO; symlinked `.lst` never taken as output | unit | `npx vitest run test/decompile-io.test.ts` | ✅ extend | ⬜ pending |
+| 110-04 T1 | SEC-09 | javaPath invalid → error, no spawn, no PATH fallback; valid → exact path spawned; empty → PATH walk + check; manifest scope `machine` | unit | `npx vitest run test/formatter-java-resolver.test.ts test/document-formatter.test.ts test/formatter-verifier-tamper.test.ts test/no-shell-command-construction.test.ts` | ❌ created in task / ✅ extend | ⬜ pending |
+| 110-04 T2 | SEC-09 | Windows PATH/PATHEXT rules; first-hit semantics; real symlink/dir/permission cases | unit | `npx vitest run test/formatter-java-resolver.test.ts test/document-formatter.test.ts` | ✅ after T1 | ⬜ pending |
+| 110-04 T3 | SEC-09 | Launcher-pin comment corrected; resolver pinned before spawn; docs entry | source pin | `npx vitest run test/no-shell-command-construction.test.ts test/document-formatter.test.ts test/formatter-java-resolver.test.ts` | ✅ extend | ⬜ pending |
+| 110-05 T1 | SEC-02 | Untrusted → workspace `configPath` ignored in initializationOptions and the association fallback | unit (stubbed vscode) | `npx vitest run test/extension-config-trust.test.ts test/extension-activation.test.ts test/config-file-association.test.ts test/config-reload-host.test.ts test/stale-output-channel-repro.test.ts test/config-path-consumers.test.ts` | ❌ created in task | ⬜ pending |
+| 110-05 T2 | SEC-02 | Settings push (middleware never calls next for bbj) and pull carry the gated value; push tested through `activate()` | unit (stubbed vscode) | `npx vitest run test/extension-config-trust.test.ts test/extension-activation.test.ts test/config-file-association.test.ts test/config-reload-host.test.ts test/stale-output-channel-repro.test.ts` | ✅ after T1 | ⬜ pending |
+| 110-05 T3 | SEC-02 | Trust grant re-pushes the settings | unit (stubbed vscode) | `npx vitest run test/extension-config-trust.test.ts test/extension-activation.test.ts test/config-file-association.test.ts test/config-reload-host.test.ts test/stale-output-channel-repro.test.ts test/config-path-consumers.test.ts test/no-shell-command-construction.test.ts` | ✅ after T1 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
