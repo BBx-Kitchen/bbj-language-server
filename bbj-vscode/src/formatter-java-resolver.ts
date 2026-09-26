@@ -113,7 +113,7 @@ function pathEnvValue(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string
 /**
  * Walks PATH looking for a `java` executable, returning the first entry's candidate whose
  * `exists` probe is true — never the first one that also passes {@link checkJavaExecutable};
- * the caller checks the single hit this function returns (D-20: the check applies only to the
+ * the caller checks the single hit this function returns (the check applies only to the
  * first hit, so a later, better PATH entry is never silently substituted).
  *
  * Entries are split on the platform delimiter (`;` on win32, `:` elsewhere), trimmed, and
@@ -181,9 +181,9 @@ function candidateNamesFor(deps: ResolvedDeps): string[] {
  *
  * A non-empty (after trimming) string is the configured path: it is checked and returned as-is
  * on success, or refused with a reason naming the configured value — PATH is never consulted in
- * this branch (D-19). A non-string, non-null, non-undefined value is refused the same way,
+ * this branch. A non-string, non-null, non-undefined value is refused the same way,
  * without walking PATH. `undefined`, `null`, and a blank/whitespace-only string all mean "not
- * configured" and fall through to {@link findJavaOnPath} (D-20): no hit is refused naming the
+ * configured" and fall through to {@link findJavaOnPath}: no hit is refused naming the
  * setting; a hit is checked and returned, or refused naming the hit and the problem.
  *
  * Synchronous throughout, so the caller can still reach `cp.spawn` in the same Promise-executor
