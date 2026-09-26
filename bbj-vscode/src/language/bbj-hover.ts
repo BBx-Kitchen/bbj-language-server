@@ -8,7 +8,7 @@ import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
-import { escapeMarkdown, MAX_JAVADOC_LENGTH, truncateText } from "./java-peer-guard.js";
+import { escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, truncateText } from "./java-peer-guard.js";
 import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
@@ -240,13 +240,23 @@ export function methodSignature(nodeDescription: MethodData, typeAdjust: ((type:
     return `${nodeDescription.name}(${parameters.map(p => `${typeAdjust(p.type)} ${p.realName ?? p.name}${p.optional ? '?' : ''}`).join(', ')})`
 }
 
+/**
+ * Bounds a name read from an installed javadoc file the way the interop path bounds a
+ * parameter's real name (issue #523): a string value is truncated at
+ * {@link MAX_JAVA_IDENTIFIER_LENGTH}, and a name that is not text is replaced by `fallback`,
+ * the node's own name, which was already bounded when its class was resolved.
+ */
+function boundedJavadocName(value: unknown, fallback: string): string {
+    return typeof value === 'string' ? truncateText(value, MAX_JAVA_IDENTIFIER_LENGTH) : fallback;
+}
+
 function toMethodDocToMethodData(methodDoc: MethodDoc, node: JavaMethod): MethodData {
     // Both arrays come from external sources (classpath payload / javadoc JSON) and may
     // be absent for a given method — default to empty so index access can't throw.
     const javaParams = node.parameters ?? []
     return {
-        name: methodDoc.name,
-        parameters: (methodDoc.params ?? []).map((p, idx) => ({ name: p.name, type: javaParams[idx]?.type ?? 'Object', optional: false })),
+        name: boundedJavadocName(methodDoc.name, node.name),
+        parameters: (methodDoc.params ?? []).map((p, idx) => ({ name: boundedJavadocName(p.name, javaParams[idx]?.name ?? ''), type: javaParams[idx]?.type ?? 'Object', optional: false })),
         returnType: node.returnType
     }
 }

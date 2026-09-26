@@ -3,10 +3,10 @@ import { parseHelper } from 'langium/test';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { CompletionTriggerKind } from 'vscode-languageserver';
 import { documentationHeader } from '../src/language/bbj-hover.js';
-import { escapeMarkdown, MAX_JAVADOC_LENGTH, toFenceSafeLine } from '../src/language/java-peer-guard.js';
+import { escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, TRUNCATION_MARKER, toFenceSafeLine } from '../src/language/java-peer-guard.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { DocumentationInfo, Model } from '../src/language/generated/ast.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
+import { JavadocProvider, type MethodDoc } from '../src/language/java-javadoc.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /**
@@ -230,6 +230,70 @@ describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are
         } finally {
             someInstanceField!.type = originalType;
         }
+    });
+
+    test('the javadoc-file method fallback bounds an oversized method name and parameter name in the hover signature', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        expect(hashMap).toBeDefined();
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        expect(put!.docu).toBeUndefined();
+
+        const methodDoc: MethodDoc = {
+            name: 'm'.repeat(5000),
+            docu: '/** Short text. */',
+            params: [{ name: 'q'.repeat(5000) }]
+        };
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue(methodDoc);
+
+        const document = await parse('declare java.util.HashMap h!\nh!.put()\n', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'h!.put()');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 'h!.'.length }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('HashMap.' + 'm'.repeat(20));
+        expect(value).not.toContain('m'.repeat(1024));
+        expect(value).not.toContain('q'.repeat(1024));
+        expect(value).toContain(TRUNCATION_MARKER);
+        expect(value.length).toBeLessThan(3 * MAX_JAVA_IDENTIFIER_LENGTH);
+        expect(value).toContain('Short text.');
+    });
+
+    test('a javadoc-file method entry whose names are not strings falls back to the method\'s own name, and hover still renders', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        expect(hashMap).toBeDefined();
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        expect(put!.docu).toBeUndefined();
+
+        const methodDoc = { name: 42, docu: '/** Short. */', params: [{ name: 7 }] } as unknown as MethodDoc;
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue(methodDoc);
+
+        const document = await parse('declare java.util.HashMap h!\nh!.put()\n', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'h!.put()');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 'h!.'.length }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('HashMap.put');
+        expect(value).not.toContain('HashMap.42');
     });
 
     test('a documented BBj class member keeps its REM /** */ link unescaped', async () => {
