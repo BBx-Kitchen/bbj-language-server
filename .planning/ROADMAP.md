@@ -331,7 +331,7 @@ corpus text enters this repository.
 - [x] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection (completed 2026-09-24)
 - [x] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files (completed 2026-09-25)
 - [x] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions (completed 2026-09-25)
-- [ ] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups
+- [x] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups (completed 2026-09-26)
 
 ## Phase Details
 
@@ -471,7 +471,7 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans:** 7/7 plans executed (1 gap-closure plan pending)
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
