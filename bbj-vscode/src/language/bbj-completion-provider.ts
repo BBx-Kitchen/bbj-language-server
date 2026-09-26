@@ -10,9 +10,10 @@ import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConst
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
-import { escapeMarkdown, toFenceSafeLine } from "./java-peer-guard.js";
+import { escapeMarkdown, isJavaQualifiedName, toFenceSafeLine } from "./java-peer-guard.js";
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
+import { logger } from "./logger.js";
 
 
 /**
@@ -155,7 +156,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return;
         }
         const insertPosition = useInsertPosition(context.document);
+        let dropped = 0;
         for (const fqn of fqns) {
+            // A candidate that is not a Java qualified name is dropped before its simple name is
+            // even computed (issue #525), so it never consumes — and hides — a valid candidate
+            // that happens to share the same simple name.
+            if (!isJavaQualifiedName(fqn)) {
+                dropped++;
+                continue;
+            }
             const simple = fqn.substring(fqn.lastIndexOf('.') + 1);
             if (alreadyOffered.has(simple)) {
                 continue; // already reachable in scope — no `use` needed
@@ -170,6 +179,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 additionalTextEdits: [TextEdit.insert(insertPosition, `use ${fqn}\n`)],
                 documentation: { kind: 'markdown', value: `Adds \`use ${fqn}\`` }
             });
+        }
+        if (dropped > 0) {
+            logger.debug(() => `Dropped ${dropped} auto-import candidate(s) that are not Java qualified names`);
         }
     }
 

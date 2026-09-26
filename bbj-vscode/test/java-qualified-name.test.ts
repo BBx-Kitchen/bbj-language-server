@@ -1,5 +1,10 @@
-import { describe, expect, test } from 'vitest';
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
+import { describe, expect, test, vi } from 'vitest';
+import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { isJavaQualifiedName, MAX_JAVA_IDENTIFIER_LENGTH } from '../src/language/java-peer-guard.js';
+import { Model } from '../src/language/generated/ast.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 
 // Class names supplied by the interop peer are inserted into a user's source only when they are
 // Java qualified names (issue #525). The `$` (nested-class) case is exercised on the predicate
@@ -51,5 +56,51 @@ describe('isJavaQualifiedName', () => {
     test('is pure: calling it twice on the same input gives the same answer', () => {
         expect(isJavaQualifiedName('java.util.HashMap')).toBe(isJavaQualifiedName('java.util.HashMap'));
         expect(isJavaQualifiedName('java.util.Hash Map')).toBe(isJavaQualifiedName('java.util.Hash Map'));
+    });
+});
+
+// Auto-import completion drops a candidate that is not a Java qualified name before it ever
+// consumes a simple name, so a valid candidate sharing that simple name is still offered
+// (issue #525). Each test builds a fresh createBBjTestServices instance so the provider's
+// per-prefix cache starts empty.
+describe('auto-import completion candidates that are not Java qualified names (#525)', () => {
+    let docCounter = 0;
+
+    async function autoImportCompletion(text: string, candidates: string[]) {
+        const services = createBBjTestServices(EmptyFileSystem).BBj;
+        const spy = vi.spyOn(services.java.JavaInteropService, 'findClassCandidatesByPrefix')
+            .mockResolvedValue(candidates);
+        try {
+            const doc = await parseHelper<Model>(services)(text, { documentUri: `file:///jqn-${docCounter++}.bbj` });
+            const params: CompletionParams = {
+                textDocument: { uri: doc.textDocument.uri },
+                position: doc.textDocument.positionAt(text.length),
+                context: { triggerKind: CompletionTriggerKind.Invoked }
+            };
+            const list = await services.lsp.CompletionProvider!.getCompletion(doc, params);
+            return list?.items ?? [];
+        } finally {
+            spy.mockRestore();
+        }
+    }
+
+    test("offers only 'use java.util.TreeMap' even though an invalid candidate with the same simple name came first", async () => {
+        const items = await autoImportCompletion('x! = new TreeM', [
+            'java.u til.TreeMap',
+            'java.util;TreeMap',
+            'java.util.TreeMap\nRUN "x.bbj"',
+            'Foo\nRUN "x.bbj"',
+            'java.util.TreeMap'
+        ]);
+        const edits = items
+            .filter(i => i.additionalTextEdits && i.additionalTextEdits.length > 0)
+            .map(i => i.additionalTextEdits![0].newText);
+        expect(edits).toEqual(['use java.util.TreeMap\n']);
+    });
+
+    test('offers no auto-import edit when every candidate is invalid', async () => {
+        const items = await autoImportCompletion('x! = new TreeM', ['java.util;TreeMap', 'java.u til.TreeMap']);
+        const edits = items.filter(i => i.additionalTextEdits && i.additionalTextEdits.length > 0);
+        expect(edits).toHaveLength(0);
     });
 });
