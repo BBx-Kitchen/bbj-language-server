@@ -437,14 +437,14 @@ upgrading to langium 4.4. Evidence with file:line references is in
   4. Prefix membership is decided on path segments, so a document under `/libs/foo2/` is not treated as inside the prefix `/libs/foo`. `isTokenizedFile` and `statSize` return their not-a-file result for a symlink, a directory or a FIFO. Tests pin both.
   5. When the new formatter Java setting is set, the formatter checks that the binary exists and is executable before spawning it, and an invalid value shows an error instead of silently falling back to PATH. When the setting is empty, the resolved default binary is checked the same way.
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 110-01-PLAN.md — One shared interop host/port validator holding the only copy of the defaults, used by the initialization options and the configuration-change handler (SEC-01, REF-02) (wave 1)
 - [x] 110-03-PLAN.md — `isTokenizedFile` and `statSize` refuse symlinks, directories and FIFOs (SEC-08) (wave 1)
-- [ ] 110-04-PLAN.md — Machine-scoped `bbj.formatter.javaPath`; the formatter spawns only a verified absolute java path, from the setting or its own PATH walk (SEC-09) (wave 1)
+- [x] 110-04-PLAN.md — Machine-scoped `bbj.formatter.javaPath`; the formatter spawns only a verified absolute java path, from the setting or its own PATH walk (SEC-09) (wave 1)
 - [ ] 110-05-PLAN.md — Workspace Trust gate for `bbj.configPath` on every VS Code client handoff: initializationOptions, the settings push and pull, the association fallback, and a re-push on trust grant (SEC-02) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -755,7 +755,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 110. Workspace Settings & Filesystem Trust | 2/5 | Not started |  |
+| 110. Workspace Settings & Filesystem Trust | 3/5 | Not started |  |
 | 111. Java Class Data from the Interop Peer | 0/TBD | Not started | - |
 | 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |

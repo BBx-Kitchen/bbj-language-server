@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 110
 current_phase_name: Workspace Settings & Filesystem Trust
 status: executing
-stopped_at: Completed 110-03-PLAN.md
-last_updated: "2026-09-26T11:53:47.465Z"
+stopped_at: Completed 110-04-PLAN.md
+last_updated: "2026-09-26T12:06:29.365Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 110 execution started
-state_head: 26d2ede847e93de69b92e335f8972cfed058193a
+state_head: cf82bbf7a985158ceb86e4844eb7cec192121d40
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 ## Current Position
 
 Phase: 110 (Workspace Settings & Filesystem Trust) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-09-26 — Phase 110 execution started
 
@@ -121,6 +121,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 |------|----------|-------|-------|
 | Phase 110 P01 | 9min | 2 tasks | 5 files |
 | Phase 110 P03 | 7min | 2 tasks | 2 files |
+| Phase 110 P04 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,7 @@ decisions:
 - [v4.7 roadmap]: all workflow and packaging-script changes (CI-01..03, CI-05..09) are one late phase (122) so each workflow file is rewritten once; DEP-01 and CI-04 land earlier in Phase 117 because they do not change what a publish run does.
 - [Phase 110]: 110-01: interop host/port validated through one shared module (interop-config.ts); default host consolidated to 'localhost' everywhere
 - [Phase 110]: 110-03: isTokenizedFile and statSize both lstat-first and reject non-regular files; O_NOFOLLOW/O_NONBLOCK requested where the platform defines them, with an explicit typeof-number check to avoid silent Windows coercion — Closes issue #585: a symlink, directory or FIFO placed at the decompile probe path could redirect the read or block the extension host
+- [Phase 110]: 110-04: bbj.formatter.javaPath (scope: machine) resolved/verified by formatter-java-resolver.ts before every spawn; a set value never falls back to PATH, an empty value is resolved by the module's own checked PATH walk — Closes issue #605: the formatter spawned a bare java from PATH with no check
 
 ### Tech Debt
 
@@ -220,8 +222,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T11:53:47.431Z
-Stopped at: Completed 110-03-PLAN.md
+Last session: 2026-09-26T12:06:29.332Z
+Stopped at: Completed 110-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.

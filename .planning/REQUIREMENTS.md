@@ -18,7 +18,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [ ] **SEC-06**: USE-statement path resolution rejects a path that resolves outside the configured PREFIX roots (#526)
 - [ ] **SEC-07**: `isExternalDocument()` compares paths on segment boundaries, so a sibling directory whose name shares a prefix is classified correctly (#579)
 - [x] **SEC-08**: `isTokenizedFile`/`statSize` do not follow symlinks or read non-regular files (#585)
-- [ ] **SEC-09**: The formatter's `java` binary can be configured, and it is verified before it is spawned instead of relying on a bare PATH lookup (#605)
+- [x] **SEC-09**: The formatter's `java` binary can be configured, and it is verified before it is spawned instead of relying on a bare PATH lookup (#605)
 - [ ] **SEC-10**: All four composer webviews validate the shape of every postMessage payload before it reaches `build()` or a WorkspaceEdit (#604)
 - [ ] **SEC-11**: The msgbox composer validates its `assignTo` field like every other free-text composer field (#626)
 - [ ] **SEC-12**: `web.bbj` never falls back to the default admin/admin123 credentials; missing credentials (and no token) go to `login_failed` (#546)
@@ -121,7 +121,7 @@ None deferred. Every still-open audit issue is in scope.
 | SEC-06 | Phase 110 | Pending |
 | SEC-07 | Phase 110 | Pending |
 | SEC-08 | Phase 110 | Complete |
-| SEC-09 | Phase 110 | Pending |
+| SEC-09 | Phase 110 | Complete |
 | SEC-10 | Phase 113 | Pending |
 | SEC-11 | Phase 113 | Pending |
 | SEC-12 | Phase 112 | Pending |
