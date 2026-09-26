@@ -32,9 +32,15 @@ async function labelsAt(text: string, trigger?: '.'): Promise<Set<string>> {
     return new Set((list?.items ?? []).map(i => i.label));
 }
 
-/** Wraps `lines` as the body of a class method — the "in method" side of the position matrix. */
+/**
+ * Wraps `lines` as the body of a class method — the "in method" side of the position matrix.
+ * Two program-level variables are planted right beside the class (a method cannot see them)
+ * so `verdict()` can flag them if they ever leak into the in-method candidate set.
+ */
 function inMethod(lines: string[]): string {
     return [
+        'programOnly$ = "outside"',
+        'ProgramObj! = "outside"',
         'class public MethodBodyProbe',
         'method public void run()',
         ...lines,
@@ -58,6 +64,8 @@ interface MatrixRow {
     trigger?: '.';
     /** Legitimately scope-specific control labels to ignore (default: none). */
     allow?: string[];
+    /** Legitimately scope-specific in-method-only labels to ignore, beyond METHOD_SCOPE_ONLY_LABELS (default: none). */
+    allowExtra?: string[];
 }
 
 // `class`/`interface` are legitimately program-scope-only statement keywords — BBj has no
@@ -66,6 +74,18 @@ interface MatrixRow {
 // program-scope control for a bare statement position offers both; a class/interface
 // declaration nested inside a method is not valid BBj syntax at all.
 const PROGRAM_SCOPE_ONLY_KEYWORDS = ['class', 'interface'];
+
+// Program-level variables planted beside the class in every `inMethod()` fixture. A class
+// METHOD body cannot see them, so they must never appear in the in-method candidate set —
+// this is issue #561's own regression: completion inside a method offered program-scope
+// variables. Neither this list nor any `allow`/`allowExtra` entry below may ever repeat one
+// of these two names.
+const PROGRAM_SCOPE_VARIABLES = ['programOnly$', 'ProgramObj!'];
+
+// Labels that are always visible inside `run()` but never appear in a program-scope control
+// fixture: the class name, the method itself, the class's own `this!`, and the keyword that
+// closes the method.
+const METHOD_SCOPE_ONLY_LABELS = ['MethodBodyProbe', 'run()', 'this!', 'methodend'];
 
 const MATRIX: MatrixRow[] = [
     {
@@ -114,7 +134,13 @@ const MATRIX: MatrixRow[] = [
     {
         name: 'first line after METHOD',
         body: ['<|>', 'probeTail = 2'],
-        allow: PROGRAM_SCOPE_ONLY_KEYWORDS
+        allow: PROGRAM_SCOPE_ONLY_KEYWORDS,
+        // Fixture-shape differences, not measured gaps: a control marker at the very start of
+        // the document gets neither the Java package roots (`com`, `java`) nor the class-member
+        // keyword (`method`) that a marker nested one level deeper always sees, and a method's
+        // first body line can also begin the next class member (`classend`), which is why
+        // `probeTail` (the row's own trailing statement) shows up as an in-method extra too.
+        allowExtra: ['classend', 'com', 'java', 'method', 'probeTail']
     },
     {
         name: 'last line before METHODEND',
@@ -130,31 +156,44 @@ const MATRIX: MatrixRow[] = [
         name: 'empty method body',
         body: ['<|>'],
         control: ['<|>', 'probeTail = 2'],
-        allow: PROGRAM_SCOPE_ONLY_KEYWORDS
+        allow: PROGRAM_SCOPE_ONLY_KEYWORDS,
+        // Same fixture-shape reason as 'first line after METHOD': a marker at the very start of
+        // the document sees neither the Java package roots nor the class-member keyword that an
+        // equivalent marker nested one level deeper always sees.
+        allowExtra: ['classend', 'com', 'java', 'method']
     }
 ];
 
 interface Verdict {
     missingInMethod: string[];
+    extraInMethod: string[];
     verdict: 'works' | 'broken' | 'control-empty';
 }
 
 /**
- * Compares label SETS only, never item order or position. `control-empty` flags a fixture
+ * Compares label SETS in both directions, never item order or position: `missingInMethod` is
+ * a control label the method must offer but doesn't; `extraInMethod` is an in-method label the
+ * control doesn't have and that isn't a legitimately method-only label either — most notably a
+ * `PROGRAM_SCOPE_VARIABLES` leak (issue #561's own regression). `control-empty` flags a fixture
  * error (fix the control fixture and re-run — never record it as a measurement result).
  */
 function verdict(inMethodLabels: Set<string>, controlLabels: Set<string>, row: MatrixRow): Verdict {
     if (controlLabels.size === 0) {
-        return { missingInMethod: [], verdict: 'control-empty' };
+        return { missingInMethod: [], extraInMethod: [], verdict: 'control-empty' };
     }
     const allow = new Set(row.allow ?? []);
+    const allowExtra = new Set([...METHOD_SCOPE_ONLY_LABELS, ...(row.allowExtra ?? [])]);
     const missingInMethod = [...controlLabels]
         .filter(label => !inMethodLabels.has(label) && !allow.has(label))
         .sort();
+    const extraInMethod = [...inMethodLabels]
+        .filter(label => !controlLabels.has(label) && !allowExtra.has(label))
+        .sort();
     const hasExpected = (row.expected ?? []).every(label => inMethodLabels.has(label));
     const hasNoAbsent = (row.absent ?? []).every(label => !inMethodLabels.has(label));
-    const works = inMethodLabels.size > 0 && missingInMethod.length === 0 && hasExpected && hasNoAbsent;
-    return { missingInMethod, verdict: works ? 'works' : 'broken' };
+    const works = inMethodLabels.size > 0 && missingInMethod.length === 0 && extraInMethod.length === 0
+        && hasExpected && hasNoAbsent;
+    return { missingInMethod, extraInMethod, verdict: works ? 'works' : 'broken' };
 }
 
 // Env-gated recorder: appends one JSON line per row to MEASURE_COMPLETION_OUT. No assertions
@@ -170,6 +209,7 @@ describe.runIf(!!process.env.MEASURE_COMPLETION_OUT)('method body completion mea
                 inMethodCount: inMethodLabels.size,
                 controlCount: controlLabels.size,
                 missingInMethod: result.missingInMethod,
+                extraInMethod: result.extraInMethod,
                 expectedInMethod: (row.expected ?? []).every(label => inMethodLabels.has(label)),
                 expectedInControl: (row.expected ?? []).every(label => controlLabels.has(label)),
                 verdict: result.verdict
@@ -182,7 +222,8 @@ describe.runIf(!!process.env.MEASURE_COMPLETION_OUT)('method body completion mea
 // Pins: one non-skipped test per row measured `works` in the before-fix record; a row measured
 // `broken` would stay `test.skip` (with its reason) until fixed or recorded out of reach. Every
 // row in this matrix measured `works` on the unmodified tree (see the phase measurement record),
-// so every row is pinned here.
+// so every row is pinned here. A row now fails both on labels missing from the method AND on
+// labels the method must not see — most notably a planted program-scope variable leaking in.
 describe('completion inside class method bodies (issue #561)', () => {
     for (const row of MATRIX) {
         test(row.name, async () => {
@@ -195,6 +236,10 @@ describe('completion inside class method bodies (issue #561)', () => {
             }
             for (const label of row.absent ?? []) {
                 expect(inMethodLabels.has(label)).toBe(false);
+            }
+            const lowerInMethod = new Set([...inMethodLabels].map(l => l.toLowerCase()));
+            for (const programVar of PROGRAM_SCOPE_VARIABLES) {
+                expect(lowerInMethod.has(programVar.toLowerCase())).toBe(false);
             }
         });
     }
