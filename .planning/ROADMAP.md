@@ -471,7 +471,7 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -481,7 +481,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 111-03-PLAN.md — Java javadoc Markdown-escaped once at the hover and completion render boundary, fenced completion signature fence-safe, hover fallback javadoc bounded; BBj-authored docs untouched (SEC-04) (wave 2, extends the module from 111-01)
+- [x] 111-03-PLAN.md — Java javadoc Markdown-escaped once at the hover and completion render boundary, fenced completion signature fence-safe, hover fallback javadoc bounded; BBj-authored docs untouched (SEC-04) (wave 2, extends the module from 111-01)
 - [ ] 111-04-PLAN.md — Scope computation never resolves a registered package name as a class (`use java.io`), `storeJavaClass` keeps a package intact on a name collision; the #676 log line is gone (FIX-02) (wave 2, shares java-interop.ts with 111-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -771,7 +771,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
-| 111. Java Class Data from the Interop Peer | 2/5 | Not started |  |
+| 111. Java Class Data from the Interop Peer | 3/5 | Not started |  |
 | 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
