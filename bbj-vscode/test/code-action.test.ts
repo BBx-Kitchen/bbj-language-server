@@ -1,6 +1,6 @@
 import { DocumentValidator, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CodeAction, CodeActionParams, Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module';
 import { Model } from '../src/language/generated/ast.js';
@@ -105,5 +105,57 @@ describe('BBj code actions — missing use statements (#447)', () => {
         };
         const result = await bbj.lsp.CodeActionProvider!.getCodeActions(doc, params);
         expect(result ?? []).toHaveLength(0);
+    });
+});
+
+// Candidate class names come from the interop peer; a candidate that is not a Java qualified name
+// is dropped silently before a `use` quick fix is ever built (issue #525).
+describe('BBj code actions — candidates that are not Java qualified names (#525)', () => {
+
+    test("drops invalid candidates and keeps the one valid 'use' action preferred", async () => {
+        const spy = vi.spyOn(bbj.java.JavaInteropService, 'resolveClassCandidatesBySimpleName')
+            .mockResolvedValue([
+                'java.util.Hash Map',
+                'java.util.HashMap\nRUN "x.bbj"',
+                'java.util;HashMap',
+                'Foo\nRUN "x.bbj"',
+                'java.util.HashMap'
+            ]);
+        try {
+            const { actions } = await codeActionsFor('hm! = new HashMap()\n');
+            expect(actions).toHaveLength(1);
+            expect(actions[0].title).toBe("Add 'use java.util.HashMap'");
+            expect(actions[0].isPreferred).toBe(true);
+            const edit = actions[0].edit!.changes![Object.keys(actions[0].edit!.changes!)[0]][0];
+            expect(edit.newText).toBe('use java.util.HashMap\n');
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    test('the preferred flag moves to the next valid candidate when the top-ranked one is dropped', async () => {
+        const spy = vi.spyOn(bbj.java.JavaInteropService, 'resolveClassCandidatesBySimpleName')
+            .mockResolvedValue(['java.util.List', 'java.awt.List', 'java.util List']);
+        try {
+            const { actions } = await codeActionsFor('l! = new List()\n');
+            expect(actions).toHaveLength(2);
+            expect(actions[0].title).toBe("Add 'use java.awt.List'");
+            expect(actions[0].isPreferred).toBe(true);
+            expect(actions[1].title).toBe("Add 'use java.util.List'");
+            expect(actions[1].isPreferred).toBe(false);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    test('offers no action when every candidate is invalid', async () => {
+        const spy = vi.spyOn(bbj.java.JavaInteropService, 'resolveClassCandidatesBySimpleName')
+            .mockResolvedValue(['java.util;HashMap', 'java.util.Hash Map']);
+        try {
+            const { actions } = await codeActionsFor('hm! = new HashMap()\n');
+            expect(actions).toHaveLength(0);
+        } finally {
+            spy.mockRestore();
+        }
     });
 });

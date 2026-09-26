@@ -7,6 +7,8 @@ import { JavaInteropService } from './java-interop.js';
 import { isBBjTypeRef, isJavaTypeRef, isMemberCall, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { findLeafNodeAtOffset } from './bbj-validator.js';
 import { useInsertPosition } from './bbj-use-insert.js';
+import { isJavaQualifiedName } from './java-peer-guard.js';
+import { logger } from './logger.js';
 
 /**
  * Offers "Add 'use <fqn>'" quick-fixes for an unresolved Java class reference (issue #447),
@@ -37,12 +39,24 @@ export class BBjCodeActionProvider implements CodeActionProvider {
                 continue;
             }
             // Resolve candidate FQNs (index + a targeted probe of common packages so classes
-            // such as HashMap, which are not implicit imports, are still suggestable).
-            const candidates = rankCandidates(await this.javaInterop.resolveClassCandidatesBySimpleName(simpleName));
+            // such as HashMap, which are not implicit imports, are still suggestable). Candidates
+            // that are not Java qualified names are dropped before ranking (issue #525), so
+            // `index === 0` below always lands on the first candidate actually safe to insert and
+            // the preferred flag never sticks to a dropped one.
+            const rawCandidates = await this.javaInterop.resolveClassCandidatesBySimpleName(simpleName);
+            const validCandidates = rawCandidates.filter(isJavaQualifiedName);
+            if (validCandidates.length < rawCandidates.length) {
+                const dropped = rawCandidates.length - validCandidates.length;
+                logger.debug(() => `Dropped ${dropped} candidate(s) that are not Java qualified names for '${simpleName}'`);
+            }
+            const candidates = rankCandidates(validCandidates);
             candidates.forEach((fqn, index) => {
                 // Mark the top-ranked candidate preferred so VS Code's Auto Fix (Ctrl/Cmd+.)
                 // applies it directly without opening the quick-fix menu.
-                actions.push(this.createUseAction(document, diagnostic, fqn, index === 0));
+                const action = this.createUseAction(document, diagnostic, fqn, index === 0);
+                if (action) {
+                    actions.push(action);
+                }
             });
         }
         return actions.length > 0 ? actions : undefined;
@@ -79,7 +93,15 @@ export class BBjCodeActionProvider implements CodeActionProvider {
         return text;
     }
 
-    protected createUseAction(document: LangiumDocument, diagnostic: Diagnostic, fqn: string, preferred: boolean): CodeAction {
+    /**
+     * Builds the "Add 'use `fqn`'" quick fix, or `undefined` when `fqn` is not a Java qualified
+     * name (issue #525) — this is the action's own last-line check before a `TextEdit` is ever
+     * built, independent of whether the caller already filtered its candidate list.
+     */
+    protected createUseAction(document: LangiumDocument, diagnostic: Diagnostic, fqn: string, preferred: boolean): CodeAction | undefined {
+        if (!isJavaQualifiedName(fqn)) {
+            return undefined;
+        }
         const edit = TextEdit.insert(useInsertPosition(document), `use ${fqn}\n`);
         return {
             title: `Add 'use ${fqn}'`,

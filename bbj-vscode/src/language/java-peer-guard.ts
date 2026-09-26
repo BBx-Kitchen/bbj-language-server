@@ -15,6 +15,11 @@
  * applied once where hover and completion build Markdown so stored text stays plain; the
  * less-than sign is left out so javadoc HTML stays readable (VS Code strips raw HTML in hovers).
  *
+ * It also owns the check that a candidate class name from the peer is a genuine Java qualified
+ * name before the missing-USE quick fix or auto-import completion inserts it into source as a
+ * `use ${fqn}\n` line (issue #525), so a candidate carrying a line break or other BBj statement
+ * text can never be typed into the user's document.
+ *
  * Kept free of Langium and editor imports so it is unit-testable with plain values and shared by
  * every caller.
  */
@@ -311,4 +316,42 @@ const FENCE_LINE_BREAK_PATTERN = new RegExp('\\r\\n|[\\r\\n\\u2028\\u2029]', 'g'
  */
 export function toFenceSafeLine(text: string): string {
     return text.replace(/`/g, '').replace(FENCE_LINE_BREAK_PATTERN, ' ');
+}
+
+/**
+ * The characters a Java-qualified-name segment may *start* with: a Unicode letter (`L`), letter
+ * number (`Nl`), currency symbol (`Sc`, which includes `$`) or connector punctuation (`Pc`, which
+ * includes `_`).
+ */
+const JAVA_SEGMENT_START = '\\p{L}\\p{Nl}\\p{Sc}\\p{Pc}';
+
+/** The characters a segment may *continue* with: everything a segment may start with, plus
+ * decimal digits (`Nd`) and combining marks (`Mn`, `Mc`). */
+const JAVA_SEGMENT_CONTINUE = `${JAVA_SEGMENT_START}\\p{Nd}\\p{Mn}\\p{Mc}`;
+
+/** One or more dot-separated Java identifier segments, anchored at both ends, matched with the
+ * `u` flag so `\p{...}` are Unicode property escapes rather than literal text. */
+const JAVA_QUALIFIED_NAME_PATTERN = new RegExp(
+    `^[${JAVA_SEGMENT_START}][${JAVA_SEGMENT_CONTINUE}]*(?:\\.[${JAVA_SEGMENT_START}][${JAVA_SEGMENT_CONTINUE}]*)*$`,
+    'u'
+);
+
+/**
+ * Whether `fqn` is a Java qualified name safe to insert into source as a `use ${fqn}\n` line
+ * (issue #525): a string of 1 to {@link MAX_JAVA_IDENTIFIER_LENGTH} UTF-16 code units made of one
+ * or more dot-separated segments, each starting with a Unicode letter, letter number, currency
+ * symbol (including `$`) or connector punctuation (including `_`), and continuing with those plus
+ * decimal digits and combining marks. No empty segment, and no whitespace, `;`, line break, or
+ * other punctuation is accepted anywhere in the name.
+ *
+ * This follows the JLS identifier rules, except that the JLS "ignorable" format and control
+ * characters are deliberately excluded on purpose — they could hide text, for example a
+ * right-to-left override placed before a malicious statement. Both nested-class spellings pass:
+ * `java.util.Map$Entry` (the spelling a user can type in source) and `java.util.Map.Entry`.
+ */
+export function isJavaQualifiedName(fqn: unknown): fqn is string {
+    return typeof fqn === 'string'
+        && fqn.length > 0
+        && fqn.length <= MAX_JAVA_IDENTIFIER_LENGTH
+        && JAVA_QUALIFIED_NAME_PATTERN.test(fqn);
 }
