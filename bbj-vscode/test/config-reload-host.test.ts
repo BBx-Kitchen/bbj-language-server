@@ -213,6 +213,7 @@ vi.mock('vscode', () => {
             onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
             isTrusted: true,
+            onDidGrantWorkspaceTrust: vi.fn(() => disposable()),
         },
         StatusBarAlignment: { Left: 1, Right: 2 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },

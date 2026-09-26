@@ -46,7 +46,21 @@ const h = vi.hoisted(() => ({
     stopMock: vi.fn(() => Promise.resolve()),
     onNotificationMock: vi.fn(() => ({ dispose: vi.fn() })),
     registeredCommandIds: new Set<string>(),
+    grantListeners: [] as Array<() => unknown>,
 }));
+
+/** Records a listener passed to `workspace.onDidGrantWorkspaceTrust` and returns a disposable. */
+function onDidGrantWorkspaceTrust(listener: () => unknown): { dispose: () => void } {
+    h.grantListeners.push(listener);
+    return { dispose: () => { h.grantListeners = h.grantListeners.filter(l => l !== listener); } };
+}
+
+/** Fires every currently-registered trust-grant listener, as VS Code would on trust being granted. */
+function fireWorkspaceTrustGranted(): void {
+    for (const listener of [...h.grantListeners]) {
+        listener();
+    }
+}
 
 /** Reset every piece of hoisted mock state between tests. */
 function resetState(): void {
@@ -62,6 +76,7 @@ function resetState(): void {
     h.stopMock.mockClear();
     h.onNotificationMock.mockClear();
     h.registeredCommandIds.clear();
+    h.grantListeners = [];
 }
 
 /** Merges the workspace-scoped and user-level `configPath`, mirroring how VS Code merges scopes. */
@@ -156,6 +171,7 @@ vi.mock('vscode', () => {
             onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
             get isTrusted() { return h.state.isTrusted; },
+            onDidGrantWorkspaceTrust: vi.fn((listener: () => unknown) => onDidGrantWorkspaceTrust(listener)),
         },
         StatusBarAlignment: { Left: 1, Right: 2 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
@@ -216,6 +232,7 @@ import {
     createConfigPathTrustMiddleware,
     effectiveConfigPath,
     gatedBbjSettings,
+    registerTrustGrantRepush,
     type TrustAwareWorkspace,
 } from '../src/config-path-trust.js';
 
@@ -529,6 +546,123 @@ describe('the bbj settings push and pull carry the gated configPath (issue #511)
             { settings: { bbj: { home: '/opt/bbj', configPath: '/home/user/cfg/config.bbx' } } }
         );
         disposeSubscriptions(context);
+    });
+});
+
+/** A `TrustAwareWorkspace` stub with a mutable trust flag and a real grant-listener registry. */
+function stubTrustGrantWorkspace(opts: {
+    globalConfigPath?: string | null;
+    workspaceConfigPath?: string | null;
+    bbjSection?: Record<string, unknown>;
+}): TrustAwareWorkspace & { trusted: { value: boolean }; grant: () => void } {
+    const trusted = { value: false };
+    const listeners: Array<() => unknown> = [];
+    const merged = opts.workspaceConfigPath !== undefined
+        ? opts.workspaceConfigPath
+        : opts.globalConfigPath !== undefined
+            ? opts.globalConfigPath
+            : null;
+    return {
+        get isTrusted() { return trusted.value; },
+        getConfiguration: (section?: string) => {
+            if (section === 'bbj') {
+                return {
+                    get: <T>(key: string, def: T): T => (key === 'configPath' ? (merged as unknown as T) : def),
+                    inspect: <T>(_key: string) => ({
+                        key: 'bbj.configPath',
+                        defaultValue: null as unknown as T,
+                        globalValue: opts.globalConfigPath as unknown as T,
+                        workspaceValue: opts.workspaceConfigPath as unknown as T,
+                    }),
+                };
+            }
+            return {
+                get: <T>(key: string, def?: T): T => {
+                    if (key === 'bbj') {
+                        return { ...(opts.bbjSection ?? {}) } as unknown as T;
+                    }
+                    return def as T;
+                },
+                inspect: <T>(_key: string): { key: string; globalValue?: T } | undefined => undefined,
+            };
+        },
+        onDidGrantWorkspaceTrust: (listener: () => unknown) => {
+            listeners.push(listener);
+            return { dispose: () => { } };
+        },
+        trusted,
+        grant: () => { for (const listener of [...listeners]) listener(); },
+    };
+}
+
+describe('granting Workspace Trust re-pushes the bbj settings (issue #511)', () => {
+    test('registerTrustGrantRepush subscribes to onDidGrantWorkspaceTrust and returns its disposable', () => {
+        const workspace = stubTrustGrantWorkspace({});
+        const subscribeSpy = vi.spyOn(workspace, 'onDidGrantWorkspaceTrust');
+        const send = vi.fn(() => Promise.resolve());
+        const onError = vi.fn();
+
+        const disposable = registerTrustGrantRepush(send, onError, workspace);
+
+        expect(subscribeSpy).toHaveBeenCalledTimes(1);
+        expect(typeof disposable.dispose).toBe('function');
+    });
+
+    test('firing the grant after trust is granted sends the gated bbj settings once, with the workspace configPath', async () => {
+        const workspace = stubTrustGrantWorkspace({
+            globalConfigPath: '/home/user/cfg/config.bbx',
+            workspaceConfigPath: '/ws/evil/config.bbx',
+            bbjSection: { home: '/opt/bbj' },
+        });
+        const send = vi.fn(() => Promise.resolve());
+        const onError = vi.fn();
+        registerTrustGrantRepush(send, onError, workspace);
+
+        workspace.trusted.value = true;
+        workspace.grant();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledWith({ bbj: { home: '/opt/bbj', configPath: '/ws/evil/config.bbx' } });
+    });
+
+    test('a send that rejects routes the error to onError and never escapes as an unhandled rejection', async () => {
+        const workspace = stubTrustGrantWorkspace({ workspaceConfigPath: '/ws/evil/config.bbx' });
+        const error = new Error('send failed');
+        const send = vi.fn(() => Promise.reject(error));
+        const onError = vi.fn();
+        registerTrustGrantRepush(send, onError, workspace);
+
+        workspace.trusted.value = true;
+        workspace.grant();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(onError).toHaveBeenCalledWith(error);
+    });
+
+    test('through activate(): the subscription is registered in context.subscriptions, and firing it sends the workspace configPath', async () => {
+        resetState();
+        h.state.isTrusted = false;
+        h.state.globalConfigPath = '/home/user/cfg/config.bbx';
+        h.state.workspaceConfigPath = '/ws/evil/config.bbx';
+        h.state.bbjSection = { home: '/opt/bbj' };
+
+        const context = fakeContext();
+        activate(context);
+
+        expect(h.grantListeners.length).toBeGreaterThan(0);
+
+        h.state.isTrusted = true;
+        fireWorkspaceTrustGranted();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(h.sendNotificationMock).toHaveBeenCalledWith(
+            DidChangeConfigurationNotification.type,
+            { settings: { bbj: { home: '/opt/bbj', configPath: '/ws/evil/config.bbx' } } }
+        );
+
+        disposeSubscriptions(context);
+        expect(h.grantListeners.length).toBe(0);
     });
 });
 
