@@ -16,7 +16,7 @@ import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
-import { isUsableJavaClassName, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto } from './java-peer-guard.js';
+import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -1187,11 +1187,11 @@ export class JavaInteropService {
         }
 
         // Bound and type-check the peer-supplied class description before any of its fields are
-        // copied onto the node (issue #523): no field is stored before this call runs.
+        // copied onto the node (issue #523): no field is stored before this call runs. Logged
+        // together with any Phase 2 (javadoc/real-name) adjustment notes, once, after Phase 2
+        // below completes.
         const sanitationNotes = sanitizeJavaClassDto(javaClass);
-        if (sanitationNotes.length > 0) {
-            logger.warn(`Java class ${className} peer data adjusted: ${sanitationNotes.join(', ')}`);
-        }
+        const phase2Notes: string[] = [];
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
@@ -1259,7 +1259,7 @@ export class JavaInteropService {
                 }
                 // Overloads share a name, so a method's javadoc entry is found among the
                 // entries with its name and arity (see selectMethodDoc, #478/#481).
-                for (const method of javaClass.methods) {
+                for (const [methodIndex, method] of javaClass.methods.entries()) {
                     const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                         m => m.name == method.name
                             && m.params.length === method.parameters.length
@@ -1275,25 +1275,40 @@ export class JavaInteropService {
                             ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
                             $refText: parameter.type
                         };
-                        if (methodDoc) {
-                            parameter.realName = methodDoc.params[index]?.name
+                        // Bound where Phase 2 copies it (issue #523): a non-string javadoc
+                        // parameter name leaves realName unset rather than storing junk.
+                        const rawRealName = methodDoc?.params[index]?.name;
+                        if (typeof rawRealName === 'string') {
+                            const boundedRealName = truncateText(rawRealName, MAX_JAVA_IDENTIFIER_LENGTH);
+                            parameter.realName = boundedRealName;
+                            if (boundedRealName.length < rawRealName.length) {
+                                phase2Notes.push(`methods[${methodIndex}].parameters[${index}].realName truncated`);
+                            }
                         }
                     }
                     if (methodDoc?.docu) {
                         const doc = methodDoc;
-                        // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
-                        const params = method.parameters.map((p, idx) => {
-                            const realName = doc.params[idx]?.name ?? p.name;
-                            return `${javaTypeAdjust(p.type)} ${realName}`;
-                        }).join(', ');
-                        const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
-                        const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
-                        (method as Mutable<JavaMethod>).docu = {
-                            $type: 'DocumentationInfo',
-                            $container: method,
-                            javadoc: tryParseJavaDoc(doc.docu!),
-                            signature: signature
-                        } as DocumentationInfo;
+                        if (typeof doc.docu === 'string' && doc.docu.length > 0) {
+                            // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
+                            // using the already-bounded realName so a caller reading only the
+                            // signature never sees an unbounded javadoc parameter name.
+                            const params = method.parameters.map(p => {
+                                const realName = p.realName ?? p.name;
+                                return `${javaTypeAdjust(p.type)} ${realName}`;
+                            }).join(', ');
+                            const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
+                            const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
+                            const parsedJavadocLength = tryParseJavaDoc(doc.docu).length;
+                            (method as Mutable<JavaMethod>).docu = {
+                                $type: 'DocumentationInfo',
+                                $container: method,
+                                javadoc: truncateText(tryParseJavaDoc(doc.docu), MAX_JAVADOC_LENGTH),
+                                signature: signature
+                            } as DocumentationInfo;
+                            if (parsedJavadocLength > MAX_JAVADOC_LENGTH) {
+                                phase2Notes.push(`methods[${methodIndex}].docu truncated`);
+                            }
+                        }
                     }
                     AstUtils.linkContentToContainer(method);
                 }
@@ -1316,6 +1331,12 @@ export class JavaInteropService {
                 console.error(e)
             }
             AstUtils.linkContentToContainer(javaClass);
+            // One combined line per class, naming only the affected field paths — never a
+            // rejected or truncated value (issue #523).
+            const adjustmentNotes = sanitationNotes.concat(phase2Notes);
+            if (adjustmentNotes.length > 0) {
+                logger.warn(`Java class ${className} peer data adjusted: ${adjustmentNotes.join(', ')}`);
+            }
             return javaClass;
         } finally {
             // Only act while the registry still maps this name to this exact object: a later

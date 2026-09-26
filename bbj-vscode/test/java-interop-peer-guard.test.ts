@@ -13,6 +13,7 @@
  */
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Classpath, type JavaClass } from '../src/language/generated/ast.js';
+import { JavadocProvider } from '../src/language/java-javadoc.js';
 import {
     MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, MAX_PEER_ERROR_LENGTH, TRUNCATION_MARKER,
     UNREADABLE_PEER_ERROR, truncateText
@@ -341,5 +342,127 @@ describe('loadImplicitImports survives junk entries in a getClassInfos answer (b
         const result = await interop.loadImplicitImports();
 
         expect(result).toBe(true);
+    });
+});
+
+describe('javadoc text and parameter real names copied in Phase 2 are bounded', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    test('an oversized docu and an oversized javadoc parameter name are both truncated with the marker; the signature is built from the bounded real name', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.Documented', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('run', 'void', ['int'])],
+            constructors: [],
+        }));
+        const oversizedDocu = '/**' + 'a'.repeat(40000) + '*/';
+        const oversizedParamName = 'p'.repeat(1100);
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'Documented',
+            fields: [],
+            methods: [{ name: 'run', docu: oversizedDocu, params: [{ name: oversizedParamName }] }],
+        });
+
+        const resolved = await interop.resolveClassByName('com.test.Documented');
+
+        const run = resolved.methods.find(m => m.name === 'run')!;
+        expect(run.docu?.javadoc.length).toBeLessThanOrEqual(MAX_JAVADOC_LENGTH);
+        expect(run.docu?.javadoc.endsWith(TRUNCATION_MARKER)).toBe(true);
+        expect(run.parameters[0].realName.length).toBeLessThanOrEqual(MAX_JAVA_IDENTIFIER_LENGTH);
+        expect(run.parameters[0].realName.endsWith(TRUNCATION_MARKER)).toBe(true);
+        expect(run.docu?.signature?.length ?? 0).toBeLessThan(3000);
+    });
+
+    test('a short docu is stored exactly as its JSDoc-to-Markdown conversion, with no marker', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.ShortDoc', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('addOne', 'void', ['int'])],
+            constructors: [],
+        }));
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'ShortDoc',
+            fields: [],
+            methods: [{ name: 'addOne', docu: '/** Adds one. */', params: [{ name: 'p0' }] }],
+        });
+
+        const resolved = await interop.resolveClassByName('com.test.ShortDoc');
+
+        const addOne = resolved.methods.find(m => m.name === 'addOne')!;
+        expect(addOne.docu?.javadoc).not.toContain(TRUNCATION_MARKER);
+        expect(addOne.docu?.javadoc).toContain('Adds one.');
+    });
+
+    test('a methodDoc whose docu is not a string and whose param name is not a string leaves docu and realName unset; the class still resolves with its methods', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.OddDoc', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('go', 'void', ['int'])],
+            constructors: [],
+        }));
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'OddDoc',
+            fields: [],
+            methods: [{ name: 'go', docu: 42 as unknown as string, params: [{ name: 7 as unknown as string }] }],
+        });
+
+        const resolved = await interop.resolveClassByName('com.test.OddDoc');
+
+        const go = resolved.methods.find(m => m.name === 'go')!;
+        expect(go.docu).toBeUndefined();
+        expect(go.parameters[0].realName).toBeUndefined();
+    });
+
+    test('the stored javadoc still contains the Markdown characters it arrived with (no escaping at storage)', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.MarkdownDoc', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('render', 'void', ['int'])],
+            constructors: [],
+        }));
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'MarkdownDoc',
+            fields: [],
+            methods: [{ name: 'render', docu: '/** [click](https://evil.example) */', params: [{ name: 'p0' }] }],
+        });
+
+        const resolved = await interop.resolveClassByName('com.test.MarkdownDoc');
+
+        const render = resolved.methods.find(m => m.name === 'render')!;
+        expect(render.docu?.javadoc).toContain('[click](https://evil.example)');
+    });
+
+    test('a class with a dropped field and a truncated javadoc produces exactly one logger.warn line naming both field paths', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('com.test.Combined', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [{ ...rawField('placeholder', 'int'), name: OVER_LIMIT_NAME }],
+            methods: [rawMethod('run', 'void', ['int'])],
+            constructors: [],
+        } as unknown as Omit<RawClassInfo, 'name'>));
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'Combined',
+            fields: [],
+            methods: [{ name: 'run', docu: '/**' + 'a'.repeat(40000) + '*/', params: [{ name: 'p0' }] }],
+        });
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { /* silence */ });
+
+        await interop.resolveClassByName('com.test.Combined');
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        const line = warnSpy.mock.calls[0].join(' ');
+        expect(line).toContain('fields[0] dropped');
+        expect(line).toContain('methods[0].docu truncated');
     });
 });
