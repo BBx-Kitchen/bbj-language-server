@@ -19,7 +19,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-25 (Phase 108 complete — LIFE-01/02 verified, UAT 15/15; next: Phase 109)
+**Last Updated:** 2026-09-26 (Phase 109 complete — COMP-01..03, JINT-01/02 verified, UAT 33/33, Nyquist-compliant, threats_open 0; all v4.6 phases done, next: milestone audit)
 
 ## Project Reference
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 109 — Completion & Java Class Resolution
+**Current Focus:** v4.6 milestone close-out (all phases 106-109 complete)
 
 ---
 
 ## Current Position
 
 Phase: 109
-Plan: Not started
+Plan: 8/8 complete (UAT 33/33 passed 2026-09-26)
 Status: All phases complete
-Last activity: 2026-09-26 — Phase 109 complete
+Last activity: 2026-09-26 — Phase 109 UAT passed (G-109-1 re-tested), validation and security verified
 
 Progress: [██████████] 100% (4/4 phases)
 
