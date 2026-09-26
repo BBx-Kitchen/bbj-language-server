@@ -299,6 +299,22 @@ export function javaMemberOwnerName(type: unknown): string | undefined {
 }
 
 /**
+ * The message for a flagged Java-member linking Warning: names the member and its owner instead
+ * of Langium's own "NamedElement" wording, keeping the existing `[in <file>:<line>]` suffix
+ * `createLinkingError` (bbj-linker.ts) already appends to `originalMessage`, matched with the
+ * same bracket pattern `extractCyclicReferenceRelatedInfo` uses one function away, anchored at
+ * the end so it only ever matches that trailing suffix.
+ */
+export function javaMemberLinkingMessage(memberName: string, ownerSimpleName: string | undefined, originalMessage: string): string {
+    const suffixMatch = originalMessage.match(/\[in [^\]]+\]$/);
+    const suffix = suffixMatch ? ` ${suffixMatch[0]}` : '';
+    const body = ownerSimpleName
+        ? `'${memberName}' is not a known method or field of ${ownerSimpleName}`
+        : `Cannot resolve '${memberName}'`;
+    return `${body}${suffix}`;
+}
+
+/**
  * The unknown-Java-member check (`bbj-unknown-java-member`) targets the same member CST node
  * the linker's own diagnostic does, so an equal range identifies the same reference. Removing
  * the duplicate linking diagnostic here, before the list is remembered, keeps exactly one
@@ -487,7 +503,14 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                     }
                 }
 
-                diagnostics.push(this.toDiagnostic('error', linkingError.message, info));
+                // The flagged Java-member case gets a message naming the member and its owner
+                // instead of Langium's own "NamedElement" wording; every other reference keeps
+                // Langium's message unchanged.
+                const message = javaMemberAccess
+                    ? javaMemberLinkingMessage(refText, ownerSimpleName, linkingError.message)
+                    : linkingError.message;
+
+                diagnostics.push(this.toDiagnostic('error', message, info));
             }
         }
     }
