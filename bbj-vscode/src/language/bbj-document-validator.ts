@@ -339,6 +339,9 @@ export function dropShadowedMemberLinkingDiagnostics(diagnostics: Diagnostic[]):
 
 export class BBjDocumentValidator extends DefaultDocumentValidator {
 
+    /** Used by {@link processLinkingErrors} to type a MemberCall's receiver. */
+    protected readonly typeInferer: TypeInferer;
+
     /**
      * A `LangiumDocument` survives editor close (see `bbj-diagnostic-reconciliation.ts`'s own
      * doc comment on why its verdict state is uri-keyed, not tied to the document object) --
@@ -346,8 +349,6 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
      * previous editor session instead of showing Langium's own errors until a fresh verdict
      * arrives.
      */
-    protected readonly typeInferer: TypeInferer;
-
     constructor(services: BBjServices) {
         super(services);
         this.typeInferer = services.types.Inferer;
