@@ -175,6 +175,67 @@ describe('findJavaOnPath', () => {
         const deps = fakeProbes({ env: {} });
         expect(findJavaOnPath(deps)).toBeUndefined();
     });
+
+    describe('win32', () => {
+        test('follows PATHEXT order and skips a relative PATH entry', () => {
+            const deps = fakeProbes({
+                platform: 'win32',
+                env: { Path: 'C:\\jdk\\bin;relative\\dir', PATHEXT: '.COM;.EXE' },
+                exists: (p) => p === 'C:\\jdk\\bin\\java.EXE',
+            });
+            expect(findJavaOnPath(deps)).toBe('C:\\jdk\\bin\\java.EXE');
+        });
+
+        test('without PATHEXT, tries .COM, .EXE, .BAT, .CMD in that order', () => {
+            const tried: string[] = [];
+            const deps = fakeProbes({
+                platform: 'win32',
+                env: { Path: 'C:\\jdk\\bin' },
+                exists: (p) => {
+                    tried.push(p);
+                    return p === 'C:\\jdk\\bin\\java.CMD';
+                },
+            });
+            expect(findJavaOnPath(deps)).toBe('C:\\jdk\\bin\\java.CMD');
+            expect(tried).toEqual([
+                'C:\\jdk\\bin\\java.COM',
+                'C:\\jdk\\bin\\java.EXE',
+                'C:\\jdk\\bin\\java.BAT',
+                'C:\\jdk\\bin\\java.CMD',
+            ]);
+        });
+
+        test('accepts a quoted PATH entry after stripping the quotes', () => {
+            const deps = fakeProbes({
+                platform: 'win32',
+                env: { Path: '"C:\\Program Files\\Java\\bin";C:\\other', PATHEXT: '.EXE' },
+                exists: (p) => p === 'C:\\Program Files\\Java\\bin\\java.EXE',
+            });
+            expect(findJavaOnPath(deps)).toBe('C:\\Program Files\\Java\\bin\\java.EXE');
+        });
+
+        test('checks the first existing hit, not a later better one', () => {
+            const deps = fakeProbes({
+                platform: 'win32',
+                env: { Path: 'C:\\first;C:\\second', PATHEXT: '.EXE' },
+                exists: (p) => p === 'C:\\first\\java.EXE' || p === 'C:\\second\\java.EXE',
+                isFile: () => true,
+                isExecutable: (p) => p === 'C:\\second\\java.EXE',
+            });
+            const found = findJavaOnPath(deps);
+            expect(found).toBe('C:\\first\\java.EXE');
+            const reason = checkJavaExecutable(found as string, deps);
+            expect(reason).toBe('is not executable');
+        });
+    });
+});
+
+describe('checkJavaExecutable on win32', () => {
+    test('treats C:\\jdk\\bin\\java.exe as absolute and jdk\\bin\\java.exe as not absolute', () => {
+        const deps = fakeProbes({ platform: 'win32', exists: () => false });
+        expect(checkJavaExecutable('C:\\jdk\\bin\\java.exe', deps)).toBe('does not exist');
+        expect(checkJavaExecutable('jdk\\bin\\java.exe', deps)).toBe('is not an absolute path');
+    });
 });
 
 describe('package.json manifest', () => {
@@ -209,6 +270,46 @@ describe('real filesystem (POSIX permission checks)', () => {
                 const resolved = resolveFormatterJava(nonExecutablePath);
                 expect(resolved.path).toBeUndefined();
                 expect(resolved.reason).toContain(nonExecutablePath);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        }
+    );
+
+    test.skipIf(process.platform === 'win32')(
+        'findJavaOnPath finds a later PATH entry, accepts a symlinked executable, and refuses a directory named java',
+        () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formatter-java-resolver-realpath-test-'));
+            try {
+                const tempA = path.join(tmpDir, 'a');
+                const tempB = path.join(tmpDir, 'b');
+                fs.mkdirSync(tempA);
+                fs.mkdirSync(tempB);
+
+                const realExecutable = path.join(tmpDir, 'real-java');
+                fs.writeFileSync(realExecutable, '#!/bin/sh\n');
+                fs.chmodSync(realExecutable, 0o755);
+
+                const symlinkedJava = path.join(tempA, 'java');
+                fs.symlinkSync(realExecutable, symlinkedJava);
+
+                const found = findJavaOnPath({ env: { PATH: `${tempA}:${tempB}` } });
+                expect(found).toBe(symlinkedJava);
+                expect(checkJavaExecutable(found as string)).toBeUndefined();
+
+                // A later PATH entry is found when the earlier one has no java at all.
+                fs.rmSync(symlinkedJava);
+                const executableInB = path.join(tempB, 'java');
+                fs.writeFileSync(executableInB, '#!/bin/sh\n');
+                fs.chmodSync(executableInB, 0o755);
+                expect(findJavaOnPath({ env: { PATH: `${tempA}:${tempB}` } })).toBe(executableInB);
+
+                // A directory named java is refused as not a regular file.
+                fs.rmSync(executableInB);
+                fs.mkdirSync(executableInB);
+                const dirHit = findJavaOnPath({ env: { PATH: `${tempA}:${tempB}` } });
+                expect(dirHit).toBe(executableInB);
+                expect(checkJavaExecutable(dirHit as string)).toBe('is not a regular file');
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
