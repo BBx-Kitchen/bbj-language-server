@@ -10,7 +10,7 @@ import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManager;
+import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
@@ -208,7 +208,7 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
     private String resolveServerPath() {
         // Try plugin installation path first
         PluginId pluginId = PluginId.getId("com.basis.bbj");
-        IdeaPluginDescriptor plugin = PluginManager.getInstance().findEnabledPlugin(pluginId);
+        IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
         if (plugin != null) {
             Path serverPath = plugin.getPluginPath().resolve("lib").resolve("language-server").resolve("main.cjs");
             if (Files.exists(serverPath)) {

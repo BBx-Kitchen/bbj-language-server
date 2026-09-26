@@ -1,7 +1,7 @@
 package com.basis.bbj.intellij;
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManager;
+import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.extensions.PluginId;
 import org.jetbrains.annotations.NotNull;
@@ -74,7 +74,7 @@ public class BbjTextMateBundleProvider implements TextMateBundleProvider {
      */
     private static @Nullable String resolvePluginVersion() {
         IdeaPluginDescriptor plugin =
-                PluginManager.getInstance().findEnabledPlugin(PluginId.getId("com.basis.bbj"));
+                PluginManagerCore.getPlugin(PluginId.getId("com.basis.bbj"));
         return plugin != null ? plugin.getVersion() : null;
     }
 }
