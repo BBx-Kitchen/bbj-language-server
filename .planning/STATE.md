@@ -1,10 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.7
-milestone_name: Audit Hygiene Burn-down
+milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
+current_phase: 110
+current_phase_name: first of v4.7's thirteen phases
 status: planning
-last_updated: "2026-09-26T10:41:38.000Z"
+stopped_at: Phase 110 context gathered
+last_updated: "2026-09-26T10:54:42.888Z"
 last_activity: 2026-09-26
+last_activity_desc: v4.7 roadmap created (Phases 110-122)
+state_head: 0b7e339cc9e47f85864e3075ac4f5a55f13a1961
 progress:
   total_phases: 13
   completed_phases: 0
@@ -207,9 +212,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26
-Stopped at: v4.7 roadmap created — ROADMAP.md, STATE.md and REQUIREMENTS.md traceability written
-Resume file: None
+Last session: 2026-09-26T10:54:42.839Z
+Stopped at: Phase 110 context gathered
+Resume file: .planning/phases/110-workspace-settings-filesystem-trust/110-CONTEXT.md
 
 Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
