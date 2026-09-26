@@ -56,9 +56,17 @@ interface FileSize {
     size: number;
 }
 
-async function statSize(file: string): Promise<FileSize | undefined> {
+/**
+ * Size of `file`, or `undefined` if it does not exist or is not a regular file (issue #585).
+ * Uses `lstat` so a symlink, directory, FIFO, socket or device is treated as absent rather than
+ * followed or read.
+ */
+export async function statSize(file: string): Promise<FileSize | undefined> {
     try {
-        const stat = await fs.promises.stat(file);
+        const stat = await fs.promises.lstat(file);
+        if (!stat.isFile()) {
+            return undefined;
+        }
         return { size: stat.size };
     } catch {
         return undefined;

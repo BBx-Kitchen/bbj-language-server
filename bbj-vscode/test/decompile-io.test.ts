@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
-import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst } from '../src/decompile-io.js';
+import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst, statSize } from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
 
@@ -99,8 +99,57 @@ describe('decompile-io', () => {
         });
     });
 
+    describe('statSize', () => {
+        test('returns the byte size for a regular file', async () => {
+            const f = path.join(dir, 'prog.bbj');
+            const content = '0010 print "hi"\n';
+            fs.writeFileSync(f, content);
+            expect(await statSize(f)).toEqual({ size: Buffer.byteLength(content) });
+        });
+
+        test('returns undefined for a symlink to a regular file', async () => {
+            const target = path.join(dir, 'prog.lst');
+            fs.writeFileSync(target, '0010 print "hi"\n');
+            const link = path.join(dir, 'prog-link.lst');
+            fs.symlinkSync(target, link);
+            expect(await statSize(link)).toBeUndefined();
+        });
+
+        test('returns undefined for a directory', async () => {
+            const d = path.join(dir, 'a-directory');
+            fs.mkdirSync(d);
+            expect(await statSize(d)).toBeUndefined();
+        });
+
+        test.skipIf(process.platform === 'win32')(
+            'returns undefined for a FIFO',
+            async () => {
+                const fifo = path.join(dir, 'a-fifo');
+                execFileSync('mkfifo', [fifo]);
+                expect(await statSize(fifo)).toBeUndefined();
+            },
+            2000
+        );
+
+        test('returns undefined for a missing path', async () => {
+            expect(await statSize(path.join(dir, 'nope'))).toBeUndefined();
+        });
+    });
+
     describe('waitForDecompileOutput', () => {
         const fast = { pollMs: 5, timeoutMs: 2000 };
+
+        test('does not resolve to a symlinked .lst pointing at a real listing, and rejects on timeout', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(input, MAGIC);
+            const realListing = path.join(dir, 'real.lst');
+            fs.writeFileSync(realListing, '0010 print "hi"\n');
+            const lst = input + '.lst';
+            fs.symlinkSync(realListing, lst);
+
+            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 150 }))
+                .rejects.toThrow(/Timed out/);
+        });
 
         test('resolves to the .lst path once it appears and its size settles', async () => {
             const input = path.join(dir, 'prog.bbj');
