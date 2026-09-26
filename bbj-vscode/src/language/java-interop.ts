@@ -1460,6 +1460,22 @@ export class JavaInteropService {
                     parent.packages.push(javaPackage);
                     children.set(part, javaPackage);
                 }
+            } else if (index === parts.length - 1) {
+                // Defence in depth for issue #676: the leaf name already names a registered
+                // child. When that child is a JavaPackage, a class must never overwrite it or
+                // be pushed into it — the package and its own classes stay reachable exactly as
+                // they were. The class is kept outside the package tree instead, on the same
+                // classpath fallback shape createStubClass uses. An existing JavaClass at the
+                // leaf is left unchanged, so resolveClass's "has no container" console.error
+                // still reports any other genuinely unexpected missing container.
+                const existingChild = children.get(part)!;
+                if (isJavaPackage(existingChild)) {
+                    javaClass.$container = classpath;
+                    javaClass.$containerProperty = 'classes';
+                    javaClass.$containerIndex = classpath.classes.length;
+                    logger.debug(`Java class ${javaClass.name} matches an existing package '${part}' and is kept outside the package tree.`);
+                    return;
+                }
             }
             parent = children.get(part)!;
         });

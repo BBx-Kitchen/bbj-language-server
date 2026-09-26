@@ -18,7 +18,7 @@ import { DocumentValidator, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Model } from '../src/language/generated/ast.js';
-import { createCountingInteropServices } from './counting-java-interop.js';
+import { backendLikeDto, createCountingInteropServices } from './counting-java-interop.js';
 
 /** A minimal package-member body, reused for `java.io.File` and `java.net.URL`. */
 const packageMemberBody = (packageName: string) => () => ({
@@ -85,5 +85,85 @@ describe('a bare package name is never sent into class resolution (issue #676)',
             expect(interop.isKnownJavaPackage('java.nope')).toBe(false);
             expect(interop.isKnownJavaPackage('java$io')).toBe(true);
         });
+    });
+});
+
+describe('storeJavaClass keeps a package intact when a class name collides with it (issue #676)', () => {
+    test('resolveRaw bypassing the caller: no "has no container" error, the collided class lands on the classpath fallback, and java.io / java.io.File stay reachable', async () => {
+        const { interop } = createCountingInteropServices();
+        interop.scripts.set('java.io.File', packageMemberBody('java.io'));
+        await interop.resolveClassByName('java.io.File');
+
+        const javaPackage = interop.getChildOf(undefined, 'java');
+        const ioPackageBefore = interop.getChildOf(javaPackage, 'io');
+        expect(ioPackageBefore).toBeDefined();
+
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const collided = await interop.resolveRaw(backendLikeDto('java.io'));
+        const hasNoContainerCalls = consoleErrorSpy.mock.calls.filter(call =>
+            call.some(arg => typeof arg === 'string' && arg.includes('has no container'))
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(hasNoContainerCalls).toEqual([]);
+        // The collided class landed on the classpath fallback: only the classpath root has
+        // 'java' as a direct child, so this proves collided.$container is the classpath.
+        expect(interop.getChildOf(collided.$container, 'java')).toBe(javaPackage);
+        const ioPackageAfter = interop.getChildOf(javaPackage, 'io');
+        expect(ioPackageAfter).toBe(ioPackageBefore);
+        expect(interop.getChildOf(ioPackageAfter, 'File')).toBeDefined();
+    });
+
+    test('declare java.io x!: a qualified type naming a package sends no request for java.io and logs no "has no container"', async () => {
+        const { interop, BBj } = createCountingInteropServices();
+        interop.scripts.set('java.io.File', packageMemberBody('java.io'));
+        await interop.resolveClassByName('java.io.File');
+        interop.rawClassCalls.length = 0;
+
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const parse = parseHelper<Model>(BBj);
+        await parse('declare java.io x!\n', { validation: true });
+        const hasNoContainerCalls = consoleErrorSpy.mock.calls.filter(call =>
+            call.some(arg => typeof arg === 'string' && arg.includes('has no container'))
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(hasNoContainerCalls).toEqual([]);
+        expect(interop.rawClassCalls).not.toContain('java.io');
+    });
+
+    test('use java: a single-segment top-level package sends no request', async () => {
+        const { interop, BBj } = createCountingInteropServices();
+        interop.scripts.set('java.io.File', packageMemberBody('java.io'));
+        await interop.resolveClassByName('java.io.File');
+        interop.rawClassCalls.length = 0;
+
+        const parse = parseHelper<Model>(BBj);
+        await parse('use java\n', { validation: true });
+
+        expect(interop.rawClassCalls).not.toContain('java');
+    });
+});
+
+describe('the check is not a casing rule — only the known package tree decides', () => {
+    test('java.util.HashMap: USE and DECLARE still resolve, no linking diagnostic', async () => {
+        const { interop, BBj } = createCountingInteropServices();
+        interop.scripts.set('java.util.HashMap', packageMemberBody('java.util'));
+
+        const parse = parseHelper<Model>(BBj);
+        const document = await parse('use java.util.HashMap\ndeclare HashMap h!\n', { validation: true });
+
+        expect(linkingDiagnosticsFor(document, 'HashMap')).toEqual([]);
+    });
+
+    test('a lowercase-named class (com.test.lowercasename) still sends its request and is added to scope', async () => {
+        const { interop, BBj } = createCountingInteropServices();
+        interop.scripts.set('com.test.lowercasename', packageMemberBody('com.test'));
+
+        const parse = parseHelper<Model>(BBj);
+        const document = await parse('use com.test.lowercasename\n', { validation: true });
+
+        expect(interop.rawClassCalls).toContain('com.test.lowercasename');
+        expect(linkingDiagnosticsFor(document, 'lowercasename')).toEqual([]);
     });
 });
