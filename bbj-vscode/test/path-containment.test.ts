@@ -66,6 +66,18 @@ describe('containedPrefixCandidates', () => {
     test('an absolute path outside every prefix yields no candidate', () => {
         expect(containedPrefixCandidates(['/v/lib'], '/v/secret/A.bbj')).toEqual([]);
     });
+
+    test('an empty-string prefix (the default, no-PREFIX-configured shape) yields no candidate', () => {
+        expect(containedPrefixCandidates([''], 'X.bbj')).toEqual([]);
+    });
+
+    test('a whitespace-only prefix yields no candidate', () => {
+        expect(containedPrefixCandidates(['   '], 'X.bbj')).toEqual([]);
+    });
+
+    test('an empty prefix alongside a real one still yields the real one\'s candidate', () => {
+        expect(containedPrefixCandidates(['', '/v/lib'], 'Used.bbj')).toEqual(['/v/lib/Used.bbj']);
+    });
 });
 
 describe('isExternalDocument decides PREFIX membership on path segments (issue #579)', () => {

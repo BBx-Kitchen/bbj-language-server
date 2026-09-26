@@ -10,11 +10,13 @@
  * prefix? There is no second hand-rolled `startsWith` containment check anywhere else in the
  * repository — every PREFIX membership decision goes through this module.
  *
- * The check is lexical on the resolved path: symlinks are never followed. A prefix root that is
- * the empty string resolves against the current working directory exactly like a bare
- * `path.resolve('')` would; a caller that must treat an empty/unset PREFIX entry as "no root"
- * has to skip it before calling this module, the same way existing PREFIX consumers already
- * skip empty entries.
+ * The check is lexical on the resolved path: symlinks are never followed. `isPathInside` itself
+ * resolves an empty (or all-whitespace) root against the current working directory exactly like
+ * a bare `path.resolve('')` would, so a caller invoking `isPathInside` directly with an
+ * empty/unset PREFIX entry still has to skip it first, the same way `isExternalDocument` already
+ * does. `containedPrefixCandidates` does this filtering itself: an empty or whitespace-only
+ * prefix is treated as "no root" and contributes no candidate, so every one of its callers is
+ * covered without needing to filter `prefixes` beforehand.
  *
  * Kept free of Langium and editor imports (plain Node `path` only), like
  * `config-path-resolver.ts`.
@@ -60,12 +62,16 @@ export function isPathInside(root: string, candidate: string, platform: NodeJS.P
  * Resolve `usePath` against each root in `prefixes`, in order, keeping only the resolved
  * candidates that lie inside the prefix root they were resolved against. An absolute `usePath`
  * therefore survives only under a prefix root that already contains it — there is no separate
- * "absolute path" carve-out.
+ * "absolute path" carve-out. An empty or whitespace-only prefix entry is skipped entirely and
+ * contributes no candidate — it is never resolved against the current working directory.
  */
 export function containedPrefixCandidates(prefixes: readonly string[], usePath: string, platform: NodeJS.Platform = process.platform): string[] {
     const flavor = flavorFor(platform);
     const candidates: string[] = [];
     for (const prefix of prefixes) {
+        if (prefix.trim().length === 0) {
+            continue;
+        }
         const candidate = flavor.resolve(prefix, usePath);
         if (isPathInside(prefix, candidate, platform)) {
             candidates.push(candidate);

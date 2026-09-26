@@ -96,6 +96,34 @@ describe('the document builder reads only contained PREFIX candidates (issue #52
     });
 });
 
+describe('the document builder never reads through an empty PREFIX entry (issue #526)', () => {
+    const spyFs = new SpyFileSystemProvider();
+    const services = createBBjServices({ fileSystemProvider: () => spyFs });
+
+    beforeAll(async () => {
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: [''], classpath: [] };
+    });
+
+    test('a relative USE path triggers no readFile call when the only configured prefix is empty', async () => {
+        const parse = parseHelper<Model>(services.BBj);
+        await parse(
+            [
+                'use ::Used.bbj::UsedClass',
+                'x! = new UsedClass()',
+            ].join('\n'),
+            {
+                documentUri: 'file:///virtual/other-project/main.bbj',
+                validation: false,
+            }
+        );
+
+        expect(spyFs.readFileTargets).toEqual([]);
+    });
+});
+
 describe('scope and validation ignore PREFIX candidates outside their root (issue #526)', () => {
     const PREFIX = '/virtual/libs/in';
     const services = createBBjServices(EmptyFileSystem);
