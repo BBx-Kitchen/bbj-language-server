@@ -198,3 +198,51 @@ both before and after the phase.
   `Resolving class` debug lines, none of them for a primitive/void/array/blank name; no canonical
   class was requested under two spellings; `java.util.AbstractMap.SimpleEntry` resolved once for
   both its dotted and `$` spellings, sharing one object with a `getKey` method
+
+## Gap closure: program variables in method bodies
+
+A UAT pass against this phase's own shipped tree found completion inside a class method body
+offering program-scope variables (a UAT gap, not covered by the position matrix above). "Same
+candidates as the program-scope control" — the notion of correctness the matrix above and the
+maintainer's posted #561 comment both used — was therefore the wrong measurement: a class METHOD
+body is its own BBj variable scope, and a method sees its parameters, its locals and the class,
+never the program's own variables. The matrix's `verdict()` only ever checked for labels *missing*
+from the method; it never checked for labels the method must not see, so a program-scope leak
+right beside the class was undetectable by construction.
+
+The fix is a METHOD boundary in `BbjScopeProvider`'s plain-name lookup (`bbj-scope.ts`): when a
+plain-name reference sits inside a `MethodDecl`, Program-keyed `VariableDecl`-subtype descriptions
+(implicit assignments, READ/DREAD/ENTER targets, FOR variables, DIM arrays, program-level
+DECLAREs) are dropped from the walk. Completion, linking, go-to-definition and type inference all
+read the same scope, so all four agree by construction. No completion-provider or grammar change
+was needed.
+
+The matrix now plants two program variables (`programOnly$`, `ProgramObj!`) beside the class in
+every `inMethod()` fixture, and `verdict()` flags any in-method label that is neither in the
+control nor on a measured method-only allow-list (`extraInMethod`).
+
+| Row | In-method (pre-fix) | In-method (fixed) | Control | Extra labels (fixed) | Verdict (fixed) |
+| --- | --- | --- | --- | --- | --- |
+| statement start | 149 | 147 | 145 | (none) | works |
+| after = | 11 | 9 | 6 | (none) | works |
+| PRINT argument | 147 | 145 | 143 | (none) | works |
+| function argument | 12 | 10 | 7 | (none) | works |
+| member after . | 4 | 4 | 4 | (none) | works |
+| inside IF | 147 | 145 | 143 | (none) | works |
+| inside FOR | 150 | 148 | 146 | (none) | works |
+| DEF FN in a method | 149 | 147 | 144 | (none) | works |
+| first line after METHOD | 148 | 146 | 139 | (none, allowed: `classend`, `com`, `java`, `method`, `probeTail`) | works |
+| last line before METHODEND | 148 | 146 | 145 | (none) | works |
+| empty method body | 147 | 145 | 139 | (none, allowed: `classend`, `com`, `java`, `method`) | works |
+
+Ten of the eleven rows measured `broken` (extra `ProgramObj!`/`programOnly$` in the in-method
+candidate set) on the pre-fix tree; only `member after .` measured `works` on both trees, since a
+`.`-triggered member list never falls through to the plain-name lookup this fix changes. All
+eleven rows measure `works` on the fixed tree, with zero extra labels beyond the pre-existing,
+already-justified fixture-shape allowances documented earlier in this file.
+
+The #561 comment posted at the close of plan 109-06 said "no position stayed out of reach" using
+the program-scope-control notion of correctness above; that wording predates this correction. This
+plan posts nothing further to GitHub — issue #561 stays closed under the maintainer's original
+comment-and-close decision, and this addendum is the record of the correction for anyone auditing
+that decision later.
