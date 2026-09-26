@@ -10,6 +10,7 @@ import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
 import { normalize, resolve, join } from "path";
+import { containedPrefixCandidates } from "./path-containment.js";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
@@ -1113,8 +1114,16 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             const addedDocuments: URI[] = []
             for (const importPath of bbjImports) {
                 let docFileData;
-                for (const prefixPath of prefixes) {
-                    const prefixedPath = URI.file(resolve(prefixPath, importPath));
+                // Only candidates that lie inside the PREFIX root they were resolved
+                // against are ever opened (issue #526) -- a `..` escape or an absolute path
+                // outside every root is skipped without a read, and resolution continues
+                // with the next prefix exactly as a not-found candidate would.
+                const candidates = containedPrefixCandidates(prefixes, importPath);
+                if (candidates.length < prefixes.length) {
+                    logger.debug(`Skipped ${prefixes.length - candidates.length} PREFIX candidate(s) outside their root for USE path: ${importPath}`);
+                }
+                for (const candidate of candidates) {
+                    const prefixedPath = URI.file(candidate);
                     try {
                         const fileContent = await fsProvider.readFile(prefixedPath);
                         docFileData = { uri: prefixedPath, text: fileContent };
