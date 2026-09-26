@@ -1,5 +1,8 @@
+import { EmptyFileSystem, URI } from 'langium';
 import { describe, expect, test } from 'vitest';
 import { containedPrefixCandidates, isPathInside } from '../src/language/path-containment.js';
+import { createBBjTestServices } from './bbj-test-module.js';
+import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 
 /**
  * Direct unit coverage for the single PREFIX-containment predicate (issues #526, #579). See
@@ -62,5 +65,52 @@ describe('containedPrefixCandidates', () => {
 
     test('an absolute path outside every prefix yields no candidate', () => {
         expect(containedPrefixCandidates(['/v/lib'], '/v/secret/A.bbj')).toEqual([]);
+    });
+});
+
+describe('isExternalDocument decides PREFIX membership on path segments (issue #579)', () => {
+    function wsManagerWithPrefixes(prefixes: string[]): BBjWorkspaceManager {
+        const services = createBBjTestServices(EmptyFileSystem);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes, classpath: [] };
+        return wsManager;
+    }
+
+    test('a document under /libs/foo2/ is not treated as inside the prefix /libs/foo', () => {
+        const wsManager = wsManagerWithPrefixes(['/libs/foo']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo2/x.bbj'))).toBe(false);
+    });
+
+    test('a document directly under the prefix is external', () => {
+        const wsManager = wsManagerWithPrefixes(['/libs/foo']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo/x.bbj'))).toBe(true);
+    });
+
+    test('the prefix directory itself is external', () => {
+        const wsManager = wsManagerWithPrefixes(['/libs/foo']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo'))).toBe(true);
+    });
+
+    test('a prefix with a trailing separator still marks its contents external, and a sibling is not', () => {
+        const wsManager = wsManagerWithPrefixes(['/libs/foo/']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo/x.bbj'))).toBe(true);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo2/x.bbj'))).toBe(false);
+    });
+
+    test('an empty prefix is skipped, not treated as a root that contains everything', () => {
+        const wsManager = wsManagerWithPrefixes(['']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo/x.bbj'))).toBe(false);
+    });
+
+    test('an empty prefix alongside a real one does not prevent the real one from matching', () => {
+        const wsManager = wsManagerWithPrefixes(['', '/libs/foo']);
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo/x.bbj'))).toBe(true);
+    });
+
+    test('nothing is external when settings were never initialized', () => {
+        const services = createBBjTestServices(EmptyFileSystem);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        expect(wsManager.isExternalDocument(URI.file('/libs/foo/x.bbj'))).toBe(false);
     });
 });

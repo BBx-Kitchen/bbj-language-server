@@ -22,6 +22,7 @@ import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
 import { resolveConfigPath, extractConsumedConfigContent, consumedConfigSnapshot, type ResolvedConfigPath } from "./config-path-resolver.js";
+import { isPathInside } from "./path-containment.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -274,7 +275,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (prefix.length > 0 && documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
+                // Membership is decided on path segments (issue #579), not a raw string
+                // prefix -- a sibling directory that merely shares a name prefix (e.g.
+                // /libs/foo2 against the prefix /libs/foo) is not external.
+                if (prefix.length > 0 && isPathInside(URI.file(prefix).fsPath, documentUri.fsPath)) {
                     return true;
                 }
             }
