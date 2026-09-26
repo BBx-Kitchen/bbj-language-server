@@ -235,6 +235,20 @@ describe('packageName and simpleName are removed when unusable, letting resolveC
 
         expect((resolved as unknown as { simpleName?: string }).simpleName).toBeUndefined();
     });
+
+    test('an empty-string packageName (the unnamed/default package) is kept, not removed', async () => {
+        const { interop } = createCountingInteropServices();
+        const dto = {
+            name: 'TopLevel', packageName: '', fields: [], methods: [], constructors: [],
+        } as unknown as JavaClass;
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { /* silence */ });
+
+        const resolved = await interop.resolveRaw(dto);
+
+        expect(resolved.packageName).toBe('');
+        expect(warnSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
+    });
 });
 
 describe('sanitation adjustments log exactly one warn line per class, naming only field paths', () => {

@@ -221,14 +221,21 @@ function sanitizeErrorField(dto: Record<string, unknown>, notes: string[]): void
     }
 }
 
-/** Deletes a present `dto[key]` (`packageName`/`simpleName`) that is not a usable identifier
- * string, so a caller's own derivation logic for a missing value applies to it instead. */
+/** Whether `value` is usable as a `packageName`/`simpleName` string: a string of at most
+ * {@link MAX_JAVA_IDENTIFIER_LENGTH} characters. Unlike {@link isUsableJavaClassName}, an empty
+ * string is usable here — it is the legitimate spelling of the unnamed/default package. */
+function isUsablePackageOrSimpleName(value: unknown): value is string {
+    return typeof value === 'string' && value.length <= MAX_JAVA_IDENTIFIER_LENGTH;
+}
+
+/** Deletes a present `dto[key]` (`packageName`/`simpleName`) that is not a usable string, so a
+ * caller's own derivation logic for a missing value applies to it instead. */
 function sanitizeIdentifierStringField(dto: Record<string, unknown>, key: string, notes: string[]): void {
     const value = dto[key];
     if (!isPresent(value)) {
         return;
     }
-    if (!isUsableJavaClassName(value)) {
+    if (!isUsablePackageOrSimpleName(value)) {
         delete dto[key];
         notes.push(`${key} removed`);
     }
