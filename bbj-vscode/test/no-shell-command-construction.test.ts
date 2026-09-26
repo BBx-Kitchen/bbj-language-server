@@ -82,8 +82,10 @@ function filesImportingChildProcess(dir: string): string[] {
 /**
  * Pins which modules under src/ may launch a process at all: a fourth importer
  * of child_process is a new execution site to review, not test data to widen
- * the expected set for. document-formatter.ts is on the list because it runs
- * `java` from PATH, not a path derived from a configured setting.
+ * the expected set for. document-formatter.ts is on the list because it launches the
+ * formatter's java executable, which is either the machine-scoped bbj.formatter.javaPath
+ * setting or the absolute path resolveFormatterJava's own PATH walk found — verified by
+ * formatter-java-resolver.ts before every spawn (issue #605).
  */
 describe('no-shell-command-construction guard — which modules may launch a process', () => {
     test('the set of files under src/ importing child_process is exactly the three known launchers', () => {
@@ -118,5 +120,28 @@ describe('no-shell-command-construction guard — which modules may launch a pro
         expect(verifyCallIndex).toBeGreaterThan(-1);
         expect(spawnCallIndex).toBeGreaterThan(-1);
         expect(verifyCallIndex).toBeLessThan(spawnCallIndex);
+    });
+
+    // The java executable the formatter spawns is resolved and verified (issue #605), never a
+    // bare command name looked up implicitly by the OS. These two tests exist so a later
+    // refactor cannot quietly drop that resolution step or reorder it after the spawn it gates.
+    test('document-formatter.ts imports resolveFormatterJava from formatter-java-resolver', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        expect(source).toMatch(/import\s*\{\s*resolveFormatterJava\s*\}\s*from\s*['"]\.\/formatter-java-resolver\.js['"]/);
+    });
+
+    test('document-formatter.ts calls resolveFormatterJava( before cp.spawn(', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        const resolveCallIndex = source.indexOf('resolveFormatterJava(');
+        const spawnCallIndex = source.indexOf('cp.spawn(');
+
+        expect(resolveCallIndex).toBeGreaterThan(-1);
+        expect(spawnCallIndex).toBeGreaterThan(-1);
+        expect(resolveCallIndex).toBeLessThan(spawnCallIndex);
+    });
+
+    test('document-formatter.ts never spawns a string literal as the java executable', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        expect(source).not.toMatch(/cp\.spawn\(\s*['"]/);
     });
 });
