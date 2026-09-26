@@ -72,6 +72,18 @@ deliberately un-anchored, see D-05), and Java class data from the peer (Phase 11
 - **D-09:** IntelliJ is unchanged. Its `configPath` handoff has no trust concept in scope (roadmap
   note).
 
+- **D-21 (settled after research, auto mode):** The `synchronize.configurationSection: 'bbj'`
+  push sends real values, and `middleware.workspace.didChangeConfiguration`'s `next()` cannot
+  replace a single field. So the client registers a `middleware.workspace.didChangeConfiguration`
+  that does **not** call `next()`. Instead it builds the `bbj` section itself (the same shape
+  `getConfiguration('bbj')` yields), replaces `configPath` with the D-06 effective value, and sends
+  `DidChangeConfigurationNotification` with `{ settings: { bbj: … } }`. The server-side
+  `main.ts` handler stays unchanged. The pull-model `middleware.workspace.configuration` hook
+  applies the same substitution for any `workspace/configuration` request for `bbj`. A test must
+  exercise the push path, not only `initializationOptions` (RESEARCH Pitfall 1). Options rejected:
+  stripping `configPath` from the push (breaks hot reload), and a server-side trust concept
+  (contradicts D-09).
+
 ### USE-path containment (SEC-06)
 - **D-10:** One shared, plain path helper `isPathInside(root, candidate)` decides containment on
   normalized paths using `path.relative` semantics: the relative path is not absolute, is not `..`,
@@ -201,6 +213,7 @@ deliberately un-anchored, see D-05), and Java class data from the peer (Phase 11
 - Containment of `bbj.configPath` to the workspace root (#511's own proposal): rejected by roadmap decision, not deferred.
 - An explicit `untrustedWorkspaces` `limited` declaration that would make the extension run in Restricted Mode: a separate product decision, not this phase (D-08).
 - The `isExternalDocument()` TODO about workspace-folder membership: not required by SEC-07.
+- The IntelliJ `initializationOptions` key mismatch (`javaInteropHost`/`javaInteropPort` sent, `interopHost`/`interopPort` read), found in research: pre-existing, not in this phase's issues. Filed as a todo; not fixed here.
 
 ### Reviewed Todos (not folded)
 - `2026-09-20-linking-interop-failures-survive-class-warmup`: scheduled as TEST-05 in Phase 116; matched only on generic keywords.
