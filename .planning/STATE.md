@@ -5,16 +5,16 @@ milestone_name: User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
 current_phase: 109
 current_phase_name: Completion & Java Class Resolution
 status: executing
-stopped_at: Completed 109-06-PLAN.md
-last_updated: "2026-09-25T19:52:39.662Z"
-last_activity: 2026-09-25
-last_activity_desc: Phase 109 gap-closure plan 109-07 created
-state_head: 571cafee3d6c4b46baabefc27ba6dc61e22c5b5d
+stopped_at: Completed 109-07-PLAN.md
+last_updated: "2026-09-26T04:44:38.587Z"
+last_activity: 2026-09-26
+last_activity_desc: Phase 109 execution started
+state_head: a6f347ae7194669f8565c1b919cb218d012670b8
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
   percent: 75
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 ## Current Position
 
-Phase: 109 (Completion & Java Class Resolution) — READY TO EXECUTE (gap closure)
-Plan: 7 of 7
+Phase: 109 (Completion & Java Class Resolution) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-09-25 — Phase 109 gap-closure plan 109-07 created (COMP-01 literal `Class` receiver)
+Last activity: 2026-09-26 — Phase 109 execution started
 
 Progress: [████████░░] 75% (3/4 phases)
 
@@ -124,6 +124,7 @@ Per-plan metrics for phases 98-105 are in the v4.5 phase SUMMARYs under `.planni
 | Phase 109 P04 | 10min | 2 tasks | 3 files |
 | Phase 109 P05 | 29min | 2 tasks | 2 files |
 | Phase 109 P06 | 24min | 3 tasks | 2 files |
+| Phase 109 P07 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,7 @@ decisions:
 - [Phase 109]: Phase 109-06: the live cold-start evidence was captured for real (backend reachable on :5008), not the record-why-it-could-not-run fallback -- 635 getRawClass requests and 1106 Resolving class debug lines, none for a primitive/void/array/blank name
 - [Phase 109]: Phase 109-06: the regression gate judged live-gated suites by failing test name against a scratch worktree at the phase base, not by count -- the 11 linking.test.ts interop failures on both trees are the pre-existing test-harness false positive, confirmed by name match, never relabeled as noise without that comparison
 - [Phase 109]: Phase 109-06: issue #561 was posted and closed (comment-and-close) only after re-confirming the Final state section still matched the drafted comment's claim that no completion position stayed out of reach
+- [Phase 109]: Phase 109-07: narrowed bbj-scope.ts's class-pseudo-member exclusion by the preceding segment's inferred type (JavaPackage vs not) rather than by member text alone, closing the 109-VERIFICATION.md gap against COMP-01 for a class literally named Class -- no bbj-type-inferer.ts, java-interop.ts or bbj-test-module.ts change needed, per D-11's scope boundary.
 
 ### Tech Debt
 
@@ -256,8 +258,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-25T19:22:42.986Z
-Stopped at: Completed 109-06-PLAN.md
+Last session: 2026-09-26T04:44:32.311Z
+Stopped at: Completed 109-07-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 109` or `/gsd-plan-phase 109`.
