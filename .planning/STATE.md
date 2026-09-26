@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 111
 current_phase_name: Java Class Data from the Interop Peer
 status: executing
-stopped_at: Completed 111-01-PLAN.md
-last_updated: "2026-09-26T16:48:15.832Z"
+stopped_at: Completed 111-02-PLAN.md
+last_updated: "2026-09-26T17:06:22.822Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 111 execution started
-state_head: 3090b66d7ac2d8f2ca76f4ac68d5833cbf2128bc
+state_head: a7ff3cf4aac39042c9fbeeaff17a5b55fa57c976
 progress:
   total_phases: 13
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 8
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 ## Current Position
 
 Phase: 111 (Java Class Data from the Interop Peer) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-26 — Phase 111 execution started
 
@@ -125,6 +125,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 110 P05 | 14min | 3 tasks | 9 files |
 | Phase 110 P02 | 13min | 3 tasks | 7 files |
 | Phase 111 P01 | 45min | 3 tasks | 3 files |
+| Phase 111 P02 | 14min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,7 @@ decisions:
 - [Phase 110]: 110-02: One plain path-containment.ts module (isPathInside/containedPrefixCandidates) decides every PREFIX-membership check lexically via path.relative, Windows-only case-insensitive; the document builder, scope provider, USE-file validator, revalidation and isExternalDocument() all filter through it, closing issues #526 and #579.
 - [Phase 110 UAT]: G-110-1 (formatter no-op with `javaPath` empty) is a pre-existing crash in the vendored formatter jar under `--single-line-if` on block IFs, only logged; deferred out of the phase. The user is considering moving the formatter into bbj-ls behind RPC and MCP (many Bugzilla formatter bugs).
 - [Phase 111]: 111-01: java-peer-guard.ts is the single owner of Java-interop peer data bounds (length limits, truncateText, sanitizeJavaClassDto); resolveClass() guards its entry against an unusable class name and sanitizes before storeJavaClass(); Phase 2 bounds javadoc/real-name with one combined warn line per class — SEC-03 (#523): resolveClass() copied peer fields onto the AST unchecked
+- [Phase 111]: 111-02: javaMemberAccess flag on LinkingErrorData plus a second applyDiagnosticHierarchy Rule 2 exemption keeps an unresolved Java member Warning on an uncertain receiver visible next to an unrelated Error; javaMemberLinkingMessage replaces the 'NamedElement' wording, no new dedup code needed (Phase 107's dropShadowedMemberLinkingDiagnostics already covers the certain-receiver case)
 
 ### Tech Debt
 
@@ -229,8 +231,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T16:48:15.757Z
-Stopped at: Completed 111-01-PLAN.md
+Last session: 2026-09-26T17:06:22.746Z
+Stopped at: Completed 111-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.

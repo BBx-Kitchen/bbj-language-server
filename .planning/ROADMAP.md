@@ -471,13 +471,13 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 111-01-PLAN.md — Shared `java-peer-guard.ts` module; peer class data type-checked and length-bounded at the entry of `resolveClass()` (also the bulk implicit-import path), javadoc and parameter names bounded in Phase 2 (SEC-03) (wave 1)
-- [ ] 111-02-PLAN.md — Unresolved Java member Warning on an uncertain receiver flagged, exempt from hierarchy Rule 2 and reworded without "NamedElement"; Rule 1 and the unknown-member Error dedup unchanged (FIX-03) (wave 1)
+- [x] 111-02-PLAN.md — Unresolved Java member Warning on an uncertain receiver flagged, exempt from hierarchy Rule 2 and reworded without "NamedElement"; Rule 1 and the unknown-member Error dedup unchanged (FIX-03) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -771,7 +771,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
-| 111. Java Class Data from the Interop Peer | 1/5 | Not started |  |
+| 111. Java Class Data from the Interop Peer | 2/5 | Not started |  |
 | 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |

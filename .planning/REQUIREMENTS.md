@@ -29,7 +29,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 - [ ] **FIX-01**: `declare ::lib1::ClassA a; declare ::lib2::ClassB b` on one line parses both declarations, each with its own file-path token and without validation errors (#527)
 - [ ] **FIX-02**: "Java class java.io has no container, packageName: java" is no longer logged; the path by which a bare package name reaches `resolveClass` is traced and fixed (#676)
-- [ ] **FIX-03**: An unresolved-Java-member linking Warning stays visible in a file that has an unrelated Error (it is exempt from diagnostic-hierarchy Rule 2), and the "Could not resolve reference to NamedElement" wording is replaced with a user-facing message (pending todo 2026-09-24)
+- [x] **FIX-03**: An unresolved-Java-member linking Warning stays visible in a file that has an unrelated Error (it is exempt from diagnostic-hierarchy Rule 2), and the "Could not resolve reference to NamedElement" wording is replaced with a user-facing message (pending todo 2026-09-24)
 - [ ] **FIX-04**: IntelliJ's Node.js download reports progress without logging IllegalStateException when the response has no Content-Length, and the three weak source-guard tests from the phase 97 review assert real behaviour (pending todo 2026-09-20)
 
 ### Dependencies
@@ -129,7 +129,7 @@ None deferred. Every still-open audit issue is in scope.
 | SEC-14 | Phase 112 | Pending |
 | FIX-01 | Phase 119 | Pending |
 | FIX-02 | Phase 111 | Pending |
-| FIX-03 | Phase 111 | Pending |
+| FIX-03 | Phase 111 | Complete |
 | FIX-04 | Phase 114 | Pending |
 | DEP-01 | Phase 117 | Pending |
 | DEP-02 | Phase 117 | Pending |
