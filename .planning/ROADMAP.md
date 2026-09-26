@@ -437,7 +437,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
   4. Prefix membership is decided on path segments, so a document under `/libs/foo2/` is not treated as inside the prefix `/libs/foo`. `isTokenizedFile` and `statSize` return their not-a-file result for a symlink, a directory or a FIFO. Tests pin both.
   5. When the new formatter Java setting is set, the formatter checks that the binary exists and is executable before spawning it, and an invalid value shows an error instead of silently falling back to PATH. When the setting is empty, the resolved default binary is checked the same way.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -449,7 +449,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 110-02-PLAN.md — Segment-aware PREFIX containment: USE reads, scope lookup and USE validation skip escaping candidates, and `isExternalDocument()` stops matching sibling directories (SEC-06, SEC-07) (wave 2, shares bbj-ws-manager.ts with 110-01)
+- [x] 110-02-PLAN.md — Segment-aware PREFIX containment: USE reads, scope lookup and USE validation skip escaping candidates, and `isExternalDocument()` stops matching sibling directories (SEC-06, SEC-07) (wave 2, shares bbj-ws-manager.ts with 110-01)
 
 *Planning notes:* SEC-02 meets a documented design decision: `config-path-resolver.ts` says
 `configPath` is deliberately not anchored to a workspace folder, so system-wide config files keep
@@ -755,7 +755,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 110. Workspace Settings & Filesystem Trust | 4/5 | Not started |  |
+| 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
 | 111. Java Class Data from the Interop Peer | 0/TBD | Not started | - |
 | 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
