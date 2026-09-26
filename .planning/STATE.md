@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 110
 current_phase_name: Workspace Settings & Filesystem Trust
 status: executing
-stopped_at: Completed 110-01-PLAN.md
-last_updated: "2026-09-26T11:44:56.399Z"
+stopped_at: Completed 110-03-PLAN.md
+last_updated: "2026-09-26T11:53:47.465Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 110 execution started
-state_head: 6e30d8e108f41839814b02fc8f6d0c816790492a
+state_head: 26d2ede847e93de69b92e335f8972cfed058193a
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 ## Current Position
 
 Phase: 110 (Workspace Settings & Filesystem Trust) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-26 — Phase 110 execution started
 
@@ -120,6 +120,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 110 P01 | 9min | 2 tasks | 5 files |
+| Phase 110 P03 | 7min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,7 @@ decisions:
 - [v4.7 roadmap]: #511 is fixed by gating only a workspace-scoped `bbj.configPath` behind VS Code Workspace Trust; `configPath` stays deliberately un-anchored to the workspace folder for system-wide config files.
 - [v4.7 roadmap]: all workflow and packaging-script changes (CI-01..03, CI-05..09) are one late phase (122) so each workflow file is rewritten once; DEP-01 and CI-04 land earlier in Phase 117 because they do not change what a publish run does.
 - [Phase 110]: 110-01: interop host/port validated through one shared module (interop-config.ts); default host consolidated to 'localhost' everywhere
+- [Phase 110]: 110-03: isTokenizedFile and statSize both lstat-first and reject non-regular files; O_NOFOLLOW/O_NONBLOCK requested where the platform defines them, with an explicit typeof-number check to avoid silent Windows coercion — Closes issue #585: a symlink, directory or FIFO placed at the decompile probe path could redirect the read or block the extension host
 
 ### Tech Debt
 
@@ -218,8 +220,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T11:44:56.368Z
-Stopped at: Completed 110-01-PLAN.md
+Last session: 2026-09-26T11:53:47.431Z
+Stopped at: Completed 110-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
