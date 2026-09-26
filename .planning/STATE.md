@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 111
 current_phase_name: Java Class Data from the Interop Peer
 status: executing
-stopped_at: Phase 111 context gathered
-last_updated: "2026-09-26T16:07:35.435Z"
+stopped_at: Completed 111-01-PLAN.md
+last_updated: "2026-09-26T16:48:15.832Z"
 last_activity: 2026-09-26
-last_activity_desc: Phase 110 complete, transitioned to Phase 111
-state_head: 5d2368da9a6974c3328b8c363b5cee965abad287
+last_activity_desc: Phase 111 execution started
+state_head: 3090b66d7ac2d8f2ca76f4ac68d5833cbf2128bc
 progress:
   total_phases: 13
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
   percent: 8
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 ## Current Position
 
-Phase: 111 (Java Class Data from the Interop Peer) — READY TO EXECUTE
-Plan: Not started
+Phase: 111 (Java Class Data from the Interop Peer) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-09-26 — Phase 110 complete, transitioned to Phase 111
+Last activity: 2026-09-26 — Phase 111 execution started
 
 Progress: [█░░░░░░░░░] 8% (1/13 phases)
 
@@ -124,6 +124,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 110 P04 | 8min | 3 tasks | 7 files |
 | Phase 110 P05 | 14min | 3 tasks | 9 files |
 | Phase 110 P02 | 13min | 3 tasks | 7 files |
+| Phase 111 P01 | 45min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,7 @@ decisions:
 - [Phase 110]: 110-05: bbj.configPath's workspace-scoped value is gated behind Workspace Trust in the VS Code client (effectiveConfigPath); initializationOptions, the settings push/pull, and the client's own config-association fallback all read through it; configPath itself stays un-anchored
 - [Phase 110]: 110-02: One plain path-containment.ts module (isPathInside/containedPrefixCandidates) decides every PREFIX-membership check lexically via path.relative, Windows-only case-insensitive; the document builder, scope provider, USE-file validator, revalidation and isExternalDocument() all filter through it, closing issues #526 and #579.
 - [Phase 110 UAT]: G-110-1 (formatter no-op with `javaPath` empty) is a pre-existing crash in the vendored formatter jar under `--single-line-if` on block IFs, only logged; deferred out of the phase. The user is considering moving the formatter into bbj-ls behind RPC and MCP (many Bugzilla formatter bugs).
+- [Phase 111]: 111-01: java-peer-guard.ts is the single owner of Java-interop peer data bounds (length limits, truncateText, sanitizeJavaClassDto); resolveClass() guards its entry against an unusable class name and sanitizes before storeJavaClass(); Phase 2 bounds javadoc/real-name with one combined warn line per class — SEC-03 (#523): resolveClass() copied peer fields onto the AST unchecked
 
 ### Tech Debt
 
@@ -227,9 +229,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T15:01:09.603Z
-Stopped at: Phase 111 context gathered
-Resume file: .planning/phases/111-java-class-data-from-the-interop-peer/111-CONTEXT.md
+Last session: 2026-09-26T16:48:15.757Z
+Stopped at: Completed 111-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

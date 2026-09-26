@@ -12,7 +12,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 - [x] **SEC-01**: Interop host and port settings are validated in one shared place before connecting (host is a non-empty string, port is an integer from 1 to 65535). Invalid values fall back to the defaults with a logged warning. (#509, #510)
 - [x] **SEC-02**: A workspace-level `bbj.configPath` is ignored in an untrusted workspace (VS Code Workspace Trust); user-level settings are unaffected (#511)
-- [ ] **SEC-03**: java-interop peer response fields are checked for type and length before they are copied into AST documentation (#523)
+- [x] **SEC-03**: java-interop peer response fields are checked for type and length before they are copied into AST documentation (#523)
 - [ ] **SEC-04**: Hover and completion escape Markdown control characters in javadoc text supplied by the java-interop peer (#524)
 - [ ] **SEC-05**: The missing-USE quick fix and auto-import completion insert a class name only if it matches the Java qualified-identifier pattern (#525)
 - [x] **SEC-06**: USE-statement path resolution rejects a path that resolves outside the configured PREFIX roots (#526)
@@ -115,7 +115,7 @@ None deferred. Every still-open audit issue is in scope.
 |-------------|-------|--------|
 | SEC-01 | Phase 110 | Complete |
 | SEC-02 | Phase 110 | Complete |
-| SEC-03 | Phase 111 | Pending |
+| SEC-03 | Phase 111 | Complete |
 | SEC-04 | Phase 111 | Pending |
 | SEC-05 | Phase 111 | Pending |
 | SEC-06 | Phase 110 | Complete |
