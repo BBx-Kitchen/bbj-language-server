@@ -8,7 +8,7 @@ import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
-import { escapeMarkdown } from "./java-peer-guard.js";
+import { escapeMarkdown, MAX_JAVADOC_LENGTH, truncateText } from "./java-peer-guard.js";
 import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
@@ -119,7 +119,11 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
             let javaDoc: { signature?: string, javadoc: string } | undefined = node.docu
             if (!javaDoc && this.javadocProvider.isInitialized()) {
                 const documentation = await this.javadocProvider.getDocumentation(node);
-                const javadocContent = documentation?.docu ? this.tryParseJavaDoc(documentation.docu) : ''
+                // Bounded before it is rendered (issue #524): the javadoc-file fallback reads
+                // an installed javadoc file, which can be arbitrarily large.
+                const javadocContent = typeof documentation?.docu === 'string'
+                    ? truncateText(this.tryParseJavaDoc(documentation.docu), MAX_JAVADOC_LENGTH)
+                    : ''
                 if (isMethodDoc(documentation)) {
                     const javaMethodNode = node as JavaMethod
                     const signature = `${javaTypeAdjust(javaMethodNode.returnType)} ${ownerClass(javaMethodNode)}${methodSignature(toMethodDocToMethodData(documentation, javaMethodNode), javaTypeAdjust)}`

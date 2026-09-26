@@ -1,9 +1,11 @@
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
-import { beforeAll, describe, expect, test } from 'vitest';
-import { escapeMarkdown } from '../src/language/java-peer-guard.js';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { documentationHeader } from '../src/language/bbj-hover.js';
+import { escapeMarkdown, MAX_JAVADOC_LENGTH } from '../src/language/java-peer-guard.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { DocumentationInfo, Model } from '../src/language/generated/ast.js';
+import { JavadocProvider } from '../src/language/java-javadoc.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /**
@@ -129,5 +131,130 @@ describe('Java hover documentation is escaped at the render boundary (issue #524
         // The stored docu is unchanged after hover renders it.
         expect(put!.docu!.javadoc).toBe(rawJavadoc);
         expect(put!.docu!.signature).toBe(rawSignature);
+    });
+});
+
+describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are escaped, and BBj-authored documentation is untouched", () => {
+    const services = createBBjTestServices(EmptyFileSystem);
+    const parse = parseHelper<Model>(services.BBj);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function positionOf(document: LangiumDocument, snippet: string) {
+        const offset = document.textDocument.getText().indexOf(snippet);
+        expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+        return document.textDocument.positionAt(offset);
+    }
+
+    test('an oversized javadoc-file fallback is bounded before it is rendered, and still ends up escaped', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        expect(hashMap).toBeDefined();
+        expect(hashMap!.docu).toBeUndefined();
+
+        const oversizedDocu = '/**' + 'a'.repeat(40000) + ' [x](https://evil.example)' + '*/';
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: oversizedDocu });
+
+        const document = await parse('declare java.util.HashMap h!\n', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'HashMap');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('…');
+        const header = documentationHeader(hashMap!) ?? '';
+        expect(value.length).toBeLessThanOrEqual(MAX_JAVADOC_LENGTH + header.length + 10);
+    });
+
+    test('a short javadoc-file fallback containing link syntax renders escaped', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+            name: 'HashMap',
+            docu: '/** See [x](https://evil.example) */'
+        });
+
+        const document = await parse('declare java.util.HashMap h!\n', { validation: true });
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'HashMap');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(hasInterpretableLinkOrImage(value)).toBe(false);
+        expect(hashMap!.docu).toBeUndefined();
+    });
+
+    test('a Java header built from an unusable field type renders escaped, with no interpretable link', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const stringClass = javaInterop.getResolvedClass('java.lang.String');
+        expect(stringClass).toBeDefined();
+        const someInstanceField = stringClass!.fields.find(f => f.name === 'someInstanceField');
+        expect(someInstanceField).toBeDefined();
+        const originalType = someInstanceField!.type;
+        someInstanceField!.type = 'java.util.List[x](https://evil.example)';
+
+        try {
+            const document = await parse('declare java.lang.String s!\nPRINT s!.someInstanceField\n', { validation: true });
+            expect(document.parseResult.lexerErrors).toHaveLength(0);
+            expect(document.parseResult.parserErrors).toHaveLength(0);
+
+            const hoverProvider = services.BBj.lsp.HoverProvider!;
+            const position = positionOf(document, 's!.someInstanceField');
+            const hover = await hoverProvider.getHoverContent(document, {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: position.line, character: position.character + 's!.'.length }
+            });
+
+            expect(hover).toBeDefined();
+            const value = (hover!.contents as { value: string }).value;
+            expect(value.startsWith('__')).toBe(true);
+            expect(hasInterpretableLinkOrImage(value)).toBe(false);
+        } finally {
+            someInstanceField!.type = originalType;
+        }
+    });
+
+    test('a documented BBj class member keeps its REM /** */ link unescaped', async () => {
+        const document = await parse(`
+class public Doc
+    REM /**
+    REM  * See [docs](https://documentation.basis.cloud) for details
+    REM  */
+    field public BBjString title
+classend
+
+declare Doc d!
+PRINT d!.title
+        `, { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'd!.title');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 'd!.'.length }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('[docs](https://documentation.basis.cloud)');
     });
 });
