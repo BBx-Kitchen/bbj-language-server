@@ -471,7 +471,7 @@ whether the crash counter resetting on every `started` is intended. Upstream con
   4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
   5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
 
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 
@@ -547,7 +547,7 @@ v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tr
 | 106. On-Save Compiler Check in Both IDEs | 7/7 | Complete | 2026-09-24 |
 | 107. Validation False Alarms & Silent Skips | 6/6 | Complete | 2026-09-25 |
 | 108. IntelliJ Crash Detection | 4/4 | Complete | 2026-09-25 |
-| 109. Completion & Java Class Resolution | 8/8 | Not started |  |
+| 109. Completion & Java Class Resolution | 8/8 | Complete | 2026-09-26 |
 
 **Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
 19/19 requirements mapped to 4 phases (VAL-03 added to Phase 107 on 2026-09-24), no orphans and no duplicates. Scope is in
