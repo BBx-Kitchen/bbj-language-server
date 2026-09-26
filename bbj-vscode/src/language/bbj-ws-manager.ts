@@ -68,10 +68,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 logger.info(`BBj home: ${this.bbjdir}`);
                 logger.debug(`Classpath from settings: ${this.classpathFromSettings}`);
 
-                // Extract interop settings and apply to JavaInteropService
-                const interopHost = params.initializationOptions.interopHost || 'localhost';
-                const interopPort = params.initializationOptions.interopPort || 5008;
-                this.javaInterop.setConnectionConfig(interopHost, interopPort);
+                // Extract interop settings and apply to JavaInteropService. Validation and
+                // defaults live in setConnectionConfig itself (interop-config.ts); this call
+                // site carries no default of its own.
+                this.javaInterop.setConnectionConfig(params.initializationOptions.interopHost, params.initializationOptions.interopPort);
 
                 // Extract configPath setting
                 this.configPath = params.initializationOptions.configPath || "";

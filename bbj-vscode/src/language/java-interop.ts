@@ -15,6 +15,7 @@ import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
+import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -248,8 +249,8 @@ export class JavaInteropService {
     private static readonly MAX_RESOLUTION_DEPTH = 50;
     /** Maximum time (ms) allowed for a single resolveClassByName call chain before aborting. */
     private static readonly RESOLUTION_TIMEOUT_MS = 30_000;
-    private interopHost: string = '127.0.0.1';
-    private interopPort: number = 5008;
+    private interopHost: string = DEFAULT_INTEROP_HOST;
+    private interopPort: number = DEFAULT_INTEROP_PORT;
     /** Three-state breaker guarding {@link connect} against a peer that is unreachable at the connect level (#504). */
     private breakerState: 'closed' | 'open' | 'half-open' = 'closed';
     /** `Date.now()` time at which the next lookup is let through as the single half-open probe. */
@@ -483,13 +484,27 @@ export class JavaInteropService {
     /**
      * Sets the connection configuration for the Java interop service.
      * Call clearCache() separately to reconnect with new settings.
+     *
+     * Any value is accepted: `host`/`port` are validated through {@link validateInteropConfig}
+     * itself, so no caller can bypass validation. An invalid or absent value falls back per
+     * field to the shared defaults; an invalid (present but rejected) value additionally logs
+     * one warning naming the setting and the rejected value.
      * @param host hostname or IP address of the Java interop service
      * @param port port number of the Java interop service
      */
-    public setConnectionConfig(host: string, port: number): void {
-        this.interopHost = host || '127.0.0.1';
-        this.interopPort = port || 5008;
+    public setConnectionConfig(host: unknown, port: unknown): void {
+        const validated = validateInteropConfig(host, port);
+        for (const rejection of validated.rejected) {
+            logger.warn(formatInteropRejection(rejection));
+        }
+        this.interopHost = validated.host;
+        this.interopPort = validated.port;
         logger.debug(`Java interop connection config: ${this.interopHost}:${this.interopPort}`);
+    }
+
+    /** Returns a fresh snapshot of the currently configured interop host/port. */
+    public getConnectionConfig(): { host: string; port: number } {
+        return { host: this.interopHost, port: this.interopPort };
     }
 
     /**
