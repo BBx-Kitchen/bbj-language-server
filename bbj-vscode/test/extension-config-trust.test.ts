@@ -526,6 +526,25 @@ describe('the bbj settings push and pull carry the gated configPath (issue #511)
         expect(source.list[2]).toEqual({ b: 2 });
     });
 
+    test('gatedBbjSettings copies an own "__proto__" key on a nested settings value without redirecting the copy\'s prototype', () => {
+        // Built via JSON.parse, not an object literal, so "__proto__" lands as a genuine own
+        // enumerable property -- the same shape a hand-edited .vscode/settings.json produces.
+        const evilPayload = JSON.parse('{"__proto__":{"polluted":true},"safe":"value"}') as Record<string, unknown>;
+        const workspace = stubGatedWorkspace({
+            isTrusted: true,
+            workspaceConfigPath: '/ws/config.bbx',
+            bbjSection: { nested: evilPayload },
+        });
+
+        const result = gatedBbjSettings(workspace);
+        const nested = result.nested as Record<string, unknown>;
+
+        expect(Object.getPrototypeOf(nested)).toBeNull();
+        expect(nested.polluted).toBeUndefined();
+        expect(nested.safe).toBe('value');
+        expect(() => JSON.stringify(result)).not.toThrow();
+    });
+
     test('through activate(): the push path sends DidChangeConfigurationNotification with the gated bbj settings', async () => {
         resetState();
         h.state.isTrusted = false;

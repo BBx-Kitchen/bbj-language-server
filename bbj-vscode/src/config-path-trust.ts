@@ -67,14 +67,23 @@ export function effectiveConfigPath(workspace: TrustAwareWorkspace = defaultWork
  * enumerable keys, arrays mapped element-wise, primitives returned as-is. Used so a caller can
  * freely mutate a gated settings payload without ever touching the live VS Code configuration
  * object it was read from.
+ *
+ * The accumulator for an object value is created with `Object.create(null)` and an own
+ * `"__proto__"` key on the source is skipped, not copied by bracket assignment — the input is a
+ * workspace-controlled settings section, and a plain object literal's bracket assignment would
+ * let a `"__proto__"` key silently redirect the copy's own prototype instead of becoming a
+ * literal property. The result stays a plain, JSON-serialisable object either way.
  */
 function toPlainJSON(value: unknown): unknown {
     if (Array.isArray(value)) {
         return value.map(toPlainJSON);
     }
     if (value !== null && typeof value === 'object') {
-        const result: Record<string, unknown> = {};
+        const result: Record<string, unknown> = Object.create(null);
         for (const key of Object.keys(value as Record<string, unknown>)) {
+            if (key === '__proto__') {
+                continue;
+            }
             result[key] = toPlainJSON((value as Record<string, unknown>)[key]);
         }
         return result;
