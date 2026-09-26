@@ -260,9 +260,6 @@ connection.onDidChangeConfiguration(async (change) => {
         const javaInterop = BBj.java.JavaInteropService;
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
-        const newInteropHost = config.interop?.host || 'localhost';
-        const newInteropPort = config.interop?.port || 5008;
-
         // Update configPath in wsManager for PREFIX resolution, then re-push the resolved
         // value so hosts' warm caches self-correct without a second request (no PREFIX/USE
         // reload here — that belongs to a later reload path).
@@ -272,7 +269,9 @@ connection.onDidChangeConfiguration(async (change) => {
         configWatcher.updateResolvedPath(wsManager.getResolvedConfigPath());
 
         logger.info('BBj settings changed, refreshing Java classes...');
-        javaInterop.setConnectionConfig(newInteropHost, newInteropPort);
+        // Validation and defaults live in setConnectionConfig itself (interop-config.ts); this
+        // call site carries no default of its own.
+        javaInterop.setConnectionConfig(config.interop?.host, config.interop?.port);
 
         await reloadJavaClassesAndRevalidate();
     } catch (error) {

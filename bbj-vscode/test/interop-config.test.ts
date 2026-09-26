@@ -6,6 +6,8 @@
 
 import { EmptyFileSystem } from 'langium';
 import type { InitializeParams } from 'vscode-languageserver';
+import * as fs from 'fs';
+import * as path from 'path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
     DEFAULT_INTEROP_HOST,
@@ -15,6 +17,7 @@ import {
     validateInteropConfig,
 } from '../src/language/interop-config.js';
 import { createBBjTestServices } from './bbj-test-module.js';
+import type { JavaInteropService } from '../src/language/java-interop.js';
 import { logger } from '../src/language/logger.js';
 
 /**
@@ -132,5 +135,85 @@ describe('interop settings from the initialization options (issue #509, #510)', 
             port: DEFAULT_INTEROP_PORT,
         });
         expect(warnSpy).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Makes exactly the call main.ts's onDidChangeConfiguration handler makes:
+ * `javaInterop.setConnectionConfig(config.interop?.host, config.interop?.port)` where
+ * `config` is the pushed `bbj` settings section.
+ */
+function applyAsConfigurationChange(
+    service: JavaInteropService,
+    settings: { bbj: { interop?: { host?: unknown; port?: unknown } } },
+): void {
+    service.setConnectionConfig(settings.bbj.interop?.host, settings.bbj.interop?.port);
+}
+
+describe('interop settings from a configuration change (issue #509, #510)', () => {
+    function freshService(): JavaInteropService {
+        return createBBjTestServices(EmptyFileSystem).BBj.java.JavaInteropService;
+    }
+
+    test('an invalid host falls back and logs one warning naming bbj.interop.host', () => {
+        const service = freshService();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        applyAsConfigurationChange(service, { bbj: { interop: { host: '', port: 6000 } } });
+        expect(service.getConnectionConfig()).toEqual({ host: DEFAULT_INTEROP_HOST, port: 6000 });
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain(INTEROP_HOST_SETTING);
+    });
+
+    test('an invalid (out-of-range) port falls back and logs one warning naming bbj.interop.port', () => {
+        const service = freshService();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        applyAsConfigurationChange(service, { bbj: { interop: { host: 'interop.example', port: 70000 } } });
+        expect(service.getConnectionConfig()).toEqual({ host: 'interop.example', port: DEFAULT_INTEROP_PORT });
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain(INTEROP_PORT_SETTING);
+    });
+
+    test('both invalid falls back to both defaults with two warnings', () => {
+        const service = freshService();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        applyAsConfigurationChange(service, { bbj: { interop: { host: 5, port: 'x' } } });
+        expect(service.getConnectionConfig()).toEqual({ host: DEFAULT_INTEROP_HOST, port: DEFAULT_INTEROP_PORT });
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('a bbj section without an interop key falls back to both defaults with no warning', () => {
+        const service = freshService();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        applyAsConfigurationChange(service, { bbj: {} });
+        expect(service.getConnectionConfig()).toEqual({ host: DEFAULT_INTEROP_HOST, port: DEFAULT_INTEROP_PORT });
+        expect(warnSpy).not.toHaveBeenCalled();
+    });
+});
+
+describe('main.ts configuration-change call site', () => {
+    function stripLineComments(text: string): string {
+        return text
+            .split('\n')
+            .map(line => {
+                const idx = line.indexOf('//');
+                return idx >= 0 ? line.slice(0, idx) : line;
+            })
+            .join('\n');
+    }
+
+    function mainSource(): string {
+        return stripLineComments(
+            fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'main.ts'), 'utf-8'),
+        );
+    }
+
+    // main.ts registers its handler at module load against a live connection, so this test
+    // pins the call site text while the behavior behind it is exercised through
+    // setConnectionConfig above, via applyAsConfigurationChange.
+    test('exactly one setConnectionConfig( call, passing config.interop?.host and config.interop?.port directly', () => {
+        const source = mainSource();
+        const matches = source.match(/setConnectionConfig\(/g) ?? [];
+        expect(matches).toHaveLength(1);
+        expect(source).toMatch(/setConnectionConfig\(\s*config\.interop\?\.host\s*,\s*config\.interop\?\.port\s*\)/);
     });
 });
