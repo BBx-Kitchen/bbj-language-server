@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 111
-current_phase_name: java-class-data-from-the-interop-peer
+current_phase_name: Java Class Data from the Interop Peer
 status: executing
-stopped_at: Completed 111-05-PLAN.md
-last_updated: "2026-09-26T18:54:45.270Z"
+stopped_at: Completed 111-06-PLAN.md (gap closure)
+last_updated: "2026-09-26T19:19:49.031Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 111 execution started
-state_head: 6873d91fb7f1294519fd34faf63a0f728755822d
+state_head: 2c0c169f96b3b7895a7546e0db7926feeb3129da
 progress:
   total_phases: 13
   completed_phases: 1
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 8
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 ## Current Position
 
-Phase: 111 (java-class-data-from-the-interop-peer) — READY TO EXECUTE
-Plan: 5 of 5
+Phase: 111 (Java Class Data from the Interop Peer) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
 Last activity: 2026-09-26 — Phase 111 execution started
 
@@ -129,6 +129,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 111 P03 | 20min | 3 tasks | 4 files |
 | Phase 111 P04 | 21min | 2 tasks | 3 files |
 | Phase 111 P05 | 12min | 2 tasks | 5 files |
+| Phase 111 P06 | 27min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,8 @@ decisions:
 - [Phase 111]: 111-04: isKnownJavaPackage(qualifiedName) on JavaInteropService answers from the in-memory package tree only (never sends a request); tryResolveJavaReference in bbj-scope-local.ts returns before any class request when the name is already a known package, covering the USE branch, its $ fallback, the qualified JavaTypeRef branch and the MemberCall FQN preload alike — addresses issue #676: "Java class java.io has no container" log line
 - [Phase 111]: 111-04: storeJavaClass's leaf step keeps an existing JavaPackage intact on a colliding class name (defence in depth): the class lands on the classpath fallback instead of overwriting the package; the "has no container" console.error stays for any other genuinely unexpected missing container, not downgraded as the fix
 - [Phase 111]: 111-05: isJavaQualifiedName in java-peer-guard.ts gates both createUseAction and completeAutoImportClasses before either builds a use TextEdit; filtering happens before ranking/indexing so the preferred flag naturally moves to the next valid candidate when the top-ranked one is dropped (SEC-05, #525)
+- [Phase 111]: 111-06: Phase 1 method/constructor parameters defaulted to [] beside the existing fields/methods defaults, closing the absent-parameters Phase 2 crash (SEC-03 gap 1) — Mirrors the javaClass.fields ??= [] precedent already in resolveClass Phase 1
+- [Phase 111]: 111-06: boundedJavadocName truncates hover's javadoc-file MethodDoc fallback name and each parameter name at MAX_JAVA_IDENTIFIER_LENGTH, falling back to the node's own bounded name on a non-string value (SEC-04/D-02 gap 2) — Closes the one D-02 hover path left unbounded; mirrors the interop path's realName bound
 
 ### Tech Debt
 
@@ -238,8 +241,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T18:03:53.212Z
-Stopped at: Completed 111-05-PLAN.md
+Last session: 2026-09-26T19:19:48.960Z
+Stopped at: Completed 111-06-PLAN.md (gap closure)
 Resume file: None
 
 Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.

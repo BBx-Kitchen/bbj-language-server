@@ -471,7 +471,7 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans:** 5/6 plans executed (111-06 closes the two 111-VERIFICATION.md gaps)
+**Plans:** 6/6 plans executed (111-06 closes the two 111-VERIFICATION.md gaps)
 
 Plans:
 **Wave 1**
@@ -490,7 +490,7 @@ Plans:
 
 **Gap closure** *(from 111-VERIFICATION.md)*
 
-- [ ] 111-06-PLAN.md — A peer method/constructor entry with no `parameters` key defaults to `[]` in `resolveClass()` Phase 1 instead of crashing Phase 2; hover's javadoc-file MethodDoc fallback bounds the method and parameter names it renders (SEC-03, SEC-04) (wave 1, gap closure)
+- [x] 111-06-PLAN.md — A peer method/constructor entry with no `parameters` key defaults to `[]` in `resolveClass()` Phase 1 instead of crashing Phase 2; hover's javadoc-file MethodDoc fallback bounds the method and parameter names it renders (SEC-03, SEC-04) (wave 1, gap closure)
 
 *Planning notes:* one shared escape/bound helper can serve SEC-03 and SEC-04. The research traced
 FIX-02's log line to a package/class name collision in `storeJavaClass()`'s `childrenOfByName`
@@ -775,7 +775,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
-| 111. Java Class Data from the Interop Peer | 5/5 | Not started |  |
+| 111. Java Class Data from the Interop Peer | 6/6 | Not started |  |
 | 112. EM Login & Web Launch Fail Closed | 0/TBD | Not started | - |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
