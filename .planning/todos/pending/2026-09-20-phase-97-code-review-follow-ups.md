@@ -2,6 +2,7 @@
 created: 2026-09-20T19:00:00.000Z
 title: Phase 97 code-review follow-ups — download-progress fix is partial, three guards are weak
 area: intellij-node-download
+resolves_phase: 114
 severity: minor
 files:
 

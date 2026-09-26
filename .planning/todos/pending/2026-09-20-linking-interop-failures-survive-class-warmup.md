@@ -2,6 +2,7 @@
 created: 2026-09-20
 title: linking.test.ts "Interop related tests" fail even after a targeted class warm-up
 area: testing
+resolves_phase: 116
 severity: minor
 files:
 

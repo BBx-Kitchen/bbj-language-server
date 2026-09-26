@@ -2,6 +2,7 @@
 created: 2026-09-24
 title: Exempt unresolved Java member linking warnings from hierarchy Rule 2, and reword the "NamedElement" linking message
 area: validation
+resolves_phase: 111
 severity: minor
 files:
 
