@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.6
-milestone_name: User-Facing Bug Burn-down (Phases 106-109) — SHIPPED 2026-09-26
-status: Awaiting next milestone
-stopped_at: Milestone v4.6 complete and archived
-last_updated: "2026-09-26T08:23:44.690Z"
+milestone: v4.7
+milestone_name: Audit Hygiene Burn-down
+status: planning
+last_updated: "2026-09-26T10:18:21.503Z"
 last_activity: 2026-09-26
-last_activity_desc: Milestone v4.6 completed and archived
-state_head: d8f3401f924cc3d181d85ffa99f326a0d458593c
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 25
-  completed_plans: 25
-  percent: 100
-current_phase: 109
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -33,12 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 ## Current Position
 
-Phase: Milestone v4.6 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-26 — Milestone v4.6 completed and archived
-
-v4.6 (phases 106-109) is summarised under Recent History below and in MILESTONES.md.
+Status: Defining requirements
+Last activity: 2026-09-26 — Milestone v4.7 started
 
 ## Performance Metrics
 

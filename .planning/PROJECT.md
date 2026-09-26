@@ -8,6 +8,20 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
+## Current Milestone: v4.7 Audit Hygiene Burn-down
+
+**Goal:** Close the 2026-08-20 audit backlog: fix what is still broken, close or trim what is already fixed, and tidy the loose ends carried over from v4.4 to v4.6.
+
+**Target features:**
+- Re-verify every open audit issue against `main`; close the fixed ones and trim the partly fixed ones (#551, #533, #676)
+- Input-validation and security hardening (#509-#511, #523-#526, #529, #546, #548, #553, #566, #579, #585, #586, #604, #605, #626)
+- CI and dependency hygiene (#501, #507, #518, #520, #521, #547, #549-#551, #572, #573, #598, #600), plus the langium 4.4 regression (reproduce, report upstream, pin)
+- Test coverage and the interop test harness (#514, #516, #519, #528, #555, #559, #560, #562, #563, #565, #574, #575, #596, #599, #601, #627-#629, #635)
+- Refactors with no user-visible change (#533, #534, #558, #564, #580-#583, #602, #603, #606, #624, #625)
+- Carry-overs: the #676 "has no container" log error, the linking interop warm-up todo, the phase 97 review follow-ups, and the unknown-Java-member warning extras
+
+Out of scope: IntelliJ parity features (#631, #634), bbj-ls repository issues (#693, #694), and feature requests.
+
 ## Current State
 
 **v4.6 User-Facing Bug Burn-down shipped 2026-09-26** (override closeout after a milestone
@@ -384,7 +398,7 @@ until publication).
 
 ### Active
 
-No milestone is active. Start the next one with `/gsd-new-milestone`.
+v4.7 Audit Hygiene Burn-down: see the Current Milestone section above and `.planning/REQUIREMENTS.md`.
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -658,4 +672,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 after v4.6 milestone*
+*Last updated: 2026-09-26 at the start of the v4.7 milestone*
