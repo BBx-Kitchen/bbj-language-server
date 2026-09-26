@@ -53,7 +53,7 @@ import {
 import { JavaInteropService } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import type { BBjIndexManager } from './bbj-index-manager.js';
-import { resolve } from 'path';
+import { containedPrefixCandidates } from './path-containment.js';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
 
@@ -335,7 +335,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // Resolve relative to each workspace/project root too (#378), so a USE from a
             // subfolder can reference files by their project-root-relative path.
             .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, bbjFilePath)))
-            .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath))));
+            // Only PREFIX candidates that lie inside the root they were resolved against are
+            // offered (issue #526); the two candidate groups above are unaffected.
+            .concat(containedPrefixCandidates(prefixes, bbjFilePath).map(p => URI.file(p)));
         let bbjClasses = stream((this.indexManager as BBjIndexManager).getBBjClassesForFiles(adjustedFileUris));
         if (!simpleName) {
             bbjClasses = bbjClasses.map(d => {

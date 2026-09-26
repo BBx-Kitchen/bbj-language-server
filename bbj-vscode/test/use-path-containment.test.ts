@@ -1,10 +1,10 @@
-import { URI } from 'langium';
+import { AstUtils, DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
-import { parseHelper } from 'langium/test';
+import { parseHelper, validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
-import { Model } from '../src/language/generated/ast.js';
+import { isUse, Model, Program, Use } from '../src/language/generated/ast.js';
 
 /**
  * A USE path that resolves outside every configured PREFIX root must never reach
@@ -93,5 +93,81 @@ describe('the document builder reads only contained PREFIX candidates (issue #52
         expect(docs.hasDocument(outsideUri), 'Outside.bbj must not be loaded').toBe(false);
         expect(docs.hasDocument(otherUri), 'Other.bbj must not be loaded').toBe(false);
         expect(docs.hasDocument(transitiveUri), 'Transitive.bbj (a transitive escape from Used.bbj) must not be loaded').toBe(false);
+    });
+});
+
+describe('scope and validation ignore PREFIX candidates outside their root (issue #526)', () => {
+    const PREFIX = '/virtual/libs/in';
+    const services = createBBjServices(EmptyFileSystem);
+
+    function linkingErrors(doc: { diagnostics?: { data?: { code?: string } }[] }) {
+        return (doc.diagnostics ?? []).filter(d => d.data?.code === DocumentValidator.LinkingError);
+    }
+    function fileNotResolvedErrors(doc: { diagnostics?: { message: string }[] }) {
+        return (doc.diagnostics ?? []).filter(d => d.message.includes('could not be resolved'));
+    }
+
+    beforeAll(async () => {
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        (wsManager as unknown as { settings: { prefixes: string[]; classpath: string[] } }).settings =
+            { prefixes: [PREFIX], classpath: [] };
+
+        const parse = parseHelper<Model>(services.BBj);
+        await parse(`class public Outside\nclassend`, {
+            documentUri: URI.file(`${SECRET_DIR}/Outside.bbj`).toString(),
+            validation: false,
+        });
+        await parse(`class public Inside\nclassend`, {
+            documentUri: URI.file(`${PREFIX}/Inside.bbj`).toString(),
+            validation: false,
+        });
+        await parse(`class public Neighbour\nclassend`, {
+            documentUri: URI.file('/virtual/project/Neighbour.bbj').toString(),
+            validation: false,
+        });
+    });
+
+    test('a class reachable only through an escaping PREFIX candidate does not link and is reported as not resolved', async () => {
+        const parse = parseHelper<Model>(services.BBj);
+        const document = await parse(
+            `use ::../../secret/Outside.bbj::Outside\n\nx! = new Outside()`,
+            { documentUri: URI.file('/virtual/project/main.bbj').toString(), validation: true }
+        );
+
+        // Check the Use statement's own bbjClass cross-reference directly: it must not link
+        // through the escaping candidate, independent of whether a downstream diagnostic
+        // hierarchy rule later suppresses a redundant linking diagnostic in favor of the more
+        // specific "could not be resolved" error below.
+        const useStmt = AstUtils.streamAllContents(document.parseResult.value).filter(isUse).head() as Use | undefined;
+        expect(useStmt, 'the parsed program must contain the Use statement').toBeDefined();
+        expect(useStmt!.bbjClass.ref, 'Outside must not resolve through the escaping PREFIX candidate').toBeUndefined();
+
+        const notResolved = fileNotResolvedErrors(document);
+        expect(notResolved.length).toBeGreaterThan(0);
+        expect(notResolved[0].message.startsWith("File '../../secret/Outside.bbj' could not be resolved")).toBe(true);
+        expect(notResolved[0].message).not.toContain(URI.file(`${SECRET_DIR}/Outside.bbj`).fsPath);
+    });
+
+    test('a class inside the PREFIX root links with no diagnostics', async () => {
+        const validate = validationHelper<Program>(services.BBj);
+        const { document } = await validate(
+            `use ::Inside.bbj::Inside\n\nx! = new Inside()`,
+            { documentUri: URI.file('/virtual/project2/main.bbj').toString() }
+        );
+
+        expect(linkingErrors(document)).toHaveLength(0);
+        expect(fileNotResolvedErrors(document)).toHaveLength(0);
+    });
+
+    test('a document-relative USE target next to the program still resolves', async () => {
+        const validate = validationHelper<Program>(services.BBj);
+        const { document } = await validate(
+            `use ::Neighbour.bbj::Neighbour\n\nx! = new Neighbour()`,
+            { documentUri: URI.file('/virtual/project/consumer.bbj').toString() }
+        );
+
+        expect(linkingErrors(document)).toHaveLength(0);
+        expect(fileNotResolvedErrors(document)).toHaveLength(0);
     });
 });

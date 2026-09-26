@@ -9,7 +9,7 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
-import { normalize, resolve, join } from "path";
+import { normalize, join } from "path";
 import { containedPrefixCandidates } from "./path-containment.js";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
@@ -1222,11 +1222,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 }
                 const cleanPath = pathMatch[1];
 
-                // Build candidate URIs (same logic as checkUsedClassExists)
+                // Build candidate URIs (same logic as checkUsedClassExists). Only PREFIX
+                // candidates that lie inside their root are offered (issue #526), so this
+                // revalidation agrees with the scope and the validator.
                 const adjustedFileUris = [
                     UriUtils.resolvePath(UriUtils.dirname(document.uri), cleanPath)
                 ].concat(
-                    prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
+                    containedPrefixCandidates(prefixes, cleanPath).map(p => URI.file(p))
                 );
 
                 // Check if any BbjClass now exists at these URIs, via the Map built once
