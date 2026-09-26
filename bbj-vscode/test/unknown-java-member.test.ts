@@ -14,7 +14,9 @@ import {
 import {
     applyDiagnosticHierarchy,
     dropShadowedMemberLinkingDiagnostics,
-    isJavaMemberLinkingWarning
+    isJavaMemberLinkingWarning,
+    javaMemberLinkingMessage,
+    javaMemberOwnerName
 } from '../src/language/bbj-document-validator.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
@@ -422,5 +424,73 @@ describe('applyDiagnosticHierarchy Rule 2 exempts a flagged Java-member linking 
         const result = applyDiagnosticHierarchy([parseError, flaggedWarning], true, 20);
         expect(result).toContainEqual(parseError);
         expect(result).not.toContainEqual(flaggedWarning);
+    });
+});
+
+describe('javaMemberLinkingMessage: the flagged Warning names the member and its owner', () => {
+    test('an owner name is available', () => {
+        expect(javaMemberLinkingMessage('foo', 'HashMap', "Could not resolve reference to NamedElement named 'foo'. [in a/b.bbj:3]"))
+            .toBe("'foo' is not a known method or field of HashMap [in a/b.bbj:3]");
+    });
+
+    test('no owner name is available', () => {
+        expect(javaMemberLinkingMessage('foo', undefined, "Could not resolve reference to NamedElement named 'foo'. [in a/b.bbj:3]"))
+            .toBe("Cannot resolve 'foo' [in a/b.bbj:3]");
+    });
+
+    test('an original message with no suffix gives a result with none', () => {
+        expect(javaMemberLinkingMessage('foo', 'HashMap', "Could not resolve reference to NamedElement named 'foo'."))
+            .toBe("'foo' is not a known method or field of HashMap");
+    });
+});
+
+describe('javaMemberOwnerName', () => {
+    test('a stub class (error set) has no owner name', () => {
+        const stub = { $type: 'JavaClass', name: 'X', error: 'stub', methods: [], fields: [] };
+        expect(javaMemberOwnerName(stub)).toBeUndefined();
+    });
+
+    test('a fully resolved class returns its last dot segment', () => {
+        const resolved = services.BBj.java.JavaInteropService.getResolvedClass('java.util.HashMap');
+        expect(javaMemberOwnerName(resolved)).toBe('HashMap');
+    });
+
+    test('a non-JavaClass value has no owner name', () => {
+        expect(javaMemberOwnerName(undefined)).toBeUndefined();
+        expect(javaMemberOwnerName({ $type: 'JavaPackage', name: 'java.util' })).toBeUndefined();
+    });
+});
+
+describe('The flagged Warning reads in plain words end to end, and other wordings are unchanged', () => {
+    test("uses the owner's simple name and keeps the [in ...] suffix", async () => {
+        const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\na = 1 b = 2\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].message).toMatch(/^'anyInvalidMethod' is not a known method or field of Class( \[in [^\]]+\])?$/);
+    });
+
+    test('an ordinary unresolved variable keeps NamedElement wording and no flag', async () => {
+        const document = await validate('print undefinedVar\n');
+        const matches = (document.diagnostics ?? []).filter(d => d.message.includes('undefinedVar'));
+        expect(matches.length).toBeGreaterThan(0);
+        expect(matches[0].message).toContain("Could not resolve reference to NamedElement named 'undefinedVar'");
+        expect(isJavaMemberLinkingWarning(matches[0])).toBe(false);
+    });
+
+    test('a BBj class receiver keeps Langium wording and is not flagged', async () => {
+        const document = await validate('class public Foo\nclassend\ndeclare Foo f!\nf!.nothing()\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'nothing');
+        expect(matches.length).toBeGreaterThan(0);
+        expect(matches[0].message).toContain('NamedElement');
+        expect(isJavaMemberLinkingWarning(matches[0])).toBe(false);
+    });
+
+    test('a certain receiver still shows exactly one diagnostic: the Error, not a linking Warning', async () => {
+        const document = await validate('declare java.lang.String s!\ns!.anyInvalidMethod()\na = 1 b = 2\n');
+        const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
+        expect(matches[0].data?.code).toBe(UNKNOWN_JAVA_MEMBER_CODE);
+        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(false);
     });
 });
