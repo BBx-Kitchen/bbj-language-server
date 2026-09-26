@@ -12,11 +12,36 @@ const TOKENIZED_MAGIC = Buffer.from(TOKENIZED_BBJ_MAGIC);
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** True if the file still starts with the tokenized-BBj magic (i.e. not yet decompiled). */
+/**
+ * True if the file still starts with the tokenized-BBj magic (i.e. not yet decompiled).
+ *
+ * Refuses to open anything but a regular file (issue #585): a symlink, directory, FIFO,
+ * socket or device reports false without ever reaching `open` — a FIFO would otherwise block
+ * the open call indefinitely. `lstat` runs first, before any open, so the check cannot be
+ * fooled by following a symlink; the open itself additionally requests `O_NOFOLLOW` and
+ * `O_NONBLOCK` where the platform defines them (POSIX only — both are undefined on Windows,
+ * where the `lstat` check above is the sole guard), and the opened handle is re-checked with
+ * `fstat()` to close the swap window between the `lstat` and the `open`.
+ */
 export async function isTokenizedFile(file: string): Promise<boolean> {
     let handle: fs.promises.FileHandle | undefined;
     try {
-        handle = await fs.promises.open(file, 'r');
+        const entry = await fs.promises.lstat(file);
+        if (!entry.isFile()) {
+            return false;
+        }
+        let flags = fs.constants.O_RDONLY;
+        if (typeof fs.constants.O_NOFOLLOW === 'number') {
+            flags |= fs.constants.O_NOFOLLOW;
+        }
+        if (typeof fs.constants.O_NONBLOCK === 'number') {
+            flags |= fs.constants.O_NONBLOCK;
+        }
+        handle = await fs.promises.open(file, flags);
+        const handleStat = await handle.stat();
+        if (!handleStat.isFile()) {
+            return false;
+        }
         const buffer = Buffer.alloc(TOKENIZED_MAGIC.length);
         const { bytesRead } = await handle.read(buffer, 0, TOKENIZED_MAGIC.length, 0);
         return bytesRead === TOKENIZED_MAGIC.length && buffer.equals(TOKENIZED_MAGIC);
