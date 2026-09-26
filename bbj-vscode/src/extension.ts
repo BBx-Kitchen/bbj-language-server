@@ -31,6 +31,7 @@ import {
 import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
+import { effectiveConfigPath } from './config-path-trust.js';
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
@@ -1099,9 +1100,9 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
             home: vscode.workspace.getConfiguration("bbj").get("home"),
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
             typeResolutionWarnings: vscode.workspace.getConfiguration("bbj").get("typeResolution.warnings", true),
-            configPath: vscode.workspace.getConfiguration("bbj").get("configPath", null),
-            interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host", "localhost"),
-            interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008),
+            configPath: effectiveConfigPath(),
+            interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host"),
+            interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port"),
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
             maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20),
             compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced"),

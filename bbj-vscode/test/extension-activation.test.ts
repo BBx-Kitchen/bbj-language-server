@@ -67,6 +67,7 @@ vi.mock('vscode', () => {
             onDidCloseTextDocument: vi.fn(() => disposable()),
             onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
+            isTrusted: true,
         },
         StatusBarAlignment: { Left: 1, Right: 2 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
