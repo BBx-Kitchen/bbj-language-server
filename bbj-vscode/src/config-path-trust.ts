@@ -17,10 +17,14 @@
  * trust-granted transition and any future declaration.
  */
 import * as vscode from 'vscode';
+import type {
+    ConfigurationMiddleware,
+    DidChangeConfigurationMiddleware,
+} from 'vscode-languageclient/node';
 
 /** The subset of `vscode.WorkspaceConfiguration` these helpers need. */
 export interface TrustAwareWorkspaceConfiguration {
-    get<T>(key: string, defaultValue: T): T;
+    get<T>(key: string, defaultValue?: T): T;
     inspect<T>(key: string): {
         key: string;
         defaultValue?: T;
@@ -56,4 +60,105 @@ export function effectiveConfigPath(workspace: TrustAwareWorkspace = defaultWork
         return inspected?.globalValue ?? null;
     }
     return workspace.getConfiguration('bbj').get<string | null>('configPath', null);
+}
+
+/**
+ * A plain JSON copy mirroring vscode-languageclient's own (unexported) `toJSONObject`: own
+ * enumerable keys, arrays mapped element-wise, primitives returned as-is. Used so a caller can
+ * freely mutate a gated settings payload without ever touching the live VS Code configuration
+ * object it was read from.
+ */
+function toPlainJSON(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(toPlainJSON);
+    }
+    if (value !== null && typeof value === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const key of Object.keys(value as Record<string, unknown>)) {
+            result[key] = toPlainJSON((value as Record<string, unknown>)[key]);
+        }
+        return result;
+    }
+    return value;
+}
+
+/** Sends a `bbj`-namespaced settings payload to the language server (a `DidChangeConfigurationNotification`). */
+export type SendBbjSettings = (settings: Record<string, unknown>) => Promise<void>;
+
+/**
+ * A plain JSON copy of the whole `bbj` settings section, with `configPath` replaced by
+ * {@link effectiveConfigPath}. This is what every trust-gated handoff of the `bbj` section
+ * sends instead of the raw, ungated section VS Code itself would hand over.
+ */
+export function gatedBbjSettings(workspace: TrustAwareWorkspace = defaultWorkspace()): Record<string, unknown> {
+    const section = workspace.getConfiguration().get<Record<string, unknown>>('bbj');
+    const copy = toPlainJSON(section ?? {}) as Record<string, unknown>;
+    copy.configPath = effectiveConfigPath(workspace);
+    return copy;
+}
+
+/** The middleware object this module installs at `clientOptions.middleware.workspace`. */
+export interface ConfigPathTrustMiddleware {
+    didChangeConfiguration: NonNullable<DidChangeConfigurationMiddleware['didChangeConfiguration']>;
+    configuration: NonNullable<ConfigurationMiddleware['configuration']>;
+}
+
+/**
+ * Builds the `middleware.workspace` object that keeps both the `synchronize.configurationSection`
+ * push and the `workspace/configuration` pull trust-gated.
+ *
+ * `didChangeConfiguration` never calls `next()` for an actual section list: vscode-languageclient's
+ * own `next` re-reads `vscode.workspace.getConfiguration()` directly and cannot be handed a
+ * substituted value, so this middleware builds the payload itself (the gated copy for `bbj`, a
+ * plain copy of the live value for any other requested section) and sends it through `send`. A
+ * `sections === undefined` call (the library's own "settings: null" case) is passed through to
+ * `next` unchanged — there is nothing to gate.
+ *
+ * `configuration` awaits the real answer from `next` and substitutes `configPath` into any `bbj`
+ * item, any `bbj.configPath` item, and any whole-configuration item that itself carries a `bbj`
+ * object; a non-array result (an error response) is returned unchanged.
+ */
+export function createConfigPathTrustMiddleware(
+    send: SendBbjSettings,
+    workspace: TrustAwareWorkspace = defaultWorkspace()
+): ConfigPathTrustMiddleware {
+    return {
+        didChangeConfiguration: async (sections, next) => {
+            if (sections === undefined) {
+                await next(sections);
+                return;
+            }
+            const payload: Record<string, unknown> = {};
+            for (const name of sections) {
+                payload[name] = name === 'bbj'
+                    ? gatedBbjSettings(workspace)
+                    : toPlainJSON(workspace.getConfiguration().get(name));
+            }
+            await send(payload);
+        },
+        configuration: async (params, token, next) => {
+            const result = await next(params, token);
+            if (!Array.isArray(result)) {
+                return result;
+            }
+            const path = effectiveConfigPath(workspace);
+            return result.map((value: unknown, index: number) => {
+                const section = params.items[index]?.section;
+                if (section === 'bbj' && value !== null && typeof value === 'object') {
+                    return { ...(value as Record<string, unknown>), configPath: path };
+                }
+                if (section === 'bbj.configPath') {
+                    return path;
+                }
+                if (!section && value !== null && typeof value === 'object' && 'bbj' in (value as Record<string, unknown>)) {
+                    const whole = value as Record<string, unknown>;
+                    const bbj = whole.bbj;
+                    if (bbj !== null && typeof bbj === 'object') {
+                        return { ...whole, bbj: { ...(bbj as Record<string, unknown>), configPath: path } };
+                    }
+                }
+                return value;
+            });
+        },
+    };
 }

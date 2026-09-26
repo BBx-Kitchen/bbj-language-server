@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import {
-    LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
+    DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
@@ -31,7 +31,7 @@ import {
 import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
-import { effectiveConfigPath } from './config-path-trust.js';
+import { createConfigPathTrustMiddleware, effectiveConfigPath } from './config-path-trust.js';
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
@@ -1076,6 +1076,13 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
     const fileSystemWatcher = vscode.workspace.createFileSystemWatcher('**/*.bbj');
     context.subscriptions.push(fileSystemWatcher);
 
+    // Referenced by sendBbjSettings below, assigned once the client is constructed further
+    // down; the closure is only ever invoked after that assignment (on a later push or a
+    // trust-grant re-push), never synchronously during client construction itself.
+    let client: LanguageClient;
+    const sendBbjSettings = (settings: Record<string, unknown>): Promise<void> =>
+        client.sendNotification(DidChangeConfigurationNotification.type, { settings });
+
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         // Supplying our own channel here makes vscode-languageclient treat it as
@@ -1095,6 +1102,13 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
             fileEvents: fileSystemWatcher,
             configurationSection: 'bbj'
         },
+        // The push and pull settings handoffs must stay trust-gated too (issue #511):
+        // vscode-languageclient's own `next()` for `didChangeConfiguration` re-reads the raw
+        // workspace value and cannot be handed a substituted one, so this middleware builds
+        // and sends the payload itself instead of calling `next` for an actual section list.
+        middleware: {
+            workspace: createConfigPathTrustMiddleware(sendBbjSettings)
+        },
         initializationOptions: {
             version: context.extension.packageJSON.version,
             home: vscode.workspace.getConfiguration("bbj").get("home"),
@@ -1111,7 +1125,7 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
     };
 
     // Create the language client and start the client.
-    const client = new LanguageClient(
+    client = new LanguageClient(
         'bbj',
         'BBj',
         serverOptions,
