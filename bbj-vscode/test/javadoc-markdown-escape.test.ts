@@ -1,8 +1,9 @@
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { CompletionTriggerKind } from 'vscode-languageserver';
 import { documentationHeader } from '../src/language/bbj-hover.js';
-import { escapeMarkdown, MAX_JAVADOC_LENGTH } from '../src/language/java-peer-guard.js';
+import { escapeMarkdown, MAX_JAVADOC_LENGTH, toFenceSafeLine } from '../src/language/java-peer-guard.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { DocumentationInfo, Model } from '../src/language/generated/ast.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
@@ -255,6 +256,136 @@ PRINT d!.title
 
         expect(hover).toBeDefined();
         const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('[docs](https://documentation.basis.cloud)');
+    });
+});
+
+describe('toFenceSafeLine', () => {
+    test('an ordinary signature is unchanged', () => {
+        expect(toFenceSafeLine('Object HashMap.put(Object k)')).toBe('Object HashMap.put(Object k)');
+    });
+
+    test('a backtick is removed', () => {
+        expect(toFenceSafeLine('a`b')).toBe('ab');
+    });
+
+    test('every line-break form becomes one space', () => {
+        expect(toFenceSafeLine('a\nb')).toBe('a b');
+        expect(toFenceSafeLine('a\r\nb')).toBe('a b');
+        expect(toFenceSafeLine('a\rb')).toBe('a b');
+        expect(toFenceSafeLine('a\u2028b')).toBe('a b');
+        expect(toFenceSafeLine('a\u2029b')).toBe('a b');
+    });
+
+    test('three backticks become the empty string', () => {
+        expect(toFenceSafeLine('```')).toBe('');
+    });
+});
+
+describe('Java completion documentation is escaped and fence-safe (issue #524)', () => {
+    const services = createBBjTestServices(EmptyFileSystem);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // Mirrors completion-test.test.ts's own dotComplete driver: the cursor sits right after
+    // the trailing '.' in `prefix`.
+    async function dotComplete(prefix: string, uri: string) {
+        const parse = parseHelper<Model>(services.BBj);
+        const doc = await parse(prefix, { documentUri: uri });
+        const provider = services.BBj.lsp.CompletionProvider!;
+        const offset = prefix.length;
+        const completions = await provider.getCompletion(doc, {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '.' }
+        });
+        return completions?.items ?? [];
+    }
+
+    test("a Java method's completion documentation is escaped and its fenced signature cannot break out", async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        const originalDocu = put!.docu;
+
+        const rawJavadoc = 'See ![x](https://evil.example/t.png) and [click](https://evil.example).';
+        const rawSignature = 'Object HashMap.put()' + '\n' + '```' + '\n' + '[evil](https://evil.example)';
+        put!.docu = {
+            $type: 'DocumentationInfo',
+            $container: put!,
+            javadoc: rawJavadoc,
+            signature: rawSignature
+        } as DocumentationInfo;
+
+        try {
+            const items = await dotComplete('declare java.util.HashMap h!\nh!.', 'file:///completion-escape-1.bbj');
+            const putItem = items.find(i => i.label.startsWith('put'));
+            expect(putItem).toBeDefined();
+            const doc = putItem!.documentation as { kind: string, value: string };
+            expect(doc?.value).toBeDefined();
+            // Exactly two runs of three backticks: the opening and closing java fence.
+            const fenceRuns = doc.value.match(/```/g) ?? [];
+            expect(fenceRuns.length).toBe(2);
+            // The fenced java block is not itself Markdown-interpreted by a renderer, so a raw
+            // link inside it (from an unescaped signature) is not a security concern — only the
+            // fence needs to stay intact. The javadoc part after it must have no interpretable
+            // link or image.
+            const fencedMatch = doc.value.match(/```java\n([^`]*)\n```\n\n([\s\S]*)/);
+            expect(fencedMatch).not.toBeNull();
+            const [, fencedLine, javadocPart] = fencedMatch!;
+            expect(fencedLine).not.toContain('\n');
+            expect(hasInterpretableLinkOrImage(javadocPart)).toBe(false);
+        } finally {
+            put!.docu = originalDocu;
+        }
+    });
+
+    test('with docu unset, the documentationHeader fallback is escaped too', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        const originalDocu = put!.docu;
+        const originalReturnType = put!.returnType;
+        put!.docu = undefined;
+        put!.returnType = 'java.lang.Object[x](https://evil.example)';
+
+        try {
+            const items = await dotComplete('declare java.util.HashMap h!\nh!.', 'file:///completion-escape-2.bbj');
+            const putItem = items.find(i => i.label.startsWith('put'));
+            expect(putItem).toBeDefined();
+            const doc = putItem!.documentation as { kind: string, value: string } | undefined;
+            expect(doc?.value).toBeDefined();
+            expect(hasInterpretableLinkOrImage(doc!.value)).toBe(false);
+        } finally {
+            put!.docu = originalDocu;
+            put!.returnType = originalReturnType;
+        }
+    });
+
+    test('a BBj class method keeps its REM /** */ link unescaped in completion documentation', async () => {
+        const items = await dotComplete(`
+class public Doc
+    REM /**
+    REM  * See [docs](https://documentation.basis.cloud) for details
+    REM  */
+    method public void doWork()
+    methodend
+classend
+
+declare Doc d!
+d!.`, 'file:///completion-escape-3.bbj');
+        const workItem = items.find(i => i.label.startsWith('doWork'));
+        expect(workItem).toBeDefined();
+        const doc = workItem!.documentation as { kind: string, value: string } | string | undefined;
+        const value = typeof doc === 'string' ? doc : doc?.value ?? '';
         expect(value).toContain('[docs](https://documentation.basis.cloud)');
     });
 });

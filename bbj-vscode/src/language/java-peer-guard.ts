@@ -297,3 +297,18 @@ const MARKDOWN_ESCAPE_PATTERN = /[\\`[\]()!]/g;
 export function escapeMarkdown(text: string): string {
     return text.replace(MARKDOWN_ESCAPE_PATTERN, '\\$&');
 }
+
+/** Every line-break sequence {@link toFenceSafeLine} replaces with a single space: a Windows
+ * CRLF pair, a lone line feed, a lone carriage return, and the Unicode line/paragraph
+ * separators U+2028/U+2029. */
+const FENCE_LINE_BREAK_PATTERN = new RegExp('\\r\\n|[\\r\\n\\u2028\\u2029]', 'g');
+
+/**
+ * Makes `text` safe to place inside a fenced ```` ```java ```` code block in completion
+ * documentation (issue #524): every backtick is removed, so the text cannot close the fence
+ * early, and every line break becomes a single space, so an embedded newline cannot break the
+ * fence open. Not backslash-escaped — inside a fence, a backslash would show up literally.
+ */
+export function toFenceSafeLine(text: string): string {
+    return text.replace(/`/g, '').replace(FENCE_LINE_BREAK_PATTERN, ' ');
+}
