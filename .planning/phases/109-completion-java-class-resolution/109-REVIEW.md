@@ -1,6 +1,6 @@
 ---
 phase: 109-completion-java-class-resolution
-reviewed: 2026-09-25T19:29:13Z
+reviewed: 2026-09-26T04:50:00Z
 depth: standard
 files_reviewed: 13
 files_reviewed_list:
@@ -19,127 +19,119 @@ files_reviewed_list:
   - bbj-vscode/test/overload-return-type.test.ts
 findings:
   critical: 0
-  warning: 1
-  info: 3
+  warning: 0
+  info: 4
   total: 4
 status: issues_found
 ---
 
 # Phase 109: Code Review Report
 
-**Reviewed:** 2026-09-25T19:29:13Z
+**Reviewed:** 2026-09-26T04:50:00Z
 **Depth:** standard
 **Files Reviewed:** 13
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the diff between `9898637b` and `HEAD` for the overload-aware return-type inference
-(#556), the nested-class-name canonicalization and local-primitive short-circuit in
-`java-interop.ts` (#659/#660), and the fully-qualified class-reference scope narrowing in
-`bbj-scope.ts` (#577-adjacent). The new logic in `bbj-overload-selector.ts` and
-`bbj-type-inferer.ts` is careful about ties, arity fallback and recursion safety, and is backed
-by thorough, well-targeted tests (`overload-return-type.test.ts`,
-`java-interop-nested-class-names.test.ts`, `java-interop-local-types.test.ts`). No security
-issues, crashes, or data-loss risks were found.
+Re-review after gap-closure plan 109-07 (commits `cc25ae07`, `d95fc856`), which narrows the
+`.class` pseudo-member exclusion in `bbj-scope.ts`'s class-reference detection. Only these two
+commits touched the reviewed file set since the prior `109-REVIEW.md` was written
+(`git log 9898637b..HEAD` for the 13 reviewed files shows no other intervening commits); every
+other file (`bbj-overload-selector.ts`, `bbj-type-inferer.ts`, `java-interop.ts`,
+`bbj-inlay-hint-provider.ts`, and the non-class-reference test files) is byte-identical to what
+the prior review already assessed.
 
-One real (if narrow) logic defect was found in `bbj-scope.ts`'s new class-reference detection: it
-misclassifies a literal reference to the class named `Class` (most notably `java.lang.Class`
-itself) as the `.class` pseudo-member, because BBj's case-insensitivity makes the two
-indistinguishable by name text alone. The remaining findings are minor quality/hardening notes.
+**WR-01 from the prior review is resolved.** The previous finding was that
+`java.lang.Class.` (fully qualified, no `USE`) was misclassified as the `.class` pseudo-member
+because the exclusion relied on member-text alone (`=== 'class'`, case-insensitive), which cannot
+distinguish a literal reference to the class named `Class` from the synthetic `.class` property.
+Commit `cc25ae07` fixes this by deciding based on the *preceding* segment's inferred type instead
+of text alone: `class` after a resolved `JavaPackage` is a real class reference (static members
+only); `class` after anything else (a class or a value) stays the pseudo-member (all instance
+members). I traced this through the four relevant receiver shapes by hand against
+`bbj-type-inferer.ts`'s `getType`:
+- `String.class.` (SymbolRef receiver, USE'd) — unaffected by this change, still pseudo-member.
+- `java.lang.String.class.` — receiver's receiver (`java.lang.String`) types as the `String`
+  `JavaClass`, not a package → still pseudo-member. Correct (unchanged behavior).
+- `java.lang.Class.` (no `.class`, direct reference) — receiver's receiver (`java.lang`) types as
+  a `JavaPackage` → `isPseudoClassMember` is now `false` → `isJavaClass(receiver.member.ref)` is
+  `true` → correctly detected as a class reference (static-only completion, matching
+  `Class.` after `use java.lang.Class`). This is exactly the case WR-01 flagged as broken.
+- `java.lang.Class.class.` — receiver's receiver (`java.lang.Class`) types as the `Class`
+  `JavaClass` itself, not a package → still pseudo-member (instance members of `java.lang.Class`),
+  matching the new test's expectation.
 
-## Warnings
+The new call to `this.typeInferer.getType(receiver.receiver)` is safe against the same
+cyclic-reference concern the surrounding code guards elsewhere: `BBjTypeInferer.getType` already
+catches `.ref` exceptions and reentrancy internally (via its `resolving` set and internal
+try/catches in `getTypeInternal`), so it never throws — no new uncaught-exception path was
+introduced by leaving this call outside a `try`/`catch`, unlike the two sibling branches in the
+same `if`/`else if` chain that do wrap `.ref` access.
 
-### WR-01: A literal reference to a class named `Class` is misclassified as the `.class` pseudo-member
+`npx vitest run test/completion-class-reference.test.ts` passes (15/15), including the three new
+109-07 tests pinning the `.class`-after-`Class`, static-call, and instance-call-not-an-Error
+behaviors.
 
-**File:** `bbj-vscode/src/language/bbj-scope.ts:212`
-**Issue:**
-The new `else if` branch that detects a class-reference receiver for a fully-qualified
-`MemberCall` (no `USE`) excludes any receiver whose member text is `class`
-(case-insensitive) before even attempting `.ref`:
-
-```ts
-} else if (isMemberCall(receiver) && receiver.member && receiver.member.$refText.toLowerCase() !== 'class') {
-    try {
-        isClassRef = isJavaClass(receiver.member.ref);
-    } catch {
-        // cyclic reference, ignore
-    }
-}
-```
-
-This is meant to keep `String.class.` and `java.lang.String.class.` on the instance-member path
-(a `Class<String>` instance), which is correct. But it also excludes a *literal* qualified
-reference ending in the identifier `Class` — most importantly `java.lang.Class` itself, e.g.
-`java.lang.Class.forName(...)` typed fully-qualified with no `USE`. BBj is case-insensitive, so
-the token `class`/`Class`/`CLASS` cannot be distinguished from the synthetic `.class`
-pseudo-member by text alone; the scope provider's own pseudo-member scope entry
-(`this.descriptions.createDescription(javaLangClass, 'class')`) resolves to the very same
-`java.lang.Class` `JavaClass` node that a genuine qualified reference to `java.lang.Class`
-resolves to, so `.ref` identity can't disambiguate them either.
-
-Practical effect: `java.lang.Class.` (fully qualified, no `USE`) falls into the "instance access"
-branch (`isClassRef` stays `false`), so completion after that dot offers `java.lang.Class`'s full
-instance+static member list (unfiltered by `isStatic`) instead of the static-only list the
-`isClassRef` branch would produce. Because the instance branch is a superset (it doesn't filter
-by `isStatic`), actual reference resolution/linking of e.g. `forName` still succeeds — but
-completion quality degrades (irrelevant instance members like `hashCode()`/`toString()` get
-offered alongside the static ones a user actually wants after typing `java.lang.Class.`).
-
-No test in `completion-class-reference.test.ts` exercises a receiver that is *itself* literally
-named `Class` (all cases there use `String`/`HashMap`), so this gap is currently uncovered.
-
-**Fix:**
-Given the underlying ambiguity is inherent to BBj's case-insensitive `.class` syntax colliding
-with any class literally named `Class`, a full disambiguation may not be possible from this
-location alone. At minimum:
-- Add a code comment acknowledging the known collision (rather than presenting the exclusion as
-  a complete `.class`-detection), so a future reader doesn't mistake it for a corner case that's
-  already handled.
-- Consider narrowing the exclusion to receivers where excluding based on text is actually
-  necessary — e.g., only treat the receiver as the `.class` pseudo-member when its *own* receiver
-  chain resolves to a value-typed (non-package, non-class-literal) expression, if that
-  information is available earlier in the chain; otherwise leave the qualified-package case
-  (`java.lang.Class`) as a documented, tested limitation.
-- Add a regression test capturing today's actual behavior (completion after
-  `java.lang.Class.` with no `USE`) so a future change to this heuristic is deliberate, not
-  accidental.
+One residual (very narrow) limitation remains from the same inherent ambiguity, plus the three
+Info items from the prior review that these commits did not touch and remain applicable.
 
 ## Info
 
-### IN-01: `overloadCandidates` silently drops `LibFunction` overloads, unlike its sibling `siblingOverloads`
+### IN-01: A nested Java class literally named `Class` still collides with the `.class` pseudo-member
+
+**File:** `bbj-vscode/src/language/bbj-scope.ts:218-227`
+**Issue:** The 109-07 fix disambiguates by checking whether the *segment before* `class` is a
+`JavaPackage`. This correctly separates `<package>.Class.` (a real class reference) from
+`<class-or-value>.class` (the pseudo-member). It does not cover a *nested* class literally named
+`Class` — e.g. `com.example.Outer.Class` addressed as `Outer.Class.` (no `USE`), or
+`com.example.Outer.Class.` fully qualified. Here `receiver.receiver` (`Outer`) types as a
+`JavaClass`, not a `JavaPackage`, so `isPseudoClassMember` stays `true` and the reference is
+(mis)treated as the `.class` pseudo-member on `Outer`, offering `java.lang.Class`'s instance
+members instead of `Outer.Class`'s static members. This is the same class of ambiguity WR-01
+described, one level of nesting deeper, and it is unaddressed by the current segment-type check
+(a package vs. non-package test can't help once the enclosing type is itself a class). No test
+exercises this shape.
+**Fix:** This is a narrower restatement of the same inherent BBj case-insensitivity ambiguity
+the code's own comment (`bbj-scope.ts:203-209`) already documents as a known, deliberate
+limitation. Consider extending that comment to explicitly note nested classes named `Class` share
+the same collision, or add a regression test capturing today's actual (pseudo-member) behavior so
+a future change to this heuristic is deliberate rather than accidental. Not worth chasing further
+given how rare a Java class literally named `Class` nested inside another class is in practice.
+
+### IN-02: `overloadCandidates` silently drops `LibFunction` overloads, unlike its sibling `siblingOverloads`
 
 **File:** `bbj-vscode/src/language/bbj-overload-selector.ts:133-145`
-**Issue:** `siblingOverloads` (the pre-existing helper used by `findBestOverload`) handles three
-cases: `JavaMethod`, `MethodDecl`, and `LibFunction`. The new `overloadCandidates` (used by the
-type inferer's return-type re-selection) only handles the first two and falls through to `[]` for
-any other node, including `LibFunction`. Today this is harmless because
+**Issue:** Carried forward from the prior review — unchanged by 109-07. `siblingOverloads` (used
+by `findBestOverload`) handles `JavaMethod`, `MethodDecl`, and `LibFunction`. `overloadCandidates`
+(used by the type inferer's return-type re-selection) only handles the first two and falls
+through to `[]` for anything else, including `LibFunction`. Today this is harmless because
 `overloadedCallType`'s caller already guards with
-`!(isJavaMethod(linked) || isMethodDecl(linked))` before ever calling `overloadCandidates`, so a
-`LibFunction` is never passed in. But the asymmetry between the two "find same-named siblings"
-helpers is not documented, and a future caller that reuses `overloadCandidates` more broadly
-(expecting it to mirror `siblingOverloads`) would silently get no candidates for `LibFunction`
+`!(isJavaMethod(linked) || isMethodDecl(linked))` before calling `overloadCandidates`, so a
+`LibFunction` is never passed in — but the asymmetry between the two "find same-named siblings"
+helpers is undocumented, and a future caller that reuses `overloadCandidates` more broadly
+(expecting parity with `siblingOverloads`) would silently get no candidates for `LibFunction`
 sites.
-**Fix:** Either add a short comment on `overloadCandidates` noting the deliberate scope
-restriction to `JavaMethod`/`MethodDecl` (matching its only caller), or extend it with the same
-`LibFunction` branch `siblingOverloads` has, returning `{ node, data }` pairs for consistency.
+**Fix:** Add a short comment on `overloadCandidates` noting the deliberate scope restriction to
+`JavaMethod`/`MethodDecl` (matching its only caller), or extend it with the same `LibFunction`
+branch `siblingOverloads` has.
 
-### IN-02: `bbj-type-inferer.ts` is missing a trailing newline
+### IN-03: `bbj-type-inferer.ts` is missing a trailing newline
 
 **File:** `bbj-vscode/src/language/bbj-type-inferer.ts:187`
-**Issue:** The file's last line (`}` closing `sameDeclaredClass`) has no trailing newline
-(confirmed via `git diff`'s `\ No newline at end of file` marker and a byte-level check). Minor,
-but inconsistent with the rest of the codebase and typically caught by `eol-last`-style lint
-rules or editor diffs that otherwise look clean.
+**Issue:** Carried forward from the prior review — unchanged by 109-07 (confirmed via a
+byte-level check: the file's last 20 bytes still end `...return false;\n}` with no final
+newline). Minor, but inconsistent with the rest of the codebase and typically caught by
+`eol-last`-style lint rules.
 **Fix:** Add a trailing newline to the file.
 
-### IN-03: `localJavaTypeDto`'s primitive branch does not use the trimmed name
+### IN-04: `localJavaTypeDto`'s primitive branch does not use the trimmed name
 
-**File:** `bbj-vscode/src/language/java-interop.ts:107-123`
-**Issue:** `isLocalJavaTypeName`/`localJavaTypeDto` both derive `trimmed = name.trim()` to decide
-whether `name` is a primitive/void. For the primitive branch, `localJavaTypeDto` builds the
-returned `JavaClass` using the *original, untrimmed* `name` for both `name` and `simpleName`:
-
+**File:** `bbj-vscode/src/language/java-interop.ts:118-128`
+**Issue:** Carried forward from the prior review — unchanged by 109-07. `isLocalJavaTypeName`/
+`localJavaTypeDto` both derive `trimmed = name.trim()` to decide whether `name` is a
+primitive/void. For the primitive branch, `localJavaTypeDto` still builds the returned `JavaClass`
+using the original, untrimmed `name` for both `name` and `simpleName`:
 ```ts
 if (JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed)) {
     return {
@@ -148,20 +140,13 @@ if (JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed)) {
         simpleName: name,
         ...
 ```
-
 If a caller ever passed a primitive name with surrounding whitespace (e.g. `" int"`), the
-resulting `JavaClass` would carry `name: " int"` and would be cached under that
-whitespace-polluted key (since `resolveClass`'s `canonicalJavaClassName` call does not trim
-either), diverging from a clean `"int"` lookup elsewhere and potentially double-caching the same
-conceptual primitive under two different keys, with the padded one shown in hover/completion.
-This is not currently reachable from any tested code path (all call sites appear to pass
-already-trimmed type names, and the test suite's `'  '` case only exercises the *blank* branch,
-not a padded primitive), so this is a hardening note rather than an observed bug.
-**Fix:** Use `trimmed` instead of `name` for both `name` and `simpleName` in the primitive
-branch, matching the intent already expressed by computing `trimmed` in the first place.
+resulting `JavaClass` would carry `name: " int"`, diverging from a clean `"int"` lookup elsewhere.
+Not currently reachable from any tested call path — a hardening note, not an observed bug.
+**Fix:** Use `trimmed` instead of `name` for both `name` and `simpleName` in the primitive branch.
 
 ---
 
-_Reviewed: 2026-09-25T19:29:13Z_
+_Reviewed: 2026-09-26T04:50:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
