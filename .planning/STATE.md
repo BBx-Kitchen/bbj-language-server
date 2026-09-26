@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 110
 current_phase_name: Workspace Settings & Filesystem Trust
 status: executing
-stopped_at: Phase 110 context gathered
-last_updated: "2026-09-26T11:35:21.831Z"
+stopped_at: Completed 110-01-PLAN.md
+last_updated: "2026-09-26T11:44:56.399Z"
 last_activity: 2026-09-26
 last_activity_desc: Phase 110 execution started
-state_head: 9c40f05a0143b32bef5ba8936174a8329124aecf
+state_head: 6e30d8e108f41839814b02fc8f6d0c816790492a
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 ## Current Position
 
 Phase: 110 (Workspace Settings & Filesystem Trust) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 110
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-09-26 — Phase 110 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -115,6 +115,11 @@ Per-plan duration tables for phases 72-109 are archived with their phase artifac
 - Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; landed on `origin/main` via PR #651
 
 Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/milestones/v4.5-phases/` and `v4.6-phases/`.
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 110 P01 | 9min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -154,6 +159,7 @@ decisions:
 - [v4.7 roadmap]: #559's own diagnosis is superseded by the 2026-09-20 todo (the hermetic test double lacks the classes; the describe block never reaches :5008); TEST-05 follows the todo.
 - [v4.7 roadmap]: #511 is fixed by gating only a workspace-scoped `bbj.configPath` behind VS Code Workspace Trust; `configPath` stays deliberately un-anchored to the workspace folder for system-wide config files.
 - [v4.7 roadmap]: all workflow and packaging-script changes (CI-01..03, CI-05..09) are one late phase (122) so each workflow file is rewritten once; DEP-01 and CI-04 land earlier in Phase 117 because they do not change what a publish run does.
+- [Phase 110]: 110-01: interop host/port validated through one shared module (interop-config.ts); default host consolidated to 'localhost' everywhere
 
 ### Tech Debt
 
@@ -212,9 +218,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T10:54:42.839Z
-Stopped at: Phase 110 context gathered
-Resume file: .planning/phases/110-workspace-settings-filesystem-trust/110-CONTEXT.md
+Last session: 2026-09-26T11:44:56.368Z
+Stopped at: Completed 110-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 110` or `/gsd-plan-phase 110`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

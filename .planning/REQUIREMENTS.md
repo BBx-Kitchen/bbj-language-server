@@ -10,7 +10,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 ### Security and input validation
 
-- [ ] **SEC-01**: Interop host and port settings are validated in one shared place before connecting (host is a non-empty string, port is an integer from 1 to 65535). Invalid values fall back to the defaults with a logged warning. (#509, #510)
+- [x] **SEC-01**: Interop host and port settings are validated in one shared place before connecting (host is a non-empty string, port is an integer from 1 to 65535). Invalid values fall back to the defaults with a logged warning. (#509, #510)
 - [ ] **SEC-02**: A workspace-level `bbj.configPath` is ignored in an untrusted workspace (VS Code Workspace Trust); user-level settings are unaffected (#511)
 - [ ] **SEC-03**: java-interop peer response fields are checked for type and length before they are copied into AST documentation (#523)
 - [ ] **SEC-04**: Hover and completion escape Markdown control characters in javadoc text supplied by the java-interop peer (#524)
@@ -78,7 +78,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 ### Refactors
 
 - [ ] **REF-01**: `getFunctionReference` exists once and is shared by the signature-help and inlay-hint providers (#580)
-- [ ] **REF-02**: The interop host/port defaults are defined in one place, used by both `bbj-ws-manager.ts` and `main.ts` (#581)
+- [x] **REF-02**: The interop host/port defaults are defined in one place, used by both `bbj-ws-manager.ts` and `main.ts` (#581)
 - [ ] **REF-03**: `composer-commands.ts` lives outside `src/language/` (#582)
 - [ ] **REF-04**: The four built-in-catalog `.ts` wrappers share one closing shape (#583)
 - [ ] **REF-05**: A test fails when a `.bbl` catalog file drifts from its `.ts` source (#603)
@@ -113,7 +113,7 @@ None deferred. Every still-open audit issue is in scope.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 110 | Pending |
+| SEC-01 | Phase 110 | Complete |
 | SEC-02 | Phase 110 | Pending |
 | SEC-03 | Phase 111 | Pending |
 | SEC-04 | Phase 111 | Pending |
@@ -163,7 +163,7 @@ None deferred. Every still-open audit issue is in scope.
 | HARN-05 | Phase 115 | Pending |
 | HARN-06 | Phase 115 | Pending |
 | REF-01 | Phase 118 | Pending |
-| REF-02 | Phase 110 | Pending |
+| REF-02 | Phase 110 | Complete |
 | REF-03 | Phase 113 | Pending |
 | REF-04 | Phase 118 | Pending |
 | REF-05 | Phase 118 | Pending |
@@ -178,6 +178,7 @@ None deferred. Every still-open audit issue is in scope.
 | DOC-01 | Phase 113 | Pending |
 
 **Coverage:**
+
 - v4.7 requirements: 63 total
 - Mapped to phases: 63
 - Unmapped: 0
