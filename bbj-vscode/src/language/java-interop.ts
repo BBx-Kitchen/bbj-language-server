@@ -1231,11 +1231,15 @@ export class JavaInteropService {
             (method as Mutable<JavaMethod>).$type = JavaMethod.$type;
             method.deprecated = (method as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
             method.isStatic = (method as unknown as { isStatic?: boolean }).isStatic ?? false;
+            // An entry may omit its parameter list entirely, so default it the way the member
+            // lists above are defaulted, because Phase 2 iterates it.
+            method.parameters ??= [];
         }
         for (const constructor of javaClass.constructors) {
             (constructor as Mutable<JavaMethod>).$type = JavaMethod.$type;
             constructor.isStatic = false;
             constructor.deprecated = (constructor as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+            constructor.parameters ??= [];
         }
 
         // Register in resolvedClasses now that isStatic and deprecated are fully populated.

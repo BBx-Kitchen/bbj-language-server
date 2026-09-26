@@ -164,6 +164,58 @@ describe('non-array class-level members default to [] instead of throwing', () =
     });
 });
 
+describe('a method or constructor entry with no parameters key still resolves fully', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    test('a method entry with no parameters key gets parameters [], and the method after it still gets its return type and parameter types', async () => {
+        const { interop } = createCountingInteropServices();
+        const bareMethod = { name: 'bare', returnType: 'int', isStatic: false } as unknown as RawMethod;
+        interop.scripts.set('com.test.NoParamsMethod', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            constructors: [],
+            methods: [bareMethod, rawMethod('afterward', 'int', ['int'])],
+        }));
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence */ });
+
+        const resolved = await interop.resolveClassByName('com.test.NoParamsMethod');
+
+        expect(resolved.methods.map(m => m.name)).toEqual(['bare', 'afterward']);
+        const bare = resolved.methods.find(m => m.name === 'bare')!;
+        const afterward = resolved.methods.find(m => m.name === 'afterward')!;
+        expect(bare.parameters).toEqual([]);
+        expect(afterward.resolvedReturnType).toBeDefined();
+        expect(afterward.parameters[0].resolvedType).toBeDefined();
+        expect(errorSpy.mock.calls.flat().some(arg => arg instanceof TypeError)).toBe(false);
+    });
+
+    test('a constructor entry with no parameters key gets parameters [], the constructor after it still resolves, and an over-long constructor entry is dropped', async () => {
+        const { interop } = createCountingInteropServices();
+        const bareConstructor = { name: '<init>', returnType: 'com.test.NoParamsCtor' } as unknown as RawMethod;
+        const overLongConstructor: RawMethod = { ...rawMethod('<init>', 'com.test.NoParamsCtor'), name: OVER_LIMIT_NAME };
+        interop.scripts.set('com.test.NoParamsCtor', () => ({
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('run', 'void')],
+            constructors: [bareConstructor, overLongConstructor, rawMethod('<init>', 'com.test.NoParamsCtor', ['int'])],
+        }));
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence */ });
+        vi.spyOn(logger, 'warn').mockImplementation(() => { /* silence */ });
+
+        const resolved = await interop.resolveClassByName('com.test.NoParamsCtor');
+
+        expect(resolved.constructors).toHaveLength(2);
+        expect(resolved.constructors[0].parameters).toEqual([]);
+        expect(resolved.constructors[1].resolvedReturnType).toBeDefined();
+        expect(resolved.constructors[1].parameters[0].resolvedType).toBeDefined();
+        expect(errorSpy.mock.calls.flat().some(arg => arg instanceof TypeError)).toBe(false);
+    });
+});
+
 describe('non-boolean isDeprecated/isStatic flags default to false', () => {
     test('a non-boolean class isDeprecated reads as deprecated false; field isStatic 1 reads false, isStatic true is kept', async () => {
         const { interop } = createCountingInteropServices();
