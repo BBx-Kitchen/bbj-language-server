@@ -170,7 +170,11 @@ vi.mock('vscode-languageclient/node', () => {
             return Promise.resolve();
         };
     }
-    return { LanguageClient, TransportKind: { ipc: 1 } };
+    return {
+        LanguageClient,
+        TransportKind: { ipc: 1 },
+        DidChangeConfigurationNotification: { type: { method: 'workspace/didChangeConfiguration' } },
+    };
 });
 
 vi.mock('../src/language/lib/fs-provider.js', () => ({

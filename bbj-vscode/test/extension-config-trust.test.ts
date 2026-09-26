@@ -32,7 +32,15 @@ const h = vi.hoisted(() => ({
         workspaceConfigPath: undefined as string | null | undefined,
         bbjSection: {} as Record<string, unknown>,
     },
-    capturedClientOptions: undefined as { initializationOptions?: Record<string, unknown> } | undefined,
+    capturedClientOptions: undefined as {
+        initializationOptions?: Record<string, unknown>;
+        middleware?: {
+            workspace?: {
+                didChangeConfiguration?: (sections: string[] | undefined, next: (sections: string[] | undefined) => Promise<void>) => Promise<void>;
+                configuration?: (params: { items: Array<{ section?: string }> }, token: unknown, next: (params: unknown, token: unknown) => unknown) => unknown;
+            };
+        };
+    } | undefined,
     sendNotificationMock: vi.fn(() => Promise.resolve()),
     startMock: vi.fn(() => Promise.resolve()),
     stopMock: vi.fn(() => Promise.resolve()),
@@ -165,11 +173,15 @@ vi.mock('vscode-languageclient/node', () => {
         stop = h.stopMock;
         onNotification = h.onNotificationMock;
         sendNotification = h.sendNotificationMock;
-        constructor(_id: string, _name: string, _serverOptions: unknown, clientOptions: { initializationOptions?: Record<string, unknown> }) {
-            h.capturedClientOptions = clientOptions;
+        constructor(_id: string, _name: string, _serverOptions: unknown, clientOptions: Record<string, unknown>) {
+            h.capturedClientOptions = clientOptions as typeof h.capturedClientOptions;
         }
     }
-    return { LanguageClient, TransportKind: { ipc: 1 } };
+    return {
+        LanguageClient,
+        TransportKind: { ipc: 1 },
+        DidChangeConfigurationNotification: { type: { method: 'workspace/didChangeConfiguration' } },
+    };
 });
 
 vi.mock('../src/language/lib/fs-provider.js', () => ({
@@ -197,9 +209,15 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
     },
 }));
 
+import { DidChangeConfigurationNotification } from 'vscode-languageclient/node';
 import { activate } from '../src/extension.js';
 import { getActiveConfigPath, resetConfigPathCacheForTests } from '../src/config-path-cache.js';
-import { effectiveConfigPath, type TrustAwareWorkspace } from '../src/config-path-trust.js';
+import {
+    createConfigPathTrustMiddleware,
+    effectiveConfigPath,
+    gatedBbjSettings,
+    type TrustAwareWorkspace,
+} from '../src/config-path-trust.js';
 
 /** Fresh mock ExtensionContext — matches `extension-activation.test.ts`'s `makeContext`. */
 function fakeContext(): Parameters<typeof activate>[0] {
@@ -243,6 +261,54 @@ function stubWorkspace(opts: {
                 workspaceFolderValue: opts.workspaceFolderValue as unknown as T,
             }),
         }),
+        onDidGrantWorkspaceTrust: () => ({ dispose: () => { } }),
+    };
+}
+
+/**
+ * A `TrustAwareWorkspace` stub for the push/pull middleware: `getConfiguration('bbj')`
+ * answers `configPath` only; `getConfiguration()` (no section) answers `get('bbj')` with the
+ * full section object and `get(<other name>)` with whatever `otherSections` carries.
+ */
+function stubGatedWorkspace(opts: {
+    isTrusted: boolean;
+    globalConfigPath?: string | null;
+    workspaceConfigPath?: string | null;
+    bbjSection?: Record<string, unknown>;
+    otherSections?: Record<string, unknown>;
+}): TrustAwareWorkspace {
+    const merged = opts.workspaceConfigPath !== undefined
+        ? opts.workspaceConfigPath
+        : opts.globalConfigPath !== undefined
+            ? opts.globalConfigPath
+            : null;
+    return {
+        isTrusted: opts.isTrusted,
+        getConfiguration: (section?: string) => {
+            if (section === 'bbj') {
+                return {
+                    get: <T>(key: string, def: T): T => (key === 'configPath' ? (merged as unknown as T) : def),
+                    inspect: <T>(_key: string) => ({
+                        key: 'bbj.configPath',
+                        defaultValue: null as unknown as T,
+                        globalValue: opts.globalConfigPath as unknown as T,
+                        workspaceValue: opts.workspaceConfigPath as unknown as T,
+                    }),
+                };
+            }
+            return {
+                get: <T>(key: string, def?: T): T => {
+                    if (key === 'bbj') {
+                        return { ...(opts.bbjSection ?? {}) } as unknown as T;
+                    }
+                    if (opts.otherSections && key in opts.otherSections) {
+                        return opts.otherSections[key] as unknown as T;
+                    }
+                    return def as T;
+                },
+                inspect: <T>(_key: string): { key: string; globalValue?: T } | undefined => undefined,
+            };
+        },
         onDidGrantWorkspaceTrust: () => ({ dispose: () => { } }),
     };
 }
@@ -341,6 +407,127 @@ describe('initializationOptions honour Workspace Trust for bbj.configPath (issue
 
         expect(h.capturedClientOptions?.initializationOptions?.interopHost).toBe('myhost');
         expect(h.capturedClientOptions?.initializationOptions?.interopPort).toBe(6000);
+        disposeSubscriptions(context);
+    });
+});
+
+describe('the bbj settings push and pull carry the gated configPath (issue #511)', () => {
+    test('didChangeConfiguration(["bbj"], next): untrusted, sends the gated section once, never calls next', async () => {
+        const workspace = stubGatedWorkspace({
+            isTrusted: false,
+            globalConfigPath: '/home/user/cfg/config.bbx',
+            workspaceConfigPath: '/ws/evil/config.bbx',
+            bbjSection: { home: '/opt/bbj', classpath: 'bbj_default' },
+        });
+        const send = vi.fn(() => Promise.resolve());
+        const next = vi.fn(() => Promise.resolve());
+        const middleware = createConfigPathTrustMiddleware(send, workspace);
+
+        await middleware.didChangeConfiguration(['bbj'], next);
+
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledWith({
+            bbj: { home: '/opt/bbj', classpath: 'bbj_default', configPath: '/home/user/cfg/config.bbx' },
+        });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    test('didChangeConfiguration(["bbj"], next): trusted, sends the merged (workspace) configPath, other keys unchanged', async () => {
+        const workspace = stubGatedWorkspace({
+            isTrusted: true,
+            globalConfigPath: '/home/user/cfg/config.bbx',
+            workspaceConfigPath: '/ws/evil/config.bbx',
+            bbjSection: { home: '/opt/bbj', classpath: 'bbj_default' },
+        });
+        const send = vi.fn(() => Promise.resolve());
+        const next = vi.fn(() => Promise.resolve());
+        const middleware = createConfigPathTrustMiddleware(send, workspace);
+
+        await middleware.didChangeConfiguration(['bbj'], next);
+
+        expect(send).toHaveBeenCalledWith({
+            bbj: { home: '/opt/bbj', classpath: 'bbj_default', configPath: '/ws/evil/config.bbx' },
+        });
+    });
+
+    test('didChangeConfiguration(undefined, next) calls next(undefined) and never send (the settings:null notification carries no values)', async () => {
+        const workspace = stubGatedWorkspace({ isTrusted: true });
+        const send = vi.fn(() => Promise.resolve());
+        const next = vi.fn(() => Promise.resolve());
+        const middleware = createConfigPathTrustMiddleware(send, workspace);
+
+        await middleware.didChangeConfiguration(undefined, next);
+
+        expect(next).toHaveBeenCalledWith(undefined);
+        expect(send).not.toHaveBeenCalled();
+    });
+
+    test('configuration() substitutes configPath in a bbj item, a bbj.configPath item and a whole-config item; a non-array result passes through unchanged', async () => {
+        const workspace = stubGatedWorkspace({
+            isTrusted: false,
+            globalConfigPath: '/home/user/cfg/config.bbx',
+            workspaceConfigPath: '/ws/evil/config.bbx',
+        });
+        const send = vi.fn(() => Promise.resolve());
+        const middleware = createConfigPathTrustMiddleware(send, workspace);
+
+        const params = { items: [{ section: 'bbj' }, { section: 'bbj.configPath' }, {}] };
+        const nextResult = [
+            { home: '/opt/bbj', configPath: '/ws/evil/config.bbx' },
+            '/ws/evil/config.bbx',
+            { bbj: { home: '/opt/bbj', configPath: '/ws/evil/config.bbx' }, editor: { tabSize: 2 } },
+        ];
+        const next = vi.fn(() => Promise.resolve(nextResult));
+
+        const result = await middleware.configuration(params as never, undefined as never, next as never);
+
+        expect(result).toEqual([
+            { home: '/opt/bbj', configPath: '/home/user/cfg/config.bbx' },
+            '/home/user/cfg/config.bbx',
+            { bbj: { home: '/opt/bbj', configPath: '/home/user/cfg/config.bbx' }, editor: { tabSize: 2 } },
+        ]);
+
+        const nonArrayNext = vi.fn(() => Promise.resolve(undefined));
+        const passthrough = await middleware.configuration(params as never, undefined as never, nonArrayNext as never);
+        expect(passthrough).toBeUndefined();
+    });
+
+    test('gatedBbjSettings copies the section as plain JSON: mutating the result never touches the source', () => {
+        const source = { home: '/opt/bbj', nested: { a: 1 }, list: [1, 2, { b: 2 }] };
+        const workspace = stubGatedWorkspace({
+            isTrusted: true,
+            workspaceConfigPath: '/ws/config.bbx',
+            bbjSection: source,
+        });
+
+        const result = gatedBbjSettings(workspace);
+        expect(result).toEqual({ ...source, configPath: '/ws/config.bbx' });
+
+        (result.nested as Record<string, unknown>).a = 999;
+        (result.list as unknown[])[2] = 'mutated';
+        expect(source.nested.a).toBe(1);
+        expect(source.list[2]).toEqual({ b: 2 });
+    });
+
+    test('through activate(): the push path sends DidChangeConfigurationNotification with the gated bbj settings', async () => {
+        resetState();
+        h.state.isTrusted = false;
+        h.state.globalConfigPath = '/home/user/cfg/config.bbx';
+        h.state.workspaceConfigPath = '/ws/evil/config.bbx';
+        h.state.bbjSection = { home: '/opt/bbj' };
+
+        const context = fakeContext();
+        activate(context);
+
+        const didChangeConfiguration = h.capturedClientOptions?.middleware?.workspace?.didChangeConfiguration;
+        expect(didChangeConfiguration).toBeDefined();
+
+        await didChangeConfiguration!(['bbj'], vi.fn());
+
+        expect(h.sendNotificationMock).toHaveBeenCalledWith(
+            DidChangeConfigurationNotification.type,
+            { settings: { bbj: { home: '/opt/bbj', configPath: '/home/user/cfg/config.bbx' } } }
+        );
         disposeSubscriptions(context);
     });
 });
