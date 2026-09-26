@@ -37,9 +37,12 @@ async function labels(text: string, trigger?: '.'): Promise<string[]> {
     return (list?.items ?? []).map(i => i.label).sort();
 }
 
-// Push a static `valueOf` method onto the fake java.lang.String class once, so both the USE and
-// the fully-qualified path can be proven to offer the same static method as well as the same
-// static field -- guarded so re-running this file's beforeAll never duplicates the entry.
+// Push a static `valueOf` method onto the fake java.lang.String class, and a static `forName`
+// method onto the fake java.lang.Class class, once, so both the USE and the fully-qualified
+// path can be proven to offer the same static method as well as the same static field. The fake
+// java.lang.Class (test/bbj-test-module.ts) has only the instance method `getName`, so without a
+// static member the static-only filtering would not be visible for the class named Class --
+// guarded so re-running this file's beforeAll never duplicates either entry.
 beforeAll(() => {
     const stringClass = bbjServices.java.JavaInteropService.getResolvedClass('java.lang.String')!;
     if (!stringClass.methods.some(m => m.name === 'valueOf')) {
@@ -54,12 +57,26 @@ beforeAll(() => {
             parameters: []
         } as unknown as JavaMethod);
     }
+    const classClass = bbjServices.java.JavaInteropService.getResolvedClass('java.lang.Class')!;
+    if (!classClass.methods.some(m => m.name === 'forName')) {
+        classClass.methods.push({
+            $type: JavaMethod.$type,
+            name: 'forName',
+            $containerProperty: 'methods',
+            $container: classClass,
+            isStatic: true,
+            deprecated: false,
+            returnType: 'java.lang.Class',
+            parameters: []
+        } as unknown as JavaMethod);
+    }
 });
 
 // A Java method's completion label carries its call parentheses (confirmed live against this
 // fixture, matching the established convention in completion-method-body.test.ts's own
 // 'member after .' row) -- 'valueOf' is offered as 'valueOf()', not 'valueOf'.
 const STATIC_VALUE_OF = 'valueOf()';
+const STATIC_FOR_NAME = 'forName()';
 
 // `use java.lang.String` makes the bare name `String` a program-scope symbol in its own right
 // (usable to start a new statement/expression), which Invoked-trigger completion also offers
@@ -68,6 +85,8 @@ const STATIC_VALUE_OF = 'valueOf()';
 // list (which narrows to member-scope only) has no such artifact; only the Invoked comparison
 // needs to allow for it.
 const USE_ADDED_PROGRAM_SYMBOL = 'String';
+// `use java.lang.Class` adds the same USE artifact for the bare name `Class`.
+const USE_ADDED_CLASS_SYMBOL = 'Class';
 
 describe('completion after a fully-qualified Java class reference (issue #577)', () => {
     test('offers static members only without USE', async () => {
@@ -91,6 +110,25 @@ describe('completion after a fully-qualified Java class reference (issue #577)',
         const withUse = 'use java.lang.String\nString.<|>\nprobeTail = 1\n';
 
         const invokedWithUse = (await labels(withUse)).filter(l => l !== USE_ADDED_PROGRAM_SYMBOL);
+        expect(await labels(withoutUse)).toEqual(invokedWithUse);
+        expect(await labels(withoutUse, '.')).toEqual(await labels(withUse, '.'));
+    });
+
+    test('the class named Class offers its static members only without USE', async () => {
+        const dotted = await labels('java.lang.Class.<|>\nprobeTail = 1\n', '.');
+        expect(dotted).toEqual(['class', STATIC_FOR_NAME]);
+
+        const invoked = await labels('java.lang.Class.<|>\nprobeTail = 1\n');
+        expect(invoked).toContain('class');
+        expect(invoked).toContain(STATIC_FOR_NAME);
+        expect(invoked).not.toContain('getName()');
+    });
+
+    test('the class named Class matches the list after USE', async () => {
+        const withoutUse = 'java.lang.Class.<|>\nprobeTail = 1\n';
+        const withUse = 'use java.lang.Class\nClass.<|>\nprobeTail = 1\n';
+
+        const invokedWithUse = (await labels(withUse)).filter(l => l !== USE_ADDED_CLASS_SYMBOL);
         expect(await labels(withoutUse)).toEqual(invokedWithUse);
         expect(await labels(withoutUse, '.')).toEqual(await labels(withUse, '.'));
     });

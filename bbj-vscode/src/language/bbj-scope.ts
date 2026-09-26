@@ -198,9 +198,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
             // (e.g., `String.` after `USE java.lang.String`), or a fully-qualified MemberCall whose
             // last segment names the class itself (e.g., `java.lang.String.`, no USE) — either way,
-            // show only static members. A receiver ending in the `class` pseudo-member (`String.class`,
-            // `java.lang.String.class`) is an instance of java.lang.Class, not a class reference, and
-            // keeps offering its instance members.
+            // show only static members.
+            //
+            // The member text alone cannot tell the `class` pseudo-member (`String.class`,
+            // `java.lang.String.class`) apart from a fully-qualified reference to a class literally
+            // named `Class` (`java.lang.Class.`): BBj is case-insensitive, and the pseudo-member's
+            // own linked reference is the very same java.lang.Class node. So the segment before it
+            // decides instead: after a Java package, `class` names a class in that package and is a
+            // class reference (static members only); after a class or a value, it is the pseudo-
+            // member, an instance of java.lang.Class (all instance members, per issue #577).
             let isClassRef = false;
             if (isSymbolRef(receiver)) {
                 try {
@@ -209,11 +215,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 } catch {
                     // cyclic reference, ignore
                 }
-            } else if (isMemberCall(receiver) && receiver.member && receiver.member.$refText.toLowerCase() !== 'class') {
-                try {
-                    isClassRef = isJavaClass(receiver.member.ref);
-                } catch {
-                    // cyclic reference, ignore
+            } else if (isMemberCall(receiver) && receiver.member) {
+                const isPseudoClassMember = receiver.member.$refText.toLowerCase() === 'class'
+                    && !isJavaPackage(this.typeInferer.getType(receiver.receiver));
+                if (!isPseudoClassMember) {
+                    try {
+                        isClassRef = isJavaClass(receiver.member.ref);
+                    } catch {
+                        // cyclic reference, ignore
+                    }
                 }
             }
             if (isJavaClass(receiverType)) {
