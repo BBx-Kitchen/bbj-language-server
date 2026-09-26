@@ -1,8 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G-109-1: completion inside a class METHOD body offers program-scope variables (a$, x!) that a BBj method cannot see"
 created: 2026-09-26T06:00:00Z
-updated: 2026-09-26T06:40:00Z
+updated: 2026-09-26T18:00:00Z
+resolved_by: "54efa29c fix(109-08): keep program variables out of class method scope; re-tested 109-UAT Test 33"
 goal: find_root_cause_only
 symptoms_prefilled: true
 ---

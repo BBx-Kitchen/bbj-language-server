@@ -7,6 +7,10 @@ files:
 
   - bbj-vscode/src/language/bbj-document-validator.ts (applyDiagnosticHierarchy Rule 2)
   - bbj-vscode/src/language/bbj-linker.ts (member linking diagnostic wording)
+
+audit_acknowledged:
+  milestone: v4.6
+  at: 2026-09-26
 ---
 
 ## Problem

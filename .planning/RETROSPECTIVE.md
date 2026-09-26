@@ -377,6 +377,75 @@
 - Notable: 44 plans in 4 days (~11 plans/day), the fastest plan throughput so far. Phase 98
   alone needed 10 plans because of gap-closure rounds driven by per-file conformance findings.
 
+## Milestone: v4.6 — User-Facing Bug Burn-down
+
+**Shipped:** 2026-09-26
+**Phases:** 4 (106-109) | **Plans:** 25 (60 tasks) | **Sessions:** not tracked
+
+### What Was Built
+- A real `on-save` compiler trigger in both IDEs (#696): reason-aware live-parse arming, a
+  kept save verdict that stays on its line while you type, a check-sequence counter so only
+  a newer save replaces it, and an IntelliJ "Compiler check" setting on the same init option.
+- One error per finding on the bbjcpl fallback (#522), and a live parse that uses its own
+  connection before the shared breaker.
+- Validation fixes: nested single-line IF/ELSE/FI balance, a use-before-assignment check that
+  no longer throws on a symbol-less reference, and a new unknown-Java-member Error for fully
+  resolved classes.
+- IntelliJ crash detection on LSP4IJ's unexpected-stop hook, with the real previous status in
+  the transition log. This redoes the rework reverted in v4.4 Phase 97.
+- Completion and Java class resolution: FQN statics (#577), matching-overload return types
+  (#556), method-body completion pinned and program variables kept out of method scope
+  (#561), no backend lookups for primitives or arrays (#660), one cache key for nested classes
+  (#659).
+
+### What Worked
+- Grounding Phase 108 in a real macOS `idea.log` from a probe build before designing anything.
+  v4.4's lesson held: the hook fires only on `kill -9`, and the design built on that passed
+  hand UAT the first time.
+- Measuring before fixing in 109-01. Every method-body completion position already worked, so
+  COMP-03 became tests plus an issue comment instead of a grammar change.
+- Reviewing the new unknown-member check against the real java-interop backend over the full
+  corpus (107-05). It found five false-positive receiver shapes the unit suite could not.
+- Hand UAT per phase again caught what verification missed: 109's G-109-1 (program variables
+  visible in class methods) became a same-phase gap plan (109-08) backed by the BBj METHOD docs.
+- A small, lean milestone: four phases in three days, no scope growth beyond VAL-03.
+
+### What Was Inefficient
+- Phase 106 grew to seven plans. The kept-check and supersession work (106-05/-06) took about
+  100 minutes each because the on-save diagnostics lifecycle was not fully drawn out at
+  planning time.
+- 107's A2 comparison against an older, smaller-corpus number could not be met as written.
+  7,383 newly entered files had to be classified before the gate was accepted on a file-set
+  reading.
+- Phase 108's final 7-scenario UAT ran on the pre-review-fix build, so the post-fix build
+  only got a cursory re-check.
+- The Phase 105 timing re-sample planned for 106 was skipped, so there is no before/after
+  timing evidence for the on-save path.
+
+### Patterns Established
+- Crash and lifecycle signals come from an explicit platform hook, never from inferring the
+  status sequence.
+- A measurement plan comes first when a requirement's breadth is unknown ("measure, then fix
+  or record"), and the measurement's matrix becomes the regression tests.
+- New Error-severity checks are reviewed against the live backend over the corpus before they
+  ship, not only against guard-case fixtures.
+- Scope fixes follow the language's documented visibility rules (METHOD scope), and the
+  reference is cited in the gap diagnosis.
+
+### Key Lessons
+1. A design that rests on observed runtime evidence passes UAT; the same feature derived from
+   reasoning failed a milestone earlier.
+2. Measure before you build: COMP-03 needed no production change at all.
+3. A gate stated against a number from a different corpus build cannot be judged fairly.
+   Restate it against the phase's own base before execution.
+4. Re-run the final UAT on the post-review build, or plan review fixes before the UAT.
+
+### Cost Observations
+- Model mix: not tracked
+- Sessions: not tracked
+- Notable: 25 plans in 3 days (~8 plans/day). Phase 108-01 spent almost 4 hours waiting at a
+  human checkpoint for the macOS `idea.log`, which was worth it.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -389,6 +458,7 @@
 | v4.3 | n/a | 9 | Shared-server-first composer layers; installed-artifact proof before UAT; milestone audit run again (no gaps) |
 | v4.4 | n/a | 5 | Fixes and consolidations grouped by subsystem; first tagged release through the verify-before-publish gate; a release-phase rework reverted after failing hand UAT; no milestone audit |
 | v4.5 | n/a | 8 | Corpus-measured conformance gates (A / A2 / B); the compiler's own parser in the loop via a cross-repo endpoint; a phase added mid-milestone; milestone audit run (no gaps) |
+| v4.6 | n/a | 4 | Lean user-facing bug burn-down; measure-first plans; crash detection redone on real-log evidence; milestone audit run (no gaps) |
 
 ### Cumulative Quality
 
@@ -399,6 +469,7 @@
 | v4.3 | 1,873 vitest + 865 JUnit | not measured at close | 0 new runtime dependencies |
 | v4.4 | 1,895 vitest + 1,101 JUnit | not measured at close | 0 new runtime dependencies (Gradle 9.7.1, IntelliJ Platform plugin 2.18.1, bundled Node.js v22.23.2) |
 | v4.5 | 2,507 vitest (63 skipped) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
+| v4.6 | 2,854 vitest (whole suite at 109-08) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -413,6 +484,7 @@
 5. When a live UAT result contradicts the source, verify the installed artifact before
    changing code — v4.3 Phase 88 spent two gap-closure rounds on a stale install.
 6. Evidence for an approval must be observed, not derived — v4.3's stale install and v4.4's
-   hand-derived status trace both got a wrong conclusion approved by a human.
+   hand-derived status trace both got a wrong conclusion approved by a human. v4.6 Phase 108
+   confirmed the converse: the same feature built on a real `idea.log` passed first time.
 7. Judge by per-item diffs, not totals — v4.5's conformance totals hid validator A2 hits
    unmasked by parser fixes and a lexer token that swallowed its terminator.

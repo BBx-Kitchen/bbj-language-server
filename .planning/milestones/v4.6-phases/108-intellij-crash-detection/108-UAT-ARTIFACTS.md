@@ -1,3 +1,10 @@
+---
+audit_acknowledged:
+  milestone: v4.6
+  at: 2026-09-26
+  gap_snapshot: "unknown::scenarios=0"
+---
+
 # Phase 108 — UAT Artifacts
 
 **Redaction rule:** before pasting any line from a real `idea.log` into this file, replace the
@@ -392,6 +399,7 @@ Wait for `BBj: Ready`.
 | S7.11 | must-not: `exited unexpectedly` | `BbjServerService.applyCrashPolicy` — not reached | observed absent (no `exited unexpectedly` in the 16:52:47 window) |
 | S7.12 | allowed alternative: `exited during a plugin restart (…); treated as an expected stop, not a crash` | `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch | derived — the race did not occur; `BbjServerService.reportUnexpectedExit`, `EXPECTED_RESTART_STOP` branch |
 | S7.13 | cross-scenario: every status line's from-state equals the previous status line's to-state (criterion 3) | `BbjServerService.updateStatus` | observed (`started -> stopping -> stopped -> stopping -> stopped -> starting -> started`, each from-state equal to the previous to-state) |
+
 ### Scenario excerpts (observed)
 
 **Redaction rule:** before pasting any line from a real `idea.log`, replace the macOS home
@@ -583,6 +591,7 @@ starts from that instance's own initial `stopped`, not from the disposed instanc
   with scenario 6's observed 0 ms restart.
 
 **Mapping to ROADMAP success criteria 1-4:**
+
 1. *A first crash is auto-restarted once, quietly; a second within 30 s gives up with the
    balloon and banner* — met by scenarios 1 and 2, both pass, fully observed.
 2. *Deliberate stops and the plugin's own restarts are never crashes* — met by scenarios 3, 4, 5

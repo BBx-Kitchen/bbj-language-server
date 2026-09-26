@@ -1,5 +1,99 @@
 # Project Milestones: BBj Language Server
 
+## v4.6 User-Facing Bug Burn-down (Shipped: 2026-09-26)
+
+**Closed 2026-09-26** as an override closeout after a milestone audit with status `tech_debt`
+(`milestones/v4.6-MILESTONE-AUDIT.md`): 19/19 requirements satisfied, 4/4 phases verified
+`passed`, 5/5 integration seams connected, 2/2 end-to-end flows complete, and Nyquist coverage
+compliant for every phase. There are no gaps against requirements. The close counts as an
+override only because the pre-close artifact scan found two open items, which were
+acknowledged rather than resolved (see Known verification overrides). A third item, the
+G-109-1 debug session, was already fixed by 109-08 and was closed as `resolved`.
+
+**Where the code lives.** On branch `gsd/v4.6-user-facing-bug-burndown` at close, not yet
+pushed or merged. As with v4.5, the milestone is meant to land on `main` as one PR. The
+private-corpus measurements in 107 ran locally only. No corpus text entered this repository.
+
+**Delivered:** five user-reported problem areas fixed across both IDEs. `on-save` now really
+waits for a save in VS Code and IntelliJ, and the last save's compiler errors stay visible
+until the next one. Single-line IF code no longer draws false line-break errors, and an
+unknown method on a fully resolved Java class is an Error. The IntelliJ plugin notices a
+crashed server. Completion is correct after fully-qualified Java classes, on overloaded
+calls and inside class method bodies.
+
+**Phases completed:** 106-109 (4 phases, 25 plans, 60 tasks)
+
+| Phase | Name | Plans | Requirements |
+|-------|------|-------|--------------|
+| 106 | On-Save Compiler Check in Both IDEs | 7 | TRIG-01..07, DIAG-01, JINT-03 |
+| 107 | Validation False Alarms & Silent Skips | 6 | VAL-01, -02, -03 |
+| 108 | IntelliJ Crash Detection | 4 | LIFE-01, -02 |
+| 109 | Completion & Java Class Resolution | 8 | COMP-01..03, JINT-01, -02 |
+
+**Key accomplishments:**
+
+- On-save compiler check (#696): live-parse arming is reason-aware (open/change/save), with a
+  zero-delay path under `on-save` gated on a newly advertised LSP save capability. A
+  per-document check-sequence counter and `composeWithKeptCheck` keep a save's verdict visible,
+  on the right line, while the user types. IntelliJ got a "Compiler check" dropdown
+  (Debounced/On save/Off) sent as the same `compilerTrigger` init option VS Code uses, and the
+  setting text and both feature docs now describe the three modes as built.
+- One error per finding and a free live-parse lane: `reconcileWithFallbackCheck` stops a
+  bbjcpl fallback error from appearing twice next to a Langium error (#522). `parseProgram()`
+  tries its own connection first and uses the shared breaker only when that lane cannot open.
+- Validation: a two-counter repair in `elseStatementLineBreaks`, plus a DEF FN same-line
+  RETURN fix, clears the nested single-line IF/ELSE/FI false alarms. Nine optional guards stop
+  the use-before-assignment check from throwing on a symbol-less reference (`## = 1`). A new
+  conservative MemberCall check reports `BBjAPI().anyInvalidMethod()` as an Error that the
+  hierarchy cannot hide. It was reviewed against the full private corpus, and five
+  false-positive shapes were guarded.
+- IntelliJ crash detection: LSP4IJ's unexpected-stop hook is the only crash signal.
+  `ExpectedStopGuard.classifyExit` filters the plugin's own restarts, the status bar shows
+  `BBj: Crashed`, and the banner appears only once auto-restart gives up. Status log lines
+  carry the real previous state. Checked against a real macOS `idea.log`.
+- Completion and Java class resolution: `java.lang.String.` and `java.lang.Class.` without
+  `USE` offer static members only (#577). Overloaded calls infer the matching overload's
+  return type (#556). Primitive/void/array names never reach the backend (#660).
+  `Outer.Inner` and `Outer$Inner` share one cache key (#659). A METHOD boundary in
+  `BbjScopeProvider` keeps program variables out of class method scope, with method-body
+  completion pinned by tests (#561 closed).
+
+**Stats:** 195 commits between 2026-09-24 and 2026-09-26 (3 days). 63 files changed outside
+`.planning/`, +9,247 / −374 lines: `bbj-vscode/src` +1,774 / −144, `bbj-vscode/test`
++5,459 / −28, `bbj-intellij` +1,983 / −181, `documentation` +27 / −17. The 109-08 whole
+suite ran 2,854 tests with no new failures against the phase base. UAT was done by hand in
+both IDEs for 106 (13/13 steps), 108 (7/7 scenarios, macOS) and 109 (33/33).
+
+**Known verification overrides:** 2 newly acknowledged, 34 carried forward from a prior close
+(see STATE.md Deferred Items). The two are `108-UAT-ARTIFACTS.md`, a raw evidence log with no
+pending scenarios that the scanner reads as UAT, and the pending todo
+`2026-09-24-unknown-java-member-linking-warning-extras` (see below).
+
+### Known Gaps
+
+None against requirements. Overrides and debt carried forward:
+
+- 106-REVIEW CR-01 (pre-existing): switching the trigger to `off` does not cancel a pending
+  debounce cycle, so one stale check still runs and publishes.
+- 106-REVIEW WR-01: the fallback branch applies the hierarchy's Rule 2 before merging the kept
+  bbjcpl error, so a Langium warning can survive next to it. IN-01: a brittle
+  source-substring guard test.
+- 106 success criterion 5: the Phase 105 timing re-sample was not taken (user override at the
+  106-07 checkpoint).
+- 107: A2 was accepted on a file-set reading (25 vs same-corpus base 33, no new entries), not
+  the raw ≤ 22 number. IN-01/IN-02 (false-negative only) are left out.
+- Todo `unknown-java-member-linking-warning-extras`: an uncertain-receiver linking Warning is
+  still hidden by Rule 2 when the file has another Error. The message also says `NamedElement`.
+- 108: the final 7-scenario UAT ran on the pre-review-fix build, and the post-fix build got a
+  3-step re-check (maintainer-approved).
+- 109-REVIEW IN-01..05 (info). A bare field name without `#` is still offered inside a METHOD
+  body (deliberately out of scope).
+- Pre-existing environment drift: `linking.test.ts`'s 11 live-interop failures against the
+  local :5008 backend.
+- No `v4.6` git tag, following the v4.2-v4.5 precedent (repository tags are release versions).
+
+---
+
 ## v4.5 Compiler Conformance (Shipped: 2026-09-24)
 
 **Closed 2026-09-24** as an override closeout after a milestone audit with status `tech_debt`

@@ -24,7 +24,7 @@
 - ✅ **v4.3 Polish & Quality** — Phases 84-92 (shipped 2026-09-13; all phases on `origin/main`, local `main` in sync as of 2026-09-17 — see MILESTONES.md)
 - ✅ **v4.4 IntelliJ Focus** — Phases 93-97 (shipped 2026-09-20 as release 0.16.0; on `origin/main` via PR #679 — see MILESTONES.md)
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
-- 🔷 **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (in progress, started 2026-09-24)
+- ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on branch `gsd/v4.6-user-facing-bug-burndown`, to land on `main` as one PR — see MILESTONES.md)
 
 ## Phases
 
@@ -279,229 +279,20 @@ gaps) in `.planning/milestones/v4.5-MILESTONE-AUDIT.md`; phase artifacts under
 
 </details>
 
-### 🔷 v4.6 User-Facing Bug Burn-down (Phases 106-109) — IN PROGRESS
+<details>
+<summary>✅ v4.6 User-Facing Bug Burn-down (Phases 106-109) — SHIPPED 2026-09-26</summary>
 
-Scope is the 18 requirements in `.planning/REQUIREMENTS.md`: fix what still bothers BBj
-developers in VS Code and IntelliJ, keep each fix minimal, and release soon. No new features.
-Already handled outside the milestone: #688 (extensionless USE target), PR #698.
+- [x] Phase 106: On-Save Compiler Check in Both IDEs (7/7 plans) — completed 2026-09-24
+- [x] Phase 107: Validation False Alarms & Silent Skips (6/6 plans, VAL-03 added 2026-09-24) — completed 2026-09-25
+- [x] Phase 108: IntelliJ Crash Detection (4/4 plans) — completed 2026-09-25
+- [x] Phase 109: Completion & Java Class Resolution (8/8 plans, 109-07/-08 closed verifier and UAT gaps) — completed 2026-09-26
 
-**Where each phase works.**
+Full phase detail: `.planning/milestones/v4.6-ROADMAP.md`; requirements (19/19) in
+`.planning/milestones/v4.6-REQUIREMENTS.md`; audit (`tech_debt`, no gaps) in
+`.planning/milestones/v4.6-MILESTONE-AUDIT.md`; phase artifacts under
+`.planning/milestones/v4.6-phases/` (tracked). Override closeout: 2 artifacts acknowledged.
 
-- Phase 106 changes the language server's compiler-check scheduling and merge
-  (`bbj-document-builder.ts`, the server's save handling), the dedicated live-parse lane in
-  `java-interop.ts` (`parseProgram`, `openParseLane`), the IntelliJ plugin's trigger setting and
-  `CompilerInitOptions`, the VS Code setting description in `bbj-vscode/package.json`, and the two
-  feature docs under `documentation/docs/`.
-- Phase 107 changes two validators (`validations/line-break-validation.ts`,
-  `validations/check-variable-scoping.ts`) plus synthetic regression fixtures; VAL-03 (added
-  2026-09-24) adds a `MemberCall` check in `bbj-validator.ts`, touches `bbj-document-validator.ts`
-  and guards one read in `bbj-scope-local.ts`. It only reads the Phase 109 files.
-- Phase 108 changes `bbj-intellij/` only (`BbjServerService`, `BbjLanguageClient`,
-  `BbjLanguageServerFactory`, `ExpectedStopGuard`).
-- Phase 109 changes completion and type inference (`bbj-scope.ts`, `bbj-type-inferer.ts`,
-  `bbj-linker.ts`, `bbj-overload-selector.ts`, `bbj-completion-provider.ts`) and
-  `java-interop.ts`'s `resolveClass`.
-
-**Grouping.**
-
-- DIAG-01 sits in Phase 106. Its fix site is the bbjcpl fallback branch of `debouncedCompile()`,
-  which applies the diagnostic hierarchy *before* merging the bbjcpl errors. That is the same
-  function the on-save path reshapes, so one phase owns it and no later phase rebases onto
-  moving code.
-- JINT-03 sits in Phase 106. The save-triggered check asks the live parse first, and a live
-  parse short-circuited by the shared connection's breaker falls back to bbjcpl for no reason.
-  It is the phase's only change in `java-interop.ts`, so it cannot collide with the scheduling
-  work, and the Phase 105 timing re-check it needs fits the same hand check in both IDEs.
-- JINT-01/02 sit in Phase 109. Both are fixed in `resolveClass`'s member-type resolution, next
-  to the `isStatic` default that #577 names as COMP-01's interop-side blocker.
-- LIFE-01 and LIFE-02 ship together; the Phase 97 attempt to land them showed that neither
-  makes sense alone, and it was reverted.
-
-**Ordering.** Phase 106 first: it is the headline fix (#696). Phases 107 and 109 are independent
-of the others. Phase 108 runs after Phase 106 only because both change
-`BbjLanguageServerFactory` (the trigger's initialization options and the client-features hook).
-Phase 109 is last because COMP-03 starts with a measurement whose size is not known yet.
-
-**Verification.** Phases 106 and 108 end with a hand UAT in a running VS Code and IntelliJ —
-build both distributables first, and again from the final tree after code-review fixes. A
-runtime status sequence used as evidence comes from a real `idea.log` (v4.4 standing decision).
-Phase 107's conformance comparison runs locally against the private corpus, never in CI, and no
-corpus text enters this repository.
-
-- [x] **Phase 106: On-Save Compiler Check in Both IDEs** - `on-save` really waits for a save in VS Code and IntelliJ, its errors stay until the next save, the bbjcpl fallback shows one error per finding, and the live parse stops waiting on the shared interop connection (completed 2026-09-24)
-- [x] **Phase 107: Validation False Alarms & Silent Skips** - Valid single-line IF code stops drawing line-break errors, and the use-before-assignment check stops silently skipping files (completed 2026-09-25)
-- [x] **Phase 108: IntelliJ Crash Detection** - The IntelliJ plugin notices a dead language server or a dropped connection, never mistakes a normal stop for a crash, and logs the real status transitions (completed 2026-09-25)
-- [x] **Phase 109: Completion & Java Class Resolution** - Statics only after a fully-qualified Java class, the matching overload's return type, completion inside class method bodies, and no wasted or duplicate class lookups (completed 2026-09-26)
-
-## Phase Details
-
-### Phase 106: On-Save Compiler Check in Both IDEs
-
-**Goal**: A BBj developer can have the compiler check run only when a file is opened or saved. Typing then costs no compiler work, and the last save's compiler errors stay visible until the next save, in VS Code and IntelliJ alike. Whichever parser reports an error, the developer sees it once, and the live parse no longer waits on the shared interop connection.
-**Depends on**: Nothing (first phase of v4.6)
-**Code**: `bbj-vscode/src/language/bbj-document-builder.ts` (`debouncedCompile()`, `runBbjcplForDocuments()`, `armLiveParseFromEvent()`), the server's `didSave` handling, `bbj-diagnostic-reconciliation.ts` / `bbj-document-validator.ts` where TRIG-04 needs them, `java-interop.ts` (`parseProgram`, `openParseLane`), `bbj-vscode/package.json`, the `bbj-intellij/` settings and `CompilerInitOptions`, `documentation/docs/vscode/features.md` and `documentation/docs/intellij/features.md`
-**Requirements**: TRIG-01, TRIG-02, TRIG-03, TRIG-04, TRIG-05, TRIG-06, TRIG-07, DIAG-01, JINT-03
-**Success Criteria** (what must be TRUE):
-
-  1. With `bbj.compiler.trigger` set to `on-save`, typing in a BBj file starts no live parse and no bbjcpl run, while the language server's own diagnostics keep updating as before. With `debounced` (still the default) and `off`, checks run exactly when they did before this milestone.
-  2. With `on-save`, opening a BBj file shows its compiler errors before the first save. Each save then runs exactly one compiler check of the saved text, with no debounce delay: the live parse on BBj 26.03 or later, bbjcpl when the live parse is unavailable. This holds in VS Code and IntelliJ alike.
-  3. With `on-save`, the last check's compiler errors stay visible on their correct lines while the user types, until the next save replaces them. In every mode, when bbjcpl reports an error because the live parse is unavailable, the language server's redundant parse error for the same finding is suppressed, as it already is on the live-parse path (#522).
-  4. An IntelliJ user can choose `debounced`, `on-save` or `off` in the plugin settings, and the language server uses the choice from startup and after a change. The VS Code setting description and the VS Code and IntelliJ feature docs describe the three modes as implemented and recommend `on-save`, not `off`, for large workspaces.
-  5. While the shared interop connection's circuit breaker is open or half-open, the live parse still answers over its own connection, falling back to the shared one only when its own cannot be opened. A re-check of a few Phase 105 "after" samples on the real large workspace shows the first live diagnostic still arriving in about 5-6 s (Phase 105 measured 5.3 s in VS Code and 6 s in IntelliJ).
-
-**Plans:** 7/7 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 106-01-PLAN.md — Save capability and on-save scheduling: one immediate check per save and per open, none for typing or unrelated rebuilds, no burst on a mode switch (wave 1)
-- [x] 106-02-PLAN.md — Live parse uses its own connection first, independent of the shared connection's breaker (JINT-03) (wave 1)
-- [x] 106-03-PLAN.md — IntelliJ "Compiler check:" setting via initializationOptions; VS Code setting text and both feature docs (TRIG-06, TRIG-07) (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 106-04-PLAN.md — bbjcpl fallback shows one error per finding when it checked the saved text (DIAG-01) (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 106-05-PLAN.md — Kept errors follow their lines while typing under on-save: change recording, kept checks, composition rules (TRIG-04) (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 106-06-PLAN.md — In-flight and superseded save results, kept bbjcpl results, mode-switch semantics, whole suite (TRIG-04) (wave 4)
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 106-07-PLAN.md — Build both distributables, whole suites, hand UAT in both IDEs, Phase 105 timing re-check (wave 5, checkpoint)
-
-*Planning notes:* check whether the server receives `textDocument/didSave` from both clients
-today. The live-parse path currently drops a verdict whose text changed while the request was
-out; under `on-save` the last verdict must survive later edits without the reconciliation
-dropping it or placing it on a shifted line (TRIG-04). JINT-03 changes the transport Phase 105's
-timings were measured through (`105-MEASUREMENT.md`), which is why criterion 5 re-checks them.
-
-### Phase 107: Validation False Alarms & Silent Skips
-
-**Goal**: Valid single-line `IF` code no longer draws line-break errors the compiler would never report, and the use-before-assignment check no longer gives up on a file without a trace.
-**Depends on**: Nothing (validators only; independent of Phase 106)
-**Code**: `bbj-vscode/src/language/validations/line-break-validation.ts` (`elseStatementLineBreaks`, `ifEndStatementLineBreaks`), `validations/check-variable-scoping.ts` (`getSymbolRefName`, `checkUseBeforeAssignment`), synthetic regression fixtures under `bbj-vscode/test/test-data/conformance/`; for VAL-03 (added 2026-09-24) `bbj-scope-local.ts` (the same unguarded `symbol.$refText` read), `bbj-validator.ts` (new `MemberCall` check) and `bbj-document-validator.ts` where the duplicate linking warning is dropped
-**Requirements**: VAL-01, VAL-02, VAL-03
-**Success Criteria** (what must be TRUE):
-
-  1. Single-line `IF`/`ELSE`/end-of-`IF` shapes the compiler accepts, including the nested one-liner `if a then if b then c=1 else d=1 fi else e=1 fi`, show no "This statement needs to start in a new line" error.
-  2. A genuinely misplaced `ELSE` or `FI` with no open `IF` left on its line is still reported with that error, and the existing "still flagged" regression cases stay flagged.
-  3. A before/after run of the private conformance harness shows three things. The valid files re-flagged at the Phase 98 close no longer carry the line-break error. A2 is at or below its v4.5 exit count of 22. No file newly enters B, compared by file set rather than totals.
-  4. A file containing a reference with no symbol (the malformed `## = 1` shape) gets no "An error occurred during validation" diagnostic, and a use-before-assignment hint elsewhere in the same file still appears.
-  5. `BBjAPI().anyInvalidMethod()` and the same unknown member on any other Java class the language server has fully resolved show one Error on the member name, also when the file has other errors. An unresolved, cold or synthetic receiver, a BBj class receiver and a template-string field access keep today's Warning, and a local conformance run shows no new Error on a member that exists.
-
-**Plans:** 6/6 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 107-01-PLAN.md — ELSE-walker counter repair for nested single-line IF/ELSE/FI, regression matrix and clean fixtures (VAL-01)
-- [x] 107-02-PLAN.md — optional `symbol` reads in the use-before-assignment check and scope computation (VAL-02)
-- [x] 107-03-PLAN.md — unknown-Java-member Error check, duplicate linking diagnostic removal, guard-case and live BBjAPI() tests (VAL-03)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 107-04-PLAN.md — harness baseline on the phase base, re-flagged files checked and any remaining shape fixed (VAL-01)
-- [x] 107-05-PLAN.md — live-backend review of every unknown-member Error over the private corpus, guards for false positives (VAL-03)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 107-06-PLAN.md — final harness comparison by file set, suites, register and leak checks, todo close-out (VAL-01..03)
-
-*Planning notes:* the todo behind VAL-02 also records the same unguarded `symbol.$refText` read in
-`bbj-scope-local.ts`, which fails during scope computation rather than validation; decide whether
-the minimal fix covers it. Snapshot `details.json` before each harness run. Fixtures are
-synthetic, never corpus text.
-
-### Phase 108: IntelliJ Crash Detection
-
-**Goal**: When the language server process dies or its connection drops, the IntelliJ plugin notices it, logs it and reflects it in the server status. It never mistakes one of LSP4IJ's normal stops for a crash, and the status log prints the real transitions.
-**Depends on**: Phase 106. There is no functional dependency; both phases change `BbjLanguageServerFactory` (the trigger's initialization options there, the client-features hook here), so this phase runs after it.
-**Code**: `bbj-intellij/` only: `BbjServerService`, `BbjLanguageClient`, `BbjLanguageServerFactory`, `ExpectedStopGuard`, and the Node.js connection provider if the crash signal comes from the process exit
-**Requirements**: LIFE-01, LIFE-02
-**Success Criteria** (what must be TRUE):
-
-  1. Killing the language-server Node.js process in a running IntelliJ, or dropping its connection, is logged as a crash and reflected in the server status. The evidence is an excerpt from a real `idea.log`, not a hand-derived trace.
-  2. LSP4IJ's own deliberate stops (closing the last BBj file, closing the project, idle shutdown) and the plugin's own restarts (Settings Apply, manual restart, config reload, the Refresh Java Classes fallback) are not classified as crashes and trigger no automatic restart.
-  3. Every server status transition log line shows the real previous status (for example `stopping -> stopped`), never a value two transitions old such as `started -> started`.
-  4. One build carrying both changes passes a hand UAT in a running IntelliJ on macOS, where the Phase 97 attempt failed. The UAT kills the process, closes the last BBj file and restarts from the settings.
-
-**Plans:** 4/4 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 108-01-PLAN.md — Probe build with no behaviour change: unexpected-stop hook and stop() INFO logging, status feed moved to client features, real from-state log line (LIFE-02); maintainer's macOS idea.log excerpt (wave 1, checkpoint)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 108-02-PLAN.md — Probe verdict gate, then crash detection from the hook: ExpectedStopGuard as filter, first crash auto-restarts once without clearing the counter, second within 30 s gives up, disarm after the plugin's own stop (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 108-03-PLAN.md — BBj: Crashed widget state for every crash; editor banner only on give-up; feature docs (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 108-04-PLAN.md — Final builds, whole suite, register check, seven-scenario macOS hand UAT with observed/derived marks (wave 4, checkpoint)
-
-*Planning notes:* the Phase 97 attempt (`bb0a49f0`, `cb3ce7f8`, `a2680319`; reverted in
-`8fe7cb72` and `a22b78ad`) showed that the status sequence alone cannot separate a crash from a
-normal stop, since both arrive as `started -> stopping -> stopped`. The crash signal has to come
-from elsewhere, most likely the Node.js process exit seen by the plugin's own connection provider
-combined with "no stop was requested". So the phase starts with that design step. Also decide
-whether the crash counter resetting on every `started` is intended. Upstream context: LSP4IJ
-#1672 and #1673.
-
-### Phase 109: Completion & Java Class Resolution
-
-**Goal**: Completion offers the right members in the right places: statics only after a fully-qualified Java class, the result type of the overload a call actually matches, and candidates inside class method bodies. Class resolution sends the java-interop backend only real class names, once each.
-**Depends on**: Nothing (independent of Phases 106-108)
-**Code**: `bbj-vscode/src/language/bbj-scope.ts` (`isClassRef` detection in the member-completion branch), `bbj-type-inferer.ts`, `bbj-linker.ts` (`getCandidate`), `bbj-overload-selector.ts` (`findBestOverload`), `bbj-completion-provider.ts`, `java-interop.ts` (`resolveClass`, `resolveClassByName`), `test/completion-test.test.ts`
-**Requirements**: COMP-01, COMP-02, COMP-03, JINT-01, JINT-02
-**Success Criteria** (what must be TRUE):
-
-  1. After a fully-qualified Java class reference typed without `USE` (for example `java.lang.String.`), completion offers only static members: the same list as `String.` after `USE java.lang.String`.
-  2. When a BBj or Java class has same-named overloads with different return types, a call gets the return type of the overload that matches its arguments, in whatever order the overloads are declared or returned. Completion on the call's result then offers that type's members.
-  3. Completion offers candidates inside class method bodies at the positions a before-fix measurement found broken. Every such position, including the one behind the skipped DEF FN `_f$`/`_t$` test, is either fixed and pinned by a test or recorded with the reason it stays out of reach.
-  4. On a cold start with `bbj.debug` on, the log shows no class lookup for a primitive type, `void` or an array type (`int`, `byte[]`, `java.lang.Object[]` and the like).
-  5. A nested Java class named `Outer.Inner` in one place and `Outer$Inner` in another is resolved once, and completion shows the same members for both spellings.
-
-**Plans:** 8/8 plans complete
-
-Plans:
-
-- [x] 109-08-PLAN.md
-
-**Wave 1**
-
-- [x] 109-01-PLAN.md — COMP-03: before-fix measurement of completion inside class method bodies recorded in the phase dir, working positions pinned, DEF FN `_f$`/`_t$` test un-skipped, broken positions fixed within budget or recorded; maintainer decides #561 handling (checkpoint)
-- [x] 109-02-PLAN.md — COMP-01: `isClassRef` also recognises a `MemberCall` receiver naming a Java class, so `java.lang.String.` offers statics only (`class` pseudo-member excluded)
-- [x] 109-03-PLAN.md — COMP-02: node-preserving overload selection shared with inlay hints; type inferer uses the matching overload's return type, no type on an undecided tie
-- [x] 109-04-PLAN.md — JINT-01: primitive, `void`, array and blank names answered locally at the top of `resolveClassByName` with today's result; counting test double
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 109-05-PLAN.md — JINT-02: `canonicalJavaClassName`, `Outer.Inner` as the single cache key, request keeps the arriving spelling
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 109-06-PLAN.md — Live :5008 cold-start check, whole-suite gate against the base commit, register check, COMP-03 final record, #561 action
-
-**Gap closure**
-
-- [x] 109-07-PLAN.md — COMP-01 gap: a fully-qualified reference to the class named `Class` (`java.lang.Class.`) offers statics only; `.class` pseudo-member told apart by the preceding segment (package vs class/value)
-
-*Planning notes:* #561's recorded root cause is that the completion engine's grammar follower
-produces no candidate positions inside `MethodDecl.body` at all. COMP-03 may therefore need a
-grammar restructuring or an upstream Langium change; the measurement decides which, and anything
-out of reach is recorded rather than forced. #577 names the `isStatic ?? false` default in
-`resolveClass` as a possible interop-side blocker; check whether `bbj-ls` already sends `isStatic`
-on the fully-qualified path.
+</details>
 
 ## Progress
 
@@ -529,33 +320,20 @@ on the fully-qualified path.
 | v4.3 Polish & Quality | 84-92 | 70 | Complete | 2026-09-13 |
 | v4.4 IntelliJ Focus | 93-97 | 36 | Complete | 2026-09-20 |
 | v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
-| v4.6 User-Facing Bug Burn-down | 106-109 | TBD | In progress | — |
+| v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 
-**Total:** 22 milestones shipped, 103 phases complete, 393 plans shipped.
+**Total:** 23 milestones shipped, 107 phases complete, 418 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
 here but have no `.planning/milestones/v4.0-phases/` archive on `main`. v4.1's phase
 artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, excluded from git
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's,
-v4.3's, v4.4's and v4.5's artifacts (78-105) carry no advisory detail and are tracked normally.
+v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail and are tracked normally.
 
-### v4.6 phase progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 106. On-Save Compiler Check in Both IDEs | 7/7 | Complete | 2026-09-24 |
-| 107. Validation False Alarms & Silent Skips | 6/6 | Complete | 2026-09-25 |
-| 108. IntelliJ Crash Detection | 4/4 | Complete | 2026-09-25 |
-| 109. Completion & Java Class Resolution | 8/8 | Complete | 2026-09-26 |
-
-**Current milestone:** v4.6 User-Facing Bug Burn-down (Phases 106-109), started 2026-09-24.
-19/19 requirements mapped to 4 phases (VAL-03 added to Phase 107 on 2026-09-24), no orphans and no duplicates. Scope is in
-`.planning/PROJECT.md` under "Current Milestone"; the requirement list and its traceability
-table are in `.planning/REQUIREMENTS.md`.
-Next: `/gsd-discuss-phase 106` or `/gsd-plan-phase 106`.
+No milestone is active. Next: `/gsd-new-milestone`.
 
 ---
 
-*Roadmap last updated: 2026-09-24 — v4.6 User-Facing Bug Burn-down roadmapped (Phases 106-109,
-18/18 requirements mapped, no orphans).*
+*Roadmap last updated: 2026-09-26 — v4.6 User-Facing Bug Burn-down shipped and archived
+(Phases 106-109, 25 plans, 19/19 requirements).*
