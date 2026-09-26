@@ -1,8 +1,8 @@
 ---
 phase: 109-completion-java-class-resolution
-reviewed: 2026-09-26T04:50:00Z
+reviewed: 2026-09-26T00:00:00Z
 depth: standard
-files_reviewed: 13
+files_reviewed: 14
 files_reviewed_list:
   - bbj-vscode/src/language/bbj-inlay-hint-provider.ts
   - bbj-vscode/src/language/bbj-overload-selector.ts
@@ -16,122 +16,138 @@ files_reviewed_list:
   - bbj-vscode/test/functional/java-class-lookups-real-interop.test.ts
   - bbj-vscode/test/java-interop-local-types.test.ts
   - bbj-vscode/test/java-interop-nested-class-names.test.ts
+  - bbj-vscode/test/method-body-scope.test.ts
   - bbj-vscode/test/overload-return-type.test.ts
 findings:
   critical: 0
   warning: 0
-  info: 4
-  total: 4
+  info: 5
+  total: 5
 status: issues_found
 ---
 
 # Phase 109: Code Review Report
 
-**Reviewed:** 2026-09-26T04:50:00Z
+**Reviewed:** 2026-09-26T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 13
+**Files Reviewed:** 14
 **Status:** issues_found
 
 ## Summary
 
-Re-review after gap-closure plan 109-07 (commits `cc25ae07`, `d95fc856`), which narrows the
-`.class` pseudo-member exclusion in `bbj-scope.ts`'s class-reference detection. Only these two
-commits touched the reviewed file set since the prior `109-REVIEW.md` was written
-(`git log 9898637b..HEAD` for the 13 reviewed files shows no other intervening commits); every
-other file (`bbj-overload-selector.ts`, `bbj-type-inferer.ts`, `java-interop.ts`,
-`bbj-inlay-hint-provider.ts`, and the non-class-reference test files) is byte-identical to what
-the prior review already assessed.
+Full re-review of the whole phase diff (`git diff 4b0cd256^..HEAD` for the 14 listed files),
+superseding the prior `109-REVIEW.md` (which covered the phase through the 109-07 gap-closure
+commit) now that plan 109-08 has landed. 109-08 adds a new `lexicalScope()` private method to
+`BbjScopeProvider` (`bbj-scope.ts`) that draws a hard boundary at `MethodDecl`: a class METHOD
+body is documented BBj behavior to see only its own parameters and the class's fields, not
+program-level variables. `method-body-scope.test.ts` (new) and `completion-method-body.test.ts`
+(the `test.skip` from 109-07 replaced with real assertions) exercise this directly.
 
-**WR-01 from the prior review is resolved.** The previous finding was that
-`java.lang.Class.` (fully qualified, no `USE`) was misclassified as the `.class` pseudo-member
-because the exclusion relied on member-text alone (`=== 'class'`, case-insensitive), which cannot
-distinguish a literal reference to the class named `Class` from the synthetic `.class` property.
-Commit `cc25ae07` fixes this by deciding based on the *preceding* segment's inferred type instead
-of text alone: `class` after a resolved `JavaPackage` is a real class reference (static members
-only); `class` after anything else (a class or a value) stays the pseudo-member (all instance
-members). I traced this through the four relevant receiver shapes by hand against
-`bbj-type-inferer.ts`'s `getType`:
-- `String.class.` (SymbolRef receiver, USE'd) — unaffected by this change, still pseudo-member.
-- `java.lang.String.class.` — receiver's receiver (`java.lang.String`) types as the `String`
-  `JavaClass`, not a package → still pseudo-member. Correct (unchanged behavior).
-- `java.lang.Class.` (no `.class`, direct reference) — receiver's receiver (`java.lang`) types as
-  a `JavaPackage` → `isPseudoClassMember` is now `false` → `isJavaClass(receiver.member.ref)` is
-  `true` → correctly detected as a class reference (static-only completion, matching
-  `Class.` after `use java.lang.Class`). This is exactly the case WR-01 flagged as broken.
-- `java.lang.Class.class.` — receiver's receiver (`java.lang.Class`) types as the `Class`
-  `JavaClass` itself, not a package → still pseudo-member (instance members of `java.lang.Class`),
-  matching the new test's expectation.
+**Deep-dive on `lexicalScope()` (the requested focus):**
 
-The new call to `this.typeInferer.getType(receiver.receiver)` is safe against the same
-cyclic-reference concern the surrounding code guards elsewhere: `BBjTypeInferer.getType` already
-catches `.ref` exceptions and reentrancy internally (via its `resolving` set and internal
-try/catches in `getTypeInternal`), so it never throws — no new uncaught-exception path was
-introduced by leaving this call outside a `try`/`catch`, unlike the two sibling branches in the
-same `if`/`else if` chain that do wrap `.ref` access.
+I traced `lexicalScope()` line by line against Langium's own
+`DefaultScopeProvider.getScope` (`node_modules/langium/src/references/scope-provider.ts:51-72`):
+the ancestor walk, the `localSymbols.has(currentNode)` / `getStream(currentNode)` per-node
+lookup, and the `getGlobalScope` + `createScope` fold are copied exactly. The only addition is one
+extra predicate clause, applied only when `currentNode` is specifically the `Program` node:
+`!(dropProgramVariables && isSubtype(desc.type, VariableDecl.$type))`. Outside a `MethodDecl`
+(`!getContainerOfType(context.container, isMethodDecl)`), the method short-circuits straight to
+`superGetScope(context)` (today's exact, unmodified path), so every non-method reference is
+provably unaffected.
 
-`npx vitest run test/completion-class-reference.test.ts` passes (15/15), including the three new
-109-07 tests pinning the `.class`-after-`Class`, static-call, and instance-call-not-an-Error
-behaviors.
+I then checked `bbj-scope-local.ts`'s `collectLocalSymbols`/`processNode` to confirm which
+`AstNodeDescription`s actually land keyed at the `Program` node with a `VariableDecl`-subtype
+`type` (the only entries this new clause can touch), and which node kinds keep a legitimate name
+visible from inside a method:
+- Implicit auto-declared assignments (`foo$=""`), `DIM` arrays (`ArrayDecl` is a `VariableDecl`
+  subtype per `generated/ast.ts:255`), top-level `declare` statements, and `READ`/`DREAD`/`ENTER`/
+  `FOR` targets are *all* keyed at `Program` (via `findScopeHolder`/`addToScope`'s
+  `CompoundStatement`-hoisting) with a `VariableDecl`- or `FieldDecl`-typed description — exactly
+  the set the method-scoping doc comment claims to drop, and exactly what the new clause drops.
+- Method parameters (`ParameterDecl`, also a `VariableDecl` subtype) are keyed at the `MethodDecl`
+  node itself, not `Program`, so the `isProgram(currentNode)` guard never touches them — they stay
+  visible.
+- Class fields, accessors, `this!`/`super!` are keyed at the `BbjClass` node, never `Program` —
+  unaffected, stay visible.
+- `DEF FN` declarations are keyed at their container (their own `$type`, not `VariableDecl`) — the
+  subtype check alone excludes them from the drop, regardless of which node they're keyed at.
+- `USE`'d Java classes are keyed at `Program` with `type: javaClass.$type` (`JavaClass`, not
+  `VariableDecl`) — also excluded by the subtype check, and additionally layered in *outside*
+  `lexicalScope()` entirely (`memberAndImports` in `getScope` concatenates
+  `importedBBjClasses(program)` alongside the `lexicalScope()` result), so they can never be
+  affected by this change even if their typing changed.
+- `LabelDecl` is not a `VariableDecl` subtype at all (`generated/ast.ts:3053` lists only
+  `ArrayDecl | FieldDecl | ParameterDecl | VariableDecl`) — unaffected.
 
-One residual (very narrow) limitation remains from the same inherent ambiguity, plus the three
-Info items from the prior review that these commits did not touch and remain applicable.
+`method-body-scope.test.ts`'s `PRESENCE_FIXTURE` test and `KINDS_FIXTURE` test assert exactly this
+partition (params/locals/`#field`/`this!`/USE'd classes/`DEF FN` all resolve inside the method;
+every program-variable kind fails to link and is absent from completion), and both pass. I did not
+find a case where a legitimate name is wrongly dropped.
+
+One real, narrow gap: this whole partition is reached only through the
+`isSymbolRef(context.container)` branch of `getScope` (the only call site of `lexicalScope()`).
+The grammar has exactly one other cross-reference typed `VariableDecl` — `NextStatement.variable`
+(`bbj.langium:479`, `NEXT_ID variable=[VariableDecl:FeatureName]`) — which is never wrapped in a
+`SymbolRef` node, so it never reaches `lexicalScope()` and instead falls through to the untouched
+`superGetScope(context)` at the end of `getScope`. In practice a `NEXT` inside a method body is
+always paired with a `FOR` also inside that same method body (structurally enforced by block
+nesting), so this is not a reachable regression today — see IN-05 below for why it's still worth
+a note.
+
+The remaining four Info items are carried forward from the prior review (files/lines unchanged by
+109-08, re-verified against current `HEAD`).
 
 ## Info
 
 ### IN-01: A nested Java class literally named `Class` still collides with the `.class` pseudo-member
 
-**File:** `bbj-vscode/src/language/bbj-scope.ts:218-227`
-**Issue:** The 109-07 fix disambiguates by checking whether the *segment before* `class` is a
-`JavaPackage`. This correctly separates `<package>.Class.` (a real class reference) from
-`<class-or-value>.class` (the pseudo-member). It does not cover a *nested* class literally named
-`Class` — e.g. `com.example.Outer.Class` addressed as `Outer.Class.` (no `USE`), or
-`com.example.Outer.Class.` fully qualified. Here `receiver.receiver` (`Outer`) types as a
+**File:** `bbj-vscode/src/language/bbj-scope.ts:211-229`
+**Issue:** The class-reference detection disambiguates `class` by checking whether the *segment
+before* it types as a `JavaPackage`. This correctly separates `<package>.Class.` (a real class
+reference) from `<class-or-value>.class` (the pseudo-member). It does not cover a *nested* class
+literally named `Class` — e.g. `com.example.Outer.Class` addressed as `Outer.Class.` (no `USE`),
+or `com.example.Outer.Class.` fully qualified. Here `receiver.receiver` (`Outer`) types as a
 `JavaClass`, not a `JavaPackage`, so `isPseudoClassMember` stays `true` and the reference is
 (mis)treated as the `.class` pseudo-member on `Outer`, offering `java.lang.Class`'s instance
-members instead of `Outer.Class`'s static members. This is the same class of ambiguity WR-01
-described, one level of nesting deeper, and it is unaddressed by the current segment-type check
-(a package vs. non-package test can't help once the enclosing type is itself a class). No test
-exercises this shape.
-**Fix:** This is a narrower restatement of the same inherent BBj case-insensitivity ambiguity
-the code's own comment (`bbj-scope.ts:203-209`) already documents as a known, deliberate
-limitation. Consider extending that comment to explicitly note nested classes named `Class` share
-the same collision, or add a regression test capturing today's actual (pseudo-member) behavior so
-a future change to this heuristic is deliberate rather than accidental. Not worth chasing further
-given how rare a Java class literally named `Class` nested inside another class is in practice.
+members instead of `Outer.Class`'s static members. No test exercises this shape.
+**Fix:** This is a narrower restatement of the same inherent BBj case-insensitivity ambiguity the
+code's own comment (`bbj-scope.ts:199-210`) already documents as a known, deliberate limitation.
+Consider extending that comment to explicitly note nested classes named `Class` share the same
+collision, or add a regression test capturing today's actual (pseudo-member) behavior so a future
+change to this heuristic is deliberate rather than accidental. Not worth chasing further given how
+rare a Java class literally named `Class` nested inside another class is in practice.
 
 ### IN-02: `overloadCandidates` silently drops `LibFunction` overloads, unlike its sibling `siblingOverloads`
 
 **File:** `bbj-vscode/src/language/bbj-overload-selector.ts:133-145`
-**Issue:** Carried forward from the prior review — unchanged by 109-07. `siblingOverloads` (used
-by `findBestOverload`) handles `JavaMethod`, `MethodDecl`, and `LibFunction`. `overloadCandidates`
-(used by the type inferer's return-type re-selection) only handles the first two and falls
-through to `[]` for anything else, including `LibFunction`. Today this is harmless because
-`overloadedCallType`'s caller already guards with
-`!(isJavaMethod(linked) || isMethodDecl(linked))` before calling `overloadCandidates`, so a
-`LibFunction` is never passed in — but the asymmetry between the two "find same-named siblings"
-helpers is undocumented, and a future caller that reuses `overloadCandidates` more broadly
-(expecting parity with `siblingOverloads`) would silently get no candidates for `LibFunction`
-sites.
+**Issue:** `siblingOverloads` (used by `findBestOverload`, driving inlay hints) handles
+`JavaMethod`, `MethodDecl`, and `LibFunction`. `overloadCandidates` (used by the type inferer's
+return-type re-selection, #556) only handles the first two and falls through to `[]` for anything
+else, including `LibFunction`. Today this is harmless: `BBjTypeInferer.getTypeInternal` has no
+`isLibFunction` branch at all (a `LibFunction`'s return type was never inferred before this phase
+either), and `overloadedCallType`'s guard (`!(isJavaMethod(linked) || isMethodDecl(linked))`)
+already excludes `LibFunction` before `overloadCandidates` is ever called — so there is no
+observable behavior gap. But the asymmetry between the two "find same-named siblings" helpers is
+undocumented, and a future caller that reuses `overloadCandidates` expecting parity with
+`siblingOverloads` would silently get no candidates for a `LibFunction` site.
 **Fix:** Add a short comment on `overloadCandidates` noting the deliberate scope restriction to
 `JavaMethod`/`MethodDecl` (matching its only caller), or extend it with the same `LibFunction`
 branch `siblingOverloads` has.
 
 ### IN-03: `bbj-type-inferer.ts` is missing a trailing newline
 
-**File:** `bbj-vscode/src/language/bbj-type-inferer.ts:187`
-**Issue:** Carried forward from the prior review — unchanged by 109-07 (confirmed via a
-byte-level check: the file's last 20 bytes still end `...return false;\n}` with no final
-newline). Minor, but inconsistent with the rest of the codebase and typically caught by
-`eol-last`-style lint rules.
+**File:** `bbj-vscode/src/language/bbj-type-inferer.ts:186`
+**Issue:** The file's last bytes are `...return false;\n}` with no final newline (confirmed with a
+byte-level check against current `HEAD`). Minor, but inconsistent with the rest of the codebase
+and typically caught by `eol-last`-style lint rules.
 **Fix:** Add a trailing newline to the file.
 
 ### IN-04: `localJavaTypeDto`'s primitive branch does not use the trimmed name
 
-**File:** `bbj-vscode/src/language/java-interop.ts:118-128`
-**Issue:** Carried forward from the prior review — unchanged by 109-07. `isLocalJavaTypeName`/
-`localJavaTypeDto` both derive `trimmed = name.trim()` to decide whether `name` is a
-primitive/void. For the primitive branch, `localJavaTypeDto` still builds the returned `JavaClass`
-using the original, untrimmed `name` for both `name` and `simpleName`:
+**File:** `bbj-vscode/src/language/java-interop.ts:119-133`
+**Issue:** `isLocalJavaTypeName`/`localJavaTypeDto` both derive `trimmed = name.trim()` to decide
+whether `name` is a primitive/void. For the primitive branch, `localJavaTypeDto` still builds the
+returned `JavaClass` using the original, untrimmed `name` for both `name` and `simpleName`:
 ```ts
 if (JAVA_PRIMITIVE_TYPE_NAMES.has(trimmed)) {
     return {
@@ -145,8 +161,26 @@ resulting `JavaClass` would carry `name: " int"`, diverging from a clean `"int"`
 Not currently reachable from any tested call path — a hardening note, not an observed bug.
 **Fix:** Use `trimmed` instead of `name` for both `name` and `simpleName` in the primitive branch.
 
+### IN-05: The method-scope boundary is only reachable through `SymbolRef`, leaving `NEXT`'s `variable` reference unguarded
+
+**File:** `bbj-vscode/src/language/bbj-scope.ts:290-296`
+**Issue:** `lexicalScope()` is called from exactly one place: the `isSymbolRef(context.container)`
+branch of `getScope`. The grammar's only other cross-reference typed `VariableDecl` is
+`NextStatement.variable` (`bbj-vscode/src/language/bbj.langium:479`,
+`NEXT_ID variable=[VariableDecl:FeatureName]`), which is not wrapped in a `SymbolRef` node and so
+never reaches `lexicalScope()` — it falls through to the plain, unfiltered `superGetScope(context)`
+at the bottom of `getScope`. If a `NEXT x` statement ever sat inside a class method body while `x`
+resolved only to a same-named `FOR` variable declared at program scope, that reference would not
+be excluded the way a `SymbolRef` to the same name would be. In practice a `NEXT` inside a method
+is always paired with a `FOR` also inside that method (block nesting enforces this), so this is not
+believed reachable today, and no test demonstrates an actual failure.
+**Fix:** No action needed unless a future grammar or validation change decouples `FOR`/`NEXT`
+pairing from block nesting. If it's ever worth closing defensively, `lexicalScope()` could be
+invoked for `NextStatement.variable` too (or `getScope` could special-case its `referenceType` the
+same way), but this is speculative hardening, not a fix for an observed defect.
+
 ---
 
-_Reviewed: 2026-09-26T04:50:00Z_
+_Reviewed: 2026-09-26T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
