@@ -30,7 +30,7 @@ public final class BbjToolScriptResolver {
 
     /**
      * The single production instance, resolving over the real collaborator: the plugin
-     * descriptor lookup for {@code com.basis.bbj} via {@link com.intellij.ide.plugins.PluginManagerCore}.
+     * descriptor of {@code com.basis.bbj} via {@link com.basis.bbj.intellij.BbjPluginDescriptor}.
      */
     public static final BbjToolScriptResolver SESSION =
             new BbjToolScriptResolver(BbjToolScriptResolver::defaultPluginRoot);
@@ -38,9 +38,8 @@ public final class BbjToolScriptResolver {
     @Nullable
     private static Path defaultPluginRoot() {
         try {
-            com.intellij.ide.plugins.IdeaPluginDescriptor plugin =
-                    com.intellij.ide.plugins.PluginManagerCore.getPlugin(
-                            com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj"));
+            com.intellij.openapi.extensions.PluginDescriptor plugin =
+                    com.basis.bbj.intellij.BbjPluginDescriptor.get();
             if (plugin == null) {
                 return null;
             }

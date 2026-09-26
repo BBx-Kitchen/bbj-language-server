@@ -3,20 +3,19 @@ package com.basis.bbj.intellij.lsp;
 import com.basis.bbj.intellij.BbjNodeDetector;
 import com.basis.bbj.intellij.BbjNodeDownloader;
 import com.basis.bbj.intellij.BbjNodeVersionCache;
+import com.basis.bbj.intellij.BbjPluginDescriptor;
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.NodeActions;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
 import com.redhat.devtools.lsp4ij.server.OSProcessStreamConnectionProvider;
 import org.jetbrains.annotations.NotNull;
@@ -207,8 +206,7 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
     private String resolveServerPath() {
         // Try plugin installation path first
-        PluginId pluginId = PluginId.getId("com.basis.bbj");
-        IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
+        PluginDescriptor plugin = BbjPluginDescriptor.get();
         if (plugin != null) {
             Path serverPath = plugin.getPluginPath().resolve("lib").resolve("language-server").resolve("main.cjs");
             if (Files.exists(serverPath)) {
