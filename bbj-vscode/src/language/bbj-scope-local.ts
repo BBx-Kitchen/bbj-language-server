@@ -378,6 +378,16 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     }
 
     private async tryResolveJavaReference(javaClassName: string, javaInterop: JavaInteropService) {
+        // A name that already names a registered Java package must never be sent into class
+        // resolution: the peer answers "not found" and storeJavaClass's leaf step then tries to
+        // store a class under the same name as the existing package, leaving no container
+        // (issue #676). This single check, first thing in the one function every caller funnels
+        // through, covers the USE branch, its `$` inner-class fallback, the qualified JavaTypeRef
+        // branch and the MemberCall FQN preload alike.
+        if (javaInterop.isKnownJavaPackage(javaClassName)) {
+            logger.debug(`Java '${javaClassName}' is a package, not resolved as a class.`);
+            return undefined;
+        }
         let javaClass = javaInterop.getResolvedClass(javaClassName)
         if (!javaClass) {
             // try resolve using Java service

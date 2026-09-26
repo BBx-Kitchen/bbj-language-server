@@ -13,7 +13,7 @@ import {
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
-import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
+import { Classpath, DocumentationInfo, isJavaPackage, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
 import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
@@ -1374,6 +1374,30 @@ export class JavaInteropService {
      */
     getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath = this.classpath, childName: string): JavaClass | JavaPackage | undefined {
         return this.childrenOfByName.get(javaPackageLike)?.get(childName);
+    }
+
+    /**
+     * Answers whether `qualifiedName` already names a Java package registered in the in-memory
+     * package tree — reads the tree only, never sends a request to the peer. A name registered as
+     * a package must never be resolved as a class (issue #676): `extractPackageName` would derive
+     * the wrong package for it, and `storeJavaClass` would then collide the class with the package
+     * of the same name. A `$`-spelled name is canonicalized first. Every dot segment must exist
+     * and the last one must be a {@link JavaPackage}; a class of the same name is not a package.
+     */
+    public isKnownJavaPackage(qualifiedName: string): boolean {
+        const canonical = canonicalJavaClassName(qualifiedName);
+        if (!canonical) {
+            return false;
+        }
+        let parent: Classpath | JavaPackage | JavaClass = this.classpath;
+        for (const part of canonical.split('.')) {
+            const child = this.getChildOf(parent, part);
+            if (!child) {
+                return false;
+            }
+            parent = child;
+        }
+        return isJavaPackage(parent);
     }
 
     /**
