@@ -11,6 +11,10 @@
  * an oversized or wrongly typed field from ever reaching the `JavaClass` node, for both the
  * single-class and the bulk implicit-import resolution paths.
  *
+ * It also owns render-time escaping for Java documentation shown as Markdown (issue #524),
+ * applied once where hover and completion build Markdown so stored text stays plain; the
+ * less-than sign is left out so javadoc HTML stays readable (VS Code strips raw HTML in hovers).
+ *
  * Kept free of Langium and editor imports so it is unit-testable with plain values and shared by
  * every caller.
  */
@@ -269,4 +273,27 @@ export function sanitizeJavaClassDto(dto: object): string[] {
     sanitizeMemberArray(dto, 'methods', 'returnType', true, true, notes);
     sanitizeMemberArray(dto, 'constructors', 'returnType', true, false, notes);
     return notes;
+}
+
+/**
+ * Every character {@link escapeMarkdown} backslash-escapes: the backslash itself (so a
+ * peer-supplied backslash cannot undo a later escape), the backtick, and the six characters that
+ * make up Markdown link/image syntax (`[`, `]`, `(`, `)`, `!`). The less-than sign is deliberately
+ * left out (issue #524, amended 2026-09-26): most installed javadoc contains HTML tags, and VS
+ * Code's hover already strips raw HTML when `supportHtml` is off, so escaping it would only turn
+ * readable hovers into literal tags.
+ */
+const MARKDOWN_ESCAPE_PATTERN = /[\\`[\]()!]/g;
+
+/**
+ * Backslash-escapes every occurrence of `\`, `` ` ``, `[`, `]`, `(`, `)` and `!` in `text`, in a
+ * single left-to-right pass, so Markdown link (`[x](y)`) and image (`![x](y)`) syntax supplied by
+ * the java-interop peer or a javadoc file renders as literal text instead of an interpretable link
+ * or a remote image (issue #524). The escape is applied once, at the render boundary, where hover
+ * and completion build the Markdown string they return — never at storage, so the stored
+ * `node.docu`/javadoc text stays plain for any other consumer. The less-than sign is not escaped;
+ * see {@link MARKDOWN_ESCAPE_PATTERN}.
+ */
+export function escapeMarkdown(text: string): string {
+    return text.replace(MARKDOWN_ESCAPE_PATTERN, '\\$&');
 }

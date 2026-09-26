@@ -8,6 +8,7 @@ import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
+import { escapeMarkdown } from "./java-peer-guard.js";
 import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
@@ -133,7 +134,14 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
                     }
                 }
             }
-            return this.createMarkdownContent(javaDoc?.signature, javaDoc?.javadoc);
+            // Render-boundary escape (issue #524): this one site covers both the stored
+            // node.docu and the javadoc-file fallback built above it, including a
+            // documentationHeader() signature for a Java node. Escaping is applied here, at
+            // return time, never at storage — node.docu stays plain for any other consumer.
+            return this.createMarkdownContent(
+                javaDoc?.signature !== undefined ? escapeMarkdown(javaDoc.signature) : undefined,
+                escapeMarkdown(javaDoc?.javadoc ?? '')
+            );
         }
         return header ? this.createMarkdownContent(header) : undefined;
     }
