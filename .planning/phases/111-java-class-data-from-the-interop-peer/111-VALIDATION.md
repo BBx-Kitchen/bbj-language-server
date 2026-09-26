@@ -44,7 +44,7 @@ created: "2026-09-26"
 | TBD by planner | — | — | SEC-04 | T-111 | Javadoc Markdown control characters show literally in hover and completion | unit | `npx vitest run test/javadoc-markdown-escape.test.ts` | ❌ W0 | ⬜ pending |
 | TBD by planner | — | — | SEC-05 | T-111 | Invalid fqn produces no `use` edit; valid fqn still does | unit | `npx vitest run test/java-qualified-name.test.ts test/code-action.test.ts` | partial | ⬜ pending |
 | TBD by planner | — | — | FIX-02 | — | N/A | integration | `npx vitest run test/java-package-name-collision.test.ts` | ❌ W0 | ⬜ pending |
-| TBD by planner | — | — | FIX-03 | — | N/A | unit | `npx vitest run test/unknown-java-member.test.ts test/diagnostic-hierarchy.test.ts` | partial | ⬜ pending |
+| TBD by planner | — | — | FIX-03 | — | N/A | unit | `npx vitest run test/unknown-java-member.test.ts` | partial | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

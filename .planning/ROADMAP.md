@@ -471,7 +471,22 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 111-01-PLAN.md — Shared `java-peer-guard.ts` module; peer class data type-checked and length-bounded at the entry of `resolveClass()` (also the bulk implicit-import path), javadoc and parameter names bounded in Phase 2 (SEC-03) (wave 1)
+- [ ] 111-02-PLAN.md — Unresolved Java member Warning on an uncertain receiver flagged, exempt from hierarchy Rule 2 and reworded without "NamedElement"; Rule 1 and the unknown-member Error dedup unchanged (FIX-03) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 111-03-PLAN.md — Java javadoc Markdown-escaped once at the hover and completion render boundary, fenced completion signature fence-safe, hover fallback javadoc bounded; BBj-authored docs untouched (SEC-04) (wave 2, extends the module from 111-01)
+- [ ] 111-04-PLAN.md — Scope computation never resolves a registered package name as a class (`use java.io`), `storeJavaClass` keeps a package intact on a name collision; the #676 log line is gone (FIX-02) (wave 2, shares java-interop.ts with 111-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 111-05-PLAN.md — `isJavaQualifiedName` gates the missing-USE quick fix and auto-import completion; invalid candidates dropped, the preferred flag moves to the next valid one (SEC-05) (wave 3, shares the module and bbj-completion-provider.ts with 111-03)
 
 *Planning notes:* one shared escape/bound helper can serve SEC-03 and SEC-04. The research traced
 FIX-02's log line to a package/class name collision in `storeJavaClass()`'s `childrenOfByName`

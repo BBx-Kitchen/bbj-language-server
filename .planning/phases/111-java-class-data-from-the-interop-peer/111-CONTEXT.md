@@ -70,9 +70,11 @@ the `JavaInteropService` split (Phase 121), fake-socket tests (Phase 116).
   unescaped text (D-03), and hover and completion escape it as they build Markdown. That avoids
   double escaping, and any future non-Markdown consumer still gets plain text. The escape
   backslash-escapes at least `[ ] ( ) \` ! ` and the backslash itself (the set in criterion 2 and
-  #524, plus `\`, so a peer-supplied `\[` cannot undo it). It also escapes `<` so peer-supplied HTML
-  such as `<img src=…>` cannot render. The researcher confirms whether VS Code's hover Markdown
-  renders raw HTML and keeps `<` in the set if so.
+  #524, plus `\`, so a peer-supplied `\[` cannot undo it).
+  **Amended by the user (2026-09-26, after planning):** `<` is **not** escaped. Most installed javadoc
+  contains HTML tags (3,081 of 3,910 documented members), and VS Code already strips raw HTML in hovers
+  (`supportHtml` off), so escaping `<` would only show literal tags. Whether IntelliJ/LSP4IJ renders
+  raw HTML such as `<img src=…>` is checked in UAT; if it does, revisit.
 - **D-07:** What gets escaped: every string that comes from the peer or from Java javadoc and ends up
   in hover `contents` or completion `documentation`. That covers the output of `tryParseJavaDoc`
   (both copies: `bbj-hover.ts` and the one in `java-interop.ts`), `node.docu.javadoc`, the
