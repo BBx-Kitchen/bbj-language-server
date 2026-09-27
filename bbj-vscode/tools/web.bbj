@@ -7,8 +7,8 @@ rem   4) working directory
 rem   5) session-specific classpath
 rem   6) config file path (optional, if present uses custom config.bbx)
 rem Environment:
-rem   BBJ_EM_USERNAME - EM username (legacy username/password authentication fallback)
-rem   BBJ_EM_PASSWORD - EM password (legacy username/password authentication fallback)
+rem   BBJ_EM_USERNAME - EM username (required when no token is given)
+rem   BBJ_EM_PASSWORD - EM password (may be empty)
 rem   BBJ_EM_TOKEN - auth token (optional, if present uses token-based auth)
 
 ? 'HIDE'
@@ -33,12 +33,12 @@ if (token! = null() or token! = "") then token! = ENV("BBJ_EM_TOKEN",err=*next)
 
 rem Token-based authentication if token is provided
 if (token! <> null() and token! > "") then
-    admin! = BBjAdminFactory.getBBjAdmin(token!,err=login_failed)
+    admin! = BBjAdminFactory.getBBjAdmin(token!,err=login_rejected)
 else
-    rem Legacy username/password authentication (backward compatible)
-    if (username! = null() or username! = "") username! = "admin"
-    if (password! = null() or password! = "") password! = "admin123"
-    admin! = BBjAdminFactory.getBBjAdmin(username!, password!,err=login_failed)
+    if (username! = null() or username! = "") goto login_failed
+    if (password! = null()) password! = ""
+    if (username! = "admin" and password! = "") then password! = "admin123"
+    admin! = BBjAdminFactory.getBBjAdmin(username!, password!,err=login_rejected)
 fi
 configuration! = admin!.getRemoteConfiguration()
 
@@ -102,6 +102,14 @@ BBjAPI().getThinClient().browse(url!)
 release
 
 
+login_rejected:
+    failedStep$ = "Login Failed!"
+    goto report_failure
+
+report_failure:
+    a = MSGBOX(failedStep$ + ": " + ERRMES(-1) + " (error " + str(err) + ")", 0, "Launching " + str(programme!))
+    release 1
+
 login_failed:
     a=MSGBOX("Login Failed!",0,"Launching "+str(programme!))
-release
+    release 1
