@@ -38,11 +38,22 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
- * Shared entry point for both composer UIs (#430/#433). Captures the caret context, asks the
- * language server to decode the call the caret is inside (the {@code decodeCall} requests), and
- * opens the dialog either prefilled for edit-in-place (replacing the call/tokens) or blank for
- * create (inserting at the caret). Used by the editor-popup actions and the lightbulb intentions,
- * so both are position-aware with identical behaviour.
+ * Shared entry point for all six {@link Kind} values, in their declaration order: MSGBOX,
+ * ADDWINDOW, ADDCHILDWINDOW, SETOPTS, SETOPTS_IN_CODE and CVS (#430/#433, #633, #475, #649).
+ * Captures the caret context, asks the language server to decode the call or line at the caret
+ * (a {@code decodeCall} request for the first four kinds; SETOPTS_IN_CODE decodes against the
+ * document URI instead of a line of text), and opens that kind's dialog: {@code
+ * MsgboxComposerDialog} for MSGBOX, {@code AddWindowComposerDialog} for ADDWINDOW, {@code
+ * AddChildWindowComposerDialog} for ADDCHILDWINDOW, {@code SetoptsComposerDialog} for SETOPTS and
+ * for an absolute SETOPTS_IN_CODE literal, {@code SetoptsTriStateComposerDialog} for a safe
+ * SETOPTS_IN_CODE reassignment chain or its compose-new case, and {@code CvsComposerDialog} for
+ * CVS. A decoded existing call opens its dialog prefilled for edit-in-place and, once accepted,
+ * rewrites the call span or its tokens in place, guarded by a fresh re-decode of the live document
+ * before the write; an unfinished MSGBOX or CVS call opens its dialog in completing mode instead;
+ * finding nothing opens the dialog blank for create, inserting the composed statement at the
+ * caret. A composer cue click reports a stale target rather than falling through to create.
+ * Used by the editor-popup actions, the lightbulb intentions and the composer cue, all
+ * position-aware with identical behaviour.
  */
 public final class ComposerLauncher {
 
