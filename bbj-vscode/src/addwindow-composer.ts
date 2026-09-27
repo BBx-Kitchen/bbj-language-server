@@ -16,6 +16,7 @@
 // Reuse the shared BBj display-text and structural validators from the MSGBOX composer
 // scaffolding (#426) so every composer field agrees on what "well-formed BBj text" means.
 import { expressionDisplayText, validateBbjExpression, validateStringField } from './msgbox-composer.js';
+import { findCallAt, findCalls, scanArgs, trimmedRange } from './composer-call-scanner.js';
 
 export interface FlagItem {
     /** The single bit this toggle sets, e.g. 0x00000002. */
@@ -380,41 +381,6 @@ export interface AddWindowCallInfo {
     eventMaskInsertOffset?: number;
 }
 
-/**
- * Scan the top-level arguments of a call starting just after its `(`. Handles nested parens and
- * `"` string literals (with `""` escapes) so commas inside them don't split arguments. `$...$` hex
- * literals contain no comma/paren so they need no special handling here.
- */
-export function scanArgs(line: string, open: number): { argRanges: Array<[number, number]>; callEnd: number } {
-    const argRanges: Array<[number, number]> = [];
-    let depth = 0, inStr = false, argStart = open, i = open, ended = false;
-    for (; i < line.length; i++) {
-        const c = line[i];
-        if (inStr) {
-            if (c === '"') { if (line[i + 1] === '"') { i++; continue; } inStr = false; }
-            continue;
-        }
-        if (c === '"') inStr = true;
-        else if (c === '(') depth++;
-        else if (c === ')') {
-            if (depth === 0) { argRanges.push([argStart, i]); i++; ended = true; break; }
-            depth--;
-        } else if (c === ',' && depth === 0) {
-            argRanges.push([argStart, i]);
-            argStart = i + 1;
-        }
-    }
-    if (!ended) argRanges.push([argStart, line.length]);
-    return { argRanges, callEnd: i };
-}
-
-/** The [start, end) of the trimmed token inside an argument range (strips surrounding whitespace). */
-export function trimmedRange(line: string, a: number, b: number): [number, number] {
-    const seg = line.slice(a, b);
-    const start = a + (seg.length - seg.trimStart().length);
-    return [start, start + seg.trim().length];
-}
-
 function buildCallInfo(line: string, callStart: number, open: number): AddWindowCallInfo {
     const { argRanges, callEnd } = scanArgs(line, open);
     const args = argRanges.map(([a, b]) => line.slice(a, b).trim());
@@ -447,13 +413,7 @@ function buildCallInfo(line: string, callStart: number, open: number): AddWindow
 
 /** Every `addWindow(...)` call on the line, in source order. */
 export function findAddWindowCalls(line: string): AddWindowCallInfo[] {
-    const re = /addwindow\s*\(/gi;
-    const calls: AddWindowCallInfo[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(line)) !== null) {
-        calls.push(buildCallInfo(line, m.index, m.index + m[0].length));
-    }
-    return calls;
+    return findCalls(line, 'addwindow', buildCallInfo);
 }
 
 /** First `addWindow(...)` call on the line (convenience). */
@@ -467,7 +427,5 @@ export function parseAddWindowCallOnLine(line: string): AddWindowCallInfo | unde
  * action for the one in focus.
  */
 export function findAddWindowCallAt(line: string, character: number): AddWindowCallInfo | undefined {
-    const containing = findAddWindowCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
-    if (containing.length === 0) return undefined;
-    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+    return findCallAt(findAddWindowCalls(line), character);
 }

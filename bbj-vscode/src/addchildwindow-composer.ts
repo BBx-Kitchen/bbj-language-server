@@ -15,8 +15,9 @@
 import { expressionDisplayText, validateBbjExpression, validateStringField } from './msgbox-composer.js';
 import {
     FlagItem, encodeBits, formatHex, parseHexLiteral, describeMask, knownMask, bitsSet, unknownBits,
-    scanArgs, trimmedRange, validateNumericField,
+    validateNumericField,
 } from './addwindow-composer.js';
+import { scanArgs, trimmedRange } from './composer-call-scanner.js';
 
 export { EVENT_MASK_BITS as CHILD_EVENT_MASK_BITS } from './addwindow-composer.js';
 import { EVENT_MASK_BITS } from './addwindow-composer.js';

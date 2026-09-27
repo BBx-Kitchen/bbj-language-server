@@ -19,7 +19,7 @@
  * reason: a composer may still build a whole call and replace the call's span, it just has
  * nothing to pre-fill from a mask.
  */
-import { scanArgs, trimmedRange } from './addwindow-composer.js';
+import { scanArgs, trimmedRange } from './composer-call-scanner.js';
 import { validateAssignTo, validateStringField } from './msgbox-composer.js';
 
 export interface CvsBit {
