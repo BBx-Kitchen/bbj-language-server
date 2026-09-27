@@ -19,7 +19,7 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
 
     async function lensesFor(source: string) {
         const document = await parse(source);
-        return provider.provideCodeLens(document, { textDocument: { uri: document.uri.toString() } });
+        return provider.provideCodeLens(document);
     }
 
     test('a single addWindow call yields exactly one lens with the expected title, range, command and target', async () => {
@@ -88,9 +88,8 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
     test('the returned list is ordered by line then start character, and repeated requests on an unchanged document return deep-equal lists', async () => {
         const source = 'b! = sysgui!.addWindow(2,2,2,2)\na! = sysgui!.addWindow(1,1,1,1)\n';
         const document = await parse(source);
-        const params = { textDocument: { uri: document.uri.toString() } };
-        const first = await provider.provideCodeLens(document, params);
-        const second = await provider.provideCodeLens(document, params);
+        const first = await provider.provideCodeLens(document);
+        const second = await provider.provideCodeLens(document);
         expect(first![0].range.start.line).toBe(0);
         expect(first![1].range.start.line).toBe(1);
         expect(second).toEqual(first);
@@ -125,7 +124,7 @@ describe('BBjComposerCodeLensProvider — MSGBOX, addChildWindow, CVS and in-cod
 
     async function lensesFor(source: string) {
         const document = await parse(source);
-        return provider.provideCodeLens(document, { textDocument: { uri: document.uri.toString() } });
+        return provider.provideCodeLens(document);
     }
 
     test('MSGBOX calls with a literal expr, a variable expr, and no options argument each yield one Compose MSGBOX cue', async () => {

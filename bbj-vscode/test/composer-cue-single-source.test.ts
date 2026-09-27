@@ -62,6 +62,7 @@ describe('composer cue single source (#650)', () => {
 
     test('extension.ts documentSelector includes the config-document language id beside bbj', () => {
         const source = readStripped(EXTENSION_TS);
-        expect(source).toMatch(/documentSelector\s*:\s*\[[^\]]*language:\s*'bbj'[^\]]*language:\s*CONFIG_DOCUMENT_LANGUAGE_ID[^\]]*\]/s);
+        // No dot-all flag needed: [^\]] already matches newlines without it (targets ES6).
+        expect(source).toMatch(/documentSelector\s*:\s*\[[^\]]*language:\s*'bbj'[^\]]*language:\s*CONFIG_DOCUMENT_LANGUAGE_ID[^\]]*\]/);
     });
 });

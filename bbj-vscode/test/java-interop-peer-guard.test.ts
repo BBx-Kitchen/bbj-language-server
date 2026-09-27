@@ -14,6 +14,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Classpath, type JavaClass } from '../src/language/generated/ast.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
+import type { ClassDoc } from '../src/language/java-javadoc.js';
 import {
     MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, MAX_PEER_ERROR_LENGTH, TRUNCATION_MARKER,
     UNREADABLE_PEER_ERROR, truncateText
@@ -431,7 +432,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             name: 'Documented',
             fields: [],
             methods: [{ name: 'run', docu: oversizedDocu, params: [{ name: oversizedParamName }] }],
-        });
+        } as ClassDoc);
 
         const resolved = await interop.resolveClassByName('com.test.Documented');
 
@@ -456,7 +457,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             name: 'ShortDoc',
             fields: [],
             methods: [{ name: 'addOne', docu: '/** Adds one. */', params: [{ name: 'p0' }] }],
-        });
+        } as ClassDoc);
 
         const resolved = await interop.resolveClassByName('com.test.ShortDoc');
 
@@ -478,7 +479,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             name: 'OddDoc',
             fields: [],
             methods: [{ name: 'go', docu: 42 as unknown as string, params: [{ name: 7 as unknown as string }] }],
-        });
+        } as ClassDoc);
 
         const resolved = await interop.resolveClassByName('com.test.OddDoc');
 
@@ -500,7 +501,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             name: 'MarkdownDoc',
             fields: [],
             methods: [{ name: 'render', docu: '/** [click](https://evil.example) */', params: [{ name: 'p0' }] }],
-        });
+        } as ClassDoc);
 
         const resolved = await interop.resolveClassByName('com.test.MarkdownDoc');
 
@@ -521,7 +522,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             name: 'Combined',
             fields: [],
             methods: [{ name: 'run', docu: '/**' + 'a'.repeat(40000) + '*/', params: [{ name: 'p0' }] }],
-        });
+        } as ClassDoc);
         const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { /* silence */ });
 
         await interop.resolveClassByName('com.test.Combined');

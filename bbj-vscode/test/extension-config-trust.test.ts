@@ -269,7 +269,7 @@ function stubWorkspace(opts: {
     return {
         isTrusted: opts.isTrusted as boolean,
         getConfiguration: () => ({
-            get: <T>(_key: string, def: T): T => (merged === undefined ? def : (merged as unknown as T)),
+            get: <T>(_key: string, def?: T): T => (merged === undefined ? (def as T) : (merged as unknown as T)),
             inspect: <T>(_key: string) => ({
                 key: 'bbj.configPath',
                 defaultValue: null as unknown as T,
@@ -304,7 +304,7 @@ function stubGatedWorkspace(opts: {
         getConfiguration: (section?: string) => {
             if (section === 'bbj') {
                 return {
-                    get: <T>(key: string, def: T): T => (key === 'configPath' ? (merged as unknown as T) : def),
+                    get: <T>(key: string, def?: T): T => (key === 'configPath' ? (merged as unknown as T) : (def as T)),
                     inspect: <T>(_key: string) => ({
                         key: 'bbj.configPath',
                         defaultValue: null as unknown as T,
@@ -586,7 +586,7 @@ function stubTrustGrantWorkspace(opts: {
         getConfiguration: (section?: string) => {
             if (section === 'bbj') {
                 return {
-                    get: <T>(key: string, def: T): T => (key === 'configPath' ? (merged as unknown as T) : def),
+                    get: <T>(key: string, def?: T): T => (key === 'configPath' ? (merged as unknown as T) : (def as T)),
                     inspect: <T>(_key: string) => ({
                         key: 'bbj.configPath',
                         defaultValue: null as unknown as T,

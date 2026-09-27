@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const { registeredCommandIds, onNotificationMock } = vi.hoisted(() => ({
     registeredCommandIds: new Set<string>(),
-    onNotificationMock: vi.fn(() => ({ dispose: vi.fn() })),
+    onNotificationMock: vi.fn((_method: string, _handler: (...args: unknown[]) => void) => ({ dispose: vi.fn() })),
 }));
 
 const startMock = vi.fn();

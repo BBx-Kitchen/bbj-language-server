@@ -78,14 +78,22 @@ function buildHarness(services: ReturnType<typeof createBBjTestServices> = creat
  * against -- without it, `publishCycleDiagnostics` would send to the client instead of writing
  * `document.diagnostics`.
  */
-function fakeDocument(path: string, text: string, diagnostics: Diagnostic[] = []): LangiumDocument {
+/**
+ * `LangiumDocument.textDocument` is declared `readonly`; this stub's own version-changing test
+ * (below) reassigns it directly the way a plain in-memory fake naturally would, so `fakeDocument`
+ * returns a document whose `textDocument` is writable rather than casting the whole object to
+ * `any` at the reassignment site.
+ */
+type WritableTextDocumentDocument = Omit<LangiumDocument, 'textDocument'> & { textDocument: TextDocument };
+
+function fakeDocument(path: string, text: string, diagnostics: Diagnostic[] = []): WritableTextDocumentDocument {
     const uri = URI.file(path);
     return {
         uri,
         diagnostics,
         state: DocumentState.Validated,
         textDocument: TextDocument.create(uri.toString(), 'bbj', 1, text),
-    } as unknown as LangiumDocument;
+    } as unknown as WritableTextDocumentDocument;
 }
 
 /** Structural view onto the builder's private members under test, reached via cast. */
