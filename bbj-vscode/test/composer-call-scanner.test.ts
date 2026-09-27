@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { CallSpan, findCallAt, findCalls, scanArgs, trimmedRange } from '../src/composer-call-scanner';
 import { findMsgboxCalls } from '../src/msgbox-composer';
 import { findCvsCalls } from '../src/cvs-composer';
+import { findAddWindowCalls } from '../src/addwindow-composer';
+import { findAddChildWindowCalls } from '../src/addchildwindow-composer';
 
 describe('composer-call-scanner (#534)', () => {
     describe('scanArgs', () => {
@@ -110,6 +112,22 @@ describe('composer-call-scanner (#534)', () => {
             const stricterLines = ['obj.cvs(a$, 1)', 'xcvs(a$, 1)'];
             for (const line of stricterLines) {
                 expect(findCvsCalls(line)).toHaveLength(0);
+            }
+        });
+
+        test('findAddWindowCalls and findAddChildWindowCalls also default to the looser matching, so an accidental flip of either composer\'s findCalls options argument fails here', () => {
+            const looserAddWindowLines = ['obj.addwindow("w", 0, 0, 10, 10, "")', 'xaddwindow("w", 0, 0, 10, 10, "")'];
+            for (const line of looserAddWindowLines) {
+                const calls = findAddWindowCalls(line);
+                expect(calls).toHaveLength(1);
+                expect(calls[0].callStart).toBe(line.toLowerCase().indexOf('addwindow'));
+            }
+
+            const looserAddChildWindowLines = ['obj.addchildwindow("w", 0, 0, 10, 10, "")', 'xaddchildwindow("w", 0, 0, 10, 10, "")'];
+            for (const line of looserAddChildWindowLines) {
+                const calls = findAddChildWindowCalls(line);
+                expect(calls).toHaveLength(1);
+                expect(calls[0].callStart).toBe(line.toLowerCase().indexOf('addchildwindow'));
             }
         });
     });
