@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
- * Cross-panel coverage for the SEC-10 message-shape guard (#604): a wrong-shaped message posted
+ * Cross-panel coverage for the composer message-shape guard (#604): a wrong-shaped message posted
  * to any composer webview is dropped before `build()`, a language-server request, a
- * `WorkspaceEdit`, or a panel `dispose()` runs — silently, with no toast and no console output
- * (D-02) — while a well-formed message still works exactly as before.
+ * `WorkspaceEdit`, or a panel `dispose()` runs — silently, with no toast and no console output —
+ * while a well-formed message still works exactly as before.
  *
  * One `describe` block per panel. Modelled on `test/msgbox-composer-ui.test.ts`'s mocked-`vscode`
  * harness; the fake panel captures the handler passed to `onDidReceiveMessage`, exactly as
@@ -72,6 +72,9 @@ vi.mock('vscode', () => ({
 }));
 
 import { openMsgboxComposerPanel } from '../src/msgbox-composer-webview.js';
+import { openAddWindowComposerPanel } from '../src/addwindow-composer-webview.js';
+import { openAddChildWindowComposerPanel } from '../src/addchildwindow-composer-webview.js';
+import { openCvsComposerPanel } from '../src/cvs-composer-webview.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openMsgboxComposerPanel>[0];
 
@@ -184,5 +187,200 @@ describe('msgbox panel message guard (#604)', () => {
 
         expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
         expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('preview');
+    });
+});
+
+describe('addWindow panel message guard (#604)', () => {
+    const validSelection = {
+        flags: [] as number[], eventMaskEnabled: false, eventMask: [] as number[],
+        receiver: 'window!', sysgui: 'sysgui!', x: '10', y: '10', width: '400', height: '300', title: '"Win"',
+    };
+
+    const malformed: Array<[string, unknown]> = [
+        ['empty payload object', { type: 'insert', payload: {} }],
+        ['flags is a string, not an array', { type: 'insert', payload: { ...validSelection, flags: 'nope' } }],
+        ['eventMaskEnabled is the string "yes"', { type: 'insert', payload: { ...validSelection, eventMaskEnabled: 'yes' } }],
+        ['eventMask holds a numeric string', { type: 'insert', payload: { ...validSelection, eventMask: [1, '2'] } }],
+        ['x is a number, not a string', { type: 'insert', payload: { ...validSelection, x: 10 } }],
+        ['title is null', { type: 'insert', payload: { ...validSelection, title: null } }],
+        ['message is null', null],
+        ['message is a bare string', 'insert'],
+        ['type is not a known addWindow type', { type: 'bogus' }],
+    ];
+
+    test.each(malformed)('%s causes no preview, no applyEdit, no dispose, and no diagnostic output', async (_label, msg) => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        const result = await handler(msg);
+
+        expect(result).toBeUndefined();
+        expectNoSideEffects(panel);
+    });
+
+    test('a ready message still posts init', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'ready' });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('init');
+    });
+
+    test('a readForm-shaped change posts exactly one preview message', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'change', payload: validSelection });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('preview');
+    });
+
+    test('cancel still disposes the panel', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'cancel' });
+
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('addChildWindow panel message guard (#604)', () => {
+    const validSelection = {
+        flags: [] as number[], eventMaskEnabled: false, eventMask: [] as number[],
+        receiver: 'child!', window: 'window!', id: '101', context: 'sysgui!.getAvailableContext()',
+        x: '10', y: '10', width: '200', height: '150', title: '"Child"',
+    };
+
+    const malformed: Array<[string, unknown]> = [
+        ['empty payload object', { type: 'insert', payload: {} }],
+        ['flags is a string, not an array', { type: 'insert', payload: { ...validSelection, flags: 'nope' } }],
+        ['window is a number, not a string', { type: 'insert', payload: { ...validSelection, window: 5 } }],
+        ['id is a number, not a string', { type: 'insert', payload: { ...validSelection, id: 101 } }],
+        ['context is null', { type: 'insert', payload: { ...validSelection, context: null } }],
+        ['message is null', null],
+        ['message is a bare string', 'insert'],
+        ['type is not a known addChildWindow type', { type: 'bogus' }],
+    ];
+
+    test.each(malformed)('%s causes no preview, no applyEdit, no dispose, and no diagnostic output', async (_label, msg) => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        const result = await handler(msg);
+
+        expect(result).toBeUndefined();
+        expectNoSideEffects(panel);
+    });
+
+    test('a ready message still posts init', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'ready' });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('init');
+    });
+
+    test('a readForm-shaped change posts exactly one preview message', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'change', payload: validSelection });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('preview');
+    });
+
+    test('cancel still disposes the panel', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openAddChildWindowComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'cancel' });
+
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('CVS panel message guard (#604)', () => {
+    const validSelection = { str: '"hi"', bits: [1], chars: '', assignTo: 'b$' };
+
+    const malformed: Array<[string, unknown]> = [
+        ['empty payload object', { type: 'insert', payload: {} }],
+        ['bits is a numeric string', { type: 'insert', payload: { ...validSelection, bits: '1' } }],
+        ['bits holds a non-integer number', { type: 'insert', payload: { ...validSelection, bits: [1.5] } }],
+        ['str is a number, not a string', { type: 'insert', payload: { ...validSelection, str: 5 } }],
+        ['assignTo is null', { type: 'insert', payload: { ...validSelection, assignTo: null } }],
+        ['chars is an array, not a string', { type: 'insert', payload: { ...validSelection, chars: [] } }],
+        ['message is null', null],
+        ['message is a bare string', 'insert'],
+        ['type is not a known CVS type', { type: 'bogus' }],
+    ];
+
+    test.each(malformed)('%s causes no preview, no applyEdit, no dispose, and no diagnostic output', async (_label, msg) => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        const result = await handler(msg);
+
+        expect(result).toBeUndefined();
+        expectNoSideEffects(panel);
+    });
+
+    test('a ready message still posts init', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'ready' });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('init');
+    });
+
+    test('a readForm-shaped change posts exactly one preview message', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'change', payload: validSelection });
+
+        expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+        expect((panel.webview.postMessage.mock.calls[0][0] as { type: string }).type).toBe('preview');
+    });
+
+    test('cancel still disposes the panel', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(fakeContext);
+        const handler = getHandler()!;
+
+        await handler({ type: 'cancel' });
+
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
     });
 });

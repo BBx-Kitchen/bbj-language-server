@@ -23,6 +23,9 @@ import {
 } from './addchildwindow-composer.js';
 import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import {
+    isBoolean, isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage,
+} from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddChildWindowEditTarget {
@@ -74,6 +77,32 @@ interface Selection {
     title: string;
 }
 
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isAddChildWindowSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isIntArray(value.flags)
+        && isBoolean(value.eventMaskEnabled)
+        && isIntArray(value.eventMask)
+        && isString(value.receiver)
+        && isString(value.window)
+        && isString(value.id)
+        && isString(value.context)
+        && isString(value.x)
+        && isString(value.y)
+        && isString(value.width)
+        && isString(value.height)
+        && isString(value.title);
+}
+
+/** Guards the addChildWindow panel's message before its handler acts on it (#604). */
+export function isAddChildWindowPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isAddChildWindowSelection,
+    });
+}
+
 const DEFAULT_INITIAL = {
     // Keyboard navigation — the most common non-zero child-window mask ($00010000$).
     flags: 0x00010000,
@@ -116,7 +145,8 @@ export function openAddChildWindowComposerPanel(context: vscode.ExtensionContext
         preservedEventBits: target?.preservedEventBits ?? 0,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isAddChildWindowPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({

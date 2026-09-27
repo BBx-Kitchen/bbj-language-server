@@ -23,6 +23,7 @@ import * as vscode from 'vscode';
 import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview, findCvsCalls } from './cvs-composer.js';
 import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage } from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface CvsEditTarget {
@@ -48,6 +49,24 @@ interface Selection {
     bits: number[];
     chars: string;
     assignTo: string;
+}
+
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isCvsSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isString(value.str)
+        && isIntArray(value.bits)
+        && isString(value.chars)
+        && isString(value.assignTo);
+}
+
+/** Guards the CVS panel's message before its handler acts on it (#604). */
+export function isCvsPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isCvsSelection,
+    });
 }
 
 /**
@@ -106,7 +125,8 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
         trailingArgs, editMode,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isCvsPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({

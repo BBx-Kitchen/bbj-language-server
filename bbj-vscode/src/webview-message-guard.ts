@@ -69,7 +69,7 @@ export interface PanelMessageSpec<S> {
  * `spec.isPayload`. A `payload` of `null` is rejected, since it is present but not a valid
  * payload. A `type` outside `spec.payloadTypes` never looks at `payload` at all.
  *
- * Never throws and never logs (#604, D-02): a caller that gets `false` back simply drops the
+ * Never throws and never logs (#604): a caller that gets `false` back simply drops the
  * message with no toast and no console output.
  */
 export function isPanelMessage<S>(msg: unknown, spec: PanelMessageSpec<S>): msg is PanelMessage<S> {
