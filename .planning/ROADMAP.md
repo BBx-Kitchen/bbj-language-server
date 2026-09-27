@@ -549,7 +549,7 @@ closed on undecidable JWTs (v4.2 TOKEN-01).
   4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
   5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
 
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
 Plans:
 **Wave 1**
@@ -565,7 +565,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 113-06-PLAN.md — `composer-call-scanner.ts`: `scanArgs`, `trimmedRange` and one name-parameterised call locator; four composers use one-line wrappers; CVS keeps its boundary as an option (REF-08) (wave 3)
+- [x] 113-06-PLAN.md — `composer-call-scanner.ts`: `scanArgs`, `trimmedRange` and one name-parameterised call locator; four composers use one-line wrappers; CVS keeps its boundary as an option (REF-08) (wave 3)
 - [ ] 113-07-PLAN.md — `webview-csp.ts` `buildComposerCsp`: all six webviews emit a byte-identical CSP through one helper (REF-07) (wave 3)
 - [ ] 113-08-PLAN.md — `window-composer-ui.ts`: one `titleArg` and one `windowPanelArgAt` for addWindow/addChildWindow, also used by `composer-commands.ts` (REF-08) (wave 3)
 
@@ -811,7 +811,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Complete | 2026-09-26 |
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
-| 113. Composer Webview Hardening & Consolidation | 5/8 | Not started |  |
+| 113. Composer Webview Hardening & Consolidation | 6/8 | Not started |  |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
