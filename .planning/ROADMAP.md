@@ -590,7 +590,7 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 2/13 plans executed
+**Plans:** 3/13 plans executed
 
 Plans:
 **Wave 1**
@@ -600,7 +600,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 114-02-PLAN.md — 28 un-gated test files move from the production services to `createBBjTestServices`; three consecutive default-worker whole-suite runs with no hook timeout (TEST-07) (wave 2)
+- [x] 114-02-PLAN.md — 28 un-gated test files move from the production services to `createBBjTestServices`; three consecutive default-worker whole-suite runs with no hook timeout (TEST-07) (wave 2)
 - [ ] 114-05-PLAN.md — Lint plan A: `tseslint.configs.recommended` plus the allowed overrides, `eslint src test --max-warnings 0`, prefer-const autofix, disable-reason guard test (TEST-01) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -841,7 +841,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 2/13 | Not started |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 3/13 | Not started |  |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |

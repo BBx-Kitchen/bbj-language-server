@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
-stopped_at: Completed 114-03-PLAN.md
-last_updated: "2026-09-27T17:03:10.028Z"
+stopped_at: Completed 114-02-PLAN.md
+last_updated: "2026-09-27T17:51:06.890Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 8dc0539d3b5e6d953ba38f5d99140c94e676b066
+state_head: 1cb3f01fbc2455a75a75f604927fbd0880a5c54b
 progress:
   total_phases: 13
   completed_phases: 4
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -145,6 +145,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 113 P08 | 24min | 2 tasks | 5 files |
 | Phase 114 P01 | 13min | 2 tasks | 6 files |
 | Phase 114 P03 | 16min | 2 tasks | 4 files |
+| Phase 114 P02 | 41min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,7 @@ decisions:
 - [Phase 114]: 114-01: baseline/suite-digest.mjs plus base-sha.txt, files-before.txt, suite-before.txt captured from the untouched phase base tree; every later 114-xx plan compares its D-07/D-10/D-11 behaviour-neutrality claims against them
 - [Phase 114]: 114-03: progressReporter(indicator) extracted as a package-visible static factory calling setIndeterminate(false) before every setText/setFraction; Proxy-based recording-fake test replaces the substring guard — The substring guard could not detect the real bug (indicator reset between chunks by the platform's saveToFile); only a fake invoked 2+ times with an interleaved reset proves it
 - [Phase 114]: 114-03: bbjcplAvailability guard is reflective (getMethod + JsonNotification annotation value + ServiceEndpoints.getSupportedMethods), replacing a comment-blind text-scanning guard — A commented-out annotation or a changed parameter type still passed the old text-count/brace-scan guard; the reflective check mirrors exactly what LSP4IJ itself checks at registration
+- [Phase 114]: 114-02: 28 un-gated test files (production createBBjServices + initializeWorkspace, not gated on shouldRunBBjTests) moved to createBBjTestServices; hookTimeoutSuites=0 across all whole-suite runs, confirming the real Java-interop socket round trip was the hook-timeout cost — D-08/D-09: harness-only fix, no src/ change; no offline fallback needed, every migrated test passes on the double
 
 ### Tech Debt
 
@@ -275,8 +277,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T17:03:09.825Z
-Stopped at: Completed 114-03-PLAN.md
+Last session: 2026-09-27T17:51:06.455Z
+Stopped at: Completed 114-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
