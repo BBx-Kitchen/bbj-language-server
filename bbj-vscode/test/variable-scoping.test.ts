@@ -1,7 +1,7 @@
 import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { expectError, expectIssue, expectWarning, parseHelper, validationHelper, ValidationResult } from 'langium/test';
-import { DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { createBBjTestServices } from './bbj-test-module.js';
@@ -36,9 +36,9 @@ function expectNoHints<T extends Program>(
 ): void {
     const hints = validationResult.diagnostics.filter(
         d => d.severity === DiagnosticSeverity.Hint
-            && (!messagePattern || messagePattern.test(d.message))
+            && (!messagePattern || messagePattern.test(Diagnostic.getMessageString(d)))
     );
-    expect(hints, `Expected no hint diagnostics${messagePattern ? ` matching ${messagePattern}` : ''}, but found ${hints.length}:\n${hints.map(h => `  - ${h.message}`).join('\n')}`).toHaveLength(0);
+    expect(hints, `Expected no hint diagnostics${messagePattern ? ` matching ${messagePattern}` : ''}, but found ${hints.length}:\n${hints.map(h => `  - ${Diagnostic.getMessageString(h)}`).join('\n')}`).toHaveLength(0);
 }
 
 describe('Variable Scoping', async () => {
@@ -189,7 +189,7 @@ a = 2
             expectHint(result, /a.*used before assignment/i);
             // 'b' used after assignment - no hint
             const bHints = result.diagnostics.filter(
-                d => d.severity === DiagnosticSeverity.Hint && /\bb\b.*used before assignment/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Hint && /\bb\b.*used before assignment/i.test(Diagnostic.getMessageString(d))
             );
             expect(bHints).toHaveLength(0);
         });
@@ -250,9 +250,9 @@ DREAD a$
             `);
             // No linking errors for a$
             const linkingErrors = result.diagnostics.filter(
-                d => d.message.includes('Could not resolve')
+                d => Diagnostic.getMessageString(d).includes('Could not resolve')
             );
-            expect(linkingErrors.filter(e => /\ba\$\b/i.test(e.message))).toHaveLength(0);
+            expect(linkingErrors.filter(e => /\ba\$\b/i.test(Diagnostic.getMessageString(e)))).toHaveLength(0);
         });
 
         test('DREAD creates variable in scope if not DIMd', async () => {
@@ -262,7 +262,7 @@ PRINT x$
             `);
             // No linking errors for x$
             const linkingErrors = result.diagnostics.filter(
-                d => d.message.includes('Could not resolve') && /\bx\$\b/i.test(d.message)
+                d => Diagnostic.getMessageString(d).includes('Could not resolve') && /\bx\$\b/i.test(Diagnostic.getMessageString(d))
             );
             expect(linkingErrors).toHaveLength(0);
         });
@@ -274,7 +274,7 @@ DREAD key$
 PRINT key$
             `);
             const linkingErrors = result.diagnostics.filter(
-                d => d.message.includes('Could not resolve') && /\bkey\$\b/i.test(d.message)
+                d => Diagnostic.getMessageString(d).includes('Could not resolve') && /\bkey\$\b/i.test(Diagnostic.getMessageString(d))
             );
             expect(linkingErrors).toHaveLength(0);
         });
@@ -311,7 +311,7 @@ class public DupeTest
 classend
             `);
             const conflictErrors = result.diagnostics.filter(
-                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d))
             );
             expect(conflictErrors).toHaveLength(0);
         });
@@ -354,7 +354,7 @@ class public AutoNoConflict
 classend
             `);
             const conflictErrors = result.diagnostics.filter(
-                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d))
             );
             expect(conflictErrors).toHaveLength(0);
         });
@@ -371,7 +371,7 @@ DECLARE java.util.HashMap z!
                 node: findAll(result.document, isVariableDecl, true)[1]
             });
             const conflictErrors = result.diagnostics.filter(
-                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d))
             );
             expect(conflictErrors).toHaveLength(0);
         });
@@ -394,7 +394,7 @@ classend
 DECLARE ProbeConflictBase pg!
 DECLARE ProbeConflictChild pg!
             `);
-            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d)));
             expect(conflictErrors).toHaveLength(0);
         });
 
@@ -403,7 +403,7 @@ DECLARE ProbeConflictChild pg!
 DECLARE NoSuchProbeClassAtAll q!
 DECLARE AlsoNoSuchProbeClass q!
             `);
-            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d)));
             expect(conflictErrors).toHaveLength(0);
         });
 
@@ -418,7 +418,7 @@ DECLARE BBjString sv!
                 node: findAll(result.document, isVariableDecl, true)[1]
             });
             const conflictErrors = result.diagnostics.filter(
-                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Error && /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d))
             );
             expect(conflictErrors).toHaveLength(0);
         });
@@ -442,7 +442,7 @@ classend
 DECLARE BBjNumber sameScalar!
 DECLARE BBjNumber sameScalar!
             `);
-            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d)));
             expect(conflictErrors).toHaveLength(0);
         });
 
@@ -454,7 +454,7 @@ DECLARE BBjNumber sameScalar!
 DECLARE BBjNumber mixedPair!
 DECLARE NoSuchProbeClassForMixedPair mixedPair!
             `);
-            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(d.message));
+            const conflictErrors = result.diagnostics.filter(d => /Conflicting DECLARE/i.test(Diagnostic.getMessageString(d)));
             expect(conflictErrors).toHaveLength(0);
         });
     });
@@ -513,7 +513,7 @@ PRINT x
             // Check for warning (severity 2) about unresolved reference.
             const unresolvedErrors = result.diagnostics.filter(d =>
                 d.severity === DiagnosticSeverity.Warning &&
-                /Could not resolve.*x/i.test(d.message)
+                /Could not resolve.*x/i.test(Diagnostic.getMessageString(d))
             );
             expect(unresolvedErrors.length).toBeGreaterThan(0);
         });
@@ -552,7 +552,11 @@ classend
             // the field.
             const printRef = AstUtils.streamAllContents(document.parseResult.value)
                 .filter(isSymbolRef)
-                .find(ref => ref.symbol.$refText === 'x!' && ref !== fieldDecl);
+                // `ref !== fieldDecl` was dropped: a SymbolRef can never be a FieldDecl
+                // ($type union has no overlap), so the comparison was always true and
+                // provably vacuous -- it never excluded any candidate. The predicate
+                // below selects the identical single reference as before.
+                .find(ref => ref.symbol.$refText === 'x!');
             expect(printRef, 'PRINT x! reference must be present').toBeDefined();
             expect(printRef!.symbol.ref).toBe(localDecl);
             expect(printRef!.symbol.ref).not.toBe(fieldDecl);
@@ -572,13 +576,13 @@ classend
             // warnings and hints). Assert on the remembered pre-hierarchy list instead -- that is
             // what the check itself produced before the hierarchy ran.
             const published = document.diagnostics ?? [];
-            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(published.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
 
             const remembered = recallLangiumDiagnostics(document);
             expect(remembered).toBeDefined();
-            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(remembered!.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
             const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
-            expect(hints.some(h => h.message === "'x' used before assignment (first assigned at line 2)")).toBe(true);
+            expect(hints.some(h => Diagnostic.getMessageString(h) === "'x' used before assignment (first assigned at line 2)")).toBe(true);
         });
 
         test('building a malformed double-sigil assignment does not throw', async () => {
@@ -588,13 +592,13 @@ classend
         test('a malformed ENTER target does not crash scope computation', async () => {
             const document = await parseHermetic('ENTER ##\nprint y\ny = 1\n', { validation: true });
             const published = document.diagnostics ?? [];
-            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(published.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
 
             const remembered = recallLangiumDiagnostics(document);
             expect(remembered).toBeDefined();
-            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(remembered!.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
             const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
-            expect(hints.some(h => h.message === "'y' used before assignment (first assigned at line 3)")).toBe(true);
+            expect(hints.some(h => Diagnostic.getMessageString(h) === "'y' used before assignment (first assigned at line 3)")).toBe(true);
         });
 
         // Every one of these five shapes crashed the check or the build on the base tree,
@@ -613,7 +617,7 @@ classend
         test.each(malformedInputShapes)('a malformed %s target does not stop validation', async (_label, text) => {
             const document = await parseHermetic(text, { validation: true });
             const published = document.diagnostics ?? [];
-            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(published.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
         });
 
         test('a malformed reference inside a class method body still produces the method-scope hint', async () => {
@@ -627,13 +631,13 @@ class public A
 classend
             `, { validation: true });
             const published = document.diagnostics ?? [];
-            expect(published.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(published.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
 
             const remembered = recallLangiumDiagnostics(document);
             expect(remembered).toBeDefined();
-            expect(remembered!.some(d => d.message.startsWith('An error occurred during validation'))).toBe(false);
+            expect(remembered!.some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'))).toBe(false);
             const hints = remembered!.filter(d => d.severity === DiagnosticSeverity.Hint);
-            expect(hints.some(h => /^'z' used before assignment/.test(h.message))).toBe(true);
+            expect(hints.some(h => /^'z' used before assignment/.test(Diagnostic.getMessageString(h)))).toBe(true);
         });
 
         test('the check adds nothing for the malformed node itself -- exactly one hint, for the real variable', async () => {
@@ -641,15 +645,15 @@ classend
             const remembered = recallLangiumDiagnostics(document);
             expect(remembered).toBeDefined();
             const usedBeforeAssignmentHints = remembered!.filter(
-                d => d.severity === DiagnosticSeverity.Hint && /used before assignment/i.test(d.message)
+                d => d.severity === DiagnosticSeverity.Hint && /used before assignment/i.test(Diagnostic.getMessageString(d))
             );
             expect(usedBeforeAssignmentHints).toHaveLength(1);
-            expect(usedBeforeAssignmentHints[0].message).toBe("'x' used before assignment (first assigned at line 2)");
+            expect(Diagnostic.getMessageString(usedBeforeAssignmentHints[0])).toBe("'x' used before assignment (first assigned at line 2)");
         });
 
         test('the single-sigil `# = 1` shape behaves exactly as before (control case)', async () => {
             const document = await parseHermetic('# = 1\nprint z\nz = 1\n', { validation: true });
-            const messages = (document.diagnostics ?? []).map(d => d.message);
+            const messages = (document.diagnostics ?? []).map(d => Diagnostic.getMessageString(d));
             // Confirmed via the same throwaway pre-Task-1 probe: the base tree produces the
             // identical shape here -- a single `#` never reaches an Assignment or SymbolRef node
             // this plan's guards touch at all (it is a bare parser-level rejection at the very
@@ -664,12 +668,12 @@ classend
         test('validating the same malformed input twice in a row yields identical diagnostics both times', async () => {
             const firstDocument = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
             const secondDocument = await parseHermetic('print x\nx = 1\n## = 1\n', { validation: true });
-            const firstMessages = (firstDocument.diagnostics ?? []).map(d => d.message);
-            const secondMessages = (secondDocument.diagnostics ?? []).map(d => d.message);
+            const firstMessages = (firstDocument.diagnostics ?? []).map(d => Diagnostic.getMessageString(d));
+            const secondMessages = (secondDocument.diagnostics ?? []).map(d => Diagnostic.getMessageString(d));
             expect(firstMessages).toEqual(secondMessages);
 
-            const firstRemembered = recallLangiumDiagnostics(firstDocument)?.map(d => d.message);
-            const secondRemembered = recallLangiumDiagnostics(secondDocument)?.map(d => d.message);
+            const firstRemembered = recallLangiumDiagnostics(firstDocument)?.map(d => Diagnostic.getMessageString(d));
+            const secondRemembered = recallLangiumDiagnostics(secondDocument)?.map(d => Diagnostic.getMessageString(d));
             expect(firstRemembered).toBeDefined();
             expect(firstRemembered).toEqual(secondRemembered);
         });

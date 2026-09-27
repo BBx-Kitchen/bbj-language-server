@@ -2,11 +2,11 @@ import { EmptyFileSystem } from "langium";
 import { ParseHelperOptions, validationHelper } from "langium/test";
 import { beforeAll, describe, expect, test } from "vitest";
 import { createBBjTestServices } from './bbj-test-module.js';
-import { Program } from "../src/language/generated/ast";
-import { initializeWorkspace } from "./test-helper";
+import { Program } from "../src/language/generated/ast.js";
+import { initializeWorkspace } from "./test-helper.js";
 import { basename } from "path";
 import { afterEach } from "node:test";
-import { DiagnosticSeverity } from "vscode-languageserver";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 
 describe("Classes access-levels", () => {
     let disposables: (() => Promise<void>)[] = [];
@@ -51,8 +51,8 @@ describe("Classes access-levels", () => {
             let a! = new A()
         `);
         expect(diagnostics).toHaveLength(2);
-        expect(diagnostics[0].message).toContain("Private class 'A'");
-        expect(diagnostics[1].message).toContain("is not visible from this file");
+        expect(Diagnostic.getMessageString(diagnostics[0])).toContain("Private class 'A'");
+        expect(Diagnostic.getMessageString(diagnostics[1])).toContain("is not visible from this file");
     });
 
     test("Can access protected class from different same-folder file", async () => {
@@ -79,8 +79,8 @@ describe("Classes access-levels", () => {
             let a! = new A()
         `);
         expect(diagnostics).toHaveLength(2);
-        expect(diagnostics[0].message).toContain("Protected class 'A'");
-        expect(diagnostics[1].message).toContain("is not visible from this directory");
+        expect(Diagnostic.getMessageString(diagnostics[0])).toContain("Protected class 'A'");
+        expect(Diagnostic.getMessageString(diagnostics[1])).toContain("is not visible from this directory");
     });
 
     test("Can access public class from different non-related folder file", async () => {
@@ -199,7 +199,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /Name\$/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /Name\$/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -223,7 +223,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /Title\$/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /Title\$/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -241,7 +241,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /A!/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -262,7 +262,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /A!/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -280,7 +280,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /A!/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -298,7 +298,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /A!/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -320,7 +320,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /(A!|Name\$|Count%)/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /(A!|Name\$|Count%)/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -341,9 +341,9 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const allErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve')
+            Diagnostic.getMessageString(d).includes('Could not resolve')
         );
-        expect(allErrors.map(d => d.message)).toEqual([]);
+        expect(allErrors.map(d => Diagnostic.getMessageString(d))).toEqual([]);
     });
 
     test("Field resolves when extends uses qualified BBj class name", async () => {
@@ -361,7 +361,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+            Diagnostic.getMessageString(d).includes('Could not resolve') && /A!/i.test(Diagnostic.getMessageString(d))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -387,7 +387,7 @@ describe("Inheritance chain resolution", () => {
             classend
         `);
         const fieldErrors = diagnostics.filter(d =>
-            d.message.includes('Could not resolve') && (/Alpha\$/i.test(d.message) || /Beta\$/i.test(d.message))
+            Diagnostic.getMessageString(d).includes('Could not resolve') && (/Alpha\$/i.test(Diagnostic.getMessageString(d)) || /Beta\$/i.test(Diagnostic.getMessageString(d)))
         );
         expect(fieldErrors).toHaveLength(0);
     });
@@ -423,7 +423,7 @@ describe("Cyclic inheritance detection", () => {
             class public B extends A
             classend
         `);
-        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        const cyclicErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).toLowerCase().includes('cyclic inheritance'));
         expect(cyclicErrors.length).toBeGreaterThan(0);
     });
 
@@ -432,7 +432,7 @@ describe("Cyclic inheritance detection", () => {
             class public A extends A
             classend
         `);
-        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        const cyclicErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).toLowerCase().includes('cyclic inheritance'));
         expect(cyclicErrors.length).toBeGreaterThan(0);
     });
 
@@ -447,7 +447,7 @@ describe("Cyclic inheritance detection", () => {
             class public C extends A
             classend
         `);
-        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        const cyclicErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).toLowerCase().includes('cyclic inheritance'));
         expect(cyclicErrors.length).toBeGreaterThan(0);
     });
 
@@ -472,7 +472,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic'));
+        const cyclicErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).toLowerCase().includes('cyclic'));
         expect(cyclicErrors).toHaveLength(0);
     });
 
@@ -488,7 +488,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        const returnErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('METHODRET'));
         expect(returnErrors).toHaveLength(2);
         expect(returnErrors.every(d => d.severity === DiagnosticSeverity.Warning)).toBe(true);
     });
@@ -501,7 +501,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        const returnErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('METHODRET'));
         expect(returnErrors).toHaveLength(0);
     });
 
@@ -512,7 +512,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        const returnErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('METHODRET'));
         expect(returnErrors).toHaveLength(0);
     });
 
@@ -522,7 +522,7 @@ describe("Cyclic inheritance detection", () => {
                 method public BBjString getName()
             interfaceend
         `);
-        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        const returnErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('METHODRET'));
         expect(returnErrors).toHaveLength(0);
     });
 
@@ -535,9 +535,9 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes("but returns a string"));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes("but returns a string"));
         expect(typeErrors).toHaveLength(1);
-        expect(typeErrors[0].message).toContain("'BBjNumber'");
+        expect(Diagnostic.getMessageString(typeErrors[0])).toContain("'BBjNumber'");
     });
 
     test("Flags number literal returned from a BBjString method", async () => {
@@ -548,9 +548,9 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes("but returns a number"));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes("but returns a number"));
         expect(typeErrors).toHaveLength(1);
-        expect(typeErrors[0].message).toContain("'BBjString'");
+        expect(Diagnostic.getMessageString(typeErrors[0])).toContain("'BBjString'");
     });
 
     test("No type-mismatch error when literal matches scalar return type", async () => {
@@ -564,7 +564,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('but returns a'));
         expect(typeErrors).toHaveLength(0);
     });
 
@@ -577,7 +577,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('but returns a'));
         expect(typeErrors).toHaveLength(0);
     });
 
@@ -595,7 +595,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const missing = diagnostics.filter(d => d.message.includes('has no METHODRET'));
+        const missing = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('has no METHODRET'));
         expect(missing).toHaveLength(1);   // getA has no methodret
         expect(missing[0].severity).toBe(DiagnosticSeverity.Warning);
     });
@@ -610,7 +610,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const mismatched = diagnostics.filter(d => d.message.includes('but returns a string'));
+        const mismatched = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('but returns a string'));
         expect(mismatched).toHaveLength(1); // getB returns "2" for a BBjNumber
     });
 
@@ -623,7 +623,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const voidErrors = diagnostics.filter(d => d.message.includes('declared void and must not return a value'));
+        const voidErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('declared void and must not return a value'));
         expect(voidErrors).toHaveLength(1);
         expect(voidErrors[0].severity).toBe(DiagnosticSeverity.Warning);
     });
@@ -636,7 +636,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const returnErrors = diagnostics.filter(d => d.message.toLowerCase().includes('return'));
+        const returnErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).toLowerCase().includes('return'));
         expect(returnErrors).toHaveLength(0);
     });
 
@@ -651,7 +651,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes("declares return type 'Foo' but returns a string"));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes("declares return type 'Foo' but returns a string"));
         expect(typeErrors).toHaveLength(1);
     });
 
@@ -665,7 +665,7 @@ describe("Cyclic inheritance detection", () => {
                 methodend
             classend
         `);
-        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        const typeErrors = diagnostics.filter(d => Diagnostic.getMessageString(d).includes('but returns a'));
         expect(typeErrors).toHaveLength(0);
     });
 });
