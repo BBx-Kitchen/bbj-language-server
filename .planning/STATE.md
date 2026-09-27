@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 113
 current_phase_name: composer-webview-hardening-consolidation
 status: executing
-stopped_at: Phase 112 complete, ready to plan Phase 113
-last_updated: "2026-09-27T10:11:09.536Z"
+stopped_at: Completed 113-01-PLAN.md
+last_updated: "2026-09-27T10:30:54.446Z"
 last_activity: 2026-09-27
-last_activity_desc: Phase 112 complete, transitioned to Phase 113
-state_head: 90031944aab2619f561f44b1f724a38dce8534cb
+last_activity_desc: Phase 113 execution started
+state_head: a2adba688c42ee0e170d9ef7f2840ab3e8e2b66d
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 24
-  completed_plans: 16
+  completed_plans: 17
   percent: 23
 ---
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 113 — Composer Webview Hardening & Consolidation
+**Current Focus:** Phase 113 — composer-webview-hardening-consolidation
 
 ---
 
 ## Current Position
 
-Phase: 113 (composer-webview-hardening-consolidation) — READY TO EXECUTE
-Plan: Not started
+Phase: 113 (composer-webview-hardening-consolidation) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-09-27 — Phase 112 complete, transitioned to Phase 113
+Last activity: 2026-09-27 — Phase 113 execution started
 
 Progress: [██░░░░░░░░] 23% (3/13 phases)
 
@@ -135,6 +135,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 112 P02 | 14min | 2 tasks | 4 files |
 | Phase 112 P04 | 26min | 3 tasks | 7 files |
 | Phase 112 P03 | 16min | 2 tasks | 7 files |
+| Phase 113 P01 | 18min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,7 @@ decisions:
 - [Phase 112]: 112-02: complete port of bbj-intellij's JwtValidity.check into src/em-token-validity.ts (strict base64url decode, Number.isSafeInteger overflow guard); getEMCredentials deletes bbj.em.token and re-prompts for any token it cannot positively decode as unexpired
 - [Phase 112]: 112-04: Commands.cjs loaded and executed under vitest via a node:module registerHooks harness (issue #565); runWeb's legacy settings credentials fallback removed (SEC-12 Commands.cjs half); a pre-existing openEnterpriseManager PropertiesReader argument-shape bug (broken EM URL, never exercisable before this harness) fixed as a Rule 1 deviation
 - [Phase 112]: 112-03: both IDE EM login prompts pre-fill the last successfully used username via a plain seam (em-username-memory.ts / EmUsernameMemory.java) over context.globalState / PropertiesComponent, remembered only after the token is stored
+- [Phase 113]: 113-01: three new *-composer-ui.ts test files execute addWindow, addChildWindow and SETOPTS composer registration, Code Action providers and commands unmocked, pinning labels/ranges/preserved bits as literals ahead of the plan 05-08 consolidation — Closes issue #628 (TEST-10): every prior test file replaced these register functions with vi.fn(), so their CodeActionProvider classes and command callbacks had never executed under test
 
 ### Tech Debt
 
@@ -253,8 +255,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T09:18:08.000Z
-Stopped at: Phase 112 complete, ready to plan Phase 113
+Last session: 2026-09-27T10:30:54.285Z
+Stopped at: Completed 113-01-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 113` (113-CONTEXT.md exists).
