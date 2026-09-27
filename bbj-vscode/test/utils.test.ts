@@ -25,3 +25,4 @@ describe('Paths handling tests', () => {
     })
 
 })
+const ciGateProbeUnused = 1;
