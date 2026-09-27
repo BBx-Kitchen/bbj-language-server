@@ -2,7 +2,7 @@ import { AstUtils, DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper, validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { isUse, Model, Program, Use } from '../src/language/generated/ast.js';
 
@@ -56,7 +56,7 @@ class SpyFileSystemProvider implements FileSystemProvider {
 
 describe('the document builder reads only contained PREFIX candidates (issue #526)', () => {
     const spyFs = new SpyFileSystemProvider();
-    const services = createBBjServices({ fileSystemProvider: () => spyFs });
+    const services = createBBjTestServices({ fileSystemProvider: () => spyFs });
 
     beforeAll(async () => {
         await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
@@ -98,7 +98,7 @@ describe('the document builder reads only contained PREFIX candidates (issue #52
 
 describe('the document builder never reads through an empty PREFIX entry (issue #526)', () => {
     const spyFs = new SpyFileSystemProvider();
-    const services = createBBjServices({ fileSystemProvider: () => spyFs });
+    const services = createBBjTestServices({ fileSystemProvider: () => spyFs });
 
     beforeAll(async () => {
         await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
@@ -126,7 +126,7 @@ describe('the document builder never reads through an empty PREFIX entry (issue 
 
 describe('scope and validation ignore PREFIX candidates outside their root (issue #526)', () => {
     const PREFIX = '/virtual/libs/in';
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
 
     function linkingErrors(doc: { diagnostics?: { data?: { code?: string } }[] }) {
         return (doc.diagnostics ?? []).filter(d => d.data?.code === DocumentValidator.LinkingError);

@@ -2,7 +2,7 @@ import { EmptyFileSystem, URI, LangiumDocument } from 'langium';
 import { WorkspaceFolder } from 'vscode-languageserver';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
 import { Model } from '../src/language/generated/ast';
 
@@ -17,7 +17,7 @@ function fileNotResolvedWarnings(doc: LangiumDocument) {
 }
 
 describe('RUN/CALL file resolution (#173)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -80,7 +80,7 @@ describe('RUN/CALL file resolution (#173)', () => {
 });
 
 describe('RUN/CALL file resolution is inert without project context', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {

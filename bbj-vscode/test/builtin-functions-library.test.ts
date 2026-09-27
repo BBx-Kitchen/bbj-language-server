@@ -1,10 +1,10 @@
 import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { isLibEventType, isLibFunction } from '../src/language/generated/ast.js';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 
 /**
  * Guards the hand-maintained builtin function library — specifically the .ts-derived

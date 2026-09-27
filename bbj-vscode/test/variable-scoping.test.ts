@@ -2,7 +2,6 @@ import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { expectError, expectIssue, expectWarning, parseHelper, validationHelper, ValidationResult } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
-import { createBBjServices } from '../src/language/bbj-module.js';
 import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { createBBjTestServices } from './bbj-test-module.js';
@@ -43,7 +42,7 @@ function expectNoHints<T extends Program>(
 }
 
 describe('Variable Scoping', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
     // Conflict checks need both DECLARE types to resolve. The test double preloads
     // java.lang.String and java.util.HashMap, so these tests pass without a live :5008.

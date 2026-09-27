@@ -3,7 +3,7 @@ import { WorkspaceFolder } from 'vscode-languageserver';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { DocumentValidator } from 'langium';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
 import { Model } from '../src/language/generated/ast';
 
@@ -14,7 +14,7 @@ import { Model } from '../src/language/generated/ast';
  * so a project-root-relative USE from a nested file failed to resolve.
  */
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const parse = parseHelper<Model>(services.BBj);
 
 function linkingErrors(doc: LangiumDocument) {

@@ -8,15 +8,16 @@ import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // One shared services/validate instance for the whole file (all describe blocks below):
-// each createBBjServices()+initializeWorkspace() pair does real, non-trivial async setup
-// work, and giving every describe block its own copy compounds into a beforeAll timeout
+// each createBBjTestServices()+initializeWorkspace() pair builds the hermetic test-double
+// services (no real Java-interop socket round trip) and still does real, non-trivial async
+// setup work, and giving every describe block its own copy compounds into a beforeAll timeout
 // once the file holds more than a couple of them.
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 let validate: ReturnType<typeof validationHelper<Program>>;
 
 beforeAll(async () => {

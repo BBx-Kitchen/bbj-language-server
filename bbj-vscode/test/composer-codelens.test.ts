@@ -1,7 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { BBjComposerCodeLensProvider } from '../src/language/composer-codelens.js';
 import { COMPOSER_LENS_COMMAND } from '../src/composer-lens-contract.js';
@@ -13,7 +13,7 @@ import { initializeWorkspace } from './test-helper.js';
  * range, command and target, comment/string exclusion, multi-call suffixing and ordering.
  */
 describe('BBjComposerCodeLensProvider (#650)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
     const provider = new BBjComposerCodeLensProvider();
 
@@ -112,7 +112,7 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
  * `decodeCvsCall`, and `createDecodeInCodeHandler` (via the provider's own `decodeSetoptsInCode`).
  */
 describe('BBjComposerCodeLensProvider — MSGBOX, addChildWindow, CVS and in-code SETOPTS (#650)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
     const provider = new BBjComposerCodeLensProvider();
 

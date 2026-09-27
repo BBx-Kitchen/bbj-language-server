@@ -1,11 +1,11 @@
 import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
 const parse = parseHelper<Model>(services.BBj);
 

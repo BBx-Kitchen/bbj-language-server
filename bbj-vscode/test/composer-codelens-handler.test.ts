@@ -7,7 +7,7 @@ import {
 } from '../src/language/composer-codelens-handler.js';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
@@ -187,7 +187,7 @@ describe('the bbx-config branch answers from raw text before any wait (#650)', (
  */
 describe('BBjComposerCodeLensProvider — no re-parse across repeated requests (#650)', () => {
     test('20 consecutive requests on a 5000+ line mixed-kind document return deep-equal lists with zero parser/update/build calls', async () => {
-        const services = createBBjServices(EmptyFileSystem);
+        const services = createBBjTestServices(EmptyFileSystem);
         const parse = parseHelper<Model>(services.BBj);
         // The in-code SETOPTS chain block below needs the workspace initialized so
         // `traceOptsChain` can resolve the OPTS/IOR/AND references its decode depends on

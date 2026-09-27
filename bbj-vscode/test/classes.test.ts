@@ -1,7 +1,7 @@
 import { EmptyFileSystem } from "langium";
 import { ParseHelperOptions, validationHelper } from "langium/test";
 import { beforeAll, describe, expect, test } from "vitest";
-import { createBBjServices } from "../src/language/bbj-module";
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from "../src/language/generated/ast";
 import { initializeWorkspace } from "./test-helper";
 import { basename } from "path";
@@ -10,7 +10,7 @@ import { DiagnosticSeverity } from "vscode-languageserver";
 
 describe("Classes access-levels", () => {
     let disposables: (() => Promise<void>)[] = [];
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
@@ -99,7 +99,7 @@ describe("Classes access-levels", () => {
 
 describe("Inheritance chain resolution", () => {
     let disposables: (() => Promise<void>)[] = [];
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
@@ -395,7 +395,7 @@ describe("Inheritance chain resolution", () => {
 
 describe("Cyclic inheritance detection", () => {
     let disposables: (() => Promise<void>)[] = [];
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {

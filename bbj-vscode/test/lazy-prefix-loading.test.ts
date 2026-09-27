@@ -2,7 +2,7 @@ import { CancellationToken, URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
 import { Model } from '../src/language/generated/ast';
 
@@ -52,7 +52,7 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
     }
 }
 
-const services = createBBjServices({ fileSystemProvider: () => new InMemoryFileSystemProvider() });
+const services = createBBjTestServices({ fileSystemProvider: () => new InMemoryFileSystemProvider() });
 
 describe('Lazy PREFIX loading (#32)', () => {
     beforeAll(async () => {

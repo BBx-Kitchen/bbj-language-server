@@ -2,14 +2,14 @@ import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 // A new, file-disjoint suite for the single-line IF/FI mask changes and the
 // trailing-comma PRINT lexer fix (line-break-walk-termination.test.ts and
 // line-break-validation.test.ts stay untouched and are not imported here).
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 let validate: ReturnType<typeof validationHelper<Program>>;
 
 beforeAll(async () => {

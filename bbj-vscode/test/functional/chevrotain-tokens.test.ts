@@ -1,10 +1,10 @@
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../../src/language/bbj-module.js';
+import { createBBjTestServices } from '../bbj-test-module.js';
 import { Model } from '../../src/language/generated/ast.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const parse = parseHelper<Model>(services.BBj);
 
 describe('Chevrotain Token Runtime Verification', () => {

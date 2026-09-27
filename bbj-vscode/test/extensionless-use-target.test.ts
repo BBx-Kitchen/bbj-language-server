@@ -2,7 +2,7 @@ import { URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjServiceRegistry } from '../src/language/bbj-service-registry';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
 import { Model } from '../src/language/generated/ast';
@@ -43,7 +43,7 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
     readDirectorySync(): FileSystemNode[] { return []; }
 }
 
-const services = createBBjServices({ fileSystemProvider: () => new InMemoryFileSystemProvider() });
+const services = createBBjTestServices({ fileSystemProvider: () => new InMemoryFileSystemProvider() });
 
 describe('USE target without a file extension (#688)', () => {
     beforeAll(async () => {

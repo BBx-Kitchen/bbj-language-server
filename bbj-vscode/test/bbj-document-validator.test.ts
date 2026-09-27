@@ -4,7 +4,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Diagnostic } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import type { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { applyConfiguredDiagnosticHierarchy, applyDiagnosticHierarchy, setCompilerTrigger } from '../src/language/bbj-document-validator.js';
@@ -22,9 +22,10 @@ import {
 } from '../src/language/bbj-diagnostic-reconciliation.js';
 
 // One shared services/validate instance for the whole file, in the style of
-// line-break-validation.test.ts: each createBBjServices()+initializeWorkspace() pair does real,
-// non-trivial async setup work.
-const services = createBBjServices(EmptyFileSystem);
+// line-break-validation.test.ts: each createBBjTestServices()+initializeWorkspace() pair builds
+// the hermetic test-double services (no real Java-interop socket round trip), still real
+// non-trivial async workspace setup work.
+const services = createBBjTestServices(EmptyFileSystem);
 let validate: ReturnType<typeof validationHelper<Program>>;
 
 beforeAll(async () => {
