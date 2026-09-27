@@ -410,7 +410,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message (completed 2026-09-27)
 - [x] **Phase 112: EM Login & Web Launch Fail Closed** - No default EM credentials, a visible error for every failing EM call, undecidable tokens treated as expired, and `Commands.cjs` executed by tests (completed 2026-09-27)
 - [x] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each (completed 2026-09-27)
-- [ ] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups
+- [x] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups (completed 2026-09-27)
 - [ ] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI
 - [ ] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures
 - [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
@@ -590,7 +590,7 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 13/13 plans executed
+**Plans:** 13/13 plans complete
 
 Plans:
 **Wave 1**
