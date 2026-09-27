@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createRequire } from 'module';
+
+const requireCjs = createRequire(import.meta.url);
 
 /**
  * Regression guard for the `bbj.em` ("Open Enterprise Manager") command crashing
@@ -26,7 +29,7 @@ import * as path from 'path';
  * 2. A source guard on `Commands.cjs` asserting the require site resolves to
  *    a callable (`.default`/`.propertiesReader`, or destructured) rather than
  *    the bare module object. This is what actually fails against the
- *    pre-fix source — a test that only asserted `require('properties-reader').default`
+ *    pre-fix source — a test that only asserted the loaded module's `.default`
  *    is a function would pass regardless of what `Commands.cjs` does, so it
  *    would not guard this bug.
  */
@@ -36,13 +39,13 @@ const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 
 describe('properties-reader@3.0.1 export shape', () => {
     test('the bare module export is an object, not directly callable', () => {
-        const PropertiesReader = require('properties-reader');
+        const PropertiesReader = requireCjs('properties-reader');
         expect(typeof PropertiesReader).toBe('object');
         expect(() => (PropertiesReader as unknown as (p: string) => unknown)('/nonexistent/path')).toThrow(/is not a function/);
     });
 
     test('.default is the callable factory function', () => {
-        const PropertiesReader = require('properties-reader');
+        const PropertiesReader = requireCjs('properties-reader');
         expect(typeof PropertiesReader.default).toBe('function');
     });
 });
