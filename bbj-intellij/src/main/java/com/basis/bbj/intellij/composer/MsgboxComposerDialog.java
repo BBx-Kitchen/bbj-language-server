@@ -88,6 +88,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final JBLabel messageError = ComposerSwingHelpers.errorLabel();
     private final JBLabel titleError = ComposerSwingHelpers.errorLabel();
     private final JBLabel customError = ComposerSwingHelpers.errorLabel();
+    private final JBLabel assignToError = ComposerSwingHelpers.errorLabel();
     private Color summaryDefaultForeground;
 
     private volatile String statement = "";
@@ -165,7 +166,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         root.add(messageError);
         root.add(ComposerSwingHelpers.labeled("Title expression (optional)", titleField));
         root.add(titleError);
-        assignToRow = ComposerSwingHelpers.labeled("Assign result to (optional)", assignTo);
+        assignToRow = ComposerSwingHelpers.labeledWithError("Assign result to", assignTo, assignToError);
         // In both replace modes (edit-in-place/compose-and-replace and completing an unfinished
         // call) the assignment lives outside the replaced call span, so the row is visible only
         // when composing new.
@@ -311,6 +312,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         messageError.setText(p.messageError == null ? " " : p.messageError);
         titleError.setText(p.titleError == null ? " " : p.titleError);
         customError.setText(p.customError == null ? " " : p.customError);
+        assignToError.setText(p.assignToError == null ? " " : p.assignToError);
         schematic.setRender(p.render);
         setOKActionEnabled(p.valid);
     }

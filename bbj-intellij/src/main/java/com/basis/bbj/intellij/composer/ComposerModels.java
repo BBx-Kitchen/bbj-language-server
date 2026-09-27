@@ -90,6 +90,8 @@ public final class ComposerModels {
         public String messageError;
         public String titleError;
         public String customError;
+        /** The server's verdict on the assign-to field; null when valid or when the field is hidden. */
+        public String assignToError;
         public boolean valid;
         public MsgboxRender render;
     }
@@ -626,6 +628,8 @@ public final class ComposerModels {
         public boolean charsEnabled;
         public String strError;
         public String charsError;
+        /** The server's verdict on the assign-to field; null when valid or when the field is hidden. */
+        public String assignToError;
         public boolean valid;
     }
 
