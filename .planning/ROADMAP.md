@@ -549,7 +549,26 @@ closed on undecidable JWTs (v4.2 TOKEN-01).
   4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
   5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
 
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 113-01-PLAN.md — TEST-10 tests first: `addwindow-composer-ui.ts`, `addchildwindow-composer-ui.ts` and `setopts-composer-ui.ts` executed unmocked (registration, Code Action, command, cue click) with literal expectations (TEST-10) (wave 1)
+- [ ] 113-02-PLAN.md — `webview-message-guard.ts` primitives plus one `is…PanelMessage` guard per webview; all six handlers drop wrong-shaped messages silently before `build()`, a language-server request or a WorkspaceEdit; a test posts one to each (SEC-10) (wave 1)
+- [ ] 113-03-PLAN.md — IntelliJ: `assignToError` on `MsgboxPreview`/`CvsPreview` with JSON boundary pins, both dialogs render it, no "(optional)", CVS `s$` prefill; `AddWindowComposerDialog`/`ComposerLauncher` class docs (SEC-11, DOC-01) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 113-04-PLAN.md — Shared `validateAssignTo(text, resultType)`; `msgboxPreview`/`cvsPreview` report `assignToError`, required on new inserts only; both VS Code panels show it; CVS `s$` prefill (SEC-11) (wave 2)
+- [ ] 113-05-PLAN.md — `composer-commands.ts` moves to `bbj-vscode/src/`; `main.ts`, two TS tests, the IntelliJ request-contract test and the `ComposerModels` doc follow; bundle checked (REF-03) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 113-06-PLAN.md — `composer-call-scanner.ts`: `scanArgs`, `trimmedRange` and one name-parameterised call locator; four composers use one-line wrappers; CVS keeps its boundary as an option (REF-08) (wave 3)
+- [ ] 113-07-PLAN.md — `webview-csp.ts` `buildComposerCsp`: all six webviews emit a byte-identical CSP through one helper (REF-07) (wave 3)
+- [ ] 113-08-PLAN.md — `window-composer-ui.ts`: one `titleArg` and one `windowPanelArgAt` for addWindow/addChildWindow, also used by `composer-commands.ts` (REF-08) (wave 3)
+
 **UI hint**: yes
 
 *Planning notes:* the UI hint comes from the keyword scan (composer webviews and `*-ui.ts`
