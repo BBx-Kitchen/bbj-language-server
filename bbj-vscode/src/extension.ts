@@ -39,6 +39,7 @@ import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, ty
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
 import { isEmTokenExpired } from './em-token-validity.js';
+import { initialEmUsername, rememberEmUsername } from './em-username-memory.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -710,7 +711,7 @@ export function activate(context: vscode.ExtensionContext): void {
         // Prompt for credentials
         const username = await vscode.window.showInputBox({
             prompt: "EM Username",
-            value: "admin",
+            value: initialEmUsername(context.globalState),
             ignoreFocusOut: true
         });
         if (!username) return;
@@ -771,6 +772,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
             // Store token in SecretStorage
             await context.secrets.store('bbj.em.token', output);
+            await rememberEmUsername(context.globalState, username);
             vscode.window.showInformationMessage('Successfully logged in to Enterprise Manager');
         } catch (error) {
             vscode.window.showErrorMessage(`EM login failed: ${error}`);
