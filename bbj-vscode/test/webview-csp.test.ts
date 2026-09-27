@@ -32,6 +32,9 @@ vi.mock('vscode', () => ({
 
 import { buildComposerCsp } from '../src/webview-csp.js';
 import { openMsgboxComposerPanel } from '../src/msgbox-composer-webview.js';
+import { openAddWindowComposerPanel } from '../src/addwindow-composer-webview.js';
+import { openAddChildWindowComposerPanel } from '../src/addchildwindow-composer-webview.js';
+import { openCvsComposerPanel } from '../src/cvs-composer-webview.js';
 
 const NONCE_SHAPE = /^[A-Za-z0-9+/=]{24}$/;
 
@@ -90,26 +93,50 @@ beforeEach(() => {
     };
 });
 
+/** Opens `openPanel`, and asserts its HTML's CSP meta content is the exact three-directive shape
+ * with `cspSource`, and that the inline script tag's nonce matches the CSP's own nonce. */
+function assertPanelCsp(openPanel: (context: unknown) => void): void {
+    const panel = createFakePanel();
+    createWebviewPanelMock.mockReturnValueOnce(panel);
+
+    openPanel(fakeContext);
+
+    const html = panel.webview.html;
+    const metaMatch = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
+    const scriptMatch = html.match(/<script nonce="([^"]+)">/);
+
+    expect(metaMatch).not.toBeNull();
+    expect(scriptMatch).not.toBeNull();
+
+    const csp = metaMatch![1];
+    const scriptNonce = scriptMatch![1];
+
+    expect(csp).toBe(
+        "default-src 'none'; style-src vscode-webview://test-source 'unsafe-inline'; script-src 'nonce-" + scriptNonce + "'",
+    );
+    expect(scriptNonce).toMatch(NONCE_SHAPE);
+}
+
 describe('MSGBOX panel CSP end to end', () => {
     test('the panel HTML carries the exact three-directive CSP with a matching script nonce', () => {
-        const panel = createFakePanel();
-        createWebviewPanelMock.mockReturnValueOnce(panel);
+        assertPanelCsp(openMsgboxComposerPanel as (context: unknown) => void);
+    });
+});
 
-        openMsgboxComposerPanel(fakeContext);
+describe('addWindow panel CSP end to end', () => {
+    test('the panel HTML carries the exact three-directive CSP with a matching script nonce', () => {
+        assertPanelCsp(openAddWindowComposerPanel as (context: unknown) => void);
+    });
+});
 
-        const html = panel.webview.html;
-        const metaMatch = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
-        const scriptMatch = html.match(/<script nonce="([^"]+)">/);
+describe('addChildWindow panel CSP end to end', () => {
+    test('the panel HTML carries the exact three-directive CSP with a matching script nonce', () => {
+        assertPanelCsp(openAddChildWindowComposerPanel as (context: unknown) => void);
+    });
+});
 
-        expect(metaMatch).not.toBeNull();
-        expect(scriptMatch).not.toBeNull();
-
-        const csp = metaMatch![1];
-        const scriptNonce = scriptMatch![1];
-
-        expect(csp).toBe(
-            "default-src 'none'; style-src vscode-webview://test-source 'unsafe-inline'; script-src 'nonce-" + scriptNonce + "'",
-        );
-        expect(scriptNonce).toMatch(NONCE_SHAPE);
+describe('CVS panel CSP end to end', () => {
+    test('the panel HTML carries the exact three-directive CSP with a matching script nonce', () => {
+        assertPanelCsp(openCvsComposerPanel as (context: unknown) => void);
     });
 });

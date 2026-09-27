@@ -562,7 +562,7 @@ describe('cvs-composer-webview.ts source assertions (#649)', () => {
     });
 
     test('carries a nonce CSP like the other composer panels', () => {
-        expect(webviewSource).toMatch(/script-src 'nonce-\$\{nonce\}'/);
+        expect(readFileSync(fileURLToPath(new URL('../src/webview-csp.ts', import.meta.url)), 'utf-8')).toMatch(/script-src 'nonce-\$\{nonce\}'/);
     });
 });
 

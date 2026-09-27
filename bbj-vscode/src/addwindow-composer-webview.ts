@@ -20,8 +20,8 @@ import * as vscode from 'vscode';
 import {
     WINDOW_FLAGS, EVENT_MASK_BITS, addwindowPreview,
 } from './addwindow-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
 import {
     isBoolean, isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage,
 } from './webview-message-guard.js';
@@ -196,12 +196,7 @@ function applyEdit(edit: vscode.WorkspaceEdit, sel: Selection, r: { flagsHex: st
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>

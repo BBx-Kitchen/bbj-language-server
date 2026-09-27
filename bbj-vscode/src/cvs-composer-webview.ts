@@ -21,8 +21,8 @@
  */
 import * as vscode from 'vscode';
 import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview, findCvsCalls } from './cvs-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
 import { isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage } from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
@@ -171,12 +171,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
