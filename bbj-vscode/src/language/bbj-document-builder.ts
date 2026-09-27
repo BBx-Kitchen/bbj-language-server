@@ -116,7 +116,7 @@ export function eventArmsCheck(trigger: ReturnType<typeof getCompilerTrigger>, r
  * Otherwise {@link COMPILER_CHECK_DEBOUNCE_MS}, unchanged from every arming path's behaviour
  * before this phase.
  */
-export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): number {
+export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, _reason: LiveParseArmReason): number {
     return trigger === 'on-save' ? 0 : COMPILER_CHECK_DEBOUNCE_MS;
 }
 
@@ -1128,7 +1128,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         const fileContent = await fsProvider.readFile(prefixedPath);
                         docFileData = { uri: prefixedPath, text: fileContent };
                         break; // early stop iterating prefixes when file is found
-                    } catch (e) {
+                    } catch {
                         // File not found at this prefix, try next
                     }
                 }

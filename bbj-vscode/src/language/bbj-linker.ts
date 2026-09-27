@@ -193,7 +193,7 @@ export class BbjLinker extends DefaultLinker {
             }
 
             return this.formatSourceLocation(doc.uri, line);
-        } catch (error) {
+        } catch {
             // Graceful fallback if source location extraction fails
             return undefined;
         }

@@ -810,7 +810,7 @@ export class JavaInteropService {
                 for (const pack of topLevelPackages) {
                     const parts = pack.packageName.split('.');
                     let parent: Classpath | JavaPackage = this.classpath;
-                    parts.forEach((part, index) => {
+                    parts.forEach((part) => {
                         if (!this.childrenOfByName.has(parent)) {
                             this.childrenOfByName.set(parent, new Map());
                         }
@@ -835,7 +835,7 @@ export class JavaInteropService {
                         parent = children.get(part) as JavaPackage;
                     })
                 }
-            } catch (topLevelErr) {
+            } catch {
                 // getTopLevelPackages might not be supported by older Java interop versions
                 logger.debug("getTopLevelPackages not supported, skipping top-level package initialization");
             }

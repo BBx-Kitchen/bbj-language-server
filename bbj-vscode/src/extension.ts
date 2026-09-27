@@ -483,7 +483,7 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
 
         // Return true only if output is "VALID"
         return result === 'VALID';
-    } catch (error) {
+    } catch {
         // On any error, consider token invalid
         return false;
     }

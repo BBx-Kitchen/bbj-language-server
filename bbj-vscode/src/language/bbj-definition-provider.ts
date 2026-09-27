@@ -59,7 +59,7 @@ export class BBjDefinitionProvider extends DefaultDefinitionProvider {
         return super.getDefinition(document, params, cancelToken);
     }
 
-    protected override collectLocationLinks(sourceCstNode: CstNode, params: DefinitionParams): LocationLink[] | undefined {
+    protected override collectLocationLinks(sourceCstNode: CstNode, _params: DefinitionParams): LocationLink[] | undefined {
         const goToLinks = this.findLinks(sourceCstNode);
         if (goToLinks.length === 0) {
             return undefined;
