@@ -1,10 +1,10 @@
-import { DeepPartial, IndexManager, Module, inject } from "langium";
+import { DeepPartial, Module, inject } from "langium";
 import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule, LangiumSharedServices, DefaultSharedModuleContext } from "langium/lsp";
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService, ParseError, ParseProgramParams, ParseProgramResult } from "../src/language/java-interop.js";
-import { Classpath, JavaClass, JavaField, JavaMethod } from "../src/language/generated/ast.js";
+import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from "../src/language/generated/ast.js";
 import { CancellationToken, ErrorCodes, MessageConnection, ResponseError } from "vscode-jsonrpc/node.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
@@ -39,7 +39,7 @@ export const BBjTestModule: Module<BBjServices, PartialLangiumServices & DeepPar
 }
 
 export class TestableBBjLexer extends BbjLexer {
-    public prepareLineSplitter(text: string): string {
+    public override prepareLineSplitter(text: string): string {
         return super.prepareLineSplitter(text)
     }
 }
@@ -189,285 +189,221 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 }
 
-function createBBjApiClass(container: Classpath) {
+// --- Small, fully-typed factories for fake AST nodes. Every fake Java class/method/field/
+// parameter below is a complete JavaClass/JavaMethod/JavaField/JavaMethodParameter object
+// (string $type constants from the generated AST, $container wired to its real owner, realName
+// mirroring name) rather than a partial literal papered over with a cast.
+
+function makeParameter(container: JavaMethod, name: string, type: string): JavaMethodParameter {
+    return {
+        $type: JavaMethodParameter.$type,
+        $container: container,
+        name,
+        realName: name,
+        type
+    }
+}
+
+function makeMethod(
+    container: JavaClass,
+    name: string,
+    returnType: string,
+    paramSpecs: Array<{ name: string, type: string }> = []
+): JavaMethod {
+    const method: JavaMethod = {
+        $type: JavaMethod.$type,
+        name,
+        $containerProperty: 'methods',
+        $container: container,
+        returnType,
+        isStatic: false,
+        deprecated: false,
+        parameters: []
+    }
+    method.parameters = paramSpecs.map(spec => makeParameter(method, spec.name, spec.type))
+    return method
+}
+
+function makeField(
+    container: JavaClass,
+    name: string,
+    type: string,
+    opts: { isStatic?: boolean } = {}
+): JavaField {
+    return {
+        $type: JavaField.$type,
+        name,
+        $containerProperty: 'fields',
+        $container: container,
+        type,
+        isStatic: opts.isStatic ?? false,
+        deprecated: false
+    }
+}
+
+function createBBjApiClass(container: Classpath): JavaClass {
     const clazz: JavaClass = {
-        $type: JavaClass,
+        $type: JavaClass.$type,
         name: 'BBjAPI',
         packageName: '',
         $container: container,
         $containerProperty: 'classes',
         classes: [],
         fields: [],
-        methods: []
+        methods: [],
+        constructors: [],
+        deprecated: false
     }
     clazz.methods = [
-        {
-            name: 'getThinClient',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.String',
-            $type: JavaMethod,
-            parameters: []
-        }
+        makeMethod(clazz, 'getThinClient', 'java.lang.String')
     ]
     return clazz
 }
 
 // Overloaded methods à la BBjSysGui.addWindow: the multi-parameter overload comes first,
 // so name-based linking resolves to it and call sites must re-select by arity (#478).
-function createSysGuiClass(container: Classpath) {
+function createSysGuiClass(container: Classpath): JavaClass {
     const clazz: JavaClass = {
-        $type: JavaClass,
+        $type: JavaClass.$type,
         name: 'com.test.SysGui',
         // The interop DTO's `simpleName` carries the canonical (fully qualified) name;
         // getDocumentation() depends on it once storeJavaClass has cut `name` down to
-        // the simple name.
+        // the simple name. `simpleName` is a runtime-only interop DTO property, not part
+        // of the generated JavaClass schema, hence the trailing cast (see bbj-hover.ts's
+        // readSimpleName for the read side of the same contract).
         simpleName: 'com.test.SysGui',
         packageName: 'com.test',
         $container: container,
         $containerProperty: 'classes',
         classes: [],
         fields: [],
-        methods: []
+        methods: [],
+        constructors: [],
+        deprecated: false
     } as JavaClass
     clazz.methods = [
-        {
-            name: 'addWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_context', type: 'int' },
-                { name: 'p_id', type: 'int' },
-                { name: 'p_title', type: 'java.lang.String' }
-            ]
-        },
-        {
-            name: 'addWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_title', type: 'java.lang.String' }
-            ]
-        },
+        makeMethod(clazz, 'addWindow', 'java.lang.Object', [
+            { name: 'p_context', type: 'int' },
+            { name: 'p_id', type: 'int' },
+            { name: 'p_title', type: 'java.lang.String' }
+        ]),
+        makeMethod(clazz, 'addWindow', 'java.lang.Object', [
+            { name: 'p_title', type: 'java.lang.String' }
+        ]),
         // The two-parameter addWindow pair: (context, title) vs (title, flags) —
         // same arity, distinguishable only by the argument types in order.
-        {
-            name: 'addWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_context', type: 'int' },
-                { name: 'p_title', type: 'java.lang.String' }
-            ]
-        },
-        {
-            name: 'addWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_title', type: 'java.lang.String' },
-                // byte[] in the real API; the interop service erases arrays to their
-                // component type, so this is what the language server actually sees
-                { name: 'p_flags', type: 'byte' }
-            ]
-        },
+        makeMethod(clazz, 'addWindow', 'java.lang.Object', [
+            { name: 'p_context', type: 'int' },
+            { name: 'p_title', type: 'java.lang.String' }
+        ]),
+        makeMethod(clazz, 'addWindow', 'java.lang.Object', [
+            { name: 'p_title', type: 'java.lang.String' },
+            // byte[] in the real API; the interop service erases arrays to their
+            // component type, so this is what the language server actually sees
+            { name: 'p_flags', type: 'byte' }
+        ]),
         // Like addWindow above, but with the synthetic parameter names produced by
         // reflection on jars compiled without -parameters: the real names exist only
         // in the javadoc (see inlay-hints-javadoc.test.ts).
-        {
-            name: 'openWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'arg0', type: 'int' },
-                { name: 'arg1', type: 'java.lang.String' }
-            ]
-        },
-        {
-            name: 'openWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'arg0', type: 'java.lang.String' },
-                { name: 'arg1', type: 'java.lang.String' }
-            ]
-        },
+        makeMethod(clazz, 'openWindow', 'java.lang.Object', [
+            { name: 'arg0', type: 'int' },
+            { name: 'arg1', type: 'java.lang.String' }
+        ]),
+        makeMethod(clazz, 'openWindow', 'java.lang.Object', [
+            { name: 'arg0', type: 'java.lang.String' },
+            { name: 'arg1', type: 'java.lang.String' }
+        ]),
         // Not overloaded: its single untyped javadoc entry is an unambiguous match
         // by name+arity alone (inlay-hints-javadoc.test.ts).
-        {
-            name: 'closeWindow',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'void',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'arg0', type: 'int' }
-            ]
-        },
+        makeMethod(clazz, 'closeWindow', 'void', [
+            { name: 'arg0', type: 'int' }
+        ]),
         // Like openWindow, but its javadoc entries carry no types (old-format files):
         // the assignment would be a guess, so no doc entry is used and the hints are
         // suppressed (inlay-hints-javadoc.test.ts).
-        {
-            name: 'showDialog',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'arg0', type: 'int' },
-                { name: 'arg1', type: 'java.lang.String' }
-            ]
-        },
-        {
-            name: 'showDialog',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'arg0', type: 'java.lang.String' },
-                { name: 'arg1', type: 'java.lang.String' }
-            ]
-        },
+        makeMethod(clazz, 'showDialog', 'java.lang.Object', [
+            { name: 'arg0', type: 'int' },
+            { name: 'arg1', type: 'java.lang.String' }
+        ]),
+        makeMethod(clazz, 'showDialog', 'java.lang.Object', [
+            { name: 'arg0', type: 'java.lang.String' },
+            { name: 'arg1', type: 'java.lang.String' }
+        ]),
         // Same arity, different parameter order — only the argument types tell the
         // overloads apart (like the 7-parameter addWindow overloads in the real API).
-        {
-            name: 'setValue',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'void',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_index', type: 'int' },
-                { name: 'p_text', type: 'java.lang.String' }
-            ]
-        },
-        {
-            name: 'setValue',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'void',
-            $type: JavaMethod,
-            parameters: [
-                { name: 'p_text', type: 'java.lang.String' },
-                { name: 'p_flags', type: 'int' }
-            ]
-        }
+        makeMethod(clazz, 'setValue', 'void', [
+            { name: 'p_index', type: 'int' },
+            { name: 'p_text', type: 'java.lang.String' }
+        ]),
+        makeMethod(clazz, 'setValue', 'void', [
+            { name: 'p_text', type: 'java.lang.String' },
+            { name: 'p_flags', type: 'int' }
+        ])
     ]
     return clazz
 }
 
-function createHashMapClass(container: Classpath) {
+function createHashMapClass(container: Classpath): JavaClass {
     const clazz: JavaClass = {
-        $type: JavaClass,
+        $type: JavaClass.$type,
         name: 'java.util.HashMap',
         packageName: 'java.util',
         $container: container,
         $containerProperty: 'classes',
         classes: [],
         fields: [],
-        methods: []
+        methods: [],
+        constructors: [],
+        deprecated: false
     }
     clazz.methods = [
-        {
-            name: 'put',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Object',
-            $type: JavaMethod,
-            parameters: []
-        },
-        {
-            // inherited from java.lang.Object; needed so `obj!.getClass()` resolves
-            name: 'getClass',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.Class',
-            $type: JavaMethod,
-            parameters: []
-        }
+        makeMethod(clazz, 'put', 'java.lang.Object'),
+        // inherited from java.lang.Object; needed so `obj!.getClass()` resolves
+        makeMethod(clazz, 'getClass', 'java.lang.Class')
     ]
     return clazz
 }
 
 function createJavaLangClassClass(container: Classpath): JavaClass {
     const clazz: JavaClass = {
-        $type: JavaClass,
+        $type: JavaClass.$type,
         name: 'java.lang.Class',
         packageName: 'java.lang',
         $container: container,
         $containerProperty: 'classes',
         classes: [],
         fields: [],
-        methods: []
+        methods: [],
+        constructors: [],
+        deprecated: false
     }
     clazz.methods = [
-        {
-            name: 'getName',
-            $containerProperty: 'methods',
-            $container: clazz,
-            returnType: 'java.lang.String',
-            $type: JavaMethod,
-            parameters: []
-        }
+        makeMethod(clazz, 'getName', 'java.lang.String')
     ]
     return clazz
 }
 
 function createJavaLangStringClass(container: Classpath): JavaClass {
     const fakeStringClass: JavaClass = {
-        $type: JavaClass,
+        $type: JavaClass.$type,
         name: 'java.lang.String',
         packageName: 'java.lang',
         $container: container,
         $containerProperty: 'classes',
         fields: [],
         classes: [],
-        methods: []
+        methods: [],
+        constructors: [],
+        deprecated: false
     }
     fakeStringClass.fields = [
-        {
-            // static field: accessible via class reference `String.CASE_INSENSITIVE_ORDER` (#440)
-            name: 'CASE_INSENSITIVE_ORDER',
-            $containerProperty: 'fields',
-            $container: fakeStringClass,
-            type: 'java.util.Comparator',
-            isStatic: true,
-            deprecated: false,
-            $type: JavaField
-        },
-        {
-            // instance field: must NOT be reachable through a class reference
-            name: 'someInstanceField',
-            $containerProperty: 'fields',
-            $container: fakeStringClass,
-            type: 'int',
-            isStatic: false,
-            deprecated: false,
-            $type: JavaField
-        }
+        // static field: accessible via class reference `String.CASE_INSENSITIVE_ORDER` (#440)
+        makeField(fakeStringClass, 'CASE_INSENSITIVE_ORDER', 'java.util.Comparator', { isStatic: true }),
+        // instance field: must NOT be reachable through a class reference
+        makeField(fakeStringClass, 'someInstanceField', 'int')
     ]
     fakeStringClass.methods = [
-        {
-            name: 'charAt',
-            $containerProperty: 'methods',
-            $container: fakeStringClass,
-            returnType: 'char',
-            $type: JavaMethod,
-            parameters: []
-        }
+        makeMethod(fakeStringClass, 'charAt', 'char')
     ]
     return fakeStringClass
 }
