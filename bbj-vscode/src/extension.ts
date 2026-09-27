@@ -689,7 +689,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // client instance (stop then start) so its already-registered notification handlers
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
-    (Commands as any).setOutputChannel(outputChannel);
+    (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
     context.subscriptions.push(vscode.commands.registerCommand("bbj.config", Commands.openConfigFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager));

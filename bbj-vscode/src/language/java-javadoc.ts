@@ -11,6 +11,17 @@ import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "
 import { logger } from "./logger.js";
 
 /**
+ * `simpleName` is a runtime-only property set on interop-supplied JavaClass DTOs; it is absent
+ * from the generated AST type. Narrowed to `string | undefined` (never a non-string truthy
+ * value in practice) so callers can keep using it directly wherever a `string` is required,
+ * while preserving the original falsy-on-empty-string fallback behaviour.
+ */
+function readSimpleName(clazz: JavaClass): string | undefined {
+    const raw = (clazz as unknown as { simpleName?: unknown }).simpleName;
+    return typeof raw === 'string' ? raw : undefined;
+}
+
+/**
  * Provides Javadoc information for internal binary classes.
  */
 export class JavadocProvider {
@@ -101,7 +112,8 @@ export class JavadocProvider {
             clazz = node.$container;
         }
         if (clazz) {
-            const qName = clazz.name.indexOf('.') > -1 ? clazz.name : (clazz as any)['simpleName'] ? (clazz as any).simpleName : clazz.name;
+            const simpleName = readSimpleName(clazz);
+            const qName: string = clazz.name.indexOf('.') > -1 ? clazz.name : simpleName ? simpleName : clazz.name;
             const qnParts = qName.split('.')
             const className = qnParts.pop();
             const packageDoc = await this.getPackageDoc(qnParts.join('.'));
@@ -211,10 +223,10 @@ export type MethodDoc = NamedDoc & {
 }
 
 export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {
-    return item !== undefined && (item as any).params !== undefined;
+    return item !== undefined && (item as { params?: unknown }).params !== undefined;
 }
 
 
 export function isClassDoc(item: NamedDoc | undefined): item is ClassDoc {
-    return item !== undefined && (item as any).methods !== undefined && (item as any).fields !== undefined;
+    return item !== undefined && (item as { methods?: unknown }).methods !== undefined && (item as { fields?: unknown }).fields !== undefined;
 }

@@ -193,6 +193,16 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
     }
 }
 
+/**
+ * `simpleName` is a runtime-only property set on interop-supplied DTOs (JavaClass, JavaField,
+ * FieldDecl, BbjClass nodes backed by a resolved Java peer); it is absent from the generated AST
+ * types. Read it as `unknown` so callers keep the exact `simpleName ? simpleName : node.name`
+ * fallback the original `any`-cast expressed, including falling back on an empty string.
+ */
+function readSimpleName(node: AstNode): unknown {
+    return (node as unknown as { simpleName?: unknown }).simpleName;
+}
+
 export function documentationHeader(node: AstNode): string | undefined {
     // Lib
     if ((isLibMember(node) || isLibEventType(node)) && node.docu && node.docu.length > 5) {
@@ -201,10 +211,12 @@ export function documentationHeader(node: AstNode): string | undefined {
 
     // Java
     if (isJavaClass(node)) {
-        return `class ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `class ${simpleName ? simpleName : node.name}`;
     }
     if (isJavaField(node)) {
-        return `${javaTypeAdjust(node.type)} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${javaTypeAdjust(node.type)} ${simpleName ? simpleName : node.name}`;
     }
     if (isJavaMethod(node)) {
         return `${javaTypeAdjust(node.returnType)} ${ownerClass(node)}${methodSignature(node, javaTypeAdjust)}`;
@@ -217,10 +229,12 @@ export function documentationHeader(node: AstNode): string | undefined {
         return `${type ? type + ' ' : ''}${owner}${methodSignature(toMethodData(node))}`;
     }
     if (isFieldDecl(node)) {
-        return `${javaTypeAdjust(getFQNFullname(node.type) ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${javaTypeAdjust(getFQNFullname(node.type) ?? 'Object')} ${simpleName ? simpleName : node.name}`;
     }
     if (isBbjClass(node)) {
-        return `${node.interface ? 'interface' : 'class'} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${node.interface ? 'interface' : 'class'} ${simpleName ? simpleName : node.name}`;
     }
     return undefined;
 }

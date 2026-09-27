@@ -72,7 +72,7 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
             }
 
             // Error-recovery path: name property exists on AST but nameProvider couldn't find its CST node
-            const name = (astNode as any).name;
+            const name = (astNode as unknown as { name?: unknown }).name;
             if (typeof name === 'string' && name.trim() && astNode.$cstNode) {
                 // Use the node's own CST node as both range and selectionRange
                 return [this.createSymbol(document, astNode, astNode.$cstNode, astNode.$cstNode, name.trim())];
@@ -145,7 +145,7 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
                 try {
                     if (!node.$cstNode) continue;
 
-                    const name = (node as any).name;
+                    const name = (node as unknown as { name?: unknown }).name;
                     const hasName = (typeof name === 'string' && name.trim()) ||
                                     !!this.nameProvider.getNameNode(node);
                     if (!hasName) continue;

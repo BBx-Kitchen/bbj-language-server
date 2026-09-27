@@ -91,7 +91,7 @@ export const DocumentFormatter = {
         );
         return [edit];
       },
-      (err: any) => {
+      (err: unknown) => {
         if (err instanceof FormatterArtifactError) {
           // runFormatter already logged this refusal (with the expected/actual digests, or the
           // expected path) before rejecting — re-reject without a second logger.warn line.
@@ -171,7 +171,8 @@ export const DocumentFormatter = {
       p.stdout.on('data', (data) => (stdout += data));
       p.stderr.on('data', (data) => (stderr += data));
       p.on('error', (err) => {
-        if (err && (err as any).code === 'ENOENT') {
+        const errno = err as NodeJS.ErrnoException;
+        if (err && errno.code === 'ENOENT') {
           return reject(err);
         } else {
           return reject(err);

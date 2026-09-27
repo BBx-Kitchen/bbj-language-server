@@ -22,7 +22,7 @@ type LineBreakConfig<T extends AstNode> = [
    * - after: needs line break after
    * - both: needs line break before and after
    */
-const lineBreakMap: LineBreakConfig<any>[] = [
+const lineBreakMap: LineBreakConfig<AstNode>[] = [
     [isFieldDecl, {
         before: ['FIELD'],
         after: true,
@@ -43,10 +43,15 @@ const lineBreakMap: LineBreakConfig<any>[] = [
         after: false,
         both: true
     }],
-    ifStatementLineBreaks(),
-    elseStatementLineBreaks(),
-    ifEndStatementLineBreaks(),
-    compoundStatementLineBreaks(),
+    // Each of the four helper-built configs below is genuinely typed as LineBreakConfig<X> for
+    // its own concrete X (IfStatement, ElseStatement, IfEndStatement, CompoundStatement); the
+    // cast here only widens the table's own tuple type to match its sibling entries — the
+    // predicate inside each still narrows to X at the call site in checkLineBreaks below, and
+    // this is the exact reason that call site casts its own mask lookup the same way.
+    ifStatementLineBreaks() as LineBreakConfig<AstNode>,
+    elseStatementLineBreaks() as LineBreakConfig<AstNode>,
+    ifEndStatementLineBreaks() as LineBreakConfig<AstNode>,
+    compoundStatementLineBreaks() as LineBreakConfig<AstNode>,
     [isStandaloneStatement, {
         before: false,
         after: false,
