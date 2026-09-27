@@ -1,0 +1,95 @@
+Total errors: 399
+Total files with errors: 76
+
+## 114-07 (99 errors, 2 files)
+53	test/commands-cjs-execution.test.ts
+46	test/bbj-test-module.ts
+
+## 114-04 (1 errors, 1 files)
+1	test/functional/issue447-real-interop.test.ts
+
+## 114-08 (39 errors, 9 files)
+12	test/validation.test.ts
+7	test/javadoc.test.ts
+6	test/lazy-prefix-loading.test.ts
+4	test/linking.test.ts
+3	test/live-parse-interleaving.test.ts
+2	test/bbj-cpl-fallback-dedup.test.ts
+2	test/on-save-kept-errors.test.ts
+2	test/utils.test.ts
+1	test/setopts-catalog.test.ts
+
+## 114-09 (44 errors, 16 files)
+8	test/use-path-containment.test.ts
+6	test/extensionless-use-target.test.ts
+5	test/java-interop-peer-guard.test.ts
+4	test/composer-codelens.test.ts
+4	test/scope-cost-regression.test.ts
+3	test/config-reload-host.test.ts
+3	test/extension-config-trust.test.ts
+2	test/line-break-walk-termination.test.ts
+2	test/live-parse-scheduling.test.ts
+1	test/bbj-parser-service.test.ts
+1	test/composer-cue-single-source.test.ts
+1	test/extension-activation.test.ts
+1	test/fake-text-document-connection.ts
+1	test/functional/installed-extension-e2e.test.ts
+1	test/logger.test.ts
+1	test/on-save-trigger.test.ts
+
+## 114-10 (108 errors, 6 files)
+40	test/classes.test.ts
+27	test/variable-scoping.test.ts
+23	test/line-break-validation.test.ts
+9	test/unresolvable-type.test.ts
+5	test/line-break-single-line-if.test.ts
+4	test/parser-keyword-statements.test.ts
+
+## 114-11 (56 errors, 17 files)
+12	test/unknown-java-member.test.ts
+8	test/imports.test.ts
+6	test/parser.test.ts
+4	test/method-body-scope.test.ts
+3	test/class-validations-issues.test.ts
+3	test/functional/unknown-java-member-real-interop.test.ts
+3	test/method-return-java-type.test.ts
+3	test/run-call-file-resolution.test.ts
+3	test/use-project-root.test.ts
+2	test/overload-return-type.test.ts
+2	test/run-call-navigation.test.ts
+2	test/validation-function-calls.test.ts
+1	test/declare-in-class.test.ts
+1	test/functional/lsp-features.test.ts
+1	test/inheritance-cycle-validation.test.ts
+1	test/java-package-name-collision.test.ts
+1	test/java-qualified-name.test.ts
+
+## 114-12 (50 errors, 24 files)
+5	test/composer-call-scanner.test.ts
+3	test/addchildwindow-composer.test.ts
+3	test/compile-request.test.ts
+3	test/composer-commands.test.ts
+3	test/config-path-resolution.test.ts
+3	test/examples-compile.test.ts
+3	test/formatter-pins-drift.test.ts
+3	test/formatter-verifier-tamper.test.ts
+3	test/gradle-wrapper-hygiene.test.ts
+3	test/workflow-secret-hygiene.test.ts
+2	test/builtin-library-members.test.ts
+2	test/conformance-regressions.test.ts
+2	test/example-files.test.ts
+2	test/lsp-protocol-single-copy.test.ts
+1	test/addchildwindow-composer-ui.test.ts
+1	test/addwindow-composer-ui.test.ts
+1	test/addwindow-composer.test.ts
+1	test/code-action.test.ts
+1	test/completion-test.test.ts
+1	test/cpl-service.test.ts
+1	test/file-path-completion.test.ts
+1	test/msgbox-composer.test.ts
+1	test/parser-ambiguity-logging.test.ts
+1	test/process-runner.test.ts
+
+## UNOWNED (not in this plan's ownership table — orchestrator must assign)
+2	test/eslint-disable-directives.test.ts
+

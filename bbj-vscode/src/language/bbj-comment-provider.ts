@@ -9,7 +9,11 @@ export class BBjCommentProvider implements CommentProvider {
             if (node.$containerProperty !== undefined && node.$containerIndex !== undefined) {
                 const siblings = (node.$container as AstNode as GenericAstNode)[node.$containerProperty]
                 if (Array.isArray(siblings)) {
-                    const comments = []
+                    // Explicitly typed: an empty array literal's element type is only inferred
+                    // via control-flow "evolving array types" when noImplicitAny is on, which
+                    // does not hold for every consumer of this src file (test/'s tsconfig turns
+                    // it off), so the type must be spelled out rather than inferred.
+                    const comments: (string | undefined)[] = []
                     for (let index = node.$containerIndex - 1; index >= 0; index--) {
                         const element = siblings[index];
                         if (isCommentStatement(element)) {
@@ -32,7 +36,7 @@ export class BBjCommentProvider implements CommentProvider {
             const untilOffset = node.$cstNode?.offset;
             const clazz = node.$container;
             const fromOffset = node.$containerIndex === 0 ? clazz.$cstNode?.offset : clazz.members[node.$containerIndex! - 1].$cstNode?.end;
-            const comments = []
+            const comments: (string | undefined)[] = []
             for (const comment of clazz.comments ?? []) {
                 const commentCstNode = comment.$cstNode;
                 if (commentCstNode !== undefined && commentCstNode.offset < untilOffset! && commentCstNode.end > fromOffset!) {
