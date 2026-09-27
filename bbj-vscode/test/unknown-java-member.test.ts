@@ -28,7 +28,7 @@ beforeAll(async () => {
 
 /** Diagnostics whose message mentions the given member name, quoted exactly as the check quotes it. */
 function diagnosticsForMember(diagnostics: Diagnostic[] | undefined, memberName: string): Diagnostic[] {
-    return (diagnostics ?? []).filter(d => d.message.includes(`'${memberName}'`));
+    return (diagnostics ?? []).filter(d => Diagnostic.getMessageString(d).includes(`'${memberName}'`));
 }
 
 function linkingDiagnostics(diagnostics: Diagnostic[] | undefined): Diagnostic[] {
@@ -40,7 +40,7 @@ function hasUnknownMemberDiagnostic(diagnostics: Diagnostic[] | undefined): bool
 }
 
 function validationCrashed(diagnostics: Diagnostic[] | undefined): boolean {
-    return (diagnostics ?? []).some(d => d.message.startsWith('An error occurred during validation'));
+    return (diagnostics ?? []).some(d => Diagnostic.getMessageString(d).startsWith('An error occurred during validation'));
 }
 
 /** The first MemberCall's own receiver expression, for the pure-predicate tests. */
@@ -60,7 +60,7 @@ describe('Unknown member on a fully resolved Java class', () => {
         expect(matches).toHaveLength(1);
         const diagnostic = matches[0];
         expect(diagnostic.severity).toBe(DiagnosticSeverity.Error);
-        expect(diagnostic.message).toBe("Method 'anyInvalidMethod' is not defined on String");
+        expect(Diagnostic.getMessageString(diagnostic)).toBe("Method 'anyInvalidMethod' is not defined on String");
         expect(diagnostic.data?.code).toBe(UNKNOWN_JAVA_MEMBER_CODE);
         expect(diagnostic.range).toEqual({
             start: { line: 1, character: 3 },
@@ -74,7 +74,7 @@ describe('Unknown member on a fully resolved Java class', () => {
         const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidField');
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
-        expect(matches[0].message).toBe("Field 'anyInvalidField' is not defined on String");
+        expect(Diagnostic.getMessageString(matches[0])).toBe("Field 'anyInvalidField' is not defined on String");
     });
 
     test('an unknown method on a constructed Java object is one Error', async () => {
@@ -82,14 +82,14 @@ describe('Unknown member on a fully resolved Java class', () => {
         const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
-        expect(matches[0].message).toBe("Method 'anyInvalidMethod' is not defined on HashMap");
+        expect(Diagnostic.getMessageString(matches[0])).toBe("Method 'anyInvalidMethod' is not defined on HashMap");
     });
 });
 
 describe("Receivers that keep today's diagnostics", () => {
     test('an unresolved class keeps its linking warning', async () => {
         const document = await validate('declare java.util.ArrayList a!\na!.anyInvalidMethod()\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('anyInvalidMethod'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
@@ -115,7 +115,7 @@ describe("Receivers that keep today's diagnostics", () => {
 
     test('a BBj class receiver keeps its linking warning', async () => {
         const document = await validate('class public Foo\nclassend\ndeclare Foo f!\nf!.nothing()\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('nothing'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('nothing'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
@@ -140,19 +140,19 @@ describe("Receivers that keep today's diagnostics", () => {
 
     test('a case-different member name (CHARAT) resolves and keeps its linking warning', async () => {
         const document = await validate('declare java.lang.String s!\nx! = s!.CHARAT(0)\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('CHARAT'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('CHARAT'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
     test('a member reached through a method return keeps its linking warning (getClass().anyInvalidMethod())', async () => {
         const document = await validate('declare java.util.HashMap h!\nx! = h!.getClass().anyInvalidMethod()\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('anyInvalidMethod'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
     test('a variable assigned from a method return also keeps its linking warning', async () => {
         const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('anyInvalidMethod'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
@@ -211,7 +211,7 @@ describe("Receivers that keep today's diagnostics", () => {
         // Java's own array .length pseudo-field is not a member of the element class itself -- a
         // declared array receiver is not certain enough to trust an "unknown member" verdict on.
         const document = await validate('declare java.lang.String[] arr!\nx! = arr!.length\n');
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('length'))).toBe(true);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('length'))).toBe(true);
         expect(hasUnknownMemberDiagnostic(document.diagnostics)).toBe(false);
     });
 
@@ -245,7 +245,7 @@ describe('Static-only access through a class reference', () => {
         const matches = diagnosticsForMember(document.diagnostics, 'someInstanceField');
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
-        expect(matches[0].message).toBe("Static field 'someInstanceField' is not defined on String");
+        expect(Diagnostic.getMessageString(matches[0])).toBe("Static field 'someInstanceField' is not defined on String");
     });
 
     test('both static and instance fields resolve through an instance receiver', async () => {
@@ -276,7 +276,7 @@ describe('The unknown-member Error in files with other errors', () => {
         const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
-        expect((document.diagnostics ?? []).some(d => d.message.includes('nosuchvar'))).toBe(false);
+        expect((document.diagnostics ?? []).some(d => Diagnostic.getMessageString(d).includes('nosuchvar'))).toBe(false);
     });
 
     // A genuine Chevrotain parser error in this grammar consumes the rest of the token stream in
@@ -378,7 +378,7 @@ describe('An unresolved member on an uncertain Java receiver stays visible next 
 
     test('an ordinary unresolved variable still follows Rule 2 and stays hidden next to an Error', async () => {
         const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\na = 1 b = 2\nq = nosuchvar\n');
-        expect((document.diagnostics ?? []).some(d => d.message.includes('nosuchvar'))).toBe(false);
+        expect((document.diagnostics ?? []).some(d => Diagnostic.getMessageString(d).includes('nosuchvar'))).toBe(false);
     });
 });
 
@@ -466,14 +466,14 @@ describe('The flagged Warning reads in plain words end to end, and other wording
         const document = await validate('declare java.util.HashMap h!\nc! = h!.getClass()\nc!.anyInvalidMethod()\na = 1 b = 2\n');
         const matches = diagnosticsForMember(document.diagnostics, 'anyInvalidMethod');
         expect(matches).toHaveLength(1);
-        expect(matches[0].message).toMatch(/^'anyInvalidMethod' is not a known method or field of Class( \[in [^\]]+\])?$/);
+        expect(Diagnostic.getMessageString(matches[0])).toMatch(/^'anyInvalidMethod' is not a known method or field of Class( \[in [^\]]+\])?$/);
     });
 
     test('an ordinary unresolved variable keeps NamedElement wording and no flag', async () => {
         const document = await validate('print undefinedVar\n');
-        const matches = (document.diagnostics ?? []).filter(d => d.message.includes('undefinedVar'));
+        const matches = (document.diagnostics ?? []).filter(d => Diagnostic.getMessageString(d).includes('undefinedVar'));
         expect(matches.length).toBeGreaterThan(0);
-        expect(matches[0].message).toContain("Could not resolve reference to NamedElement named 'undefinedVar'");
+        expect(Diagnostic.getMessageString(matches[0])).toContain("Could not resolve reference to NamedElement named 'undefinedVar'");
         expect(isJavaMemberLinkingWarning(matches[0])).toBe(false);
     });
 
@@ -481,7 +481,7 @@ describe('The flagged Warning reads in plain words end to end, and other wording
         const document = await validate('class public Foo\nclassend\ndeclare Foo f!\nf!.nothing()\n');
         const matches = diagnosticsForMember(document.diagnostics, 'nothing');
         expect(matches.length).toBeGreaterThan(0);
-        expect(matches[0].message).toContain('NamedElement');
+        expect(Diagnostic.getMessageString(matches[0])).toContain('NamedElement');
         expect(isJavaMemberLinkingWarning(matches[0])).toBe(false);
     });
 
@@ -491,6 +491,6 @@ describe('The flagged Warning reads in plain words end to end, and other wording
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
         expect(matches[0].data?.code).toBe(UNKNOWN_JAVA_MEMBER_CODE);
-        expect(linkingDiagnostics(document.diagnostics).some(d => d.message.includes('anyInvalidMethod'))).toBe(false);
+        expect(linkingDiagnostics(document.diagnostics).some(d => Diagnostic.getMessageString(d).includes('anyInvalidMethod'))).toBe(false);
     });
 });

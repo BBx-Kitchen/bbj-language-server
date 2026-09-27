@@ -1,11 +1,11 @@
 import { EmptyFileSystem, URI, LangiumDocument } from 'langium';
-import { WorkspaceFolder } from 'vscode-languageserver';
+import { Diagnostic, WorkspaceFolder } from 'vscode-languageserver';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { DocumentValidator } from 'langium';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
-import { Model } from '../src/language/generated/ast';
+import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { Model } from '../src/language/generated/ast.js';
 
 /**
  * Regression for #378: a relative `use ::subdir/file.bbj::Class` from a program in a
@@ -21,7 +21,7 @@ function linkingErrors(doc: LangiumDocument) {
     return (doc.diagnostics ?? []).filter(d => d.data?.code === DocumentValidator.LinkingError);
 }
 function fileNotResolvedErrors(doc: LangiumDocument) {
-    return (doc.diagnostics ?? []).filter(d => d.message.includes('could not be resolved'));
+    return (doc.diagnostics ?? []).filter(d => Diagnostic.getMessageString(d).includes('could not be resolved'));
 }
 
 describe('USE resolves relative to the project root (#378)', () => {
@@ -48,8 +48,8 @@ describe('USE resolves relative to the project root (#378)', () => {
         });
         expect(consumer.parseResult.parserErrors).toHaveLength(0);
         // The USE file-path diagnostic must not fire...
-        expect(fileNotResolvedErrors(consumer).map(d => d.message).join('\n')).toBe('');
+        expect(fileNotResolvedErrors(consumer).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
         // ...and the class/constructor/method must all link.
-        expect(linkingErrors(consumer).map(d => d.message).join('\n')).toBe('');
+        expect(linkingErrors(consumer).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 });

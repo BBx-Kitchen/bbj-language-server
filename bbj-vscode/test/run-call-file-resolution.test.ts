@@ -1,10 +1,10 @@
 import { EmptyFileSystem, URI, LangiumDocument } from 'langium';
-import { WorkspaceFolder } from 'vscode-languageserver';
+import { Diagnostic, WorkspaceFolder } from 'vscode-languageserver';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
-import { Model } from '../src/language/generated/ast';
+import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { Model } from '../src/language/generated/ast.js';
 
 /**
  * Issue #173: filenames in RUN and CALL that are given as static string literals should be flagged
@@ -13,7 +13,7 @@ import { Model } from '../src/language/generated/ast';
  */
 
 function fileNotResolvedWarnings(doc: LangiumDocument) {
-    return (doc.diagnostics ?? []).filter(d => d.message.includes('could not be resolved in the project directory'));
+    return (doc.diagnostics ?? []).filter(d => Diagnostic.getMessageString(d).includes('could not be resolved in the project directory'));
 }
 
 describe('RUN/CALL file resolution (#173)', () => {
@@ -37,7 +37,7 @@ describe('RUN/CALL file resolution (#173)', () => {
             documentUri: URI.file('/root/app/main-root.bbj').toString(),
             validation: true,
         });
-        expect(fileNotResolvedWarnings(doc).map(d => d.message).join('\n')).toBe('');
+        expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 
     test('CALL target resolving against the current file directory produces no warning', async () => {
@@ -45,7 +45,7 @@ describe('RUN/CALL file resolution (#173)', () => {
             documentUri: URI.file('/root/app/main-samedir.bbj').toString(),
             validation: true,
         });
-        expect(fileNotResolvedWarnings(doc).map(d => d.message).join('\n')).toBe('');
+        expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 
     test('unresolvable RUN target is flagged as a warning', async () => {
@@ -55,7 +55,7 @@ describe('RUN/CALL file resolution (#173)', () => {
         });
         const warnings = fileNotResolvedWarnings(doc);
         expect(warnings).toHaveLength(1);
-        expect(warnings[0].message).toContain("'does-not-exist.bbj'");
+        expect(Diagnostic.getMessageString(warnings[0])).toContain("'does-not-exist.bbj'");
     });
 
     test('the "program::label" entry point is stripped before resolution', async () => {
@@ -66,8 +66,8 @@ describe('RUN/CALL file resolution (#173)', () => {
         const warnings = fileNotResolvedWarnings(doc);
         expect(warnings).toHaveLength(1);
         // The label part must not appear in the reported path.
-        expect(warnings[0].message).toContain("'missing.bbj'");
-        expect(warnings[0].message).not.toContain('::setUp');
+        expect(Diagnostic.getMessageString(warnings[0])).toContain("'missing.bbj'");
+        expect(Diagnostic.getMessageString(warnings[0])).not.toContain('::setUp');
     });
 
     test('dynamic RUN target (concatenation) is not flagged', async () => {
@@ -75,7 +75,7 @@ describe('RUN/CALL file resolution (#173)', () => {
             documentUri: URI.file('/root/app/main-dynamic.bbj').toString(),
             validation: true,
         });
-        expect(fileNotResolvedWarnings(doc).map(d => d.message).join('\n')).toBe('');
+        expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 });
 
@@ -92,6 +92,6 @@ describe('RUN/CALL file resolution is inert without project context', () => {
             documentUri: URI.file('/loose/main.bbj').toString(),
             validation: true,
         });
-        expect(fileNotResolvedWarnings(doc).map(d => d.message).join('\n')).toBe('');
+        expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 });

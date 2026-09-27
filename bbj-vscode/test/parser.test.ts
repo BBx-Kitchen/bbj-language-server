@@ -2,8 +2,9 @@ import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 
@@ -2817,7 +2818,7 @@ classend
         expectNoParserLexerErrors(document);
         // Validator should report an error about DECLARE at class member level
         expect(document.diagnostics?.length).toBeGreaterThan(0);
-        expect(document.diagnostics?.some(d => d.message.toLowerCase().includes('declare'))).toBeTruthy();
+        expect(document.diagnostics?.some(d => Diagnostic.getMessageString(d).toLowerCase().includes('declare'))).toBeTruthy();
     });
 
     test('DECLARE inside method body is valid', async () => {
