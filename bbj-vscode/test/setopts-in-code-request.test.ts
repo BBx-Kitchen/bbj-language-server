@@ -511,7 +511,7 @@ describe('setopts-in-code-request.ts wiring in main.ts', () => {
 
     test('neither new method-name literal appears inside composer-commands.ts (the pre-services registry)', () => {
         const composerCommandsSource = fs.readFileSync(
-            path.join(__dirname, '..', 'src', 'language', 'composer-commands.ts'),
+            path.join(__dirname, '..', 'src', 'composer-commands.ts'),
             'utf-8'
         );
         expect(composerCommandsSource).not.toContain(SETOPTS_DECODE_IN_CODE_METHOD);

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { composerHandlers, registerComposerRequests } from '../src/language/composer-commands';
+import { composerHandlers, registerComposerRequests } from '../src/composer-commands';
 import { decodeMsgboxCall } from '../src/msgbox-composer';
 import { decodeCvsCall, cvsPreview } from '../src/cvs-composer';
 

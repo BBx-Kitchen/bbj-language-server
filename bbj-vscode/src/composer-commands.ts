@@ -3,7 +3,7 @@
  * exposed over LSP `workspace`-style custom requests so BOTH clients — the VS Code webview and the
  * IntelliJ plugin (LSP4IJ) — drive one implementation of the flag/hex arithmetic (#433).
  *
- * The domain logic itself lives in the editor-agnostic `../msgbox-composer` and `../addwindow-composer`
+ * The domain logic itself lives in the editor-agnostic `./msgbox-composer` and `./addwindow-composer`
  * modules (no `vscode` dependency, fully unit-tested); this file only re-exposes their pure API as
  * request handlers. It adds NO new flag/hex logic — every handler is a thin pass-through — so the
  * language server and the VS Code UI stay a single source of truth.
@@ -17,30 +17,30 @@ import {
     encode, decode, describe as describeMsgbox, composeStatement, stateFromSelection, flagsFromState,
     validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine, msgboxPreview, decodeMsgboxCall,
     type ComposeInput, type MsgboxPreviewInput,
-} from '../msgbox-composer.js';
+} from './msgbox-composer.js';
 import {
     WINDOW_FLAGS, EVENT_MASK_BITS,
     encodeBits, bitsSet, unknownBits, formatHex, parseHexLiteral,
     describeFlags, describeEventMask, windowSchematic, composeAddWindow, addwindowPreview,
     findAddWindowCallAt, parseAddWindowCallOnLine,
     type AddWindowInput, type AddWindowPreviewInput,
-} from '../addwindow-composer.js';
+} from './addwindow-composer.js';
 import {
     CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS,
     childWindowSchematic, composeAddChildWindow, addchildwindowPreview,
     findAddChildWindowCallAt, parseAddChildWindowCallOnLine,
     type AddChildWindowInput, type AddChildWindowPreviewInput,
-} from '../addchildwindow-composer.js';
+} from './addchildwindow-composer.js';
 import {
     SETOPTS_BITS, BYTE_GROUPS,
     parseVector, parseSetOptsLine, setoptsPreview, getBit, maskChar, rawTail,
     MASK_COMMA_BYTE, MASK_DOT_BYTE,
     type SetOptsSelection, type SetOptsVector,
-} from '../setopts-catalog.js';
+} from './setopts-catalog.js';
 import {
     CVS_BITS, CVS_CHARS_TOOLTIP, decodeCvsCall, cvsPreview,
     type CvsPreviewInput,
-} from '../cvs-composer.js';
+} from './cvs-composer.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }

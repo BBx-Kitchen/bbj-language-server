@@ -14,7 +14,7 @@ import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
 import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
 import { initNotifications, notifyResolvedConfigPath, notifyConfigReloadRequired } from './bbj-notifications.js';
-import { registerComposerRequests } from './composer-commands.js';
+import { registerComposerRequests } from '../composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
 import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
 import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
