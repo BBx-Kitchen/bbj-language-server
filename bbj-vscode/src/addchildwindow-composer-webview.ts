@@ -185,10 +185,12 @@ function applyEdit(edit: vscode.WorkspaceEdit, r: { flagsHex: string; eventHex: 
     const uri = vscode.Uri.parse(target.uri);
     const at = (col: number) => new vscode.Position(target.line, col);
 
-    // Apply insertions right-to-left so the flags insert doesn't shift the event-mask offset
-    // (for addChildWindow the event_mask insert point — after the context — lies to the RIGHT of
-    // the flags insert point — after the title). VS Code applies WorkspaceEdit entries per range,
-    // so distinct positions are safe in either order; ranges are computed from the same line text.
+    // Order doesn't matter here: every edit.replace/edit.insert call added to this WorkspaceEdit
+    // is computed against the document's original (pre-edit) offsets and applied together, not
+    // sequentially in call order, so the event-mask edit can never shift the flags offset (or vice
+    // versa) no matter which one is added first. (Contrast the IntelliJ counterpart,
+    // ComposerLauncher.applyHexEdit, which mutates one shared Document via sequential
+    // doc.replaceString() calls and genuinely must sort by descending offset.)
     if (r.eventHex !== null) {
         if (target.eventMaskRange) {
             edit.replace(uri, new vscode.Range(at(target.eventMaskRange[0]), at(target.eventMaskRange[1])), r.eventHex);
