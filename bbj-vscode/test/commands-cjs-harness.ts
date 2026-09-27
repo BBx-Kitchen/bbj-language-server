@@ -26,6 +26,7 @@
 
 import { createRequire, registerHooks, type ResolveHookSync, type LoadHookSync } from 'module';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { vi, type Mock } from 'vitest';
 import { formatArgvForLog as realFormatArgvForLog } from '../src/Commands/process-runner.js';
 import type { Argv } from '../src/Commands/process-args.js';
@@ -138,6 +139,20 @@ interface ConfigPathCacheModule {
 let cached: { Commands: CommandsModule; configPathCache: ConfigPathCacheModule } | undefined;
 let hooksRegistered = false;
 
+/**
+ * Module URLs known to be reachable from `Commands.cjs`'s own require tree
+ * (WR-02). Seeded with `Commands.cjs`'s own file URL by `loadCommands()` before
+ * any resolution happens; every URL the `.ts`/extensionless fallback below
+ * successfully resolves to -- and every URL Node's own default resolution
+ * succeeds on when the requester is already in this set -- is added too, so the
+ * fallback follows `Commands.cjs`'s actual dependency graph (however many
+ * `.ts` files deep) without ever firing for an unrelated relative import
+ * elsewhere in the same worker process, which would otherwise risk silently
+ * redirecting an unrelated extensionless/`.js`-suffixed specifier to a
+ * coincidentally-named `.ts` file for the rest of the worker's life.
+ */
+const commandsTreeUrls = new Set<string>();
+
 const resolve: ResolveHookSync = (specifier, context, nextResolve) => {
     if (specifier === 'vscode') {
         return { url: VSCODE_SHIM_URL, shortCircuit: true };
@@ -145,20 +160,29 @@ const resolve: ResolveHookSync = (specifier, context, nextResolve) => {
     if (specifier === './process-runner' && context.parentURL?.endsWith('/Commands/Commands.cjs')) {
         return { url: PROCESS_RUNNER_SHIM_URL, shortCircuit: true };
     }
+    const parentInTree = context.parentURL !== undefined && commandsTreeUrls.has(context.parentURL);
     try {
-        return nextResolve(specifier, context);
+        const result = nextResolve(specifier, context);
+        if (parentInTree) {
+            commandsTreeUrls.add(result.url);
+        }
+        return result;
     } catch (err) {
         const isRelative = specifier.startsWith('./') || specifier.startsWith('../');
-        if (isRelative) {
+        if (isRelative && parentInTree) {
             if (!/\.[a-zA-Z0-9]+$/.test(specifier)) {
                 try {
-                    return nextResolve(`${specifier}.ts`, context);
+                    const result = nextResolve(`${specifier}.ts`, context);
+                    commandsTreeUrls.add(result.url);
+                    return result;
                 } catch {
                     // fall through to rethrow below
                 }
             } else if (specifier.endsWith('.js')) {
                 try {
-                    return nextResolve(`${specifier.slice(0, -3)}.ts`, context);
+                    const result = nextResolve(`${specifier.slice(0, -3)}.ts`, context);
+                    commandsTreeUrls.add(result.url);
+                    return result;
                 } catch {
                     // fall through to rethrow below
                 }
@@ -209,6 +233,18 @@ const load: LoadHookSync = (url, context, nextLoad) => {
  * with these tests) through the `registerHooks` shim above. Idempotent: the hooks
  * are registered once per worker, and the same `{ Commands, configPathCache }` pair
  * is returned on every call.
+ *
+ * IMPORTANT (WR-02): `node:module`'s `registerHooks` has no matching unregister call
+ * anywhere in Node's API, so once this runs, the `resolve`/`load` pair above
+ * intercepts **every** subsequent `require()`/native ESM resolution in this worker
+ * process for the rest of its life -- not just calls made while loading
+ * `Commands.cjs`, and not just for the duration of this test file. Under the
+ * project's own `--maxWorkers=2` whole-suite run, other unrelated test files
+ * execute in the same worker process after this one and are silently subject to
+ * these hooks too. The `vscode` and `./process-runner` shims are intentionally
+ * global matches (any native `require('vscode')` in the worker should see the
+ * fake); the `.ts`/extensionless fallback branch is scoped to `commandsTreeUrls`
+ * specifically to shrink this permanent, process-wide blast radius.
  */
 export function loadCommands(): { Commands: CommandsModule; configPathCache: ConfigPathCacheModule } {
     if (cached) {
@@ -217,6 +253,10 @@ export function loadCommands(): { Commands: CommandsModule; configPathCache: Con
     if (typeof registerHooks !== 'function') {
         throw new Error('module.registerHooks is unavailable; loading Commands.cjs under vitest needs Node 22.15 or later');
     }
+    // Seed the tree with Commands.cjs's own URL before any resolution happens, so its
+    // top-level `require(...)` calls -- and everything reachable from them -- qualify
+    // for the `.ts`/extensionless fallback in `resolve` above.
+    commandsTreeUrls.add(pathToFileURL(path.resolve(__dirname, '../src/Commands/Commands.cjs')).href);
     if (!hooksRegistered) {
         registerHooks({ resolve, load });
         hooksRegistered = true;
