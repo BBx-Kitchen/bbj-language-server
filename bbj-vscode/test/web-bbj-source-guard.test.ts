@@ -172,3 +172,88 @@ describe('web-bbj-source-guard — failure reporting', () => {
         expect(releaseOneLines).toHaveLength(2);
     });
 });
+
+describe('web-bbj-source-guard — each Enterprise Manager step has its own error label', () => {
+    const STEP_CASES: { label: string; callPattern: RegExp }[] = [
+        { label: 'failed_get_configuration', callPattern: /getRemoteConfiguration\(/i },
+        { label: 'failed_find_application', callPattern: /getApplications\(/i },
+        { label: 'failed_find_application', callPattern: /\.iterator\(/i },
+        { label: 'failed_find_application', callPattern: /\.hasNext\(/i },
+        { label: 'failed_find_application', callPattern: /it!\.next\(/i },
+        { label: 'failed_find_application', callPattern: /currentApp!\.getString\(/i },
+        { label: 'failed_create_application', callPattern: /createApplication\(/i },
+        { label: 'failed_read_session_config', callPattern: /getConfigFileName\(/i },
+        { label: 'failed_commit', callPattern: /\.commit\(/i },
+        { label: 'failed_get_url', callPattern: /getDwcUrl\(/i },
+        { label: 'failed_get_url', callPattern: /getBuiUrl\(/i },
+        { label: 'failed_browse', callPattern: /\.browse\(/i }
+    ];
+
+    test.each(STEP_CASES)('every line calling $callPattern carries err=$label', ({ label, callPattern }) => {
+        const matchingLines = lines.filter((line) => callPattern.test(line));
+        expect(matchingLines.length).toBeGreaterThan(0);
+        const errPattern = new RegExp(`err\\s*=\\s*${label}\\b`, 'i');
+        for (const line of matchingLines) {
+            expect(line).toMatch(errPattern);
+        }
+    });
+
+    const SEVEN_LABELS = [
+        'failed_get_configuration',
+        'failed_find_application',
+        'failed_create_application',
+        'failed_read_session_config',
+        'failed_commit',
+        'failed_get_url',
+        'failed_browse'
+    ];
+
+    test('each of the seven labels is defined exactly once, and its block has one non-empty failedStep$ assignment and a goto report_failure, with no MSGBOX and no release', () => {
+        for (const label of SEVEN_LABELS) {
+            const definitionCount = lines.filter((line) => new RegExp(`^\\s*${label}:\\s*$`, 'i').test(line)).length;
+            expect(definitionCount).toBe(1);
+
+            const block = labelBlockLines(stripped, label).join('\n');
+            const assignments = block.match(/failedStep\$\s*=\s*"[^"]+"/g) ?? [];
+            expect(assignments).toHaveLength(1);
+            expect(block).toMatch(/goto\s+report_failure/i);
+            expect(block).not.toMatch(/MSGBOX\(/i);
+            expect(block).not.toMatch(/\brelease\b/i);
+        }
+    });
+
+    test('the seven step texts are pairwise different, and each names its EM call in parentheses', () => {
+        const texts = SEVEN_LABELS.map((label) => {
+            const block = labelBlockLines(stripped, label).join('\n');
+            const match = block.match(/failedStep\$\s*=\s*"([^"]+)"/);
+            expect(match).not.toBeNull();
+            return match![1];
+        });
+        expect(new Set(texts).size).toBe(texts.length);
+        for (const text of texts) {
+            expect(text).toMatch(/\([a-zA-Z/]+\)$/);
+        }
+    });
+
+    test('no setString( or setBoolean( line carries err=', () => {
+        const setterLines = lines.filter((line) => /setString\(|setBoolean\(/i.test(line));
+        expect(setterLines.length).toBeGreaterThan(0);
+        for (const line of setterLines) {
+            expect(line).not.toMatch(/err\s*=/i);
+        }
+    });
+
+    test('the URL lookup no longer uses iff(isDWC!, ...)', () => {
+        expect(stripped).not.toMatch(/iff\(isDWC!/i);
+    });
+
+    test('the file still contains exactly two MSGBOX calls, and the success-path release after browse is unchanged', () => {
+        const msgboxLines = lines.filter((line) => /MSGBOX\(/i.test(line));
+        expect(msgboxLines).toHaveLength(2);
+
+        const browseIndex = lines.findIndex((line) => /\.browse\(/i.test(line));
+        expect(browseIndex).toBeGreaterThan(-1);
+        const bareReleaseIndex = lines.findIndex((line) => /^\s*release\s*$/i.test(line));
+        expect(bareReleaseIndex).toBeGreaterThan(browseIndex);
+    });
+});
