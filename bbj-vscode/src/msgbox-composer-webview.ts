@@ -316,8 +316,9 @@ function getHtml(webview: vscode.Webview): string {
     <div class="error" id="title-error"></div>
   </div>
   <div class="row" id="assignTo-row">
-    <label for="assignTo">Assign result to (optional)</label>
+    <label for="assignTo">Assign result to</label>
     <input type="text" id="assignTo">
+    <div class="error" id="assignTo-error"></div>
   </div>
 
   <div class="row">
@@ -441,8 +442,10 @@ function getHtml(webview: vscode.Webview): string {
       $('message-error').textContent = m.messageError || '';
       $('title-error').textContent = m.titleError || '';
       $('custom-error').textContent = m.customError || '';
+      $('assignTo-error').textContent = m.assignToError || '';
       $('message').classList.toggle('invalid', !!m.messageError);
       $('title').classList.toggle('invalid', !!m.titleError);
+      $('assignTo').classList.toggle('invalid', !!m.assignToError);
       $('insert').disabled = !m.valid;
       // schematic dialog
       const r = m.render;

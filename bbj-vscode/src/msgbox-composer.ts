@@ -325,6 +325,68 @@ export function validateStringField(text: string, opts: { required?: boolean } =
     return { ok: true };
 }
 
+/**
+ * Validate an `assignTo` target: the variable (or array element) a composed call's result is
+ * assigned into. Layers presence (required whenever the field is shown, see {@link msgboxPreview}
+ * and `cvsPreview`), then a structural check that the trimmed text is exactly one ASCII
+ * identifier, an optional single result-type sigil, and an optional one `[...]` subscript that
+ * ends the text with nothing else around it — no quotes, operators, `=`, `;`/`:` separators, or
+ * whitespace between the parts. `resultType` picks the accepted sigils: a numeric result
+ * (`'number'`, e.g. MSGBOX) accepts no sigil, `!`, or `%`; a string result (`'string'`, e.g. CVS())
+ * requires `$` or `!`. A subscript's own content is re-checked with {@link validateBbjExpression}
+ * (issue #626).
+ */
+export function validateAssignTo(text: string, resultType: 'number' | 'string'): { ok: boolean; message?: string } {
+    const t = text.trim();
+    if (t === '') {
+        return { ok: false, message: 'Required' };
+    }
+    const fail = {
+        ok: false,
+        message: resultType === 'number'
+            ? 'Not a numeric or object variable — e.g. ret, ret! or r[1]'
+            : 'Not a string or object variable — e.g. s$, s! or s$[1]',
+    };
+
+    const identMatch = /^[A-Za-z_][A-Za-z0-9_]*/.exec(t);
+    if (!identMatch) {
+        return fail;
+    }
+    let rest = t.slice(identMatch[0].length);
+
+    const allowedSuffixes = resultType === 'number' ? ['!', '%'] : ['$', '!'];
+    let suffix = '';
+    if (rest.length > 0 && /[!$%]/.test(rest[0])) {
+        suffix = rest[0];
+        rest = rest.slice(1);
+        if (!allowedSuffixes.includes(suffix)) {
+            return fail;
+        }
+    }
+    if (resultType === 'string' && suffix === '') {
+        return fail; // a string target always needs a $/! sigil — a bare name is a numeric variable
+    }
+
+    if (rest === '') {
+        return { ok: true };
+    }
+    if (rest[0] !== '[' || rest[rest.length - 1] !== ']') {
+        return fail;
+    }
+    const inner = rest.slice(1, -1);
+    if (/["\;:=[\]]/.test(inner)) {
+        return fail;
+    }
+    const innerTrimmed = inner.trim();
+    if (innerTrimmed === '') {
+        return fail;
+    }
+    if (!validateBbjExpression(innerTrimmed, { required: true }).ok) {
+        return fail;
+    }
+    return { ok: true };
+}
+
 /** Human display text for an expression: a `"..."` literal becomes its content, anything else is shown as-is. */
 export function expressionDisplayText(expr: string): string {
     const t = (expr ?? '').trim();
@@ -356,7 +418,12 @@ export function buttonLabels(buttonSet: number, customButtons: string[] = []): s
 export interface MsgboxPreviewInput {
     message: string;
     title: string;
-    assignTo?: string;
+    /**
+     * The assign-to target text. Present but empty/whitespace-only on a new insert with nothing
+     * typed yet; `undefined` or `null` when the field is hidden (edit mode or completing mode) —
+     * see {@link msgboxPreview}'s `assignToError`/`valid` computation.
+     */
+    assignTo?: string | null;
     buttonSet: number;
     icon: number;
     defaultButton: number;
@@ -380,6 +447,8 @@ export interface MsgboxPreview {
     messageError?: string;
     titleError?: string;
     customError?: string;
+    /** Set only when the assign-to field is shown (a new insert) and its text fails {@link validateAssignTo}. */
+    assignToError?: string;
     valid: boolean;
     render: { title: string; message: string; icon: number; buttons: string[]; defaultIndex: number };
 }
@@ -400,6 +469,13 @@ export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
     const firstBadButton = cleanCustom.map(b => validateStringField(b)).find(v => !v.ok);
     const customOk = !isCustom || (cleanCustom.length > 0 && !firstBadButton);
 
+    // The assign-to field is shown only on a new insert (not edit mode, and completing mode
+    // passes assignTo undefined/null itself, see msgbox-composer-webview.ts). Hidden means no
+    // check runs at all — it must never disable Insert/Apply for a field the user cannot see.
+    const assignToShown = input.editMode !== true && input.assignTo !== undefined && input.assignTo !== null;
+    const assignToV = assignToShown ? validateAssignTo(input.assignTo!, 'number') : undefined;
+    const assignToTrimmed = assignToShown ? input.assignTo!.trim() : undefined;
+
     const exprText = input.useConstants ? msgboxConstantsExpr(state) : undefined;
     const statement = composeStatement({
         message: input.message || '""',
@@ -407,7 +483,7 @@ export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
         title: input.title || undefined,
         buttons: isCustom ? cleanCustom : undefined,
         trailingArgs: input.trailingArgs,
-        assignTo: input.editMode ? undefined : (input.assignTo || undefined),
+        assignTo: assignToShown ? (assignToTrimmed || undefined) : undefined,
     });
 
     const labels = buttonLabels(state.buttonSet, input.customButtons);
@@ -417,7 +493,8 @@ export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
         messageError: msgV.ok ? undefined : msgV.message,
         titleError: titleV.ok ? undefined : titleV.message,
         customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : (firstBadButton?.message ?? 'Invalid button expression')),
-        valid: msgV.ok && titleV.ok && customOk,
+        assignToError: assignToV && !assignToV.ok ? assignToV.message : undefined,
+        valid: msgV.ok && titleV.ok && customOk && (!assignToV || assignToV.ok),
         render: {
             title: expressionDisplayText(input.title),
             message: expressionDisplayText(input.message),
