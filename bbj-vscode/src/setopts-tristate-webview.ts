@@ -28,6 +28,9 @@ import {
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import {
+    isFiniteInt, isOneOf, isPanelMessage, isPlainObject, PanelMessage,
+} from './webview-message-guard.js';
 
 /**
  * Forwards a JSON-RPC request to the language server. Declared here (rather than in
@@ -70,6 +73,34 @@ interface PanelTriStateSelection {
     entries: Array<{ byte: number; mask: number; state: SetOptsTriState }>;
 }
 
+const TRI_STATE_VALUES: readonly SetOptsTriState[] = ['set', 'clear', 'leave'];
+
+/** Whether `value` is a well-formed tri-state entry: `byte`/`mask` are finite integers and
+ * `state` is one of the three {@link SetOptsTriState} values. */
+function isTriStateEntry(value: unknown): value is { byte: number; mask: number; state: SetOptsTriState } {
+    return isPlainObject(value)
+        && isFiniteInt(value.byte)
+        && isFiniteInt(value.mask)
+        && isOneOf(value.state, TRI_STATE_VALUES);
+}
+
+/** Whether `value` is a well-formed {@link PanelTriStateSelection}: `entries` is an array whose
+ * every element is a well-formed tri-state entry. */
+function isTriStateSelection(value: unknown): value is PanelTriStateSelection {
+    return isPlainObject(value) && Array.isArray(value.entries) && value.entries.every(isTriStateEntry);
+}
+
+/** Guards the SETOPTS tristate panel's message before its handler acts on it (#604): the guard
+ * runs before `compose()`/`sender(...)` is ever invoked, so a malformed selection never reaches
+ * the language server. */
+export function isSetOptsTriStatePanelMessage(msg: unknown): msg is PanelMessage<PanelTriStateSelection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'apply', 'cancel'],
+        payloadTypes: ['change', 'apply'],
+        isPayload: isTriStateSelection,
+    });
+}
+
 export function openSetOptsTriStateComposerPanel(
     context: vscode.ExtensionContext,
     arg: SetOptsTriStatePanelArg,
@@ -108,7 +139,8 @@ export function openSetOptsTriStateComposerPanel(
         return await sender(SETOPTS_COMPOSE_TRISTATE_METHOD, params) as SetOptsComposeTriStateResult;
     };
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: PanelTriStateSelection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isSetOptsTriStatePanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({

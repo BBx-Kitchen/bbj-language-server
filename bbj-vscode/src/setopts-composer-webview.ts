@@ -21,6 +21,9 @@ import {
 import { getNonce } from './webview-nonce.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import {
+    isPanelMessage, isPlainObject, isString, isStringArray, PanelMessage,
+} from './webview-message-guard.js';
 
 export interface SetOptsEditTarget {
     uri: string;
@@ -63,6 +66,24 @@ interface PanelSelection {
     rawTail: string;
 }
 
+/** Whether `value` is a well-formed {@link PanelSelection}: every field has its declared runtime type. */
+function isSetOptsSelection(value: unknown): value is PanelSelection {
+    return isPlainObject(value)
+        && isStringArray(value.checked)
+        && isString(value.maskComma)
+        && isString(value.maskDot)
+        && isString(value.rawTail);
+}
+
+/** Guards the config.bbx SETOPTS panel's message before its handler acts on it (#604). */
+export function isSetOptsPanelMessage(msg: unknown): msg is PanelMessage<PanelSelection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'apply', 'cancel'],
+        payloadTypes: ['change', 'apply'],
+        isPayload: isSetOptsSelection,
+    });
+}
+
 export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: SetOptsPanelArg): void {
     const target = arg.target;
     const editMode = !!target;
@@ -90,7 +111,8 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
 
     const build = (sel: PanelSelection) => setoptsPreview(original, toSelection(sel));
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: PanelSelection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isSetOptsPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
