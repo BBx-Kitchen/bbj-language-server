@@ -590,7 +590,7 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 9/13 plans executed
+**Plans:** 10/13 plans executed
 
 Plans:
 **Wave 1**
@@ -613,7 +613,7 @@ Plans:
 - [x] 114-04-PLAN.md — issue447: definitive wire-observed capability test, live forced fallback through the `wrapSocket` seam, hermetic forced fallback (FIX-04) (wave 4)
 - [x] 114-08-PLAN.md — Lint plan C: the test hand fixes plus the same files' type errors; `npm run lint` at zero (TEST-01, TEST-02) (wave 4)
 - [x] 114-09-PLAN.md — Type fixes: fakes, mocks and fixtures in 16 test files (TEST-02) (wave 4)
-- [ ] 114-10-PLAN.md — Type fixes: diagnostic-message reads, part A (6 files) (TEST-02) (wave 4)
+- [x] 114-10-PLAN.md — Type fixes: diagnostic-message reads, part A (6 files) (TEST-02) (wave 4)
 - [ ] 114-11-PLAN.md — Type fixes: diagnostic-message reads and narrowing, part B (17 files) (TEST-02) (wave 4)
 - [ ] 114-12-PLAN.md — Type fixes: Node built-in namespace imports, .js suffixes, composer UI fakes (24 files) (TEST-02) (wave 4)
 
@@ -841,7 +841,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 9/13 | Not started |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 10/13 | Not started |  |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
