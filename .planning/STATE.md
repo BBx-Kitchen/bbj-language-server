@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
-stopped_at: Completed 114-08-PLAN.md
-last_updated: "2026-09-27T20:13:27.089Z"
+stopped_at: Completed 114-09-PLAN.md
+last_updated: "2026-09-27T20:31:17.039Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 01f69fcfa863fe58ca8a42534b24f4fbde2b1465
+state_head: 87cb9fccd2f24f5b804e89cc634fb7a6dc53f0c2
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 32
+  completed_plans: 33
   percent: 31
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -151,6 +151,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P07 | 27min | 3 tasks | 7 files |
 | Phase 114 P04 | 24min | 2 tasks | 1 files |
 | Phase 114 P08 | 13min | 2 tasks | 10 files |
+| Phase 114 P09 | 16min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,8 @@ decisions:
 - [Phase 114]: 114-07: commands-cjs-harness.ts's CommandsModule/ConfigPathCacheModule interfaces typed with the tests' own call shapes (setResolvedConfigPath narrowed to {path, exists} rather than the full production ResolvedConfigPathResult); fakeVscode/fakeProcessRunner fakes given real parameter lists so mock.calls tuples type-check, closing the largest single test-tree error concentration (399 -> 300 errors) with no assertion changes
 - [Phase 114]: 114-04: WireRecordingInteropService overrides the protected wrapSocket seam to judge issue447's live capability from the wire and force the real fallback, replacing the tautological hasCompleteClassIndex assertion — RESEARCH Open Question 1, option b: reuses the existing test seam already used by fake-interop-peer.ts, exercises the real MethodNotFound detection instead of bypassing it, and needs zero src/ changes
 - [Phase 114]: 114-08: lint plan C closed the remaining 18+2 test-file lint findings and their overlapping type errors in one pass across ten files (NormalizedTextDocuments<TextDocument> generics, Diagnostic.getMessageString, createRequire(import.meta.url) loader, namespace Node-builtin imports, JavadocProviderUnderTest's forwarded lazyLoad param, rounded-out in-memory FileSystemProvider fakes) — npm run lint now exits 0 for the whole tree
+- [Phase 114]: 114-09: config-reload-host.test.ts's Mock-shaped fake target type is declared standalone, not intersected with RestartTarget (intersecting a shared property name across an interface and an object-literal type combines both declared types, producing an unsatisfiable target); overrides is retyped to match
+- [Phase 114]: 114-09: logger.test.ts's debug=false case wraps the literal in Boolean(false), not a : boolean annotation alone -- TS control-flow analysis narrows a never-reassigned const to its own literal type at use sites regardless of an explicit widening annotation
 
 ### Tech Debt
 
@@ -289,8 +292,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T20:13:23.041Z
-Stopped at: Completed 114-08-PLAN.md
+Last session: 2026-09-27T20:31:16.781Z
+Stopped at: Completed 114-09-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
