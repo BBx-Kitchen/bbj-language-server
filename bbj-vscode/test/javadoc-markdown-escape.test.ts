@@ -563,6 +563,37 @@ describe('Java completion documentation is escaped and fence-safe (issue #524)',
         }
     });
 
+    test('the trailing BASIS Docs link in Java completion documentation stays a clickable link, while other link syntax stays escaped', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        const originalDocu = put!.docu;
+
+        const rawJavadoc = 'See [click](https://evil.example). ' + REAL_IS_PAGING_TAIL;
+        put!.docu = {
+            $type: 'DocumentationInfo',
+            $container: put!,
+            javadoc: rawJavadoc,
+            signature: 'Object HashMap.put()'
+        } as DocumentationInfo;
+
+        try {
+            const items = await dotComplete('declare java.util.HashMap h!\nh!.', 'file:///completion-escape-docs-link.bbj');
+            const putItem = items.find(i => i.label.startsWith('put'));
+            expect(putItem).toBeDefined();
+            const doc = putItem!.documentation as { kind: string, value: string };
+            expect(doc?.value).toBeDefined();
+            expect(doc.value.endsWith(IS_PAGING_DOCS_LINK)).toBe(true);
+            expect(doc.value).toContain('\\[click\\]\\(https://evil.example\\)');
+            expect(hasInterpretableLinkOrImage(doc.value.slice(0, doc.value.length - IS_PAGING_DOCS_LINK.length))).toBe(false);
+            const fenceRuns = doc.value.match(/```/g) ?? [];
+            expect(fenceRuns.length).toBe(2);
+        } finally {
+            put!.docu = originalDocu;
+        }
+    });
+
     test('a BBj class method keeps its REM /** */ link unescaped in completion documentation', async () => {
         const items = await dotComplete(`
 class public Doc

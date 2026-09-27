@@ -10,7 +10,7 @@ import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConst
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
-import { escapeMarkdown, isJavaQualifiedName, toFenceSafeLine } from "./java-peer-guard.js";
+import { escapeJavadocMarkdown, escapeMarkdown, isJavaQualifiedName, toFenceSafeLine } from "./java-peer-guard.js";
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
 import { logger } from "./logger.js";
@@ -816,14 +816,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 const node = nodeDescription.node;
                 if (isDocumented(node) && node.docu) {
                     // Render-boundary treatment (issue #524): the fenced signature is made
-                    // fence-safe (no backslash-escaping inside a fence), the javadoc part is
-                    // Markdown-escaped so link/image syntax renders literally.
+                    // fence-safe (no backslash-escaping inside a fence), the javadoc part
+                    // keeps its one trailing BASIS documentation link clickable and is
+                    // otherwise Markdown-escaped so link/image syntax renders literally.
                     const parts: string[] = [];
                     if (node.docu.signature) {
                         parts.push(`\`\`\`java\n${toFenceSafeLine(node.docu.signature)}\n\`\`\``);
                     }
                     if (node.docu.javadoc) {
-                        parts.push(escapeMarkdown(node.docu.javadoc));
+                        parts.push(escapeJavadocMarkdown(node.docu.javadoc));
                     }
                     if (parts.length > 0) {
                         superImpl.documentation = { kind: 'markdown', value: parts.join('\n\n') };

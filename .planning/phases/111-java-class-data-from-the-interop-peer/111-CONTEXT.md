@@ -75,6 +75,12 @@ the `JavaInteropService` split (Phase 121), fake-socket tests (Phase 116).
   contains HTML tags (3,081 of 3,910 documented members), and VS Code already strips raw HTML in hovers
   (`supportHtml` off), so escaping `<` would only show literal tags. Whether IntelliJ/LSP4IJ renders
   raw HTML such as `<img src=…>` is checked in UAT; if it does, revisit.
+  **Amended by the user (2026-09-27, UAT gap G-111-2):** the one trailing
+  `[Docs](https://documentation.basis.cloud/…)` link that BASIS ships at the end of each documented
+  member in the installed javadoc stays a clickable link in hover and completion.
+  `escapeJavadocMarkdown` in `java-peer-guard.ts` exempts only that exact shape at the very end. Every
+  other link, including image syntax, lookalike hosts and a link cut by truncation, stays escaped.
+  Signatures and headers are escaped in full, as before.
 - **D-07:** What gets escaped: every string that comes from the peer or from Java javadoc and ends up
   in hover `contents` or completion `documentation`. That covers the output of `tryParseJavaDoc`
   (both copies: `bbj-hover.ts` and the one in `java-interop.ts`), `node.docu.javadoc`, the
