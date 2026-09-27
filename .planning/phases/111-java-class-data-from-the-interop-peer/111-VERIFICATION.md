@@ -1,7 +1,7 @@
 ---
 phase: 111-java-class-data-from-the-interop-peer
 verified: 2026-09-27T05:20:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -13,6 +13,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "Build both extensions (VS Code VSIX, IntelliJ plugin) from the final tree and hover a documented Java member that ends with the BASIS Docs link (e.g. `BBjGrid.isPaging`) in both editors"
     expected: "The trailing 'Docs' text at the end of the javadoc renders as a clickable hyperlink to documentation.basis.cloud in both editors; raw HTML markup and any other link/image syntax in the javadoc still show as literal text, with no remote resource loading"
     why_human: "Markdown-to-UI rendering (which text becomes a clickable hyperlink, whether raw HTML renders or stays literal) happens client-side in each IDE; not observable from server-side code or unit tests. This is the outstanding re-test of UAT test 2 after gap-closure plan 111-07; the raw-HTML part of test 2 was already confirmed OK by the user in IntelliJ, only the Docs-link fix itself remains to be re-confirmed visually"
@@ -117,6 +118,7 @@ Note: `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` still show SEC-03/S
 No debt markers (`TBD`/`FIXME`/`XXX`), warning markers (`TODO`/`HACK`/`PLACEHOLDER`), or stub patterns found in `java-peer-guard.ts`, `bbj-hover.ts`, `bbj-completion-provider.ts`, or `javadoc-markdown-escape.test.ts` (the files 111-07 modified). No planning identifiers (`D-NN`, `SEC-/FIX- ids`, `111-0N` plan numbers, `G-111-N` gap ids, `CR-/WR-/IN-NN`, `T-111-NN`) appear in the source/test diff between `ead3144c` and `HEAD`.
 
 One code-review **Warning** remains open, carried forward unchanged from the prior verification and confirmed still accurate by `111-REVIEW.md`'s third pass (`status: issues_found`, `warning: 1`):
+
 - **WR-01** (no bound on member/parameter array *counts*, only string lengths): explicitly assessed and accepted by this phase's own threat model in `111-01-PLAN.md`'s `T-111-05`, re-affirmed unchanged in `111-06-PLAN.md`. Untouched by 111-07. This is a documented, deliberate scope decision, not an unaddressed gap or must-have failure.
 
 111-07's own threat register (`T-111-27` through `T-111-30`) is all "mitigate"/"accept" at medium-or-lower severity (spoofing via lookalike link, tampering via partial/extra links, regex denial-of-service, page-choice spoofing) — none rated high, none open as an unmitigated finding; `111-REVIEW.md`'s third pass independently confirms the mitigations (anchored pattern, ASCII-only path charset, single-match `exec` with no `g` flag, sub-millisecond timing on the full javadoc corpus and a pathological 35,750-character input at planning time).
