@@ -1,7 +1,7 @@
 import { DocumentValidator, EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';

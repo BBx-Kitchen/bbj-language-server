@@ -1,9 +1,9 @@
 import { DocumentValidator, EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { spawnSync } from 'node:child_process';
-import { DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Model } from '../src/language/generated/ast.js';
@@ -149,7 +149,7 @@ describe('Examples compile Tests', async () => {
                     const match = result.diagnostics.find(d =>
                         d.range.start.line + 1 === expected.line &&
                         d.severity === expectedSeverity &&
-                        (d.message ?? '').includes(expected.messageFragment)
+                        Diagnostic.getMessageString(d).includes(expected.messageFragment)
                     );
                     expect(match, `${file}: expected diagnostic not found -- line ${expected.line}, "${expected.messageFragment}"`).toBeTruthy();
                 }

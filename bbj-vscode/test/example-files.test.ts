@@ -1,7 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Model } from '../src/language/generated/ast.js';

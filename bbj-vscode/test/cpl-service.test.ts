@@ -1,4 +1,4 @@
-import path from 'path';
+import * as path from 'path';
 import { describe, test, expect, vi } from 'vitest';
 import { BBjCPLService } from '../src/language/bbj-cpl-service.js';
 import { logger } from '../src/language/logger.js';
