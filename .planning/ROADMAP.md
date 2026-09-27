@@ -590,7 +590,7 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 5/13 plans executed
+**Plans:** 6/13 plans executed
 
 Plans:
 **Wave 1**
@@ -606,7 +606,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 114-06-PLAN.md — Lint plan B: the 32 src hand fixes, no any and no suppression in src (TEST-01) (wave 3)
-- [ ] 114-07-PLAN.md — Repaired `tsconfig.test.json` and `typecheck:test`; per-file error digest; typed interop test double and Commands.cjs harness (TEST-02) (wave 3)
+- [x] 114-07-PLAN.md — Repaired `tsconfig.test.json` and `typecheck:test`; per-file error digest; typed interop test double and Commands.cjs harness (TEST-02) (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

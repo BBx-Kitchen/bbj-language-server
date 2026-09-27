@@ -6,15 +6,15 @@ current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
 stopped_at: Completed 114-06-PLAN.md
-last_updated: "2026-09-27T18:48:21.546Z"
+last_updated: "2026-09-27T19:23:19.291Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 2c96579773770bdf897e2a8d14d5ed61550afe46
+state_head: 7f5f805314a468ab89c8d42b87dd5de2a137c6af
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 29
+  completed_plans: 30
   percent: 31
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -148,6 +148,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P02 | 41min | 3 tasks | 31 files |
 | Phase 114 P05 | 22min | 3 tasks | 10 files |
 | Phase 114 P06 | 18min | 3 tasks | 15 files |
+| Phase 114 P07 | 27min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,9 @@ decisions:
 - [Phase 114]: 114-02: 28 un-gated test files (production createBBjServices + initializeWorkspace, not gated on shouldRunBBjTests) moved to createBBjTestServices; hookTimeoutSuites=0 across all whole-suite runs, confirming the real Java-interop socket round trip was the hook-timeout cost — D-08/D-09: harness-only fix, no src/ change; no offline fallback needed, every migrated test passes on the double
 - [Phase 114]: 114-05: eslint.config.js spreads tseslint.configs.recommended unwrapped (reaching .cjs too) plus D-01/D-02 overrides; prefer-const autofix landed in 7 files leaving exactly the 51-finding hand-fix list; a new disable-directive guard test rejects file-wide/reason-less lint suppressions
 - [Phase 114]: 114-06: 32 src lint findings from 114-05 fixed by hand (20 no-explicit-any via real/structural types, 9 unused names via optional catch bindings/underscore params, 3 small CST/const/param fixes); npx eslint src --max-warnings 0 is clean, build green — lineBreakMap typed LineBreakConfig<AstNode>[] with per-entry casts on the four helper-built configs, not a union of concrete configs (which broke checkLineBreaks' generic dispatch call); readSimpleName narrows to string|undefined in java-javadoc.ts (feeds .split) but stays unknown in bbj-hover.ts (only template-interpolated)
+- [Phase 114]: 114-07: tsconfig.test.json repaired (extends, noEmit, rootDir ".", noImplicitAny false commented) behind a new typecheck:test script; baseline/typecheck-before.txt committed (399 errors, 76 files, grouped by owning plan); bbj-comment-provider.ts's two comment arrays typed explicitly (string | undefined)[] since evolving-array-type inference for a bare const [] only fires when noImplicitAny is on, and the relaxed test config turned this src file's inferred type into never[]
+- [Phase 114]: 114-07: bbj-test-module.ts's fake Java AST objects rebuilt via typed makeMethod/makeField/makeParameter factories — fixing the $type discriminant (object -> .$type string) unmasked that deprecated/isStatic were silently missing on every method/field object; the factories set both explicitly plus $container on every parameter once its owning method exists
+- [Phase 114]: 114-07: commands-cjs-harness.ts's CommandsModule/ConfigPathCacheModule interfaces typed with the tests' own call shapes (setResolvedConfigPath narrowed to {path, exists} rather than the full production ResolvedConfigPathResult); fakeVscode/fakeProcessRunner fakes given real parameter lists so mock.calls tuples type-check, closing the largest single test-tree error concentration (399 -> 300 errors) with no assertion changes
 
 ### Tech Debt
 
