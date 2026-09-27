@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 111
-current_phase_name: java-class-data-from-the-interop-peer
-status: executing
-stopped_at: Completed 111-06-PLAN.md (gap closure)
-last_updated: "2026-09-27T04:56:12.068Z"
+current_phase: 112
+current_phase_name: EM Login & Web Launch Fail Closed
+status: planning
+stopped_at: Phase 111 complete, ready to plan Phase 112
+last_updated: "2026-09-27T05:22:54.482Z"
 last_activity: 2026-09-27
-last_activity_desc: Phase 111 execution started
-state_head: 001377ab4fe7f2b77609ad29dff6ca531fa8096f
+last_activity_desc: Phase 111 complete, transitioned to Phase 112
+state_head: 5aa2e94881375f272af13b14688702d6c829f7d6
 progress:
   total_phases: 13
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
-  completed_plans: 11
-  percent: 8
+  completed_plans: 12
+  percent: 15
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-26 (Phase 110 complete — UAT 2/2, validated, threat-secure; next Phase 111)
+**Last Updated:** 2026-09-27 (Phase 111 complete — UAT 3/3 after gap closure 111-07, validated, threat-secure; next Phase 112)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-26)
+See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 111 — java-class-data-from-the-interop-peer
+**Current Focus:** Phase 112 — em-login-web-launch-fail-closed
 
 ---
 
 ## Current Position
 
-Phase: 111 (java-class-data-from-the-interop-peer) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 111
-Last activity: 2026-09-27 — Phase 111 execution started
+Phase: 112 — EM Login & Web Launch Fail Closed
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-27 — Phase 111 complete, transitioned to Phase 112
 
-Progress: [█░░░░░░░░░] 8% (1/13 phases)
+Progress: [██░░░░░░░░] 15% (2/13 phases)
 
 ### v4.7 milestone map
 
@@ -130,6 +130,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 111 P04 | 21min | 2 tasks | 3 files |
 | Phase 111 P05 | 12min | 2 tasks | 5 files |
 | Phase 111 P06 | 27min | 2 tasks | 4 files |
+| Phase 111 P07 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,7 @@ decisions:
 - [Phase 111]: 111-04: storeJavaClass's leaf step keeps an existing JavaPackage intact on a colliding class name (defence in depth): the class lands on the classpath fallback instead of overwriting the package; the "has no container" console.error stays for any other genuinely unexpected missing container, not downgraded as the fix
 - [Phase 111]: 111-05: isJavaQualifiedName in java-peer-guard.ts gates both createUseAction and completeAutoImportClasses before either builds a use TextEdit; filtering happens before ranking/indexing so the preferred flag naturally moves to the next valid candidate when the top-ranked one is dropped (SEC-05, #525)
 - [Phase 111]: 111-06: Phase 1 method/constructor parameters defaulted to [] beside the existing fields/methods defaults, closing the absent-parameters Phase 2 crash (SEC-03 gap 1) — Mirrors the javaClass.fields ??= [] precedent already in resolveClass Phase 1
+- [Phase 111 UAT]: G-111-2 — the installed javadoc ends each member with a BASIS `[Docs](https://documentation.basis.cloud/...)` link that SEC-04 escaping turned into literal text. 111-07: escapeJavadocMarkdown keeps exactly one trailing link of that shape clickable (label Docs, https, host documentation.basis.cloud, restricted path); everything else stays escaped. IntelliJ/LSP4IJ shows raw javadoc HTML literally, so leaving `<` unescaped holds.
 - [Phase 111]: 111-06: boundedJavadocName truncates hover's javadoc-file MethodDoc fallback name and each parameter name at MAX_JAVA_IDENTIFIER_LENGTH, falling back to the node's own bounded name on a non-string value (SEC-04/D-02 gap 2) — Closes the one D-02 hover path left unbounded; mirrors the interop path's realName bound
 
 ### Tech Debt
@@ -197,12 +199,14 @@ decisions:
 
 ### Pending Todos
 
-3 pending in `.planning/todos/pending/`, all now scheduled in v4.7:
+4 pending in `.planning/todos/pending/`:
 
 - `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards → FIX-04, Phase 114
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
-- `2026-09-24-unknown-java-member-linking-warning-extras` — deferred extras from VAL-03 → FIX-03, Phase 111
+- `2026-09-26-intellij-interop-initoptions-key-mismatch` — IntelliJ sends javaInteropHost/Port, the server reads interopHost/Port (found in Phase 110; unscheduled)
+- `2026-09-26-signature-help-and-snippet-peer-name-escaping` — transferred threat T-111-15: peer names in the signature-help fence and completion snippet placeholders (unscheduled)
 
+Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111).
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
 
 ### Blockers/Concerns
@@ -241,11 +245,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-26T19:19:48.960Z
-Stopped at: Completed 111-06-PLAN.md (gap closure)
+Last session: 2026-09-27T05:25:00Z
+Stopped at: Phase 111 complete, ready to plan Phase 112
 Resume file: None
 
-Next: `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`.
+Next: `/gsd-discuss-phase 112` or `/gsd-plan-phase 112`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -347,9 +351,9 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-26 after Phase 110. Per-plan metrics and per-phase decision
+*State updated: 2026-09-27 after Phase 111. Per-plan metrics and per-phase decision
 detail for phases 70-109 live with their archived phase artifacts; this file is a digest again.*
 
 ## Operator Next Steps
 
-- Discuss or plan Phase 111 with `/gsd-discuss-phase 111` or `/gsd-plan-phase 111`
+- Discuss or plan Phase 112 with `/gsd-discuss-phase 112` or `/gsd-plan-phase 112`

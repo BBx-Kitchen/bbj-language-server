@@ -407,7 +407,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - Before every push, grep the source diff for planning identifiers (plan/D-xx/CR-xx tokens).
 
 - [x] **Phase 110: Workspace Settings & Filesystem Trust** - The interop host/port, `bbj.configPath`, USE-statement paths, prefix checks, file probes and the formatter's Java binary can no longer point somewhere the user did not choose (completed 2026-09-26)
-- [ ] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message
+- [x] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message (completed 2026-09-27)
 - [ ] **Phase 112: EM Login & Web Launch Fail Closed** - No default EM credentials, a visible error for every failing EM call, undecidable tokens treated as expired, and `Commands.cjs` executed by tests
 - [ ] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each
 - [ ] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups
@@ -471,7 +471,7 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans:** 6/7 plans executed (111-06 closes the two 111-VERIFICATION.md gaps; 111-07 closes UAT gap G-111-2)
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -494,7 +494,7 @@ Plans:
 
 **Gap closure** *(from 111-UAT.md)*
 
-- [ ] 111-07-PLAN.md — The one trailing `[Docs](https://documentation.basis.cloud/…)` link shipped in installed javadoc stays a clickable link in Java hover and completion through a strict allowlist (`escapeJavadocMarkdown`); every other link, lookalike, image or truncated link stays escaped (SEC-04, G-111-2) (wave 1, gap closure)
+- [x] 111-07-PLAN.md — The one trailing `[Docs](https://documentation.basis.cloud/…)` link shipped in installed javadoc stays a clickable link in Java hover and completion through a strict allowlist (`escapeJavadocMarkdown`); every other link, lookalike, image or truncated link stays escaped (SEC-04, G-111-2) (wave 1, gap closure)
 
 *Planning notes:* one shared escape/bound helper can serve SEC-03 and SEC-04. The research traced
 FIX-02's log line to a package/class name collision in `storeJavaClass()`'s `childrenOfByName`

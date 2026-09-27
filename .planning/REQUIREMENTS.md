@@ -12,9 +12,9 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 - [x] **SEC-01**: Interop host and port settings are validated in one shared place before connecting (host is a non-empty string, port is an integer from 1 to 65535). Invalid values fall back to the defaults with a logged warning. (#509, #510)
 - [x] **SEC-02**: A workspace-level `bbj.configPath` is ignored in an untrusted workspace (VS Code Workspace Trust); user-level settings are unaffected (#511)
-- [ ] **SEC-03**: java-interop peer response fields are checked for type and length before they are copied into AST documentation (#523)
-- [ ] **SEC-04**: Hover and completion escape Markdown control characters in javadoc text supplied by the java-interop peer (#524)
-- [ ] **SEC-05**: The missing-USE quick fix and auto-import completion insert a class name only if it matches the Java qualified-identifier pattern (#525)
+- [x] **SEC-03**: java-interop peer response fields are checked for type and length before they are copied into AST documentation (#523)
+- [x] **SEC-04**: Hover and completion escape Markdown control characters in javadoc text supplied by the java-interop peer (#524)
+- [x] **SEC-05**: The missing-USE quick fix and auto-import completion insert a class name only if it matches the Java qualified-identifier pattern (#525)
 - [x] **SEC-06**: USE-statement path resolution rejects a path that resolves outside the configured PREFIX roots (#526)
 - [x] **SEC-07**: `isExternalDocument()` compares paths on segment boundaries, so a sibling directory whose name shares a prefix is classified correctly (#579)
 - [x] **SEC-08**: `isTokenizedFile`/`statSize` do not follow symlinks or read non-regular files (#585)
@@ -28,8 +28,8 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 ### Parser and runtime fixes
 
 - [ ] **FIX-01**: `declare ::lib1::ClassA a; declare ::lib2::ClassB b` on one line parses both declarations, each with its own file-path token and without validation errors (#527)
-- [ ] **FIX-02**: "Java class java.io has no container, packageName: java" is no longer logged; the path by which a bare package name reaches `resolveClass` is traced and fixed (#676)
-- [ ] **FIX-03**: An unresolved-Java-member linking Warning stays visible in a file that has an unrelated Error (it is exempt from diagnostic-hierarchy Rule 2), and the "Could not resolve reference to NamedElement" wording is replaced with a user-facing message (pending todo 2026-09-24)
+- [x] **FIX-02**: "Java class java.io has no container, packageName: java" is no longer logged; the path by which a bare package name reaches `resolveClass` is traced and fixed (#676)
+- [x] **FIX-03**: An unresolved-Java-member linking Warning stays visible in a file that has an unrelated Error (it is exempt from diagnostic-hierarchy Rule 2), and the "Could not resolve reference to NamedElement" wording is replaced with a user-facing message (pending todo 2026-09-24)
 - [ ] **FIX-04**: IntelliJ's Node.js download reports progress without logging IllegalStateException when the response has no Content-Length, and the three weak source-guard tests from the phase 97 review assert real behaviour (pending todo 2026-09-20)
 
 ### Dependencies
@@ -115,9 +115,9 @@ None deferred. Every still-open audit issue is in scope.
 |-------------|-------|--------|
 | SEC-01 | Phase 110 | Complete |
 | SEC-02 | Phase 110 | Complete |
-| SEC-03 | Phase 111 | Gaps Found |
-| SEC-04 | Phase 111 | Gaps Found |
-| SEC-05 | Phase 111 | Gaps Found |
+| SEC-03 | Phase 111 | Complete |
+| SEC-04 | Phase 111 | Complete |
+| SEC-05 | Phase 111 | Complete |
 | SEC-06 | Phase 110 | Complete |
 | SEC-07 | Phase 110 | Complete |
 | SEC-08 | Phase 110 | Complete |
@@ -128,8 +128,8 @@ None deferred. Every still-open audit issue is in scope.
 | SEC-13 | Phase 112 | Pending |
 | SEC-14 | Phase 112 | Pending |
 | FIX-01 | Phase 119 | Pending |
-| FIX-02 | Phase 111 | Gaps Found |
-| FIX-03 | Phase 111 | Gaps Found |
+| FIX-02 | Phase 111 | Complete |
+| FIX-03 | Phase 111 | Complete |
 | FIX-04 | Phase 114 | Pending |
 | DEP-01 | Phase 117 | Pending |
 | DEP-02 | Phase 117 | Pending |

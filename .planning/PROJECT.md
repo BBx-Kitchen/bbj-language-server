@@ -402,6 +402,11 @@ until publication).
 - ✓ **SEC-08**: `isTokenizedFile`/`statSize` do not follow symlinks or read non-regular files (#585) — v4.7 Phase 110
 - ✓ **SEC-09**: The formatter's `java` is configurable (`bbj.formatter.javaPath`, machine scope) and verified before spawn (#605) — v4.7 Phase 110
 - ✓ **REF-02**: Interop host/port defaults defined once (#581) — v4.7 Phase 110
+- ✓ **SEC-03**: java-interop peer response fields are checked for type and length before they reach the AST (#523) — v4.7 Phase 111
+- ✓ **SEC-04**: Hover and completion escape Markdown control characters in peer/javadoc text; only the trailing BASIS Docs link stays clickable (#524) — v4.7 Phase 111
+- ✓ **SEC-05**: The missing-USE quick fix and auto-import completion insert only valid Java qualified names (#525) — v4.7 Phase 111
+- ✓ **FIX-02**: No more "Java class java.io has no container" log line (#676) — v4.7 Phase 111
+- ✓ **FIX-03**: An unresolved Java member Warning stays visible next to an unrelated Error, with a user-facing message — v4.7 Phase 111
 
 ### Active
 
@@ -661,6 +666,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.6 Phase 109: completion and Java class resolution fixed where they go wrong, not by new machinery — one `MemberCall` branch (narrowed by the preceding segment's inferred type) gives FQN references the static-only list; an AstNode-preserving overload candidate feeds only the type inferer; primitive/void/array/blank names build their zero-member result locally; `canonicalJavaClassName` is the one cache key; a METHOD boundary in plain-name lookup hides Program-level variables inside class methods | #577/#556/#561/#660/#659: measuring first showed every method-body completion position already worked (pinned by tests, #561 closed); UAT then found program variables leaking into method scope (G-109-1), which BBj's METHOD docs rule out | ✓ Good — UAT 33/33 incl. the G-109-1 re-test; live cold start showed 0 primitive/double-spelling lookups in 635 requests; bare field names without `#` in a METHOD left as is |
 | v4.6 closed as an override closeout after a `tech_debt` audit with two artifacts acknowledged; phase artifacts archived on-tree; no `v4.6` git tag | Close taken 2026-09-26: 19/19 requirements, 4/4 phases, no gaps. The two open items were a raw evidence log the scanner reads as UAT and a deferred VAL-03 follow-up todo; the G-109-1 debug session was fixed by 109-08 and closed as resolved. Repository tags stay release versions | — Pending (branch not yet merged; release not cut) |
 | v4.7 Phase 110: settings and filesystem trust hardened in five independent modules — `interop-config.ts` (one validator for host/port on every entry point), `path-containment.ts` (lexical, segment-based PREFIX containment for every USE read and `isExternalDocument()`), lstat-first decompile probes with `O_NOFOLLOW`/`O_NONBLOCK`, `formatter-java-resolver.ts` (machine-scoped `bbj.formatter.javaPath`, checked PATH walk, no fallback for a set value), and a Workspace Trust gate for a workspace-scoped `bbj.configPath` | #509-#511, #526, #579, #581, #585, #605. UAT found the formatter "doing nothing" with the setting empty (G-110-1); diagnosis showed the vendored 2021 formatter jar crashes on every block IF under `--single-line-if`, and the crash is only logged — pre-existing, unchanged since 2023 | ✓ Good — UAT 2/2, Nyquist-compliant, threats_open 0; G-110-1 deferred to a separate formatter issue (candidate: move the formatter into bbj-ls behind RPC/MCP) |
+| v4.7 Phase 111: Java class data from the interop peer is bounded, escaped and validated in one module (`java-peer-guard.ts`: length limits, DTO sanitizing, render-boundary Markdown escaping, Java qualified-name check); `resolveClass()` defaults absent parameter lists; a known package name never becomes a class request; unresolved Java members keep a readable Warning | #523-#525, #676. `<` left unescaped by user decision (VS Code strips raw HTML, IntelliJ/LSP4IJ shows it literally — confirmed in UAT). UAT gap: the escaping also killed the BASIS `[Docs](...)` link shipped at the end of installed javadoc; 111-07 exempts exactly one trailing link to `https://documentation.basis.cloud/` | ✓ Good — UAT 3/3 after gap closure, Nyquist-compliant, threats_open 0; review WR-01 (no array-count cap) accepted; signature-help/snippet escaping transferred to a todo |
 
 ## Evolution
 
@@ -680,4 +686,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 after Phase 110*
+*Last updated: 2026-09-27 after Phase 111*
