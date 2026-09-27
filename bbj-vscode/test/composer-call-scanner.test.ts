@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { CallSpan, findCallAt, findCalls, scanArgs, trimmedRange } from '../src/composer-call-scanner';
-import { findMsgboxCalls } from '../src/msgbox-composer';
-import { findCvsCalls } from '../src/cvs-composer';
-import { findAddWindowCalls } from '../src/addwindow-composer';
-import { findAddChildWindowCalls } from '../src/addchildwindow-composer';
+import { CallSpan, findCallAt, findCalls, scanArgs, trimmedRange } from '../src/composer-call-scanner.js';
+import { findMsgboxCalls } from '../src/msgbox-composer.js';
+import { findCvsCalls } from '../src/cvs-composer.js';
+import { findAddWindowCalls } from '../src/addwindow-composer.js';
+import { findAddChildWindowCalls } from '../src/addchildwindow-composer.js';
 
 describe('composer-call-scanner (#534)', () => {
     describe('scanArgs', () => {

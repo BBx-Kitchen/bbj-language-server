@@ -5,9 +5,9 @@ import {
     composeAddChildWindow, addchildwindowPreview, AddChildWindowPreviewInput,
     parseAddChildWindowCallOnLine, findAddChildWindowCallAt,
     encodeBits, bitsSet, unknownBits,
-} from '../src/addchildwindow-composer';
-import { findAddWindowCalls } from '../src/addwindow-composer';
-import { findAddChildWindowCalls } from '../src/addchildwindow-composer';
+} from '../src/addchildwindow-composer.js';
+import { findAddWindowCalls } from '../src/addwindow-composer.js';
+import { findAddChildWindowCalls } from '../src/addchildwindow-composer.js';
 
 describe('addChildWindow composer logic (#473)', () => {
     test('catalog covers the documented child-window bits and has unique single bits', () => {

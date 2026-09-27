@@ -2,7 +2,7 @@ import { DocumentValidator, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { describe, expect, test, vi } from 'vitest';
 import { CodeAction, CodeActionParams, Diagnostic } from 'vscode-languageserver';
-import { createBBjTestServices } from './bbj-test-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 
 const services = createBBjTestServices(EmptyFileSystem);

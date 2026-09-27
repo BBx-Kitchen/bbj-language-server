@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { CompletionList, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { describe, expect, test, vi, afterEach } from 'vitest';
-import { createBBjTestServices } from './bbj-test-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { parseFilePathCompletionContext, parseRunCallFilePathContext } from '../src/language/bbj-completion-provider.js';
 import { Model } from '../src/language/generated/ast.js';
 

@@ -26,7 +26,32 @@ const {
         constructor(public line: number, public character: number) { }
     }
     class FakeRange {
-        constructor(public startLine: number, public startCharacter: number, public endLine: number, public endCharacter: number) { }
+        startLine: number;
+        startCharacter: number;
+        endLine: number;
+        endCharacter: number;
+        // vscode.Range has two constructor forms: four numbers, or two Positions. Widened here to
+        // accept both -- called with either (line, char, line, char) or (Position, Position,
+        // undefined, undefined) -- while still storing the same four numeric fields either way, so
+        // every existing toEqual comparison against this class is unchanged.
+        constructor(
+            startLineOrStart: number | InstanceType<typeof FakePosition>,
+            startCharacterOrEnd: number | InstanceType<typeof FakePosition>,
+            endLine?: number,
+            endCharacter?: number
+        ) {
+            if (startLineOrStart instanceof FakePosition && startCharacterOrEnd instanceof FakePosition) {
+                this.startLine = startLineOrStart.line;
+                this.startCharacter = startLineOrStart.character;
+                this.endLine = startCharacterOrEnd.line;
+                this.endCharacter = startCharacterOrEnd.character;
+            } else {
+                this.startLine = startLineOrStart as number;
+                this.startCharacter = startCharacterOrEnd as number;
+                this.endLine = endLine as number;
+                this.endCharacter = endCharacter as number;
+            }
+        }
     }
     class FakeWorkspaceEdit {
         insert = vi.fn();
