@@ -1075,7 +1075,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     async addImportedBBjDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken) {
         const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
-        let prefixes = bbjWsManager.getSettings()?.prefixes;
+        const prefixes = bbjWsManager.getSettings()?.prefixes;
         if (!prefixes) {
             return
         }

@@ -230,7 +230,7 @@ function elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
 
 function ifEndStatementLineBreaks(): LineBreakConfig<IfEndStatement> {
     const mask = (node: IfEndStatement) => {
-        let lineBreaks = { before: false, after: false, both: true };
+        const lineBreaks = { before: false, after: false, both: true };
         let openIfs = 0;
         let prev = previousStatement(node);
         while (isSingleStatement(prev) && isSameLine(prev, node)) {

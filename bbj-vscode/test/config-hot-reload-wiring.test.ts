@@ -165,7 +165,7 @@ describe('config-watcher quiescence wait: a reload is never pushed while the bui
     }
 
     test('with the predicate held true, advancing past the debounce and several polls emits zero notifications', () => {
-        let pending = true;
+        const pending = true;
         const { records, notify, setContents } = setup('PREFIX /a/b/\n', () => pending);
         setContents('PREFIX /c/d/\n');
 

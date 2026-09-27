@@ -161,7 +161,7 @@ export const DocumentFormatter = {
         return reject(new FormatterArtifactError(`Formatter java executable resolution failed: ${message}`));
       }
 
-      let t0 = Date.now();
+      const t0 = Date.now();
       let stdout = '';
       let stderr = '';
 
@@ -183,7 +183,7 @@ export const DocumentFormatter = {
           return reject(stderr);
         }
 
-        let timeTaken = Date.now() - t0;
+        const timeTaken = Date.now() - t0;
         if (timeTaken > 750) {
           logger.warn(`Formatting took too long (${timeTaken}ms). Format On Save feature could be aborted.`);
         }

@@ -44,7 +44,7 @@ const {
     };
 });
 
-let activeTextEditor: unknown = {
+const activeTextEditor: unknown = {
     document: {
         uri: { toString: () => 'file:///a.bbj' },
         lineAt: (_line: number) => ({ text: '' }),
@@ -53,7 +53,7 @@ let activeTextEditor: unknown = {
     selection: { active: { line: 0, character: 0 } },
 };
 
-let textDocuments: unknown[] = [];
+const textDocuments: unknown[] = [];
 
 vi.mock('vscode', () => ({
     window: {

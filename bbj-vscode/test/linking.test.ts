@@ -12,7 +12,7 @@ const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    let isInteropRunning: boolean = await shouldRunBBjTests();
+    const isInteropRunning: boolean = await shouldRunBBjTests();
 
     beforeAll(async () => {
         await initializeWorkspace(services.shared);

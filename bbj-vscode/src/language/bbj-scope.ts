@@ -518,7 +518,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
         const document = AstUtils.getDocument(bbjType)
         const typeScope = document?.localSymbols?.getStream(bbjType).toArray()
-        let descriptions: AstNodeDescription[] = []
+        const descriptions: AstNodeDescription[] = []
         if (typeScope) {
             descriptions.push(...typeScope.filter((member: AstNodeDescription) => !methodsOnly || member.type === MethodDecl.$type))
         }
