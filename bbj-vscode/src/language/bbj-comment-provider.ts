@@ -34,7 +34,8 @@ export class BBjCommentProvider implements CommentProvider {
             const fromOffset = node.$containerIndex === 0 ? clazz.$cstNode?.offset : clazz.members[node.$containerIndex! - 1].$cstNode?.end;
             const comments = []
             for (const comment of clazz.comments ?? []) {
-                if (comment.$cstNode?.offset! < untilOffset! && comment.$cstNode?.end! > fromOffset!) {
+                const commentCstNode = comment.$cstNode;
+                if (commentCstNode !== undefined && commentCstNode.offset < untilOffset! && commentCstNode.end > fromOffset!) {
                     const commentText = cutRemKeyword(comment);
                     if (commentText?.startsWith('/**')) {
                         if (comments.length > 0) {

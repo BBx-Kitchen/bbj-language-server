@@ -330,8 +330,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
 export function parseSettings(input: string, prefixfromconfigbbx: string | undefined): { prefixes: string[], classpath: string[] } {
 
-    let props: KeyValuePairObject;
-    props = getProperties(input);
+    const props: KeyValuePairObject = getProperties(input);
     let cp = "";
     if (props.classpath) {
         cp = resolveTilde(props.classpath);
