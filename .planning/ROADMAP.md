@@ -590,7 +590,7 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 12/13 plans executed
+**Plans:** 13/13 plans executed
 
 Plans:
 **Wave 1**
@@ -619,7 +619,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 114-13-PLAN.md — CI gate last: Lint and type-check steps in `build.yml` after Build, Test keeps `success() || failure()`; phase gate (three runs, same files, IntelliJ suite, todo closed); human check of a failing PR and the IntelliJ progress bar (TEST-01, TEST-02, TEST-07) (wave 5)
+- [x] 114-13-PLAN.md — CI gate last: Lint and type-check steps in `build.yml` after Build, Test keeps `success() || failure()`; phase gate (three runs, same files, IntelliJ suite, todo closed); human check of a failing PR and the IntelliJ progress bar (TEST-01, TEST-02, TEST-07) (wave 5)
 
 *Planning notes:* `vscode:prepublish` runs `npm run lint`, so the new rules also gate packaging.
 The ~214 count (213 errors) was measured on 2026-09-26 with the non-type-checked preset; the
@@ -841,7 +841,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 12/13 | In progress |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |

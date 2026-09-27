@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
-status: executing
-stopped_at: Completed 114-12-PLAN.md
-last_updated: "2026-09-27T21:09:31.182Z"
+status: verifying
+stopped_at: Completed 114-13-PLAN.md
+last_updated: "2026-09-27T21:37:34.716Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 6d1cea549c78e4a0e2e4d11dc313f9cae4cb2b5a
+state_head: 3861e8077b278c417eaff7bc0b9e4a7b376e4cde
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 36
+  completed_plans: 37
   percent: 31
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
 Plan: 13 of 13
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-27 — Phase 114 execution started
 
 Progress: [███░░░░░░░] 31% (4/13 phases)
@@ -155,6 +155,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P10 | 12min | 2 tasks | 6 files |
 | Phase 114 P11 | 20min | 2 tasks | 17 files |
 | Phase 114 P12 | 15min | 2 tasks | 25 files |
+| Phase 114 P13 | 21min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -238,6 +239,8 @@ decisions:
 - [Phase 114]: 114-10: the six largest string|MarkupContent message-reading test files (line-break-validation, line-break-single-line-if, parser-keyword-statements, unresolvable-type, classes, variable-scoping) now read diagnostic text through Diagnostic.getMessageString(d); variable-scoping.test.ts's one always-true SymbolRef/FieldDecl comparison was dropped as a documented vacuous clause, predicate unchanged in what it selects
 - [Phase 114]: 114-11: parser.test.ts's and imports.test.ts's apparent AST-narrowing/document-typing errors were collateral damage from a missing relative-import .js suffix, not missing isXxx()/isBbjDocument guards -- fixing the import restored the existing guards' narrowing with no new guard code — Under node16/nodenext module resolution an extensionless relative import still error-reports with a 'did you mean .js' hint but does not resolve for type-checking, so the imported guard functions typed as implicit any and lost all narrowing power
 - [Phase 114]: 114-12: 13 default-import files (+ orchestrator-assigned eslint-disable-directives.test.ts) use namespace fs/os/path/crypto imports matching src's esModuleInterop-false convention; 9 suffix-only files gain .js; both composer UI tests' hoisted FakeRange constructor is overloaded to accept both vscode.Range forms (4 numbers, or 2 Positions with trailing undefined), matching production's own new vscode.Range(pos, pos) call sites -- npm run typecheck:test now exits 0 for the whole test tree
+- [Phase 114]: 114-13: id: build plus steps.build.outcome gates Lint and Type-check test tree independently after Build in build.yml; Test's if: success() || failure() stays unchanged so it still reports when a gate fails
+- [Phase 114]: 114-13: the Windows IntelliJ download-progress re-check (approved on Linux only) is filed as a new opportunistic pending todo rather than reopening or blocking the phase
 
 ### Tech Debt
 
@@ -298,8 +301,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T21:09:30.963Z
-Stopped at: Completed 114-12-PLAN.md
+Last session: 2026-09-27T21:37:34.474Z
+Stopped at: Completed 114-13-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
