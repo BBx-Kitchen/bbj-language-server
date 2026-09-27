@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 111
-current_phase_name: Java Class Data from the Interop Peer
+current_phase_name: java-class-data-from-the-interop-peer
 status: executing
 stopped_at: Completed 111-06-PLAN.md (gap closure)
-last_updated: "2026-09-26T19:19:49.031Z"
-last_activity: 2026-09-26
+last_updated: "2026-09-27T04:56:12.068Z"
+last_activity: 2026-09-27
 last_activity_desc: Phase 111 execution started
-state_head: 2c0c169f96b3b7895a7546e0db7926feeb3129da
+state_head: 001377ab4fe7f2b77609ad29dff6ca531fa8096f
 progress:
   total_phases: 13
   completed_phases: 1
-  total_plans: 11
+  total_plans: 12
   completed_plans: 11
   percent: 8
 ---
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 111 — Java Class Data from the Interop Peer
+**Current Focus:** Phase 111 — java-class-data-from-the-interop-peer
 
 ---
 
 ## Current Position
 
-Phase: 111 (Java Class Data from the Interop Peer) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-09-26 — Phase 111 execution started
+Phase: 111 (java-class-data-from-the-interop-peer) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 111
+Last activity: 2026-09-27 — Phase 111 execution started
 
 Progress: [█░░░░░░░░░] 8% (1/13 phases)
 
