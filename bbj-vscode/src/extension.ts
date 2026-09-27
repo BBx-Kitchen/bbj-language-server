@@ -38,6 +38,7 @@ import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
+import { isEmTokenExpired } from './em-token-validity.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -406,40 +407,6 @@ export async function configureCompileOptions(): Promise<void> {
 }
 
 /**
- * Check if a JWT token is expired by decoding its payload
- * Returns true if token is expired, false otherwise or if unable to determine
- */
-function isTokenExpired(token: string): boolean {
-    try {
-        // JWTs have 3 dot-separated parts: header.payload.signature
-        const parts = token.split('.');
-        if (parts.length !== 3) {
-            return false; // Not a JWT, let server decide
-        }
-
-        // Base64url-decode the payload (index 1)
-        // Replace base64url chars with base64 equivalents
-        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-
-        // Decode base64 to UTF-8 string
-        const decoded = Buffer.from(payload, 'base64').toString('utf-8');
-        const claims = JSON.parse(decoded);
-
-        // Check if exp field exists
-        if (!claims.exp) {
-            return false; // No expiration claim, can't determine
-        }
-
-        // Compare exp (Unix timestamp in seconds) against current time
-        const now = Math.floor(Date.now() / 1000);
-        return claims.exp <= now;
-    } catch (error) {
-        // If any parsing fails, let server validate
-        return false;
-    }
-}
-
-/**
  * Get EM credentials from SecretStorage
  * Returns {username, password} object or undefined if not stored
  */
@@ -447,8 +414,10 @@ export async function getEMCredentials(): Promise<{username: string, password: s
     // Try token first
     const token = await secretStorage?.get('bbj.em.token');
     if (token) {
-        // Check if token is expired (client-side JWT decode)
-        if (isTokenExpired(token)) {
+        // Check if the token is expired or otherwise unusable (issue #553):
+        // anything not positively decoded as an unexpired JWT is treated as
+        // expired, mirroring bbj-intellij's JwtValidity.check.
+        if (isEmTokenExpired(token, Math.floor(Date.now() / 1000))) {
             // Delete expired token from storage
             await secretStorage?.delete('bbj.em.token');
             return undefined; // Triggers re-login flow
