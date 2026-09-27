@@ -37,3 +37,17 @@ Call `indicator.setIndeterminate(false)` inside the progress lambda before each 
 the two string guards with a reflective check (`getMethod("bbjcplAvailability", Object.class)` +
 `ServiceEndpoints.getSupportedMethods`) and a recording-fake sequence test; make issue447 assert a
 definitive outcome plus a forced-fallback case. Info items IN-01..IN-03 are in the review file.
+
+## Resolution
+
+- WR-01 (download-progress `IllegalStateException` on chunked responses) and WR-02/WR-03 (the two
+  weak `BbjNodeDownloader`/`bbjcplAvailability` guards) closed in phase 114's plan 03:
+  `progressReporter(indicator)` now re-asserts `setIndeterminate(false)` before every `setFraction`,
+  proven by a `Proxy`-based recording-fake `BbjNodeDownloaderProgressTest`; the `bbjcplAvailability`
+  guard is now reflective (`getMethod` + `JsonNotification` annotation value +
+  `ServiceEndpoints.getSupportedMethods`).
+- WR-04 (the issue447 invariant holding by construction) closed in phase 114's plan 04: a
+  `WireRecordingInteropService` seam judges the live capability from the actual wire response,
+  with a definitive-outcome case and a forced-fallback case, both hermetic and live.
+- The in-IDE download progress-bar visual confirmation (the part no automated test can show) is the
+  manual checkpoint in phase 114's final plan.
