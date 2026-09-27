@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ComposerRequestContractTest {
 
     private static final Path COMPOSER_COMMANDS_TS = Paths.get(
-        "..", "bbj-vscode", "src", "language", "composer-commands.ts").toAbsolutePath().normalize();
+        "..", "bbj-vscode", "src", "composer-commands.ts").toAbsolutePath().normalize();
 
     private static final Path COMPILE_COMMAND_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "compile-command.ts").toAbsolutePath().normalize();
