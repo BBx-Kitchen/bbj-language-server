@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 113
 current_phase_name: composer-webview-hardening-consolidation
-status: executing
-stopped_at: Completed 113-07-PLAN.md
-last_updated: "2026-09-27T13:03:10.307Z"
+status: verifying
+stopped_at: Completed 113-08-PLAN.md
+last_updated: "2026-09-27T13:28:26.116Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 113 execution started
-state_head: b6b6732431037fe263a94fca31754ab590face4e
+state_head: a300d773e4cc601f45aca1e574245919244a2a27
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
   percent: 23
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Phase: 113 (composer-webview-hardening-consolidation) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-27 — Phase 113 execution started
 
 Progress: [██░░░░░░░░] 23% (3/13 phases)
@@ -142,6 +142,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 113 P05 | 12min | 2 tasks | 6 files |
 | Phase 113 P06 | 39min | 2 tasks | 6 files |
 | Phase 113 P07 | 17min | 3 tasks | 9 files |
+| Phase 113 P08 | 24min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,7 @@ decisions:
 - [Phase 113]: 113-05: composer-commands.ts moved from src/language/ to bbj-vscode/src/composer-commands.ts (REF-03); five internal imports rewritten to relative-local, main.ts/test/IntelliJ contract-test/model-doc references updated to match — Per D-13: the composer request layer sits next to the composer modules it re-exposes, stays language-server code bundled into main.cjs, with unchanged behaviour
 - [Phase 113]: 113-06: composer-call-scanner.ts is the one place scanArgs/trimmedRange and the name-parameterised call locator (findCalls/findCallAt) live; CVS's stricter identifier/dot boundary is preserved via an explicit notAfterIdentifierOrDot option rather than folding it into one shared plain regex template
 - [Phase 113]: 113-07: buildComposerCsp(webview) in webview-csp.ts is the single owner of the composer webview CSP array and nonce; all six panels call it in getHtml, byte-identical output, closing REF-07 (#533)
+- [Phase 113]: 113-08: windowPanelArgAt(spec, uri, line, lineText, character) is the one shared Code Action helper; each composer's addXPanelArgAt is a one-line call with its own spec; requireFlagsSlot stays a per-kind spec option (true for addChildWindow, false for addWindow), never unified in either direction
 
 ### Tech Debt
 
@@ -267,8 +269,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T13:03:10.174Z
-Stopped at: Completed 113-07-PLAN.md
+Last session: 2026-09-27T13:28:25.958Z
+Stopped at: Completed 113-08-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 113` (113-CONTEXT.md exists).
