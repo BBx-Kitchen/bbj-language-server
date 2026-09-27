@@ -1,11 +1,12 @@
 ---
 phase: 112-em-login-web-launch-fail-closed
 verified: 2026-09-27T09:00:00Z
-status: human_needed
+status: passed
 score: 5/5 roadmap success criteria verified (4 code-verified, 1 inherently human); 1 unresolved code-review finding flagged
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "ROADMAP criterion 5 / D-15 (112-01 Task 2 human-check): with valid EM credentials, run a BUI and a DWC program from VS Code and from IntelliJ; both open in the browser. Also: (a) no BBJ_EM_* vars set -> 'Login Failed!' MSGBOX and exit code 1; (b) BBJ_EM_USERNAME=admin with a wrong password -> 'Login Failed!: <BBj error text> (error N)' and exit 1; (c) stop/disable Enterprise Manager mid-session and trigger a launch -> the MSGBOX names the failing step, IntelliJ logs 'Process exited with code 1', VS Code shows 'Failed to run'."
     expected: "BUI and DWC launches succeed with valid credentials in both IDEs; each failure scenario shows the documented message and a non-zero exit."
     why_human: "Requires a live BBj process, a live Enterprise Manager instance, and both IDE hosts observing process exit codes -- not reproducible from source inspection or vitest/JUnit."
