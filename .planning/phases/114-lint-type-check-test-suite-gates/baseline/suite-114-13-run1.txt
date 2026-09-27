@@ -1,0 +1,22 @@
+interop5008=open
+numTotalTests=3497
+numPassedTests=3456
+numFailedTests=11
+numPendingTests=30
+failedSuites=2
+hookTimeoutSuites=0
+unexplainedFailedSuites=1
+durationSec=90
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests All BBj classes extends Object
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Class definition with direct import in extends
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Class definition with direct import in implements
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Declare with direct import
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Import Java class
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Import and declare simple Java class without using FQNs
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Java FQN access - test for #6
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Linked List is resolved
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Resolve nested class FQN
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Resolve nested class in use statement
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Unloaded Java FQN access - test for #6
+FAILED_SUITE test/functional/installed-extension-e2e.test.ts other
+FAILED_SUITE test/linking.test.ts other
