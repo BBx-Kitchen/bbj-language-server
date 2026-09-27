@@ -13,7 +13,8 @@
  *
  * It also owns render-time escaping for Java documentation shown as Markdown (issue #524),
  * applied once where hover and completion build Markdown so stored text stays plain; the
- * less-than sign is left out so javadoc HTML stays readable (VS Code strips raw HTML in hovers).
+ * less-than sign is left out so javadoc HTML stays readable (VS Code strips raw HTML in hovers),
+ * and one trailing BASIS documentation link in javadoc stays a link.
  *
  * It also owns the check that a candidate class name from the peer is a genuine Java qualified
  * name before the missing-USE quick fix or auto-import completion inserts it into source as a
@@ -286,7 +287,8 @@ export function sanitizeJavaClassDto(dto: object): string[] {
  * make up Markdown link/image syntax (`[`, `]`, `(`, `)`, `!`). The less-than sign is deliberately
  * left out (issue #524, amended 2026-09-26): most installed javadoc contains HTML tags, and VS
  * Code's hover already strips raw HTML when `supportHtml` is off, so escaping it would only turn
- * readable hovers into literal tags.
+ * readable hovers into literal tags. The only link left unescaped in Java documentation is the
+ * trailing BASIS documentation link that {@link escapeJavadocMarkdown} exempts.
  */
 const MARKDOWN_ESCAPE_PATTERN = /[\\`[\]()!]/g;
 
@@ -297,10 +299,38 @@ const MARKDOWN_ESCAPE_PATTERN = /[\\`[\]()!]/g;
  * or a remote image (issue #524). The escape is applied once, at the render boundary, where hover
  * and completion build the Markdown string they return — never at storage, so the stored
  * `node.docu`/javadoc text stays plain for any other consumer. The less-than sign is not escaped;
- * see {@link MARKDOWN_ESCAPE_PATTERN}.
+ * see {@link MARKDOWN_ESCAPE_PATTERN}. A Java javadoc body goes through {@link
+ * escapeJavadocMarkdown} instead, which applies this escape to everything except one trailing
+ * link.
  */
 export function escapeMarkdown(text: string): string {
     return text.replace(MARKDOWN_ESCAPE_PATTERN, '\\$&');
+}
+
+/**
+ * Matches the one documentation link BASIS ships at the very end of each documented member in the
+ * installed javadoc. The label must be exactly `Docs`, the scheme `https` and the host exactly
+ * `documentation.basis.cloud`, followed directly by `/`. The path may use only ASCII letters,
+ * digits, `.`, `_`, `/` and `-`. That rules out a port, userinfo, query, fragment, whitespace,
+ * parentheses, brackets, quotes, backticks, angle brackets and a title. The link must be preceded
+ * by whitespace or the start of the text, which rules out image syntax, and may be followed only
+ * by whitespace. The path character class excludes `)` and whitespace, so the match cannot
+ * backtrack heavily. The text is already bounded at {@link MAX_JAVADOC_LENGTH}.
+ */
+const TRAILING_BASIS_DOCS_LINK_PATTERN = /(?<=^|\s)\[Docs\]\(https:\/\/documentation\.basis\.cloud\/[A-Za-z0-9._/-]+\)\s*$/;
+
+/**
+ * Escapes a Java javadoc body for Markdown like {@link escapeMarkdown} (issue #524), except for
+ * one trailing link, which stays a clickable "Docs" link. Every other link, including an earlier
+ * `Docs` link and one cut short by truncation, stays escaped. It is for the javadoc body only.
+ * Signatures and headers keep {@link escapeMarkdown}.
+ */
+export function escapeJavadocMarkdown(text: string): string {
+    const match = TRAILING_BASIS_DOCS_LINK_PATTERN.exec(text);
+    if (!match) {
+        return escapeMarkdown(text);
+    }
+    return escapeMarkdown(text.slice(0, match.index)) + match[0];
 }
 
 /** Every line-break sequence {@link toFenceSafeLine} replaces with a single space: a Windows

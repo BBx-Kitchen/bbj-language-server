@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { CompletionTriggerKind } from 'vscode-languageserver';
 import { documentationHeader } from '../src/language/bbj-hover.js';
-import { escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, TRUNCATION_MARKER, toFenceSafeLine } from '../src/language/java-peer-guard.js';
+import { escapeJavadocMarkdown, escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, TRUNCATION_MARKER, toFenceSafeLine, truncateText } from '../src/language/java-peer-guard.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { DocumentationInfo, Model } from '../src/language/generated/ast.js';
 import { JavadocProvider, type MethodDoc } from '../src/language/java-javadoc.js';
@@ -23,6 +23,13 @@ import { initializeWorkspace } from './test-helper.js';
 function hasInterpretableLinkOrImage(md: string): boolean {
     return /(?<!\\)\[[^\]]*(?<!\\)\]\(/.test(md);
 }
+
+/**
+ * The real end of BBjGrid.isPaging's documentation in the installed BASIS javadoc, where every
+ * documented member ends with such a link.
+ */
+const IS_PAGING_DOCS_LINK = '[Docs](https://documentation.basis.cloud/BASISHelp/WebHelp/gridmethods/bbjgrid/scrolling/bbjgrid_ispaging.htm)';
+const REAL_IS_PAGING_TAIL = '</img>) and if the paging amount can be changed.\r\r' + IS_PAGING_DOCS_LINK;
 
 describe('hasInterpretableLinkOrImage helper is itself proven', () => {
     test('is false for escaped link/image syntax', () => {
@@ -74,6 +81,61 @@ describe('escapeMarkdown', () => {
         expect(escaped).toBe(expected);
         expect(hasInterpretableLinkOrImage(raw)).toBe(true);
         expect(hasInterpretableLinkOrImage(escaped)).toBe(false);
+    });
+});
+
+describe('escapeJavadocMarkdown', () => {
+    test('the real BBjGrid.isPaging javadoc tail keeps its trailing Docs link verbatim and escapes the text before it', () => {
+        const expected = '</img>\\) and if the paging amount can be changed.\r\r' + IS_PAGING_DOCS_LINK;
+        expect(escapeJavadocMarkdown(REAL_IS_PAGING_TAIL)).toBe(expected);
+    });
+
+    test.each([
+        ['other host', 'Text.\r\r[Docs](https://evil.example/a.htm)'],
+        ['http', 'Text.\r\r[Docs](http://documentation.basis.cloud/a.htm)'],
+        ['other label', 'Text.\r\r[Click here](https://documentation.basis.cloud/a.htm)'],
+        ['lowercase label', 'Text.\r\r[docs](https://documentation.basis.cloud/a.htm)'],
+        ['image', 'Text.\r\r![Docs](https://documentation.basis.cloud/a.htm)'],
+        ['host suffix', 'Text.\r\r[Docs](https://documentation.basis.cloud.evil.com/a.htm)'],
+        ['userinfo after host', 'Text.\r\r[Docs](https://documentation.basis.cloud@evil.com/a.htm)'],
+        ['userinfo before host', 'Text.\r\r[Docs](https://user@documentation.basis.cloud/a.htm)'],
+        ['embedded paren', 'Text.\r\r[Docs](https://documentation.basis.cloud/a)b.htm)'],
+        ['whitespace in URL', 'Text.\r\r[Docs](https://documentation.basis.cloud/a b.htm)'],
+        ['link title', 'Text.\r\r[Docs](https://documentation.basis.cloud/a.htm "title")'],
+        ['not at the end', 'Text.\r\r[Docs](https://documentation.basis.cloud/a.htm) and more text.'],
+        ['glued to the preceding word', 'see[Docs](https://documentation.basis.cloud/a.htm)']
+    ])('a lookalike link stays fully escaped: %s', (_description, value) => {
+        const result = escapeJavadocMarkdown(value);
+        expect(result).toBe(escapeMarkdown(value));
+        expect(hasInterpretableLinkOrImage(result)).toBe(false);
+    });
+
+    test('with two Docs links, only the trailing one stays a link', () => {
+        const prefix = 'Text.\r\r[Docs](https://documentation.basis.cloud/first.htm)\r\r';
+        const value = prefix + '[Docs](https://documentation.basis.cloud/second.htm)';
+        const expected = escapeMarkdown(prefix) + '[Docs](https://documentation.basis.cloud/second.htm)';
+        expect(escapeJavadocMarkdown(value)).toBe(expected);
+    });
+
+    test('text without the trailing Docs link is escaped exactly like escapeMarkdown', () => {
+        expect(escapeJavadocMarkdown('')).toBe('');
+        const value = 'Plain (text) with [x](https://evil.example)';
+        expect(escapeJavadocMarkdown(value)).toBe(escapeMarkdown(value));
+    });
+
+    test('whitespace after the trailing Docs link is kept and the link stays a link', () => {
+        const value = 'Text.\r\r' + IS_PAGING_DOCS_LINK + '\r\n';
+        const expected = escapeMarkdown('Text.\r\r') + IS_PAGING_DOCS_LINK + '\r\n';
+        expect(escapeJavadocMarkdown(value)).toBe(expected);
+    });
+
+    test('a trailing Docs link cut by truncation stays fully escaped', () => {
+        const truncated = truncateText('a'.repeat(MAX_JAVADOC_LENGTH - 40) + '\r\r' + IS_PAGING_DOCS_LINK, MAX_JAVADOC_LENGTH);
+        expect(truncated.endsWith(TRUNCATION_MARKER)).toBe(true);
+        expect(truncated).toContain('[Docs](https://documentation.basis.');
+        const result = escapeJavadocMarkdown(truncated);
+        expect(result).toBe(escapeMarkdown(truncated));
+        expect(hasInterpretableLinkOrImage(result)).toBe(false);
     });
 });
 
@@ -132,6 +194,47 @@ describe('Java hover documentation is escaped at the render boundary (issue #524
         // The stored docu is unchanged after hover renders it.
         expect(put!.docu!.javadoc).toBe(rawJavadoc);
         expect(put!.docu!.signature).toBe(rawSignature);
+    });
+
+    test('the trailing BASIS Docs link in a Java method javadoc stays a clickable link in hover, while other link syntax stays escaped', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        expect(hashMap).toBeDefined();
+        const put = hashMap!.methods.find(m => m.name === 'put');
+        expect(put).toBeDefined();
+        const originalDocu = put!.docu;
+
+        const rawJavadoc = 'See [click](https://evil.example). ' + REAL_IS_PAGING_TAIL;
+        put!.docu = {
+            $type: 'DocumentationInfo',
+            $container: put!,
+            javadoc: rawJavadoc,
+            signature: 'Object HashMap.put()'
+        } as DocumentationInfo;
+
+        try {
+            const document = await parse('declare java.util.HashMap h!\nh!.put()\n', { validation: true });
+            expect(document.parseResult.lexerErrors).toHaveLength(0);
+            expect(document.parseResult.parserErrors).toHaveLength(0);
+
+            const hoverProvider = services.BBj.lsp.HoverProvider!;
+            const position = positionOf(document, 'h!.put()');
+            const hover = await hoverProvider.getHoverContent(document, {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: position.line, character: position.character + 'h!.'.length }
+            });
+
+            expect(hover).toBeDefined();
+            const value = (hover!.contents as { value: string }).value;
+            expect(value.endsWith(IS_PAGING_DOCS_LINK)).toBe(true);
+            expect(value).toContain('\\[click\\]\\(https://evil.example\\)');
+            expect(value).toContain('</img>\\)');
+            expect(hasInterpretableLinkOrImage(value.slice(0, value.length - IS_PAGING_DOCS_LINK.length))).toBe(false);
+
+            expect(put!.docu!.javadoc).toBe(rawJavadoc);
+        } finally {
+            put!.docu = originalDocu;
+        }
     });
 });
 
@@ -321,6 +424,32 @@ PRINT d!.title
         expect(hover).toBeDefined();
         const value = (hover!.contents as { value: string }).value;
         expect(value).toContain('[docs](https://documentation.basis.cloud)');
+    });
+
+    test('the trailing BASIS Docs link in a javadoc-file fallback stays a clickable link in hover', async () => {
+        const javaInterop = services.BBj.java.JavaInteropService;
+        const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
+        expect(hashMap).toBeDefined();
+        expect(hashMap!.docu).toBeUndefined();
+
+        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: REAL_IS_PAGING_TAIL });
+
+        const document = await parse('declare java.util.HashMap h!\n', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'HashMap');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value.endsWith(IS_PAGING_DOCS_LINK)).toBe(true);
+        expect(value).toContain('</img>\\)');
+        expect(hashMap!.docu).toBeUndefined();
     });
 });
 
