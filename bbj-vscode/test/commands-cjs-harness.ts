@@ -140,8 +140,8 @@ let cached: { Commands: CommandsModule; configPathCache: ConfigPathCacheModule }
 let hooksRegistered = false;
 
 /**
- * Module URLs known to be reachable from `Commands.cjs`'s own require tree
- * (WR-02). Seeded with `Commands.cjs`'s own file URL by `loadCommands()` before
+ * Module URLs known to be reachable from `Commands.cjs`'s own require tree.
+ * Seeded with `Commands.cjs`'s own file URL by `loadCommands()` before
  * any resolution happens; every URL the `.ts`/extensionless fallback below
  * successfully resolves to -- and every URL Node's own default resolution
  * succeeds on when the requester is already in this set -- is added too, so the
@@ -234,7 +234,7 @@ const load: LoadHookSync = (url, context, nextLoad) => {
  * are registered once per worker, and the same `{ Commands, configPathCache }` pair
  * is returned on every call.
  *
- * IMPORTANT (WR-02): `node:module`'s `registerHooks` has no matching unregister call
+ * IMPORTANT: `node:module`'s `registerHooks` has no matching unregister call
  * anywhere in Node's API, so once this runs, the `resolve`/`load` pair above
  * intercepts **every** subsequent `require()`/native ESM resolution in this worker
  * process for the rest of its life -- not just calls made while loading
