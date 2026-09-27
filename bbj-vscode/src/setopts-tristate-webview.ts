@@ -26,8 +26,8 @@ import {
     SETOPTS_COMPOSE_TRISTATE_METHOD, SetOptsComposeTriStateParams, SetOptsComposeTriStateResult,
 } from './language/setopts-in-code-request.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
 import {
     isFiniteInt, isOneOf, isPanelMessage, isPlainObject, PanelMessage,
 } from './webview-message-guard.js';
@@ -208,12 +208,7 @@ function initialSelection(sel: SetOptsTriStateSelection | undefined): PanelTriSt
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>

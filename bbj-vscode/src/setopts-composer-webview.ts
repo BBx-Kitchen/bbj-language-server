@@ -18,9 +18,9 @@ import {
     BYTE_GROUPS, SETOPTS_BITS, bbjHexLiteral, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
     parseVector, rawTail, setoptsPreview, SetOptsSelection, SetOptsVector,
 } from './setopts-catalog.js';
-import { getNonce } from './webview-nonce.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
 import {
     isPanelMessage, isPlainObject, isString, isStringArray, PanelMessage,
 } from './webview-message-guard.js';
@@ -181,12 +181,7 @@ function initialSelection(original: SetOptsVector | undefined): PanelSelection {
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
