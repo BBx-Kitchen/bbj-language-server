@@ -1,7 +1,7 @@
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper, expectCompletion } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { Model } from '../../src/language/generated/ast.js';
 import { createBBjTestServices } from '../bbj-test-module.js';
 import { initializeWorkspace } from '../test-helper.js';
@@ -50,7 +50,7 @@ describe('LSP Feature Verification Tests', async () => {
             // Check that validation produced errors
             const errors = document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [];
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.message.includes('MODE'))).toBe(true);
+            expect(errors.some(e => Diagnostic.getMessageString(e).includes('MODE'))).toBe(true);
         });
 
         test('Should report no errors for valid OPEN statement', async () => {

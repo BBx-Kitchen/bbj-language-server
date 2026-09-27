@@ -1,6 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { validationHelper, ValidationResult } from 'langium/test';
 import { describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import type { Program } from '../src/language/generated/ast.js';
 
@@ -32,7 +33,7 @@ const CYCLE_DIAGNOSTICS = [
 ];
 
 function messages(result: ValidationResult<Program>): string[] {
-    return result.diagnostics.map(d => d.message);
+    return result.diagnostics.map(d => Diagnostic.getMessageString(d));
 }
 
 describe('cyclic inheritance does not hang validation (#494)', () => {

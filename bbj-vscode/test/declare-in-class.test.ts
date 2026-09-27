@@ -2,7 +2,7 @@ import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { Model, Program, isBbjClass, isVariableDecl } from '../src/language/generated/ast';
+import { Model, Program, isBbjClass, isVariableDecl } from '../src/language/generated/ast.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const parse = parseHelper<Model>(services.BBj);

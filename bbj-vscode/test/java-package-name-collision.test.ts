@@ -15,6 +15,7 @@
  * pipeline runs.
  */
 import { DocumentValidator, LangiumDocument } from 'langium';
+import { Diagnostic } from 'vscode-languageserver';
 import { parseHelper } from 'langium/test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Model } from '../src/language/generated/ast.js';
@@ -32,7 +33,7 @@ const packageMemberBody = (packageName: string) => () => ({
 /** Linking-error diagnostics whose message mentions the given member name. */
 function linkingDiagnosticsFor(document: LangiumDocument, memberName: string) {
     return (document.diagnostics ?? []).filter(
-        d => d.data?.code === DocumentValidator.LinkingError && d.message.includes(memberName)
+        d => d.data?.code === DocumentValidator.LinkingError && Diagnostic.getMessageString(d).includes(memberName)
     );
 }
 

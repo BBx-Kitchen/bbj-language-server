@@ -49,7 +49,7 @@ describe('isJavaQualifiedName', () => {
         ['java.util.Map‮', 'a trailing right-to-left override'],
         ['java.util.Map​', 'a trailing zero-width space'],
         [tooLongIdentifier, 'one character over the length limit']
-    ])('rejects %s (%s)', (fqn) => {
+    ])('rejects %s (%s)', (fqn, _description) => {
         expect(isJavaQualifiedName(fqn)).toBe(false);
     });
 

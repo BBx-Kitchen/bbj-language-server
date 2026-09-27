@@ -1,4 +1,5 @@
 import { EmptyFileSystem } from 'langium';
+import { Diagnostic } from 'vscode-languageserver';
 import { validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Program } from '../src/language/generated/ast.js';
@@ -20,7 +21,7 @@ describe('builtin function call validation (#451)', () => {
 
     async function callIssues(code: string): Promise<string[]> {
         const result = await validate(code);
-        return result.diagnostics.filter(d => CALL_ISSUE.test(d.message)).map(d => d.message);
+        return result.diagnostics.filter(d => CALL_ISSUE.test(Diagnostic.getMessageString(d))).map(d => Diagnostic.getMessageString(d));
     }
 
     // The concrete correct/incorrect examples from issue #179.
