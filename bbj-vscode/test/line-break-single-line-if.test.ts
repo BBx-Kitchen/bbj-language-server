@@ -2,6 +2,7 @@ import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { validationHelper } from 'langium/test';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -17,8 +18,8 @@ beforeAll(async () => {
     validate = validationHelper<Program>(services.BBj);
 });
 
-const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
-    diagnostics.filter(d => /new line|line break/i.test(d.message)).map(d => d.message);
+const lineBreakDiagnostics = (diagnostics: Diagnostic[]) =>
+    diagnostics.filter(d => /new line|line break/i.test(Diagnostic.getMessageString(d))).map(d => Diagnostic.getMessageString(d));
 
 describe('Line break validation: single-line IF/FI forms the compiler accepts', () => {
     const positiveCases: [string, string][] = [

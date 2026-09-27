@@ -8,6 +8,7 @@ import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { validationHelper } from 'langium/test';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -25,8 +26,8 @@ beforeAll(async () => {
     validate = validationHelper<Program>(services.BBj);
 });
 
-const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
-    diagnostics.filter(d => /new line|line break/i.test(d.message));
+const lineBreakDiagnostics = (diagnostics: Diagnostic[]) =>
+    diagnostics.filter(d => /new line|line break/i.test(Diagnostic.getMessageString(d)));
 
 /**
  * P61-D5-006: line-break-validation.ts's hasLinebreakBefore/hasLinebreakAfter (294-318)
@@ -40,7 +41,7 @@ describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)'
         // before and after. Joining them with \r\n must satisfy hasLinebreakBefore/
         // hasLinebreakAfter exactly as \n does.
         const result = await validate('x = 1\r\ny = 2\r\n');
-        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(d.message));
+        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(Diagnostic.getMessageString(d)));
         expect(lineBreakErrors).toHaveLength(0);
     });
 
@@ -48,13 +49,13 @@ describe('Line break validation: CRLF and missing trailing newline (P61-D5-006)'
         // No trailing \n after the final statement — hasLinebreakAfter reads past
         // end-of-document; the regex's optional (\r?\n)? must still match on empty text.
         const result = await validate('x = 1\ny = 2');
-        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(d.message));
+        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(Diagnostic.getMessageString(d)));
         expect(lineBreakErrors).toHaveLength(0);
     });
 
     test('CRLF combined with a missing trailing newline on the final line', async () => {
         const result = await validate('x = 1\r\ny = 2');
-        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(d.message));
+        const lineBreakErrors = result.diagnostics.filter(d => /needs to start in a new line/i.test(Diagnostic.getMessageString(d)));
         expect(lineBreakErrors).toHaveLength(0);
     });
 });

@@ -7,7 +7,7 @@
 import { AstUtils, EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
-import { DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOnGotoStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl, isLibrary } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -28,8 +28,8 @@ beforeAll(async () => {
     validate = validationHelper<Program>(services.BBj);
 });
 
-const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
-    diagnostics.filter(d => /new line|line break/i.test(d.message));
+const lineBreakDiagnostics = (diagnostics: Diagnostic[]) =>
+    diagnostics.filter(d => /new line|line break/i.test(Diagnostic.getMessageString(d)));
 
 describe('RECORD verbs LEN= channel option', () => {
     test.each([
