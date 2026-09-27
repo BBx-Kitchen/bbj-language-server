@@ -40,10 +40,15 @@ created: "2026-09-27"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | — | — | SEC-12 | T-112 fail-open default creds | No default username; admin123 only for admin + empty password | source-guard | `npx vitest run test/web-bbj-source-guard.test.ts` | ❌ W0 | ⬜ pending |
-| (filled by planner) | — | — | SEC-13 | T-112 silent EM failure | Each guarded EM call has its own err= label → shared reporter, non-zero RELEASE, no secrets | source-guard + manual UAT | `npx vitest run test/web-bbj-source-guard.test.ts` | ❌ W0 | ⬜ pending |
-| (filled by planner) | — | — | SEC-14 | T-112 fail-open JWT | Malformed / unsigned / exp-less / non-integer exp → expired | unit | `npx vitest run test/em-token-validity.test.ts` | ❌ W0 | ⬜ pending |
-| (filled by planner) | — | — | TEST-09 | — | Commands.cjs run/compile/runWeb/decompile bodies execute under vitest | unit (execution) | `npx vitest run test/commands-cjs-execution.test.ts` | ❌ W0 | ⬜ pending |
+| 112-01-T1 | 112-01 | 1 | SEC-12 | T-112-01, T-112-06 | No default username; admin123 only for admin + empty password; login failures exit 1 | source-guard + bbjcpl syntax gate | `npx vitest run test/web-bbj-source-guard.test.ts`; `test -z "$(/opt/bbx/bin/bbjcpl -N …/tools/web.bbj 2>&1)"` | ❌ W0 | ⬜ pending |
+| 112-01-T2 | 112-01 | 1 | SEC-13 | T-112-03, T-112-04 | Each guarded EM call has its own err= label → shared reporter, non-zero RELEASE, no secrets | source-guard + manual UAT | `npx vitest run test/web-bbj-source-guard.test.ts` | ❌ W0 | ⬜ pending |
+| 112-02-T1 | 112-02 | 1 | SEC-14 | T-112-07, T-112-09 | Malformed / unsigned / exp-less → expired; stored token deleted, login prompt shown | unit + activation wiring | `npx vitest run test/em-token-validity.test.ts test/em-token-expiry-wiring.test.ts` | ❌ W0 | ⬜ pending |
+| 112-02-T2 | 112-02 | 1 | SEC-14 | T-112-07, T-112-08 | All JwtValidityTest shapes incl. non-integer / overflow exp and strict base64url | unit | `npx vitest run test/em-token-validity.test.ts` | ❌ W0 | ⬜ pending |
+| 112-03-T1 | 112-03 | 2 | SEC-12 | T-112-13, T-112-14 | VS Code login pre-fills last successful username (else admin); only the username stored, only after success | unit + activation-driven handler | `npx vitest run test/em-login-username.test.ts` | ❌ W0 | ⬜ pending |
+| 112-03-T2 | 112-03 | 2 | SEC-12 | T-112-13, T-112-14 | IntelliJ login pre-fills last successful username (else admin) via PropertiesComponent | JUnit 5 unit + source guard | `./gradlew cleanTest test --tests '…EmUsernameMemoryTest' --tests '…EmLoginUsernameMemorySourceGuardTest'` | ❌ W0 | ⬜ pending |
+| 112-04-T1 | 112-04 | 1 | TEST-09 | T-112-20, T-112-21 | Commands.cjs loads under vitest via registerHooks; run uses the resolved config path | unit (execution) | `npx vitest run test/commands-cjs-execution.test.ts` | ❌ W0 | ⬜ pending |
+| 112-04-T2 | 112-04 | 1 | TEST-09, SEC-12 | T-112-17, T-112-18, T-112-19 | Show-config/run/runWeb execution tests replace text scans; no credentials → no web.bbj spawn | unit (execution) | `npx vitest run test/commands-cjs-execution.test.ts test/config-path-consumers.test.ts` | ❌ W0 | ⬜ pending |
+| 112-04-T3 | 112-04 | 1 | TEST-09 | — | compile/decompile bodies execute; V8 coverage reports Commands.cjs (lines ≥ 70%) | unit (execution) + coverage run | `npx vitest run test/commands-cjs-execution.test.ts --coverage …` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -55,6 +60,8 @@ created: "2026-09-27"
 - [ ] `test/commands-cjs-harness.ts` — `module.registerHooks` loader with fake `vscode` + `.ts` fallback
 - [ ] `test/commands-cjs-execution.test.ts` — TEST-09 (D-12/D-13/D-14), replaces the text-scan block in `test/config-path-consumers.test.ts`
 - [ ] `test/web-bbj-source-guard.test.ts` — SEC-12/SEC-13 (D-15)
+- [ ] `test/em-token-expiry-wiring.test.ts` — SEC-14 call-site wiring through `activate()` (D-11)
+- [ ] `test/em-login-username.test.ts` and IntelliJ `EmUsernameMemoryTest` / `EmLoginUsernameMemorySourceGuardTest` — SEC-12 (D-08)
 - [ ] `vitest.config.ts` — widen `coverage.include` to cover `src/**/*.cjs`
 
 ---

@@ -516,7 +516,18 @@ request, not only to lower the log level.
   4. `Commands.cjs` is loaded and executed under vitest, not only scanned as text, and its run, compile and BUI/DWC command bodies show execution coverage.
   5. A hand check with valid EM credentials launches a BUI and a DWC program from VS Code and from IntelliJ, and both still open in the browser.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 112-01-PLAN.md — `web.bbj` fails closed: no default username, `admin123` only for `admin` with an empty password, every EM step after login has its own `err=` label reaching one shared MSGBOX reporter with `release 1`; source guard plus a `bbjcpl -N` syntax gate (SEC-12, SEC-13) (wave 1)
+- [ ] 112-02-PLAN.md — Plain `em-token-validity.ts` ports IntelliJ `JwtValidity.check` (explicit empty-signature check, strict base64url); `getEMCredentials` deletes an unusable token and the BUI/DWC commands ask for a new login (SEC-14) (wave 1)
+- [ ] 112-04-PLAN.md — `Commands.cjs` loaded and executed under vitest through a `node:module` `registerHooks` shim; text scans in `config-path-consumers.test.ts` replaced by execution tests; `runWeb` legacy settings fallback removed; V8 coverage run recorded (TEST-09, SEC-12) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 112-03-PLAN.md — Both IDE login prompts pre-fill the last successfully used EM username (else `admin`): `globalState` in VS Code, application `PropertiesComponent` in IntelliJ, saved only after a successful login (SEC-12) (wave 2, shares extension.ts with 112-02)
 
 *Planning notes:* Node's native loader resolves `Commands.cjs`, so it cannot see
 `vi.mock('vscode')`. The tests need a `vscode` shim in Node's module resolution, or the remaining

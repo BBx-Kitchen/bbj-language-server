@@ -492,17 +492,17 @@ flagging so the plan doesn't have to rediscover it.
 | A2 | `context.globalState` is assumed to be the correct VS Code API for D-08's non-secret username persistence (no existing usage in this codebase to confirm the exact call shape, though it is VS Code's standard, documented API for exactly this purpose) | Don't Hand-Roll, Recommended Project Structure | Low — this is a well-known, stable VS Code Extension API; risk is only in exact method-name detail (`context.globalState.get`/`.update`), not in the choice of mechanism |
 | A3 | A single nonzero RELEASE code is assumed not to collide with any exit-code meaning IntelliJ or VS Code already special-cases (both hosts' current handling treats any nonzero exit generically — "Process exited with code N" / execFile error — with no per-code branching found in `BbjRunActionBase.java` or `Commands.cjs`) | Architecture Patterns, Pattern 1 | Low — verified by reading both call sites' exit-code handling in full; no special-casing exists to collide with |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the pre-existing `no-shell-command-construction.test.ts` / `em-properties-reader-guard.test.ts` doc comments be updated once TEST-09 lands?**
    - What we know: their "cannot be exercised end-to-end under Vitest" framing becomes stale once the `registerHooks` harness exists (their own assertions can stay unchanged — they're valid defence-in-depth regardless).
    - What's unclear: whether the phase's scope (TEST-09, D-12/D-13) requires touching files beyond `config-path-consumers.test.ts` (which D-13 explicitly names).
-   - Recommendation: leave as a small optional cleanup, not a blocking task; the plan can note it as a nice-to-have without expanding phase scope.
+   - RESOLVED: 112-04 Task 3 refreshes the stale doc comments. Recommendation: leave as a small optional cleanup, not a blocking task; the plan can note it as a nice-to-have without expanding phase scope.
 
 2. **Exact `PropertiesComponent`/`globalState` key names for the remembered username (D-08).**
    - What we know: CONTEXT.md explicitly defers this to Claude's discretion; `BbjEMTokenStore.BACKEND_WARNED_KEY` (`"com.basis.bbj.intellij.emTokenBackendWarned"`) is the naming precedent on the IntelliJ side.
    - What's unclear: nothing blocking — this is a naming choice, not a design question.
-   - Recommendation: follow the same dotted-namespace convention IntelliJ already uses (e.g. `com.basis.bbj.intellij.emLastUsername`) and a parallel VS Code key under the extension's own namespace (e.g. `bbj.em.lastUsername`), for symmetry with the existing `bbj.em.token`/`bbj.em.credentials` SecretStorage keys already in `extension.ts`.
+   - RESOLVED: left to the planner's discretion (112-03). Recommendation: follow the same dotted-namespace convention IntelliJ already uses (e.g. `com.basis.bbj.intellij.emLastUsername`) and a parallel VS Code key under the extension's own namespace (e.g. `bbj.em.lastUsername`), for symmetry with the existing `bbj.em.token`/`bbj.em.credentials` SecretStorage keys already in `extension.ts`.
 
 ## Environment Availability
 
