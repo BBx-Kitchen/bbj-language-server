@@ -66,10 +66,17 @@ interface PanelSelection {
     rawTail: string;
 }
 
-/** Whether `value` is a well-formed {@link PanelSelection}: every field has its declared runtime type. */
+/** The only shape a `checked` entry may take: plain decimal `byte:mask`, matching how
+ * {@link initialSelection} and the webview script build these ids (`${b.byte}:${b.mask}`). */
+const BIT_ID_PATTERN = /^\d+:\d+$/;
+
+/** Whether `value` is a well-formed {@link PanelSelection}: every field has its declared runtime
+ * type, and every `checked` entry matches the `"<byte>:<mask>"` shape {@link toSelection} assumes
+ * — not just "is a string" (a malformed entry would otherwise parse to `{ byte: NaN, mask:
+ * undefined }` with no error). */
 function isSetOptsSelection(value: unknown): value is PanelSelection {
     return isPlainObject(value)
-        && isStringArray(value.checked)
+        && isStringArray(value.checked) && value.checked.every(id => BIT_ID_PATTERN.test(id))
         && isString(value.maskComma)
         && isString(value.maskDot)
         && isString(value.rawTail);

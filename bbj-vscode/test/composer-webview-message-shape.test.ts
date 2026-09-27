@@ -397,6 +397,7 @@ describe('SETOPTS config.bbx panel message guard (#604)', () => {
         ['empty payload object', { type: 'apply', payload: {} }],
         ['checked is a string, not an array', { type: 'apply', payload: { ...validSelection, checked: 'a' } }],
         ['checked holds a number', { type: 'apply', payload: { ...validSelection, checked: [1] } }],
+        ['checked holds a malformed "byte:mask" entry', { type: 'apply', payload: { ...validSelection, checked: ['abc'] } }],
         ['rawTail is a number', { type: 'apply', payload: { ...validSelection, rawTail: 5 } }],
         ['maskDot is null', { type: 'apply', payload: { ...validSelection, maskDot: null } }],
         ['message is null', null],
