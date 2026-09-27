@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
-stopped_at: Completed 114-01-PLAN.md
-last_updated: "2026-09-27T16:45:39.888Z"
+stopped_at: Completed 114-03-PLAN.md
+last_updated: "2026-09-27T17:03:10.028Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 0d6ac8c317777a994845d3608b729da1a4dbe67c
+state_head: 8dc0539d3b5e6d953ba38f5d99140c94e676b066
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 25
+  completed_plans: 26
   percent: 31
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -144,6 +144,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 113 P07 | 17min | 3 tasks | 9 files |
 | Phase 113 P08 | 24min | 2 tasks | 5 files |
 | Phase 114 P01 | 13min | 2 tasks | 6 files |
+| Phase 114 P03 | 16min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,8 @@ decisions:
 - [Phase 113]: 113-08: windowPanelArgAt(spec, uri, line, lineText, character) is the one shared Code Action helper; each composer's addXPanelArgAt is a one-line call with its own spec; requireFlagsSlot stays a per-kind spec option (true for addChildWindow, false for addWindow), never unified in either direction
 - [Phase 114]: 114-01: vitest.config.ts declares test.include ['test/**/*.test.ts'] and test.exclude ['out/**', 'node_modules/**'] (D-11), verified byte-identical to the 159-file pre-change discovered set via vitest list --filesOnly
 - [Phase 114]: 114-01: baseline/suite-digest.mjs plus base-sha.txt, files-before.txt, suite-before.txt captured from the untouched phase base tree; every later 114-xx plan compares its D-07/D-10/D-11 behaviour-neutrality claims against them
+- [Phase 114]: 114-03: progressReporter(indicator) extracted as a package-visible static factory calling setIndeterminate(false) before every setText/setFraction; Proxy-based recording-fake test replaces the substring guard — The substring guard could not detect the real bug (indicator reset between chunks by the platform's saveToFile); only a fake invoked 2+ times with an interleaved reset proves it
+- [Phase 114]: 114-03: bbjcplAvailability guard is reflective (getMethod + JsonNotification annotation value + ServiceEndpoints.getSupportedMethods), replacing a comment-blind text-scanning guard — A commented-out annotation or a changed parameter type still passed the old text-count/brace-scan guard; the reflective check mirrors exactly what LSP4IJ itself checks at registration
 
 ### Tech Debt
 
@@ -272,8 +275,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T16:45:39.694Z
-Stopped at: Completed 114-01-PLAN.md
+Last session: 2026-09-27T17:03:09.825Z
+Stopped at: Completed 114-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).

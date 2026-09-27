@@ -590,13 +590,13 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans:** 1/13 plans executed
+**Plans:** 2/13 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 114-01-PLAN.md — Baseline digests on the base commit (file set, whole-suite failing names, hook-timeout suites, duration), explicit vitest include/exclude proven identical, bbx language-configuration describe block (TEST-03, TEST-11) (wave 1)
-- [ ] 114-03-PLAN.md — IntelliJ: progress callback re-asserts determinate mode every step behind a recording-fake JUnit test; reflective `bbjcplAvailability` guard via `getMethod` + `ServiceEndpoints.getSupportedMethods` (FIX-04) (wave 1)
+- [x] 114-03-PLAN.md — IntelliJ: progress callback re-asserts determinate mode every step behind a recording-fake JUnit test; reflective `bbjcplAvailability` guard via `getMethod` + `ServiceEndpoints.getSupportedMethods` (FIX-04) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -841,7 +841,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 1/13 | Not started |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 2/13 | Not started |  |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
