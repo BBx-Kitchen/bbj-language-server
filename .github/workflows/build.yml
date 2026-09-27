@@ -18,11 +18,24 @@ jobs:
       with:
         node-version: 22
     - name: Build
+      id: build
       shell: bash
       run: |
         cd bbj-vscode
         npm ci
         npm run build
+    - name: Lint
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      shell: bash
+      run: |
+        cd bbj-vscode
+        npm run lint
+    - name: Type-check test tree
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      shell: bash
+      run: |
+        cd bbj-vscode
+        npm run typecheck:test
     - name: Test
       if: success() || failure()
       shell: bash
