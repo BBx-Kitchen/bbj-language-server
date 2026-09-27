@@ -479,4 +479,28 @@ describe('Commands.cjs openEnterpriseManager / openPropertiesFile', () => {
         expect(fakeVscode.workspace.openTextDocument).toHaveBeenCalledWith(`${homeDir}/cfg/BBj.properties`);
         expect(fakeVscode.window.showTextDocument).toHaveBeenCalledTimes(1);
     });
+
+    test('openEnterpriseManager shows an error and never opens a URL when BBj.properties is missing', () => {
+        fs.rmSync(path.join(homeDir, 'cfg', 'BBj.properties'));
+        const { Commands } = loadCommands();
+
+        Commands.openEnterpriseManager();
+
+        expect(fakeVscode.commands.executeCommand).not.toHaveBeenCalled();
+        expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining('Could not open Enterprise Manager')
+        );
+    });
+
+    test('openEnterpriseManager shows an error and never opens a URL when host/port are missing from BBj.properties', () => {
+        fs.writeFileSync(path.join(homeDir, 'cfg', 'BBj.properties'), 'some.other.key=value\n');
+        const { Commands } = loadCommands();
+
+        Commands.openEnterpriseManager();
+
+        expect(fakeVscode.commands.executeCommand).not.toHaveBeenCalled();
+        expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining('com.basis.jetty.host/com.basis.jetty.port')
+        );
+    });
 });

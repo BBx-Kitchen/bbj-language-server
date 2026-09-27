@@ -281,21 +281,34 @@ const Commands = {
 
   openEnterpriseManager() {
     const home = getBBjHome();
-    if (home) {
-      // The properties-reader@3.0.1 default export (see em-properties-reader-guard.test.ts)
-      // takes an options object, not a bare path; passing a bare string leaves `sourceFile`
-      // undefined, so no file is read and every .get() returns null (issue #565: never
-      // caught before, because this call site could not be exercised under Vitest).
-      const properties = PropertiesReader({ sourceFile: `${home}/cfg/BBj.properties` });
-      const url = `${
-        'http://' +
-        properties.get('com.basis.jetty.host') +
-        ':' +
-        properties.get('com.basis.jetty.port') +
-        '/bbjem/em'
-      }`;
-      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
+    if (!home) return;
+
+    // The properties-reader@3.0.1 default export (see em-properties-reader-guard.test.ts)
+    // takes an options object, not a bare path; passing a bare string leaves `sourceFile`
+    // undefined, so no file is read and every .get() returns null (issue #565: never
+    // caught before, because this call site could not be exercised under Vitest).
+    // PropertiesReader's append() reads sourceFile synchronously, so a missing or
+    // unreadable properties file (partial install, wrong bbj.home) throws here; catch
+    // it and report through the extension's usual showErrorMessage pattern instead of
+    // letting it propagate as an unhandled command error.
+    const propertiesFile = `${home}/cfg/BBj.properties`;
+    let properties;
+    try {
+      properties = PropertiesReader({ sourceFile: propertiesFile });
+    } catch (err) {
+      vscode.window.showErrorMessage(`Could not open Enterprise Manager: could not read ${propertiesFile}${err && err.message ? ` (${err.message})` : ''}`);
+      return;
     }
+
+    const jettyHost = properties.get('com.basis.jetty.host');
+    const jettyPort = properties.get('com.basis.jetty.port');
+    if (!jettyHost || !jettyPort) {
+      vscode.window.showErrorMessage(`Could not read com.basis.jetty.host/com.basis.jetty.port from ${propertiesFile}`);
+      return;
+    }
+
+    const url = `http://${jettyHost}:${jettyPort}/bbjem/em`;
+    vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
   },
 
   run: function (params) {
