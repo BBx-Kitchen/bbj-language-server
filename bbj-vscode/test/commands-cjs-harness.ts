@@ -167,11 +167,29 @@ const resolve: ResolveHookSync = (specifier, context, nextResolve) => {
     }
 };
 
+/**
+ * `config-path-trust.ts` reaches `vscode` via `import * as vscode from 'vscode';`, not a bare
+ * CJS `require`. Node's CJS-to-ESM interop synthesizes named exports for a dynamically-loaded
+ * CommonJS module by statically scanning its source for `module.exports.NAME = ...` (or
+ * `exports.NAME = ...`) assignments (cjs-module-lexer) — a single `module.exports = <object>`
+ * line alone yields only a `default` export, leaving `vscode.workspace` (and friends) undefined
+ * for that import style. The self-referential assignments below give the lexer a literal target
+ * name to detect for each property `Commands.cjs`'s dependency tree actually reads.
+ */
+const VSCODE_SHIM_SOURCE = `
+module.exports = globalThis.__bbjTestFakeVscode;
+module.exports.workspace = module.exports.workspace;
+module.exports.window = module.exports.window;
+module.exports.commands = module.exports.commands;
+module.exports.ProgressLocation = module.exports.ProgressLocation;
+module.exports.Uri = module.exports.Uri;
+`;
+
 const load: LoadHookSync = (url, context, nextLoad) => {
     if (url === VSCODE_SHIM_URL) {
         return {
             format: 'commonjs',
-            source: 'module.exports = globalThis.__bbjTestFakeVscode;',
+            source: VSCODE_SHIM_SOURCE,
             shortCircuit: true,
         };
     }
