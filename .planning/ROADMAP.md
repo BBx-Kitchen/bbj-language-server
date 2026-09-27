@@ -471,7 +471,7 @@ is VS Code only; IntelliJ has no Workspace Trust counterpart in scope.
   4. Resolving code that uses `java.io` or `java.net` classes no longer logs "Java class ... has no container". The caller that passed a bare package name to class resolution is identified and fixed, and a test pins it.
   5. In a file that also has an unrelated Error, the Warning for an unresolved Java member on an uncertain receiver is still shown, and its text names the member without Langium's internal "NamedElement" type name. Parse-error suppression (Rule 1) is unchanged.
 
-**Plans:** 6/6 plans executed (111-06 closes the two 111-VERIFICATION.md gaps)
+**Plans:** 6/7 plans executed (111-06 closes the two 111-VERIFICATION.md gaps; 111-07 closes UAT gap G-111-2)
 
 Plans:
 **Wave 1**
@@ -491,6 +491,10 @@ Plans:
 **Gap closure** *(from 111-VERIFICATION.md)*
 
 - [x] 111-06-PLAN.md — A peer method/constructor entry with no `parameters` key defaults to `[]` in `resolveClass()` Phase 1 instead of crashing Phase 2; hover's javadoc-file MethodDoc fallback bounds the method and parameter names it renders (SEC-03, SEC-04) (wave 1, gap closure)
+
+**Gap closure** *(from 111-UAT.md)*
+
+- [ ] 111-07-PLAN.md — The one trailing `[Docs](https://documentation.basis.cloud/…)` link shipped in installed javadoc stays a clickable link in Java hover and completion through a strict allowlist (`escapeJavadocMarkdown`); every other link, lookalike, image or truncated link stays escaped (SEC-04, G-111-2) (wave 1, gap closure)
 
 *Planning notes:* one shared escape/bound helper can serve SEC-03 and SEC-04. The research traced
 FIX-02's log line to a package/class name collision in `storeJavaClass()`'s `childrenOfByName`
