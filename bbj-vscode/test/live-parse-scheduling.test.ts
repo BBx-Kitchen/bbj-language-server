@@ -40,7 +40,7 @@ function createHarness() {
     const privates = builder as unknown as BuilderPrivates;
     privates.bbjcplAvailable = true;
     const interopService = BBj.java.JavaInteropService as JavaInteropTestService;
-    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments;
+    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments<TextDocument>;
     return { shared, BBj, builder, privates, interopService, textDocuments };
 }
 
@@ -55,7 +55,7 @@ function addWorkspaceDocument(shared: ReturnType<typeof createBBjTestServices>['
 /** Fires a combined open+change event for `uri` on the harness's real `TextDocuments` store.
  * `languageId` defaults to `'bbj'`; a caller proving the `bbx-config` exclusion passes
  * `'bbx-config'` explicitly, regardless of the uri's own file extension. */
-function openOrChange(textDocuments: NormalizedTextDocuments, uriString: string, version: number, text: string, languageId = 'bbj'): void {
+function openOrChange(textDocuments: NormalizedTextDocuments<TextDocument>, uriString: string, version: number, text: string, languageId = 'bbj'): void {
     textDocuments.set(TextDocument.create(uriString, languageId, version, text));
 }
 

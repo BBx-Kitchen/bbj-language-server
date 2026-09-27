@@ -24,12 +24,15 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
         return this.node(uri, this.files.has(uri.fsPath));
     }
     async exists(uri: URI): Promise<boolean> { return this.files.has(uri.fsPath); }
+    existsSync(uri: URI): boolean { return this.files.has(uri.fsPath); }
     async readFile(uri: URI): Promise<string> { return this.readFileSync(uri); }
     readFileSync(uri: URI): string {
         const content = this.files.get(uri.fsPath);
         if (content === undefined) throw new Error(`ENOENT: ${uri.fsPath}`);
         return content;
     }
+    async readBinary(uri: URI): Promise<Uint8Array> { return this.readBinarySync(uri); }
+    readBinarySync(uri: URI): Uint8Array { return new TextEncoder().encode(this.readFileSync(uri)); }
     async readDirectory(): Promise<FileSystemNode[]> { return []; }
     readDirectorySync(): FileSystemNode[] { return []; }
 }

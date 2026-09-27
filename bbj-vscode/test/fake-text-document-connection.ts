@@ -12,6 +12,7 @@ import type {
     TextEdit,
     WillSaveTextDocumentParams,
 } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
  * The six registration methods `NormalizedTextDocuments.listen()` actually calls on the
@@ -52,7 +53,7 @@ export interface FakeTextDocumentClient {
  * a real editor would, and `save` fires the real `onDidSave` event -- the event this phase's
  * `BBjDocumentBuilder` listener needs a real driver for.
  */
-export function listenOnFakeConnection(textDocuments: NormalizedTextDocuments): FakeTextDocumentClient {
+export function listenOnFakeConnection(textDocuments: NormalizedTextDocuments<TextDocument>): FakeTextDocumentClient {
     let openHandler: NotificationHandler<DidOpenTextDocumentParams> | undefined;
     let changeHandler: NotificationHandler<DidChangeTextDocumentParams> | undefined;
     let closeHandler: NotificationHandler<DidCloseTextDocumentParams> | undefined;

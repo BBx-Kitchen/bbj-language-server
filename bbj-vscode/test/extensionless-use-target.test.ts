@@ -2,10 +2,11 @@ import { URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { BBjServiceRegistry } from '../src/language/bbj-service-registry';
-import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
-import { Model } from '../src/language/generated/ast';
+import { BBjServiceRegistry } from '../src/language/bbj-service-registry.js';
+import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { Model } from '../src/language/generated/ast.js';
 
 /**
  * Regression harness for #688: a USE statement whose PREFIX target has no file extension
@@ -33,12 +34,15 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
         throw new Error(`ENOENT: ${uri.fsPath}`);
     }
     async exists(uri: URI): Promise<boolean> { return files.has(uri.fsPath); }
+    existsSync(uri: URI): boolean { return files.has(uri.fsPath); }
     async readFile(uri: URI): Promise<string> { return this.readFileSync(uri); }
     readFileSync(uri: URI): string {
         const content = files.get(uri.fsPath);
         if (content === undefined) throw new Error(`ENOENT: ${uri.fsPath}`);
         return content;
     }
+    async readBinary(uri: URI): Promise<Uint8Array> { return this.readBinarySync(uri); }
+    readBinarySync(uri: URI): Uint8Array { return new TextEncoder().encode(this.readFileSync(uri)); }
     async readDirectory(): Promise<FileSystemNode[]> { return []; }
     readDirectorySync(): FileSystemNode[] { return []; }
 }
@@ -63,7 +67,7 @@ describe('USE target without a file extension (#688)', () => {
         const docs = services.shared.workspace.LangiumDocuments;
         expect(docs.hasDocument(utilityUri)).toBe(true);
         expect(docs.hasDocument(helperUri)).toBe(true);
-        const unresolved = (document.diagnostics ?? []).filter(d => /could not be resolved|Could not resolve/i.test(d.message));
+        const unresolved = (document.diagnostics ?? []).filter(d => /could not be resolved|Could not resolve/i.test(Diagnostic.getMessageString(d)));
         expect(unresolved.map(d => d.message)).toEqual([]);
     });
 

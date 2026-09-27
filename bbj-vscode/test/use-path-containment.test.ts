@@ -2,6 +2,7 @@ import { AstUtils, DocumentValidator, EmptyFileSystem, URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper, validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { isUse, Model, Program, Use } from '../src/language/generated/ast.js';
@@ -43,6 +44,7 @@ class SpyFileSystemProvider implements FileSystemProvider {
         throw new Error(`ENOENT: ${uri.fsPath}`);
     }
     async exists(uri: URI): Promise<boolean> { return files.has(uri.fsPath); }
+    existsSync(uri: URI): boolean { return files.has(uri.fsPath); }
     async readFile(uri: URI): Promise<string> { return this.readFileSync(uri); }
     readFileSync(uri: URI): string {
         this.readFileTargets.push(uri.fsPath);
@@ -50,7 +52,9 @@ class SpyFileSystemProvider implements FileSystemProvider {
         if (content === undefined) throw new Error(`ENOENT: ${uri.fsPath}`);
         return content;
     }
-    async readDirectory(uri: URI): Promise<FileSystemNode[]> { return this.readDirectorySync(uri); }
+    async readBinary(uri: URI): Promise<Uint8Array> { return this.readBinarySync(uri); }
+    readBinarySync(uri: URI): Uint8Array { return new TextEncoder().encode(this.readFileSync(uri)); }
+    async readDirectory(): Promise<FileSystemNode[]> { return this.readDirectorySync(); }
     readDirectorySync(): FileSystemNode[] { return []; }
 }
 
@@ -131,8 +135,8 @@ describe('scope and validation ignore PREFIX candidates outside their root (issu
     function linkingErrors(doc: { diagnostics?: { data?: { code?: string } }[] }) {
         return (doc.diagnostics ?? []).filter(d => d.data?.code === DocumentValidator.LinkingError);
     }
-    function fileNotResolvedErrors(doc: { diagnostics?: { message: string }[] }) {
-        return (doc.diagnostics ?? []).filter(d => d.message.includes('could not be resolved'));
+    function fileNotResolvedErrors(doc: { diagnostics?: Diagnostic[] }) {
+        return (doc.diagnostics ?? []).filter(d => Diagnostic.getMessageString(d).includes('could not be resolved'));
     }
 
     beforeAll(async () => {
@@ -169,12 +173,16 @@ describe('scope and validation ignore PREFIX candidates outside their root (issu
         // specific "could not be resolved" error below.
         const useStmt = AstUtils.streamAllContents(document.parseResult.value).filter(isUse).head() as Use | undefined;
         expect(useStmt, 'the parsed program must contain the Use statement').toBeDefined();
-        expect(useStmt!.bbjClass.ref, 'Outside must not resolve through the escaping PREFIX candidate').toBeUndefined();
+        const bbjClass = useStmt!.bbjClass;
+        if (!bbjClass) {
+            throw new Error('Outside must not resolve through the escaping PREFIX candidate: no bbjClass reference found');
+        }
+        expect(bbjClass.ref, 'Outside must not resolve through the escaping PREFIX candidate').toBeUndefined();
 
         const notResolved = fileNotResolvedErrors(document);
         expect(notResolved.length).toBeGreaterThan(0);
-        expect(notResolved[0].message.startsWith("File '../../secret/Outside.bbj' could not be resolved")).toBe(true);
-        expect(notResolved[0].message).not.toContain(URI.file(`${SECRET_DIR}/Outside.bbj`).fsPath);
+        expect(Diagnostic.getMessageString(notResolved[0]).startsWith("File '../../secret/Outside.bbj' could not be resolved")).toBe(true);
+        expect(Diagnostic.getMessageString(notResolved[0])).not.toContain(URI.file(`${SECRET_DIR}/Outside.bbj`).fsPath);
     });
 
     test('a class inside the PREFIX root links with no diagnostics', async () => {
