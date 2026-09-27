@@ -62,7 +62,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [ ] **TEST-06**: The real connection, timeout and lock code in `java-interop.ts` is exercised by tests against a local fake socket server (#560)
 - [ ] **TEST-07**: `initializeWorkspace()` no longer exceeds the vitest hook timeout under whole-suite load (#562)
 - [ ] **TEST-08**: The LSP handler logic in `main.ts` can be tested without module-load-time `createConnection()` and is covered by tests (#563)
-- [ ] **TEST-09**: `Commands.cjs` is executed and covered by tests (#565)
+- [x] **TEST-09**: `Commands.cjs` is executed and covered by tests (#565)
 - [ ] **TEST-10**: The addwindow, addchildwindow and setopts composer `*-ui.ts` files are invoked and covered by tests, not only mocked (#628)
 - [ ] **TEST-11**: `bbx-language-configuration.json` is covered for JSON validity and editor behaviour, like the bbj file (#629)
 
@@ -153,7 +153,7 @@ None deferred. Every still-open audit issue is in scope.
 | TEST-06 | Phase 116 | Pending |
 | TEST-07 | Phase 114 | Pending |
 | TEST-08 | Phase 116 | Pending |
-| TEST-09 | Phase 112 | Pending |
+| TEST-09 | Phase 112 | Complete |
 | TEST-10 | Phase 113 | Pending |
 | TEST-11 | Phase 114 | Pending |
 | HARN-01 | Phase 115 | Pending |
