@@ -27,7 +27,8 @@
 import { createRequire, registerHooks, type ResolveHookSync, type LoadHookSync } from 'module';
 import * as path from 'path';
 import { vi, type Mock } from 'vitest';
-import { formatArgvForLog as realFormatArgvForLog, type Argv } from '../src/Commands/process-runner.js';
+import { formatArgvForLog as realFormatArgvForLog } from '../src/Commands/process-runner.js';
+import type { Argv } from '../src/Commands/process-args.js';
 
 const VSCODE_SHIM_URL = 'bbj-test-shim:vscode';
 const PROCESS_RUNNER_SHIM_URL = 'bbj-test-shim:process-runner';

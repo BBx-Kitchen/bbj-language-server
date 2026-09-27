@@ -9,7 +9,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
       reportsDirectory: './coverage',
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'src/**/*.cjs'],
       exclude: [
         'src/language/generated/**', // Langium-generated files
         'src/extension.ts',           // VS Code extension entry point (hard to unit test)

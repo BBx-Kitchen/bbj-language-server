@@ -282,7 +282,11 @@ const Commands = {
   openEnterpriseManager() {
     const home = getBBjHome();
     if (home) {
-      const properties = PropertiesReader(`${home}/cfg/BBj.properties`);
+      // The properties-reader@3.0.1 default export (see em-properties-reader-guard.test.ts)
+      // takes an options object, not a bare path; passing a bare string leaves `sourceFile`
+      // undefined, so no file is read and every .get() returns null (issue #565: never
+      // caught before, because this call site could not be exercised under Vitest).
+      const properties = PropertiesReader({ sourceFile: `${home}/cfg/BBj.properties` });
       const url = `${
         'http://' +
         properties.get('com.basis.jetty.host') +

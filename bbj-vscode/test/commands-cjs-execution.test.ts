@@ -10,8 +10,12 @@
  * node:module hooks and these tests drive its command bodies against spies.
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE } from '../src/Commands/target-resolution.js';
+import type { Argv } from '../src/Commands/process-args.js';
 import {
     fakeProcessRunner,
     fakeVscode,
@@ -290,5 +294,189 @@ describe('Commands.cjs runBUI / runDWC', () => {
         const dwcLine = appendLine.mock.calls.find(([line]: [string]) => line.startsWith('DWC run: '))?.[0];
         expect(dwcLine).toBeDefined();
         expect(dwcLine).not.toContain('pw-secret-9');
+    });
+});
+
+describe('Commands.cjs compile', () => {
+    beforeEach(() => {
+        resetCommandsHarness();
+        setFakeSettings(DEFAULT_TEST_SETTINGS);
+    });
+
+    test('compiles the target once, ending on the target file, then shows success', async () => {
+        const { Commands } = loadCommands();
+
+        Commands.compile({ fsPath: '/w/a.bbj' });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeProcessRunner.runProcess).toHaveBeenCalledTimes(1);
+        const [argv] = fakeProcessRunner.runProcess.mock.calls[0];
+        expect(argv.args.at(-1)).toBe('/w/a.bbj');
+        expect(fakeVscode.window.showInformationMessage).toHaveBeenCalledWith('Successfully compiled "/w/a.bbj"');
+    });
+
+    test('shows a "Failed to compile" error containing stderr when runProcess rejects', async () => {
+        const { Commands } = loadCommands();
+        const error = Object.assign(new Error('compile failed'), { stderr: 'boom' });
+        fakeProcessRunner.runProcess.mockRejectedValueOnce(error);
+
+        Commands.compile({ fsPath: '/w/a.bbj' });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];
+        expect(message).toMatch(/^Failed to compile "\/w\/a\.bbj"/);
+        expect(message).toContain('boom');
+    });
+
+    test('shows a conflicts error and never calls runProcess when two conflicting options are both set', () => {
+        const { Commands } = loadCommands();
+        setFakeSettings({
+            bbj: {
+                home: '/opt/bbx',
+                classpath: '',
+                compiler: {
+                    typeChecking: {
+                        enabled: true,
+                        configFile: '/explicit/config.bbx',
+                        prefixDirectories: '/prefix/dir',
+                    },
+                },
+            },
+            'bbj.web': { apps: {}, AutoSaveUponRun: false },
+        });
+
+        Commands.compile({ fsPath: '/w/a.bbj' });
+
+        const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];
+        expect(message).toMatch(/^Compiler options have conflicts/);
+        expect(fakeProcessRunner.runProcess).not.toHaveBeenCalled();
+    });
+});
+
+describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+        resetCommandsHarness();
+        setFakeSettings(DEFAULT_TEST_SETTINGS);
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-cjs-test-'));
+    });
+
+    afterEach(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    /** Fakes bbjlst by writing `<lastArg>.lst` next to whatever file was passed. */
+    function fakeBbjlstWrites(content: string): void {
+        fakeProcessRunner.runProcess.mockImplementation(async (argv: Argv) => {
+            const target = argv.args.at(-1) as string;
+            fs.writeFileSync(`${target}.lst`, content);
+            return { stdout: '', stderr: '' };
+        });
+    }
+
+    test('denumber rewrites the input file in place with the .lst content, then opens and shows it', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'a.bbj');
+        fs.writeFileSync(inputPath, 'plain text program\n');
+        const lstContent = 'denumbered content\n';
+        fakeBbjlstWrites(lstContent);
+
+        Commands.denumber({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        expect((uri as { fsPath?: string } | undefined)?.fsPath).toBe(inputPath);
+        expect(fakeVscode.window.showTextDocument).toHaveBeenCalledTimes(1);
+    });
+
+    test('decompileReplace produces the same in-place result as denumber, through the decompile target resolver', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'b.bbj');
+        fs.writeFileSync(inputPath, 'plain text program\n');
+        const lstContent = 'decompiled content\n';
+        fakeBbjlstWrites(lstContent);
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
+    });
+
+    test('decompileReadonly leaves the original untouched and opens a .bbj file in a bbj-decompiled- temp dir as read-only', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'c.bbj');
+        const originalContent = 'original content, never rewritten\n';
+        fs.writeFileSync(inputPath, originalContent);
+        const lstContent = 'read-only decompiled content\n';
+        fakeBbjlstWrites(lstContent);
+
+        Commands.decompileReadonly({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(originalContent);
+
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        const openedPath = (uri as { fsPath?: string } | undefined)?.fsPath ?? '';
+        expect(openedPath).toMatch(/bbj-decompiled-[^/\\]*[/\\]c\.bbj$/);
+        expect(fs.readFileSync(openedPath, 'utf-8')).toBe(lstContent);
+        expect(fakeVscode.commands.executeCommand).toHaveBeenCalledWith(
+            'workbench.action.files.setActiveEditorReadonlyInSession'
+        );
+
+        fs.rmSync(path.dirname(openedPath), { recursive: true, force: true });
+    });
+
+    test('a decompile whose runProcess rejects shows an error starting "Failed to decompile"', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'd.bbj');
+        fs.writeFileSync(inputPath, 'plain text program\n');
+        fakeProcessRunner.runProcess.mockRejectedValueOnce(new Error('decompile boom'));
+
+        Commands.denumber({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];
+        expect(message).toMatch(/^Failed to decompile/);
+    });
+});
+
+describe('Commands.cjs openEnterpriseManager / openPropertiesFile', () => {
+    let homeDir: string;
+
+    beforeEach(() => {
+        resetCommandsHarness();
+        homeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-cjs-home-'));
+        fs.mkdirSync(path.join(homeDir, 'cfg'), { recursive: true });
+        fs.writeFileSync(
+            path.join(homeDir, 'cfg', 'BBj.properties'),
+            'com.basis.jetty.host=localhost\ncom.basis.jetty.port=8888\n'
+        );
+        setFakeSettings({ bbj: { home: homeDir, classpath: '' }, 'bbj.web': { apps: {}, AutoSaveUponRun: false } });
+    });
+
+    afterEach(() => {
+        fs.rmSync(homeDir, { recursive: true, force: true });
+    });
+
+    test('openEnterpriseManager opens the EM URL built from BBj.properties', () => {
+        const { Commands } = loadCommands();
+
+        Commands.openEnterpriseManager();
+
+        expect(fakeVscode.commands.executeCommand).toHaveBeenCalledTimes(1);
+        const [command, uri] = fakeVscode.commands.executeCommand.mock.calls[0];
+        expect(command).toBe('vscode.open');
+        expect((uri as { toString: () => string }).toString()).toBe('http://localhost:8888/bbjem/em');
+    });
+
+    test('openPropertiesFile opens <home>/cfg/BBj.properties', async () => {
+        const { Commands } = loadCommands();
+
+        await Commands.openPropertiesFile();
+
+        expect(fakeVscode.workspace.openTextDocument).toHaveBeenCalledWith(`${homeDir}/cfg/BBj.properties`);
+        expect(fakeVscode.window.showTextDocument).toHaveBeenCalledTimes(1);
     });
 });

@@ -15,10 +15,10 @@ import * as path from 'path';
  * time. The real factory function is `.default` (equivalently
  * `.propertiesReader`).
  *
- * `Commands.cjs` is a CommonJS file resolved by Node's native loader, so
- * `vi.mock('vscode')` never reaches its `require` and it cannot be exercised
- * end-to-end under Vitest (see no-shell-command-construction.test.ts for the
- * same constraint). Two checks compensate:
+ * `openEnterpriseManager`'s command body now runs for real in
+ * commands-cjs-execution.test.ts, through commands-cjs-harness.ts's
+ * `node:module` loader (issue #565; see no-shell-command-construction.test.ts
+ * for the same harness). This file's checks stay as defence in depth:
  *
  * 1. A dependency-shape test against the real installed `properties-reader`
  *    package (no vscode involved) that reproduces the exact symptom: the

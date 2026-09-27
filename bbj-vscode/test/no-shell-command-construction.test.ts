@@ -4,10 +4,11 @@ import * as path from 'path';
 
 /**
  * GHSA-p5f3-9456-9pcx (CWE-78): this guard is what keeps the fix from silently
- * regressing. `Commands.cjs` is a CommonJS file resolved by Node's native
- * loader, so `vi.mock('vscode')` never reaches its `require` and it cannot be
- * loaded under Vitest — this source scan is the only automated check covering
- * the wiring inside it. Both this file and `extension.ts` are asserted to
+ * regressing. `Commands.cjs`'s command bodies now run for real in
+ * commands-cjs-execution.test.ts, through commands-cjs-harness.ts's
+ * `node:module` loader (issue #565); this source scan stays as defence in
+ * depth, covering the wiring even if a future call site is never exercised by
+ * an execution test. Both this file and `extension.ts` are asserted to
  * contain zero shell-string process launches and zero `child_process` imports.
  */
 
