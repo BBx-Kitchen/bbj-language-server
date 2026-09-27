@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { CallSpan, findCallAt, findCalls, scanArgs, trimmedRange } from '../src/composer-call-scanner';
+import { findMsgboxCalls } from '../src/msgbox-composer';
+import { findCvsCalls } from '../src/cvs-composer';
 
 describe('composer-call-scanner (#534)', () => {
     describe('scanArgs', () => {
@@ -93,6 +95,22 @@ describe('composer-call-scanner (#534)', () => {
             expect(findCallAt(calls, 0)).toBe(outer);
             expect(findCallAt(calls, 10)).toBe(outer);
             expect(findCallAt(calls, 3)).toBe(inner);
+        });
+    });
+
+    describe('per-composer boundary difference survives the consolidation', () => {
+        test('findMsgboxCalls keeps its looser matching (call after a dot or an identifier character) while findCvsCalls keeps its stricter boundary', () => {
+            const looserLines = ['obj.msgbox("hi")', 'xmsgbox("hi")'];
+            for (const line of looserLines) {
+                const calls = findMsgboxCalls(line);
+                expect(calls).toHaveLength(1);
+                expect(calls[0].callStart).toBe(line.toLowerCase().indexOf('msgbox'));
+            }
+
+            const stricterLines = ['obj.cvs(a$, 1)', 'xcvs(a$, 1)'];
+            for (const line of stricterLines) {
+                expect(findCvsCalls(line)).toHaveLength(0);
+            }
         });
     });
 });

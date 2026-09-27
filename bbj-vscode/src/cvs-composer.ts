@@ -19,7 +19,7 @@
  * reason: a composer may still build a whole call and replace the call's span, it just has
  * nothing to pre-fill from a mask.
  */
-import { scanArgs, trimmedRange } from './composer-call-scanner.js';
+import { findCallAt, findCalls, scanArgs, trimmedRange } from './composer-call-scanner.js';
 import { validateAssignTo, validateStringField } from './msgbox-composer.js';
 
 export interface CvsBit {
@@ -140,9 +140,6 @@ export interface CvsCallInfo {
     args: string[];
 }
 
-/** `cvs(` not preceded by an identifier character or `.` — keeps longer names and method calls out. */
-const CVS_CALL_BOUNDARY_SOURCE = String.raw`(?<![A-Za-z0-9_.])cvs\s*\(`;
-
 function buildCvsCallInfo(line: string, callStart: number, open: number): CvsCallInfo {
     const { argRanges, callEnd } = scanArgs(line, open);
     const args = argRanges.map(([a, b]) => {
@@ -152,15 +149,13 @@ function buildCvsCallInfo(line: string, callStart: number, open: number): CvsCal
     return { callStart, callEnd, args };
 }
 
-/** Every `CVS(...)` call on the line, in source order. Matching is case-insensitive. */
+/**
+ * Every `CVS(...)` call on the line, in source order. Matching is case-insensitive and, per the
+ * `notAfterIdentifierOrDot` option, rejects `cvs(` preceded by an identifier character or a `.` —
+ * keeping longer names and method calls (`obj.cvs(`, `xcvs(`) out.
+ */
 export function findCvsCalls(line: string): CvsCallInfo[] {
-    const re = new RegExp(CVS_CALL_BOUNDARY_SOURCE, 'gi');
-    const calls: CvsCallInfo[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(line)) !== null) {
-        calls.push(buildCvsCallInfo(line, m.index, m.index + m[0].length));
-    }
-    return calls;
+    return findCalls(line, 'cvs', buildCvsCallInfo, { notAfterIdentifierOrDot: true });
 }
 
 /** First `CVS(...)` call on the line (convenience). */
@@ -173,9 +168,7 @@ export function parseCvsCallOnLine(line: string): CvsCallInfo | undefined {
  * (smallest span) containing the cursor wins.
  */
 export function findCvsCallAt(line: string, character: number): CvsCallInfo | undefined {
-    const containing = findCvsCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
-    if (containing.length === 0) return undefined;
-    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+    return findCallAt(findCvsCalls(line), character);
 }
 
 // ---------------------------------------------------------------------------------------------

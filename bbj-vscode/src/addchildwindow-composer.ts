@@ -17,7 +17,7 @@ import {
     FlagItem, encodeBits, formatHex, parseHexLiteral, describeMask, knownMask, bitsSet, unknownBits,
     validateNumericField,
 } from './addwindow-composer.js';
-import { scanArgs, trimmedRange } from './composer-call-scanner.js';
+import { findCallAt, findCalls, scanArgs, trimmedRange } from './composer-call-scanner.js';
 
 export { EVENT_MASK_BITS as CHILD_EVENT_MASK_BITS } from './addwindow-composer.js';
 import { EVENT_MASK_BITS } from './addwindow-composer.js';
@@ -337,13 +337,7 @@ function buildCallInfo(line: string, callStart: number, open: number): AddChildW
 
 /** Every `addChildWindow(...)` call on the line, in source order. */
 export function findAddChildWindowCalls(line: string): AddChildWindowCallInfo[] {
-    const re = /addchildwindow\s*\(/gi;
-    const calls: AddChildWindowCallInfo[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(line)) !== null) {
-        calls.push(buildCallInfo(line, m.index, m.index + m[0].length));
-    }
-    return calls;
+    return findCalls(line, 'addchildwindow', buildCallInfo);
 }
 
 /** First `addChildWindow(...)` call on the line (convenience). */
@@ -356,9 +350,7 @@ export function parseAddChildWindowCallOnLine(line: string): AddChildWindowCallI
  * innermost (smallest span) containing the cursor wins.
  */
 export function findAddChildWindowCallAt(line: string, character: number): AddChildWindowCallInfo | undefined {
-    const containing = findAddChildWindowCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
-    if (containing.length === 0) return undefined;
-    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+    return findCallAt(findAddChildWindowCalls(line), character);
 }
 
 /** Convenience re-exports so clients of this module need not also import the addWindow module. */

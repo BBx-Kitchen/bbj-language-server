@@ -8,6 +8,7 @@
  * duplicating the flag arithmetic. It intentionally has NO `vscode` dependency so it is unit
  * testable and reusable.
  */
+import { findCallAt, findCalls, scanArgs, trimmedRange } from './composer-call-scanner.js';
 
 export interface CatalogItem {
     value: number;
@@ -610,49 +611,6 @@ export function parseMsgboxOptionsSum(text: string): number | undefined {
     return sum;
 }
 
-/** [start, end) of `line.slice(a, b)` with leading/trailing whitespace trimmed off. */
-function trimmedRange(line: string, a: number, b: number): [number, number] {
-    const text = line.slice(a, b);
-    const leading = /^\s*/.exec(text)![0].length;
-    const trailing = /\s*$/.exec(text.slice(leading))![0].length;
-    return [a + leading, b - trailing];
-}
-
-/**
- * Scan the top-level arguments of a call, starting just after its `(`. Handles nested parens
- * and string literals (with `""` escapes) so commas inside them don't split arguments. Returns
- * the argument ranges and `callEnd` (index just past the closing `)`, or the line end).
- */
-function scanArgs(line: string, open: number): { argRanges: Array<[number, number]>; callEnd: number } {
-    const argRanges: Array<[number, number]> = [];
-    let depth = 0;
-    let inStr = false;
-    let argStart = open;
-    let i = open;
-    let ended = false;
-    for (; i < line.length; i++) {
-        const c = line[i];
-        if (inStr) {
-            if (c === '"') {
-                if (line[i + 1] === '"') { i++; continue; } // "" escape
-                inStr = false;
-            }
-            continue;
-        }
-        if (c === '"') { inStr = true; }
-        else if (c === '(') { depth++; }
-        else if (c === ')') {
-            if (depth === 0) { argRanges.push([argStart, i]); i++; ended = true; break; }
-            depth--;
-        } else if (c === ',' && depth === 0) {
-            argRanges.push([argStart, i]);
-            argStart = i + 1;
-        }
-    }
-    if (!ended) argRanges.push([argStart, line.length]);
-    return { argRanges, callEnd: i };
-}
-
 function buildCallInfo(line: string, callStart: number, open: number): MsgboxCallInfo {
     const { argRanges, callEnd } = scanArgs(line, open);
     const info: MsgboxCallInfo = {
@@ -690,13 +648,7 @@ function buildCallInfo(line: string, callStart: number, open: number): MsgboxCal
 
 /** Every `MSGBOX(...)` call on the line, in source order. */
 export function findMsgboxCalls(line: string): MsgboxCallInfo[] {
-    const re = /msgbox\s*\(/gi;
-    const calls: MsgboxCallInfo[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(line)) !== null) {
-        calls.push(buildCallInfo(line, m.index, m.index + m[0].length));
-    }
-    return calls;
+    return findCalls(line, 'msgbox', buildCallInfo);
 }
 
 /** First `MSGBOX(...)` call on the line (convenience). */
@@ -711,9 +663,7 @@ export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined 
  * only offers the action for the one in focus.
  */
 export function findMsgboxCallAt(line: string, character: number): MsgboxCallInfo | undefined {
-    const containing = findMsgboxCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
-    if (containing.length === 0) return undefined;
-    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+    return findCallAt(findMsgboxCalls(line), character);
 }
 
 /**
