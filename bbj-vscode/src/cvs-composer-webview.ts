@@ -41,7 +41,7 @@ export interface CvsEditTarget {
 export interface CvsPanelArg {
     /** Present = EDIT an existing call's bits/chars in place. Absent = insert a NEW call. */
     target?: CvsEditTarget;
-    initial?: { str: string; bits: number[]; chars: string };
+    initial?: { str: string; bits: number[]; chars: string; assignTo?: string };
 }
 
 interface Selection {
@@ -103,7 +103,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
         insertPosition = editor.selection.active;
     }
 
-    const initial = arg?.initial ?? { str: 'a$', bits: [], chars: '' };
+    const initial = arg?.initial ?? { str: 'a$', bits: [], chars: '', assignTo: 's$' };
     const trailingArgs = target?.trailingArgs ?? [];
 
     const title = completing ? 'Complete CVS() call' : (editMode ? 'Edit CVS()' : 'CVS() Composer');
@@ -230,8 +230,9 @@ function getHtml(webview: vscode.Webview): string {
   </div>
 
   <div class="row" id="assignTo-row">
-    <label for="assignTo">Assign result to (optional)</label>
+    <label for="assignTo">Assign result to</label>
     <input type="text" id="assignTo">
+    <div class="error" id="assignTo-error"></div>
   </div>
 
   <fieldset>
@@ -291,7 +292,7 @@ function getHtml(webview: vscode.Webview): string {
       if (editMode || completing) {
         $('assignTo-row').classList.add('hidden');
       } else {
-        $('assignTo').value = '';
+        $('assignTo').value = init.assignTo || '';
       }
 
       const bitsHost = $('bits');
@@ -318,8 +319,10 @@ function getHtml(webview: vscode.Webview): string {
       $('summary').textContent = m.summary;
       $('str-error').textContent = m.strError || '';
       $('chars-error').textContent = m.charsError || '';
+      $('assignTo-error').textContent = m.assignToError || '';
       $('str').classList.toggle('invalid', !!m.strError);
       $('chars').classList.toggle('invalid', !!m.charsError);
+      $('assignTo').classList.toggle('invalid', !!m.assignToError);
       $('chars').disabled = !m.charsEnabled;
       $('insert').disabled = !m.valid;
     }

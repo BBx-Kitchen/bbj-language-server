@@ -20,7 +20,7 @@
  * nothing to pre-fill from a mask.
  */
 import { scanArgs, trimmedRange } from './addwindow-composer.js';
-import { validateStringField } from './msgbox-composer.js';
+import { validateAssignTo, validateStringField } from './msgbox-composer.js';
 
 export interface CvsBit {
     /** The single bit this operation sets, e.g. 1. */
@@ -293,7 +293,12 @@ export interface CvsPreviewInput {
     str: string;
     bits: number[];
     chars: string;
-    assignTo?: string;
+    /**
+     * The assign-to target text. Present but empty/whitespace-only on a new insert with nothing
+     * typed yet; `undefined` or `null` when the field is hidden (edit mode or completing mode) —
+     * see {@link cvsPreview}'s `assignToError`/`valid` computation.
+     */
+    assignTo?: string | null;
     trailingArgs?: string[];
     /** In edit mode `str` is the preserved verbatim argument and `assignTo` is omitted. */
     editMode?: boolean;
@@ -306,6 +311,8 @@ export interface CvsPreview {
     charsEnabled: boolean;
     strError?: string;
     charsError?: string;
+    /** Set only when the assign-to field is shown (a new insert) and its text fails {@link validateAssignTo}. */
+    assignToError?: string;
     valid: boolean;
 }
 
@@ -320,11 +327,18 @@ export function cvsPreview(input: CvsPreviewInput): CvsPreview {
     const strV = input.editMode ? { ok: true } : validateStringField(input.str, { required: true });
     const charsV = charsEnabled && input.chars.trim() !== '' ? validateStringField(input.chars) : { ok: true };
 
+    // The assign-to field is shown only on a new insert (not edit mode, and completing mode
+    // passes assignTo undefined/null itself, see cvs-composer-webview.ts) — the same rule
+    // msgboxPreview applies, parameterised here for CVS's string result.
+    const assignToShown = input.editMode !== true && input.assignTo !== undefined && input.assignTo !== null;
+    const assignToV = assignToShown ? validateAssignTo(input.assignTo!, 'string') : undefined;
+    const assignToTrimmed = assignToShown ? input.assignTo!.trim() : undefined;
+
     const statement = composeCvsCall({
         str: input.str,
         mask,
         chars: charsEnabled ? (input.chars || undefined) : undefined,
-        assignTo: input.editMode ? undefined : input.assignTo,
+        assignTo: assignToShown ? (assignToTrimmed || undefined) : undefined,
         trailingArgs: input.trailingArgs,
     });
 
@@ -335,6 +349,7 @@ export function cvsPreview(input: CvsPreviewInput): CvsPreview {
         charsEnabled,
         strError: strV.ok ? undefined : strV.message,
         charsError: charsV.ok ? undefined : charsV.message,
-        valid: strV.ok && charsV.ok,
+        assignToError: assignToV && !assignToV.ok ? assignToV.message : undefined,
+        valid: strV.ok && charsV.ok && (!assignToV || assignToV.ok),
     };
 }

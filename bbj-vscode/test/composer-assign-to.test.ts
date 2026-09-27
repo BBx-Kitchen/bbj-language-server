@@ -72,6 +72,8 @@ vi.mock('vscode', () => ({
 
 import { validateAssignTo, msgboxPreview } from '../src/msgbox-composer.js';
 import { openMsgboxComposerPanel } from '../src/msgbox-composer-webview.js';
+import { cvsPreview } from '../src/cvs-composer.js';
+import { openCvsComposerPanel } from '../src/cvs-composer-webview.js';
 
 const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof openMsgboxComposerPanel>[0];
 
@@ -256,5 +258,148 @@ describe('msgbox-composer-webview.ts source guards (#626)', () => {
         expect(MSGBOX_WEBVIEW_SRC).toContain(`$('assignTo').classList.toggle('invalid', !!m.assignToError);`);
         expect(MSGBOX_WEBVIEW_SRC).not.toContain('Assign result to (optional)');
         expect(MSGBOX_WEBVIEW_SRC).toContain('Assign result to</label>');
+    });
+});
+
+const CVS_WEBVIEW_SRC = readFileSync(
+    fileURLToPath(new URL('../src/cvs-composer-webview.ts', import.meta.url)), 'utf-8',
+);
+
+const STRING_MESSAGE = 'Not a string or object variable — e.g. s$, s! or s$[1]';
+
+describe('validateAssignTo — string (CVS) (#626)', () => {
+    const ok: string[] = ['s$', 's!', 'S$', 's$[i]', 's$[i+1]', 's![1]'];
+    test.each(ok)('%s is a valid string assign-to target', (text) => {
+        expect(validateAssignTo(text, 'string')).toEqual({ ok: true });
+    });
+
+    const bad: string[] = ['s', 's%', 's$$', '"s"', 's$ = x', 's$;x', 's$[]', 's [1]', 'x.y'];
+    test.each(bad)('%s is rejected for a string result', (text) => {
+        const result = validateAssignTo(text, 'string');
+        expect(result.ok).toBe(false);
+        expect(result.message).toBe(STRING_MESSAGE);
+    });
+
+    test('empty text is Required', () => {
+        expect(validateAssignTo('', 'string')).toEqual({ ok: false, message: 'Required' });
+    });
+});
+
+describe('cvsPreview assignTo validation (#626)', () => {
+    const base = { str: 'a$', bits: [] as number[], chars: '' };
+
+    test('a new insert with empty assignTo requires it and marks invalid', () => {
+        const p = cvsPreview({ ...base, assignTo: '' });
+        expect(p.assignToError).toBe('Required');
+        expect(p.valid).toBe(false);
+    });
+
+    test('a new insert with an invalid assignTo reports the string message and marks invalid', () => {
+        const p = cvsPreview({ ...base, assignTo: 'x' });
+        expect(p.assignToError).toBe(STRING_MESSAGE);
+        expect(p.valid).toBe(false);
+    });
+
+    test('a new insert with a padded but valid assignTo has no error, is valid, and trims for the statement', () => {
+        const p = cvsPreview({ ...base, assignTo: ' s$ ' });
+        expect(p.assignToError).toBeUndefined();
+        expect(p.valid).toBe(true);
+        expect(p.statement.startsWith('s$ = CVS(')).toBe(true);
+    });
+
+    test('edit mode, or assignTo undefined/null, hides the field with no error and no change to the statement', () => {
+        const edit = cvsPreview({ ...base, assignTo: 'b$', editMode: true });
+        expect(edit.assignToError).toBeUndefined();
+        expect(cvsPreview({ ...base, assignTo: undefined }).assignToError).toBeUndefined();
+        expect(cvsPreview({ ...base, assignTo: null }).assignToError).toBeUndefined();
+    });
+
+    test('an empty str and an invalid assignTo both surface, and the function is pure', () => {
+        const input = { ...base, str: '', assignTo: 'x' };
+        const p1 = cvsPreview(input);
+        const p2 = cvsPreview(input);
+        expect(p1.strError).toBeDefined();
+        expect(p1.assignToError).toBe(STRING_MESSAGE);
+        expect(p1.valid).toBe(false);
+        expect(p1).toEqual(p2);
+    });
+});
+
+describe('CVS panel — assignTo end to end (#626)', () => {
+    function cvsFakeContext() {
+        return { subscriptions: [] } as unknown as Parameters<typeof openCvsComposerPanel>[0];
+    }
+
+    test('NEW mode: ready posts an init whose initial.assignTo is s$', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(cvsFakeContext());
+        const handler = getHandler()!;
+
+        await handler({ type: 'ready' });
+
+        const initCall = panel.webview.postMessage.mock.calls.find(c => (c[0] as { type: string }).type === 'init');
+        expect(initCall![0]).toMatchObject({ initial: expect.objectContaining({ assignTo: 's$' }) });
+    });
+
+    test('NEW mode: an insert with an empty assignTo applies no edit', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(cvsFakeContext());
+        const handler = getHandler()!;
+
+        await handler({ type: 'insert', payload: { str: 'a$', bits: [], chars: '', assignTo: '' } });
+
+        expect(applyEditMock).not.toHaveBeenCalled();
+        expect(panel.dispose).not.toHaveBeenCalled();
+    });
+
+    test('NEW mode: an insert with s$ applies one insert whose text starts with s$ = CVS(', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(cvsFakeContext());
+        const handler = getHandler()!;
+
+        await handler({ type: 'insert', payload: { str: 'a$', bits: [], chars: '', assignTo: 's$' } });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.insert).toHaveBeenCalledTimes(1);
+        const [, , text] = edit.insert.mock.calls[0];
+        expect((text as string).startsWith('s$ = CVS(')).toBe(true);
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test('completing mode still ignores assignTo', async () => {
+        textDocuments = [{ uri: { toString: () => 'file:///a.bbj' }, lineAt: () => ({ text: 'a$ = CVS(name$' }) }];
+        const target = {
+            uri: 'file:///a.bbj', line: 0, callStart: 5, callEnd: 14,
+            callText: 'CVS(name$', trailingArgs: [] as string[], incomplete: true,
+        };
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValueOnce(panel);
+        openCvsComposerPanel(cvsFakeContext(), { target, initial: { str: 'name$', bits: [], chars: '' } });
+        const handler = getHandler()!;
+
+        await handler({ type: 'insert', payload: { str: 'name$', bits: [], chars: '', assignTo: 'ignored$' } });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        const [, , text] = edit.replace.mock.calls[0];
+        expect(text as string).not.toContain('=');
+        expect(panel.dispose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('cvs-composer-webview.ts source guards (#626)', () => {
+    test('has one assignTo-error element, written only via textContent, toggling invalid, fills from init.assignTo, no optional marker', () => {
+        expect((CVS_WEBVIEW_SRC.match(/id="assignTo-error"/g) ?? []).length).toBe(1);
+        expect(CVS_WEBVIEW_SRC).toContain(`$('assignTo-error').textContent = m.assignToError || '';`);
+        expect(CVS_WEBVIEW_SRC).toContain(`$('assignTo').classList.toggle('invalid', !!m.assignToError);`);
+        expect(CVS_WEBVIEW_SRC).toContain(`$('assignTo').value = init.assignTo || '';`);
+        expect(CVS_WEBVIEW_SRC).not.toContain('Assign result to (optional)');
+        expect(CVS_WEBVIEW_SRC).toContain('Assign result to</label>');
+        expect(CVS_WEBVIEW_SRC).toContain(`assignTo: 's$'`);
     });
 });
