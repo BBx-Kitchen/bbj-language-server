@@ -409,7 +409,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 110: Workspace Settings & Filesystem Trust** - The interop host/port, `bbj.configPath`, USE-statement paths, prefix checks, file probes and the formatter's Java binary can no longer point somewhere the user did not choose (completed 2026-09-26)
 - [x] **Phase 111: Java Class Data from the Interop Peer** - Class data from the interop peer is bounded, escaped and validated before it reaches the AST, hover, completion and quick fixes; the "has no container" log line is gone, and an unresolved Java member stays visible with a readable message (completed 2026-09-27)
 - [x] **Phase 112: EM Login & Web Launch Fail Closed** - No default EM credentials, a visible error for every failing EM call, undecidable tokens treated as expired, and `Commands.cjs` executed by tests (completed 2026-09-27)
-- [ ] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each
+- [x] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each (completed 2026-09-27)
 - [ ] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups
 - [ ] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI
 - [ ] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures
@@ -549,7 +549,7 @@ closed on undecidable JWTs (v4.2 TOKEN-01).
   4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
   5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
 
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -811,7 +811,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Complete | 2026-09-26 |
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
-| 113. Composer Webview Hardening & Consolidation | 8/8 | Not started |  |
+| 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |

@@ -411,6 +411,13 @@ until publication).
 - ✓ **SEC-13**: Every Enterprise Manager call in `web.bbj` after login reports its failure visibly (step name, BBj error text and number) and exits non-zero (#548) — v4.7 Phase 112
 - ✓ **SEC-14**: The EM token expiry check treats a malformed, unsigned or exp-less JWT as expired, in both IDEs and on the login path (#553) — v4.7 Phase 112
 - ✓ **TEST-09**: `Commands.cjs` is executed and covered by tests (95% lines) (#565) — v4.7 Phase 112
+- ✓ **SEC-10**: All six composer webviews (msgbox, addWindow, addChildWindow, SETOPTS, SETOPTS tristate, CVS) validate the shape of every postMessage payload before it reaches `build()` or a WorkspaceEdit (#604) — v4.7 Phase 113
+- ✓ **SEC-11**: The msgbox and CVS composers validate `assignTo`; on a new insert it is required and must name a variable of the call's result type, in both IDEs (#626) — v4.7 Phase 113
+- ✓ **TEST-10**: The addwindow, addchildwindow and setopts composer `*-ui.ts` files are invoked and covered by tests, not only mocked (#628) — v4.7 Phase 113
+- ✓ **REF-03**: `composer-commands.ts` lives outside `src/language/` (#582) — v4.7 Phase 113
+- ✓ **REF-07**: The composer webview CSP is built by one shared helper (#533) — v4.7 Phase 113
+- ✓ **REF-08**: The call-locator and argument-scanner logic exists once, shared by the composer logic and UI layers (#534) — v4.7 Phase 113
+- ✓ **DOC-01**: The `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds (#595) — v4.7 Phase 113
 
 ### Active
 
@@ -672,6 +679,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.7 Phase 110: settings and filesystem trust hardened in five independent modules — `interop-config.ts` (one validator for host/port on every entry point), `path-containment.ts` (lexical, segment-based PREFIX containment for every USE read and `isExternalDocument()`), lstat-first decompile probes with `O_NOFOLLOW`/`O_NONBLOCK`, `formatter-java-resolver.ts` (machine-scoped `bbj.formatter.javaPath`, checked PATH walk, no fallback for a set value), and a Workspace Trust gate for a workspace-scoped `bbj.configPath` | #509-#511, #526, #579, #581, #585, #605. UAT found the formatter "doing nothing" with the setting empty (G-110-1); diagnosis showed the vendored 2021 formatter jar crashes on every block IF under `--single-line-if`, and the crash is only logged — pre-existing, unchanged since 2023 | ✓ Good — UAT 2/2, Nyquist-compliant, threats_open 0; G-110-1 deferred to a separate formatter issue (candidate: move the formatter into bbj-ls behind RPC/MCP) |
 | v4.7 Phase 111: Java class data from the interop peer is bounded, escaped and validated in one module (`java-peer-guard.ts`: length limits, DTO sanitizing, render-boundary Markdown escaping, Java qualified-name check); `resolveClass()` defaults absent parameter lists; a known package name never becomes a class request; unresolved Java members keep a readable Warning | #523-#525, #676. `<` left unescaped by user decision (VS Code strips raw HTML, IntelliJ/LSP4IJ shows it literally — confirmed in UAT). UAT gap: the escaping also killed the BASIS `[Docs](...)` link shipped at the end of installed javadoc; 111-07 exempts exactly one trailing link to `https://documentation.basis.cloud/` | ✓ Good — UAT 3/3 after gap closure, Nyquist-compliant, threats_open 0; review WR-01 (no array-count cap) accepted; signature-help/snippet escaping transferred to a todo |
 | v4.7 Phase 112: EM login and web launch fail closed — `web.bbj` requires a username (admin123 kept only for literal `admin` + empty password, user decision D-05), every EM step has its own `err=` label into one shared MSGBOX reporter with `release 1`; `em-token-validity.ts` is a full port of IntelliJ's `JwtValidity` (strict base64url, safe-integer exp, anything undecidable = expired); both IDEs remember the last successful EM username in plain storage; `runWeb`'s settings credentials fallback removed; `Commands.cjs` executed under vitest via a `node:module` `registerHooks` harness | #546, #548, #553, #565. Code review CR-01: VS Code stored an EM login token without validating it — now gated like IntelliJ. The harness surfaced a pre-existing `openEnterpriseManager` PropertiesReader bug (broken EM URL), fixed | ✓ Good — UAT 4/4, Nyquist-compliant, threats_open 0 (22/22 closed) |
+| v4.7 Phase 113: composer webviews hardened, then consolidated — `webview-message-guard.ts` gives each of the six panels an `is…PanelMessage` guard as the handler's first statement (silent drop, no toast/log); `validateAssignTo` in the shared msgbox/CVS preview is the single verdict both IDEs render (`assignToError`, shown only on a new insert); `webview-csp.ts`, `composer-call-scanner.ts` and `window-composer-ui.ts` each replace duplicated per-composer code; `composer-commands.ts` moved out of `src/language/` | #604, #626, #628, #582, #533, #534, #595. CVS keeps its stricter identifier/dot call boundary as an explicit scanner option; the LS bundle stays free of `require("vscode")`. Code review: 3 findings (SETOPTS checked-entry shape, addWindow/addChildWindow boundary pin, a misleading comment), all fixed | ✓ Good — UAT 2/2 (VS Code + IntelliJ assign-to validation), Nyquist-compliant, threats_open 0 (22/22 closed) |
 
 ## Evolution
 
@@ -691,4 +699,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-27 after Phase 112*
+*Last updated: 2026-09-27 after Phase 113*

@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 113
-current_phase_name: composer-webview-hardening-consolidation
-status: verifying
-stopped_at: Completed 113-08-PLAN.md
-last_updated: "2026-09-27T13:28:26.116Z"
+current_phase: 114
+current_phase_name: Lint, Type-Check & Test-Suite Gates
+status: planning
+stopped_at: Phase 113 complete, ready to plan Phase 114
+last_updated: "2026-09-27T14:35:31.157Z"
 last_activity: 2026-09-27
-last_activity_desc: Phase 113 execution started
-state_head: a300d773e4cc601f45aca1e574245919244a2a27
+last_activity_desc: Phase 113 complete, transitioned to Phase 114
+state_head: 7d55ed1d2010c336b2b049debaef5f564bcf1b78
 progress:
   total_phases: 13
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 24
   completed_plans: 24
-  percent: 23
+  percent: 31
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-27 (Phase 112 complete — UAT 4/4, Nyquist-validated, threat-secure 22/22 closed; next Phase 113)
+**Last Updated:** 2026-09-27 (Phase 113 complete — UAT 2/2, Nyquist-validated, threat-secure 22/22 closed; next Phase 114)
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 113 — composer-webview-hardening-consolidation
+**Current Focus:** Phase 114 — Lint, Type-Check & Test-Suite Gates
 
 ---
 
 ## Current Position
 
-Phase: 113 (composer-webview-hardening-consolidation) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-09-27 — Phase 113 execution started
+Phase: 114 — Lint, Type-Check & Test-Suite Gates
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-27 — Phase 113 complete, transitioned to Phase 114
 
-Progress: [██░░░░░░░░] 23% (3/13 phases)
+Progress: [███░░░░░░░] 31% (4/13 phases)
 
 ### v4.7 milestone map
 
@@ -269,11 +269,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T13:28:25.958Z
-Stopped at: Completed 113-08-PLAN.md
+Last session: 2026-09-27T14:35:47.000Z
+Stopped at: Phase 113 complete, ready to plan Phase 114
 Resume file: None
 
-Next: `/gsd-plan-phase 113` (113-CONTEXT.md exists).
+Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -380,4 +380,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Plan Phase 113 with `/gsd-plan-phase 113` (context already gathered)
+- Plan Phase 114 with `/gsd-plan-phase 114` (context already gathered)

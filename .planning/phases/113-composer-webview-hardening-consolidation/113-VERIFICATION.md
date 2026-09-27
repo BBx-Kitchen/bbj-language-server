@@ -1,11 +1,12 @@
 ---
 phase: 113-composer-webview-hardening-consolidation
 verified: 2026-09-27T13:45:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "In a live VS Code window (built extension), compose a new MSGBOX call, clear the assign-to field, type an invalid target (e.g. ret$), and observe the inline error under the field with Insert disabled; repeat for CVS with an invalid target (e.g. x); then confirm the edit-in-place and completing flows show no assign-to row at all."
     expected: "The error text appears under the assign-to field and the Insert button is disabled for the invalid/empty case; no assign-to row or error appears in edit-in-place or completing mode."
     why_human: "Visual rendering and button-enabled state in a live webview cannot be confirmed by static analysis; the mocked-vscode unit tests (composer-assign-to.test.ts) already exercise the same code paths (assignToError computed, WorkspaceEdit refused) but do not substitute for visual UAT of the built extension, per plan 04's own deferred verification note."
@@ -91,6 +92,7 @@ No orphaned requirements: every ID declared across the phase's 8 plans (`SEC-10,
 None (blocker-tier). No `TBD`/`FIXME`/`XXX`/`HACK`/`PLACEHOLDER` markers in the phase's new source modules. No stub returns, empty handlers, or hardcoded-empty stub data found in the reviewed modules.
 
 **Advisory findings from 113-REVIEW.md (0 critical, 2 warning, 1 info) — do not block this phase, noted for follow-up:**
+
 - **WR-01**: `setopts-composer-webview.ts`'s `isSetOptsSelection` guard validates `checked` as `string[]` (matches the declared `Selection` field type) but does not validate each entry's internal `"byte:mask"` format. The reviewer hand-traced this and confirmed it is currently inert (a malformed entry can never satisfy the catalog's strict-equality membership test, so it is silently and harmlessly dropped). This does not fail the must-have as specified ("every Selection field has its declared runtime type... arrays hold only the declared element type") — `checked` is validated as a string array correctly — but is a real hardening gap worth closing in a follow-up plan before any future change threads `sel.bits` more directly into indexing.
 - **WR-02**: The CVS-vs-MSGBOX boundary-mode test doesn't extend to addWindow/addChildWindow, so a future accidental flip of their `findCalls` options argument would not be caught by a test. Does not affect current correctness (addWindow/addChildWindow already default to the correct looser mode, confirmed passing tests) — a coverage gap, not a defect.
 - **IN-01**: A misleading "apply right-to-left" comment in `addchildwindow-composer-webview.ts` that doesn't reflect how `vscode.WorkspaceEdit` actually applies edits. Documentation-only, no functional impact.
