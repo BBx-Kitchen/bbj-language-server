@@ -532,8 +532,8 @@ closed on undecidable JWTs (v4.2 TOKEN-01).
 **Issues**: Closes #604, #626, #628, #582, #533, #534, #595
 **Success Criteria** (what must be TRUE):
 
-  1. A message of the wrong shape posted to any of the four composer webviews (msgbox, addWindow, addChildWindow, SETOPTS) is dropped before `build()` or a WorkspaceEdit runs, and a test posts one to each.
-  2. An invalid `assignTo` in the msgbox composer marks the preview invalid and blocks insertion, like an invalid message or title does.
+  1. A message of the wrong shape posted to any of the six composer webviews (msgbox, addWindow, addChildWindow, SETOPTS, SETOPTS tristate, CVS) is dropped before `build()` or a WorkspaceEdit runs, and a test posts one to each (amended 2026-09-27, Phase 113 D-01).
+  2. An invalid or (on a new insert) empty `assignTo` in the msgbox or CVS composer marks the preview invalid and blocks insertion, like an invalid message or title does, in both VS Code and IntelliJ (amended 2026-09-27, Phase 113 D-05..D-09).
   3. The addWindow, addChildWindow and SETOPTS `*-composer-ui.ts` files are executed by tests (their code actions, code lenses and commands), not only mocked, and those tests pass before and after the consolidation.
   4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
   5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
