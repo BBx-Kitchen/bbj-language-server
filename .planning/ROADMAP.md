@@ -549,13 +549,13 @@ closed on undecidable JWTs (v4.2 TOKEN-01).
   4. The webview CSP array, `scanArgs`, the call locator and the addWindow/addChildWindow `titleArg` and code-action helpers each exist once, `composer-commands.ts` lives outside `src/language/`, and the composer suites pass without changes to their assertions.
   5. The IntelliJ `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the edit-in-place flow and all six composer kinds.
 
-**Plans:** 1/8 plans executed
+**Plans:** 2/8 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 113-01-PLAN.md — TEST-10 tests first: `addwindow-composer-ui.ts`, `addchildwindow-composer-ui.ts` and `setopts-composer-ui.ts` executed unmocked (registration, Code Action, command, cue click) with literal expectations (TEST-10) (wave 1)
-- [ ] 113-02-PLAN.md — `webview-message-guard.ts` primitives plus one `is…PanelMessage` guard per webview; all six handlers drop wrong-shaped messages silently before `build()`, a language-server request or a WorkspaceEdit; a test posts one to each (SEC-10) (wave 1)
+- [x] 113-02-PLAN.md — `webview-message-guard.ts` primitives plus one `is…PanelMessage` guard per webview; all six handlers drop wrong-shaped messages silently before `build()`, a language-server request or a WorkspaceEdit; a test posts one to each (SEC-10) (wave 1)
 - [ ] 113-03-PLAN.md — IntelliJ: `assignToError` on `MsgboxPreview`/`CvsPreview` with JSON boundary pins, both dialogs render it, no "(optional)", CVS `s$` prefill; `AddWindowComposerDialog`/`ComposerLauncher` class docs (SEC-11, DOC-01) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -811,7 +811,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Complete | 2026-09-26 |
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
-| 113. Composer Webview Hardening & Consolidation | 1/8 | Not started |  |
+| 113. Composer Webview Hardening & Consolidation | 2/8 | Not started |  |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |

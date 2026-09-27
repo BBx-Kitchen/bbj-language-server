@@ -19,7 +19,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **SEC-07**: `isExternalDocument()` compares paths on segment boundaries, so a sibling directory whose name shares a prefix is classified correctly (#579)
 - [x] **SEC-08**: `isTokenizedFile`/`statSize` do not follow symlinks or read non-regular files (#585)
 - [x] **SEC-09**: The formatter's `java` binary can be configured, and it is verified before it is spawned instead of relying on a bare PATH lookup (#605)
-- [ ] **SEC-10**: All six composer webviews (msgbox, addWindow, addChildWindow, SETOPTS, SETOPTS tristate, CVS) validate the shape of every postMessage payload before it reaches `build()` or a WorkspaceEdit (#604; amended 2026-09-27, Phase 113 D-01)
+- [x] **SEC-10**: All six composer webviews (msgbox, addWindow, addChildWindow, SETOPTS, SETOPTS tristate, CVS) validate the shape of every postMessage payload before it reaches `build()` or a WorkspaceEdit (#604; amended 2026-09-27, Phase 113 D-01)
 - [ ] **SEC-11**: The msgbox and CVS composers validate their `assignTo` field like every other free-text composer field; on a new insert it is required and must name a variable of the call's result type (#626; amended 2026-09-27, Phase 113 D-05..D-09)
 - [x] **SEC-12**: `web.bbj` never fills in a default username; a missing username (and no token) goes to `login_failed`. The only default kept is `admin123` for the exact user `admin` with an empty password, and the IDE login prompts pre-fill the last used username (else `admin`) (#546; amended 2026-09-27, Phase 112 D-05)
 - [x] **SEC-13**: Every Enterprise Manager call in `web.bbj` after login has an error handler that reports the failure visibly (#548)
@@ -122,7 +122,7 @@ None deferred. Every still-open audit issue is in scope.
 | SEC-07 | Phase 110 | Complete |
 | SEC-08 | Phase 110 | Complete |
 | SEC-09 | Phase 110 | Complete |
-| SEC-10 | Phase 113 | Pending |
+| SEC-10 | Phase 113 | Complete |
 | SEC-11 | Phase 113 | Pending |
 | SEC-12 | Phase 112 | Complete |
 | SEC-13 | Phase 112 | Complete |
