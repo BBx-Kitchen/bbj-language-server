@@ -590,7 +590,36 @@ tests first, using `test/msgbox-composer-ui.test.ts` as the template, then conso
   4. `bbx-language-configuration.json` is tested for strict JSON validity and for its editor-behaviour entries, like the bbj file.
   5. IntelliJ's Node.js download shows progress and logs no IllegalStateException on a response without Content-Length. The three phase 97 guards (download progress, the `bbjcplAvailability` endpoint, the issue447 class-index invariant) fail when the behaviour they guard breaks, not only when the source text changes.
 
-**Plans**: TBD
+**Plans:** 13 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 114-01-PLAN.md — Baseline digests on the base commit (file set, whole-suite failing names, hook-timeout suites, duration), explicit vitest include/exclude proven identical, bbx language-configuration describe block (TEST-03, TEST-11) (wave 1)
+- [ ] 114-03-PLAN.md — IntelliJ: progress callback re-asserts determinate mode every step behind a recording-fake JUnit test; reflective `bbjcplAvailability` guard via `getMethod` + `ServiceEndpoints.getSupportedMethods` (FIX-04) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 114-02-PLAN.md — 28 un-gated test files move from the production services to `createBBjTestServices`; three consecutive default-worker whole-suite runs with no hook timeout (TEST-07) (wave 2)
+- [ ] 114-05-PLAN.md — Lint plan A: `tseslint.configs.recommended` plus the allowed overrides, `eslint src test --max-warnings 0`, prefer-const autofix, disable-reason guard test (TEST-01) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 114-06-PLAN.md — Lint plan B: the 32 src hand fixes, no any and no suppression in src (TEST-01) (wave 3)
+- [ ] 114-07-PLAN.md — Repaired `tsconfig.test.json` and `typecheck:test`; per-file error digest; typed interop test double and Commands.cjs harness (TEST-02) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 114-04-PLAN.md — issue447: definitive wire-observed capability test, live forced fallback through the `wrapSocket` seam, hermetic forced fallback (FIX-04) (wave 4)
+- [ ] 114-08-PLAN.md — Lint plan C: the test hand fixes plus the same files' type errors; `npm run lint` at zero (TEST-01, TEST-02) (wave 4)
+- [ ] 114-09-PLAN.md — Type fixes: fakes, mocks and fixtures in 16 test files (TEST-02) (wave 4)
+- [ ] 114-10-PLAN.md — Type fixes: diagnostic-message reads, part A (6 files) (TEST-02) (wave 4)
+- [ ] 114-11-PLAN.md — Type fixes: diagnostic-message reads and narrowing, part B (17 files) (TEST-02) (wave 4)
+- [ ] 114-12-PLAN.md — Type fixes: Node built-in namespace imports, .js suffixes, composer UI fakes (24 files) (TEST-02) (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 114-13-PLAN.md — CI gate last: Lint and type-check steps in `build.yml` after Build, Test keeps `success() || failure()`; phase gate (three runs, same files, IntelliJ suite, todo closed); human check of a failing PR and the IntelliJ progress bar (TEST-01, TEST-02, TEST-07) (wave 5)
 
 *Planning notes:* `vscode:prepublish` runs `npm run lint`, so the new rules also gate packaging.
 The ~214 count (213 errors) was measured on 2026-09-26 with the non-type-checked preset; the
