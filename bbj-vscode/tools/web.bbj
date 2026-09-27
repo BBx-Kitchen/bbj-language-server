@@ -40,18 +40,18 @@ else
     if (username! = "admin" and password! = "") then password! = "admin123"
     admin! = BBjAdminFactory.getBBjAdmin(username!, password!,err=login_rejected)
 fi
-configuration! = admin!.getRemoteConfiguration()
+configuration! = admin!.getRemoteConfiguration(err=failed_get_configuration)
 
 rem clean up name!
 name! = name!.replaceAll("-","")
 
 rem get the app if it's already registered
 app! = null()
-apps! = configuration!.getApplications()
-it! = apps!.iterator()
-while(it!.hasNext())
-    currentApp! = it!.next()
-    appName! = currentApp!.getString(currentApp!.NAME)
+apps! = configuration!.getApplications(err=failed_find_application)
+it! = apps!.iterator(err=failed_find_application)
+while(it!.hasNext(err=failed_find_application))
+    currentApp! = it!.next(err=failed_find_application)
+    appName! = currentApp!.getString(currentApp!.NAME,err=failed_find_application)
     if (appName! = name!) then
         app! = currentApp!
         break
@@ -60,7 +60,7 @@ wend
 
 rem create the app if it wasn't in the list of registered apps
 if app! = null() then
-    app! = configuration!.createApplication()
+    app! = configuration!.createApplication(err=failed_create_application)
 fi
 
 rem set the properties for the application
@@ -76,7 +76,7 @@ rem sentinel when BBj was started without an explicit -c, which would otherwise
 rem register an unusable config file (issue #382).
 if (configFile! = null() or configFile! = "" or configFile! = "--") then
     configFile! = ""
-    sessionConfig! = BBjAPI().getConfig().getConfigFileName()
+    sessionConfig! = BBjAPI().getConfig().getConfigFileName(err=failed_read_session_config)
     if (sessionConfig! <> null() and sessionConfig! > "" and sessionConfig! <> "--") then
         configFile! = sessionConfig!
     fi
@@ -93,17 +93,45 @@ if sscp! <> null() and sscp! > "" and sscp! <> "--" then
 fi
 
 if (isDWC!) then app!.setBoolean(app!.DWC_ENABLED, 1)
-app!.commit()
+app!.commit(err=failed_commit)
 
 rem open the app in the browser
-url! = iff(isDWC!, app!.getDwcUrl(0), app!.getBuiUrl(0))
-BBjAPI().getThinClient().browse(url!)
+if (isDWC!) then url! = app!.getDwcUrl(0,err=failed_get_url) else url! = app!.getBuiUrl(0,err=failed_get_url)
+BBjAPI().getThinClient().browse(url!,err=failed_browse)
 
 release
 
 
 login_rejected:
     failedStep$ = "Login Failed!"
+    goto report_failure
+
+failed_get_configuration:
+    failedStep$ = "Could not read the Enterprise Manager configuration (getRemoteConfiguration)"
+    goto report_failure
+
+failed_find_application:
+    failedStep$ = "Could not look up the registered applications (getApplications)"
+    goto report_failure
+
+failed_create_application:
+    failedStep$ = "Could not register the application with Enterprise Manager (createApplication)"
+    goto report_failure
+
+failed_read_session_config:
+    failedStep$ = "Could not read this session's config file name (getConfigFileName)"
+    goto report_failure
+
+failed_commit:
+    failedStep$ = "Could not save the application in Enterprise Manager (commit)"
+    goto report_failure
+
+failed_get_url:
+    failedStep$ = "Could not get the application URL from Enterprise Manager (getDwcUrl/getBuiUrl)"
+    goto report_failure
+
+failed_browse:
+    failedStep$ = "Could not open the application in the browser (browse)"
     goto report_failure
 
 report_failure:
