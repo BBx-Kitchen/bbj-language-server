@@ -27,6 +27,14 @@ const stripSentinel = (v) => v === '--' ? '' : (v || '');
  */
 const NO_CONFIG_PATH_MESSAGE = 'No config file could be resolved for this run. Set the "bbj.configPath" setting, or configure "bbj.home" so the default config file can be found.';
 
+/**
+ * Shown when a web run (BUI/DWC) has no credentials to launch with. Web runs never fall
+ * back to settings for credentials: both `bbj.runBUI`/`bbj.runDWC` wrappers in
+ * extension.ts already return early when `ensureValidToken` yields nothing, so this is
+ * a defence-in-depth guard, not the primary gate (issue #546/#565).
+ */
+const NO_EM_CREDENTIALS_MESSAGE = 'Enterprise Manager login required. Run "Login to Enterprise Manager" and try again.';
+
 const setOutputChannel = (channel) => {
   outputChannel = channel;
 };
@@ -67,27 +75,25 @@ const runWeb = (params, client, credentials) => {
   const home = getBBjHome();
   if (!home) return;
 
+  if (!credentials) {
+    vscode.window.showErrorMessage(NO_EM_CREDENTIALS_MESSAGE);
+    return;
+  }
+
   const webConfig = vscode.workspace.getConfiguration("bbj.web");
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
 
-  // Use provided credentials (from SecretStorage) or fall back to config
+  // Web runs never fall back to settings for credentials (issue #546/#565).
   let username, password, token;
-  if (credentials) {
-    if (credentials.username === '__token__') {
-      // Token-based authentication
-      token = credentials.password;
-      username = "";
-      password = "";
-    } else {
-      // Username/password from SecretStorage
-      username = credentials.username;
-      password = credentials.password;
-      token = "";
-    }
+  if (credentials.username === '__token__') {
+    // Token-based authentication
+    token = credentials.password;
+    username = "";
+    password = "";
   } else {
-    // Legacy fallback to config (backward compatibility)
-    username = vscode.workspace.getConfiguration("bbj").web?.username || "";
-    password = vscode.workspace.getConfiguration("bbj").web?.password || "";
+    // Username/password from SecretStorage
+    username = credentials.username;
+    password = credentials.password;
     token = "";
   }
 
@@ -460,3 +466,4 @@ const Commands = {
 
 module.exports = Commands;
 module.exports.setOutputChannel = setOutputChannel;
+module.exports.NO_EM_CREDENTIALS_MESSAGE = NO_EM_CREDENTIALS_MESSAGE;
