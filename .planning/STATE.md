@@ -20,7 +20,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-27 (Phase 113 complete — UAT 2/2, Nyquist-validated, threat-secure 22/22 closed; next Phase 114)
+**Last Updated:** 2026-09-27 (Phase 114 complete — verification 6/6, PR CI gate proven on throwaway PR #701; next Phase 115)
 
 ## Project Reference
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 114 — Lint, Type-Check & Test-Suite Gates
+**Current Focus:** Phase 115 — Honest Interop Test Harness
 
 ---
 
@@ -39,7 +39,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-09-27 — Phase 114 complete, transitioned to Phase 115
 
-Progress: [███░░░░░░░] 31% (4/13 phases)
+Progress: [████░░░░░░] 38% (5/13 phases)
 
 ### v4.7 milestone map
 
@@ -251,18 +251,19 @@ decisions:
 - Static method return type inference gap — String.valueOf(2) does not assign type
 - v4.6: 107 A2 accepted on a file-set reading; 108 final UAT ran on the pre-review-fix build; 109-REVIEW IN-01..05 open (full list in `milestones/v4.6-MILESTONE-AUDIT.md`)
 - v4.6 Phase 106 review debt (106-REVIEW.md): CR-01 a pending debounced compiler check still runs and publishes after switching the trigger to `off` (pre-existing); WR-01 the bbjcpl fallback branch suppresses Langium warnings before merging the kept BBjCPL error
+- v4.7 Phase 114 review (114-REVIEW.md, advisory): WR-01 the formatter's ENOENT branch in `document-formatter.ts` rejects exactly like the other branch (pre-existing dead code); IN-01 `readSimpleName` duplicated in `bbj-hover.ts` and `java-javadoc.ts` with different return types. `installed-extension-e2e` still counts as a failed suite with 0 failed assertions (stale installed bundle, pre-existing)
 - v4.5: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104 (full list in `milestones/v4.5-MILESTONE-AUDIT.md`)
 
 ### Pending Todos
 
 4 pending in `.planning/todos/pending/`:
 
-- `2026-09-20-phase-97-code-review-follow-ups` — partial download-progress fix, three weak source guards → FIX-04, Phase 114
+- `2026-09-27-windows-intellij-node-download-progress-check` — repeat the IntelliJ Node.js download progress check on Windows the next time Windows is used for testing (Linux passed in Phase 114; opportunistic, not blocking)
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
 - `2026-09-26-intellij-interop-initoptions-key-mismatch` — IntelliJ sends javaInteropHost/Port, the server reads interopHost/Port (found in Phase 110; unscheduled)
 - `2026-09-26-signature-help-and-snippet-peer-name-escaping` — transferred threat T-111-15: peer names in the signature-help fence and completion snippet placeholders (unscheduled)
 
-Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111).
+Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111), `2026-09-20-phase-97-code-review-follow-ups` (FIX-04, Phase 114).
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
 
 ### Blockers/Concerns
@@ -277,7 +278,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 - **v4.7 human gates.** DEP-02 (#507, Phase 117) needs the maintainer to name the library and version behind the vendored formatter JAR (lead found 2026-09-26: it is BASIS's `com.basis.bbjutilities.bbjcodeformatter`; a 2024 build ships in the BDT plugin under `/opt/bbx/BDTStudio/plugins/` and still has the `--single-line-if` crash). DEP-05's upstream langium report may only be filed with the maintainer's approval. FIX-01 (#527, Phase 119) may already be effectively fixed per the tests research; Phase 119 starts by testing it on the phase base.
 
-- **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 (todo filed, scheduled as FIX-04). The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
+- **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 closed by FIX-04 in Phase 114. The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24) and v4.6 via PR #699 (merged 2026-09-26); both still need a release. The `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand.
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
@@ -305,7 +306,7 @@ Last session: 2026-09-27T21:37:34.474Z
 Stopped at: Phase 114 complete, ready to plan Phase 115
 Resume file: None
 
-Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
+Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -412,4 +413,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Plan Phase 114 with `/gsd-plan-phase 114` (context already gathered)
+- Discuss Phase 115 with `/gsd-discuss-phase 115`, then plan it
