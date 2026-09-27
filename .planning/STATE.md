@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 113
 current_phase_name: composer-webview-hardening-consolidation
 status: executing
-stopped_at: Completed 113-04-PLAN.md
-last_updated: "2026-09-27T11:52:19.401Z"
+stopped_at: Completed 113-05-PLAN.md
+last_updated: "2026-09-27T12:03:57.463Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 113 execution started
-state_head: 397be8b82b7b34b240a80947a60273edb329a968
+state_head: 79501101d5e00e0969bcd78fb40966c12466ed2d
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 24
-  completed_plans: 20
+  completed_plans: 21
   percent: 23
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 113 (composer-webview-hardening-consolidation) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 113 execution started
 
@@ -139,6 +139,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 113 P02 | 38min | 3 tasks | 9 files |
 | Phase 113 P03 | 22min | 3 tasks | 7 files |
 | Phase 113 P04 | 18min | 2 tasks | 5 files |
+| Phase 113 P05 | 12min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,7 @@ decisions:
 - [Phase 113]: 113-02: webview-message-guard.ts (isPlainObject/isString/isBoolean/isFiniteInt/isStringArray/isIntArray/isOneOf/isPanelMessage) guards all six composer webviews inline as the handler's first statement; tristate guard runs before its sender() round-trip; config.bbx apply's pre-existing missing value-validity break left untouched (deferred, Open Question 1)
 - [Phase 113]: 113-03: assignToError joins ComposerModels.MsgboxPreview/CvsPreview and both dialogs render it via labeledWithError; CVS prefills s$; AddWindowComposerDialog/ComposerLauncher class docs now describe edit-in-place and all six composer kinds — IntelliJ half of SEC-11 (issue #626) plus DOC-01 (issue #595); SEC-11 stays open until plan 04's shared LS-side validation lands
 - [Phase 113]: 113-04: validateAssignTo(text, resultType) in msgbox-composer.ts is the one shared validator; msgboxPreview/cvsPreview both apply the same shown-field rule (editMode !== true && assignTo present) to compute assignToError and fold it into valid; CVS prefills s$
+- [Phase 113]: 113-05: composer-commands.ts moved from src/language/ to bbj-vscode/src/composer-commands.ts (REF-03); five internal imports rewritten to relative-local, main.ts/test/IntelliJ contract-test/model-doc references updated to match — Per D-13: the composer request layer sits next to the composer modules it re-exposes, stays language-server code bundled into main.cjs, with unchanged behaviour
 
 ### Tech Debt
 
@@ -261,8 +263,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T11:52:19.273Z
-Stopped at: Completed 113-04-PLAN.md
+Last session: 2026-09-27T12:03:57.328Z
+Stopped at: Completed 113-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 113` (113-CONTEXT.md exists).

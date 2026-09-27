@@ -79,7 +79,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 - [ ] **REF-01**: `getFunctionReference` exists once and is shared by the signature-help and inlay-hint providers (#580)
 - [x] **REF-02**: The interop host/port defaults are defined in one place, used by both `bbj-ws-manager.ts` and `main.ts` (#581)
-- [ ] **REF-03**: `composer-commands.ts` lives outside `src/language/` (#582)
+- [x] **REF-03**: `composer-commands.ts` lives outside `src/language/` (#582)
 - [ ] **REF-04**: The four built-in-catalog `.ts` wrappers share one closing shape (#583)
 - [ ] **REF-05**: A test fails when a `.bbl` catalog file drifts from its `.ts` source (#603)
 - [ ] **REF-06**: A test fails when the `package.json` compiler-option contributions drift from the shared compiler-options table (#606)
@@ -164,7 +164,7 @@ None deferred. Every still-open audit issue is in scope.
 | HARN-06 | Phase 115 | Pending |
 | REF-01 | Phase 118 | Pending |
 | REF-02 | Phase 110 | Complete |
-| REF-03 | Phase 113 | Pending |
+| REF-03 | Phase 113 | Complete |
 | REF-04 | Phase 118 | Pending |
 | REF-05 | Phase 118 | Pending |
 | REF-06 | Phase 118 | Pending |
