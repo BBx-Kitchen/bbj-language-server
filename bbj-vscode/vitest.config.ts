@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     /* for example, use global to avoid globals imports (describe, test, expect): */
     // globals: true,
+    include: ['test/**/*.test.ts'],
+    exclude: ['out/**', 'node_modules/**'],
     coverage: {
       enabled: false, // Enable via --coverage flag, not by default
       provider: 'v8',
