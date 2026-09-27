@@ -1,5 +1,5 @@
 import { DocumentState, DocumentValidator, EmptyFileSystem, URI } from 'langium';
-import type { LangiumDocument, LangiumSharedCoreServices } from 'langium';
+import type { LangiumDocument } from 'langium';
 import { validationHelper } from 'langium/test';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
@@ -61,7 +61,7 @@ function createHarness() {
     const privates = builder as unknown as BuilderPrivates;
     privates.bbjcplAvailable = true;
     const interopService = BBj.java.JavaInteropService as JavaInteropTestService;
-    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments;
+    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments<TextDocument>;
     return { shared, BBj, builder, privates, interopService, textDocuments };
 }
 
@@ -74,7 +74,7 @@ function addWorkspaceDocument(shared: ReturnType<typeof createBBjTestServices>['
 }
 
 /** Fires a combined open+change event for `uri` on the harness's real `TextDocuments` store. */
-function openOrChange(textDocuments: NormalizedTextDocuments, uriString: string, version: number, text: string): void {
+function openOrChange(textDocuments: NormalizedTextDocuments<TextDocument>, uriString: string, version: number, text: string): void {
     textDocuments.set(TextDocument.create(uriString, 'bbj', version, text));
 }
 

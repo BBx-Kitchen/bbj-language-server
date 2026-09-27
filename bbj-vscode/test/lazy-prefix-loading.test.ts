@@ -1,10 +1,10 @@
-import { CancellationToken, URI } from 'langium';
+import { URI } from 'langium';
 import { FileSystemNode, FileSystemProvider } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager';
-import { Model } from '../src/language/generated/ast';
+import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { Model } from '../src/language/generated/ast.js';
 
 /**
  * Regression harness for #32: the language server must NOT eagerly scan/load every
@@ -38,13 +38,16 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
         if (uri.fsPath === LIB_DIR) return this.node(uri, false);
         throw new Error(`ENOENT: ${uri.fsPath}`);
     }
-    async exists(uri: URI): Promise<boolean> { return files.has(uri.fsPath) || uri.fsPath === LIB_DIR; }
+    async exists(uri: URI): Promise<boolean> { return this.existsSync(uri); }
+    existsSync(uri: URI): boolean { return files.has(uri.fsPath) || uri.fsPath === LIB_DIR; }
     async readFile(uri: URI): Promise<string> { return this.readFileSync(uri); }
     readFileSync(uri: URI): string {
         const content = files.get(uri.fsPath);
         if (content === undefined) throw new Error(`ENOENT: ${uri.fsPath}`);
         return content;
     }
+    async readBinary(uri: URI): Promise<Uint8Array> { return this.readBinarySync(uri); }
+    readBinarySync(uri: URI): Uint8Array { return new TextEncoder().encode(this.readFileSync(uri)); }
     async readDirectory(uri: URI): Promise<FileSystemNode[]> { return this.readDirectorySync(uri); }
     readDirectorySync(uri: URI): FileSystemNode[] {
         if (uri.fsPath !== LIB_DIR) return [];

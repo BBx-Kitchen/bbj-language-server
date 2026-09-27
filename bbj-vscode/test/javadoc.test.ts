@@ -1,7 +1,7 @@
 
-import fs from 'fs/promises';
-import path from 'path';
-import { describe, expect, test, vi, beforeEach } from 'vitest';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { describe, expect, test, vi } from 'vitest';
 import { URI } from 'vscode-uri';
 import { EmptyFileSystemProvider, FileSystemNode } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
@@ -9,8 +9,8 @@ import { JavadocProvider, PackageDoc } from '../src/language/java-javadoc.js';
 import { logger, LogLevel } from '../src/language/logger.js';
 
 class JavadocProviderUnderTest extends JavadocProvider {
-    constructor() {
-        super();
+    constructor(lazyLoad: boolean = true) {
+        super(lazyLoad);
     }
     override async loadJavadocFile(packageName: string, packageDocURI: URI): Promise<PackageDoc | null> {
         return super.loadJavadocFile(packageName, packageDocURI);
@@ -31,7 +31,7 @@ describe('Javadoc tests', () => {
         vi.spyOn(console, 'error').mockImplementation(() => { });
         try {
             const javadocProvider = new class extends JavadocProviderUnderTest {
-                protected override readFile(packageDocURI: URI): Promise<string> {
+                protected override readFile(_packageDocURI: URI): Promise<string> {
                     return Promise.resolve('{"name":"wrong.package.name"}');
                 }
             }
@@ -48,7 +48,7 @@ describe('Javadoc tests', () => {
         vi.spyOn(console, 'error').mockImplementation(() => { });
         try {
             const javadocProvider = new class extends JavadocProviderUnderTest {
-                protected override readFile(packageDocURI: URI): Promise<string> {
+                protected override readFile(_packageDocURI: URI): Promise<string> {
                     return Promise.resolve('{"name":"wrong.package.name"}');
                 }
             }
@@ -61,7 +61,7 @@ describe('Javadoc tests', () => {
 
     test('Check package documentation loaded.', async () => {
         const javadocProvider = new class extends JavadocProviderUnderTest {
-            protected override async readFile(packageDocURI: URI): Promise<string> {
+            protected override async readFile(_packageDocURI: URI): Promise<string> {
                 const filePath = path.resolve(__dirname, '../test/test-data/com.basis.util.json');
                 return await fs.readFile(filePath, 'utf8');
             }
@@ -91,7 +91,7 @@ describe('Javadoc tests', () => {
 
             // Create a filesystem that always fails
             const failingFs = new class extends EmptyFileSystemProvider {
-                override async readDirectory(uri: URI): Promise<FileSystemNode[]> {
+                override async readDirectory(_uri?: URI): Promise<FileSystemNode[]> {
                     throw new Error('Directory not accessible');
                 }
             };
@@ -130,7 +130,7 @@ describe('Javadoc tests', () => {
             // Create a filesystem that fails on first path, succeeds on second
             let callCount = 0;
             const mixedFs = new class extends EmptyFileSystemProvider {
-                override async readDirectory(uri: URI): Promise<FileSystemNode[]> {
+                override async readDirectory(_uri?: URI): Promise<FileSystemNode[]> {
                     callCount++;
                     if (callCount === 1) {
                         throw new Error('First directory not accessible');

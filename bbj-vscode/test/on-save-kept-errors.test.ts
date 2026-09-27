@@ -1,5 +1,5 @@
 import { DocumentState, DocumentValidator, EmptyFileSystem, URI } from 'langium';
-import type { LangiumDocument } from 'langium';
+import type { LangiumDocument, TextDocument } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { validationHelper } from 'langium/test';
 import type { Diagnostic } from 'vscode-languageserver';
@@ -49,7 +49,7 @@ function createHarness() {
     const privates = builder as unknown as BuilderPrivates;
     privates.bbjcplAvailable = true;
     const interopService = BBj.java.JavaInteropService as JavaInteropTestService;
-    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments;
+    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments<TextDocument>;
     const client = listenOnFakeConnection(textDocuments);
     return { shared, BBj, builder, privates, interopService, client };
 }
@@ -735,7 +735,7 @@ describe('fallback results kept until the next save, end to end', () => {
 
     test('a later save whose compile returns no findings removes the previously kept BBjCPL diagnostic', async () => {
         const harness = createHarness();
-        const { shared, BBj, interopService, client, builder } = harness;
+        const { shared, BBj, interopService, client } = harness;
         const uri = URI.file('/proj/fallback-clears-on-empty.bbj');
         const uriString = uri.toString();
         addWorkspaceDocument(shared, uri, TWO_SYNTAX_COMPLAINTS_TEXT);

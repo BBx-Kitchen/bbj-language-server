@@ -6,7 +6,6 @@ import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { shouldRunBBjTests } from './test-helper.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
@@ -150,7 +149,7 @@ describe('Linking Tests', async () => {
             REM Type is BBjAPI - no linker error on assignment
         `)
         const linkingErrors = findLinkingErrors(document)
-        const bbjApiError = linkingErrors.find(err => err.message.includes('BBjAPI'))
+        const bbjApiError = linkingErrors.find(err => Diagnostic.getMessageString(err).includes('BBjAPI'))
         expect(bbjApiError).toBeUndefined()
     })
 
@@ -161,7 +160,7 @@ describe('Linking Tests', async () => {
             b!=b!.toString()
         `)
         const linkingErrors = findLinkingErrors(document)
-        const cyclicError = linkingErrors.find(err => err.message.toLowerCase().includes('cyclic'))
+        const cyclicError = linkingErrors.find(err => Diagnostic.getMessageString(err).toLowerCase().includes('cyclic'))
         expect(cyclicError).toBeUndefined()
     })
 
@@ -212,7 +211,7 @@ describe('Linking Tests', async () => {
         `)
         const warnings = document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? []
         expect(warnings.length).toBeGreaterThan(0)
-        const castWarning = warnings.find(w => w.message.includes('CAST'))
+        const castWarning = warnings.find(w => Diagnostic.getMessageString(w).includes('CAST'))
         expect(castWarning).toBeDefined()
     })
 
