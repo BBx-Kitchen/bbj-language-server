@@ -22,6 +22,10 @@ class ComposerAssignToSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "MsgboxComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path CVS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "CvsComposerDialog.java")
+            .toAbsolutePath();
+
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
             fail("Guarded source file not found at " + path);
@@ -83,5 +87,26 @@ class ComposerAssignToSourceGuardTest {
                 "MsgboxComposerDialog must not copy the language server's assign-to message text");
         assertEquals(1, countOccurrences(text, "setOKActionEnabled(p.valid)"),
                 "MsgboxComposerDialog must still gate OK on the server's valid verdict exactly once");
+    }
+
+    @Test
+    void theCvsDialogRendersTheServersAssignToVerdictPrefillsAndHoldsNoRuleOfItsOwn() {
+        String text = withoutCommentLines(readSource(CVS_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "assignToError.setText(p.assignToError"),
+                "CvsComposerDialog must read p.assignToError into its error label exactly once");
+        assertEquals(1, countOccurrences(text, "labeledWithError(\"Assign result to\""),
+                "CvsComposerDialog must build the assign-to row with labeledWithError and the label "
+                        + "\"Assign result to\"");
+        assertEquals(1, countOccurrences(text, "new JBTextField(\"s$\")"),
+                "CvsComposerDialog must prefill the assign-to field with s$");
+        assertEquals(0, countOccurrences(text, "Assign result to (optional)"),
+                "CvsComposerDialog must no longer mark the assign-to label optional");
+        assertEquals(0, countOccurrences(text, "numeric or object variable"),
+                "CvsComposerDialog must not copy the language server's assign-to message text");
+        assertEquals(0, countOccurrences(text, "string or object variable"),
+                "CvsComposerDialog must not copy the language server's assign-to message text");
+        assertEquals(1, countOccurrences(text, "setOKActionEnabled(p.valid)"),
+                "CvsComposerDialog must still gate OK on the server's valid verdict exactly once");
     }
 }
