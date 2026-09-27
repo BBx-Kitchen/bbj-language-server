@@ -841,7 +841,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 12/13 | Not started |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 12/13 | In progress |  |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
