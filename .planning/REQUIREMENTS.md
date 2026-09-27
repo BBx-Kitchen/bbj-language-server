@@ -93,7 +93,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 ### Docs
 
-- [ ] **DOC-01**: The `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the current edit-in-place flow and all six composer kinds (#595)
+- [x] **DOC-01**: The `AddWindowComposerDialog` and `ComposerLauncher` class docs describe the current edit-in-place flow and all six composer kinds (#595)
 
 ## Future Requirements
 
@@ -175,7 +175,7 @@ None deferred. Every still-open audit issue is in scope.
 | REF-11 | Phase 120 | Pending |
 | REF-12 | Phase 121 | Pending |
 | REF-13 | Phase 119 | Pending |
-| DOC-01 | Phase 113 | Pending |
+| DOC-01 | Phase 113 | Complete |
 
 **Coverage:**
 
