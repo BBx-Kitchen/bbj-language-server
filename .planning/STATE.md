@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
-stopped_at: Completed 114-04-PLAN.md
-last_updated: "2026-09-27T19:59:04.016Z"
+stopped_at: Completed 114-08-PLAN.md
+last_updated: "2026-09-27T20:13:27.089Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 79343e53afa466539ca3fbaf59324fb98c1ea950
+state_head: 01f69fcfa863fe58ca8a42534b24f4fbde2b1465
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 31
+  completed_plans: 32
   percent: 31
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -150,6 +150,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P06 | 18min | 3 tasks | 15 files |
 | Phase 114 P07 | 27min | 3 tasks | 7 files |
 | Phase 114 P04 | 24min | 2 tasks | 1 files |
+| Phase 114 P08 | 13min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -227,6 +228,7 @@ decisions:
 - [Phase 114]: 114-07: bbj-test-module.ts's fake Java AST objects rebuilt via typed makeMethod/makeField/makeParameter factories — fixing the $type discriminant (object -> .$type string) unmasked that deprecated/isStatic were silently missing on every method/field object; the factories set both explicitly plus $container on every parameter once its owning method exists
 - [Phase 114]: 114-07: commands-cjs-harness.ts's CommandsModule/ConfigPathCacheModule interfaces typed with the tests' own call shapes (setResolvedConfigPath narrowed to {path, exists} rather than the full production ResolvedConfigPathResult); fakeVscode/fakeProcessRunner fakes given real parameter lists so mock.calls tuples type-check, closing the largest single test-tree error concentration (399 -> 300 errors) with no assertion changes
 - [Phase 114]: 114-04: WireRecordingInteropService overrides the protected wrapSocket seam to judge issue447's live capability from the wire and force the real fallback, replacing the tautological hasCompleteClassIndex assertion — RESEARCH Open Question 1, option b: reuses the existing test seam already used by fake-interop-peer.ts, exercises the real MethodNotFound detection instead of bypassing it, and needs zero src/ changes
+- [Phase 114]: 114-08: lint plan C closed the remaining 18+2 test-file lint findings and their overlapping type errors in one pass across ten files (NormalizedTextDocuments<TextDocument> generics, Diagnostic.getMessageString, createRequire(import.meta.url) loader, namespace Node-builtin imports, JavadocProviderUnderTest's forwarded lazyLoad param, rounded-out in-memory FileSystemProvider fakes) — npm run lint now exits 0 for the whole tree
 
 ### Tech Debt
 
@@ -287,8 +289,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T19:59:03.809Z
-Stopped at: Completed 114-04-PLAN.md
+Last session: 2026-09-27T20:13:23.041Z
+Stopped at: Completed 114-08-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
