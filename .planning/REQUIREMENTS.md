@@ -21,7 +21,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **SEC-09**: The formatter's `java` binary can be configured, and it is verified before it is spawned instead of relying on a bare PATH lookup (#605)
 - [ ] **SEC-10**: All four composer webviews validate the shape of every postMessage payload before it reaches `build()` or a WorkspaceEdit (#604)
 - [ ] **SEC-11**: The msgbox composer validates its `assignTo` field like every other free-text composer field (#626)
-- [ ] **SEC-12**: `web.bbj` never falls back to the default admin/admin123 credentials; missing credentials (and no token) go to `login_failed` (#546)
+- [ ] **SEC-12**: `web.bbj` never fills in a default username; a missing username (and no token) goes to `login_failed`. The only default kept is `admin123` for the exact user `admin` with an empty password, and the IDE login prompts pre-fill the last used username (else `admin`) (#546; amended 2026-09-27, Phase 112 D-05)
 - [ ] **SEC-13**: Every Enterprise Manager call in `web.bbj` after login has an error handler that reports the failure visibly (#548)
 - [ ] **SEC-14**: The EM token expiry check treats a malformed, unsigned or exp-less JWT as expired (#553)
 

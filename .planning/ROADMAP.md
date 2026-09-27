@@ -510,7 +510,7 @@ request, not only to lower the log level.
 **Issues**: Closes #546, #548, #553, #565
 **Success Criteria** (what must be TRUE):
 
-  1. Running `web.bbj` with no credentials and no token ends on the login-failure path with a message, and the file has no `admin`/`admin123` fallback.
+  1. Running `web.bbj` with no credentials and no token ends on the login-failure path with a message. The file has no default username, and `admin123` is used only for the exact user `admin` with an empty password (amended 2026-09-27, Phase 112 D-05).
   2. Each EM call after login (`getRemoteConfiguration`, `createApplication`, `getConfigFileName`, `commit`, the DWC/BUI URL lookup and `browse`) has its own error handler that shows which step failed, instead of failing silently.
   3. VS Code treats a malformed, unsigned or exp-less EM token as expired and asks the user to log in again. Tests cover all three shapes and a valid, unexpired token.
   4. `Commands.cjs` is loaded and executed under vitest, not only scanned as text, and its run, compile and BUI/DWC command bodies show execution coverage.
