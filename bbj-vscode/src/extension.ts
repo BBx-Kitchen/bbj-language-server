@@ -770,6 +770,14 @@ export function activate(context: vscode.ExtensionContext): void {
                 throw new Error(output.substring(6));
             }
 
+            // Reject a token that isn't positively valid (issue #535): anything not
+            // decoded as an unexpired JWT is treated as unusable, mirroring
+            // bbj-intellij's JwtValidity.check(...) != VALID guard. Never include the
+            // token itself in the message.
+            if (isEmTokenExpired(output, Math.floor(Date.now() / 1000))) {
+                throw new Error('Enterprise Manager returned an unusable token');
+            }
+
             // Store token in SecretStorage
             await context.secrets.store('bbj.em.token', output);
             await rememberEmUsername(context.globalState, username);

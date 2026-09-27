@@ -13,6 +13,21 @@ import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { DEFAULT_EM_USERNAME, EM_LAST_USERNAME_KEY, initialEmUsername, rememberEmUsername, type EmUsernameStore } from '../src/em-username-memory.js';
 
+// JWT-shaped token helpers mirroring em-token-validity.test.ts, so "a successful
+// login" exercises a token classifyEmToken actually accepts (issue #535: a login
+// handler that stores/remembers on any non-ERROR output, without validating the
+// returned token, is the exact bug this test must catch).
+const JWT_HEADER = 'eyJhbGciOiJIUzI1NiJ9'; // {"alg":"HS256"} base64url, fixed literal
+
+function jwtPayload(json: string): string {
+    return Buffer.from(json, 'utf8').toString('base64url');
+}
+
+function unexpiredToken(): string {
+    const futureExp = Math.floor(Date.now() / 1000) + 3600;
+    return `${JWT_HEADER}.${jwtPayload(`{"exp":${futureExp}}`)}.sig`;
+}
+
 function makeStore(initial?: Record<string, unknown>): EmUsernameStore & { map: Map<string, unknown> } {
     const map = new Map<string, unknown>(Object.entries(initial ?? {}));
     return {
@@ -241,7 +256,7 @@ describe('bbj.loginEM username pre-fill (activation-driven)', () => {
     });
 
     test('a successful login stores the token then remembers the username, in that order', async () => {
-        const token = 'the-em-token';
+        const token = unexpiredToken();
         (vscode.window.showInputBox as ReturnType<typeof vi.fn>)
             .mockResolvedValueOnce('jdoe')
             .mockResolvedValueOnce('pw');
@@ -261,6 +276,27 @@ describe('bbj.loginEM username pre-fill (activation-driven)', () => {
         for (const call of (globalStore.update as ReturnType<typeof vi.fn>).mock.calls) {
             expect(call[1]).not.toBe('pw');
             expect(call[1]).not.toBe(token);
+        }
+    });
+
+    test('a login that returns an expired/malformed token is neither stored nor remembered (issue #535)', async () => {
+        const malformedToken = 'not-a-jwt';
+        (vscode.window.showInputBox as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce('jdoe')
+            .mockResolvedValueOnce('pw');
+        (runProcess as ReturnType<typeof vi.fn>).mockImplementation(async (argv: { args: string[] }) => {
+            fs.writeFileSync(argv.args[3], malformedToken);
+            return { stdout: '', stderr: '' };
+        });
+
+        await invokeLoginEM();
+
+        expect(secretsStore).not.toHaveBeenCalled();
+        expect(globalStore.update).not.toHaveBeenCalled();
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('EM login failed'));
+        // The error message must never carry the token text itself.
+        for (const call of (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mock.calls) {
+            expect(String(call[0])).not.toContain(malformedToken);
         }
     });
 
