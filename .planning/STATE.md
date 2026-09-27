@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 114
 current_phase_name: Lint, Type-Check & Test-Suite Gates
 status: executing
-stopped_at: Completed 114-10-PLAN.md
-last_updated: "2026-09-27T20:42:38.187Z"
+stopped_at: Completed 114-11-PLAN.md
+last_updated: "2026-09-27T20:58:43.655Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 114 execution started
-state_head: 744991e02ec1d77e7a88689e0bc8cbf8a41ee8ae
+state_head: f2d725b60bac0894f5e11fb3b76b51407f24f2f8
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 37
-  completed_plans: 34
+  completed_plans: 35
   percent: 31
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 114 (Lint, Type-Check & Test-Suite Gates) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 114 execution started
 
@@ -153,6 +153,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P08 | 13min | 2 tasks | 10 files |
 | Phase 114 P09 | 16min | 2 tasks | 16 files |
 | Phase 114 P10 | 12min | 2 tasks | 6 files |
+| Phase 114 P11 | 20min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,7 @@ decisions:
 - [Phase 114]: 114-09: config-reload-host.test.ts's Mock-shaped fake target type is declared standalone, not intersected with RestartTarget (intersecting a shared property name across an interface and an object-literal type combines both declared types, producing an unsatisfiable target); overrides is retyped to match
 - [Phase 114]: 114-09: logger.test.ts's debug=false case wraps the literal in Boolean(false), not a : boolean annotation alone -- TS control-flow analysis narrows a never-reassigned const to its own literal type at use sites regardless of an explicit widening annotation
 - [Phase 114]: 114-10: the six largest string|MarkupContent message-reading test files (line-break-validation, line-break-single-line-if, parser-keyword-statements, unresolvable-type, classes, variable-scoping) now read diagnostic text through Diagnostic.getMessageString(d); variable-scoping.test.ts's one always-true SymbolRef/FieldDecl comparison was dropped as a documented vacuous clause, predicate unchanged in what it selects
+- [Phase 114]: 114-11: parser.test.ts's and imports.test.ts's apparent AST-narrowing/document-typing errors were collateral damage from a missing relative-import .js suffix, not missing isXxx()/isBbjDocument guards -- fixing the import restored the existing guards' narrowing with no new guard code — Under node16/nodenext module resolution an extensionless relative import still error-reports with a 'did you mean .js' hint but does not resolve for type-checking, so the imported guard functions typed as implicit any and lost all narrowing power
 
 ### Tech Debt
 
@@ -294,8 +296,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T20:42:37.968Z
-Stopped at: Completed 114-10-PLAN.md
+Last session: 2026-09-27T20:58:43.458Z
+Stopped at: Completed 114-11-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 114` (114-CONTEXT.md exists).
