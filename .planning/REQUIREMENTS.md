@@ -23,7 +23,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [ ] **SEC-11**: The msgbox and CVS composers validate their `assignTo` field like every other free-text composer field; on a new insert it is required and must name a variable of the call's result type (#626; amended 2026-09-27, Phase 113 D-05..D-09)
 - [ ] **SEC-12**: `web.bbj` never fills in a default username; a missing username (and no token) goes to `login_failed`. The only default kept is `admin123` for the exact user `admin` with an empty password, and the IDE login prompts pre-fill the last used username (else `admin`) (#546; amended 2026-09-27, Phase 112 D-05)
 - [x] **SEC-13**: Every Enterprise Manager call in `web.bbj` after login has an error handler that reports the failure visibly (#548)
-- [ ] **SEC-14**: The EM token expiry check treats a malformed, unsigned or exp-less JWT as expired (#553)
+- [x] **SEC-14**: The EM token expiry check treats a malformed, unsigned or exp-less JWT as expired (#553)
 
 ### Parser and runtime fixes
 
@@ -126,7 +126,7 @@ None deferred. Every still-open audit issue is in scope.
 | SEC-11 | Phase 113 | Pending |
 | SEC-12 | Phase 112 | Pending |
 | SEC-13 | Phase 112 | Complete |
-| SEC-14 | Phase 112 | Pending |
+| SEC-14 | Phase 112 | Complete |
 | FIX-01 | Phase 119 | Pending |
 | FIX-02 | Phase 111 | Complete |
 | FIX-03 | Phase 111 | Complete |

@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 112
 current_phase_name: EM Login & Web Launch Fail Closed
 status: executing
-stopped_at: Completed 112-01-PLAN.md
-last_updated: "2026-09-27T06:59:02.164Z"
+stopped_at: Completed 112-02-PLAN.md
+last_updated: "2026-09-27T07:16:02.420Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 112 execution started
-state_head: 03c8928ccb40d8cd0e4ae875a67de1feae8be0fc
+state_head: 65d3559849d0a6cf8aa999012679c76dbe87d61a
 progress:
   total_phases: 13
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 15
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 112 (EM Login & Web Launch Fail Closed) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-27 — Phase 112 execution started
 
@@ -132,6 +132,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 111 P06 | 27min | 2 tasks | 4 files |
 | Phase 111 P07 | 15min | 2 tasks | 5 files |
 | Phase 112 P01 | 14min | 2 tasks | 2 files |
+| Phase 112 P02 | 14min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,7 @@ decisions:
 - [Phase 111 UAT]: G-111-2 — the installed javadoc ends each member with a BASIS `[Docs](https://documentation.basis.cloud/...)` link that SEC-04 escaping turned into literal text. 111-07: escapeJavadocMarkdown keeps exactly one trailing link of that shape clickable (label Docs, https, host documentation.basis.cloud, restricted path); everything else stays escaped. IntelliJ/LSP4IJ shows raw javadoc HTML literally, so leaving `<` unescaped holds.
 - [Phase 111]: 111-06: boundedJavadocName truncates hover's javadoc-file MethodDoc fallback name and each parameter name at MAX_JAVA_IDENTIFIER_LENGTH, falling back to the node's own bounded name on a non-string value (SEC-04/D-02 gap 2) — Closes the one D-02 hover path left unbounded; mirrors the interop path's realName bound
 - [Phase 112]: 112-01: web.bbj requires a username; admin123 kept only for username! = "admin" with an empty password; one shared report_failure reporter (MSGBOX + release 1) backs the login-rejection path and every EM step after login, each with its own err= label
+- [Phase 112]: 112-02: complete port of bbj-intellij's JwtValidity.check into src/em-token-validity.ts (strict base64url decode, Number.isSafeInteger overflow guard); getEMCredentials deletes bbj.em.token and re-prompts for any token it cannot positively decode as unexpired
 
 ### Tech Debt
 
@@ -247,8 +249,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T06:59:02.055Z
-Stopped at: Completed 112-01-PLAN.md
+Last session: 2026-09-27T07:16:02.297Z
+Stopped at: Completed 112-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 112` or `/gsd-plan-phase 112`.

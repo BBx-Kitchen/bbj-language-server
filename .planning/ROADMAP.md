@@ -516,13 +516,13 @@ request, not only to lower the log level.
   4. `Commands.cjs` is loaded and executed under vitest, not only scanned as text, and its run, compile and BUI/DWC command bodies show execution coverage.
   5. A hand check with valid EM credentials launches a BUI and a DWC program from VS Code and from IntelliJ, and both still open in the browser.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 112-01-PLAN.md — `web.bbj` fails closed: no default username, `admin123` only for `admin` with an empty password, every EM step after login has its own `err=` label reaching one shared MSGBOX reporter with `release 1`; source guard plus a `bbjcpl -N` syntax gate (SEC-12, SEC-13) (wave 1)
-- [ ] 112-02-PLAN.md — Plain `em-token-validity.ts` ports IntelliJ `JwtValidity.check` (explicit empty-signature check, strict base64url); `getEMCredentials` deletes an unusable token and the BUI/DWC commands ask for a new login (SEC-14) (wave 1)
+- [x] 112-02-PLAN.md — Plain `em-token-validity.ts` ports IntelliJ `JwtValidity.check` (explicit empty-signature check, strict base64url); `getEMCredentials` deletes an unusable token and the BUI/DWC commands ask for a new login (SEC-14) (wave 1)
 - [ ] 112-04-PLAN.md — `Commands.cjs` loaded and executed under vitest through a `node:module` `registerHooks` shim; text scans in `config-path-consumers.test.ts` replaced by execution tests; `runWeb` legacy settings fallback removed; V8 coverage run recorded (TEST-09, SEC-12) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -791,7 +791,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 |-------|----------------|--------|-----------|
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
 | 111. Java Class Data from the Interop Peer | 6/6 | Not started |  |
-| 112. EM Login & Web Launch Fail Closed | 1/4 | Not started |  |
+| 112. EM Login & Web Launch Fail Closed | 2/4 | Not started |  |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
