@@ -27,8 +27,9 @@
 import { createRequire, registerHooks, type ResolveHookSync, type LoadHookSync } from 'module';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import type { ExecFileOptions } from 'child_process';
 import { vi, type Mock } from 'vitest';
-import { formatArgvForLog as realFormatArgvForLog } from '../src/Commands/process-runner.js';
+import { formatArgvForLog as realFormatArgvForLog, type ProcessError } from '../src/Commands/process-runner.js';
 import type { Argv } from '../src/Commands/process-args.js';
 
 const VSCODE_SHIM_URL = 'bbj-test-shim:vscode';
@@ -93,9 +94,9 @@ export const fakeVscode = {
         openTextDocument: vi.fn(async (target: unknown) => fakeDocument(target)),
     },
     window: {
-        showErrorMessage: vi.fn(async () => undefined),
-        showWarningMessage: vi.fn(async () => undefined),
-        showInformationMessage: vi.fn(async () => undefined),
+        showErrorMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined as string | undefined),
+        showWarningMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined as string | undefined),
+        showInformationMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined as string | undefined),
         withProgress: vi.fn((_options: unknown, task: (progress?: unknown, token?: unknown) => unknown) =>
             task(undefined, undefined)
         ),
@@ -103,7 +104,7 @@ export const fakeVscode = {
         activeTextEditor: undefined as unknown,
     },
     commands: {
-        executeCommand: vi.fn(async () => undefined),
+        executeCommand: vi.fn(async (_command: string, ..._args: unknown[]) => undefined),
     },
     ProgressLocation: { Notification: 15 },
     Uri: {
@@ -113,8 +114,13 @@ export const fakeVscode = {
 };
 
 export const fakeProcessRunner = {
-    runProcess: vi.fn(async () => ({ stdout: '', stderr: '' })),
-    runProcessCallback: vi.fn(),
+    runProcess: vi.fn(async (_argv: Argv, _options: ExecFileOptions = {}) => ({ stdout: '', stderr: '' })),
+    runProcessCallback: vi.fn(
+        (_argv: Argv, _options: ExecFileOptions, _callback: (err: ProcessError | null, stdout: string, stderr: string) => void) => {
+            // Bare spy: real behaviour is scripted per-test via mockImplementation, or the
+            // callback is invoked directly off `.mock.calls` — this default body does nothing.
+        }
+    ),
     formatArgvForLog: vi.fn((argv: Argv, secrets: string[] = []) => realFormatArgvForLog(argv, secrets)),
 };
 
@@ -126,13 +132,42 @@ export function setFakeSettings(next: FakeSettings): void {
     settings = cloneSettings(next);
 }
 
+/** The `{ fsPath }`-shaped target every run/compile/decompile command accepts. */
+interface RunTargetParams {
+    fsPath?: string;
+}
+
+/** The credentials shape `runBUI`/`runDWC` forward to the web-run EM login check. */
+interface WebCredentials {
+    username: string;
+    password: string;
+}
+
 interface CommandsModule {
     setOutputChannel: (channel: unknown) => void;
+    openConfigFile: () => void | Promise<void>;
+    openPropertiesFile: () => void | Promise<void>;
+    openEnterpriseManager: () => void;
+    run: (params: RunTargetParams) => void;
+    runBUI: (params: RunTargetParams, credentials?: WebCredentials) => void;
+    runDWC: (params: RunTargetParams, credentials?: WebCredentials) => void;
+    compile: (params: RunTargetParams) => void;
+    denumber: (params: RunTargetParams) => void;
+    decompileReplace: (params: RunTargetParams) => void;
+    decompileReadonly: (params: RunTargetParams) => void;
     [key: string]: unknown;
 }
 
 interface ConfigPathCacheModule {
     resetConfigPathCacheForTests: () => void;
+    /**
+     * The real `setResolvedConfigPath` (`config-path-cache.ts`) requires the full
+     * `ResolvedConfigPathResult` shape (`source`, `problem` included); every test here only
+     * ever supplies `{ path, exists }`, which the real implementation accepts fine at runtime
+     * (the extra fields are simply left `undefined`) — this narrower type describes exactly
+     * what these tests pass, not the full production contract.
+     */
+    setResolvedConfigPath: (result: { path: string; exists: boolean }) => void;
     [key: string]: unknown;
 }
 

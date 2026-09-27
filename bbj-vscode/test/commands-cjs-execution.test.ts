@@ -16,6 +16,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE } from '../src/Commands/target-resolution.js';
 import type { Argv } from '../src/Commands/process-args.js';
+import type { ProcessError } from '../src/Commands/process-runner.js';
 import {
     fakeProcessRunner,
     fakeVscode,
@@ -28,6 +29,27 @@ const DEFAULT_TEST_SETTINGS = {
     bbj: { home: '/opt/bbx', classpath: '' },
     'bbj.web': { apps: {}, AutoSaveUponRun: false },
 };
+
+/**
+ * A plain `Error` doesn't satisfy Node's `ExecException` (which `ProcessError` extends and
+ * which requires `cmd`); this builds a minimal fake that does, for tests that hand a fake
+ * failure straight to the `runProcessCallback` callback captured off `.mock.calls`.
+ */
+function fakeProcessError(message: string): ProcessError {
+    return Object.assign(new Error(message), { cmd: message });
+}
+
+/**
+ * Narrows a possibly-`undefined` property (`Argv.env`, `ExecFileOptions.env`) captured off a
+ * mock call to its defined type for the env-focused assertions below — production always sets
+ * `env` on a web-run argv/options pair, the type is just optional because not every `Argv` use
+ * carries one.
+ */
+function assertDefined<T>(value: T | undefined, message: string): asserts value is T {
+    if (value === undefined) {
+        throw new Error(message);
+    }
+}
 
 describe('Commands.cjs executes under vitest', () => {
     beforeEach(() => {
@@ -158,7 +180,7 @@ describe('Commands.cjs run', () => {
 
         Commands.run({ fsPath: '/w/a.bbj' });
         const [, , callback] = fakeProcessRunner.runProcessCallback.mock.calls[0];
-        callback(new Error('boom'), '', 'stderr text');
+        callback(fakeProcessError('boom'), '', 'stderr text');
 
         expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
             expect.stringMatching(/^Failed to run "\/w\/a\.bbj"/)
@@ -172,7 +194,7 @@ describe('Commands.cjs run', () => {
             'bbj.web': { apps: {}, AutoSaveUponRun: false },
         });
         configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
-        const appendLine = vi.fn();
+        const appendLine = vi.fn((_line: string) => {});
         Commands.setOutputChannel({ appendLine });
 
         Commands.run({ fsPath: '/w/a.bbj' });
@@ -195,6 +217,8 @@ describe('Commands.cjs runBUI / runDWC', () => {
 
         expect(fakeProcessRunner.runProcessCallback).toHaveBeenCalledTimes(1);
         const [argv, options] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        assertDefined(argv.env, 'expected argv.env to be set for a web run');
+        assertDefined(options.env, 'expected options.env to be set for a web run');
         expect(argv.args).toContain('BUI');
         expect(argv.args.at(-1)).toBe('/cfg/config.bbx');
         expect(argv.env.BBJ_EM_TOKEN).toBe('tok-123');
@@ -214,6 +238,7 @@ describe('Commands.cjs runBUI / runDWC', () => {
 
         expect(fakeProcessRunner.runProcessCallback).toHaveBeenCalledTimes(1);
         const [argv] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        assertDefined(argv.env, 'expected argv.env to be set for a web run');
         expect(argv.args).toContain('DWC');
         expect(argv.env.BBJ_EM_USERNAME).toBe('jdoe');
         expect(argv.env.BBJ_EM_PASSWORD).toBe('pw-secret-9');
@@ -266,7 +291,7 @@ describe('Commands.cjs runBUI / runDWC', () => {
 
         Commands.runBUI({ fsPath: '/w/a.bbj' }, { username: 'jdoe', password: 'pw' });
         const [, , callback] = fakeProcessRunner.runProcessCallback.mock.calls[0];
-        callback(new Error('boom'), '', '');
+        callback(fakeProcessError('boom'), '', '');
 
         expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
             expect.stringMatching(/^Failed to run "a\.bbj"/)
@@ -280,7 +305,7 @@ describe('Commands.cjs runBUI / runDWC', () => {
             'bbj.web': { apps: {}, AutoSaveUponRun: false },
         });
         configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
-        const appendLine = vi.fn();
+        const appendLine = vi.fn((_line: string) => {});
         Commands.setOutputChannel({ appendLine });
 
         Commands.runBUI({ fsPath: '/w/a.bbj' }, { username: '__token__', password: 'tok-123' });
