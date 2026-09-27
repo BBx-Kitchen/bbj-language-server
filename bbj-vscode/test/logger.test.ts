@@ -368,3 +368,5 @@ describe('Logger', () => {
     });
   });
 });
+
+export const ciGateProbeNumber: number = 'not a number';
