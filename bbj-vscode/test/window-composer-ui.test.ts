@@ -18,10 +18,11 @@ vi.mock('vscode', () => ({
 }));
 
 import {
-    titleArg, windowPanelArgAt, WINDOW_TITLE_FALLBACK,
+    titleArg, windowPanelArgAt, WINDOW_TITLE_FALLBACK, CHILD_WINDOW_TITLE_FALLBACK,
     type WindowCallInfo, type WindowPanelArgSpec,
 } from '../src/window-composer-ui.js';
 import { addWindowPanelArgAt } from '../src/addwindow-composer-ui.js';
+import { addChildWindowPanelArgAt } from '../src/addchildwindow-composer-ui.js';
 import { WINDOW_FLAGS, EVENT_MASK_BITS, unknownBits } from '../src/addwindow-composer.js';
 
 describe('titleArg', () => {
@@ -124,7 +125,7 @@ describe('windowPanelArgAt', () => {
 });
 
 describe('addWindowPanelArgAt through the shared helper', () => {
-    test('pins the same values as the TEST-10 addwindow-composer-ui.test.ts flags-literal fixture', () => {
+    test('pins the same values as the addwindow-composer-ui.test.ts flags-literal fixture', () => {
         const line = 'w! = sysgui!.addWindow(10, 10, 400, 300, "Main", $00010003$)';
         const flagsStart = line.indexOf('$00010003$');
         const flagsEnd = flagsStart + '$00010003$'.length;
@@ -161,8 +162,61 @@ describe('addWindowPanelArgAt through the shared helper', () => {
     });
 });
 
+describe('addChildWindowPanelArgAt through the shared helper', () => {
+    const CONTEXT_EXPR = 'sysgui!.getAvailableContext()';
+    const LINE_FLAGS_ONLY = `c! = window!.addChildWindow(101, 10, 10, 200, 150, "Kid", $00010000$, ${CONTEXT_EXPR})`;
+    const LINE_NO_FLAGS_SLOT = `c! = window!.addChildWindow(101, 10, 10, 200, 150, someExpr, ${CONTEXT_EXPR})`;
+
+    test('pins the same values as the addchildwindow-composer-ui.test.ts flags-literal fixture', () => {
+        const flagsStart = LINE_FLAGS_ONLY.indexOf('$00010000$');
+        const flagsEnd = flagsStart + '$00010000$'.length;
+        const contextEnd = LINE_FLAGS_ONLY.indexOf(CONTEXT_EXPR) + CONTEXT_EXPR.length;
+
+        const result = addChildWindowPanelArgAt('file:///a.bbj', 0, LINE_FLAGS_ONLY, flagsStart);
+
+        expect(result).toEqual({
+            arg: {
+                target: {
+                    uri: 'file:///a.bbj',
+                    line: 0,
+                    flagsRange: [flagsStart, flagsEnd],
+                    flagsInsertOffset: undefined,
+                    eventMaskRange: undefined,
+                    eventMaskInsertOffset: contextEnd,
+                    preservedFlagBits: 0,
+                    preservedEventBits: 0,
+                },
+                initial: {
+                    flags: 0x00010000,
+                    eventMask: null,
+                    receiver: '',
+                    window: 'window!',
+                    id: '',
+                    context: '',
+                    x: '', y: '', width: '', height: '',
+                    title: '"Kid"',
+                },
+            },
+            label: 'Configure child window flags (Keyboard navigation)',
+        });
+    });
+
+    test('a call with no title slot and no flags literal returns undefined (the no-flags-slot refusal)', () => {
+        const character = LINE_NO_FLAGS_SLOT.indexOf('someExpr');
+        expect(addChildWindowPanelArgAt('file:///j.bbj', 0, LINE_NO_FLAGS_SLOT, character)).toBeUndefined();
+    });
+
+    test('returns undefined when there is no addChildWindow call on the line', () => {
+        expect(addChildWindowPanelArgAt('file:///x.bbj', 0, 'x = 1', 2)).toBeUndefined();
+    });
+});
+
 describe('title fallback constants', () => {
     test('WINDOW_TITLE_FALLBACK is the addWindow fallback title literal', () => {
         expect(WINDOW_TITLE_FALLBACK).toBe('"Window"');
+    });
+
+    test('CHILD_WINDOW_TITLE_FALLBACK is the addChildWindow fallback title literal', () => {
+        expect(CHILD_WINDOW_TITLE_FALLBACK).toBe('"Child"');
     });
 });

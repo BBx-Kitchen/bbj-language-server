@@ -41,17 +41,13 @@ import {
     CVS_BITS, CVS_CHARS_TOOLTIP, decodeCvsCall, cvsPreview,
     type CvsPreviewInput,
 } from './cvs-composer.js';
+import { titleArg, WINDOW_TITLE_FALLBACK, CHILD_WINDOW_TITLE_FALLBACK } from './window-composer-ui.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }
 
-/** Best-effort title for a window preview: the last string-literal argument in the call. */
-function titleArg(args: string[], fallback: string): string {
-    const literal = [...args].reverse().find(a => /^"([^"]|"")*"$/.test(a));
-    return literal ?? fallback;
-}
-const addWindowTitleArg = (args: string[]) => titleArg(args, '"Window"');
-const addChildWindowTitleArg = (args: string[]) => titleArg(args, '"Child"');
+const addWindowTitleArg = (args: string[]) => titleArg(args, WINDOW_TITLE_FALLBACK);
+const addChildWindowTitleArg = (args: string[]) => titleArg(args, CHILD_WINDOW_TITLE_FALLBACK);
 
 /**
  * Compose the flat UI selection a SETOPTS dialog prefills from an existing vector (or the empty
