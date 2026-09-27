@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 112
 current_phase_name: EM Login & Web Launch Fail Closed
-status: executing
-stopped_at: Completed 112-04-PLAN.md
-last_updated: "2026-09-27T07:45:19.534Z"
+status: verifying
+stopped_at: Completed 112-03-PLAN.md
+last_updated: "2026-09-27T08:03:35.956Z"
 last_activity: 2026-09-27
 last_activity_desc: Phase 112 execution started
-state_head: e6cd3d6f280ec1426b2d6b53da5682444a7615f8
+state_head: 2168e73dbff63a5b0e8916ae0eed7f947c49266f
 progress:
   total_phases: 13
   completed_phases: 2
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 15
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Phase: 112 (EM Login & Web Launch Fail Closed) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-27 — Phase 112 execution started
 
 Progress: [██░░░░░░░░] 15% (2/13 phases)
@@ -134,6 +134,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 112 P01 | 14min | 2 tasks | 2 files |
 | Phase 112 P02 | 14min | 2 tasks | 4 files |
 | Phase 112 P04 | 26min | 3 tasks | 7 files |
+| Phase 112 P03 | 16min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,7 @@ decisions:
 - [Phase 112]: 112-01: web.bbj requires a username; admin123 kept only for username! = "admin" with an empty password; one shared report_failure reporter (MSGBOX + release 1) backs the login-rejection path and every EM step after login, each with its own err= label
 - [Phase 112]: 112-02: complete port of bbj-intellij's JwtValidity.check into src/em-token-validity.ts (strict base64url decode, Number.isSafeInteger overflow guard); getEMCredentials deletes bbj.em.token and re-prompts for any token it cannot positively decode as unexpired
 - [Phase 112]: 112-04: Commands.cjs loaded and executed under vitest via a node:module registerHooks harness (issue #565); runWeb's legacy settings credentials fallback removed (SEC-12 Commands.cjs half); a pre-existing openEnterpriseManager PropertiesReader argument-shape bug (broken EM URL, never exercisable before this harness) fixed as a Rule 1 deviation
+- [Phase 112]: 112-03: both IDE EM login prompts pre-fill the last successfully used username via a plain seam (em-username-memory.ts / EmUsernameMemory.java) over context.globalState / PropertiesComponent, remembered only after the token is stored
 
 ### Tech Debt
 
@@ -251,8 +253,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-27T07:45:19.428Z
-Stopped at: Completed 112-04-PLAN.md
+Last session: 2026-09-27T08:03:35.839Z
+Stopped at: Completed 112-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 112` or `/gsd-plan-phase 112`.

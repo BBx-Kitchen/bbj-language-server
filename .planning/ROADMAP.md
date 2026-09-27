@@ -516,7 +516,7 @@ request, not only to lower the log level.
   4. `Commands.cjs` is loaded and executed under vitest, not only scanned as text, and its run, compile and BUI/DWC command bodies show execution coverage.
   5. A hand check with valid EM credentials launches a BUI and a DWC program from VS Code and from IntelliJ, and both still open in the browser.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -527,7 +527,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 112-03-PLAN.md — Both IDE login prompts pre-fill the last successfully used EM username (else `admin`): `globalState` in VS Code, application `PropertiesComponent` in IntelliJ, saved only after a successful login (SEC-12) (wave 2, shares extension.ts with 112-02)
+- [x] 112-03-PLAN.md — Both IDE login prompts pre-fill the last successfully used EM username (else `admin`): `globalState` in VS Code, application `PropertiesComponent` in IntelliJ, saved only after a successful login (SEC-12) (wave 2, shares extension.ts with 112-02)
 
 *Planning notes:* Node's native loader resolves `Commands.cjs`, so it cannot see
 `vi.mock('vscode')`. The tests need a `vscode` shim in Node's module resolution, or the remaining
@@ -791,7 +791,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 |-------|----------------|--------|-----------|
 | 110. Workspace Settings & Filesystem Trust | 5/5 | Not started |  |
 | 111. Java Class Data from the Interop Peer | 6/6 | Not started |  |
-| 112. EM Login & Web Launch Fail Closed | 3/4 | Not started |  |
+| 112. EM Login & Web Launch Fail Closed | 4/4 | Not started |  |
 | 113. Composer Webview Hardening & Consolidation | 0/TBD | Not started | - |
 | 114. Lint, Type-Check & Test-Suite Gates | 0/TBD | Not started | - |
 | 115. Honest Interop Test Harness | 0/TBD | Not started | - |
