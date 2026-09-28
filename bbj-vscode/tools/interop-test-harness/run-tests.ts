@@ -1,4 +1,3 @@
-#!/usr/bin/env npx tsx
 /**
  * Java Interop Test Harness
  *
@@ -8,9 +7,9 @@
  *
  * Usage:
  *   cd bbj-vscode
- *   npx tsx tools/interop-test-harness/run-tests.ts
- *   npx tsx tools/interop-test-harness/run-tests.ts --host 192.168.1.100 --port 5008
- *   npx tsx tools/interop-test-harness/run-tests.ts --output /tmp/report.html
+ *   npm run interop-harness
+ *   npm run interop-harness -- --host 192.168.1.100 --port 5008
+ *   npm run interop-harness -- --output /tmp/report.html
  */
 
 import { Socket } from 'node:net';
@@ -23,7 +22,7 @@ import {
     SocketMessageWriter,
     RequestType,
     type MessageConnection,
-} from 'vscode-jsonrpc/node';
+} from 'vscode-jsonrpc/node.js';
 
 // ─── CLI args ───────────────────────────────────────────────────────────────
 
