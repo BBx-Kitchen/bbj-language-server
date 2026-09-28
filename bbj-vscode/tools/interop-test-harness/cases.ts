@@ -76,9 +76,9 @@ function validateJavaUtilHashMap(outcome: unknown, checks: FieldCheck[], asserts
         const arities = cls.constructors.map(c => c.parameters?.length ?? 0);
         const unique = new Set(arities);
         asserts.push(assert('Constructors have varying arity', unique.size > 1, `arities: ${arities.join(', ')}`));
-        for (const ctor of cls.constructors) {
-            validateMethodFields(ctor, checks, `constructor(${ctor.parameters?.length ?? '?'})`);
-        }
+        cls.constructors.forEach((ctor, index) => {
+            validateMethodFields(ctor, checks, `constructors[${index}]`);
+        });
     }
 }
 
