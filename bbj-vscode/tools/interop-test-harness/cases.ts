@@ -169,16 +169,15 @@ function validateJavaUtilMapEntry(outcome: unknown, checks: FieldCheck[], assert
 }
 
 /**
- * True only when `value` is a non-null object with an `error` property whose value is not
- * undefined, null, false or the empty string — the same signal `java-interop.ts` reads on a
- * resolved class to decide whether to skip it (#514).
+ * True only when `value` is a non-null object with a truthy `error` property — the same plain
+ * truthiness check `java-interop.ts` applies to `javaClass.error` to decide whether to skip a
+ * resolved class (#514).
  */
 function hasErrorField(value: unknown): boolean {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
-    const err = (value as { error?: unknown }).error;
-    return err !== undefined && err !== null && err !== false && err !== '';
+    return Boolean((value as { error?: unknown }).error);
 }
 
 function validatePrimitiveInt(outcome: unknown, _checks: FieldCheck[], asserts: Assertion[]): void {
