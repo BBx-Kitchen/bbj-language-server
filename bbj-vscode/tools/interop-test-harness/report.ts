@@ -98,6 +98,7 @@ function statusBadge(status: TestStatus): string {
 
 function buildSummaryBar(verdict: GateVerdict, total: number): string {
     const { passCount, failCount, errorCount } = verdict;
+    const pct = (count: number): number => total === 0 ? 0 : (count / total) * 100;
     return `<div class="summary-bar">
     <div>
         <div class="summary-stat pass">${passCount}</div>
@@ -116,9 +117,9 @@ function buildSummaryBar(verdict: GateVerdict, total: number): string {
         <div class="summary-label">Total</div>
     </div>
     <div class="progress-bar">
-        <div class="progress-pass" style="width:${(passCount / total) * 100}%"></div>
-        <div class="progress-fail" style="width:${(failCount / total) * 100}%"></div>
-        <div class="progress-error" style="width:${(errorCount / total) * 100}%"></div>
+        <div class="progress-pass" style="width:${pct(passCount)}%"></div>
+        <div class="progress-fail" style="width:${pct(failCount)}%"></div>
+        <div class="progress-error" style="width:${pct(errorCount)}%"></div>
     </div>
 </div>`;
 }

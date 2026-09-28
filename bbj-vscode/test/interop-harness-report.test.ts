@@ -226,4 +226,13 @@ describe('report colouring and escaping (#596)', () => {
         expect(report).toContain('&lt;img src=x&gt;');
         expect(report).not.toContain('<img src=x>');
     });
+
+    it('renders a zero-width summary bar instead of NaN% when there are no results', () => {
+        const emptyVerdict = { passCount: 0, failCount: 0, errorCount: 0, criticalFailures: [], exitCode: 0 };
+
+        const report = generateReport([], [], emptyVerdict, '127.0.0.1', 1234, new Date('2026-01-01T00:00:00Z'));
+
+        expect(report).not.toContain('NaN%');
+        expect(report).toContain('width:0%');
+    });
 });
