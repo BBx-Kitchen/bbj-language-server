@@ -438,6 +438,29 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
+
+        test('A member reached through a java.lang.Object receiver is not flagged', async () => {
+            // A variable declared exactly java.lang.Object can legitimately hold any runtime
+            // value, so an unresolved member reached through it is not certain enough to report.
+            const document = await validate(`
+                declare java.lang.Object o!
+                o!.release()
+            `)
+            expectNoErrors(document)
+        });
+
+        test('An unknown member on another resolved Java class is still reported', async () => {
+            // Control: the java.lang.Object carve-out is scoped to that one type -- an unknown
+            // member on any other fully resolved Java class still gets exactly one diagnostic
+            // naming it.
+            const document = await validate(`
+                declare java.lang.String s!
+                s!.release()
+            `)
+            const diagnostics = document.diagnostics ?? []
+            expect(diagnostics.length).toBe(1)
+            expect(diagnostics[0].message).toContain('release')
+        });
     });
 
     test('DECLARE anywhere in method body is recognized for type resolution', async () => {

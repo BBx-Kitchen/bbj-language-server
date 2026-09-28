@@ -810,11 +810,11 @@ describe('Parser Tests', () => {
         requestSemaphore!.release()
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: BBjAPI() method chain (getGlobalNamespace, getValue, release) cannot be resolved
-        // without Java interop classpath. The synthetic BBjAPI stub in bbj-api.ts has no methods.
-        // To enable: run tests with a real BBj classpath or expand the synthetic BBjAPI stub
-        // with the BBjNamespace/BBjSemaphore method signatures.
-        // expectNoValidationErrors(result);
+        // BBjAPI().getGlobalNamespace() returns the real com.basis.bbj.proxies.BBjNamespace,
+        // and its getValue() returns the real java.lang.Object -- release() on that
+        // Object-typed variable is not flagged, since a receiver typed exactly java.lang.Object
+        // can hold any runtime value (bbj-document-validator.ts's processLinkingErrors skip).
+        expectNoValidationErrors(result);
     });
 
     test('Call: fileId as expression', async () => {

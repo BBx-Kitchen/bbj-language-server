@@ -81,7 +81,8 @@ export class JavaInteropTestService extends JavaInteropService {
             createJavaUtilMapClass(this.classpath),
             createJavaUtilMapEntryClass(this.classpath),
             createJavaSqlDateClass(this.classpath),
-            createJavaLangBooleanClass(this.classpath)
+            createJavaLangBooleanClass(this.classpath),
+            createBBjNamespaceClass(this.classpath)
         ]
         fakeJavaClasses.forEach(clazz => {
             this.classpath.classes.push(clazz)
@@ -273,7 +274,10 @@ function createBBjApiClass(container: Classpath): JavaClass {
         deprecated: false
     }
     clazz.methods = [
-        makeMethod(clazz, 'getThinClient', 'java.lang.String')
+        makeMethod(clazz, 'getThinClient', 'java.lang.String'),
+        // Real signature read from the live peer: BBjAPI.getGlobalNamespace returns
+        // com.basis.bbj.proxies.BBjNamespace, needed for the Release usage chain.
+        makeMethod(clazz, 'getGlobalNamespace', 'com.basis.bbj.proxies.BBjNamespace')
     ]
     return clazz
 }
@@ -569,6 +573,29 @@ function createJavaSqlDateClass(container: Classpath): JavaClass {
     }
     clazz.methods = [
         makeMethod(clazz, 'valueOf', 'java.sql.Date', [{ name: 's', type: 'java.lang.String' }], { isStatic: true })
+    ]
+    return clazz
+}
+
+// com.basis.bbj.proxies.BBjNamespace: getValue's real signature, read from the live peer, is
+// `java.lang.Object getValue(java.lang.String)` -- the fake carries only that real signature so
+// the Release usage chain (BBjAPI().getGlobalNamespace().getValue()) types its variable to the
+// real java.lang.Object, never to a semaphore.
+function createBBjNamespaceClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass.$type,
+        name: 'com.basis.bbj.proxies.BBjNamespace',
+        packageName: 'com.basis.bbj.proxies',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+    clazz.methods = [
+        makeMethod(clazz, 'getValue', 'java.lang.Object', [{ name: 'name', type: 'java.lang.String' }])
     ]
     return clazz
 }

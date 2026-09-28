@@ -7,7 +7,7 @@ import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, Diagnostic
 import { isJavaClass, isMemberCall, isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
-import { UNKNOWN_JAVA_MEMBER_CODE } from "./validations/check-unknown-java-member.js";
+import { isUniversalObjectReceiver, UNKNOWN_JAVA_MEMBER_CODE } from "./validations/check-unknown-java-member.js";
 import {
     clearVerdictState,
     composeWithVerdict,
@@ -460,6 +460,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                 let javaMemberAccess = false;
                 let memberName: string | undefined;
                 let ownerSimpleName: string | undefined;
+                let skipUniversalObjectReceiver = false;
                 if (
                     linkingError.info.property === 'member' &&
                     isMemberCall(container) &&
@@ -469,13 +470,26 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                     try {
                         const receiverType = this.typeInferer.getType(container.receiver);
                         if (isJavaClass(receiverType)) {
-                            javaMemberAccess = true;
-                            memberName = refText;
-                            ownerSimpleName = javaMemberOwnerName(receiverType);
+                            if (isUniversalObjectReceiver(receiverType)) {
+                                // A receiver typed exactly java.lang.Object can hold any runtime
+                                // value, so no member reached through it is certain enough to be
+                                // reported missing -- mirrors isUniversalObjectReceiver's own
+                                // rationale in the unknown-member Error check, applied here to
+                                // the linking-Warning path too.
+                                skipUniversalObjectReceiver = true;
+                            } else {
+                                javaMemberAccess = true;
+                                memberName = refText;
+                                ownerSimpleName = javaMemberOwnerName(receiverType);
+                            }
                         }
                     } catch {
                         // Not flagged -- see comment above.
                     }
+                }
+
+                if (skipUniversalObjectReceiver) {
+                    continue;
                 }
 
                 const info: DiagnosticInfo<AstNode, string> = {
