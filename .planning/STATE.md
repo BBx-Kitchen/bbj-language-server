@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 116
 current_phase_name: Java-Interop Test Coverage
 status: planning
-stopped_at: Phase 115 complete, ready to plan Phase 116
-last_updated: "2026-09-28T09:23:48.173Z"
+stopped_at: Phase 116 context gathered
+last_updated: "2026-09-28T10:30:09.024Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 115 complete, transitioned to Phase 116
-state_head: 155ca2f06ddb7dd55451dbceb399b46c86403e88
+state_head: fc496c9b8d220f767ce6ba9488762e58dd27940b
 progress:
   total_phases: 13
   completed_phases: 6
@@ -316,9 +316,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T09:10:49.507Z
-Stopped at: Phase 115 complete, ready to plan Phase 116
-Resume file: None
+Last session: 2026-09-28T10:30:08.488Z
+Stopped at: Phase 116 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/116-java-interop-test-coverage/116-CONTEXT.md
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
