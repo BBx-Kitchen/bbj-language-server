@@ -1,7 +1,4 @@
-export const builtinSymbolicLabels = `
-
-
-library
+export const builtinSymbolicLabels = `library
 
 /@@
 If an error occurs, proceed with the next statement (on the current line or the next line).
@@ -63,5 +60,4 @@ If an error occurs, branch to the end of the current IF..ENDIF block.
 @/
 label *ENDIF
 
-`.trimLeft();
-
+`;
