@@ -186,3 +186,104 @@ describe('a response that never arrives times out through the real socket code (
         expect(settled).toBe(true);
     });
 });
+
+describe('the resolution lock serializes concurrent lookups, observed on the wire (#560)', () => {
+    let interop: LoopbackInterop | undefined;
+    let peer: LoopbackPeer | undefined;
+
+    afterEach(async () => {
+        interop?.clearCache();
+        await peer?.close();
+        interop = undefined;
+        peer = undefined;
+    });
+
+    /** A promise/resolve pair, deferred-style, so a test can hold a peer's answer open. */
+    function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+        let resolve!: (value: T) => void;
+        const promise = new Promise<T>((r) => { resolve = r; });
+        return { promise, resolve };
+    }
+
+    function realDelay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    test('three concurrent lookups of distinct classes reach the peer one at a time, in call order', async () => {
+        const names = ['a.One', 'a.Two', 'a.Three'];
+        const arrivals = new Map(names.map(name => [name, deferred<void>()]));
+        const releases = new Map<string, () => void>();
+
+        peer = await startLoopbackPeer({
+            getClassInfo: (params) => {
+                const { className } = params as { className: string };
+                arrivals.get(className)?.resolve();
+                return new Promise((resolve) => {
+                    releases.set(className, () => resolve({ name: className, packageName: '', fields: [], methods: [], constructors: [] }));
+                });
+            },
+        });
+        interop = newInterop();
+        interop.setConnectionConfig('127.0.0.1', peer.port);
+
+        const allResolved = Promise.all(names.map(name => interop!.resolveClassByName(name)));
+
+        for (const name of names) {
+            await arrivals.get(name)!.promise;
+            // Real time, not fake: proves the next request has not also reached the wire.
+            await realDelay(50);
+            const getClassInfoRequests = peer.requests.filter(r => r.method === 'getClassInfo');
+            expect(getClassInfoRequests.map(r => (r.params as { className: string }).className)).toEqual(
+                names.slice(0, names.indexOf(name) + 1)
+            );
+            expect(peer.inFlight()).toBe(1);
+            releases.get(name)!();
+        }
+
+        const resolved = await allResolved;
+        expect(peer.requests.map(r => (r.params as { className: string }).className)).toEqual(names);
+        expect(peer.maxInFlight).toBe(1);
+        for (const javaClass of resolved) {
+            expect(javaClass.error).toBeUndefined();
+        }
+    });
+
+    test('non-vacuity control: loadImplicitImports\' unlocked getClassInfos burst shows 2+ requests genuinely in flight at once', async () => {
+        let seenCount = 0;
+        const second = deferred<void>();
+        let releaseImmediately = false;
+        const heldReleases: Array<() => void> = [];
+
+        peer = await startLoopbackPeer({
+            getClassInfos: () => {
+                seenCount += 1;
+                if (seenCount === 2) {
+                    second.resolve();
+                }
+                if (releaseImmediately) {
+                    return [];
+                }
+                return new Promise((resolve) => {
+                    heldReleases.push(() => resolve([]));
+                });
+            },
+            getTopLevelPackages: () => [],
+        });
+        interop = newInterop();
+        interop.setConnectionConfig('127.0.0.1', peer.port);
+
+        const pending = interop.loadImplicitImports();
+
+        await second.promise;
+        // The second getClassInfos landed while the first is still unanswered: real concurrency,
+        // not a harness artefact — the resolution lock does not cover this unlocked burst.
+        expect(peer.maxInFlight).toBeGreaterThanOrEqual(2);
+
+        releaseImmediately = true;
+        for (const release of heldReleases) {
+            release();
+        }
+
+        await expect(pending).resolves.toBe(true);
+    });
+});
