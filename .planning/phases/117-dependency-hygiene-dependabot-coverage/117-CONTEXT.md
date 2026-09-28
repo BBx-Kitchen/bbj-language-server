@@ -109,3 +109,7 @@ DEP-05 (langium 4.4 regression from closed Dependabot PRs #682/#684), CI-04 (#55
 
 *Phase: 117-dependency-hygiene-dependabot-coverage*
 *Context gathered: 2026-09-28*
+
+## Addendum (2026-09-28, after research)
+
+- **D-12:** `java-interop/src/main/java/bbj/interop/SocketServiceApp.java` gets an **optional port argument** (argv or a `-D` system property), defaulting to 5008, so the D-06 live smoke can run beside BBjServices. This is a deliberate, small scope extension beyond `java-interop/build.gradle`, approved by the user.
