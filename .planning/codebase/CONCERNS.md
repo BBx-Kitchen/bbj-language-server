@@ -1,6 +1,10 @@
+---
+last_mapped_commit: 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
+---
+
 # Codebase Concerns
 
-**Analysis Date:** 2026-09-21
+**Analysis Date:** 2026-09-28
 
 ## Tech Debt
 
@@ -186,6 +190,45 @@
 - Status: Pending implementation (Phase 101+)
 - Files: Will be in `bbj-cpl-service.ts` (when implemented)
 
+## CI/Release Pipeline Concerns
+
+**GitHub Pages Artifact Action Version Outdated:**
+- Risk: `.github/workflows/deploy-docs.yml:48` uses `actions/upload-pages-artifact@v3`; v4 is available and may receive more frequent security updates
+- Files: `.github/workflows/deploy-docs.yml:48`
+- Impact: Reduced security coverage and potential incompatibility with future GitHub Actions runner updates
+- Fix approach: Upgrade to `actions/upload-pages-artifact@v4` for consistent major-version pinning with other actions
+
+**Release Pipeline Parallel Publication Race Condition:**
+- Risk: In `.github/workflows/manual-release.yml:211`, `publish-vscode` (line 149) and `publish-intellij` (line 179) run in parallel after verification. If one succeeds and the other fails, a partial release is already published but `tag-release` never runs
+- Files: `.github/workflows/manual-release.yml` (lines 149-211)
+- Impact: Marketplace has a new version, but the GitHub release tag is not created, and the other marketplace may not have the version. Subsequent re-dispatch cannot use the same version number
+- Mitigation: Documented as intentional design (lines 225-227): this is "strictly smaller than today's failure mode, where the tag and the push had already landed." A successful publish-vscode with failed publish-intellij requires manual reconciliation
+- Improvement path: Consider sequential publishes instead of parallel to guarantee both succeed or both fail atomically; trade-off is longer workflow duration
+
+**Action Version Major-Only Pinning Strategy:**
+- Risk: GitHub Actions are pinned to major versions (v4, v3, v7, v6) rather than specific patch versions, allowing patch updates within the major version. Subtle behavioral changes could be introduced without review
+- Files: `.github/workflows/build.yml`, `.github/workflows/pr-validation.yml`, `.github/workflows/preview.yml`, `.github/workflows/manual-release.yml`, `.github/workflows/deploy-docs.yml`, `.github/workflows/pr-vsix.yml`
+- Impact: Minor security patches are applied automatically (good), but non-security patch changes could introduce surprises
+- Improvement path: Review GitHub Action release notes periodically; no immediate change needed. This is a deliberate trade-off for staying current on security patches
+
+**Node Version Not Pinned in Gitpod Configuration:**
+- Risk: `.gitpod.yml` does not specify a Node version, while `.github/workflows/` and CLAUDE.md require Node 22 for Langium 4.3 compatibility
+- Files: `.gitpod.yml`
+- Impact: Gitpod may provision a different Node version (default or latest), causing `npm run build` and `npm run langium:generate` to fail with "non exhaustive match" errors if Node 24+ is used
+- Fix approach: Add `node-version: 22` to the Node setup step in `.gitpod.yml` to match CI requirements
+
+**Gradle Wrapper Checksum Validation Manual:**
+- Risk: Gradle wrapper version updates in Dependabot require manual verification that checksums are valid and added to `.gradle/wrapper/gradle-wrapper.properties`. The check-gradle-wrapper.mjs script validates this at CI time
+- Files: `.github/workflows/workflow-hygiene.yml:49-50`, `bbj-vscode/tools/check-gradle-wrapper.mjs`
+- Impact: If a Dependabot Gradle PR is merged before checksums are added, the CI workflow-hygiene check fails, but the merge may have already occurred in parallel workflows
+- Improvement path: No immediate fix; the current pattern (manual checksum addition, CI validation) is an accepted control. Consider making checksum validation a required check on PRs
+
+**Dependabot Dependency Ignores Create Drift Risk:**
+- Risk: Chevrotain is ignored in Dependabot (`.github/dependabot.yml:9-13`) because it must match Langium's pinned version; TypeScript major versions are ignored (lines 18-19) because typescript-eslint doesn't support them yet. These intentional gaps can cause unexpected version conflicts if dependencies evolve faster than Langium/typescript-eslint
+- Files: `.github/dependabot.yml`
+- Impact: Manual tracking of Chevrotain and TypeScript compatibility required; if missed, grammar generation or linting breaks
+- Improvement path: Document the Langium/typescript-eslint dependency pinning in CLAUDE.md or a companion file for future maintainers
+
 ## Test Coverage Gaps
 
 **Untested Java Method Overloading:**
@@ -258,4 +301,4 @@
 
 ---
 
-*Concerns audit: 2026-09-21*
+*Concerns audit: 2026-09-28*

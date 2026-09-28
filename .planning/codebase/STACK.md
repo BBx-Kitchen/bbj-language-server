@@ -1,6 +1,10 @@
+---
+last_mapped_commit: 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
+---
+
 # Technology Stack
 
-**Analysis Date:** 2026-09-24
+**Analysis Date:** 2026-09-28
 
 ## Languages
 
@@ -18,12 +22,12 @@
 ## Runtime
 
 **Environment:**
-- Node.js >= 22 (VS Code extension, language server, build tools)
-- Java Development Kit (JDK) 17 (java-interop service, IntelliJ plugin)
+- Node.js >= 22 (VS Code extension, language server, build tools) — enforced via `engines` in `bbj-vscode/package.json`
+- Java Development Kit (JDK) 17 (java-interop service, IntelliJ plugin) — Temurin distribution in CI
 
 **Package Manager:**
 - npm (TypeScript projects, manages `package-lock.json`)
-- Gradle 8+ (Java projects, Gradle wrapper via `gradlew`)
+- Gradle 8+ (Java projects, Gradle wrapper via `gradlew`) — wrapper checksums validated by `.github/workflows/workflow-hygiene.yml`
 
 **Lockfiles:**
 - `package-lock.json` (npm)
@@ -153,6 +157,42 @@
 - Plugin wraps the compiled LS binary (`out/language/main.cjs`) via LSP4IJ 0.21.0
 - Bundles TextMate grammar and language configuration copied from VS Code extension by `copyTextMateBundle` Gradle task
 
+## CI/CD & Build Infrastructure
+
+**GitHub Actions:**
+- Runner: `ubuntu-latest` (all workflows, `amd64`, ~2 vCPU)
+- Node.js: Setup via `actions/setup-node@v4` with Node 22 caching
+- Java: Setup via `actions/setup-java@v4` with Temurin JDK 17 distribution
+
+**Workflow Timeouts:**
+- PR build (`build.yml`): 20 minutes
+- Hygiene checks (`workflow-hygiene.yml`): 5 minutes
+
+**Artifact Management:**
+- VS Code extension (`.vsix`): Retained 1-7 days depending on workflow
+- IntelliJ plugin (`.zip`): Retained 1-7 days depending on workflow
+- Language server binary (`out/language/main.cjs`): Retained 1-7 days
+- Gradle Plugin Verifier cache: Cached per OS and `build.gradle.kts` hash
+
+**Dependency Management (Dependabot):**
+- npm (bbj-vscode): Weekly updates; ignores `chevrotain` (pinned to Langium) and TypeScript major versions (gated by typescript-eslint support)
+- Gradle (bbj-intellij): Weekly updates; wrapper checksum validation required before merge (`.github/workflows/workflow-hygiene.yml`)
+- Configuration: `.github/dependabot.yml`
+
+## Development Environment
+
+**Gitpod:**
+- `init` task: `npm install` in `bbj-vscode/`, `./gradlew assemble` in `java-interop/`
+- Extensions installed: Langium, ESLint, VS Code Java Pack
+- Browser-based VS Code with automatic project build
+- Configuration: `.gitpod.yml`
+
+**Local Development:**
+- Node 22 required (per `package.json` engines)
+- JDK 17 required (per build.gradle)
+- Gradle wrapper auto-provisions correct Gradle version
+- Commands: `npm install`, `npm run build`, `npm run test`, `npm run watch`, `./gradlew run`
+
 ## Environment & Deployment
 
 **Development:**
@@ -162,18 +202,21 @@
 **Production (VS Code):**
 - Packaged as VSIX using vsce (`npx vsce package`)
 - Requires VS Code 1.101.0+
-- Published to VS Code Marketplace by `manual-release.yml` workflow
+- Published to VS Code Marketplace via `manual-release.yml` workflow (authenticated with `VSCE_PAT` secret)
+- Preview releases published to pre-release channel via `preview.yml` workflow
 
 **Production (IntelliJ):**
 - Packaged as ZIP by Gradle `buildPlugin` task
-- Published to JetBrains Marketplace by `intellijPlatformPublishing` Gradle block (configured in `bbj-intellij/build.gradle.kts`)
+- Published to JetBrains Marketplace via `preview.yml` and `manual-release.yml` workflows (authenticated with `JETBRAINS_MARKETPLACE_TOKEN` secret)
 - Requires IntelliJ IDEA 2024.2+
+- Preview releases published to preview channel
 
 **Documentation:**
 - Built by Docusaurus 3.9.2 in `documentation/` directory
 - Deployed to GitHub Pages via `deploy-docs.yml` workflow
 - Requires Node 20+ (from `documentation/package.json` engines)
+- Triggers on push to `main` branch with changes under `documentation/`
 
 ---
 
-*Stack analysis: 2026-09-24*
+*Stack analysis: 2026-09-28*

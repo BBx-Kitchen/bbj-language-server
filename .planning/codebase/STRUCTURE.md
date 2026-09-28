@@ -1,6 +1,8 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-09-24
+**Analysis Date:** 2026-09-28
+
+**last_mapped_commit:** 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
 
 ## Directory Layout
 
@@ -183,7 +185,19 @@ bbj-language-server/
 │   ├── todos/                       # TODO tracking
 │   └── ui-reviews/                  # UI review notes
 │
+├── .github/                         # GitHub configuration and CI/CD
+│   ├── workflows/                   # GitHub Actions workflows
+│   │   ├── build.yml                # PR validation (lint, test, package)
+│   │   ├── preview.yml              # Auto-publish preview builds on main
+│   │   ├── manual-release.yml       # Manual stable release (both platforms)
+│   │   ├── deploy-docs.yml          # Deploy Docusaurus docs site
+│   │   ├── pr-vsix.yml              # Create VSIX artifact link on PR
+│   │   ├── workflow-hygiene.yml     # Validate workflow syntax
+│   │   └── (other config files)
+│   └── dependabot.yml               # Dependabot configuration for dependency updates
+│
 ├── .devcontainer/                   # Dev container config (BBj :8888, java-interop :5008)
+├── .gitpod.yml                      # Gitpod dev environment setup (init tasks, extensions)
 ├── .claude/                         # Claude Code project settings
 │   └── worktrees/                   # Git worktrees for parallel work
 │
@@ -191,8 +205,10 @@ bbj-language-server/
 ├── .vscode/                         # VS Code workspace settings
 │
 ├── CLAUDE.md                        # Project guidelines (this repository)
-└── README.md                        # Project overview
-
+├── README.md                        # Project overview
+├── LICENSE                          # License file
+├── .gitignore                       # Git ignore patterns
+└── [other config files]
 ```
 
 ## Directory Purposes
@@ -229,6 +245,25 @@ Real-world BBj sample files, many named after GitHub issues (e.g., `issue190-swi
 
 **.planning/:**
 GSD project management and research. Phases track work items; milestones track releases; research notes document investigations; codebase docs live here.
+
+**.github/workflows/:**
+GitHub Actions CI/CD pipeline definitions. Each workflow file defines an automated process:
+- `build.yml` — triggered on PRs to main; runs on Node 22; validates lint, tests, packages VS Code extension
+- `preview.yml` — triggered on pushes to main; auto-bumps patch version, builds both LS and plugins, verifies IntelliJ compatibility, publishes to preview channels on both marketplaces
+- `manual-release.yml` — manual dispatch workflow; validates version format, builds and verifies all (LS, VS Code, IntelliJ), publishes to stable channels, tags release, creates GitHub Release
+- `deploy-docs.yml` — deploys Docusaurus documentation site on changes to docs/
+- `pr-vsix.yml` — creates a downloadable VSIX artifact link in PR comments
+- `workflow-hygiene.yml` — syntax validation for workflow files
+- `dependabot.yml` — configuration (not a workflow) that auto-opens dependency update PRs
+
+**.gitpod.yml:**
+Cloud-based dev environment setup for Gitpod. Defines init task to install npm deps in bbj-vscode and build java-interop via Gradle. Pre-installs VS Code extensions (Langium, ESLint, Java).
+
+**CLAUDE.md:**
+Project guidelines for Claude Code. Documents repo overview, build commands, architecture patterns, DI module structure, testing patterns, shell rules.
+
+**README.md:**
+Public project overview with quick-start links, documentation pointers, and Gitpod one-click setup.
 
 ## Key File Locations
 
@@ -310,6 +345,17 @@ GSD project management and research. Phases track work items; milestones track r
 - `bbj-vscode/test/test-data/` — Example `.bbj` files for regression testing
 - `bbj-vscode/test/*.test.ts` — Unit/integration tests (Vitest)
 
+**CI/CD Workflows:**
+- `.github/workflows/build.yml` — PR validation pipeline
+- `.github/workflows/preview.yml` — Automated preview release pipeline
+- `.github/workflows/manual-release.yml` — Manual stable release pipeline
+- `.github/workflows/deploy-docs.yml` — Documentation deployment
+- `.github/workflows/pr-vsix.yml` — PR artifact generation
+- `.github/workflows/workflow-hygiene.yml` — Workflow linting
+
+**Development Environment:**
+- `.gitpod.yml` — Gitpod init tasks and extension setup
+
 ## Naming Conventions
 
 **Files:**
@@ -321,6 +367,7 @@ GSD project management and research. Phases track work items; milestones track r
 - Grammar: `*.langium` (Langium syntax definition)
 - Configuration: `*.json`, `*.ts` (tsconfig, vitest.config, esbuild.mjs, package.json)
 - Generated: `generated/` directory (never manually edited)
+- Workflows: `.github/workflows/*.yml` (GitHub Actions)
 
 **Directories:**
 - Services by subsystem: `language/` (parsing, analysis), `Commands/` (CLI), tests in `test/`
@@ -328,6 +375,7 @@ GSD project management and research. Phases track work items; milestones track r
 - Built-in library: `lib/` (.bbl definitions, events)
 - Test data: `test/test-data/` with subdirs for fixture types
 - UI builder: `[component]-composer*.ts` (msgbox, addwindow, setopts, cvs)
+- CI/CD: `.github/workflows/` for all automation
 
 **Exports & Modules:**
 - Services exported from `bbj-module.ts` as `BBjServices` type (includes all custom + Langium services)
@@ -375,6 +423,17 @@ GSD project management and research. Phases track work items; milestones track r
 - Name after issue: `issue123-feature.bbj` (helps track regression)
 - Must parse with zero errors (lexer/parser contract)
 
+**New CI/CD Workflow:**
+- Create `.github/workflows/new-workflow.yml` with desired triggers and jobs
+- Reference existing workflows for patterns (e.g., use Node 22 for JS, Java 17 for Gradle)
+- Test locally with `act` (GitHub Actions runner emulator) or validate via GitHub Actions syntax
+- Document trigger conditions and artifacts in workflow comments
+
+**New Dependency Update or Release Mechanism:**
+- If dependency management: update `.github/dependabot.yml` configuration
+- If new release process: create new workflow in `.github/workflows/` (follow manual-release.yml pattern)
+- Both platforms (VS Code + IntelliJ) should verify before publish to avoid stranded half-releases
+
 ## Special Directories
 
 **generated/:**
@@ -402,6 +461,13 @@ GSD project management and research. Phases track work items; milestones track r
 - Subdirs: `phases/` (work plans), `milestones/` (releases), `research/` (investigation), `codebase/` (these docs), `debug/` (debugging notes), `quick/` (quick tasks)
 - Committed: Yes (project documentation)
 
+**.github/workflows/:**
+- Purpose: GitHub Actions CI/CD automation
+- Files: One `.yml` per workflow (build, preview, release, deploy-docs, etc.)
+- Triggers: PR events, push to main, manual dispatch (workflow_dispatch)
+- Artifacts: Language server, VS Code .vsix, IntelliJ .zip, uploaded for consumption/publishing
+- Committed: Yes (CI/CD configuration)
+
 **syntaxes/:**
 - Purpose: TextMate grammar (syntax highlighting)
 - Files: `bbj.tmLanguage.json`, `bbx.tmLanguage.json`
@@ -415,4 +481,4 @@ GSD project management and research. Phases track work items; milestones track r
 
 ---
 
-*Structure analysis: 2026-09-24*
+*Structure analysis: 2026-09-28*

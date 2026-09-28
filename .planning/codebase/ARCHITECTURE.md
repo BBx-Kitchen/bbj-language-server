@@ -1,7 +1,9 @@
-<!-- refreshed: 2026-09-24 -->
+<!-- refreshed: 2026-09-28 -->
 # Architecture
 
-**Analysis Date:** 2026-09-24
+**Analysis Date:** 2026-09-28
+
+**last_mapped_commit:** 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
 
 ## System Overview
 
@@ -64,7 +66,6 @@
 │  │  - `bbj-signature-help-provider.ts`: Parameter hints       │ │
 │  │  - `bbj-inlay-hint-provider.ts`: Inlay hints               │ │
 │  │  - `bbj-code-action-provider.ts`: Quick fixes              │ │
-│  │  - `bbj-code-action-handler.ts`: Code action execution     │ │
 │  │  - `bbj-document-symbol-provider.ts`: Outline              │ │
 │  │  - `composer-codelens.ts`: Code lens for composers         │ │
 │  └──────────────────────────────────────────────────────────┘ │
@@ -87,6 +88,78 @@
          │ Socket :5008        │   │ Compiler     │   │ Socket Backend    │
          │ (Java classes)      │   │ (on save)    │   │ (live diagnostics)│
          └─────────────────────┘   └──────────────┘   └───────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────┐
+│                    CI/CD Pipeline (GitHub Actions)                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────────────────────┐                           │
+│  │  PR Validation (build.yml)          │                           │
+│  │  - Checkout, Node 22 setup          │                           │
+│  │  - npm ci + npm run build           │                           │
+│  │  - Lint, type-check, test           │                           │
+│  │  - Package extension (.vsix)        │                           │
+│  │  - Upload artifacts                 │                           │
+│  └──────────────────────┬──────────────┘                           │
+│                         │                                           │
+│  ┌──────────────────────▼──────────────────────────────────────┐   │
+│  │  Preview (preview.yml) - Runs on main push                  │   │
+│  │  ┌─────────────────────────────────────┐                    │   │
+│  │  │  Verify: Build & test (Node 22)     │                    │   │
+│  │  │  - npm ci + npm run build           │                    │   │
+│  │  │  - npm run test                     │                    │   │
+│  │  │  - Package VS Code (.vsix)          │                    │   │
+│  │  │  - Build IntelliJ plugin (Java 17)  │                    │   │
+│  │  │  - verifyPlugin compatibility       │                    │   │
+│  │  └──────────────┬───────────────────────┘                    │   │
+│  │                │                                              │   │
+│  │  ┌─────────────▼────────────────┐    ┌──────────────────┐   │   │
+│  │  │ Bump version                 │    │ Publish VS Code  │   │   │
+│  │  │ commit to main               │    │ (preview channel)│   │   │
+│  │  └─────────────┬────────────────┘    └────────┬─────────┘   │   │
+│  │                │                             │              │   │
+│  │                └─────────┬───────────────────┘              │   │
+│  │                          │                                  │   │
+│  │                 ┌────────▼────────┐                         │   │
+│  │                 │ Publish IntelliJ│                         │   │
+│  │                 │ (preview channel)                         │   │
+│  │                 └─────────────────┘                         │   │
+│  └───────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Manual Release (manual-release.yml)                         │   │
+│  │  - Verify: Build & test all                                  │   │
+│  │  - Publish: VS Code Marketplace (stable)                     │   │
+│  │  - Publish: JetBrains Marketplace (stable)                   │   │
+│  │  - Tag & create GitHub Release                               │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Other Workflows                                             │   │
+│  │  - deploy-docs.yml: Publish docs site (Docusaurus)           │   │
+│  │  - pr-vsix.yml: Create VSIX comment on PR                    │   │
+│  │  - workflow-hygiene.yml: Lint workflow syntax                │   │
+│  │  - dependabot.yml: Auto-update dependencies (config only)    │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────┐
+│              Distribution Channels                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  VS Code Marketplace                                               │
+│  - Stable: releases with v*.*.0 tags                              │
+│  - Preview: auto-published on main                                │
+│                                                                     │
+│  JetBrains Marketplace                                             │
+│  - Stable: releases with v*.*.0 tags                              │
+│  - Preview: auto-published on main                                │
+│                                                                     │
+│  GitHub Releases                                                   │
+│  - Created on manual release with .vsix + .zip artifacts          │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
@@ -396,4 +469,4 @@ Reference: `bbj-diagnostic-reconciliation.ts`, `bbj-document-builder.ts` (how it
 
 ---
 
-*Architecture analysis: 2026-09-24*
+*Architecture analysis: 2026-09-28*

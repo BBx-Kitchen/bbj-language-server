@@ -1,6 +1,8 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-09-21
+<!-- refreshed: 2026-09-28 -->
+
+**Analysis Date:** 2026-09-28
 
 ## Test Framework
 
@@ -20,6 +22,7 @@ npm run test:watch             # Watch mode (vitest watch)
 npm run test:coverage          # Generate coverage report (v8, HTML output to ./coverage)
 npm run test:bbj               # Run all tests including BBj-dependent tests (RUN_BBJ_TESTS=1)
 npx vitest run test/file.test.ts  # Run single test file
+npm run typecheck:test         # Type-check test files (runs in CI)
 ```
 
 **Coverage Configuration (`vitest.config.ts`):**
@@ -34,6 +37,33 @@ npx vitest run test/file.test.ts  # Run single test file
   - Lines: 50%, Functions: 45%, Branches: 40%, Statements: 50%
   - Only triggered by `npm run test:coverage` script
   - CI does NOT run coverage checks currently
+
+## CI Integration
+
+**Primary Build Workflow** (`.github/workflows/build.yml`):
+- Runs on every PR to main
+- Node.js v22
+- Execution order:
+  1. **Build**: `npm ci && npm run build` (produces language server + VSCode extension)
+  2. **Lint**: `npm run lint` (conditional: only if build succeeds)
+  3. **Type-check**: `npm run typecheck:test` (conditional: only if build succeeds)
+  4. **Test**: `npm run test` (always runs, reports failures even if other steps fail)
+  5. **Package**: `npx vsce package` (VSCode `.vsix` artifact, always runs)
+
+**When Tests Fail:**
+- Test failures do not block artifact upload
+- Lint/typecheck failures do not prevent test runs
+- Green status requires: build success + no lint/typecheck errors + test pass
+
+**Test VSIX Workflow** (`.github/workflows/pr-vsix.yml`):
+- Runs on changes to `bbj-vscode/**` or workflow itself
+- Executes: build → test → package VSIX
+- VSIX artifact retained 14 days and linked on PR for manual testing
+
+**Validation Workflow** (`.github/workflows/pr-validation.yml`):
+- Runs only on changes to language definition, IntelliJ plugin, or tools
+- Builds VSCode language server, then validates IntelliJ plugin compatibility
+- IntelliJ verifyPlugin gate runs at same failure level as release workflow
 
 ## Test File Organization
 
@@ -450,6 +480,7 @@ const position = doc.textDocument.positionAt(offset);
 **Node Requirements:**
 - Minimum Node v22 (TypeScript target ES6, module Node16)
 - Maximum: Latest LTS supported by VSCode (1.101.0+)
+- CI enforces v22 via `.github/workflows/build.yml` and `.github/workflows/pr-vsix.yml`
 
 **Workspace Setup:**
 - All tests use `EmptyFileSystem` (no real disk access)
@@ -461,6 +492,20 @@ const position = doc.textDocument.positionAt(offset);
 - Tests requiring BBj compiler integration can be skipped if interop unavailable
 - All tests pass CI environment without these external dependencies
 
+## Quality Checks
+
+**Workflow Hygiene** (`.github/workflows/workflow-hygiene.yml`):
+- **Secret scanning:** Detects inline `${{ secrets.* }}` in workflow run bodies
+  - Tool: `bbj-vscode/tools/check-workflow-secrets.mjs`
+  - Passes: No inline secrets; secrets bound via step-level `env:` mapping
+  - Runs on every push to main and every PR
+- **Gradle wrapper validation:** Ensures checksums pinned and validated
+  - Tool: `bbj-vscode/tools/check-gradle-wrapper.mjs`
+  - Passes: Every Gradle invocation validates wrapper; distribution URL is pinned
+  - Runs on every push to main and every PR
+
 ---
 
-*Testing analysis: 2026-09-21*
+last_mapped_commit: 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
+
+*Testing analysis: 2026-09-28*
