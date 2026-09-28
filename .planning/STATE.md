@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 118
 current_phase_name: Small Dedup & Drift Guards
-status: executing
-stopped_at: Completed 118-02-PLAN.md
-last_updated: "2026-09-28T21:03:52.743Z"
+status: verifying
+stopped_at: Completed 118-03-PLAN.md
+last_updated: "2026-09-28T21:14:23.150Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 118 execution started
-state_head: 01bad0026fcbdb4a44281d0fa80dcf65799d54db
+state_head: 6ae4207daa3a3a554a2f82d0788df8c48703ebdc
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 58
-  completed_plans: 57
+  completed_plans: 58
   percent: 54
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Phase: 118 (Small Dedup & Drift Guards) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-28 — Phase 118 execution started
 
 Progress: [█████░░░░░] 54% (6/13 phases)
@@ -175,6 +175,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 117 P06 | 33min | 3 tasks | 1 files |
 | Phase 118 P01 | 8min | 3 tasks | 9 files |
 | Phase 118 P02 | 21min | 2 tasks | 2 files |
+| Phase 118 P03 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -288,6 +289,8 @@ decisions:
 - [Phase 117]: 117-06: langium 4.4.0 slowdown + DEF FN completion loss both reproduce with the real bbj-vscode server (git-archive sibling copies, each with its own langium-cli generate); ladder strips to 59 parser rules, minimal/ deliverable runs in ~4s; chevrotain-allstar transitive-dep drift (0.4.4 vs pinned 0.4.3) found and pinned to keep the 4.3.1 baseline faithful; DEP-05 complete, ISSUE-DRAFT.md not filed
 - [Phase 118]: 118-01: rewrote each lib/*.bbl from its .ts export's evaluated value via a throwaway tsx script (never hand-copied), unified all four catalog wrappers to one closing shape, and added bbl-catalog-drift.test.ts as the byte-exact guard
 - [Phase 118]: 118-02: two-directional package.json-vs-COMPILER_OPTIONS drift test (compiler-options-package-json-drift.test.ts), NOT_BBJCPL_FLAGS allow-list for bbj.compiler.trigger self-checked against both sides; zero data edits needed, both a parser-keyword-statements timing flake and installed-extension-e2e's stale-bundle failure confirmed pre-existing against the phase base commit
+- [Phase 118]: 118-03: getFunctionReference lands in utils.ts next to readSimpleName, not in bbj-nodedescription-provider.ts as the issue's own suggested home, because that file is a Langium service class
+- [Phase 118]: 118-03: Both protected getFunctionReference methods were deleted outright rather than kept as thin delegates -- no src or test file overrode or called either one, confirmed before deletion
 
 ### Tech Debt
 
@@ -350,8 +353,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T21:03:52.058Z
-Stopped at: Completed 118-02-PLAN.md
+Last session: 2026-09-28T21:14:22.383Z
+Stopped at: Completed 118-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
