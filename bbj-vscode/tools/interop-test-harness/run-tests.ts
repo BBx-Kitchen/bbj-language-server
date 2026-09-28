@@ -348,389 +348,355 @@ function buildMatrixRow(cls: any): MatrixRow {
     };
 }
 
+// ─── Per-case validators ─────────────────────────────────────────────────────
+
+function validateJavaLangString(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    if (cls?.methods?.length) {
+        const first = cls.methods[0];
+        validateMethodFields(first, checks, 'methods[0]');
+        if (first?.parameters?.length) {
+            validateParameterFields(first.parameters[0], checks, 'methods[0].parameters[0]');
+        }
+    }
+    if (cls?.fields?.length) {
+        validateFieldFields(cls.fields[0], checks, 'fields[0]');
+    }
+    if (cls?.constructors?.length) {
+        validateMethodFields(cls.constructors[0], checks, 'constructors[0]');
+    }
+
+    const valueOf = cls?.methods?.find((m: any) => m.name === 'valueOf');
+    asserts.push(assert('String.valueOf exists', !!valueOf));
+    asserts.push(assert('String.valueOf isStatic=true', valueOf?.isStatic === true, `isStatic=${valueOf?.isStatic}`));
+
+    const format = cls?.methods?.find((m: any) => m.name === 'format');
+    asserts.push(assert('String.format exists', !!format));
+    asserts.push(assert('String.format isStatic=true', format?.isStatic === true, `isStatic=${format?.isStatic}`));
+
+    const join = cls?.methods?.find((m: any) => m.name === 'join');
+    asserts.push(assert('String.join exists', !!join));
+    asserts.push(assert('String.join isStatic=true', join?.isStatic === true, `isStatic=${join?.isStatic}`));
+
+    const charAt = cls?.methods?.find((m: any) => m.name === 'charAt');
+    asserts.push(assert('String.charAt exists', !!charAt));
+    asserts.push(assert('String.charAt isStatic=false', charAt?.isStatic === false, `isStatic=${charAt?.isStatic}`));
+
+    asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
+}
+
+function validateJavaUtilHashMap(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
+    if (cls?.constructors?.length) {
+        const arities = cls.constructors.map((c: any) => c.parameters?.length ?? 0);
+        const unique = new Set(arities);
+        asserts.push(assert('Constructors have varying arity', unique.size > 1, `arities: ${arities.join(', ')}`));
+        for (const ctor of cls.constructors) {
+            validateMethodFields(ctor, checks, `constructor(${ctor.parameters?.length ?? '?'})`);
+        }
+    }
+}
+
+function validateJavaUtilDate(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    const deprecatedNames = ['getHours', 'getMinutes', 'getSeconds'];
+    for (const name of deprecatedNames) {
+        const method = cls?.methods?.find((m: any) => m.name === name);
+        asserts.push(assert(`Date.${name} exists`, !!method));
+        asserts.push(assert(`Date.${name} isDeprecated=true`, method?.isDeprecated === true, `isDeprecated=${method?.isDeprecated}`));
+    }
+    const deprecatedCount = countWhere(cls?.methods, (m: any) => m.isDeprecated === true);
+    asserts.push(assert('Has deprecated methods', deprecatedCount > 0, `deprecated count=${deprecatedCount}`));
+}
+
+function validateJavaLangMath(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    const pi = cls?.fields?.find((f: any) => f.name === 'PI');
+    asserts.push(assert('Math.PI exists', !!pi));
+    asserts.push(assert('Math.PI isStatic=true', pi?.isStatic === true, `isStatic=${pi?.isStatic}`));
+    asserts.push(assert('Math.PI type=double', pi?.type === 'double', `type=${pi?.type}`));
+
+    const e = cls?.fields?.find((f: any) => f.name === 'E');
+    asserts.push(assert('Math.E exists', !!e));
+    asserts.push(assert('Math.E isStatic=true', e?.isStatic === true, `isStatic=${e?.isStatic}`));
+
+    const abs = cls?.methods?.find((m: any) => m.name === 'abs');
+    asserts.push(assert('Math.abs exists', !!abs));
+    asserts.push(assert('Math.abs isStatic=true', abs?.isStatic === true, `isStatic=${abs?.isStatic}`));
+
+    const staticMethodCount = countWhere(cls?.methods, (m: any) => m.isStatic === true);
+    asserts.push(assert('Most methods are static', staticMethodCount > (cls?.methods?.length ?? 0) * 0.8,
+        `${staticMethodCount}/${cls?.methods?.length ?? 0}`));
+
+    // Math has a private constructor, so constructors should be empty or absent
+    asserts.push(assert('No public constructors (private ctor)',
+        (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
+}
+
+function validateJavaLangBoolean(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    const trueField = cls?.fields?.find((f: any) => f.name === 'TRUE');
+    asserts.push(assert('Boolean.TRUE exists', !!trueField));
+    asserts.push(assert('Boolean.TRUE isStatic=true', trueField?.isStatic === true, `isStatic=${trueField?.isStatic}`));
+
+    const falseField = cls?.fields?.find((f: any) => f.name === 'FALSE');
+    asserts.push(assert('Boolean.FALSE exists', !!falseField));
+    asserts.push(assert('Boolean.FALSE isStatic=true', falseField?.isStatic === true, `isStatic=${falseField?.isStatic}`));
+
+    const parseBoolean = cls?.methods?.find((m: any) => m.name === 'parseBoolean');
+    asserts.push(assert('Boolean.parseBoolean exists', !!parseBoolean));
+    asserts.push(assert('Boolean.parseBoolean isStatic=true', parseBoolean?.isStatic === true,
+        `isStatic=${parseBoolean?.isStatic}`));
+}
+
+function validateJavaSqlConnection(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    asserts.push(assert('Is interface (no constructors)',
+        (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
+    asserts.push(assert('Has methods', (cls?.methods?.length ?? 0) > 0, `count=${cls?.methods?.length}`));
+}
+
+function validateJavaLangSystem(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    for (const fieldName of ['out', 'err', 'in']) {
+        const f = cls?.fields?.find((f: any) => f.name === fieldName);
+        asserts.push(assert(`System.${fieldName} exists`, !!f));
+        asserts.push(assert(`System.${fieldName} isStatic=true`, f?.isStatic === true, `isStatic=${f?.isStatic}`));
+    }
+    const gc = cls?.methods?.find((m: any) => m.name === 'gc');
+    asserts.push(assert('System.gc exists', !!gc));
+    asserts.push(assert('System.gc isStatic=true', gc?.isStatic === true, `isStatic=${gc?.isStatic}`));
+}
+
+function validateJavaUtilMapEntry(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    asserts.push(assert('Name contains Entry', cls?.name?.includes('Entry'), `name=${cls?.name}`));
+    const getKey = cls?.methods?.find((m: any) => m.name === 'getKey');
+    asserts.push(assert('Map.Entry.getKey exists', !!getKey));
+    const getValue = cls?.methods?.find((m: any) => m.name === 'getValue');
+    asserts.push(assert('Map.Entry.getValue exists', !!getValue));
+}
+
+function validatePrimitiveInt(cls: any, _checks: FieldCheck[], asserts: Assertion[]): void {
+    // Primitives may return a minimal object or error — both are acceptable
+    asserts.push(assert('Responds without crashing', true));
+    if (cls?.error) {
+        asserts.push(assert('Error response for primitive is acceptable', true, `error=${cls.error}`));
+    } else {
+        asserts.push(assert('Name is int', cls?.name === 'int', `name=${cls?.name}`));
+    }
+}
+
+function validateNonexistentClass(cls: any, _checks: FieldCheck[], asserts: Assertion[]): void {
+    asserts.push(assert('Responds without crashing', true));
+    if (cls?.error) {
+        asserts.push(assert('Has error field', true, `error=${cls.error}`));
+    } else {
+        asserts.push(assert('No error but may return empty/partial', true, `name=${cls?.name}`));
+    }
+}
+
+function validateJavaLangDeprecated(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+    validateClassFields(cls, checks);
+    asserts.push(assert('Name contains Deprecated', cls?.name?.includes('Deprecated'), `name=${cls?.name}`));
+}
+
+function validateGetClassInfosJavaLang(result: any, checks: FieldCheck[], assertions: Assertion[]): void {
+    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
+    if (!Array.isArray(result)) {
+        return;
+    }
+    assertions.push(assert('Contains classes', result.length > 0, `count=${result.length}`));
+
+    const names = result.map((c: any) => c.name);
+    for (const expected of ['String', 'Integer', 'Boolean', 'Object', 'System']) {
+        const found = names.some((n: string) => n === expected || n === `java.lang.${expected}`);
+        assertions.push(assert(`Contains ${expected}`, found, `found: ${found}`));
+    }
+
+    if (result.length > 0) {
+        validateClassFields(result[0], checks);
+    }
+}
+
+function validateGetClassInfosJavaUtil(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
+    if (!Array.isArray(result)) {
+        return;
+    }
+    const names = result.map((c: any) => c.name);
+    if (result.length === 0) {
+        // Guava ClassPath.getTopLevelClasses() may not enumerate platform packages
+        assertions.push(assert('Empty result (acceptable — platform packages not enumerable via Guava ClassPath)',
+            true, 'getClassInfo for individual java.util classes still works'));
+    } else {
+        assertions.push(assert('Contains classes', true, `count=${result.length}`));
+        for (const expected of ['HashMap', 'ArrayList', 'Date']) {
+            const found = names.some((n: string) => n === expected || n === `java.util.${expected}`);
+            assertions.push(assert(`Contains ${expected}`, found));
+        }
+    }
+}
+
+function validateGetClassInfosComBasisStartupType(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
+    assertions.push(assert('May be empty without BBj classpath (acceptable)',
+        true, `count=${result?.length}`));
+
+    if (Array.isArray(result) && result.length > 0) {
+        const names = result.map((c: any) => c.name);
+        assertions.push(assert('Contains BBjVector or similar',
+            names.some((n: string) => n.includes('BBj')),
+            `found: ${names.slice(0, 5).join(', ')}`));
+    }
+}
+
+function validateGetTopLevelPackages(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
+    if (!Array.isArray(result)) {
+        return;
+    }
+    assertions.push(assert('Contains packages', result.length > 0, `count=${result.length}`));
+
+    const packageNames = result.map((p: any) => p.packageName);
+    const hasJavaLang = packageNames.some((n: string) => n === 'java' || n === 'java.lang');
+    assertions.push(assert('Contains java.lang', hasJavaLang,
+        `sample: ${packageNames.filter((n: string) => n.startsWith('java')).slice(0, 5).join(', ')}`));
+}
+
+function validateLoadClasspathEmpty(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+    assertions.push(assert('Returns boolean', typeof result === 'boolean', `type=${typeOf(result)}`));
+    assertions.push(assert('Returns true', result === true, `value=${result}`));
+}
+
+function validateLoadClasspathFilePrefix(outcome: CaseOutcome<unknown>, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const isBooleanResponse = outcome.kind === 'response' && typeof outcome.value === 'boolean';
+    const detail = outcome.kind === 'peer-error'
+        ? `error code=${outcome.error.code}, message=${outcome.error.message}`
+        : `type=${typeOf(outcome.value)}, value=${outcome.value}`;
+    assertions.push(assert('Returns a boolean or rejects with a JSON-RPC error reply',
+        outcome.kind === 'peer-error' || isBooleanResponse, detail));
+}
+
 // ─── Define all test cases ──────────────────────────────────────────────────
 
-function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> {
-    return [
-        // 1. java.lang.String
-        () => defineCase({
+function defineTests(conn: MessageConnection): CaseRunnable[] {
+    const records: CaseRecord[] = [
+        {
             name: '1. java.lang.String — static methods, constructors',
             request: getClassInfoRequest,
             params: { className: 'java.lang.String' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            if (cls?.methods?.length) {
-                const first = cls.methods[0];
-                validateMethodFields(first, checks, 'methods[0]');
-                if (first?.parameters?.length) {
-                    validateParameterFields(first.parameters[0], checks, 'methods[0].parameters[0]');
-                }
-            }
-            if (cls?.fields?.length) {
-                validateFieldFields(cls.fields[0], checks, 'fields[0]');
-            }
-            if (cls?.constructors?.length) {
-                validateMethodFields(cls.constructors[0], checks, 'constructors[0]');
-            }
-
-            const valueOf = cls?.methods?.find((m: any) => m.name === 'valueOf');
-            asserts.push(assert('String.valueOf exists', !!valueOf));
-            asserts.push(assert('String.valueOf isStatic=true', valueOf?.isStatic === true, `isStatic=${valueOf?.isStatic}`));
-
-            const format = cls?.methods?.find((m: any) => m.name === 'format');
-            asserts.push(assert('String.format exists', !!format));
-            asserts.push(assert('String.format isStatic=true', format?.isStatic === true, `isStatic=${format?.isStatic}`));
-
-            const join = cls?.methods?.find((m: any) => m.name === 'join');
-            asserts.push(assert('String.join exists', !!join));
-            asserts.push(assert('String.join isStatic=true', join?.isStatic === true, `isStatic=${join?.isStatic}`));
-
-            const charAt = cls?.methods?.find((m: any) => m.name === 'charAt');
-            asserts.push(assert('String.charAt exists', !!charAt));
-            asserts.push(assert('String.charAt isStatic=false', charAt?.isStatic === false, `isStatic=${charAt?.isStatic}`));
-
-            asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
-            },
-        }).run(conn),
-
-        // 2. java.util.HashMap
-        () => defineCase({
+            validate: validateJavaLangString,
+            inMatrix: true,
+        },
+        {
             name: '2. java.util.HashMap — constructors with varying arity',
             request: getClassInfoRequest,
             params: { className: 'java.util.HashMap' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
-            if (cls?.constructors?.length) {
-                const arities = cls.constructors.map((c: any) => c.parameters?.length ?? 0);
-                const unique = new Set(arities);
-                asserts.push(assert('Constructors have varying arity', unique.size > 1, `arities: ${arities.join(', ')}`));
-                for (const ctor of cls.constructors) {
-                    validateMethodFields(ctor, checks, `constructor(${ctor.parameters?.length ?? '?'})`);
-                }
-            }
-            },
-        }).run(conn),
-
-        // 3. java.util.Date
-        () => defineCase({
+            validate: validateJavaUtilHashMap,
+            inMatrix: true,
+        },
+        {
             name: '3. java.util.Date — deprecated methods',
             request: getClassInfoRequest,
             params: { className: 'java.util.Date' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            const deprecatedNames = ['getHours', 'getMinutes', 'getSeconds'];
-            for (const name of deprecatedNames) {
-                const method = cls?.methods?.find((m: any) => m.name === name);
-                asserts.push(assert(`Date.${name} exists`, !!method));
-                asserts.push(assert(`Date.${name} isDeprecated=true`, method?.isDeprecated === true, `isDeprecated=${method?.isDeprecated}`));
-            }
-            const deprecatedCount = countWhere(cls?.methods, (m: any) => m.isDeprecated === true);
-            asserts.push(assert('Has deprecated methods', deprecatedCount > 0, `deprecated count=${deprecatedCount}`));
-            },
-        }).run(conn),
-
-        // 4. java.lang.Math
-        () => defineCase({
+            validate: validateJavaUtilDate,
+            inMatrix: true,
+        },
+        {
             name: '4. java.lang.Math — static methods/fields, private constructor',
             request: getClassInfoRequest,
             params: { className: 'java.lang.Math' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            const pi = cls?.fields?.find((f: any) => f.name === 'PI');
-            asserts.push(assert('Math.PI exists', !!pi));
-            asserts.push(assert('Math.PI isStatic=true', pi?.isStatic === true, `isStatic=${pi?.isStatic}`));
-            asserts.push(assert('Math.PI type=double', pi?.type === 'double', `type=${pi?.type}`));
-
-            const e = cls?.fields?.find((f: any) => f.name === 'E');
-            asserts.push(assert('Math.E exists', !!e));
-            asserts.push(assert('Math.E isStatic=true', e?.isStatic === true, `isStatic=${e?.isStatic}`));
-
-            const abs = cls?.methods?.find((m: any) => m.name === 'abs');
-            asserts.push(assert('Math.abs exists', !!abs));
-            asserts.push(assert('Math.abs isStatic=true', abs?.isStatic === true, `isStatic=${abs?.isStatic}`));
-
-            const staticMethodCount = countWhere(cls?.methods, (m: any) => m.isStatic === true);
-            asserts.push(assert('Most methods are static', staticMethodCount > (cls?.methods?.length ?? 0) * 0.8,
-                `${staticMethodCount}/${cls?.methods?.length ?? 0}`));
-
-            // Math has a private constructor, so constructors should be empty or absent
-            asserts.push(assert('No public constructors (private ctor)',
-                (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
-            },
-        }).run(conn),
-
-        // 5. java.lang.Boolean
-        () => defineCase({
+            validate: validateJavaLangMath,
+            inMatrix: true,
+        },
+        {
             name: '5. java.lang.Boolean — static fields (TRUE, FALSE)',
             request: getClassInfoRequest,
             params: { className: 'java.lang.Boolean' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            const trueField = cls?.fields?.find((f: any) => f.name === 'TRUE');
-            asserts.push(assert('Boolean.TRUE exists', !!trueField));
-            asserts.push(assert('Boolean.TRUE isStatic=true', trueField?.isStatic === true, `isStatic=${trueField?.isStatic}`));
-
-            const falseField = cls?.fields?.find((f: any) => f.name === 'FALSE');
-            asserts.push(assert('Boolean.FALSE exists', !!falseField));
-            asserts.push(assert('Boolean.FALSE isStatic=true', falseField?.isStatic === true, `isStatic=${falseField?.isStatic}`));
-
-            const parseBoolean = cls?.methods?.find((m: any) => m.name === 'parseBoolean');
-            asserts.push(assert('Boolean.parseBoolean exists', !!parseBoolean));
-            asserts.push(assert('Boolean.parseBoolean isStatic=true', parseBoolean?.isStatic === true,
-                `isStatic=${parseBoolean?.isStatic}`));
-            },
-        }).run(conn),
-
-        // 6. java.sql.Connection
-        () => defineCase({
+            validate: validateJavaLangBoolean,
+            inMatrix: true,
+        },
+        {
             name: '6. java.sql.Connection — interface, no constructors',
             request: getClassInfoRequest,
             params: { className: 'java.sql.Connection' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            asserts.push(assert('Is interface (no constructors)',
-                (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
-            asserts.push(assert('Has methods', (cls?.methods?.length ?? 0) > 0, `count=${cls?.methods?.length}`));
-            },
-        }).run(conn),
-
-        // 7. java.lang.System
-        () => defineCase({
+            validate: validateJavaSqlConnection,
+            inMatrix: true,
+        },
+        {
             name: '7. java.lang.System — static fields (out, err, in)',
             request: getClassInfoRequest,
             params: { className: 'java.lang.System' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            for (const fieldName of ['out', 'err', 'in']) {
-                const f = cls?.fields?.find((f: any) => f.name === fieldName);
-                asserts.push(assert(`System.${fieldName} exists`, !!f));
-                asserts.push(assert(`System.${fieldName} isStatic=true`, f?.isStatic === true, `isStatic=${f?.isStatic}`));
-            }
-            const gc = cls?.methods?.find((m: any) => m.name === 'gc');
-            asserts.push(assert('System.gc exists', !!gc));
-            asserts.push(assert('System.gc isStatic=true', gc?.isStatic === true, `isStatic=${gc?.isStatic}`));
-            },
-        }).run(conn),
-
-        // 8. java.util.Map$Entry
-        () => defineCase({
+            validate: validateJavaLangSystem,
+            inMatrix: true,
+        },
+        {
             name: '8. java.util.Map$Entry — nested/inner class',
             request: getClassInfoRequest,
             params: { className: 'java.util.Map$Entry' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            asserts.push(assert('Name contains Entry', cls?.name?.includes('Entry'), `name=${cls?.name}`));
-            const getKey = cls?.methods?.find((m: any) => m.name === 'getKey');
-            asserts.push(assert('Map.Entry.getKey exists', !!getKey));
-            const getValue = cls?.methods?.find((m: any) => m.name === 'getValue');
-            asserts.push(assert('Map.Entry.getValue exists', !!getValue));
-            },
-        }).run(conn),
-
-        // 9. Primitive types (int, void)
-        () => defineCase({
+            validate: validateJavaUtilMapEntry,
+            inMatrix: true,
+        },
+        {
             name: '9. Primitive type — int',
             request: getClassInfoRequest,
             params: { className: 'int' },
-            validate: (cls, checks, asserts) => {
-            // Primitives may return a minimal object or error — both are acceptable
-            asserts.push(assert('Responds without crashing', true));
-            if (cls?.error) {
-                asserts.push(assert('Error response for primitive is acceptable', true, `error=${cls.error}`));
-            } else {
-                asserts.push(assert('Name is int', cls?.name === 'int', `name=${cls?.name}`));
-            }
-            },
-        }).run(conn),
-
-        // 10. Non-existent class
-        () => defineCase({
+            validate: validatePrimitiveInt,
+        },
+        {
             name: '10. Non-existent class — error handling',
             request: getClassInfoRequest,
             params: { className: 'com.nonexistent.Fake' },
-            validate: (cls, checks, asserts) => {
-            asserts.push(assert('Responds without crashing', true));
-            if (cls?.error) {
-                asserts.push(assert('Has error field', true, `error=${cls.error}`));
-            } else {
-                asserts.push(assert('No error but may return empty/partial', true, `name=${cls?.name}`));
-            }
-            },
-        }).run(conn),
-
-        // 11. java.lang.Deprecated — annotation type
-        () => defineCase({
+            validate: validateNonexistentClass,
+        },
+        {
             name: '11. java.lang.Deprecated — annotation type',
             request: getClassInfoRequest,
             params: { className: 'java.lang.Deprecated' },
-            validate: (cls, checks, asserts) => {
-            validateClassFields(cls, checks);
-            asserts.push(assert('Name contains Deprecated', cls?.name?.includes('Deprecated'), `name=${cls?.name}`));
-            },
-        }).run(conn),
-
-        // 12. getClassInfos — java.lang
-        () => (async (): Promise<TestResult> => {
-            const request = { packageName: 'java.lang' };
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(getClassInfosRequest, request);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-                const fieldChecks: FieldCheck[] = [];
-
-                assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-                assertions.push(assert('Contains classes', (result?.length ?? 0) > 0, `count=${result?.length}`));
-
-                const names = result?.map((c: any) => c.name) ?? [];
-                for (const expected of ['String', 'Integer', 'Boolean', 'Object', 'System']) {
-                    const found = names.some((n: string) => n === expected || n === `java.lang.${expected}`);
-                    assertions.push(assert(`Contains ${expected}`, found,
-                        `found: ${found}`));
-                }
-
-                // Check fields on first class
-                if (result?.length > 0) {
-                    validateClassFields(result[0], fieldChecks);
-                }
-
-                const failed = assertions.some(a => !a.passed);
-                return { name: '12. getClassInfos — java.lang', method: 'getClassInfos', status: failed ? 'fail' : 'pass',
-                    request, response: result, fieldChecks, assertions, durationMs: duration };
-            } catch (err: any) {
-                return { name: '12. getClassInfos — java.lang', method: 'getClassInfos', status: 'error',
-                    request, response: null, fieldChecks: [], assertions: [], durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
-
-        // 13. getClassInfos — java.util
-        () => (async (): Promise<TestResult> => {
-            const request = { packageName: 'java.util' };
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(getClassInfosRequest, request);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-
-                assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-
-                const names = result?.map((c: any) => c.name) ?? [];
-                if (result?.length === 0) {
-                    // Guava ClassPath.getTopLevelClasses() may not enumerate platform packages
-                    assertions.push(assert('Empty result (acceptable — platform packages not enumerable via Guava ClassPath)',
-                        true, 'getClassInfo for individual java.util classes still works'));
-                } else {
-                    assertions.push(assert('Contains classes', true, `count=${result?.length}`));
-                    for (const expected of ['HashMap', 'ArrayList', 'Date']) {
-                        const found = names.some((n: string) => n === expected || n === `java.util.${expected}`);
-                        assertions.push(assert(`Contains ${expected}`, found));
-                    }
-                }
-
-                const failed = assertions.some(a => !a.passed);
-                return { name: '13. getClassInfos — java.util', method: 'getClassInfos', status: failed ? 'fail' : 'pass',
-                    request, response: result, fieldChecks: [], assertions, durationMs: duration };
-            } catch (err: any) {
-                return { name: '13. getClassInfos — java.util', method: 'getClassInfos', status: 'error',
-                    request, response: null, fieldChecks: [], assertions: [], durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
-
-        // 14. getClassInfos — com.basis.startup.type (BBj-specific)
-        () => defineCase({
+            validate: validateJavaLangDeprecated,
+            inMatrix: true,
+        },
+        {
+            name: '12. getClassInfos — java.lang',
+            request: getClassInfosRequest,
+            params: { packageName: 'java.lang' },
+            validate: validateGetClassInfosJavaLang,
+        },
+        {
+            name: '13. getClassInfos — java.util',
+            request: getClassInfosRequest,
+            params: { packageName: 'java.util' },
+            validate: validateGetClassInfosJavaUtil,
+        },
+        {
             name: '14. getClassInfos — com.basis.startup.type',
             request: getClassInfosRequest,
             params: { packageName: 'com.basis.startup.type' },
-            validate: (result, checks, assertions) => {
-                assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-                assertions.push(assert('May be empty without BBj classpath (acceptable)',
-                    true, `count=${result?.length}`));
-
-                if (result?.length > 0) {
-                    const names = result.map((c: any) => c.name);
-                    assertions.push(assert('Contains BBjVector or similar',
-                        names.some((n: string) => n.includes('BBj')),
-                        `found: ${names.slice(0, 5).join(', ')}`));
-                }
-            },
-        }).run(conn),
-
-        // 15. getTopLevelPackages
-        () => (async (): Promise<TestResult> => {
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(getTopLevelPackagesRequest, null);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-
-                assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-                assertions.push(assert('Contains packages', (result?.length ?? 0) > 0, `count=${result?.length}`));
-
-                const packageNames = result?.map((p: any) => p.packageName) ?? [];
-                const hasJavaLang = packageNames.some((n: string) => n === 'java' || n === 'java.lang');
-                assertions.push(assert('Contains java.lang', hasJavaLang,
-                    `sample: ${packageNames.filter((n: string) => n.startsWith('java')).slice(0, 5).join(', ')}`));
-
-                const failed = assertions.some(a => !a.passed);
-                return { name: '15. getTopLevelPackages', method: 'getTopLevelPackages', status: failed ? 'fail' : 'pass',
-                    request: null, response: result, fieldChecks: [], assertions, durationMs: duration };
-            } catch (err: any) {
-                return { name: '15. getTopLevelPackages', method: 'getTopLevelPackages', status: 'error',
-                    request: null, response: null, fieldChecks: [], assertions: [], durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
-
-        // 16. loadClasspath — empty
-        () => (async (): Promise<TestResult> => {
-            const request = { classPathEntries: [] };
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(loadClasspathRequest, request);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-
-                assertions.push(assert('Returns boolean', typeof result === 'boolean', `type=${typeOf(result)}`));
-                assertions.push(assert('Returns true', result === true, `value=${result}`));
-
-                const failed = assertions.some(a => !a.passed);
-                return { name: '16. loadClasspath — empty', method: 'loadClasspath', status: failed ? 'fail' : 'pass',
-                    request, response: result, fieldChecks: [], assertions, durationMs: duration };
-            } catch (err: any) {
-                return { name: '16. loadClasspath — empty', method: 'loadClasspath', status: 'error',
-                    request, response: null, fieldChecks: [], assertions: [], durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
-
-        // 17. loadClasspath — with file: prefix
-        () => (async (): Promise<TestResult> => {
-            const request = { classPathEntries: ['file:/nonexistent/path.jar'] };
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(loadClasspathRequest, request);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-
-                assertions.push(assert('Handles gracefully (no crash)', true));
-                assertions.push(assert('Returns boolean', typeof result === 'boolean', `type=${typeOf(result)}, value=${result}`));
-
-                return { name: '17. loadClasspath — file: prefix', method: 'loadClasspath', status: 'pass',
-                    request, response: result, fieldChecks: [], assertions, durationMs: duration };
-            } catch (err: any) {
-                // An error response is also acceptable for invalid paths
-                return { name: '17. loadClasspath — file: prefix', method: 'loadClasspath',
-                    status: 'pass', // Graceful error is a pass
-                    request, response: null, fieldChecks: [],
-                    assertions: [assert('Threw error (acceptable for invalid path)', true, err.message)],
-                    durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
+            validate: validateGetClassInfosComBasisStartupType,
+        },
+        {
+            name: '15. getTopLevelPackages',
+            request: getTopLevelPackagesRequest,
+            params: null,
+            validate: validateGetTopLevelPackages,
+        },
+        {
+            name: '16. loadClasspath — empty',
+            request: loadClasspathRequest,
+            params: { classPathEntries: [] },
+            validate: validateLoadClasspathEmpty,
+        },
+        {
+            name: '17. loadClasspath — file: prefix',
+            request: loadClasspathRequest,
+            params: { classPathEntries: ['file:/nonexistent/path.jar'] },
+            validate: validateLoadClasspathFilePrefix,
+            acceptsPeerError: true,
+        },
     ];
+    return records.map(defineCase);
 }
 
 // ─── HTML report generation ─────────────────────────────────────────────────
@@ -1146,20 +1112,17 @@ async function main(): Promise<void> {
     const results: TestResult[] = [];
     const matrixRows: MatrixRow[] = [];
 
-    // Classes for the field presence matrix (tests 1-8, 11)
-    const matrixTestIndices = [0, 1, 2, 3, 4, 5, 6, 7, 10];
-
     for (let i = 0; i < tests.length; i++) {
-        const testFn = tests[i];
+        const testCase = tests[i];
         process.stdout.write(`  [${i + 1}/${tests.length}] `);
-        const result = await testFn();
+        const result = await testCase.run(conn);
         results.push(result);
 
         const icon = result.status === 'pass' ? '✓' : result.status === 'fail' ? '✗' : '⚠';
         console.log(`${icon} ${result.name} (${result.durationMs.toFixed(0)}ms)`);
 
-        // Build matrix row for class-level tests
-        if (matrixTestIndices.includes(i) && result.response && result.status !== 'error') {
+        // Build matrix row for class-level tests flagged via inMatrix
+        if (testCase.inMatrix && result.response && result.status !== 'error') {
             matrixRows.push(buildMatrixRow(result.response));
         }
     }
