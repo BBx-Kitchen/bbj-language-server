@@ -68,12 +68,12 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 
 ### Interop test harness
 
-- [ ] **HARN-01**: No harness test case hard-codes `status: 'pass'`; every case reports its real assertion result (#514)
-- [ ] **HARN-02**: The interop test harness is type-checked, linted and tested in CI (#575)
-- [ ] **HARN-03**: The harness JSON highlighter handles escaped quotes, so key and string colouring works (#596)
-- [ ] **HARN-04**: The pass/fail gate checks exactly the declared `criticalFields` list (#599)
-- [ ] **HARN-05**: The harness header comment describes the fields the gate really checks and documents `--timeout` (#601)
-- [ ] **HARN-06**: The six duplicated test-case scaffolds use the harness's existing helper, and the two oversized functions are split (#635)
+- [x] **HARN-01**: No harness test case hard-codes `status: 'pass'`; every case reports its real assertion result (#514)
+- [x] **HARN-02**: The interop test harness is type-checked, linted and tested in CI (#575)
+- [x] **HARN-03**: The harness JSON highlighter handles escaped quotes, so key and string colouring works (#596)
+- [x] **HARN-04**: The pass/fail gate checks exactly the declared `criticalFields` list (#599)
+- [x] **HARN-05**: The harness header comment describes the fields the gate really checks and documents `--timeout` (#601)
+- [x] **HARN-06**: The six duplicated test-case scaffolds use the harness's existing helper, and the two oversized functions are split (#635)
 
 ### Refactors
 
@@ -156,12 +156,12 @@ None deferred. Every still-open audit issue is in scope.
 | TEST-09 | Phase 112 | Complete |
 | TEST-10 | Phase 113 | Complete |
 | TEST-11 | Phase 114 | Complete |
-| HARN-01 | Phase 115 | Pending |
-| HARN-02 | Phase 115 | Pending |
-| HARN-03 | Phase 115 | Pending |
-| HARN-04 | Phase 115 | Pending |
-| HARN-05 | Phase 115 | Pending |
-| HARN-06 | Phase 115 | Pending |
+| HARN-01 | Phase 115 | Complete |
+| HARN-02 | Phase 115 | Complete |
+| HARN-03 | Phase 115 | Complete |
+| HARN-04 | Phase 115 | Complete |
+| HARN-05 | Phase 115 | Complete |
+| HARN-06 | Phase 115 | Complete |
 | REF-01 | Phase 118 | Pending |
 | REF-02 | Phase 110 | Complete |
 | REF-03 | Phase 113 | Complete |

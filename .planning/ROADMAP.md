@@ -641,7 +641,7 @@ check. The issue447 guard should assert a definitive outcome plus a forced-fallb
   4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
   5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -666,7 +666,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 115-06-PLAN.md — Lint and `typecheck:test` scope widened to the harness (strict `tsconfig.harness.json`), negative probes, disable-directive guard scan root; live before/after run against :5008 with every difference explained; whole suite; human check of the rendered report and header (HARN-01..06) (wave 6)
+- [x] 115-06-PLAN.md — Lint and `typecheck:test` scope widened to the harness (strict `tsconfig.harness.json`), negative probes, disable-directive guard scan root; live before/after run against :5008 with every difference explained; whole suite; human check of the rendered report and header (HARN-01..06) (wave 6)
 
 *Planning notes:* fix HARN-01 through HARN-06's shared scaffold, since the duplicated scaffold is
 how #514 happened. Turn on the type-check and lint scope (HARN-02) last, after the mechanical
@@ -867,7 +867,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 5/6 | Planned |  |
+| 115. Honest Interop Test Harness | 6/6 | Planned |  |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
