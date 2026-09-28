@@ -686,7 +686,26 @@ fixes. The harness talks to a live java-interop, so its own CI tests must not ne
   3. Tests run `java-interop.ts`'s real connect, timeout and request-lock code against a local fake socket server, covering a refused connection, a response that times out and concurrent requests serialized by the lock.
   4. The `main.ts` handlers for Java class refresh and configuration change run in tests without a module-load `createConnection()`, and their bodies show execution coverage.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 116-01-PLAN.md — One shared loopback JSON-RPC peer (the harness fake peer promoted, harness tests unchanged); the production `JavaInteropService` over real sockets: round trip, refused connection, 10 s response timeout under fake timers, and lock serialization proven on the wire with a concurrency control (TEST-06) (wave 1)
+- [ ] 116-02-PLAN.md — `bbj/refreshJavaClasses` and the configuration-change handler extracted into `register*(connection, deps)` modules, behaviour-neutral; every branch tested through a fake connection; one-off coverage reading (TEST-08) (wave 1)
+- [ ] 116-03-PLAN.md — Test-double fixture completed (Object, Date, List, LinkedList, Map, Map.Entry, java.sql.Date, Boolean); the linking block ungated and renamed; the 11 failures pass hermetically; the one fixture side effect in scope-cost-regression fixed (TEST-05) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 116-04-PLAN.md — Test classpath indexed as in production; substring assertion live; Java primitive signature types fixed in `src/` (real LS false positive) and the Array type ref assertion live (TEST-04) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 116-05-PLAN.md — Blocking decision on the `Object`-receiver Warning (D-07's premise does not hold on the live LS), then the BBjAPI() chain assertion live in the chosen form; no DISABLED blocks left (TEST-04) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 116-06-PLAN.md — `shouldRunBBjTests()` probes with a real JSON-RPC round trip; the whole suite reports zero failed tests with BBjServices down and up (TEST-05) (wave 4)
 
 *Planning notes:* #559's own diagnosis is wrong. Follow the pending todo
 `2026-09-20-linking-interop-failures-survive-class-warmup`: the describe block never reaches :5008,
@@ -868,7 +887,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
 | 115. Honest Interop Test Harness | 6/6 | Planned |  |
-| 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
+| 116. Java-Interop Test Coverage | 0/6 | Planned |  |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 0/TBD | Not started | - |

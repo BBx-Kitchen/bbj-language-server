@@ -40,7 +40,19 @@ created: "2026-09-28"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner/executor per task) | — | — | TEST-04/05/06/08 | — | N/A (test-only phase) | unit | see RESEARCH.md Validation Architecture | ✅ / ❌ W0 | ⬜ pending |
+| 116-01-T1 | 01 | 1 | TEST-06 | T-116-01 | loopback-only bind | unit (socket) | `npx vitest run test/java-interop-socket.test.ts test/interop-harness.test.ts test/interop-harness-report.test.ts` | ❌ W0 | ⬜ pending |
+| 116-01-T2 | 01 | 1 | TEST-06 | T-116-02 | teardown frees sockets | unit (socket) | `npx vitest run test/java-interop-socket.test.ts` | ❌ W0 | ⬜ pending |
+| 116-01-T3 | 01 | 1 | TEST-06 | T-116-03 | — | unit (socket) | same + `npm run lint` + `npm run typecheck:test` | ❌ W0 | ⬜ pending |
+| 116-02-T1 | 02 | 1 | TEST-08 | T-116-05 | main.ts isolation kept | unit (handler) | `npx vitest run test/java-class-refresh.test.ts test/java-class-reload.test.ts` + `npm run build` | ❌ W0 | ⬜ pending |
+| 116-02-T2 | 02 | 1 | TEST-08 | T-116-04 | host/port still validated | unit (handler) | `npx vitest run test/configuration-change-handler.test.ts …` + build + coverage reading | ❌ W0 | ⬜ pending |
+| 116-03-T1 | 03 | 1 | TEST-05 | — | N/A | unit (linking) | `npx vitest run test/linking.test.ts` (unset and RUN_BBJ_TESTS=1) | ✅ | ⬜ pending |
+| 116-03-T2 | 03 | 1 | TEST-05 | T-116-07 | — | whole-suite | `RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2 --reporter=json` → numFailedTests 0 | ✅ | ⬜ pending |
+| 116-04-T1 | 04 | 2 | TEST-04 | — | N/A | unit (parser) | `npx vitest run test/parser.test.ts test/linking.test.ts` | ✅ | ⬜ pending |
+| 116-04-T2 | 04 | 2 | TEST-04 | T-116-09 | primitive-only scope branch | unit + whole-suite | parser/linking/scope-cost files + whole hermetic suite + lint/typecheck/build | ✅ | ⬜ pending |
+| 116-05-T1 | 05 | 3 | TEST-04 | — | human decision (blocking) | checkpoint | — | — | ⬜ pending |
+| 116-05-T2 | 05 | 3 | TEST-04 | T-116-12 | Object-only suppression (if chosen) | unit + whole-suite | parser/linking/validation files + whole hermetic suite | ✅ | ⬜ pending |
+| 116-06-T1 | 06 | 4 | TEST-05 | T-116-14 | probe never hangs | unit | `npx vitest run test/test-helper.test.ts` | ❌ W0 | ⬜ pending |
+| 116-06-T2 | 06 | 4 | TEST-05 | T-116-16 | — | whole-suite (both states) | RUN_BBJ_TESTS=0 and =1 JSON runs → numFailedTests 0 | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
