@@ -847,6 +847,22 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Java primitive types link in field, parameter and return positions (#660)', async () => {
+        const result = await parse(`
+
+        class public OutputHandler
+
+            field public int count
+
+            method public boolean isReady(long a, double b, char c)
+                methodret 1
+            methodend
+        classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Array type ref', async () => {
         const result = await parse(`
 
@@ -855,15 +871,12 @@ describe('Parser Tests', () => {
             field protected String[] strings
 
             method public String[] createHTML(byte[] bytes)
+                methodret #strings
             methodend
         classend
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: 'String' and 'byte' are Java types that cannot be resolved in EmptyFileSystem
-        // test context. Array type notation (String[], byte[]) in class field/method declarations
-        // requires a Java classpath. To enable: run tests with a real Java classpath or register
-        // these primitive Java types as synthetic built-ins.
-        // expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check SQLSET statement', async () => {

@@ -50,7 +50,7 @@ import {
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use, VariableDecl
 } from './generated/ast.js';
-import { JavaInteropService } from './java-interop.js';
+import { JavaInteropService, JAVA_PRIMITIVE_TYPE_NAMES } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import type { BBjIndexManager } from './bbj-index-manager.js';
 import { containedPrefixCandidates } from './path-containment.js';
@@ -368,7 +368,21 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const locals = document.localSymbols?.getStream(program).toArray()
                 ?.filter((descr: AstNodeDescription) => this.astReflection.isSubtype(descr.type, Class.$type)) ?? EMPTY_STREAM;
             const imports = this.importedBBjClasses(program);
-            const globals = this.getGlobalScope(Class.$type, context);
+            let globals = this.getGlobalScope(Class.$type, context);
+            // #660: a Java primitive (byte, int, boolean, ...) resolves locally through
+            // JavaInteropService's own no-network path, but that resolved class lives inside the
+            // java.lang package, never as a direct classpath child — so it is never exported to
+            // the IndexManager global scope the getGlobalScope() call above reads from. Offer the
+            // already-resolved primitive class ahead of that global scope so a SimpleTypeRef/
+            // BBjTypeRef naming a primitive links, exactly like the qualified-JavaTypeRef branch
+            // in bbj-scope-local.ts's processNode resolves it beforehand. Every other name
+            // (including a capitalized class like Byte) is unaffected.
+            if (JAVA_PRIMITIVE_TYPE_NAMES.has(qualifiedClassName)) {
+                const primitiveClass = this.javaInterop.getResolvedClass(qualifiedClassName);
+                if (primitiveClass) {
+                    globals = this.createScope(stream([this.descriptions.createDescription(primitiveClass, qualifiedClassName)]), globals);
+                }
+            }
             return this.createScope(stream(imports).concat(locals), globals);
         }
     }

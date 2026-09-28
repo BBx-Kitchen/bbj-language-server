@@ -3,7 +3,7 @@ import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule,
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
-import { JavaInteropService, ParseError, ParseProgramParams, ParseProgramResult } from "../src/language/java-interop.js";
+import { JavaInteropService, ParseError, ParseProgramParams, ParseProgramResult, isLocalJavaTypeName } from "../src/language/java-interop.js";
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from "../src/language/generated/ast.js";
 import { CancellationToken, ErrorCodes, MessageConnection, ResponseError } from "vscode-jsonrpc/node.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
@@ -179,6 +179,14 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 
     public override async resolveClassByName(className: string): Promise<JavaClass> {
+        // #660: a primitive/array/blank name (isLocalJavaTypeName) resolves through the base
+        // class's own local path (localJavaTypeDto), never through a socket — the base guard
+        // short-circuits before any cache lookup or connect() call, so delegating here is just
+        // as hermetic as the double's own path below and gives the same shape production
+        // returns (no `error` field, packageName 'java.lang'), not a stub.
+        if (isLocalJavaTypeName(className)) {
+            return super.resolveClassByName(className);
+        }
         // A preloaded class, or a silent stub for anything else — never a socket, never a log.
         return this.getResolvedClass(className) ?? this.stubClass(className);
     }
