@@ -135,6 +135,11 @@ export function neverAnswer(): Promise<never> {
  * Resolves to a loopback port with nothing listening on it: binds a throwaway peer on ephemeral
  * port `0` of `127.0.0.1` (the same bind used by {@link startLoopbackPeer}), reads the assigned
  * port, and closes it immediately, leaving the port free.
+ *
+ * NOTE: this is a best-effort check-then-use — the OS is free to hand `port` to another process
+ * or a concurrent test worker in the window between `close()` and the caller's own connection
+ * attempt. Acceptable for this suite's low concurrency, but not airtight; if a "refused
+ * connection" assertion ever flakes on a saturated CI host, this is the reason.
  */
 export async function unusedLoopbackPort(): Promise<number> {
     const probe = await startLoopbackPeer();
