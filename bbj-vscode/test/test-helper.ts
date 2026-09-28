@@ -1,23 +1,53 @@
 import { AstNode, AstUtils, DocumentState, LangiumDocument } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { Socket } from "net";
+import { createMessageConnection, RequestType, SocketMessageReader, SocketMessageWriter } from "vscode-jsonrpc/node.js";
 import { JavaSyntheticDocUri } from "../src/language/java-interop.js";
 
-export function isPortOpen(port: number, host = '127.0.0.1') {
-  return new Promise<boolean>((resolve) => {
-    const socket = new Socket();
+/** The one request every cheap peer answers, and the request java-interop.ts itself sends. */
+const getClassInfoRequest = new RequestType<{ className: string }, unknown, void>('getClassInfo');
 
-    socket.setTimeout(1000);
+/**
+ * Asks whatever is listening on `host:port` a real JSON-RPC `getClassInfo` question for
+ * `java.lang.Object`, instead of trusting a bare TCP connect. Resolves `true` only when the
+ * reply is a non-null object with a string `name` and no `error` property — a bare open port, a
+ * peer that never answers, or a peer that answers something else all resolve `false`.
+ *
+ * Settles exactly once via a guard flag. On every path — success, any socket error, a JSON-RPC
+ * error reply, a malformed reply, or the single overall timer firing — the timer is cleared, the
+ * message connection (if one was created) is disposed, and the socket is destroyed.
+ */
+export function isInteropPeerAnswering(port: number, host = '127.0.0.1', timeoutMs = 3000): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const socket = new Socket();
+    let connection: ReturnType<typeof createMessageConnection> | undefined;
+
+    const timer = setTimeout(() => settle(false), timeoutMs);
+
+    function settle(result: boolean): void {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      connection?.dispose();
+      socket.destroy();
+      resolve(result);
+    }
+
+    socket.on('error', () => settle(false));
+    socket.on('close', () => settle(false));
+
     socket.on('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.on('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.on('error', () => {
-      resolve(false);
+      connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+      connection.listen();
+      connection.sendRequest(getClassInfoRequest, { className: 'java.lang.Object' })
+        .then((reply) => {
+          const isAnsweringClass = reply !== null && typeof reply === 'object'
+            && typeof (reply as { name?: unknown }).name === 'string'
+            && !('error' in (reply as object));
+          settle(isAnsweringClass);
+        })
+        .catch(() => settle(false));
     });
 
     socket.connect(port, host);
@@ -31,8 +61,9 @@ export function isPortOpen(port: number, host = '127.0.0.1') {
  *
  *   - RUN_BBJ_TESTS=1 (or `npm run test:bbj`) forces them on — request them explicitly.
  *   - RUN_BBJ_TESTS=0 forces them off.
- *   - Unset (default): they run only when the interop service is actually reachable
- *     on port 5008 (local dev with BBjServices up), and are skipped otherwise.
+ *   - Unset (default): they run only when a working interop peer answers a real
+ *     `getClassInfo` request on port 5008 (local dev with BBjServices up) — a bare open
+ *     port no longer counts — and are skipped otherwise.
  *
  * Use with vitest's `describe.runIf(...)` / `test.runIf(...)`.
  */
@@ -40,7 +71,7 @@ export async function shouldRunBBjTests(): Promise<boolean> {
   const flag = process.env.RUN_BBJ_TESTS?.trim().toLowerCase();
   if (flag === '1' || flag === 'true' || flag === 'yes') return true;
   if (flag === '0' || flag === 'false' || flag === 'no') return false;
-  return isPortOpen(5008);
+  return isInteropPeerAnswering(5008);
 }
 
 /**
