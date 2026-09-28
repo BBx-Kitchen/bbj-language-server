@@ -704,7 +704,6 @@
     "test:bbj": "RUN_BBJ_TESTS=1 vitest run"
   },
   "dependencies": {
-    "@vscode/vsce": "^4.0.0",
     "chevrotain": "~12.0.0",
     "langium": "~4.3.1",
     "properties-file": "^5.0.7",
@@ -717,6 +716,7 @@
     "@types/node": "^26.4.1",
     "@types/vscode": "^1.101.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "@vscode/vsce": "^4.0.0",
     "concurrently": "^10.0.5",
     "esbuild": "^0.28.1",
     "eslint": "^10.11.0",
