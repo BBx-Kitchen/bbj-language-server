@@ -37,6 +37,20 @@ function remediation(relativePath: string): string {
     );
 }
 
+/**
+ * Remediation message for a drift between the committed jcommander provenance records
+ * (bom.json, README.md) and either the FORMATTER_ARTIFACT_PINS table or the real vendored bytes.
+ * Shared by the bom.json and README.md drift tests below.
+ */
+function remediationSbom(): string {
+    return (
+        `Re-vendor jcommander deliberately from a verifiable source, then update ` +
+        `bbj-vscode/tools/formatter/lib/bom.json, bbj-vscode/tools/formatter/lib/README.md, and the ` +
+        `'lib/jcommander-1.71.jar' entry in FORMATTER_ARTIFACT_PINS (bbj-vscode/src/formatter-verifier.ts) ` +
+        `together -- never loosen this check to unblock a release.`
+    );
+}
+
 /** Every `.jar` file under `dir`, as paths relative to `baseDir`, POSIX-separated. */
 function scanForJarFiles(dir: string, baseDir: string = dir): string[] {
     const results: string[] = [];
@@ -122,5 +136,107 @@ describe('formatter-pins-drift: committed pins vs. the real tools/formatter tree
                 `(relativePath, sha256, sizeBytes, origin, vendoredOn) and re-vendor deliberately before ` +
                 `merging -- do not ship an artefact the runtime gate has never checked.`
         ).toEqual([]);
+    });
+
+    test('lib/bom.json records the vendored jcommander with the pinned SHA-256', () => {
+        const bomPath = path.join(FORMATTER_TOOLS_DIR, 'lib/bom.json');
+        const pin = FORMATTER_ARTIFACT_PINS.find((p) => p.relativePath === 'lib/jcommander-1.71.jar');
+
+        expect(
+            pin,
+            `FORMATTER_ARTIFACT_PINS has no entry for 'lib/jcommander-1.71.jar' -- this test needs that ` +
+                `entry to exist to cross-check bom.json against it.`
+        ).toBeDefined();
+
+        expect(
+            fs.existsSync(bomPath),
+            `Expected a CycloneDX SBOM at ${bomPath}. ${remediationSbom()}`
+        ).toBe(true);
+
+        const bom = JSON.parse(fs.readFileSync(bomPath, 'utf-8')) as {
+            bomFormat?: string;
+            specVersion?: string;
+            components?: Array<{
+                type?: string;
+                group?: string;
+                name?: string;
+                version?: string;
+                purl?: string;
+                publisher?: string;
+                hashes?: Array<{ alg?: string; content?: string }>;
+                properties?: Array<{ name?: string; value?: string }>;
+            }>;
+        };
+
+        expect(bom.bomFormat, `bom.json's bomFormat must be 'CycloneDX'. ${remediationSbom()}`).toBe(
+            'CycloneDX'
+        );
+        expect(bom.specVersion, `bom.json's specVersion must be '1.5'. ${remediationSbom()}`).toBe('1.5');
+        expect(
+            bom.components,
+            `bom.json must have exactly one component (jcommander only, per D-01). ${remediationSbom()}`
+        ).toHaveLength(1);
+
+        const component = bom.components![0];
+
+        expect(component.type, `bom.json's component type must be 'library'. ${remediationSbom()}`).toBe(
+            'library'
+        );
+        expect(component.group, `bom.json's component group must be 'com.beust'. ${remediationSbom()}`).toBe(
+            'com.beust'
+        );
+        expect(component.name, `bom.json's component name must be 'jcommander'. ${remediationSbom()}`).toBe(
+            'jcommander'
+        );
+        expect(
+            component.version,
+            `bom.json's component version must be '1.71'. ${remediationSbom()}`
+        ).toBe('1.71');
+
+        const expectedPurl = `pkg:maven/${component.group}/${component.name}@${component.version}`;
+        expect(
+            component.purl,
+            `bom.json's purl must equal pkg:maven/\${group}/\${name}@\${version}, so the coordinate and ` +
+                `the file name cannot disagree. ${remediationSbom()}`
+        ).toBe(expectedPurl);
+        expect(
+            pin!.relativePath,
+            `The jcommander pin's relativePath must equal 'lib/\${name}-\${version}.jar' so it stays ` +
+                `consistent with bom.json's coordinate. ${remediationSbom()}`
+        ).toBe(`lib/${component.name}-${component.version}.jar`);
+
+        expect(
+            component.hashes,
+            `bom.json's component must have exactly one hash entry. ${remediationSbom()}`
+        ).toHaveLength(1);
+        const hash = component.hashes![0];
+        expect(hash.alg, `bom.json's hash algorithm must be 'SHA-256'. ${remediationSbom()}`).toBe(
+            'SHA-256'
+        );
+        expect(
+            hash.content,
+            `bom.json's recorded SHA-256 no longer matches FORMATTER_ARTIFACT_PINS' jcommander entry. ` +
+                remediationSbom()
+        ).toBe(pin!.sha256.toLowerCase());
+
+        const { sha256: realSha256 } = recompute(
+            path.join(FORMATTER_TOOLS_DIR, 'lib/jcommander-1.71.jar')
+        );
+        expect(
+            hash.content,
+            `bom.json's recorded SHA-256 no longer matches the real bytes of lib/jcommander-1.71.jar on ` +
+                `disk. ${remediationSbom()}`
+        ).toBe(realSha256);
+
+        expect(
+            component.publisher && component.publisher.length > 0,
+            `bom.json's component publisher must be non-empty. ${remediationSbom()}`
+        ).toBe(true);
+
+        const origin = component.properties?.find((p) => p.name === 'bbj:origin');
+        expect(
+            origin && origin.value && origin.value.length > 0,
+            `bom.json's component properties must include a non-empty 'bbj:origin' value. ${remediationSbom()}`
+        ).toBe(true);
     });
 });
