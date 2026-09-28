@@ -18,7 +18,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createBBjServices, type BBjServices } from '../src/language/bbj-module.js';
 import { JavaInteropService } from '../src/language/java-interop.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
-import { startLoopbackPeer, type LoopbackPeer } from './loopback-jsonrpc-peer.js';
+import { neverAnswer, startLoopbackPeer, unusedLoopbackPort, type LoopbackPeer } from './loopback-jsonrpc-peer.js';
 
 /** Exposes connect()/createSocket()/getRawClass() as public passthroughs; overrides nothing. */
 class LoopbackInterop extends JavaInteropService {
@@ -83,5 +83,106 @@ describe('JavaInteropService over a real loopback socket (#560)', () => {
         // A second lookup of the same name is a cache hit — no further request is sent.
         await interop.resolveClassByName('java.util.HashMap');
         expect(peer.requests).toHaveLength(1);
+    });
+});
+
+describe('a refused connection settles through the real socket code (#560)', () => {
+    let interop: LoopbackInterop | undefined;
+    let errorSpy: ReturnType<typeof vi.spyOn> | undefined;
+
+    afterEach(() => {
+        interop?.clearCache();
+        errorSpy?.mockRestore();
+        interop = undefined;
+        errorSpy = undefined;
+    });
+
+    test('callConnect() rejects with ECONNREFUSED and logs the connect failure', async () => {
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence expected log */ });
+        interop = newInterop();
+        interop.setConnectionConfig('127.0.0.1', await unusedLoopbackPort());
+
+        await expect(interop.callConnect()).rejects.toThrow(/ECONNREFUSED/);
+
+        expect(errorSpy).toHaveBeenCalledWith('Failed to connect to the Java service.', expect.anything());
+    });
+
+    test('a lookup against a refused connection resolves to an uncached error stub', async () => {
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence expected log */ });
+        interop = newInterop();
+        interop.setConnectionConfig('127.0.0.1', await unusedLoopbackPort());
+
+        const resolved = await interop.resolveClassByName('java.util.HashMap');
+
+        expect(resolved.error).toBeDefined();
+        expect(interop.getResolvedClass('java.util.HashMap')).toBeUndefined();
+    });
+});
+
+describe('a response that never arrives times out through the real socket code (#560)', () => {
+    let interop: LoopbackInterop | undefined;
+    let peer: LoopbackPeer | undefined;
+
+    afterEach(async () => {
+        vi.useRealTimers();
+        interop?.clearCache();
+        await peer?.close();
+        interop = undefined;
+        peer = undefined;
+    });
+
+    /** Starts a peer whose getClassInfo handler never answers, connects for real, and returns a
+     *  promise that resolves once the peer has recorded the getClassInfo request's arrival. */
+    async function setUpHungPeer(): Promise<() => Promise<void>> {
+        let resolveArrived!: () => void;
+        const arrived = new Promise<void>((resolve) => { resolveArrived = resolve; });
+        peer = await startLoopbackPeer({
+            getClassInfo: () => {
+                resolveArrived();
+                return neverAnswer();
+            },
+        });
+        interop = newInterop();
+        interop.setConnectionConfig('127.0.0.1', peer.port);
+        await interop.callConnect();
+        return () => arrived;
+    }
+
+    test('resolveClassByName is still pending at 9,999 ms and settles with an uncached error at 10,000 ms', async () => {
+        const waitForArrival = await setUpHungPeer();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        let settled = false;
+        const pending = interop!.resolveClassByName('com.example.Hung').then((result) => { settled = true; return result; });
+        await waitForArrival();
+
+        await vi.advanceTimersByTimeAsync(9_999);
+        expect(settled).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        const resolved = await pending;
+
+        expect(settled).toBe(true);
+        expect(resolved.error).toBeDefined();
+        expect(interop!.getResolvedClass('com.example.Hung')).toBeUndefined();
+        expect(peer!.requests).toHaveLength(1);
+        expect(peer!.requests[0]).toMatchObject({ method: 'getClassInfo', params: { className: 'com.example.Hung' } });
+    });
+
+    test('callGetRawClass rejects with the 10s resolution-timeout message, not before', async () => {
+        const waitForArrival = await setUpHungPeer();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        let settled = false;
+        const pending = interop!.callGetRawClass('com.example.Other').catch((e) => { settled = true; throw e; });
+        const assertion = expect(pending).rejects.toThrow(/Java class resolution timeout for com\.example\.Other/);
+        await waitForArrival();
+
+        await vi.advanceTimersByTimeAsync(9_999);
+        expect(settled).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await assertion;
+        expect(settled).toBe(true);
     });
 });
