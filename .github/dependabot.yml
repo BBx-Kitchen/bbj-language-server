@@ -37,6 +37,12 @@ updates:
     directory: "/bbj-intellij"
     schedule:
       interval: "weekly"
+  # java-interop's Guava and lsp4j versions are pinned here too, so they need
+  # the same weekly drift check as bbj-intellij's Gradle dependencies.
+  - package-ecosystem: "gradle"
+    directory: "/java-interop"
+    schedule:
+      interval: "weekly"
   # The actions used by the workflows under .github/workflows. Every merge to
   # main publishes preview builds to both marketplaces, so these are grouped
   # into one weekly pull request rather than one per action. This entry also
