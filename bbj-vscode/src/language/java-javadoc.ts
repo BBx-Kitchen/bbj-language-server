@@ -9,17 +9,7 @@ import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
 import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast.js";
 import { logger } from "./logger.js";
-
-/**
- * `simpleName` is a runtime-only property set on interop-supplied JavaClass DTOs; it is absent
- * from the generated AST type. Narrowed to `string | undefined` (never a non-string truthy
- * value in practice) so callers can keep using it directly wherever a `string` is required,
- * while preserving the original falsy-on-empty-string fallback behaviour.
- */
-function readSimpleName(clazz: JavaClass): string | undefined {
-    const raw = (clazz as unknown as { simpleName?: unknown }).simpleName;
-    return typeof raw === 'string' ? raw : undefined;
-}
+import { readSimpleName } from "./utils.js";
 
 /**
  * Provides Javadoc information for internal binary classes.

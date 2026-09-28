@@ -13,6 +13,7 @@ import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
 import type { BBjWorkspaceManager } from "./bbj-ws-manager.js";
+import { readSimpleName } from "./utils.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
@@ -191,16 +192,6 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         }
         return comment;
     }
-}
-
-/**
- * `simpleName` is a runtime-only property set on interop-supplied DTOs (JavaClass, JavaField,
- * FieldDecl, BbjClass nodes backed by a resolved Java peer); it is absent from the generated AST
- * types. Read it as `unknown` so callers keep the exact `simpleName ? simpleName : node.name`
- * fallback the original `any`-cast expressed, including falling back on an empty string.
- */
-function readSimpleName(node: AstNode): unknown {
-    return (node as unknown as { simpleName?: unknown }).simpleName;
 }
 
 export function documentationHeader(node: AstNode): string | undefined {
