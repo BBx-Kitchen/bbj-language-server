@@ -424,6 +424,10 @@ until publication).
 - ✓ **TEST-07**: `initializeWorkspace()` no longer exceeds the vitest hook timeout under whole-suite load (#562) — v4.7 Phase 114
 - ✓ **TEST-11**: `bbx-language-configuration.json` is tested for JSON validity and editor behaviour, like the bbj file (#629) — v4.7 Phase 114
 - ✓ **FIX-04**: IntelliJ's Node.js download shows progress without an IllegalStateException, and the three phase 97 guards assert behaviour — v4.7 Phase 114
+- ✓ **TEST-04**: The three disabled `parser.test.ts` validation assertions are re-enabled and pass (#528) — v4.7 Phase 116
+- ✓ **TEST-05**: The `linking.test.ts` interop tests pass and the whole suite reports zero failed tests with BBjServices up and down; the BBj-test gate asks the peer a real JSON-RPC question (#559) — v4.7 Phase 116
+- ✓ **TEST-06**: `java-interop.ts`'s real connect, timeout and request-lock code runs against a local loopback JSON-RPC peer (#560) — v4.7 Phase 116
+- ✓ **TEST-08**: The Java class refresh and configuration change handlers live outside `main.ts` and are executed by tests (#563) — v4.7 Phase 116
 
 ### Active
 
@@ -706,4 +710,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-27 after Phase 114*
+*Last updated: 2026-09-28 after Phase 116*
