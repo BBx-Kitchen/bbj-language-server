@@ -174,7 +174,7 @@ describe('formatter-pins-drift: committed pins vs. the real tools/formatter tree
         expect(bom.specVersion, `bom.json's specVersion must be '1.5'. ${remediationSbom()}`).toBe('1.5');
         expect(
             bom.components,
-            `bom.json must have exactly one component (jcommander only, per D-01). ${remediationSbom()}`
+            `bom.json must have exactly one component (jcommander only). ${remediationSbom()}`
         ).toHaveLength(1);
 
         const component = bom.components![0];
@@ -237,6 +237,42 @@ describe('formatter-pins-drift: committed pins vs. the real tools/formatter tree
         expect(
             origin && origin.value && origin.value.length > 0,
             `bom.json's component properties must include a non-empty 'bbj:origin' value. ${remediationSbom()}`
+        ).toBe(true);
+    });
+
+    test('lib/README.md states the jcommander SHA-256 and purl recorded in bom.json', () => {
+        const readmePath = path.join(FORMATTER_TOOLS_DIR, 'lib/README.md');
+        const bomPath = path.join(FORMATTER_TOOLS_DIR, 'lib/bom.json');
+        const pin = FORMATTER_ARTIFACT_PINS.find((p) => p.relativePath === 'lib/jcommander-1.71.jar');
+
+        expect(
+            pin,
+            `FORMATTER_ARTIFACT_PINS has no entry for 'lib/jcommander-1.71.jar' -- this test needs that ` +
+                `entry to exist to cross-check README.md against it.`
+        ).toBeDefined();
+
+        expect(
+            fs.existsSync(readmePath),
+            `Expected a provenance README at ${readmePath}. ${remediationSbom()}`
+        ).toBe(true);
+
+        const bom = JSON.parse(fs.readFileSync(bomPath, 'utf-8')) as {
+            components?: Array<{ purl?: string }>;
+        };
+        const purl = bom.components?.[0]?.purl ?? '';
+        const readmeText = fs.readFileSync(readmePath, 'utf-8');
+        const sha256 = pin!.sha256.toLowerCase();
+
+        const shaOccurrences = readmeText.split(sha256).length - 1;
+        expect(
+            shaOccurrences,
+            `README.md must contain the jcommander pin's SHA-256 exactly once (found ${shaOccurrences}). ` +
+                remediationSbom()
+        ).toBe(1);
+
+        expect(
+            readmeText.includes(purl),
+            `README.md must contain bom.json's purl ('${purl}'). ${remediationSbom()}`
         ).toBe(true);
     });
 });
