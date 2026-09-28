@@ -759,7 +759,19 @@ version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-
   3. Changing a `.bbl` catalog file so that it no longer matches its `.ts` source makes a test fail.
   4. A compiler option added to, removed from, or given a different default in the shared options table without the matching `bbj.compiler.*` change in `package.json` (or the other way round) makes a test fail.
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 118-01-PLAN.md — One wrapper shape for the four catalog `.ts` files; each `.bbl` rewritten from its evaluated export; a byte-exact, table-driven `.bbl` drift test proven by append, `.ts` and CRLF probes; the stale `.ts`-vs-`.bbl` comment reworded (REF-04, REF-05) (wave 1)
+- [ ] 118-02-PLAN.md — Two-directional drift test between `package.json` `bbj.compiler.*` settings and `COMPILER_OPTIONS` (keys, types, defaults), `bbj.compiler.trigger` allow-listed with a reason, six drift directions probed; phase `COVERAGE.md` (REF-06) (wave 1)
+- [ ] 118-03-PLAN.md — One exported `getFunctionReference` in `utils.ts` used directly by the signature-help and inlay-hint providers; both protected copies deleted, suites unchanged (REF-01) (wave 1)
+
+*Planning notes:* the shared helper lives in `utils.ts`, not `bbj-nodedescription-provider.ts`
+(a Langium service class). `package.json` and `compiler-options.ts` need no data edit: all 20
+options already match on type and default. Closing notes for #580, #603 and #606 are drafted in
+the plan SUMMARYs and posted by hand.
 
 ### Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening
 
