@@ -546,23 +546,31 @@ function validateJavaUtilMapEntry(cls: any, checks: FieldCheck[], asserts: Asser
     asserts.push(assert('Map.Entry.getValue exists', !!getValue));
 }
 
-function validatePrimitiveInt(cls: any, _checks: FieldCheck[], asserts: Assertion[]): void {
-    // Primitives may return a minimal object or error — both are acceptable
-    asserts.push(assert('Responds without crashing', true));
-    if (cls?.error) {
-        asserts.push(assert('Error response for primitive is acceptable', true, `error=${cls.error}`));
-    } else {
-        asserts.push(assert('Name is int', cls?.name === 'int', `name=${cls?.name}`));
+/**
+ * True only when `value` is a non-null object with an `error` property whose value is not
+ * undefined, null, false or the empty string — the same signal `java-interop.ts` reads on a
+ * resolved class to decide whether to skip it (#514/D-02).
+ */
+function hasErrorField(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null) {
+        return false;
     }
+    const err = (value as { error?: unknown }).error;
+    return err !== undefined && err !== null && err !== false && err !== '';
 }
 
-function validateNonexistentClass(cls: any, _checks: FieldCheck[], asserts: Assertion[]): void {
-    asserts.push(assert('Responds without crashing', true));
-    if (cls?.error) {
-        asserts.push(assert('Has error field', true, `error=${cls.error}`));
-    } else {
-        asserts.push(assert('No error but may return empty/partial', true, `name=${cls?.name}`));
-    }
+function validatePrimitiveInt(response: any, _checks: FieldCheck[], asserts: Assertion[]): void {
+    asserts.push(assert('Error response or a class named int',
+        hasErrorField(response) || response?.name === 'int',
+        `error=${response?.error}, name=${response?.name}`));
+}
+
+function validateNonexistentClass(outcome: CaseOutcome<unknown>, _checks: FieldCheck[], asserts: Assertion[]): void {
+    const isError = outcome.kind === 'peer-error' ? true : hasErrorField(outcome.value);
+    const detail = outcome.kind === 'peer-error'
+        ? `error code=${outcome.error.code}, message=${outcome.error.message}`
+        : `value=${JSON.stringify(outcome.value)}`;
+    asserts.push(assert('Peer signals an error (error field or JSON-RPC error reply)', isError, detail));
 }
 
 function validateJavaLangDeprecated(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
@@ -589,35 +597,22 @@ function validateGetClassInfosJavaLang(result: any, checks: FieldCheck[], assert
 }
 
 function validateGetClassInfosJavaUtil(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
-    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-    if (!Array.isArray(result)) {
-        return;
-    }
-    const names = result.map((c: any) => c.name);
-    if (result.length === 0) {
-        // Guava ClassPath.getTopLevelClasses() may not enumerate platform packages
-        assertions.push(assert('Empty result (acceptable — platform packages not enumerable via Guava ClassPath)',
-            true, 'getClassInfo for individual java.util classes still works'));
-    } else {
-        assertions.push(assert('Contains classes', true, `count=${result.length}`));
-        for (const expected of ['HashMap', 'ArrayList', 'Date']) {
-            const found = names.some((n: string) => n === expected || n === `java.util.${expected}`);
-            assertions.push(assert(`Contains ${expected}`, found));
-        }
-    }
+    const isArray = Array.isArray(result);
+    const names: string[] = isArray ? result.map((c: any) => c?.name) : [];
+    const missing = ['HashMap', 'ArrayList', 'Date'].filter(expected =>
+        !names.some(n => n === expected || n === `java.util.${expected}`));
+    assertions.push(assert('Returns an array that is empty or contains HashMap, ArrayList and Date',
+        isArray && (result.length === 0 || missing.length === 0),
+        `type=${typeOf(result)}, count=${isArray ? result.length : 0}, missing=${missing.join(', ') || 'none'}`));
 }
 
 function validateGetClassInfosComBasisStartupType(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
-    assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
-    assertions.push(assert('May be empty without BBj classpath (acceptable)',
-        true, `count=${result?.length}`));
-
-    if (Array.isArray(result) && result.length > 0) {
-        const names = result.map((c: any) => c.name);
-        assertions.push(assert('Contains BBjVector or similar',
-            names.some((n: string) => n.includes('BBj')),
-            `found: ${names.slice(0, 5).join(', ')}`));
-    }
+    const isArray = Array.isArray(result);
+    const names: string[] = isArray ? result.map((c: any) => c?.name) : [];
+    const hasBBjClass = names.some(n => typeof n === 'string' && n.includes('BBj'));
+    assertions.push(assert('Returns an array that is empty or contains a BBj class',
+        isArray && (result.length === 0 || hasBBjClass),
+        `type=${typeOf(result)}, count=${isArray ? result.length : 0}, sample=${names.slice(0, 5).join(', ')}`));
 }
 
 function validateGetTopLevelPackages(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
@@ -718,6 +713,7 @@ function defineTests(conn: MessageConnection): CaseRunnable[] {
             request: getClassInfoRequest,
             params: { className: 'com.nonexistent.Fake' },
             validate: validateNonexistentClass,
+            acceptsPeerError: true,
         },
         {
             name: '11. java.lang.Deprecated — annotation type',
