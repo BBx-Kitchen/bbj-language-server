@@ -5,32 +5,21 @@
  ******************************************************************************/
 
 /**
- * A real loopback JSON-RPC server the interop test harness's own client dials into for its CI
- * tests. Listens on loopback with an ephemeral port (port `0`, host `127.0.0.1`) and
- * answers the harness's four RPC methods from hand-written minimal fixtures; it never opens a
- * socket to the live peer on :5008 or to any non-loopback host. Each connected socket's handlers
- * can be overridden per test via `overrides`, and a handler's `context.drop()` destroys that
- * server-side socket, simulating a dropped connection mid-request rather than a normal response
- * or a clean JSON-RPC error reply.
+ * The interop test harness's own fixtures and its four-method handler map, wired onto the one
+ * shared loopback JSON-RPC server in `loopback-jsonrpc-peer.ts`. `startFakePeer` is a thin
+ * adapter over `startLoopbackPeer`: it answers the harness's four RPC methods from hand-written
+ * minimal fixtures unless `overrides` replaces a method's handler for this peer instance, and it
+ * never opens a socket to the live peer on :5008 or to any non-loopback host. Each connected
+ * socket's handlers can be overridden per test via `overrides`, and a handler's `context.drop()`
+ * destroys that server-side socket, simulating a dropped connection mid-request rather than a
+ * normal response or a clean JSON-RPC error reply.
  *
  * This is not the same thing as `test/fake-interop-peer.ts`: that file overrides
  * `JavaInteropService.createSocket()`/`wrapSocket()` to fake a different class's *client*-side
  * socket and never opens a real socket at all. The harness has no service class to subclass — it
  * is itself a raw `net.Socket` + `vscode-jsonrpc` client — so this helper is a genuine server.
  */
-import { createServer, type Server, type Socket } from 'node:net';
-import {
-    createMessageConnection,
-    SocketMessageReader,
-    SocketMessageWriter,
-    type MessageConnection,
-} from 'vscode-jsonrpc/node.js';
-import {
-    getClassInfoRequest,
-    getClassInfosRequest,
-    getTopLevelPackagesRequest,
-    loadClasspathRequest,
-} from '../tools/interop-test-harness/scaffold.js';
+import { startLoopbackPeer, type LoopbackPeerContext } from './loopback-jsonrpc-peer.js';
 import type {
     ClassInfoDto,
     ClassInfoParams,
@@ -243,56 +232,25 @@ export const healthyFixtures = {
 
 // ─── The fake peer server ────────────────────────────────────────────────────
 
+/** Narrows a shared `LoopbackPeerContext` (extra `connectionId`) down to the harness's `drop()`-only shape. */
+function toFakePeerContext(ctx: LoopbackPeerContext): FakePeerContext {
+    return { drop: () => ctx.drop() };
+}
+
 /**
- * Starts a real loopback JSON-RPC server on `127.0.0.1` with an ephemeral port, answering the
- * harness's four RPC methods from the healthy fixtures above unless `overrides` replaces a
- * method's handler for this peer instance.
+ * Starts the shared loopback peer (`loopback-jsonrpc-peer.ts`) wired to the harness's four RPC
+ * methods, answering from the healthy fixtures above unless `overrides` replaces a method's
+ * handler for this peer instance.
  */
 export function startFakePeer(overrides: FakePeerOverrides = {}): Promise<FakePeer> {
-    return new Promise((resolvePeer, rejectPeer) => {
-        const sockets = new Set<Socket>();
-        const connections: MessageConnection[] = [];
-
-        const server: Server = createServer(socket => {
-            sockets.add(socket);
-            socket.on('close', () => sockets.delete(socket));
-
-            const conn = createMessageConnection(
-                new SocketMessageReader(socket),
-                new SocketMessageWriter(socket),
-            );
-            connections.push(conn);
-
-            const ctx: FakePeerContext = { drop: () => socket.destroy() };
-
-            conn.onRequest(getClassInfoRequest, (params) =>
-                (overrides.getClassInfo ?? defaultGetClassInfo)(params, ctx) as ClassInfoDto);
-            conn.onRequest(getClassInfosRequest, (params) =>
-                (overrides.getClassInfos ?? defaultGetClassInfos)(params, ctx) as ClassInfoDto[]);
-            conn.onRequest(getTopLevelPackagesRequest, () =>
-                (overrides.getTopLevelPackages ?? defaultGetTopLevelPackages)(ctx) as PackageInfoDto[]);
-            conn.onRequest(loadClasspathRequest, (params) =>
-                (overrides.loadClasspath ?? defaultLoadClasspath)(params, ctx) as boolean);
-
-            conn.listen();
-        });
-
-        server.on('error', rejectPeer);
-        server.listen(0, '127.0.0.1', () => {
-            const address = server.address();
-            const port = typeof address === 'object' && address !== null ? address.port : 0;
-            resolvePeer({
-                port,
-                close: () => new Promise<void>((resolveClose) => {
-                    for (const conn of connections) {
-                        conn.dispose();
-                    }
-                    for (const socket of sockets) {
-                        socket.destroy();
-                    }
-                    server.close(() => resolveClose());
-                }),
-            });
-        });
+    return startLoopbackPeer({
+        getClassInfo: (params, ctx) =>
+            (overrides.getClassInfo ?? defaultGetClassInfo)(params as ClassInfoParams, toFakePeerContext(ctx)),
+        getClassInfos: (params, ctx) =>
+            (overrides.getClassInfos ?? defaultGetClassInfos)(params as PackageInfoParams, toFakePeerContext(ctx)),
+        getTopLevelPackages: (_params, ctx) =>
+            (overrides.getTopLevelPackages ?? defaultGetTopLevelPackages)(toFakePeerContext(ctx)),
+        loadClasspath: (params, ctx) =>
+            (overrides.loadClasspath ?? defaultLoadClasspath)(params as ClassPathInfoParams, toFakePeerContext(ctx)),
     });
 }
