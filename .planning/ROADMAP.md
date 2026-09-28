@@ -414,7 +414,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI (completed 2026-09-28)
 - [x] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures (completed 2026-09-28)
 - [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
-- [ ] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift
+- [x] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift (completed 2026-09-28)
 - [ ] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses
 - [ ] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed
 - [ ] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged
@@ -759,7 +759,7 @@ version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-
   3. Changing a `.bbl` catalog file so that it no longer matches its `.ts` source makes a test fail.
   4. A compiler option added to, removed from, or given a different default in the shared options table without the matching `bbj.compiler.*` change in `package.json` (or the other way round) makes a test fail.
 
-**Plans:** 3/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**

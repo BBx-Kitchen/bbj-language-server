@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 118
-current_phase_name: Small Dedup & Drift Guards
+current_phase: 117
+current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: verifying
-stopped_at: Completed 118-03-PLAN.md
-last_updated: "2026-09-28T21:14:23.150Z"
+stopped_at: Phase 118 complete; Phase 117 awaits UAT (verify-work)
+last_updated: "2026-09-28T21:25:30.849Z"
 last_activity: 2026-09-28
-last_activity_desc: Phase 118 execution started
-state_head: 6ae4207daa3a3a554a2f82d0788df8c48703ebdc
+last_activity_desc: Phase 118 complete, transitioned to Phase 117
+state_head: 1438f48db8b8211faef4b55fc57b6b25324fd773
 progress:
   total_phases: 13
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 58
   completed_plans: 58
-  percent: 54
+  percent: 62
 ---
 
 # Project State: BBj Language Server
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Phase: 118 (Small Dedup & Drift Guards) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-28 — Phase 118 execution started
+Phase: 117 — Dependency Hygiene & Dependabot Coverage
+Plan: 6 of 6 (all executed)
+Status: Awaiting UAT — 117-VERIFICATION.md is human_needed, 3 UAT items pending
+Last activity: 2026-09-28 — Phase 118 complete, transitioned to Phase 117
 
-Progress: [█████░░░░░] 54% (6/13 phases)
+Progress: [██████░░░░] 62% (8/13 phases)
 
 ### v4.7 milestone map
 
@@ -354,10 +354,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-28T21:14:22.383Z
-Stopped at: Completed 118-03-PLAN.md
+Stopped at: Phase 118 complete; Phase 117 awaits UAT (verify-work)
 Resume file: None
 
-Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
+Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 119`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
