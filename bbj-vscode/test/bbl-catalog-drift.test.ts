@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { describe, expect, test } from 'vitest';
+import { builtinEvents } from '../src/language/lib/events.js';
+import { builtinFunctions } from '../src/language/lib/functions.js';
 import { builtinSymbolicLabels } from '../src/language/lib/labels.js';
 import { builtinVariables } from '../src/language/lib/variables.js';
 
@@ -32,6 +34,8 @@ interface CatalogRow {
 }
 
 const CATALOGS: CatalogRow[] = [
+    { bbl: 'events.bbl', ts: 'events.ts', exportName: 'builtinEvents', value: builtinEvents },
+    { bbl: 'functions.bbl', ts: 'functions.ts', exportName: 'builtinFunctions', value: builtinFunctions },
     { bbl: 'labels.bbl', ts: 'labels.ts', exportName: 'builtinSymbolicLabels', value: builtinSymbolicLabels },
     { bbl: 'variables.bbl', ts: 'variables.ts', exportName: 'builtinVariables', value: builtinVariables },
 ];
@@ -42,5 +46,13 @@ describe('.bbl catalog mirrors match their .ts exports', () => {
         const text = fs.readFileSync(bblPath, 'utf-8');
         const message = `src/language/lib/${bbl} has drifted from ${exportName} in src/language/lib/${ts}; rewrite the .bbl from the exported string value`;
         expect(toLf(text), message).toBe(toLf(value));
+    });
+
+    test('every .bbl file in src/language/lib has a row', () => {
+        const bblFiles = fs.readdirSync(LIB_DIR)
+            .filter(name => name.endsWith('.bbl'))
+            .sort();
+        const tabledFiles = CATALOGS.map(row => row.bbl).sort();
+        expect(bblFiles, 'a .bbl file in src/language/lib has no row in CATALOGS').toEqual(tabledFiles);
     });
 });

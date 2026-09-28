@@ -1,6 +1,4 @@
-export const builtinFunctions = `
-
-library
+export const builtinFunctions = `library
 
 /@@
 AND(left:string, right:string, ERR?!:lineref): string
@@ -997,4 +995,4 @@ The key descriptor has the length of the key to sort. The string returned by thi
 @/
 XSSORT(records: string, record_size: int, key_desc?: string, key_len?: int, ERR?!:lineref): string
 
-`.trimLeft();
+`;
