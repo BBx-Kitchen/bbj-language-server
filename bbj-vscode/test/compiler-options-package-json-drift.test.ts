@@ -37,6 +37,14 @@ function collectSettingProperties(configuration: unknown): Record<string, { type
 const settingProperties = collectSettingProperties(packageJson.contributes.configuration);
 const COMPILER_SETTING_KEYS = Object.keys(settingProperties).filter(key => key.startsWith('bbj.compiler.'));
 
+// A key goes in here only when it is not a bbjcpl flag, with a reason.
+const NOT_BBJCPL_FLAGS: ReadonlyMap<string, string> = new Map([
+    [
+        'bbj.compiler.trigger',
+        'Chooses when the compile-on-save check runs (debounced, on-save or off); read by the client and the language server, not passed to bbjcpl as an argument.'
+    ]
+]);
+
 function settingType(type: unknown): string {
     if (typeof type === 'string') {
         return type;
@@ -63,6 +71,22 @@ describe('bbj.compiler.* settings in package.json match COMPILER_OPTIONS', () =>
         expect(setting, `${key} is in COMPILER_OPTIONS (compiler-options.ts) but missing from package.json`).toBeDefined();
         expect(settingType(setting.type), `${key}: type in package.json differs from compiler-options.ts`).toBe(option.type);
         expect(setting.default, `${key}: default in package.json differs from compiler-options.ts`).toStrictEqual(option.defaultValue);
+    });
+
+    test.each(COMPILER_SETTING_KEYS.filter(key => !NOT_BBJCPL_FLAGS.has(key)))('%s has a COMPILER_OPTIONS entry', (key) => {
+        const tabledKeys = new Set(COMPILER_OPTIONS.map(option => `bbj.compiler.${option.configKey}`));
+        expect(
+            tabledKeys.has(key),
+            `${key} is in package.json but has no COMPILER_OPTIONS entry in compiler-options.ts (a setting that is not a bbjcpl flag belongs in NOT_BBJCPL_FLAGS with a reason)`
+        ).toBe(true);
+    });
+
+    test.each([...NOT_BBJCPL_FLAGS])('allow-listed %s exists in package.json and has no table entry', (key, reason) => {
+        expect(COMPILER_SETTING_KEYS.includes(key), `${key} is listed in NOT_BBJCPL_FLAGS but is missing from package.json`).toBe(true);
+        const tabledKeys = new Set(COMPILER_OPTIONS.map(option => `bbj.compiler.${option.configKey}`));
+        expect(tabledKeys.has(key), `${key} is listed in NOT_BBJCPL_FLAGS but also has a COMPILER_OPTIONS entry`).toBe(false);
+        expect(typeof reason).toBe('string');
+        expect(reason.length).toBeGreaterThan(0);
     });
 
 });
