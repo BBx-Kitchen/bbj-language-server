@@ -35,7 +35,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 ### Dependencies
 
 - [x] **DEP-01**: `@vscode/vsce` is a devDependency, so the production dependency set no longer contains it or its transitive packages (#501)
-- [ ] **DEP-02**: The vendored formatter JAR carries recorded version, vendor and provenance metadata that an advisory database can be checked against (#507)
+- [x] **DEP-02**: The vendored formatter JAR carries recorded version, vendor and provenance metadata that an advisory database can be checked against (#507)
 - [x] **DEP-03**: The interop test harness runs through a pinned, declared `tsx` dependency instead of an unpinned `npx tsx` install (#520)
 - [ ] **DEP-04**: java-interop uses a Guava release that is not affected by the two temporary-directory advisories (#521)
 - [ ] **DEP-05**: Dependabot ignores langium and langium-cli 4.4.x, and a minimal upstream repro exists for the parse-recovery slowdown on an unclosed call and the lost DEF FN completion params. Filing it upstream needs maintainer approval.
@@ -132,7 +132,7 @@ None deferred. Every still-open audit issue is in scope.
 | FIX-03 | Phase 111 | Complete |
 | FIX-04 | Phase 114 | Complete |
 | DEP-01 | Phase 117 | Complete |
-| DEP-02 | Phase 117 | Pending |
+| DEP-02 | Phase 117 | Complete |
 | DEP-03 | Phase 115 | Complete |
 | DEP-04 | Phase 117 | Pending |
 | DEP-05 | Phase 117 | Pending |
