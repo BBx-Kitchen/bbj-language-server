@@ -21,6 +21,8 @@ import {
     SocketMessageReader,
     SocketMessageWriter,
     RequestType,
+    ResponseError,
+    ErrorCodes,
     type MessageConnection,
 } from 'vscode-jsonrpc/node.js';
 
@@ -144,49 +146,145 @@ async function connect(host: string, port: number, timeout: number): Promise<Mes
         new SocketMessageReader(socket),
         new SocketMessageWriter(socket),
     );
+    // A dropped socket only fires this event; without disposing here, any request already
+    // in flight would stay pending forever instead of rejecting.
+    conn.onClose(() => conn.dispose());
     conn.listen();
     return conn;
 }
 
-// ─── Test runners ───────────────────────────────────────────────────────────
+// ─── Case outcome types (opt-in peer-error path) ────────────────────────────
 
-async function runGetClassInfo(
-    conn: MessageConnection,
-    className: string,
-    testName: string,
-    validate: (result: any, checks: FieldCheck[], assertions: Assertion[]) => void,
-): Promise<TestResult> {
-    const request = { className };
+interface ResponseOutcome<R> {
+    kind: 'response';
+    value: R;
+}
+
+interface PeerErrorOutcome {
+    kind: 'peer-error';
+    error: ResponseError;
+}
+
+type CaseOutcome<R = any> = ResponseOutcome<R> | PeerErrorOutcome;
+
+// ─── Case records and the shared request scaffold ───────────────────────────
+
+interface CaseRecord {
+    name: string;
+    request: RequestType<any, any, null>;
+    params: any;
+    validate: (outcome: any, checks: FieldCheck[], assertions: Assertion[]) => void;
+    inMatrix?: boolean;
+    acceptsPeerError?: boolean;
+}
+
+interface CaseRunnable {
+    name: string;
+    inMatrix?: boolean;
+    run: (conn: MessageConnection) => Promise<TestResult>;
+}
+
+function defineCase(record: CaseRecord): CaseRunnable {
+    return {
+        name: record.name,
+        inMatrix: record.inMatrix,
+        run: (conn: MessageConnection) => runRequest(conn, record),
+    };
+}
+
+/**
+ * A response's status is derived from its field checks and assertions alone: fail when any
+ * field check is not both present and correctly typed, or any assertion did not pass; pass
+ * otherwise. This is the only place a case's status is decided.
+ */
+function deriveStatus(fieldChecks: FieldCheck[], assertions: Assertion[]): TestStatus {
+    const fieldsOk = fieldChecks.every(c => c.present && c.typeMatch);
+    const assertionsOk = assertions.every(a => a.passed);
+    return fieldsOk && assertionsOk ? 'pass' : 'fail';
+}
+
+/**
+ * True only for a vscode-jsonrpc ResponseError whose code is not one of the four transport
+ * codes vscode-jsonrpc itself uses for a dropped connection, a write/read failure, or a
+ * request made after dispose. Only such a genuine peer reply may satisfy an opted-in case's
+ * rejection path; a transport failure never can.
+ */
+function isPeerErrorReply(err: unknown): err is ResponseError {
+    if (!(err instanceof ResponseError)) {
+        return false;
+    }
+    const transportCodes: number[] = [
+        ErrorCodes.MessageWriteError,
+        ErrorCodes.MessageReadError,
+        ErrorCodes.PendingResponseRejected,
+        ErrorCodes.ConnectionInactive,
+    ];
+    return !transportCodes.includes(err.code);
+}
+
+/**
+ * The one request scaffold every case runs through. Sends exactly one request, times it, and
+ * lets `deriveStatus` alone decide pass or fail — no case builds its own result. A rejection
+ * is `error` unless the record opts in via `acceptsPeerError` and the rejection is a genuine
+ * peer error reply (`isPeerErrorReply`), in which case the validator sees the outcome and its
+ * status is derived the same way, never hand-built.
+ */
+async function runRequest(conn: MessageConnection, record: CaseRecord): Promise<TestResult> {
     const start = performance.now();
     try {
-        const result = await conn.sendRequest(getClassInfoRequest, request);
+        const result = await conn.sendRequest(record.request, record.params);
         const duration = performance.now() - start;
         const fieldChecks: FieldCheck[] = [];
         const assertions: Assertion[] = [];
-        validate(result, fieldChecks, assertions);
-        const failed = fieldChecks.some(c => !c.present && c.expected !== 'undefined')
-            || assertions.some(a => !a.passed);
+        const outcome: unknown = record.acceptsPeerError ? { kind: 'response', value: result } : result;
+        try {
+            record.validate(outcome, fieldChecks, assertions);
+        } catch (validationErr: any) {
+            assertions.push(assert(`Validation threw: ${validationErr?.message ?? String(validationErr)}`, false));
+        }
         return {
-            name: testName,
-            method: 'getClassInfo',
-            status: failed ? 'fail' : 'pass',
-            request,
+            name: record.name,
+            method: record.request.method,
+            status: deriveStatus(fieldChecks, assertions),
+            request: record.params,
             response: result,
             fieldChecks,
             assertions,
             durationMs: duration,
         };
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const duration = performance.now() - start;
+        if (record.acceptsPeerError && isPeerErrorReply(err)) {
+            const fieldChecks: FieldCheck[] = [];
+            const assertions: Assertion[] = [];
+            const outcome: CaseOutcome<unknown> = { kind: 'peer-error', error: err };
+            try {
+                record.validate(outcome, fieldChecks, assertions);
+            } catch (validationErr: any) {
+                assertions.push(assert(`Validation threw: ${validationErr?.message ?? String(validationErr)}`, false));
+            }
+            return {
+                name: record.name,
+                method: record.request.method,
+                status: deriveStatus(fieldChecks, assertions),
+                request: record.params,
+                response: null,
+                fieldChecks,
+                assertions,
+                durationMs: duration,
+                errorMessage: err instanceof Error ? err.message : String(err),
+            };
+        }
         return {
-            name: testName,
-            method: 'getClassInfo',
+            name: record.name,
+            method: record.request.method,
             status: 'error',
-            request,
+            request: record.params,
             response: null,
             fieldChecks: [],
             assertions: [],
-            durationMs: performance.now() - start,
-            errorMessage: err.message ?? String(err),
+            durationMs: duration,
+            errorMessage: err instanceof Error ? err.message : String(err),
         };
     }
 }
@@ -255,7 +353,11 @@ function buildMatrixRow(cls: any): MatrixRow {
 function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> {
     return [
         // 1. java.lang.String
-        () => runGetClassInfo(conn, 'java.lang.String', '1. java.lang.String — static methods, constructors', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '1. java.lang.String — static methods, constructors',
+            request: getClassInfoRequest,
+            params: { className: 'java.lang.String' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             if (cls?.methods?.length) {
                 const first = cls.methods[0];
@@ -288,10 +390,15 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             asserts.push(assert('String.charAt isStatic=false', charAt?.isStatic === false, `isStatic=${charAt?.isStatic}`));
 
             asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
-        }),
+            },
+        }).run(conn),
 
         // 2. java.util.HashMap
-        () => runGetClassInfo(conn, 'java.util.HashMap', '2. java.util.HashMap — constructors with varying arity', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '2. java.util.HashMap — constructors with varying arity',
+            request: getClassInfoRequest,
+            params: { className: 'java.util.HashMap' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
             if (cls?.constructors?.length) {
@@ -302,10 +409,15 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
                     validateMethodFields(ctor, checks, `constructor(${ctor.parameters?.length ?? '?'})`);
                 }
             }
-        }),
+            },
+        }).run(conn),
 
         // 3. java.util.Date
-        () => runGetClassInfo(conn, 'java.util.Date', '3. java.util.Date — deprecated methods', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '3. java.util.Date — deprecated methods',
+            request: getClassInfoRequest,
+            params: { className: 'java.util.Date' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             const deprecatedNames = ['getHours', 'getMinutes', 'getSeconds'];
             for (const name of deprecatedNames) {
@@ -315,10 +427,15 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             }
             const deprecatedCount = countWhere(cls?.methods, (m: any) => m.isDeprecated === true);
             asserts.push(assert('Has deprecated methods', deprecatedCount > 0, `deprecated count=${deprecatedCount}`));
-        }),
+            },
+        }).run(conn),
 
         // 4. java.lang.Math
-        () => runGetClassInfo(conn, 'java.lang.Math', '4. java.lang.Math — static methods/fields, private constructor', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '4. java.lang.Math — static methods/fields, private constructor',
+            request: getClassInfoRequest,
+            params: { className: 'java.lang.Math' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             const pi = cls?.fields?.find((f: any) => f.name === 'PI');
             asserts.push(assert('Math.PI exists', !!pi));
@@ -340,10 +457,15 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             // Math has a private constructor, so constructors should be empty or absent
             asserts.push(assert('No public constructors (private ctor)',
                 (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
-        }),
+            },
+        }).run(conn),
 
         // 5. java.lang.Boolean
-        () => runGetClassInfo(conn, 'java.lang.Boolean', '5. java.lang.Boolean — static fields (TRUE, FALSE)', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '5. java.lang.Boolean — static fields (TRUE, FALSE)',
+            request: getClassInfoRequest,
+            params: { className: 'java.lang.Boolean' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             const trueField = cls?.fields?.find((f: any) => f.name === 'TRUE');
             asserts.push(assert('Boolean.TRUE exists', !!trueField));
@@ -357,18 +479,28 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             asserts.push(assert('Boolean.parseBoolean exists', !!parseBoolean));
             asserts.push(assert('Boolean.parseBoolean isStatic=true', parseBoolean?.isStatic === true,
                 `isStatic=${parseBoolean?.isStatic}`));
-        }),
+            },
+        }).run(conn),
 
         // 6. java.sql.Connection
-        () => runGetClassInfo(conn, 'java.sql.Connection', '6. java.sql.Connection — interface, no constructors', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '6. java.sql.Connection — interface, no constructors',
+            request: getClassInfoRequest,
+            params: { className: 'java.sql.Connection' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             asserts.push(assert('Is interface (no constructors)',
                 (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
             asserts.push(assert('Has methods', (cls?.methods?.length ?? 0) > 0, `count=${cls?.methods?.length}`));
-        }),
+            },
+        }).run(conn),
 
         // 7. java.lang.System
-        () => runGetClassInfo(conn, 'java.lang.System', '7. java.lang.System — static fields (out, err, in)', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '7. java.lang.System — static fields (out, err, in)',
+            request: getClassInfoRequest,
+            params: { className: 'java.lang.System' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             for (const fieldName of ['out', 'err', 'in']) {
                 const f = cls?.fields?.find((f: any) => f.name === fieldName);
@@ -378,20 +510,30 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             const gc = cls?.methods?.find((m: any) => m.name === 'gc');
             asserts.push(assert('System.gc exists', !!gc));
             asserts.push(assert('System.gc isStatic=true', gc?.isStatic === true, `isStatic=${gc?.isStatic}`));
-        }),
+            },
+        }).run(conn),
 
         // 8. java.util.Map$Entry
-        () => runGetClassInfo(conn, 'java.util.Map$Entry', '8. java.util.Map$Entry — nested/inner class', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '8. java.util.Map$Entry — nested/inner class',
+            request: getClassInfoRequest,
+            params: { className: 'java.util.Map$Entry' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             asserts.push(assert('Name contains Entry', cls?.name?.includes('Entry'), `name=${cls?.name}`));
             const getKey = cls?.methods?.find((m: any) => m.name === 'getKey');
             asserts.push(assert('Map.Entry.getKey exists', !!getKey));
             const getValue = cls?.methods?.find((m: any) => m.name === 'getValue');
             asserts.push(assert('Map.Entry.getValue exists', !!getValue));
-        }),
+            },
+        }).run(conn),
 
         // 9. Primitive types (int, void)
-        () => runGetClassInfo(conn, 'int', '9. Primitive type — int', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '9. Primitive type — int',
+            request: getClassInfoRequest,
+            params: { className: 'int' },
+            validate: (cls, checks, asserts) => {
             // Primitives may return a minimal object or error — both are acceptable
             asserts.push(assert('Responds without crashing', true));
             if (cls?.error) {
@@ -399,23 +541,34 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
             } else {
                 asserts.push(assert('Name is int', cls?.name === 'int', `name=${cls?.name}`));
             }
-        }),
+            },
+        }).run(conn),
 
         // 10. Non-existent class
-        () => runGetClassInfo(conn, 'com.nonexistent.Fake', '10. Non-existent class — error handling', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '10. Non-existent class — error handling',
+            request: getClassInfoRequest,
+            params: { className: 'com.nonexistent.Fake' },
+            validate: (cls, checks, asserts) => {
             asserts.push(assert('Responds without crashing', true));
             if (cls?.error) {
                 asserts.push(assert('Has error field', true, `error=${cls.error}`));
             } else {
                 asserts.push(assert('No error but may return empty/partial', true, `name=${cls?.name}`));
             }
-        }),
+            },
+        }).run(conn),
 
         // 11. java.lang.Deprecated — annotation type
-        () => runGetClassInfo(conn, 'java.lang.Deprecated', '11. java.lang.Deprecated — annotation type', (cls, checks, asserts) => {
+        () => defineCase({
+            name: '11. java.lang.Deprecated — annotation type',
+            request: getClassInfoRequest,
+            params: { className: 'java.lang.Deprecated' },
+            validate: (cls, checks, asserts) => {
             validateClassFields(cls, checks);
             asserts.push(assert('Name contains Deprecated', cls?.name?.includes('Deprecated'), `name=${cls?.name}`));
-        }),
+            },
+        }).run(conn),
 
         // 12. getClassInfos — java.lang
         () => (async (): Promise<TestResult> => {
@@ -487,14 +640,11 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
         })(),
 
         // 14. getClassInfos — com.basis.startup.type (BBj-specific)
-        () => (async (): Promise<TestResult> => {
-            const request = { packageName: 'com.basis.startup.type' };
-            const start = performance.now();
-            try {
-                const result = await conn.sendRequest(getClassInfosRequest, request);
-                const duration = performance.now() - start;
-                const assertions: Assertion[] = [];
-
+        () => defineCase({
+            name: '14. getClassInfos — com.basis.startup.type',
+            request: getClassInfosRequest,
+            params: { packageName: 'com.basis.startup.type' },
+            validate: (result, checks, assertions) => {
                 assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
                 assertions.push(assert('May be empty without BBj classpath (acceptable)',
                     true, `count=${result?.length}`));
@@ -505,15 +655,8 @@ function defineTests(conn: MessageConnection): Array<() => Promise<TestResult>> 
                         names.some((n: string) => n.includes('BBj')),
                         `found: ${names.slice(0, 5).join(', ')}`));
                 }
-
-                return { name: '14. getClassInfos — com.basis.startup.type', method: 'getClassInfos', status: 'pass',
-                    request, response: result, fieldChecks: [], assertions, durationMs: duration };
-            } catch (err: any) {
-                return { name: '14. getClassInfos — com.basis.startup.type', method: 'getClassInfos', status: 'error',
-                    request, response: null, fieldChecks: [], assertions: [], durationMs: performance.now() - start,
-                    errorMessage: err.message ?? String(err) };
-            }
-        })(),
+            },
+        }).run(conn),
 
         // 15. getTopLevelPackages
         () => (async (): Promise<TestResult> => {
