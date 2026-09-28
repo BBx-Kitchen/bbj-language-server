@@ -412,7 +412,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 113: Composer Webview Hardening & Consolidation** - Every composer webview validates its messages and msgbox validates `assignTo`; the remaining composer UI files get tests, then the duplicated CSP, call-locator and UI helpers collapse to one each (completed 2026-09-27)
 - [x] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups (completed 2026-09-27)
 - [x] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI (completed 2026-09-28)
-- [ ] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures
+- [x] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures (completed 2026-09-28)
 - [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
 - [ ] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift
 - [ ] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses
@@ -686,7 +686,7 @@ fixes. The harness talks to a live java-interop, so its own CI tests must not ne
   3. Tests run `java-interop.ts`'s real connect, timeout and request-lock code against a local fake socket server, covering a refused connection, a response that times out and concurrent requests serialized by the lock.
   4. The `main.ts` handlers for Java class refresh and configuration change run in tests without a module-load `createConnection()`, and their bodies show execution coverage.
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**

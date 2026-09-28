@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 116
-current_phase_name: Java-Interop Test Coverage
-status: executing
-stopped_at: "Completed 116-06-PLAN.md (Phase 116 complete: all 6 plans done, TEST-04/05/06/08 all Complete)"
-last_updated: "2026-09-28T13:43:21.595Z"
+current_phase: 117
+current_phase_name: Dependency Hygiene & Dependabot Coverage
+status: planning
+stopped_at: Phase 116 complete, ready to plan Phase 117
+last_updated: "2026-09-28T13:51:28.581Z"
 last_activity: 2026-09-28
-last_activity_desc: Phase 116 execution started
-state_head: 3a1e387f69a7df8c70e6f8ee7b76602c90b3b67b
+last_activity_desc: Phase 116 complete, transitioned to Phase 117
+state_head: 64f9ef2c1076b4eb7752babb267cb5e19609bc1f
 progress:
   total_phases: 13
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 49
   completed_plans: 49
-  percent: 46
+  percent: 54
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-28 (Phase 115 complete — verification 5/5, 7/7 requirements; next Phase 116)
+**Last Updated:** 2026-09-28 (Phase 116 complete — verification 4/4, 4/4 requirements; next Phase 117)
 
 ## Project Reference
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 116 — Java-Interop Test Coverage
+**Current Focus:** Phase 117 — Dependency Hygiene & Dependabot Coverage
 
 ---
 
 ## Current Position
 
-Phase: 116 (Java-Interop Test Coverage) — COMPLETE
-Plan: 6 of 6
-Status: Phase 116 complete, ready for verification / next phase
-Last activity: 2026-09-28 — Completed 116-06-PLAN.md (hardened BBj-test gate; whole suite zero failed tests in both states)
+Phase: 117 — Dependency Hygiene & Dependabot Coverage
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-28 — Phase 116 complete, transitioned to Phase 117
 
 Progress: [█████░░░░░] 46% (6/13 phases)
 
@@ -186,7 +186,6 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 - Anything both IDEs need stays a host-neutral language-server request — no reimplementation on the IntelliJ side.
 - No live IntelliJ UI test coverage exists in CI. Verification pattern is plain-Java seams under plain JUnit 5, whole-file source guards for IDE-only wiring, and hand UAT in a running IDE per phase — build both distributables first, and again from the final tree after code-review fixes.
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
-- 3 parser.test.ts assertions DISABLED — require a Java classpath unavailable in the EmptyFileSystem test environment (TEST-04, Phase 116, re-enables them)
 
 ### Decisions
 
@@ -335,7 +334,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-28T13:43:21.291Z
-Stopped at: Completed 116-06-PLAN.md (Phase 116 complete: all 6 plans done, TEST-04/05/06/08 all Complete)
+Stopped at: Phase 116 complete, ready to plan Phase 117
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
