@@ -738,7 +738,8 @@ Plans:
 - [x] 117-02-PLAN.md — `dependabot.yml`: langium and langium-cli held at 4.3 with `versions: ["4.4.x"]` (PRs #682/#684); new weekly, grouped `github-actions` (`/`) and npm `/documentation` entries (CI-04, DEP-05) (wave 1)
 - [x] 117-03-PLAN.md — jcommander 1.71 provenance: a CycloneDX `bom.json` and a `README.md` next to the JAR, both pinned by the drift suite to the real bytes and the SHA-256 pin; OSV purl check with a live control; the Snyk-only finding surfaced (DEP-02) (wave 1)
 - [x] 117-04-PLAN.md — `SocketServiceApp` gets an optional validated port argument (default 5008, localhost only); Guava 31.1-jre → 33.7.1-jre; built via bbj-intellij's pinned wrapper; live harness smoke on :15008 identical before and after; OSV shows no match (DEP-04) (wave 1)
-- [x] 117-05-PLAN.md — External langium 4.3.1 vs 4.4.0 repro in `/home/coder/repos/tmp/langium-44-regression-repro/` (runtime toy grammar, `npm run repro` under 60 s, verdicts from measured data) and an `ISSUE-DRAFT.md` in langium's bug template, not filed (DEP-05) (wave 1)
+- [x] 117-05-PLAN.md — (halted: neither symptom reproduced with toy or stripped grammar; no ISSUE-DRAFT) External langium 4.3.1 vs 4.4.0 repro in `/home/coder/repos/tmp/langium-44-regression-repro/` (runtime toy grammar, `npm run repro` under 60 s, verdicts from measured data) and an `ISSUE-DRAFT.md` in langium's bug template, not filed (DEP-05) (wave 1)
+- [ ] 117-06-PLAN.md — Gap closure, top-down repro: two copies of the real bbj-vscode language server (langium 4.3 vs 4.4) outside the repo, a fixed strip-down, a minimal package and `ISSUE-DRAFT.md`; not filed (DEP-05) (wave 2)
 
 *Planning notes:* DEP-02 needs an answer only the maintainer (BASIS) can give: which library and
 version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-ls` mirrors
