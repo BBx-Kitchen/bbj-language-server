@@ -703,7 +703,7 @@
     "properties-reader": "^3.0.1",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^10.1.0",
-    "vscode-uri": "^3.1.0"
+    "vscode-uri": "^3.2.0"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
