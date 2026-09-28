@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: planning
-stopped_at: Phase 116 complete, ready to plan Phase 117
-last_updated: "2026-09-28T13:51:28.581Z"
+stopped_at: Phase 117 context gathered
+last_updated: "2026-09-28T15:42:47.137Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 116 complete, transitioned to Phase 117
-state_head: 64f9ef2c1076b4eb7752babb267cb5e19609bc1f
+state_head: 7f7d795aec6b1316513db895d1617aa91c48d9a2
 progress:
   total_phases: 13
   completed_phases: 7
@@ -333,9 +333,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T13:43:21.291Z
-Stopped at: Phase 116 complete, ready to plan Phase 117
-Resume file: None
+Last session: 2026-09-28T15:42:46.798Z
+Stopped at: Phase 117 context gathered
+Resume file: .planning/phases/117-dependency-hygiene-dependabot-coverage/117-CONTEXT.md
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
