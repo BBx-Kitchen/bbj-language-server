@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 119
 current_phase_name: Grammar — DECLARE File Paths & Shared Channel Opening
 status: executing
-stopped_at: Phase 119 planned (2 plans); Phase 117 still awaits UAT
-last_updated: "2026-09-28T22:36:03.666Z"
+stopped_at: Completed 119-01-PLAN.md
+last_updated: "2026-09-28T23:47:20.487Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 119 execution started
-state_head: ca03b2bae48a50e37632fcf988e6d46c7e319dd1
+state_head: 2d302f8817d7fcef04498c028fc53ea3deecb336
 progress:
   total_phases: 13
   completed_phases: 8
   total_plans: 60
-  completed_plans: 58
+  completed_plans: 59
   percent: 62
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-28)
 ## Current Position
 
 Phase: 119 (Grammar — DECLARE File Paths & Shared Channel Opening) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 119
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-09-28 — Phase 119 execution started
 
 Progress: [██████░░░░] 62% (8/13 phases)
@@ -176,6 +176,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 118 P01 | 8min | 3 tasks | 9 files |
 | Phase 118 P02 | 21min | 2 tasks | 2 files |
 | Phase 118 P03 | 8min | 2 tasks | 3 files |
+| Phase 119 P01 | 68min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -291,6 +292,8 @@ decisions:
 - [Phase 118]: 118-02: two-directional package.json-vs-COMPILER_OPTIONS drift test (compiler-options-package-json-drift.test.ts), NOT_BBJCPL_FLAGS allow-list for bbj.compiler.trigger self-checked against both sides; zero data edits needed, both a parser-keyword-statements timing flake and installed-extension-e2e's stale-bundle failure confirmed pre-existing against the phase base commit
 - [Phase 118]: 118-03: getFunctionReference lands in utils.ts next to readSimpleName, not in bbj-nodedescription-provider.ts as the issue's own suggested home, because that file is a Langium service class
 - [Phase 118]: 118-03: Both protected getFunctionReference methods were deleted outright rather than kept as thin delegates -- no src or test file overrode or called either one, confirmed before deletion
+- [Phase 119]: 119-01: kept the D-04 non-greedy BBjFilePath terminal fix; D-05 base check confirmed it was load-bearing (base grammar produced one VariableDecl named 'b' instead of two)
+- [Phase 119]: 119-01: test/parser-keyword-statements.test.ts and test/functional/installed-extension-e2e.test.ts whole-suite failures classified as pre-existing contention/stale-bundle flakiness (5 whole-suite runs + 2 isolated runs across base and HEAD), not a regression from the grammar change
 
 ### Tech Debt
 
@@ -353,9 +356,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T21:45:21.919Z
-Stopped at: Phase 119 context gathered
-Resume file: .planning/phases/119-grammar-declare-file-paths-shared-channel-opening/119-CONTEXT.md
+Last session: 2026-09-28T23:47:20.104Z
+Stopped at: Completed 119-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 119`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
