@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: executing
-stopped_at: Completed 117-01-PLAN.md
-last_updated: "2026-09-28T16:37:29.108Z"
+stopped_at: Completed 117-02-PLAN.md
+last_updated: "2026-09-28T16:40:43.746Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 117 execution started
-state_head: b9ac50efbc6e24f8bb0d9a025641df7656b48c90
+state_head: 7f771f0fdeadd7407a068674ba31b56f00b23111
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 54
-  completed_plans: 50
+  completed_plans: 51
   percent: 54
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 117 (Dependency Hygiene & Dependabot Coverage) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 117 execution started
 
@@ -169,6 +169,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 116 P05 | 25min | 2 tasks | 4 files |
 | Phase 116 P06 | ~10min | 2 tasks | 2 files |
 | Phase 117 P01 | 8min | 2 tasks | 2 files |
+| Phase 117 P02 | 10min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -274,6 +275,8 @@ decisions:
 - [Phase 116]: 116-06: isInteropPeerAnswering replaces isPortOpen; shouldRunBBjTests() gates on a real getClassInfo answer for java.lang.Object over a 3000ms probe
 - [Phase 116]: 116-06: Both whole-suite runs (RUN_BBJ_TESTS=0 and =1) reported numFailedTests 0 on first measurement; no failure needed dispositioning, TEST-05 complete
 - [Phase 117]: 117-01: regenerated package-lock.json with --package-lock-only --ignore-scripts (not plain npm install/ci), avoiding the Node 24 langium-generate prepare-script break while moving vsce to devDependencies
+- [Phase 117]: 117-02: langium/langium-cli held via versions: ["4.4.x"] npm semver range (not bare dependency-name or update-types), proven by semver satisfies checks against 4.4.0/4.4.9 (matched) and 4.3.1/4.5.0 (not matched)
+- [Phase 117]: 117-02: github-actions Dependabot entry groups all actions into one weekly PR (patterns ["*"]) since preview.yml has no path filter and every push to main publishes previews
 
 ### Tech Debt
 
@@ -335,8 +338,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T16:37:28.762Z
-Stopped at: Completed 117-01-PLAN.md
+Last session: 2026-09-28T16:40:38.692Z
+Stopped at: Completed 117-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.

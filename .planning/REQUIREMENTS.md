@@ -45,7 +45,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [ ] **CI-01**: Every workflow declares a least-privilege `permissions:` block (#547)
 - [ ] **CI-02**: `build.yml` no longer duplicates the PR build and test, and has a concurrency group (#549)
 - [ ] **CI-03**: Every GitHub Actions reference is pinned to a commit SHA, with the version in a comment (#550)
-- [ ] **CI-04**: Dependabot also watches the `github-actions` ecosystem and the `/documentation` npm tree (#551)
+- [x] **CI-04**: Dependabot also watches the `github-actions` ecosystem and the `/documentation` npm tree (#551)
 - [ ] **CI-05**: Every workflow that installs npm or Gradle dependencies uses dependency caching (#518)
 - [ ] **CI-06**: The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it (#573)
 - [ ] **CI-07**: `vscode:prepublish` builds only the bundles that ship, and ships them minified; the dead `esbuild-base` step is gone (#515)
@@ -139,7 +139,7 @@ None deferred. Every still-open audit issue is in scope.
 | CI-01 | Phase 122 | Pending |
 | CI-02 | Phase 122 | Pending |
 | CI-03 | Phase 122 | Pending |
-| CI-04 | Phase 117 | Pending |
+| CI-04 | Phase 117 | Complete |
 | CI-05 | Phase 122 | Pending |
 | CI-06 | Phase 122 | Pending |
 | CI-07 | Phase 122 | Pending |
