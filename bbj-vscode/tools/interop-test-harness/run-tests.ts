@@ -25,214 +25,56 @@
  *   npm run interop-harness -- --output /tmp/report.html
  */
 
-import { Socket } from 'node:net';
 import { writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
+import { type MessageConnection } from 'vscode-jsonrpc/node.js';
+import { connect } from './scaffold.js';
+import type { Assertion, CaseOutcome, ClassInfoDto, FieldCheck, MatrixRow, MethodInfoDto, TestResult, TestStatus } from './types.js';
 import {
-    createMessageConnection,
-    SocketMessageReader,
-    SocketMessageWriter,
-    RequestType,
-    ResponseError,
-    ErrorCodes,
-    type MessageConnection,
-} from 'vscode-jsonrpc/node.js';
+    assert,
+    countWhere,
+    defineCase,
+    getClassInfoRequest,
+    getClassInfosRequest,
+    getTopLevelPackagesRequest,
+    loadClasspathRequest,
+    typeOf,
+    validateClassFields,
+    validateFieldFields,
+    validateMethodFields,
+    validateParameterFields,
+} from './scaffold.js';
+import type { CaseRecord, CaseRunnable } from './types.js';
 
 // ─── CLI args ───────────────────────────────────────────────────────────────
 
-const { values: args } = parseArgs({
-    options: {
-        host: { type: 'string', default: '127.0.0.1' },
-        port: { type: 'string', default: '5008' },
-        output: { type: 'string' },
-        timeout: { type: 'string', default: '15000' },
-    },
-    strict: true,
-});
-
-const HOST = args.host!;
-const PORT = Number(args.port!);
-const TIMEOUT = Number(args.timeout!);
-const OUTPUT_PATH = args.output
-    ? resolve(args.output)
-    : resolve(dirname(new URL(import.meta.url).pathname), 'report.html');
-
-// ─── JSON-RPC request types (mirrors java-interop.ts) ───────────────────────
-
-interface ClassPathInfoParams { classPathEntries: string[] }
-interface ClassInfoParams { className: string }
-interface PackageInfoParams { packageName: string }
-
-const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
-const getClassInfoRequest = new RequestType<ClassInfoParams, any, null>('getClassInfo');
-const getClassInfosRequest = new RequestType<PackageInfoParams, any[], null>('getClassInfos');
-const getTopLevelPackagesRequest = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
-
-// ─── Test result types ──────────────────────────────────────────────────────
-
-type TestStatus = 'pass' | 'fail' | 'error';
-
-interface FieldCheck {
-    field: string;
-    expected: string;
-    actual: string;
-    present: boolean;
-    typeMatch: boolean;
+interface CliArgs {
+    host: string;
+    port: number;
+    timeout: number;
+    outputPath: string;
 }
 
-interface Assertion {
-    description: string;
-    passed: boolean;
-    detail?: string;
-}
-
-interface TestResult {
-    name: string;
-    method: string;
-    status: TestStatus;
-    request: unknown;
-    response: unknown;
-    fieldChecks: FieldCheck[];
-    assertions: Assertion[];
-    durationMs: number;
-    errorMessage?: string;
-}
-
-// ─── Field presence matrix row ──────────────────────────────────────────────
-
-interface MatrixRow {
-    className: string;
-    isStatic: { methods: string; fields: string };
-    isDeprecated: { methods: string; fields: string; class: string };
-    constructors: string;
-    hasName: boolean;
-    hasReturnType: boolean;
-    hasType: boolean;
-    hasParameters: boolean;
-    hasPackageName: boolean;
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function typeOf(v: unknown): string {
-    if (v === null) return 'null';
-    if (v === undefined) return 'undefined';
-    if (Array.isArray(v)) return 'array';
-    return typeof v;
-}
-
-function checkField(obj: any, field: string, expectedType: string): FieldCheck {
-    const val = obj?.[field];
-    const actualType = typeOf(val);
-    return {
-        field,
-        expected: expectedType,
-        actual: actualType,
-        present: val !== undefined && val !== null,
-        typeMatch: actualType === expectedType,
-    };
-}
-
-function assert(description: string, condition: boolean, detail?: string): Assertion {
-    return { description, passed: condition, detail };
-}
-
-function countWhere(arr: any[] | undefined, predicate: (item: any) => boolean): number {
-    return arr?.filter(predicate).length ?? 0;
-}
-
-// ─── Connection ─────────────────────────────────────────────────────────────
-
-async function connect(host: string, port: number, timeout: number): Promise<MessageConnection> {
-    const socket = await new Promise<Socket>((res, rej) => {
-        const s = new Socket();
-        const timer = setTimeout(() => {
-            s.destroy();
-            rej(new Error(`Connection timed out after ${timeout}ms`));
-        }, timeout);
-        s.on('error', (err) => { clearTimeout(timer); rej(err); });
-        s.on('ready', () => { clearTimeout(timer); res(s); });
-        s.connect(port, host);
+function parseCliArgs(): CliArgs {
+    const { values: args } = parseArgs({
+        options: {
+            host: { type: 'string', default: '127.0.0.1' },
+            port: { type: 'string', default: '5008' },
+            output: { type: 'string' },
+            timeout: { type: 'string', default: '15000' },
+        },
+        strict: true,
     });
-    const conn = createMessageConnection(
-        new SocketMessageReader(socket),
-        new SocketMessageWriter(socket),
-    );
-    // A dropped socket only fires this event; without disposing here, any request already
-    // in flight would stay pending forever instead of rejecting.
-    conn.onClose(() => conn.dispose());
-    conn.listen();
-    return conn;
-}
 
-// ─── Case outcome types (opt-in peer-error path) ────────────────────────────
-
-interface ResponseOutcome<R> {
-    kind: 'response';
-    value: R;
-}
-
-interface PeerErrorOutcome {
-    kind: 'peer-error';
-    error: ResponseError;
-}
-
-type CaseOutcome<R = any> = ResponseOutcome<R> | PeerErrorOutcome;
-
-// ─── Case records and the shared request scaffold ───────────────────────────
-
-interface CaseRecord {
-    name: string;
-    request: RequestType<any, any, null>;
-    params: any;
-    validate: (outcome: any, checks: FieldCheck[], assertions: Assertion[]) => void;
-    inMatrix?: boolean;
-    acceptsPeerError?: boolean;
-}
-
-interface CaseRunnable {
-    name: string;
-    inMatrix?: boolean;
-    run: (conn: MessageConnection) => Promise<TestResult>;
-}
-
-function defineCase(record: CaseRecord): CaseRunnable {
     return {
-        name: record.name,
-        inMatrix: record.inMatrix,
-        run: (conn: MessageConnection) => runRequest(conn, record),
+        host: args.host!,
+        port: Number(args.port!),
+        timeout: Number(args.timeout!),
+        outputPath: args.output
+            ? resolve(args.output)
+            : resolve(dirname(new URL(import.meta.url).pathname), 'report.html'),
     };
-}
-
-/**
- * A response's status is derived from its field checks and assertions alone: fail when any
- * field check is not both present and correctly typed, or any assertion did not pass; pass
- * otherwise. This is the only place a case's status is decided.
- */
-function deriveStatus(fieldChecks: FieldCheck[], assertions: Assertion[]): TestStatus {
-    const fieldsOk = fieldChecks.every(c => c.present && c.typeMatch);
-    const assertionsOk = assertions.every(a => a.passed);
-    return fieldsOk && assertionsOk ? 'pass' : 'fail';
-}
-
-/**
- * True only for a vscode-jsonrpc ResponseError whose code is not one of the four transport
- * codes vscode-jsonrpc itself uses for a dropped connection, a write/read failure, or a
- * request made after dispose. Only such a genuine peer reply may satisfy an opted-in case's
- * rejection path; a transport failure never can.
- */
-function isPeerErrorReply(err: unknown): err is ResponseError {
-    if (!(err instanceof ResponseError)) {
-        return false;
-    }
-    const transportCodes: number[] = [
-        ErrorCodes.MessageWriteError,
-        ErrorCodes.MessageReadError,
-        ErrorCodes.PendingResponseRejected,
-        ErrorCodes.ConnectionInactive,
-    ];
-    return !transportCodes.includes(err.code);
 }
 
 // ─── Critical fields and the exit gate ──────────────────────────────────────
@@ -303,106 +145,11 @@ function evaluateGate(results: TestResult[]): GateVerdict {
     return { passCount, failCount, errorCount, criticalFailures, exitCode };
 }
 
-/**
- * The one request scaffold every case runs through. Sends exactly one request, times it, and
- * lets `deriveStatus` alone decide pass or fail — no case builds its own result. A rejection
- * is `error` unless the record opts in via `acceptsPeerError` and the rejection is a genuine
- * peer error reply (`isPeerErrorReply`), in which case the validator sees the outcome and its
- * status is derived the same way, never hand-built.
- */
-async function runRequest(conn: MessageConnection, record: CaseRecord): Promise<TestResult> {
-    const start = performance.now();
-    try {
-        const result = await conn.sendRequest(record.request, record.params);
-        const duration = performance.now() - start;
-        const fieldChecks: FieldCheck[] = [];
-        const assertions: Assertion[] = [];
-        const outcome: unknown = record.acceptsPeerError ? { kind: 'response', value: result } : result;
-        try {
-            record.validate(outcome, fieldChecks, assertions);
-        } catch (validationErr: any) {
-            assertions.push(assert(`Validation threw: ${validationErr?.message ?? String(validationErr)}`, false));
-        }
-        return {
-            name: record.name,
-            method: record.request.method,
-            status: deriveStatus(fieldChecks, assertions),
-            request: record.params,
-            response: result,
-            fieldChecks,
-            assertions,
-            durationMs: duration,
-        };
-    } catch (err: unknown) {
-        const duration = performance.now() - start;
-        if (record.acceptsPeerError && isPeerErrorReply(err)) {
-            const fieldChecks: FieldCheck[] = [];
-            const assertions: Assertion[] = [];
-            const outcome: CaseOutcome<unknown> = { kind: 'peer-error', error: err };
-            try {
-                record.validate(outcome, fieldChecks, assertions);
-            } catch (validationErr: any) {
-                assertions.push(assert(`Validation threw: ${validationErr?.message ?? String(validationErr)}`, false));
-            }
-            return {
-                name: record.name,
-                method: record.request.method,
-                status: deriveStatus(fieldChecks, assertions),
-                request: record.params,
-                response: null,
-                fieldChecks,
-                assertions,
-                durationMs: duration,
-                errorMessage: err instanceof Error ? err.message : String(err),
-            };
-        }
-        return {
-            name: record.name,
-            method: record.request.method,
-            status: 'error',
-            request: record.params,
-            response: null,
-            fieldChecks: [],
-            assertions: [],
-            durationMs: duration,
-            errorMessage: err instanceof Error ? err.message : String(err),
-        };
-    }
-}
-
-function validateClassFields(cls: any, checks: FieldCheck[]): void {
-    checks.push(checkField(cls, 'name', 'string'));
-    checks.push(checkField(cls, 'packageName', 'string'));
-    checks.push(checkField(cls, 'fields', 'array'));
-    checks.push(checkField(cls, 'methods', 'array'));
-    checks.push(checkField(cls, 'constructors', 'array'));
-    checks.push(checkField(cls, 'isDeprecated', 'boolean'));
-}
-
-function validateMethodFields(method: any, checks: FieldCheck[], prefix: string): void {
-    checks.push({ ...checkField(method, 'name', 'string'), field: `${prefix}.name` });
-    checks.push({ ...checkField(method, 'returnType', 'string'), field: `${prefix}.returnType` });
-    checks.push({ ...checkField(method, 'parameters', 'array'), field: `${prefix}.parameters` });
-    checks.push({ ...checkField(method, 'isStatic', 'boolean'), field: `${prefix}.isStatic` });
-    checks.push({ ...checkField(method, 'isDeprecated', 'boolean'), field: `${prefix}.isDeprecated` });
-}
-
-function validateFieldFields(field: any, checks: FieldCheck[], prefix: string): void {
-    checks.push({ ...checkField(field, 'name', 'string'), field: `${prefix}.name` });
-    checks.push({ ...checkField(field, 'type', 'string'), field: `${prefix}.type` });
-    checks.push({ ...checkField(field, 'isStatic', 'boolean'), field: `${prefix}.isStatic` });
-    checks.push({ ...checkField(field, 'isDeprecated', 'boolean'), field: `${prefix}.isDeprecated` });
-}
-
-function validateParameterFields(param: any, checks: FieldCheck[], prefix: string): void {
-    checks.push({ ...checkField(param, 'name', 'string'), field: `${prefix}.name` });
-    checks.push({ ...checkField(param, 'type', 'string'), field: `${prefix}.type` });
-}
-
-function buildMatrixRow(cls: any): MatrixRow {
-    const methods: any[] = cls?.methods ?? [];
-    const fields: any[] = cls?.fields ?? [];
-    const constructors: any[] = cls?.constructors ?? [];
+function buildMatrixRow(cls: unknown): MatrixRow {
+    const c = cls as ClassInfoDto;
+    const methods: MethodInfoDto[] = c?.methods ?? [];
+    const fields = c?.fields ?? [];
+    const constructors = c?.constructors ?? [];
 
     const staticMethods = countWhere(methods, m => m.isStatic !== undefined);
     const staticFields = countWhere(fields, f => f.isStatic !== undefined);
@@ -410,7 +157,7 @@ function buildMatrixRow(cls: any): MatrixRow {
     const deprFields = countWhere(fields, f => f.isDeprecated !== undefined);
 
     return {
-        className: cls?.name ? `${cls.packageName ?? ''}.${cls.name}` : '(unknown)',
+        className: c?.name ? `${c.packageName ?? ''}.${c.name}` : '(unknown)',
         isStatic: {
             methods: `${staticMethods}/${methods.length}`,
             fields: `${staticFields}/${fields.length}`,
@@ -418,20 +165,21 @@ function buildMatrixRow(cls: any): MatrixRow {
         isDeprecated: {
             methods: `${deprMethods}/${methods.length}`,
             fields: `${deprFields}/${fields.length}`,
-            class: cls?.isDeprecated !== undefined ? String(cls.isDeprecated) : 'missing',
+            class: c?.isDeprecated !== undefined ? String(c.isDeprecated) : 'missing',
         },
-        constructors: constructors.length > 0 ? `✓ (${constructors.length})` : (cls?.constructors !== undefined ? '✓ (0)' : '✗ missing'),
-        hasName: cls?.name !== undefined,
-        hasReturnType: methods.length === 0 || methods.some((m: any) => m.returnType !== undefined),
-        hasType: fields.length === 0 || fields.some((f: any) => f.type !== undefined),
-        hasParameters: methods.length === 0 || methods.some((m: any) => m.parameters !== undefined),
-        hasPackageName: cls?.packageName !== undefined,
+        constructors: constructors.length > 0 ? `✓ (${constructors.length})` : (c?.constructors !== undefined ? '✓ (0)' : '✗ missing'),
+        hasName: c?.name !== undefined,
+        hasReturnType: methods.length === 0 || methods.some(m => m.returnType !== undefined),
+        hasType: fields.length === 0 || fields.some(f => f.type !== undefined),
+        hasParameters: methods.length === 0 || methods.some(m => m.parameters !== undefined),
+        hasPackageName: c?.packageName !== undefined,
     };
 }
 
 // ─── Per-case validators ─────────────────────────────────────────────────────
 
-function validateJavaLangString(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaLangString(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
     if (cls?.methods?.length) {
         const first = cls.methods[0];
@@ -447,30 +195,31 @@ function validateJavaLangString(cls: any, checks: FieldCheck[], asserts: Asserti
         validateMethodFields(cls.constructors[0], checks, 'constructors[0]');
     }
 
-    const valueOf = cls?.methods?.find((m: any) => m.name === 'valueOf');
+    const valueOf = cls?.methods?.find(m => m.name === 'valueOf');
     asserts.push(assert('String.valueOf exists', !!valueOf));
     asserts.push(assert('String.valueOf isStatic=true', valueOf?.isStatic === true, `isStatic=${valueOf?.isStatic}`));
 
-    const format = cls?.methods?.find((m: any) => m.name === 'format');
+    const format = cls?.methods?.find(m => m.name === 'format');
     asserts.push(assert('String.format exists', !!format));
     asserts.push(assert('String.format isStatic=true', format?.isStatic === true, `isStatic=${format?.isStatic}`));
 
-    const join = cls?.methods?.find((m: any) => m.name === 'join');
+    const join = cls?.methods?.find(m => m.name === 'join');
     asserts.push(assert('String.join exists', !!join));
     asserts.push(assert('String.join isStatic=true', join?.isStatic === true, `isStatic=${join?.isStatic}`));
 
-    const charAt = cls?.methods?.find((m: any) => m.name === 'charAt');
+    const charAt = cls?.methods?.find(m => m.name === 'charAt');
     asserts.push(assert('String.charAt exists', !!charAt));
     asserts.push(assert('String.charAt isStatic=false', charAt?.isStatic === false, `isStatic=${charAt?.isStatic}`));
 
     asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
 }
 
-function validateJavaUtilHashMap(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaUtilHashMap(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
     asserts.push(assert('Has constructors', (cls?.constructors?.length ?? 0) > 0, `count=${cls?.constructors?.length}`));
     if (cls?.constructors?.length) {
-        const arities = cls.constructors.map((c: any) => c.parameters?.length ?? 0);
+        const arities = cls.constructors.map(c => c.parameters?.length ?? 0);
         const unique = new Set(arities);
         asserts.push(assert('Constructors have varying arity', unique.size > 1, `arities: ${arities.join(', ')}`));
         for (const ctor of cls.constructors) {
@@ -479,34 +228,36 @@ function validateJavaUtilHashMap(cls: any, checks: FieldCheck[], asserts: Assert
     }
 }
 
-function validateJavaUtilDate(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaUtilDate(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
     const deprecatedNames = ['getHours', 'getMinutes', 'getSeconds'];
     for (const name of deprecatedNames) {
-        const method = cls?.methods?.find((m: any) => m.name === name);
+        const method = cls?.methods?.find(m => m.name === name);
         asserts.push(assert(`Date.${name} exists`, !!method));
         asserts.push(assert(`Date.${name} isDeprecated=true`, method?.isDeprecated === true, `isDeprecated=${method?.isDeprecated}`));
     }
-    const deprecatedCount = countWhere(cls?.methods, (m: any) => m.isDeprecated === true);
+    const deprecatedCount = countWhere(cls?.methods, m => m.isDeprecated === true);
     asserts.push(assert('Has deprecated methods', deprecatedCount > 0, `deprecated count=${deprecatedCount}`));
 }
 
-function validateJavaLangMath(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaLangMath(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
-    const pi = cls?.fields?.find((f: any) => f.name === 'PI');
+    const pi = cls?.fields?.find(f => f.name === 'PI');
     asserts.push(assert('Math.PI exists', !!pi));
     asserts.push(assert('Math.PI isStatic=true', pi?.isStatic === true, `isStatic=${pi?.isStatic}`));
     asserts.push(assert('Math.PI type=double', pi?.type === 'double', `type=${pi?.type}`));
 
-    const e = cls?.fields?.find((f: any) => f.name === 'E');
+    const e = cls?.fields?.find(f => f.name === 'E');
     asserts.push(assert('Math.E exists', !!e));
     asserts.push(assert('Math.E isStatic=true', e?.isStatic === true, `isStatic=${e?.isStatic}`));
 
-    const abs = cls?.methods?.find((m: any) => m.name === 'abs');
+    const abs = cls?.methods?.find(m => m.name === 'abs');
     asserts.push(assert('Math.abs exists', !!abs));
     asserts.push(assert('Math.abs isStatic=true', abs?.isStatic === true, `isStatic=${abs?.isStatic}`));
 
-    const staticMethodCount = countWhere(cls?.methods, (m: any) => m.isStatic === true);
+    const staticMethodCount = countWhere(cls?.methods, m => m.isStatic === true);
     asserts.push(assert('Most methods are static', staticMethodCount > (cls?.methods?.length ?? 0) * 0.8,
         `${staticMethodCount}/${cls?.methods?.length ?? 0}`));
 
@@ -515,47 +266,51 @@ function validateJavaLangMath(cls: any, checks: FieldCheck[], asserts: Assertion
         (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
 }
 
-function validateJavaLangBoolean(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaLangBoolean(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
-    const trueField = cls?.fields?.find((f: any) => f.name === 'TRUE');
+    const trueField = cls?.fields?.find(f => f.name === 'TRUE');
     asserts.push(assert('Boolean.TRUE exists', !!trueField));
     asserts.push(assert('Boolean.TRUE isStatic=true', trueField?.isStatic === true, `isStatic=${trueField?.isStatic}`));
 
-    const falseField = cls?.fields?.find((f: any) => f.name === 'FALSE');
+    const falseField = cls?.fields?.find(f => f.name === 'FALSE');
     asserts.push(assert('Boolean.FALSE exists', !!falseField));
     asserts.push(assert('Boolean.FALSE isStatic=true', falseField?.isStatic === true, `isStatic=${falseField?.isStatic}`));
 
-    const parseBoolean = cls?.methods?.find((m: any) => m.name === 'parseBoolean');
+    const parseBoolean = cls?.methods?.find(m => m.name === 'parseBoolean');
     asserts.push(assert('Boolean.parseBoolean exists', !!parseBoolean));
     asserts.push(assert('Boolean.parseBoolean isStatic=true', parseBoolean?.isStatic === true,
         `isStatic=${parseBoolean?.isStatic}`));
 }
 
-function validateJavaSqlConnection(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaSqlConnection(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
     asserts.push(assert('Is interface (no constructors)',
         (cls?.constructors?.length ?? 0) === 0, `count=${cls?.constructors?.length}`));
     asserts.push(assert('Has methods', (cls?.methods?.length ?? 0) > 0, `count=${cls?.methods?.length}`));
 }
 
-function validateJavaLangSystem(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaLangSystem(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
     for (const fieldName of ['out', 'err', 'in']) {
-        const f = cls?.fields?.find((f: any) => f.name === fieldName);
+        const f = cls?.fields?.find(f => f.name === fieldName);
         asserts.push(assert(`System.${fieldName} exists`, !!f));
         asserts.push(assert(`System.${fieldName} isStatic=true`, f?.isStatic === true, `isStatic=${f?.isStatic}`));
     }
-    const gc = cls?.methods?.find((m: any) => m.name === 'gc');
+    const gc = cls?.methods?.find(m => m.name === 'gc');
     asserts.push(assert('System.gc exists', !!gc));
     asserts.push(assert('System.gc isStatic=true', gc?.isStatic === true, `isStatic=${gc?.isStatic}`));
 }
 
-function validateJavaUtilMapEntry(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaUtilMapEntry(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
-    asserts.push(assert('Name contains Entry', cls?.name?.includes('Entry'), `name=${cls?.name}`));
-    const getKey = cls?.methods?.find((m: any) => m.name === 'getKey');
+    asserts.push(assert('Name contains Entry', cls?.name?.includes('Entry') ?? false, `name=${cls?.name}`));
+    const getKey = cls?.methods?.find(m => m.name === 'getKey');
     asserts.push(assert('Map.Entry.getKey exists', !!getKey));
-    const getValue = cls?.methods?.find((m: any) => m.name === 'getValue');
+    const getValue = cls?.methods?.find(m => m.name === 'getValue');
     asserts.push(assert('Map.Entry.getValue exists', !!getValue));
 }
 
@@ -572,92 +327,103 @@ function hasErrorField(value: unknown): boolean {
     return err !== undefined && err !== null && err !== false && err !== '';
 }
 
-function validatePrimitiveInt(response: any, _checks: FieldCheck[], asserts: Assertion[]): void {
+function validatePrimitiveInt(outcome: unknown, _checks: FieldCheck[], asserts: Assertion[]): void {
+    const response = outcome as ClassInfoDto | undefined;
     asserts.push(assert('Error response or a class named int',
         hasErrorField(response) || response?.name === 'int',
         `error=${response?.error}, name=${response?.name}`));
 }
 
-function validateNonexistentClass(outcome: CaseOutcome<unknown>, _checks: FieldCheck[], asserts: Assertion[]): void {
-    const isError = outcome.kind === 'peer-error' ? true : hasErrorField(outcome.value);
-    const detail = outcome.kind === 'peer-error'
-        ? `error code=${outcome.error.code}, message=${outcome.error.message}`
-        : `value=${JSON.stringify(outcome.value)}`;
+function validateNonexistentClass(outcome: unknown, _checks: FieldCheck[], asserts: Assertion[]): void {
+    const o = outcome as CaseOutcome<ClassInfoDto>;
+    const isError = o.kind === 'peer-error' ? true : hasErrorField(o.value);
+    const detail = o.kind === 'peer-error'
+        ? `error code=${o.error.code}, message=${o.error.message}`
+        : `value=${JSON.stringify(o.value)}`;
     asserts.push(assert('Peer signals an error (error field or JSON-RPC error reply)', isError, detail));
 }
 
-function validateJavaLangDeprecated(cls: any, checks: FieldCheck[], asserts: Assertion[]): void {
+function validateJavaLangDeprecated(outcome: unknown, checks: FieldCheck[], asserts: Assertion[]): void {
+    const cls = outcome as ClassInfoDto;
     validateClassFields(cls, checks);
-    asserts.push(assert('Name contains Deprecated', cls?.name?.includes('Deprecated'), `name=${cls?.name}`));
+    asserts.push(assert('Name contains Deprecated', cls?.name?.includes('Deprecated') ?? false, `name=${cls?.name}`));
 }
 
-function validateGetClassInfosJavaLang(result: any, checks: FieldCheck[], assertions: Assertion[]): void {
+function validateGetClassInfosJavaLang(outcome: unknown, checks: FieldCheck[], assertions: Assertion[]): void {
+    const result = outcome;
     assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
     if (!Array.isArray(result)) {
         return;
     }
     assertions.push(assert('Contains classes', result.length > 0, `count=${result.length}`));
 
-    const names = result.map((c: any) => c.name);
+    const classes = result as ClassInfoDto[];
+    const names = classes.map(c => c.name);
     for (const expected of ['String', 'Integer', 'Boolean', 'Object', 'System']) {
-        const found = names.some((n: string) => n === expected || n === `java.lang.${expected}`);
+        const found = names.some(n => n === expected || n === `java.lang.${expected}`);
         assertions.push(assert(`Contains ${expected}`, found, `found: ${found}`));
     }
 
-    if (result.length > 0) {
-        validateClassFields(result[0], checks);
+    if (classes.length > 0) {
+        validateClassFields(classes[0], checks);
     }
 }
 
-function validateGetClassInfosJavaUtil(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+function validateGetClassInfosJavaUtil(outcome: unknown, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const result = outcome;
     const isArray = Array.isArray(result);
-    const names: string[] = isArray ? result.map((c: any) => c?.name) : [];
+    const names: (string | undefined)[] = isArray ? (result as ClassInfoDto[]).map(c => c?.name) : [];
     const missing = ['HashMap', 'ArrayList', 'Date'].filter(expected =>
         !names.some(n => n === expected || n === `java.util.${expected}`));
     assertions.push(assert('Returns an array that is empty or contains HashMap, ArrayList and Date',
-        isArray && (result.length === 0 || missing.length === 0),
-        `type=${typeOf(result)}, count=${isArray ? result.length : 0}, missing=${missing.join(', ') || 'none'}`));
+        isArray && ((result as unknown[]).length === 0 || missing.length === 0),
+        `type=${typeOf(result)}, count=${isArray ? (result as unknown[]).length : 0}, missing=${missing.join(', ') || 'none'}`));
 }
 
-function validateGetClassInfosComBasisStartupType(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+function validateGetClassInfosComBasisStartupType(outcome: unknown, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const result = outcome;
     const isArray = Array.isArray(result);
-    const names: string[] = isArray ? result.map((c: any) => c?.name) : [];
+    const names: (string | undefined)[] = isArray ? (result as ClassInfoDto[]).map(c => c?.name) : [];
     const hasBBjClass = names.some(n => typeof n === 'string' && n.includes('BBj'));
     assertions.push(assert('Returns an array that is empty or contains a BBj class',
-        isArray && (result.length === 0 || hasBBjClass),
-        `type=${typeOf(result)}, count=${isArray ? result.length : 0}, sample=${names.slice(0, 5).join(', ')}`));
+        isArray && ((result as unknown[]).length === 0 || hasBBjClass),
+        `type=${typeOf(result)}, count=${isArray ? (result as unknown[]).length : 0}, sample=${names.slice(0, 5).join(', ')}`));
 }
 
-function validateGetTopLevelPackages(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+function validateGetTopLevelPackages(outcome: unknown, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const result = outcome;
     assertions.push(assert('Returns array', Array.isArray(result), `type=${typeOf(result)}`));
     if (!Array.isArray(result)) {
         return;
     }
     assertions.push(assert('Contains packages', result.length > 0, `count=${result.length}`));
 
-    const packageNames = result.map((p: any) => p.packageName);
-    const hasJavaLang = packageNames.some((n: string) => n === 'java' || n === 'java.lang');
+    const packages = result as { packageName?: string }[];
+    const packageNames = packages.map(p => p.packageName);
+    const hasJavaLang = packageNames.some(n => n === 'java' || n === 'java.lang');
     assertions.push(assert('Contains java.lang', hasJavaLang,
-        `sample: ${packageNames.filter((n: string) => n.startsWith('java')).slice(0, 5).join(', ')}`));
+        `sample: ${packageNames.filter((n): n is string => !!n?.startsWith('java')).slice(0, 5).join(', ')}`));
 }
 
-function validateLoadClasspathEmpty(result: any, _checks: FieldCheck[], assertions: Assertion[]): void {
+function validateLoadClasspathEmpty(outcome: unknown, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const result = outcome;
     assertions.push(assert('Returns boolean', typeof result === 'boolean', `type=${typeOf(result)}`));
     assertions.push(assert('Returns true', result === true, `value=${result}`));
 }
 
-function validateLoadClasspathFilePrefix(outcome: CaseOutcome<unknown>, _checks: FieldCheck[], assertions: Assertion[]): void {
-    const isBooleanResponse = outcome.kind === 'response' && typeof outcome.value === 'boolean';
-    const detail = outcome.kind === 'peer-error'
-        ? `error code=${outcome.error.code}, message=${outcome.error.message}`
-        : `type=${typeOf(outcome.value)}, value=${outcome.value}`;
+function validateLoadClasspathFilePrefix(outcome: unknown, _checks: FieldCheck[], assertions: Assertion[]): void {
+    const o = outcome as CaseOutcome<boolean>;
+    const isBooleanResponse = o.kind === 'response' && typeof o.value === 'boolean';
+    const detail = o.kind === 'peer-error'
+        ? `error code=${o.error.code}, message=${o.error.message}`
+        : `type=${typeOf(o.value)}, value=${o.value}`;
     assertions.push(assert('Returns a boolean or rejects with a JSON-RPC error reply',
-        outcome.kind === 'peer-error' || isBooleanResponse, detail));
+        o.kind === 'peer-error' || isBooleanResponse, detail));
 }
 
 // ─── Define all test cases ──────────────────────────────────────────────────
 
-function defineTests(conn: MessageConnection): CaseRunnable[] {
+function defineTests(): CaseRunnable[] {
     const records: CaseRecord[] = [
         {
             name: '1. java.lang.String — static methods, constructors',
@@ -839,7 +605,7 @@ function truncateJson(obj: unknown, maxDepth: number = 3): unknown {
     const result: Record<string, unknown> = {};
     const keys = Object.keys(obj);
     for (const key of keys) {
-        result[key] = truncateJson((obj as any)[key], maxDepth - 1);
+        result[key] = truncateJson((obj as Record<string, unknown>)[key], maxDepth - 1);
     }
     return result;
 }
@@ -1188,26 +954,29 @@ ${testSections}
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+    const { host, port, timeout, outputPath } = parseCliArgs();
+
     console.log(`\n  Java Interop Test Harness`);
     console.log(`  ========================`);
-    console.log(`  Host: ${HOST}:${PORT}`);
-    console.log(`  Timeout: ${TIMEOUT}ms`);
-    console.log(`  Output: ${OUTPUT_PATH}\n`);
+    console.log(`  Host: ${host}:${port}`);
+    console.log(`  Timeout: ${timeout}ms`);
+    console.log(`  Output: ${outputPath}\n`);
 
     // Connect
     let conn: MessageConnection;
     try {
         process.stdout.write('  Connecting... ');
-        conn = await connect(HOST, PORT, TIMEOUT);
+        conn = await connect(host, port, timeout);
         console.log('OK\n');
-    } catch (err: any) {
-        console.error(`FAILED\n\n  Error: ${err.message}\n`);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`FAILED\n\n  Error: ${message}\n`);
         console.error('  Make sure the BBj interop service is running on the specified host/port.\n');
         process.exit(2);
     }
 
     // Run tests
-    const tests = defineTests(conn);
+    const tests = defineTests();
     const results: TestResult[] = [];
     const matrixRows: MatrixRow[] = [];
 
@@ -1243,14 +1012,15 @@ async function main(): Promise<void> {
     }
 
     // Generate report
-    const html = generateReport(results, matrixRows, HOST, PORT, verdict);
-    writeFileSync(OUTPUT_PATH, html, 'utf-8');
-    console.log(`  Report: ${OUTPUT_PATH}\n`);
+    const html = generateReport(results, matrixRows, host, port, verdict);
+    writeFileSync(outputPath, html, 'utf-8');
+    console.log(`  Report: ${outputPath}\n`);
 
     process.exit(verdict.exitCode);
 }
 
 main().catch(err => {
-    console.error(`\n  Fatal error: ${err.message}\n`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`\n  Fatal error: ${message}\n`);
     process.exit(2);
 });
