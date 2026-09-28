@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 115
 current_phase_name: Honest Interop Test Harness
 status: executing
-stopped_at: Phase 115 planned (6 plans)
-last_updated: "2026-09-28T07:26:36.416Z"
+stopped_at: Completed 115-01-PLAN.md
+last_updated: "2026-09-28T07:29:24.164Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 115 execution started
-state_head: 5a8cfd54f292a154f2cd5356aecbd5e506a8e2c8
+state_head: bb6cb5330b693c7cf5bfbc1705f7280228104a5b
 progress:
   total_phases: 13
   completed_phases: 5
   total_plans: 43
-  completed_plans: 37
+  completed_plans: 38
   percent: 38
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 115 (Honest Interop Test Harness) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 115
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-09-28 — Phase 115 execution started
 
 Progress: [████░░░░░░] 38% (5/13 phases)
@@ -156,6 +156,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P11 | 20min | 2 tasks | 17 files |
 | Phase 114 P12 | 15min | 2 tasks | 25 files |
 | Phase 114 P13 | 21min | 3 tasks | 6 files |
+| Phase 115 P01 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -241,6 +242,8 @@ decisions:
 - [Phase 114]: 114-12: 13 default-import files (+ orchestrator-assigned eslint-disable-directives.test.ts) use namespace fs/os/path/crypto imports matching src's esModuleInterop-false convention; 9 suffix-only files gain .js; both composer UI tests' hoisted FakeRange constructor is overloaded to accept both vscode.Range forms (4 numbers, or 2 Positions with trailing undefined), matching production's own new vscode.Range(pos, pos) call sites -- npm run typecheck:test now exits 0 for the whole test tree
 - [Phase 114]: 114-13: id: build plus steps.build.outcome gates Lint and Type-check test tree independently after Build in build.yml; Test's if: success() || failure() stays unchanged so it still reports when a gate fails
 - [Phase 114]: 114-13: the Windows IntelliJ download-progress re-check (approved on Linux only) is filed as a new opportunistic pending todo rather than reopening or blocking the phase
+- [Phase 115]: Human approved tsx 4.23.15 verbatim at the blocking-human legitimacy checkpoint before install (D-15)
+- [Phase 115]: Installed tsx with --save-exact --ignore-scripts so bbj-vscode's own prepare script does not run under local Node 24 during the devDependency install
 
 ### Tech Debt
 
@@ -302,9 +305,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T05:59:11.902Z
-Stopped at: Phase 115 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/115-honest-interop-test-harness/115-CONTEXT.md
+Last session: 2026-09-28T07:29:15.103Z
+Stopped at: Completed 115-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

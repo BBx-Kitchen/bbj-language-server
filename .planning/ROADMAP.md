@@ -641,12 +641,12 @@ check. The issue447 guard should assert a definitive outcome plus a forced-fallb
   4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
   5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 115-01-PLAN.md — Blocking-human legitimacy check, then `tsx` 4.23.15 as an exact devDependency, the `interop-harness` npm script, no shebang or registry runner in the usage block, `vscode-jsonrpc/node.js` import (DEP-03) (wave 1)
+- [x] 115-01-PLAN.md — Blocking-human legitimacy check, then `tsx` 4.23.15 as an exact devDependency, the `interop-harness` npm script, no shebang or registry runner in the usage block, `vscode-jsonrpc/node.js` import (DEP-03) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -867,7 +867,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 0/6 | Planned | - |
+| 115. Honest Interop Test Harness | 1/6 | Planned |  |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
