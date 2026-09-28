@@ -475,7 +475,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
                                 // value, so no member reached through it is certain enough to be
                                 // reported missing -- mirrors isUniversalObjectReceiver's own
                                 // rationale in the unknown-member Error check, applied here to
-                                // the linking-Warning path too.
+                                // the linking-error diagnostic path too.
                                 skipUniversalObjectReceiver = true;
                             } else {
                                 javaMemberAccess = true;
