@@ -641,7 +641,32 @@ check. The issue447 guard should assert a definitive outcome plus a forced-fallb
   4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
   5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 115-01-PLAN.md — Blocking-human legitimacy check, then `tsx` 4.23.15 as an exact devDependency, the `interop-harness` npm script, no shebang or registry runner in the usage block, `vscode-jsonrpc/node.js` import (DEP-03) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 115-02-PLAN.md — One generic request scaffold (`runRequest`) for all 17 cases; the scaffold alone derives pass/fail/error (present and typed field checks); case 17's peer-error opt-in; dropped socket rejects instead of hanging; small named validators and an `inMatrix` flag (HARN-01, HARN-06) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 115-03-PLAN.md — One exported `CRITICAL_FIELDS` with exact final-segment matching and exit codes 0/1/2 from one verdict; honest disjunctions for cases 9, 10, 13 and 14; highlight-then-escape JSON highlighter; header documents the gate and every flag (HARN-01, HARN-03, HARN-04, HARN-05) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 115-04-PLAN.md — Side-effect-free library modules (types, scaffold, cases, gate) with typed wire DTOs; in-process fake JSON-RPC peer; tests for all 17 cases, #514's non-array stub, the fixture mutations and the pure gate rules (HARN-01, HARN-02, HARN-04, HARN-06) (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 115-05-PLAN.md — `generateReport` split into builders plus a type-checked `report-template.ts`; thin CLI; CLI end-to-end test through the pinned tsx; #596 highlighter and escaping tests (HARN-02, HARN-03, HARN-06) (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 115-06-PLAN.md — Lint and `typecheck:test` scope widened to the harness (strict `tsconfig.harness.json`), negative probes, disable-directive guard scan root; live before/after run against :5008 with every difference explained; whole suite; human check of the rendered report and header (HARN-01..06) (wave 6)
 
 *Planning notes:* fix HARN-01 through HARN-06's shared scaffold, since the duplicated scaffold is
 how #514 happened. Turn on the type-check and lint scope (HARN-02) last, after the mechanical
@@ -842,7 +867,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 0/TBD | Not started | - |
+| 115. Honest Interop Test Harness | 0/6 | Planned | - |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
