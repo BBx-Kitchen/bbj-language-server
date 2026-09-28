@@ -570,9 +570,20 @@ PrintStatement:
     )
     ;
 
+// The opening shared by the output-item and input-item fragments below: an opening paren,
+// then an optional channel number and options (#602).
+fragment ChannelAndOptions:
+    '(' channelno=Expression? Options?
+;
+
 //actual intent: ('('channelno?options?')')? (items(',' items)*)? ','?
+// The last alternative inside the parenthesized tail (a trailing comma right after the closing
+// paren) and the last top-level alternative (a lone trailing comma) exist only for PRINT and
+// WRITE, where a trailing comma suppresses the line end even with no items. READ, INPUT, EXTRACT
+// and FIND have no item-less trailing-comma form, so the input fragment below deliberately lacks
+// both alternatives; adding them there would change what parses (#602).
 fragment WithChannelAndOptionsAndOutputItems:
-    '(' channelno=Expression? Options? (
+    ChannelAndOptions (
         RPAREN_NL
         | RPAREN_NO_NL items+=OutputItem (',' items+=OutputItem)* ENDLINE_PRINT_COMMA?
         | RPAREN_NO_NL ENDLINE_PRINT_COMMA
@@ -673,7 +684,7 @@ ReadRecordStatement infers ReadStatement:
 
 //actual intent: ('('channelno?options?')')? (items(','items)*)?
 fragment WithChannelAndOptionsAndInputItems:
-    '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?)
+    ChannelAndOptions (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?)
     | items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?
 ;
 
