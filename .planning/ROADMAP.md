@@ -759,13 +759,13 @@ version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-
   3. Changing a `.bbl` catalog file so that it no longer matches its `.ts` source makes a test fail.
   4. A compiler option added to, removed from, or given a different default in the shared options table without the matching `bbj.compiler.*` change in `package.json` (or the other way round) makes a test fail.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 118-01-PLAN.md — One wrapper shape for the four catalog `.ts` files; each `.bbl` rewritten from its evaluated export; a byte-exact, table-driven `.bbl` drift test proven by append, `.ts` and CRLF probes; the stale `.ts`-vs-`.bbl` comment reworded (REF-04, REF-05) (wave 1)
-- [ ] 118-02-PLAN.md — Two-directional drift test between `package.json` `bbj.compiler.*` settings and `COMPILER_OPTIONS` (keys, types, defaults), `bbj.compiler.trigger` allow-listed with a reason, six drift directions probed; phase `COVERAGE.md` (REF-06) (wave 1)
+- [x] 118-02-PLAN.md — Two-directional drift test between `package.json` `bbj.compiler.*` settings and `COMPILER_OPTIONS` (keys, types, defaults), `bbj.compiler.trigger` allow-listed with a reason, six drift directions probed; phase `COVERAGE.md` (REF-06) (wave 1)
 - [ ] 118-03-PLAN.md — One exported `getFunctionReference` in `utils.ts` used directly by the signature-help and inlay-hint providers; both protected copies deleted, suites unchanged (REF-01) (wave 1)
 
 *Planning notes:* the shared helper lives in `utils.ts`, not `bbj-nodedescription-provider.ts`
@@ -911,7 +911,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 115. Honest Interop Test Harness | 6/6 | Planned |  |
 | 116. Java-Interop Test Coverage | 6/6 | Planned |  |
 | 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Not started |  |
-| 118. Small Dedup & Drift Guards | 1/3 | Not started |  |
+| 118. Small Dedup & Drift Guards | 2/3 | Not started |  |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 0/TBD | Not started | - |
 | 120. ClassValidator & activate() Splits | 0/TBD | Not started | - |
 | 121. Java Interop Service Decomposition | 0/TBD | Not started | - |

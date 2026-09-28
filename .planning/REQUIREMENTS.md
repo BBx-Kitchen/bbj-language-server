@@ -82,7 +82,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **REF-03**: `composer-commands.ts` lives outside `src/language/` (#582)
 - [x] **REF-04**: The four built-in-catalog `.ts` wrappers share one closing shape (#583)
 - [x] **REF-05**: A test fails when a `.bbl` catalog file drifts from its `.ts` source (#603)
-- [ ] **REF-06**: A test fails when the `package.json` compiler-option contributions drift from the shared compiler-options table (#606)
+- [x] **REF-06**: A test fails when the `package.json` compiler-option contributions drift from the shared compiler-options table (#606)
 - [x] **REF-07**: The composer webview CSP array is built by one shared helper (#533)
 - [x] **REF-08**: The call-locator and argument-scanner logic exists once, shared by the composer logic and UI layers (#534)
 - [ ] **REF-09**: `JavadocProvider` is an injected DI service instead of a `getInstance()` singleton (#624)
@@ -167,7 +167,7 @@ None deferred. Every still-open audit issue is in scope.
 | REF-03 | Phase 113 | Complete |
 | REF-04 | Phase 118 | Complete |
 | REF-05 | Phase 118 | Complete |
-| REF-06 | Phase 118 | Pending |
+| REF-06 | Phase 118 | Complete |
 | REF-07 | Phase 113 | Complete |
 | REF-08 | Phase 113 | Complete |
 | REF-09 | Phase 121 | Pending |

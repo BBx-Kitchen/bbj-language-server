@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 118
 current_phase_name: Small Dedup & Drift Guards
 status: executing
-stopped_at: Completed 118-01-PLAN.md
-last_updated: "2026-09-28T20:40:30.823Z"
+stopped_at: Completed 118-02-PLAN.md
+last_updated: "2026-09-28T21:03:52.743Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 118 execution started
-state_head: fdfbff4aa3dc842d7ef619543f8a46e65c4b65e2
+state_head: 01bad0026fcbdb4a44281d0fa80dcf65799d54db
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 58
-  completed_plans: 56
+  completed_plans: 57
   percent: 54
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 118 (Small Dedup & Drift Guards) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 118 execution started
 
@@ -174,6 +174,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 117 P04 | 12min | 2 tasks | 2 files |
 | Phase 117 P06 | 33min | 3 tasks | 1 files |
 | Phase 118 P01 | 8min | 3 tasks | 9 files |
+| Phase 118 P02 | 21min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -286,6 +287,7 @@ decisions:
 - [Phase 117]: 117-05: Toy and structurally-faithful bbj-subset grammars (72-alt Statement, 7-level Expression chain, real MemberCall call loop) did not reproduce either langium 4.4 regression (parse-recovery slowdown, lost DEF FN completion params) via raw LangiumParser.parse() or full parseHelper pipeline; harness version isolation (chevrotain 12.0.0/13.2.0) confirmed sound; plan halted, DEP-05 repro half left open pending human decision
 - [Phase 117]: 117-06: langium 4.4.0 slowdown + DEF FN completion loss both reproduce with the real bbj-vscode server (git-archive sibling copies, each with its own langium-cli generate); ladder strips to 59 parser rules, minimal/ deliverable runs in ~4s; chevrotain-allstar transitive-dep drift (0.4.4 vs pinned 0.4.3) found and pinned to keep the 4.3.1 baseline faithful; DEP-05 complete, ISSUE-DRAFT.md not filed
 - [Phase 118]: 118-01: rewrote each lib/*.bbl from its .ts export's evaluated value via a throwaway tsx script (never hand-copied), unified all four catalog wrappers to one closing shape, and added bbl-catalog-drift.test.ts as the byte-exact guard
+- [Phase 118]: 118-02: two-directional package.json-vs-COMPILER_OPTIONS drift test (compiler-options-package-json-drift.test.ts), NOT_BBJCPL_FLAGS allow-list for bbj.compiler.trigger self-checked against both sides; zero data edits needed, both a parser-keyword-statements timing flake and installed-extension-e2e's stale-bundle failure confirmed pre-existing against the phase base commit
 
 ### Tech Debt
 
@@ -348,8 +350,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T20:40:30.423Z
-Stopped at: Completed 118-01-PLAN.md
+Last session: 2026-09-28T21:03:52.058Z
+Stopped at: Completed 118-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
