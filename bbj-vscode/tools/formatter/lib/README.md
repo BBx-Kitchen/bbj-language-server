@@ -35,11 +35,14 @@ Run an advisory scanner against the CycloneDX SBOM committed alongside this file
 osv-scanner scan --sbom bbj-vscode/tools/formatter/lib/bom.json
 ```
 
-or query the [OSV API](https://osv.dev) directly with the package URL above. Last checked
-2026-09-28: the query for `pkg:maven/com.beust/jcommander@1.71` returned no advisories (`{}`).
-A positive-control query for `pkg:maven/com.google.guava/guava@31.1-jre` in the same session
-returned `CVE-2023-2976`, confirming the query path itself is live and not silently failing
-closed.
+or query the [OSV API](https://osv.dev) directly with the package URL above. Nothing in this
+repository re-runs either check automatically, so treat any specific result as a snapshot from
+whenever it was last run, not a standing guarantee — re-run the scanner or the API query
+yourself before relying on jcommander's advisory status. As a point-in-time example, a manual
+OSV API query for `pkg:maven/com.beust/jcommander@1.71` on 2026-09-28 returned no advisories
+(`{}`); a positive-control query against `pkg:maven/com.google.guava/guava@31.1-jre` in the same
+session returned `CVE-2023-2976`, which at least confirmed the query path was live and not
+silently failing closed at that moment.
 
 One tangential, non-blocking finding: a third-party vulnerability database (not OSV) lists an
 "Unsafe Dependency Resolution" advisory affecting jcommander versions before 1.75. That advisory
