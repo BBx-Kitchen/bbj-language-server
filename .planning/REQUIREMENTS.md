@@ -58,7 +58,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **TEST-02**: The `test/` tree is type-checked by a working tsconfig project that CI runs (#516)
 - [x] **TEST-03**: `vitest.config.ts` declares explicit include and exclude patterns (#519)
 - [x] **TEST-04**: The three disabled `parser.test.ts` validation assertions are re-enabled and pass (#528)
-- [ ] **TEST-05**: The 11 `linking.test.ts` interop tests pass, or are deliberately rewritten, following the root cause in the 2026-09-20 pending todo, and the whole-suite baseline has no known failures (#559)
+- [x] **TEST-05**: The 11 `linking.test.ts` interop tests pass, or are deliberately rewritten, following the root cause in the 2026-09-20 pending todo, and the whole-suite baseline has no known failures (#559)
 - [x] **TEST-06**: The real connection, timeout and lock code in `java-interop.ts` is exercised by tests against a local fake socket server (#560)
 - [x] **TEST-07**: `initializeWorkspace()` no longer exceeds the vitest hook timeout under whole-suite load (#562)
 - [x] **TEST-08**: The LSP handler logic in `main.ts` can be tested without module-load-time `createConnection()` and is covered by tests (#563)
@@ -149,7 +149,7 @@ None deferred. Every still-open audit issue is in scope.
 | TEST-02 | Phase 114 | Complete |
 | TEST-03 | Phase 114 | Complete |
 | TEST-04 | Phase 116 | Complete |
-| TEST-05 | Phase 116 | Pending |
+| TEST-05 | Phase 116 | Complete |
 | TEST-06 | Phase 116 | Complete |
 | TEST-07 | Phase 114 | Complete |
 | TEST-08 | Phase 116 | Complete |

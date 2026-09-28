@@ -686,7 +686,7 @@ fixes. The harness talks to a live java-interop, so its own CI tests must not ne
   3. Tests run `java-interop.ts`'s real connect, timeout and request-lock code against a local fake socket server, covering a refused connection, a response that times out and concurrent requests serialized by the lock.
   4. The `main.ts` handlers for Java class refresh and configuration change run in tests without a module-load `createConnection()`, and their bodies show execution coverage.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -705,7 +705,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 116-06-PLAN.md — `shouldRunBBjTests()` probes with a real JSON-RPC round trip; the whole suite reports zero failed tests with BBjServices down and up (TEST-05) (wave 4)
+- [x] 116-06-PLAN.md — `shouldRunBBjTests()` probes with a real JSON-RPC round trip; the whole suite reports zero failed tests with BBjServices down and up (TEST-05) (wave 4)
 
 *Planning notes:* #559's own diagnosis is wrong. Follow the pending todo
 `2026-09-20-linking-interop-failures-survive-class-warmup`: the describe block never reaches :5008,
@@ -887,7 +887,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
 | 115. Honest Interop Test Harness | 6/6 | Planned |  |
-| 116. Java-Interop Test Coverage | 5/6 | Planned |  |
+| 116. Java-Interop Test Coverage | 6/6 | Planned |  |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 0/TBD | Not started | - |
