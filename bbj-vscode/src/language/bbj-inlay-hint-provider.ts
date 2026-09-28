@@ -1,11 +1,12 @@
-import { AstNode, Reference } from 'langium';
+import { AstNode } from 'langium';
 import { AbstractInlayHintProvider, InlayHintAcceptor } from 'langium/lsp';
 import { InlayHintKind } from 'vscode-languageserver';
 import type { BBjServices } from './bbj-module.js';
 import { isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
 import { ArgumentType, argumentTypeOf, findBestOverload } from './bbj-overload-selector.js';
 import type { TypeInferer } from './bbj-type-inferer.js';
-import { Expression, MethodCall, NamedElement, isMemberCall, isMethodCall, isNumberLiteral, isPrefixExpression, isStringLiteral, isSymbolRef } from './generated/ast.js';
+import { Expression, isMethodCall, isNumberLiteral, isPrefixExpression, isStringLiteral } from './generated/ast.js';
+import { getFunctionReference } from './utils.js';
 
 export type ParameterHintMode = 'none' | 'literals' | 'all';
 
@@ -49,7 +50,7 @@ export class BBjInlayHintProvider extends AbstractInlayHintProvider {
         if (!isMethodCall(node) || node.args.length === 0) {
             return;
         }
-        const ref = this.getFunctionReference(node);
+        const ref = getFunctionReference(node);
         // Access .ref so lazily linked references are resolved before reading the description
         if (!ref?.ref) {
             return;
@@ -88,16 +89,6 @@ export class BBjInlayHintProvider extends AbstractInlayHintProvider {
                 paddingRight: true
             });
         }
-    }
-
-    protected getFunctionReference(callNode: MethodCall): Reference<NamedElement> | undefined {
-        const method = callNode.method;
-        if (isSymbolRef(method)) {
-            return method.symbol;
-        } else if (isMemberCall(method)) {
-            return method.member;
-        }
-        return undefined;
     }
 
     /** The call-site knowledge about an argument's type, used to rank overloads. */
