@@ -1,23 +1,23 @@
 ---
 phase: 114-lint-type-check-test-suite-gates
-fixed_at: 2026-09-28T05:35:00Z
+fixed_at: 2026-09-28T05:40:00Z
 review_path: .planning/phases/114-lint-type-check-test-suite-gates/114-REVIEW.md
 iteration: 1
-findings_in_scope: 2
-fixed: 1
+findings_in_scope: 3
+fixed: 2
 skipped: 0
-status: partial
+status: all_fixed
 ---
 
 # Phase 114: Code Review Fix Report
 
-**Fixed at:** 2026-09-28T05:35:00Z
+**Fixed at:** 2026-09-28T05:40:00Z
 **Source review:** .planning/phases/114-lint-type-check-test-suite-gates/114-REVIEW.md
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 2 (WR-01, WR-02; IN-01 was explicitly out of scope for this run)
-- Fixed: 1 (WR-01, code change)
+- Findings in scope: 3 (WR-01, WR-02, IN-01 — `fix_scope: all`)
+- Fixed: 2 (WR-01 code change, IN-01 code change)
 - Verified / no code change needed: 1 (WR-02)
 - Skipped: 0
 
@@ -53,15 +53,50 @@ every other spawn error still rejects with the raw `err` unchanged.
   `test/functional/installed-extension-e2e.test.ts`'s SETOPTS-in-code #475 case) — unrelated to
   `document-formatter.ts` and not introduced by this fix.
 - **Verification environment:** all commands above (`tsc`, `eslint`, `vitest`) were run inside
-  the isolated review-fix worktree
-  (`.claude/worktrees/rf-114-4008192-1790572971`), with `node_modules` and
-  `src/language/generated` made available via a plain symlink into the main checkout (the
-  worktree does not run `npm install` or `npm run langium:generate` on its own; the symlinked
-  targets are identical to what a fresh `npm install` + `langium:generate` in the main checkout
-  would produce, since neither `package.json`/`package-lock.json` nor `bbj.langium` changed in
-  this fix). Both symlinks were removed before committing; the commit itself contains only
-  `bbj-vscode/src/document-formatter.ts`. These numbers are reproducible from the main checkout
-  (`bbj-vscode/`) after the worktree is fast-forwarded and torn down.
+  an isolated review-fix worktree (`.claude/worktrees/rf-114-4008192-1790572971`), with
+  `node_modules` and `src/language/generated` made available via a plain symlink into the main
+  checkout (the worktree does not run `npm install` or `npm run langium:generate` on its own;
+  the symlinked targets are identical to what a fresh `npm install` + `langium:generate` in the
+  main checkout would produce, since neither `package.json`/`package-lock.json` nor
+  `bbj.langium` changed in this fix). Both symlinks were removed before committing; the commit
+  itself contains only `bbj-vscode/src/document-formatter.ts`. These numbers are reproducible
+  from the main checkout (`bbj-vscode/`) after the worktree is fast-forwarded and torn down.
+
+### IN-01: Duplicated, inconsistently-typed `readSimpleName` helper across two files
+
+**Files modified:** `bbj-vscode/src/language/utils.ts`, `bbj-vscode/src/language/java-javadoc.ts`,
+`bbj-vscode/src/language/bbj-hover.ts`
+**Commit:** `63db8ea8`
+**Applied fix:** `bbj-hover.ts` had its own `readSimpleName(node: AstNode): unknown` (no runtime
+narrowing) while `java-javadoc.ts` had `readSimpleName(clazz: JavaClass): string | undefined`
+(narrows with `typeof raw === 'string'`), both reading the same interop-only DTO property. Moved
+the stronger, narrowed `string | undefined` version — generalized to take `AstNode` (the
+supertype of `JavaClass`, so all four `bbj-hover.ts` call sites — `isJavaClass`, `isJavaField`,
+`isFieldDecl`, `isBbjClass` — keep working unchanged) — into `bbj-vscode/src/language/utils.ts`
+as an exported function, and imported it from both `java-javadoc.ts` and `bbj-hover.ts`, deleting
+both local copies and their now-redundant cross-referencing comments. `utils.ts` had zero
+internal imports before this change (confirmed via `grep` for its importers:
+`bbj-scope.ts`, `java-interop.ts` — neither is imported by `bbj-hover.ts` or `java-javadoc.ts`),
+so adding the `langium` `AstNode` import introduces no import cycle. `bbj-hover.ts`'s
+`simpleName ? simpleName : node.name` fallback pattern (used at all four call sites) is
+unaffected by the narrower return type: `string | undefined` still falls back to `node.name` on
+`undefined` or an empty string exactly as `unknown` did.
+
+**Verification:**
+- Tier 1: re-read `bbj-vscode/src/language/utils.ts` (new exported `readSimpleName`),
+  `bbj-vscode/src/language/java-javadoc.ts:1-13` (import added, local helper removed), and
+  `bbj-vscode/src/language/bbj-hover.ts:1-17,196-238` (import added, local helper removed, all
+  four call sites — `documentationHeader`'s `isJavaClass`/`isJavaField`/`isFieldDecl`/`isBbjClass`
+  branches — unchanged) — fix text present, surrounding code intact.
+- Tier 2: `npx tsc -b tsconfig.json --noEmit` (main source project) — 0 errors.
+  `npm run typecheck:test` (`tsc -p tsconfig.test.json --noEmit`) — 0 errors.
+  `npm run lint` (`eslint src test --max-warnings 0`) — clean.
+  `npx vitest run test/hover.test.ts test/javadoc.test.ts` — 23/23 passed.
+  `npx vitest run test/utils.test.ts` — 1/1 passed (the modified shared module's own test file).
+- **Verification environment:** all commands above were run directly in the main checkout
+  (`/home/coder/repos/bbj-language-server`, branch `gsd/v4.7-audit-hygiene-burndown`) — no
+  worktree was used for this fix (per explicit instruction for this run), so these numbers are
+  reproducible from the tree as committed.
 
 ## Verified — No Code Change Needed
 
@@ -123,6 +158,6 @@ revert is warranted. No commit was made for WR-02.
 
 ---
 
-_Fixed: 2026-09-28T05:35:00Z_
+_Fixed: 2026-09-28T05:40:00Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
