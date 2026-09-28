@@ -729,7 +729,16 @@ may become shared test infrastructure. Keep the `bbj-notifications.ts` isolation
   4. `dependabot.yml` watches `github-actions` and the `/documentation` npm tree alongside `bbj-vscode` npm and `bbj-intellij` Gradle, and ignores langium and langium-cli 4.4.x.
   5. A minimal repro outside this repository shows, on langium 4.4 versus 4.3, the parse-recovery slowdown on an unclosed call and the lost DEF FN parameters in completion. It is ready to file upstream, and filing waits for the maintainer's approval.
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 117-01-PLAN.md — `@vscode/vsce` moved to devDependencies; the lockfile is regenerated with `--package-lock-only --ignore-scripts` (dev flags only); the production tree drops vsce; `vsce ls` parity and a packaged VSIX; all six CI vsce jobs are shown statically to install it (DEP-01) (wave 1)
+- [ ] 117-02-PLAN.md — `dependabot.yml`: langium and langium-cli held at 4.3 with `versions: ["4.4.x"]` (PRs #682/#684); new weekly, grouped `github-actions` (`/`) and npm `/documentation` entries (CI-04, DEP-05) (wave 1)
+- [ ] 117-03-PLAN.md — jcommander 1.71 provenance: a CycloneDX `bom.json` and a `README.md` next to the JAR, both pinned by the drift suite to the real bytes and the SHA-256 pin; OSV purl check with a live control; the Snyk-only finding surfaced (DEP-02) (wave 1)
+- [ ] 117-04-PLAN.md — `SocketServiceApp` gets an optional validated port argument (default 5008, localhost only); Guava 31.1-jre → 33.7.1-jre; built via bbj-intellij's pinned wrapper; live harness smoke on :15008 identical before and after; OSV shows no match (DEP-04) (wave 1)
+- [ ] 117-05-PLAN.md — External langium 4.3.1 vs 4.4.0 repro in `/home/coder/repos/tmp/langium-44-regression-repro/` (runtime toy grammar, `npm run repro` under 60 s, verdicts from measured data) and an `ISSUE-DRAFT.md` in langium's bug template, not filed (DEP-05) (wave 1)
 
 *Planning notes:* DEP-02 needs an answer only the maintainer (BASIS) can give: which library and
 version the JAR is. Do not install or run langium 4.4 inside `bbj-vscode`. `bbj-ls` mirrors
