@@ -5,11 +5,18 @@
  ******************************************************************************/
 
 /**
- * Tests for the interop test harness's HTML report (bbj-vscode/tools/interop-test-harness).
- * "CLI against a fake peer" runs the real CLI (run-tests.ts) as a child process through the
- * pinned local tsx, against the in-process fake JSON-RPC server, and proves the console output,
- * the exit code and the report file all agree. None of this opens a socket to the live peer on
- * :5008, and it passes with RUN_BBJ_TESTS unset.
+ * Tests for the interop test harness's HTML report (bbj-vscode/tools/interop-test-harness). Three
+ * groups:
+ *
+ * - "CLI against a fake peer" runs the real CLI (run-tests.ts) as a child process through the
+ *   pinned local tsx, against the in-process fake JSON-RPC server, and proves the console output,
+ *   the exit code and the report file all agree.
+ * - "syntaxHighlightJson" is pure tests over the JSON highlighter.
+ * - "report colouring and escaping (#596)" runs the real suite against the fake peer and checks
+ *   the assembled report text.
+ *
+ * None of this opens a socket to the live peer on :5008, and everything here passes with
+ * RUN_BBJ_TESTS unset.
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -17,7 +24,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
-import { startFakePeer, type FakePeer } from './interop-harness-fake-peer.js';
+import { type MessageConnection } from 'vscode-jsonrpc/node.js';
+import { runSuite } from '../tools/interop-test-harness/cases.js';
+import { evaluateGate } from '../tools/interop-test-harness/gate.js';
+import { generateReport, syntaxHighlightJson, toJsonText } from '../tools/interop-test-harness/report.js';
+import { connect } from '../tools/interop-test-harness/scaffold.js';
+import { healthyFixtures, startFakePeer, type FakePeer } from './interop-harness-fake-peer.js';
 
 /** The bbj-vscode project root, resolved from this file's own location so the CLI spawns with a
  *  correct cwd regardless of the test runner's own working directory. */
@@ -108,4 +120,110 @@ describe('CLI against a fake peer', () => {
         expect(report).toContain('<div class="summary-stat fail">5</div>');
         expect(report).toContain('<div class="summary-stat error">0</div>');
     }, 30_000);
+});
+
+describe('syntaxHighlightJson', () => {
+    it('gives a key its own json-key span', () => {
+        const json = JSON.stringify({ a: 1 }, null, 2);
+        expect(syntaxHighlightJson(json)).toContain('<span class="json-key">&quot;a&quot;</span>');
+    });
+
+    it('keeps an escaped-quote string value in one json-string span', () => {
+        const json = JSON.stringify({ msg: 'He said "hi"' }, null, 2);
+        expect(syntaxHighlightJson(json)).toContain(
+            '<span class="json-string">&quot;He said \\&quot;hi\\&quot;&quot;</span>');
+    });
+
+    it('escapes markup and ampersands inside a string value and never lets it through raw', () => {
+        const json = JSON.stringify({ v: '<b>&' }, null, 2);
+        const highlighted = syntaxHighlightJson(json);
+        expect(highlighted).toContain('&lt;b&gt;&amp;');
+        expect(highlighted).not.toContain('<b>&');
+    });
+
+    it('keeps non-ASCII characters unchanged inside one json-string span', () => {
+        const json = JSON.stringify({ v: 'é—✓' }, null, 2);
+        expect(syntaxHighlightJson(json)).toContain('<span class="json-string">&quot;é—✓&quot;</span>');
+    });
+
+    it('treats a key containing a colon as one json-key span, with its value a separate json-string span', () => {
+        const json = JSON.stringify({ 'a:b': 'c' }, null, 2);
+        const highlighted = syntaxHighlightJson(json);
+        expect(highlighted).toContain('<span class="json-key">&quot;a:b&quot;</span>');
+        expect(highlighted).toContain('<span class="json-string">&quot;c&quot;</span>');
+    });
+
+    it('gives array string elements their own json-string spans', () => {
+        const json = JSON.stringify(['x', 'y'], null, 2);
+        const highlighted = syntaxHighlightJson(json);
+        expect(highlighted.match(/<span class="json-string">&quot;[xy]&quot;<\/span>/g)).toHaveLength(2);
+    });
+
+    it('gives numbers, true, false and null their own spans', () => {
+        const json = JSON.stringify({ n: 42, t: true, f: false, u: null }, null, 2);
+        const highlighted = syntaxHighlightJson(json);
+        expect(highlighted).toContain('<span class="json-number">42</span>');
+        expect(highlighted).toContain('<span class="json-bool">true</span>');
+        expect(highlighted).toContain('<span class="json-bool">false</span>');
+        expect(highlighted).toContain('<span class="json-null">null</span>');
+    });
+
+    it('gives the JSON text of a top-level null a json-null span', () => {
+        expect(syntaxHighlightJson(JSON.stringify(null))).toBe('<span class="json-null">null</span>');
+    });
+
+    it('renders empty objects and arrays without throwing and without any spans', () => {
+        expect(syntaxHighlightJson(JSON.stringify({}, null, 2))).not.toContain('<span');
+        expect(syntaxHighlightJson(JSON.stringify([], null, 2))).not.toContain('<span');
+    });
+
+    it("the report's value-to-JSON-text helper turns undefined into the text 'null'", () => {
+        expect(toJsonText(undefined)).toBe('null');
+    });
+});
+
+describe('report colouring and escaping (#596)', () => {
+    let peer: FakePeer | undefined;
+    let conn: MessageConnection | undefined;
+
+    afterEach(async () => {
+        conn?.dispose();
+        await peer?.close();
+        peer = undefined;
+        conn = undefined;
+    });
+
+    it('colours the escaped key and string value of the nonexistent-class error, and shows the Critical column', async () => {
+        peer = await startFakePeer();
+        conn = await connect('127.0.0.1', peer.port, 2000);
+        const { results, matrixRows } = await runSuite(conn);
+        const verdict = evaluateGate(results);
+
+        const report = generateReport(results, matrixRows, verdict, '127.0.0.1', peer.port, new Date('2026-01-01T00:00:00Z'));
+
+        expect(report).toContain('<span class="json-key">&quot;error&quot;</span>');
+        expect(report).toContain(
+            '<span class="json-string">&quot;Class \\&quot;com.nonexistent.Fake\\&quot; not found&quot;</span>');
+        expect(report).toContain(`<div class="summary-stat pass">${verdict.passCount}</div>`);
+        expect(report).toContain(`<div class="summary-stat fail">${verdict.failCount}</div>`);
+        expect(report).toContain(`<div class="summary-stat error">${verdict.errorCount}</div>`);
+        expect(report).toContain('<th>Critical</th>');
+    });
+
+    it('escapes markup in a peer class name so it never reaches the report raw', async () => {
+        const stringClass = healthyFixtures.classes['java.lang.String'];
+        peer = await startFakePeer({
+            getClassInfo: (params) => params.className === 'java.lang.String'
+                ? { ...stringClass, name: '<img src=x>' }
+                : (healthyFixtures.classes[params.className] ?? { error: `Class "${params.className}" not found` }),
+        });
+        conn = await connect('127.0.0.1', peer.port, 2000);
+        const { results, matrixRows } = await runSuite(conn);
+        const verdict = evaluateGate(results);
+
+        const report = generateReport(results, matrixRows, verdict, '127.0.0.1', peer.port, new Date('2026-01-01T00:00:00Z'));
+
+        expect(report).toContain('&lt;img src=x&gt;');
+        expect(report).not.toContain('<img src=x>');
+    });
 });
