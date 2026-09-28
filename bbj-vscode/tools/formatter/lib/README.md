@@ -44,12 +44,13 @@ OSV API query for `pkg:maven/com.beust/jcommander@1.71` on 2026-09-28 returned n
 session returned `CVE-2023-2976`, which at least confirmed the query path was live and not
 silently failing closed at that moment.
 
-One tangential, non-blocking finding: a third-party vulnerability database (not OSV) lists an
-"Unsafe Dependency Resolution" advisory affecting jcommander versions before 1.75. That advisory
-describes a build-time issue in how jcommander itself resolves its own dependencies over plain
-HTTP when built from source — it does not apply to a JAR vendored here as a committed binary
-that is never rebuilt from source in this repository's pipeline. It is not present in OSV. The
-JAR was not swapped in response to it.
+One tangential, non-blocking finding: Snyk's vulnerability database (not OSV) lists
+[SNYK-JAVA-COMBEUST-174815](https://security.snyk.io/vuln/SNYK-JAVA-COMBEUST-174815), "Unsafe
+Dependency Resolution," affecting jcommander versions before 1.75. That advisory describes a
+build-time issue in how jcommander itself resolves its own dependencies over plain HTTP when
+built from source — it does not apply to a JAR vendored here as a committed binary that is never
+rebuilt from source in this repository's pipeline. It is not present in OSV. The JAR was not
+swapped in response to it.
 
 ### Not recorded here
 
