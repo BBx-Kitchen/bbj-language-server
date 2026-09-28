@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 115
 current_phase_name: Honest Interop Test Harness
 status: executing
-stopped_at: Completed 115-04-PLAN.md
-last_updated: "2026-09-28T08:14:48.928Z"
+stopped_at: Completed 115-05-PLAN.md
+last_updated: "2026-09-28T08:28:23.162Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 115 execution started
-state_head: 39fb55e05c56d14346d976f3a50e6c36daaf502d
+state_head: 32db938497120748118f5563c2bb9ef48e7630a4
 progress:
   total_phases: 13
   completed_phases: 5
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 38
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 115 (Honest Interop Test Harness) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 115 execution started
 
@@ -160,6 +160,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 115 P02 | 11min | 2 tasks | 1 files |
 | Phase 115 P03 | 22min | 3 tasks | 1 files |
 | Phase 115 P04 | 16min | 3 tasks | 7 files |
+| Phase 115 P05 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -251,6 +252,8 @@ decisions:
 - [Phase 115]: 115-02: case 12's field checks on the first returned class now count toward its status through the shared scaffold (an intentional tightening vs. the old inline wrapper, which discarded fieldChecks); cases 9/10/13/14 keep their tautological assertions until the next plan (D-21 ordering)
 - [Phase 115]: 115-03: One CRITICAL_FIELDS list drives the gate/report/exit code (evaluateGate); cases 9/10/13/14 now each report one real disjunction assertion; case 10 opts into the scaffold's acceptsPeerError path like case 17; the JSON highlighter highlights before escaping so keys/strings colour correctly
 - [Phase 115]: 115-04: side-effect-free types.ts/scaffold.ts/cases.ts/gate.ts plus a thin run-tests.ts CLI; a real loopback net.createServer + vscode-jsonrpc fake peer drives all 17 cases, the #514 regression and every D-19 mutation through 26 CI tests with no :5008 dependency — D-12/D-17/D-18/D-19: module split and CI coverage were the third step in D-21's ordering, after the scaffold and case/gate fixes landed in 115-02/03
+- [Phase 115]: 115-05: generateReport's argument order is (results, matrixRows, verdict, host, port, generatedAt?) per the plan's stated signature; the one run-tests.ts call site was updated to match
+- [Phase 115]: 115-05: toJsonText is exported from report.ts (beyond the plan's stated export list) so the value-to-JSON-text helper's undefined-to-'null' behavior could be tested directly
 
 ### Tech Debt
 
@@ -312,8 +315,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T08:14:48.695Z
-Stopped at: Completed 115-04-PLAN.md
+Last session: 2026-09-28T08:28:22.918Z
+Stopped at: Completed 115-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.

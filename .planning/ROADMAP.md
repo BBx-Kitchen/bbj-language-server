@@ -641,7 +641,7 @@ check. The issue447 guard should assert a definitive outcome plus a forced-fallb
   4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
   5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -662,7 +662,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 115-05-PLAN.md — `generateReport` split into builders plus a type-checked `report-template.ts`; thin CLI; CLI end-to-end test through the pinned tsx; #596 highlighter and escaping tests (HARN-02, HARN-03, HARN-06) (wave 5)
+- [x] 115-05-PLAN.md — `generateReport` split into builders plus a type-checked `report-template.ts`; thin CLI; CLI end-to-end test through the pinned tsx; #596 highlighter and escaping tests (HARN-02, HARN-03, HARN-06) (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -867,7 +867,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 4/6 | Planned |  |
+| 115. Honest Interop Test Harness | 5/6 | Planned |  |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |
