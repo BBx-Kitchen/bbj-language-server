@@ -67,7 +67,7 @@ export interface ConfigurationChangeDeps {
 
 /**
  * Build the `workspace/didChangeConfiguration` handler. The body is carried over verbatim from
- * `main.ts` (#563, D-14 behaviour-neutral): same order, same comments, same message texts. Every
+ * `main.ts` (#563, behaviour-neutral): same order, same comments, same message texts. Every
  * direct reference the original inline body made becomes a `deps` member.
  */
 export function createConfigurationChangeHandler(deps: ConfigurationChangeDeps): (change: DidChangeConfigurationParams) => Promise<void> {
