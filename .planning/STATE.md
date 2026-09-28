@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 118
 current_phase_name: Small Dedup & Drift Guards
 status: executing
-stopped_at: Phase 118 planned
-last_updated: "2026-09-28T20:31:19.463Z"
+stopped_at: Completed 118-01-PLAN.md
+last_updated: "2026-09-28T20:40:30.823Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 118 execution started
-state_head: 0829ba2c163247526006d41d1d2928cce8c388c0
+state_head: fdfbff4aa3dc842d7ef619543f8a46e65c4b65e2
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 58
-  completed_plans: 55
+  completed_plans: 56
   percent: 54
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 118 (Small Dedup & Drift Guards) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 118
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-09-28 — Phase 118 execution started
 
 Progress: [█████░░░░░] 54% (6/13 phases)
@@ -173,6 +173,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 117 P03 | 9min | 2 tasks | 3 files |
 | Phase 117 P04 | 12min | 2 tasks | 2 files |
 | Phase 117 P06 | 33min | 3 tasks | 1 files |
+| Phase 118 P01 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -284,6 +285,7 @@ decisions:
 - [Phase 117]: 117-04: Guava bumped from 31.1-jre to 33.7.1-jre (D-05) with an optional argv port added to SocketServiceApp (D-12) for the live D-06 smoke test; before/after harness comparison proved byte-identical results
 - [Phase 117]: 117-05: Toy and structurally-faithful bbj-subset grammars (72-alt Statement, 7-level Expression chain, real MemberCall call loop) did not reproduce either langium 4.4 regression (parse-recovery slowdown, lost DEF FN completion params) via raw LangiumParser.parse() or full parseHelper pipeline; harness version isolation (chevrotain 12.0.0/13.2.0) confirmed sound; plan halted, DEP-05 repro half left open pending human decision
 - [Phase 117]: 117-06: langium 4.4.0 slowdown + DEF FN completion loss both reproduce with the real bbj-vscode server (git-archive sibling copies, each with its own langium-cli generate); ladder strips to 59 parser rules, minimal/ deliverable runs in ~4s; chevrotain-allstar transitive-dep drift (0.4.4 vs pinned 0.4.3) found and pinned to keep the 4.3.1 baseline faithful; DEP-05 complete, ISSUE-DRAFT.md not filed
+- [Phase 118]: 118-01: rewrote each lib/*.bbl from its .ts export's evaluated value via a throwaway tsx script (never hand-copied), unified all four catalog wrappers to one closing shape, and added bbl-catalog-drift.test.ts as the byte-exact guard
 
 ### Tech Debt
 
@@ -346,9 +348,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T19:26:17.038Z
-Stopped at: Phase 118 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/118-small-dedup-drift-guards/118-CONTEXT.md
+Last session: 2026-09-28T20:40:30.423Z
+Stopped at: Completed 118-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
