@@ -1,0 +1,8 @@
+rem Issue #527: two file-path-qualified class references on one line
+use ::a.bbj::A; use ::b.bbj::B
+declare ::lib1::ClassA a; declare ::lib2::ClassB b
+declare ::C:\lib\x.bbj::ClassA c
+declare ::C:\lib\x.bbj::ClassA d; declare ::D:\lib\y.bbj::ClassB e
+declare ::a::A x; x! = new ::b::B()
+class public TwoPaths extends ::a::A implements ::b::B
+classend

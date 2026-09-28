@@ -1035,7 +1035,7 @@ terminal RESTORE_NO_NL: /_restore_no_nl/;
 terminal ASTERISK_STANDALONE: /_asterisk_standalone/;
 terminal ASTERISK_EXPRESSION: /_asterisk_expression/;
 
-terminal BBjFilePath: /::.*::/;
+terminal BBjFilePath: /::.*?::/; // stops at the nearest closing '::' so two ::path:: refs on one line don't merge (#527)
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*(@)?/;  // @ = ClientObjectClass
