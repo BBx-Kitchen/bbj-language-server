@@ -422,8 +422,8 @@ describe('PREFIX member signature types stay preloaded despite body pruning (#50
 
         const text = [
             'class public SigExt',
-            '    field public java.util.List items!',
-            '    method public java.util.ArrayList pub(java.util.Map a!)',
+            '    field public java.util.Collection items!',
+            '    method public java.util.ArrayList pub(java.util.SortedMap a!)',
             '        declare java.util.Set bodyOnly!',
             '    methodend',
             '    method private java.util.HashSet priv(java.util.TreeMap b!)',
@@ -449,9 +449,9 @@ describe('PREFIX member signature types stay preloaded despite body pruning (#50
             await services.BBj.references.ScopeComputation.collectLocalSymbols(doc, CancellationToken.None);
 
             const requested = resolveSpy.mock.calls.map(call => call[0]);
-            expect(requested).toContain('java.util.List');
+            expect(requested).toContain('java.util.Collection');
             expect(requested).toContain('java.util.ArrayList');
-            expect(requested).toContain('java.util.Map');
+            expect(requested).toContain('java.util.SortedMap');
             // Declared inside a pruned method body: never reached by the tree iterator.
             expect(requested).not.toContain('java.util.Set');
             // A private member's own signature is skipped entirely, matching the linker.
