@@ -84,7 +84,7 @@ function findDirectiveViolations(text: string): DirectiveViolation[] {
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TEST_DIR, '..');
-const SCAN_ROOTS = ['src', 'test'];
+const SCAN_ROOTS = ['src', 'test', 'tools/interop-test-harness'];
 const ALLOWED_EXTENSIONS = new Set(['.ts', '.cjs', '.mjs', '.js']);
 
 // The Langium-generated AST module is rewritten by every `langium:generate` run

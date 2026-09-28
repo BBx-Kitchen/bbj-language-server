@@ -1,0 +1,15 @@
+{
+  // Type-checks the interop harness with the same strict options as src (noImplicitAny on),
+  // because tsconfig.test.json's test program relaxes noImplicitAny for test fakes.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "tools/interop-test-harness/**/*.ts"
+  ],
+  "exclude": [
+    "out",
+    "node_modules"
+  ]
+}
