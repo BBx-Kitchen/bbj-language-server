@@ -480,13 +480,17 @@ describe('re-resolve and re-push on a config-path setting change', () => {
         expect((lastPayload as ResolvedConfigPathResult).path).toBe(fs.realpathSync.native(configFileB));
     });
 
-    test('the pre-initialization branch pushes too: main.ts carries a notifyResolvedConfigPath call before AND after the workspaceInitialized gate', () => {
+    test('the pre-initialization branch pushes too: main.ts and configuration-change-handler.ts carry a notifyResolvedConfigPath call before AND after the workspaceInitialized gate', () => {
         // Behavioral proof lives in the three push tests above (the resolve-then-notify
         // sequence they exercise is identical on both sides of the gate); this is the
-        // structural guarantee that main.ts actually wires both call sites plus the
-        // build-phase one, not just one of them (three call sites total).
+        // structural guarantee that main.ts's build-phase hook plus the extracted
+        // configuration-change handler (#563) still wire all three call sites, not just one
+        // of them (three call sites total, split across the two files the logic now lives in).
         const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'main.ts'), 'utf-8');
-        const callSites = mainSource.match(/notifyResolvedConfigPath\(/g) ?? [];
-        expect(callSites.length).toBe(3);
+        const handlerSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'configuration-change-handler.ts'), 'utf-8');
+        const mainCallSites = mainSource.match(/notifyResolvedConfigPath\(/g) ?? [];
+        const handlerCallSites = handlerSource.match(/deps\.notifyResolvedConfigPath\(/g) ?? [];
+        expect(mainCallSites.length).toBe(1);
+        expect(handlerCallSites.length).toBe(2);
     });
 });

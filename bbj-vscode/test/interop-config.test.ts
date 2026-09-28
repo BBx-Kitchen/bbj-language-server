@@ -190,7 +190,7 @@ describe('interop settings from a configuration change (issue #509, #510)', () =
     });
 });
 
-describe('main.ts configuration-change call site', () => {
+describe('configuration-change-handler.ts configuration-change call site', () => {
     function stripLineComments(text: string): string {
         return text
             .split('\n')
@@ -201,17 +201,18 @@ describe('main.ts configuration-change call site', () => {
             .join('\n');
     }
 
-    function mainSource(): string {
+    function configurationChangeHandlerSource(): string {
         return stripLineComments(
-            fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'main.ts'), 'utf-8'),
+            fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'configuration-change-handler.ts'), 'utf-8'),
         );
     }
 
-    // main.ts registers its handler at module load against a live connection, so this test
-    // pins the call site text while the behavior behind it is exercised through
-    // setConnectionConfig above, via applyAsConfigurationChange.
+    // The onDidChangeConfiguration body (and this call site) moved from main.ts into
+    // configuration-change-handler.ts (#563); main.ts registers the handler at module load
+    // against a live connection, so this test pins the call site text there while the behavior
+    // behind it is exercised through setConnectionConfig above, via applyAsConfigurationChange.
     test('exactly one setConnectionConfig( call, passing config.interop?.host and config.interop?.port directly', () => {
-        const source = mainSource();
+        const source = configurationChangeHandlerSource();
         const matches = source.match(/setConnectionConfig\(/g) ?? [];
         expect(matches).toHaveLength(1);
         expect(source).toMatch(/setConnectionConfig\(\s*config\.interop\?\.host\s*,\s*config\.interop\?\.port\s*\)/);
