@@ -26,6 +26,12 @@ const NEXT_LINE_SUFFIX = '-next-line';
 const SAME_LINE_SUFFIX = '-line';
 const REASON_SEPARATOR = ' -- ';
 
+// A genuine directive is always the first thing after a comment opener (allowing
+// whitespace in between). This anchor keeps prose that merely contains the raw
+// "eslint-disable" substring (e.g. a string literal explaining the rule, or a
+// property name) from being misclassified as an unscoped suppression comment.
+const COMMENT_OPENER_BEFORE_DIRECTIVE = /(\/\/|\/\*)\s*$/;
+
 interface DirectiveViolation {
     line: number;
     excerpt: string;
@@ -42,6 +48,12 @@ function findDirectiveViolations(text: string): DirectiveViolation[] {
     lines.forEach((line, index) => {
         const at = line.indexOf(DIRECTIVE);
         if (at === -1) {
+            return;
+        }
+        if (!COMMENT_OPENER_BEFORE_DIRECTIVE.test(line.slice(0, at))) {
+            // The substring is present, but it is not directly preceded by a comment
+            // opener, so this is not a real directive — just text that happens to
+            // contain the keyword.
             return;
         }
         const lineNumber = index + 1;
@@ -166,5 +178,13 @@ describe('lint suppression comments always carry a reason', () => {
             'const unused = 1;'
         ].join('\n');
         expect(findDirectiveViolations(text)).toHaveLength(1);
+    });
+
+    test('prose that merely contains the directive substring, not preceded by a comment opener, is not flagged', () => {
+        const text = [
+            `const message = "never write ${DIRECTIVE} without a reason";`,
+            `const config = { ${DIRECTIVE}${SAME_LINE_SUFFIX}Rules: true };`
+        ].join('\n');
+        expect(findDirectiveViolations(text)).toHaveLength(0);
     });
 });
