@@ -641,7 +641,7 @@ check. The issue447 guard should assert a definitive outcome plus a forced-fallb
   4. All cases share the harness's request scaffold, `defineTests` and `generateReport` are split into smaller functions, and the harness runs through a pinned `tsx` devDependency with no `npx` download.
   5. CI type-checks, lints and runs the harness's own tests, so a PR that breaks any of them fails.
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -654,7 +654,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 115-03-PLAN.md — One exported `CRITICAL_FIELDS` with exact final-segment matching and exit codes 0/1/2 from one verdict; honest disjunctions for cases 9, 10, 13 and 14; highlight-then-escape JSON highlighter; header documents the gate and every flag (HARN-01, HARN-03, HARN-04, HARN-05) (wave 3)
+- [x] 115-03-PLAN.md — One exported `CRITICAL_FIELDS` with exact final-segment matching and exit codes 0/1/2 from one verdict; honest disjunctions for cases 9, 10, 13 and 14; highlight-then-escape JSON highlighter; header documents the gate and every flag (HARN-01, HARN-03, HARN-04, HARN-05) (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -867,7 +867,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
 | 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 2/6 | Planned |  |
+| 115. Honest Interop Test Harness | 3/6 | Planned |  |
 | 116. Java-Interop Test Coverage | 0/TBD | Not started | - |
 | 117. Dependency Hygiene & Dependabot Coverage | 0/TBD | Not started | - |
 | 118. Small Dedup & Drift Guards | 0/TBD | Not started | - |

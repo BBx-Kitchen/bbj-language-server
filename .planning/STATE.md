@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 115
 current_phase_name: Honest Interop Test Harness
 status: executing
-stopped_at: Completed 115-02-PLAN.md
-last_updated: "2026-09-28T07:41:56.122Z"
+stopped_at: Completed 115-03-PLAN.md
+last_updated: "2026-09-28T07:48:46.899Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 115 execution started
-state_head: df70c08b34a756d19c19c95945b66ec2d00bc0a0
+state_head: 6a47a9c1157898bb3621ba932db5a412cc8f97d4
 progress:
   total_phases: 13
   completed_phases: 5
   total_plans: 43
-  completed_plans: 39
+  completed_plans: 40
   percent: 38
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 115 (Honest Interop Test Harness) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 115 execution started
 
@@ -158,6 +158,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 114 P13 | 21min | 3 tasks | 6 files |
 | Phase 115 P01 | 12min | 2 tasks | 4 files |
 | Phase 115 P02 | 11min | 2 tasks | 1 files |
+| Phase 115 P03 | 22min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -247,6 +248,7 @@ decisions:
 - [Phase 115]: Installed tsx with --save-exact --ignore-scripts so bbj-vscode's own prepare script does not run under local Node 24 during the devDependency install
 - [Phase 115]: 115-02: runRequest is the one generic scaffold every case runs through; deriveStatus (present && typeMatch, every assertion passed) alone derives status; isPeerErrorReply excludes vscode-jsonrpc's four transport codes so only a genuine peer error reply can satisfy case 17's acceptsPeerError opt-in; connect() disposes on socket close
 - [Phase 115]: 115-02: case 12's field checks on the first returned class now count toward its status through the shared scaffold (an intentional tightening vs. the old inline wrapper, which discarded fieldChecks); cases 9/10/13/14 keep their tautological assertions until the next plan (D-21 ordering)
+- [Phase 115]: 115-03: One CRITICAL_FIELDS list drives the gate/report/exit code (evaluateGate); cases 9/10/13/14 now each report one real disjunction assertion; case 10 opts into the scaffold's acceptsPeerError path like case 17; the JSON highlighter highlights before escaping so keys/strings colour correctly
 
 ### Tech Debt
 
@@ -308,8 +310,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T07:41:55.887Z
-Stopped at: Completed 115-02-PLAN.md
+Last session: 2026-09-28T07:48:46.676Z
+Stopped at: Completed 115-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
