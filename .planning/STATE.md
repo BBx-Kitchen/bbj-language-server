@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: executing
-stopped_at: Completed 117-04-PLAN.md
-last_updated: "2026-09-28T16:52:24.032Z"
+stopped_at: Halted 117-05-PLAN.md (langium 4.4 repro not reproduced — awaiting human decision)
+last_updated: "2026-09-28T17:10:57.350Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 117 execution started
-state_head: 65a2b67950d27e78c9c9e359b3663672fff05aa3
+state_head: f5f85a8b61e065314760f75a8aa36f7f6df1bdd6
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 54
-  completed_plans: 53
+  completed_plans: 54
   percent: 54
 ---
 
@@ -281,6 +281,7 @@ decisions:
 - [Phase 117]: 117-02: github-actions Dependabot entry groups all actions into one weekly PR (patterns ["*"]) since preview.yml has no path filter and every push to main publishes previews
 - [Phase 117]: 117-03: bom.json's purl is asserted self-consistent (pkg:maven/${group}/${name}@${version}) and the pin's relativePath is asserted to equal lib/${name}-${version}.jar, so the SBOM, the purl and the vendored filename cannot silently drift apart — Near-zero-cost extension of the drift-guard assertion block, catching a coordinate/filename mismatch the plan's literal ask did not require but the same test naturally covers
 - [Phase 117]: 117-04: Guava bumped from 31.1-jre to 33.7.1-jre (D-05) with an optional argv port added to SocketServiceApp (D-12) for the live D-06 smoke test; before/after harness comparison proved byte-identical results
+- [Phase 117]: 117-05: Toy and structurally-faithful bbj-subset grammars (72-alt Statement, 7-level Expression chain, real MemberCall call loop) did not reproduce either langium 4.4 regression (parse-recovery slowdown, lost DEF FN completion params) via raw LangiumParser.parse() or full parseHelper pipeline; harness version isolation (chevrotain 12.0.0/13.2.0) confirmed sound; plan halted, DEP-05 repro half left open pending human decision
 
 ### Tech Debt
 
@@ -322,6 +323,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 - **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24) and v4.6 via PR #699 (merged 2026-09-26); both still need a release. The `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand.
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
+- 117-05 halted: langium 4.4.0 regression repro (DEP-05) not reproduced despite toy + bbj-subset fallback grammars; human decision needed (accept negative result / invest in larger-scale grammar / port custom lexer split) before DEP-05 can close
 
 ### Quick Tasks Completed
 
@@ -342,8 +344,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T16:52:23.684Z
-Stopped at: Completed 117-04-PLAN.md
+Last session: 2026-09-28T17:10:57.030Z
+Stopped at: Halted 117-05-PLAN.md (langium 4.4 repro not reproduced — awaiting human decision)
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
