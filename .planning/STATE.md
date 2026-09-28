@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 116
 current_phase_name: Java-Interop Test Coverage
 status: executing
-stopped_at: Completed 116-03-PLAN.md
-last_updated: "2026-09-28T12:31:33.482Z"
+stopped_at: Completed 116-04-PLAN.md
+last_updated: "2026-09-28T12:51:04.639Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 116 execution started
-state_head: bc072f36139d547d54e4a65d24d49586a6450dd3
+state_head: b722d4ec31d9c5dde6a658842945b97ccc05e385
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 49
-  completed_plans: 46
+  completed_plans: 47
   percent: 46
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 116 (Java-Interop Test Coverage) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 116 execution started
 
@@ -165,6 +165,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 116 P01 | ~20min | 3 tasks | 3 files |
 | Phase 116 P02 | ~30min | 2 tasks | 8 files |
 | Phase 116 P03 | 20min | 2 tasks | 3 files |
+| Phase 116 P04 | ~20min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -265,6 +266,8 @@ decisions:
 - [Phase 116]: 116-02: three pre-existing whole-file source-guard tests (config-hot-reload-wiring, config-path-resolution, interop-config) grepped main.ts's literal text and broke when the handler move relocated their target call sites; repointed at configuration-change-handler.ts with counts preserved
 - [Phase 116]: 116-03: makeMethod gained a trailing opts.isStatic parameter (matching makeField's shape) instead of a second static-method helper — keeps one method-building function for every fixture class
 - [Phase 116]: 116-03: the #505 scope-cost-regression signature-type test's fixture types moved from java.util.List/java.util.Map to java.util.Collection/java.util.SortedMap — the completed interop fixture now preloads List and Map, so the test needs distinct unpreloaded classes to keep its original assertion strength
+- [Phase 116]: 116-04: the JAVA_PRIMITIVE_TYPE_NAMES src fix is narrow — a new bbj-scope-local.ts processNode branch (SimpleTypeRef primitive) and a bbj-scope.ts resolveClassScopeByName offer (primitive-only, ahead of the unchanged global scope); every other name, including capitalized classes like Byte, is unaffected
+- [Phase 116]: 116-04: 'Array type ref' uses methodret #strings (not the null() fallback the plan allowed); it validated cleanly on the first attempt
 
 ### Tech Debt
 
@@ -326,8 +329,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T12:31:33.178Z
-Stopped at: Completed 116-03-PLAN.md
+Last session: 2026-09-28T12:51:04.368Z
+Stopped at: Completed 116-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
