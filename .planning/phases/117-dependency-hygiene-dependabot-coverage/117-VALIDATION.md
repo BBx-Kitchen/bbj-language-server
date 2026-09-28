@@ -40,11 +40,11 @@ created: "2026-09-28"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 117-xx | TBD | 1 | DEP-01 | — | vsce absent from production tree | smoke | `npm --prefix …/bbj-vscode ls --omit=dev @vscode/vsce` (expect empty) | ✅ | ⬜ pending |
-| 117-xx | TBD | 1 | DEP-02 | T-117 tamper | SBOM hash equals pinned hash equals on-disk hash | unit | `npx vitest run test/formatter-pins-drift.test.ts` | ✅ (extend) | ⬜ pending |
-| 117-xx | TBD | 1 | DEP-04 | — | Guava 33.7.1-jre builds; OSV no match | build + integration | `./gradlew build`; interop-harness against java-interop on free port | ✅ | ⬜ pending |
-| 117-xx | TBD | 1 | CI-04 / DEP-05 | — | dependabot.yml parses, has 4 entries, langium 4.4.x ignored | config check | YAML parse + key assertions (node one-liner) | ❌ W0 | ⬜ pending |
-| 117-xx | TBD | 1 | DEP-05 | — | repro shows both regressions 4.3 vs 4.4 | external | `npm run repro` in `/home/coder/repos/tmp/langium-44-regression-repro/` | ❌ W0 (by design) | ⬜ pending |
+| 117-01 | 01 | 1 | DEP-01 | — | vsce absent from production tree | smoke | `npm --prefix …/bbj-vscode ls --omit=dev @vscode/vsce` (expect empty) | ✅ | ⬜ pending |
+| 117-03 | 03 | 1 | DEP-02 | T-117 tamper | SBOM hash equals pinned hash equals on-disk hash | unit | `npx vitest run test/formatter-pins-drift.test.ts` | ✅ (extend) | ⬜ pending |
+| 117-04 | 04 | 1 | DEP-04 | — | Guava 33.7.1-jre builds; OSV no match | build + integration | `./gradlew build`; interop-harness against java-interop on free port | ✅ | ⬜ pending |
+| 117-02 | 02 | 1 | CI-04 / DEP-05 | — | dependabot.yml parses, has 4 entries, langium 4.4.x ignored | config check | YAML parse + key assertions (node one-liner) | ❌ W0 | ⬜ pending |
+| 117-05 | 05 | 1 | DEP-05 | — | repro shows both regressions 4.3 vs 4.4 | external | `npm run repro` in `/home/coder/repos/tmp/langium-44-regression-repro/` | ❌ W0 (by design) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
