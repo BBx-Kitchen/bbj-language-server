@@ -71,6 +71,7 @@ export class JavaInteropTestService extends JavaInteropService {
             createBBjApiClass(this.classpath),
             createHashMapClass(this.classpath),
             createJavaLangStringClass(this.classpath),
+            createJavaLangStringSimpleNameClass(this.classpath),
             createJavaLangClassClass(this.classpath),
             createSysGuiClass(this.classpath),
             createJavaLangObjectClass(this.classpath),
@@ -415,6 +416,27 @@ function createJavaLangStringClass(container: Classpath): JavaClass {
         makeMethod(fakeStringClass, 'charAt', 'char')
     ]
     return fakeStringClass
+}
+
+// Simple-name 'String' entry (packageName 'java.lang', no members): mirrors the simple-name
+// copy loadImplicitImports() makes for every java.lang class in production
+// (java-interop.ts's implicitJavaImports loop). The double's loadImplicitImports() is a no-op,
+// so a bare `String` reference (no `use java.lang.String`) would otherwise never link. Its
+// FQN sibling, java.lang.String above, carries the real members; this entry exists purely so
+// the bare simple name resolves through the global scope the same way production resolves it.
+function createJavaLangStringSimpleNameClass(container: Classpath): JavaClass {
+    return {
+        $type: JavaClass.$type,
+        name: 'String',
+        packageName: 'java.lang',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
 }
 
 // java.lang.Object: the base every BBj class falls back to for toString() resolution

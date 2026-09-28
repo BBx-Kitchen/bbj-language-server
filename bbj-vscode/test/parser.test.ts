@@ -4,6 +4,7 @@ import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
+import { indexJavaClasspathDocument } from './test-helper.js';
 import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
@@ -26,7 +27,10 @@ describe('Parser Tests', () => {
         expect(AstUtils.streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
     }
 
-    beforeAll(() => services.shared.workspace.WorkspaceManager.initializeWorkspace([]));
+    beforeAll(async () => {
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        await indexJavaClasspathDocument(services.shared);
+    });
 
 
     test('Performance test', async () => {
@@ -528,10 +532,7 @@ describe('Parser Tests', () => {
         new String()(1)
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: 'String' is a Java class that cannot be resolved in EmptyFileSystem test context.
-        // To enable: either run tests with a real Java classpath (USE "java.lang.String") or
-        // add String as a synthetic BBj built-in type in the test workspace setup.
-        // expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Use Symbolic label in a verb', async () => {

@@ -1,6 +1,7 @@
-import { AstNode, AstUtils, LangiumDocument } from "langium";
+import { AstNode, AstUtils, DocumentState, LangiumDocument } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { Socket } from "net";
+import { JavaSyntheticDocUri } from "../src/language/java-interop.js";
 
 export function isPortOpen(port: number, host = '127.0.0.1') {
   return new Promise<boolean>((resolve) => {
@@ -48,6 +49,29 @@ export async function shouldRunBBjTests(): Promise<boolean> {
 export async function initializeWorkspace(shared: LangiumSharedServices) {
   const wsManager = shared.workspace.WorkspaceManager;
   await wsManager.initializeWorkspace([{ name: 'test', uri: 'file:/test' }]);
+}
+
+/**
+ * Indexes the synthetic Java classpath document (`classpath:/bbj.bbl`) into the shared
+ * IndexManager, the same way production does before any user document links against it.
+ *
+ * In production, `loadImplicitImports()` (or a workspace build that reaches it) indexes the
+ * classpath document before any real source file is parsed, so a Java class reached by its
+ * simple name — or `BBjAPI()` resolving to its JavaClass — is already visible in the global
+ * scope. A `parseHelper` suite builds only the single document it parses; it never runs the
+ * workspace build that would index the classpath document as a side effect. Without this call,
+ * `IndexManager.allElements('JavaClass')` stays empty and no Java class linking that goes
+ * through the global scope (`resolveClassScopeByName`) can resolve, even though
+ * `getResolvedClass()`/`resolveClassByName()` already return the class correctly.
+ */
+export async function indexJavaClasspathDocument(shared: LangiumSharedServices): Promise<void> {
+  const classpathDoc = shared.workspace.LangiumDocuments.all
+    .find(d => d.uri.toString() === JavaSyntheticDocUri);
+  if (!classpathDoc) {
+    throw new Error('The Java classpath document (classpath:/bbj.bbl) was not found in LangiumDocuments — a broken test setup must fail loudly rather than silently skip indexing.');
+  }
+  await shared.workspace.IndexManager.updateContent(classpathDoc);
+  classpathDoc.state = DocumentState.IndexedContent;
 }
 
 export function findFirst<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T, streamAll: boolean = false): T | undefined {
