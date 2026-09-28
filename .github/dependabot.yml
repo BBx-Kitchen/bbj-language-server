@@ -17,6 +17,17 @@ updates:
       # typescript-eslint adds support.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # langium 4.4.0 regresses parser error recovery: an unclosed call such as
+      # `x$ = CVS(` takes about 2.3 seconds per document to parse instead of
+      # 1-2 milliseconds on 4.3. It also drops DEF FN parameters from
+      # completion inside the function body — see PR #682. langium-cli must
+      # move in lockstep with the langium runtime, so it is held for the same
+      # reason — see PR #684. Only the 4.4.x line is held: 4.3.x patches and a
+      # later 4.5 release still arrive and are judged on their own merits.
+      - dependency-name: "langium"
+        versions: ["4.4.x"]
+      - dependency-name: "langium-cli"
+        versions: ["4.4.x"]
   # No `ignore:` block here (D-08, discretion resolved): letting Gradle wrapper
   # version bumps flow through is deliberate. workflow-hygiene.yml's
   # check-gradle-wrapper.mjs fails any Dependabot wrapper PR whose checksums
