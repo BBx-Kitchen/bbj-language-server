@@ -172,11 +172,10 @@ export const DocumentFormatter = {
       p.stderr.on('data', (data) => (stderr += data));
       p.on('error', (err) => {
         const errno = err as NodeJS.ErrnoException;
-        if (err && errno.code === 'ENOENT') {
-          return reject(err);
-        } else {
-          return reject(err);
+        if (errno.code === 'ENOENT') {
+          return reject(new FormatterArtifactError(`Formatter java executable not found: ${errno.message}`));
         }
+        return reject(err);
       });
 
       p.on('close', (code) => {
