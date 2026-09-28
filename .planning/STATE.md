@@ -24,11 +24,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-27)
+See: .planning/PROJECT.md (updated 2026-09-28)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 118 — Small Dedup & Drift Guards
+**Current Focus:** Phase 117 — Dependency Hygiene & Dependabot Coverage (awaiting UAT)
 
 ---
 
