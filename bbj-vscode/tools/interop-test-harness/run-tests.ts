@@ -1,9 +1,22 @@
 /**
  * Java Interop Test Harness
  *
- * Connects to the live BBj Java interop service over JSON-RPC 2.0 (TCP),
- * exercises all 4 API methods, validates every critical field the LS depends on,
- * and generates a self-contained HTML report.
+ * Connects to the live BBj Java interop service over JSON-RPC 2.0 (TCP), exercises all 4 API
+ * methods, and generates a self-contained HTML report.
+ *
+ * The gate checks exactly the fields in CRITICAL_FIELDS: isStatic, isDeprecated, constructors, name, returnType, type, parameters, packageName
+ * A critical field passes only when it is present and of the expected type, matched on the
+ * final segment of the field path.
+ *
+ * Exit codes: 0 when every case passes; 1 when any case fails or errors or a critical field
+ * check fails; 2 on a connection failure or a fatal error.
+ *
+ * Options:
+ *   --host      Interop service host (default: 127.0.0.1)
+ *   --port      Interop service port (default: 5008)
+ *   --output    Report output path (default: report.html next to this file)
+ *   --timeout   Connection timeout in milliseconds (default: 15000); bounds the connection
+ *               attempt only
  *
  * Usage:
  *   cd bbj-vscode
@@ -549,7 +562,7 @@ function validateJavaUtilMapEntry(cls: any, checks: FieldCheck[], asserts: Asser
 /**
  * True only when `value` is a non-null object with an `error` property whose value is not
  * undefined, null, false or the empty string — the same signal `java-interop.ts` reads on a
- * resolved class to decide whether to skip it (#514/D-02).
+ * resolved class to decide whether to skip it (#514).
  */
 function hasErrorField(value: unknown): boolean {
     if (typeof value !== 'object' || value === null) {
@@ -769,23 +782,48 @@ function escapeHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function syntaxHighlightJson(json: string): string {
-    return json.replace(
-        /("(?:\\.|[^"\\])*")\s*:/g,
-        '<span class="json-key">$1</span>:',
-    ).replace(
-        /:\s*("(?:\\.|[^"\\])*")/g,
-        ': <span class="json-string">$1</span>',
-    ).replace(
-        /:\s*(\d+(?:\.\d+)?)\b/g,
-        ': <span class="json-number">$1</span>',
-    ).replace(
-        /:\s*(true|false)\b/g,
-        ': <span class="json-bool">$1</span>',
-    ).replace(
-        /:\s*(null)\b/g,
-        ': <span class="json-null">$1</span>',
-    );
+/**
+ * Turns a value into JSON text, the way `syntaxHighlightJson` expects to receive it: an absent
+ * value (`JSON.stringify` returning `undefined`) renders as the text `null` instead of throwing
+ * when it is later passed through the highlighter.
+ */
+function toJsonText(value: unknown): string {
+    const json = JSON.stringify(value, null, 2);
+    return json === undefined ? 'null' : json;
+}
+
+// One token per JSON string, number, boolean or null. The JSON-string pattern keeps its
+// backslash-escape handling — see Pitfall 2 in the phase research: it already correctly matches
+// a string containing an escaped quote, so it stays untouched here.
+const JSON_TOKEN_PATTERN = /"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g;
+
+/**
+ * Highlights raw JSON text (as produced by `JSON.stringify`, not yet HTML-escaped) in a single
+ * left-to-right pass. Every token and every gap between tokens goes through `escapeHtml` exactly
+ * once here, so the peer's data is always escaped and the span markup itself never is (#596: the
+ * old order ran `escapeHtml` first, turning every `"` into `&quot;` before the quote-anchored
+ * regexes ever saw it, so no key or string was ever coloured).
+ */
+function syntaxHighlightJson(rawJson: string): string {
+    let result = '';
+    let lastIndex = 0;
+    JSON_TOKEN_PATTERN.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = JSON_TOKEN_PATTERN.exec(rawJson)) !== null) {
+        result += escapeHtml(rawJson.slice(lastIndex, match.index));
+        const token = match[0];
+        lastIndex = match.index + token.length;
+        const rest = rawJson.slice(lastIndex);
+        const isKey = token.startsWith('"') && /^\s*:/.test(rest);
+        const cssClass = isKey ? 'json-key'
+            : token.startsWith('"') ? 'json-string'
+            : token === 'true' || token === 'false' ? 'json-bool'
+            : token === 'null' ? 'json-null'
+            : 'json-number';
+        result += `<span class="${cssClass}">${escapeHtml(token)}</span>`;
+    }
+    result += escapeHtml(rawJson.slice(lastIndex));
+    return result;
 }
 
 function truncateJson(obj: unknown, maxDepth: number = 3): unknown {
@@ -871,9 +909,9 @@ function generateReport(results: TestResult[], matrixRows: MatrixRow[], host: st
     }
 
     const testSections = results.map(r => {
-        const requestJson = escapeHtml(JSON.stringify(r.request, null, 2));
+        const requestJson = toJsonText(r.request);
         const responsePreview = truncateJson(r.response, 3);
-        const responseJson = escapeHtml(JSON.stringify(responsePreview, null, 2));
+        const responseJson = toJsonText(responsePreview);
 
         const fieldCheckRows = r.fieldChecks.length > 0
             ? `<table class="field-table">
