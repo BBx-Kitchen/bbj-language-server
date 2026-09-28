@@ -24,9 +24,14 @@ import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
 import { registerConfigAwareHoverHandler } from './bbj-hover-handler.js';
 import { JavaClassReloadServices, reloadClasspathAndRecheckDocuments } from './java-class-reload.js';
+import { createInlayHintRefresher, createReloadJavaClassesAndRevalidate, registerRefreshJavaClassesRequest } from './java-class-refresh.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
+
+// Built right after the connection exists — both the refresh handler below and the
+// configuration-change handler (registered near the end of this file) need it.
+const refreshInlayHints = createInlayHintRefresher(connection);
 
 // Wire the notification module with the LSP connection (before any notifications can fire)
 initNotifications(connection);
@@ -38,16 +43,28 @@ registerComposerRequests(connection);
 // Inject the shared services and language-specific services
 const { shared, BBj } = createBBjServices({ connection, ...NodeFileSystem });
 
-connection.onRequest('bbj/refreshJavaClasses', async () => {
-    try {
-        await reloadJavaClassesAndRevalidate();
-        return true;
-    } catch (error) {
-        console.error('Failed to refresh Java classes:', error);
-        connection.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
-        return false;
-    }
+// The narrow service slice java-class-reload.ts's shared helper needs, built once from the
+// services created above. Reused by both the explicit refresh path below and the interop
+// recovery path.
+const javaClassReloadServices: JavaClassReloadServices = {
+    javaInterop: BBj.java.JavaInteropService,
+    workspaceManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+    langiumDocuments: shared.workspace.LangiumDocuments,
+    documentBuilder: shared.workspace.DocumentBuilder
+};
+
+// Clears the Java classpath cache, reloads it from the current workspace settings, reloads
+// implicit imports, and re-validates every open document by resetting its build state — the
+// shared reload sequence used by both the explicit bbj/refreshJavaClasses request handler and an
+// onDidChangeConfiguration settings change that affects the classpath.
+const reloadJavaClassesAndRevalidate = createReloadJavaClassesAndRevalidate({
+    javaInterop: BBj.java.JavaInteropService,
+    reloadServices: javaClassReloadServices,
+    refreshInlayHints,
+    window: connection.window,
 });
+
+registerRefreshJavaClassesRequest(connection, { reloadJavaClassesAndRevalidate });
 
 // A real, options-aware bbjcpl compile that both IDEs can reach through the shared
 // language server, with no bbjcpl invocation logic duplicated on the IntelliJ side (#571).
@@ -107,44 +124,10 @@ registerComposerCodeLensHandler(connection, shared, BBj);
 // hover instantly and delegates every other document unchanged. See bbj-hover-handler.ts.
 registerConfigAwareHoverHandler(connection, shared);
 
-// Ask the client to re-request inlay hints, e.g. after Java classes (and the Javadoc-based
-// parameter names) arrived asynchronously. Clients without refresh support just ignore us.
-function refreshInlayHints() {
-    connection.languages.inlayHint.refresh().catch(() => { /* client does not support refresh */ });
-}
-
 // Ask the client to re-request code lenses once the first build completes, so a composer-cue
 // request answered null during a cold start is re-issued by clients that support refresh.
 function refreshCodeLenses() {
     connection.sendRequest(CodeLensRefreshRequest.type).catch(() => { /* client does not support refresh */ });
-}
-
-// The narrow service slice java-class-reload.ts's shared helper needs, built once from the
-// services created above. Reused by both the explicit refresh path below and the interop
-// recovery path.
-const javaClassReloadServices: JavaClassReloadServices = {
-    javaInterop: BBj.java.JavaInteropService,
-    workspaceManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
-    langiumDocuments: shared.workspace.LangiumDocuments,
-    documentBuilder: shared.workspace.DocumentBuilder
-};
-
-// Clears the Java classpath cache, reloads it from the current workspace settings, reloads
-// implicit imports, and re-validates every open document by resetting its build state — the
-// shared reload sequence used by both the explicit bbj/refreshJavaClasses request handler and an
-// onDidChangeConfiguration settings change that affects the classpath.
-async function reloadJavaClassesAndRevalidate(): Promise<void> {
-    const javaInterop = BBj.java.JavaInteropService;
-
-    // Step 1: Clear all cached Java class data (includes disconnecting)
-    javaInterop.clearCache();
-
-    // Steps 2-4: reload classpath, reload implicit imports, re-check open documents once.
-    await reloadClasspathAndRecheckDocuments(javaClassReloadServices);
-    refreshInlayHints();
-
-    // Step 5: Send notification
-    connection.window.showInformationMessage('Java classes refreshed');
 }
 
 // Guard: skip Java class reload until initial workspace build is complete
