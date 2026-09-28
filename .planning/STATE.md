@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: executing
-stopped_at: Completed 117-03-PLAN.md
-last_updated: "2026-09-28T16:48:35.225Z"
+stopped_at: Completed 117-04-PLAN.md
+last_updated: "2026-09-28T16:52:24.032Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 117 execution started
-state_head: 01a680cf501b5f25227a2e88b27a5c2090b879bd
+state_head: 65a2b67950d27e78c9c9e359b3663672fff05aa3
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
   percent: 54
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 117 (Dependency Hygiene & Dependabot Coverage) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 117 execution started
 
@@ -171,6 +171,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 117 P01 | 8min | 2 tasks | 2 files |
 | Phase 117 P02 | 10min | 2 tasks | 1 files |
 | Phase 117 P03 | 9min | 2 tasks | 3 files |
+| Phase 117 P04 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -279,6 +280,7 @@ decisions:
 - [Phase 117]: 117-02: langium/langium-cli held via versions: ["4.4.x"] npm semver range (not bare dependency-name or update-types), proven by semver satisfies checks against 4.4.0/4.4.9 (matched) and 4.3.1/4.5.0 (not matched)
 - [Phase 117]: 117-02: github-actions Dependabot entry groups all actions into one weekly PR (patterns ["*"]) since preview.yml has no path filter and every push to main publishes previews
 - [Phase 117]: 117-03: bom.json's purl is asserted self-consistent (pkg:maven/${group}/${name}@${version}) and the pin's relativePath is asserted to equal lib/${name}-${version}.jar, so the SBOM, the purl and the vendored filename cannot silently drift apart — Near-zero-cost extension of the drift-guard assertion block, catching a coordinate/filename mismatch the plan's literal ask did not require but the same test naturally covers
+- [Phase 117]: 117-04: Guava bumped from 31.1-jre to 33.7.1-jre (D-05) with an optional argv port added to SocketServiceApp (D-12) for the live D-06 smoke test; before/after harness comparison proved byte-identical results
 
 ### Tech Debt
 
@@ -340,8 +342,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T16:48:30.994Z
-Stopped at: Completed 117-03-PLAN.md
+Last session: 2026-09-28T16:52:23.684Z
+Stopped at: Completed 117-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
