@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: executing
-stopped_at: Phase 117 context gathered
-last_updated: "2026-09-28T16:33:58.298Z"
+stopped_at: Completed 117-01-PLAN.md
+last_updated: "2026-09-28T16:37:29.108Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 117 execution started
-state_head: 065c73a8053d43526967a414a0da0ef170c483a8
+state_head: b9ac50efbc6e24f8bb0d9a025641df7656b48c90
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 54
-  completed_plans: 49
+  completed_plans: 50
   percent: 54
 ---
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 117 (Dependency Hygiene & Dependabot Coverage) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 117
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-09-28 — Phase 117 execution started
 
-Progress: [█████░░░░░] 46% (6/13 phases)
+Progress: [█████░░░░░] 54% (6/13 phases)
 
 ### v4.7 milestone map
 
@@ -168,6 +168,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 116 P04 | ~20min | 2 tasks | 5 files |
 | Phase 116 P05 | 25min | 2 tasks | 4 files |
 | Phase 116 P06 | ~10min | 2 tasks | 2 files |
+| Phase 117 P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -272,6 +273,7 @@ decisions:
 - [Phase 116]: 116-05: suppress-object-receiver-warning chosen for the java.lang.Object receiver Warning (Task 1's blocking-human checkpoint, resolved by the human at plan time); processLinkingErrors now skips a member reached through an exactly-java.lang.Object receiver, and 'Release usage' (TEST-04's last disabled assertion) asserts expectNoValidationErrors and passes
 - [Phase 116]: 116-06: isInteropPeerAnswering replaces isPortOpen; shouldRunBBjTests() gates on a real getClassInfo answer for java.lang.Object over a 3000ms probe
 - [Phase 116]: 116-06: Both whole-suite runs (RUN_BBJ_TESTS=0 and =1) reported numFailedTests 0 on first measurement; no failure needed dispositioning, TEST-05 complete
+- [Phase 117]: 117-01: regenerated package-lock.json with --package-lock-only --ignore-scripts (not plain npm install/ci), avoiding the Node 24 langium-generate prepare-script break while moving vsce to devDependencies
 
 ### Tech Debt
 
@@ -333,9 +335,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T15:42:46.798Z
-Stopped at: Phase 117 context gathered
-Resume file: .planning/phases/117-dependency-hygiene-dependabot-coverage/117-CONTEXT.md
+Last session: 2026-09-28T16:37:28.762Z
+Stopped at: Completed 117-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
