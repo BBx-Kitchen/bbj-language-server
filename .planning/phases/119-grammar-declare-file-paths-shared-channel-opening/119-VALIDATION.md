@@ -41,14 +41,12 @@ Grammar regeneration: `cd /home/coder/repos/bbj-language-server/bbj-vscode && np
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 119-xx | TBD | 1 | FIX-01 | — | N/A | unit | `npx vitest run test/example-files.test.ts` (new `test/test-data/` regression file) | ❌ W0 | ⬜ pending |
-| 119-xx | TBD | 1 | FIX-01 | — | N/A | unit | targeted vitest: two VariableDecls with their own file-path text, zero validation errors against real lib docs | ❌ W0 | ⬜ pending |
-| 119-xx | TBD | 1 | REF-13 | — | N/A | integration | throwaway per-file parse-error diff (base vs head) over `examples/**/*.bbj` + `bbj-vscode/test/test-data/*.bbj` | ❌ W0 (not committed) | ⬜ pending |
-| 119-xx | TBD | 1 | REF-13 | — | N/A | manual diff | `diff` of a `generated/ast.ts` snapshot before/after regen: no interface or property change | ❌ W0 | ⬜ pending |
+| 119-01-T1 | 01 | 1 | FIX-01 | T-119-01, T-119-02 | the file-path token ends at the nearest `::` | unit | `cd /home/coder/repos/bbj-language-server/bbj-vscode && npx vitest run test/declare-file-paths.test.ts test/example-files.test.ts test/imports.test.ts test/extensionless-use-target.test.ts` (new regression file + targeted test, run once on the base first) | ❌ W0 (created in the task) | ⬜ pending |
+| 119-01-T2 | 01 | 1 | FIX-01 | T-119-03 | no corpus text enters the repo | integration | tsx probe outside the repo, base vs post-#527 (`probe-diff.mjs`), parser-mode corpus base vs post-#527 (`corpus-diff.mjs`), whole suite by failing name vs base | ❌ W0 (not committed) | ⬜ pending |
+| 119-02-T1 | 02 | 2 | REF-13 | T-119-04 | the refactor accepts exactly what it accepted before | integration + manual diff | `diff -q` of the post-#527 `generated/ast.ts` snapshot against the regenerated file; probe post-#527 vs head all zeros; parser suites | ❌ W0 | ⬜ pending |
+| 119-02-T2 | 02 | 2 | FIX-01, REF-13 | T-119-03, T-119-05 | closing keywords only in the PR body | integration | corpus post-#527 vs head (total 0), whole suite by failing name vs base, lint, typecheck:test, build, id and commit-body scans | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
-
-The planner fills in the task IDs.
 
 ---
 

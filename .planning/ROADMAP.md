@@ -786,7 +786,16 @@ the plan SUMMARYs and posted by hand.
   2. The two fragments that open with channel, options and RPAREN share one rule, with the output variant's extra alternative kept or its necessity documented. `npm run langium:generate` and the whole suite, including `example-files.test.ts`, pass with no new failures.
   3. A before/after parse probe over the repository's examples and test data, and a local run of the private conformance corpus, show no changed parse outcome, compared by file set rather than totals.
 
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 119-01-PLAN.md — Base evidence captured before any edit (per-file parse probe, whole-suite failing names, parser-mode corpus). The #527 test fails on the base first, then the `BBjFilePath` terminal becomes non-greedy. Adds the regression file `test/test-data/issue527-declare-file-paths.bbj` and `test/declare-file-paths.test.ts` (two resolved declarations against real lib documents, zero diagnostics), and every base difference is attributed to the two-path shape (FIX-01) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 119-02-PLAN.md — One `ChannelAndOptions` fragment opens both item fragments, with the output-only trailing-comma alternatives documented and `ast.ts` byte-identical. The probe, corpus and whole suite are re-measured against the base after the last source change, and the SUMMARY carries the `Closes #527` / `Closes #602` lines and closing notes (REF-13) (wave 2)
 
 *Planning notes:* the tests research suggested #527 might already be effectively fixed. Start
 with a test on the phase base: if it already passes, keep it as the regression file and close

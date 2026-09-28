@@ -456,7 +456,7 @@ on the document under test.
 regeneration, and probe runs) or cited from files read this session. No user confirmation needed
 before planning.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact regression-file name and targeted-test file name/location**
    - What we know: CONTEXT.md leaves this to Claude's discretion (D-06/discretion notes); the
