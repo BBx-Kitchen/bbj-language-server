@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 116
 current_phase_name: Java-Interop Test Coverage
 status: executing
-stopped_at: Phase 116 context gathered
-last_updated: "2026-09-28T11:44:17.132Z"
+stopped_at: Completed 116-01-PLAN.md
+last_updated: "2026-09-28T11:54:53.445Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 116 execution started
-state_head: 78e6ed5e8a1a9e9ff927822f7aa9712162acc5f5
+state_head: 27e093cd4369ce9a7f84ded251bdc9ff21977248
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 49
-  completed_plans: 43
+  completed_plans: 44
   percent: 46
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 116 (Java-Interop Test Coverage) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 116
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-09-28 — Phase 116 execution started
 
 Progress: [█████░░░░░] 46% (6/13 phases)
@@ -162,6 +162,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 115 P04 | 16min | 3 tasks | 7 files |
 | Phase 115 P05 | 12min | 2 tasks | 4 files |
 | Phase 115 P06 | 22 min | 3 tasks | 4 files |
+| Phase 116 P01 | ~20min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -255,6 +256,9 @@ decisions:
 - [Phase 115]: 115-04: side-effect-free types.ts/scaffold.ts/cases.ts/gate.ts plus a thin run-tests.ts CLI; a real loopback net.createServer + vscode-jsonrpc fake peer drives all 17 cases, the #514 regression and every D-19 mutation through 26 CI tests with no :5008 dependency — D-12/D-17/D-18/D-19: module split and CI coverage were the third step in D-21's ordering, after the scaffold and case/gate fixes landed in 115-02/03
 - [Phase 115]: 115-05: generateReport's argument order is (results, matrixRows, verdict, host, port, generatedAt?) per the plan's stated signature; the one run-tests.ts call site was updated to match
 - [Phase 115]: 115-05: toJsonText is exported from report.ts (beyond the plan's stated export list) so the value-to-JSON-text helper's undefined-to-'null' behavior could be tested directly
+- [Phase 116]: unusedLoopbackPort() reuses startLoopbackPeer() (bind-then-close) instead of a second hand-rolled net.createServer, so loopback-jsonrpc-peer.ts has exactly one listen(0, '127.0.0.1') call site
+- [Phase 116]: 116-01: interop-harness-fake-peer.ts's startFakePeer is now a thin four-entry handler-map adapter over the shared startLoopbackPeer; a toFakePeerContext() helper narrows the richer LoopbackPeerContext down to the harness's own drop()-only FakePeerContext
+- [Phase 116]: 116-01: Task 3's resolution-lock concurrency assertion was settled by a throwaway probe (run once, deleted before commit) confirming distinct-class-name lookups serialize on the wire one at a time, in call order (max in-flight 1)
 
 ### Tech Debt
 
@@ -316,9 +320,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T10:30:08.488Z
-Stopped at: Phase 116 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/116-java-interop-test-coverage/116-CONTEXT.md
+Last session: 2026-09-28T11:54:32.806Z
+Stopped at: Completed 116-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
