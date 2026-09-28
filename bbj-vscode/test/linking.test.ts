@@ -5,14 +5,11 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
-import { shouldRunBBjTests } from './test-helper.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    const isInteropRunning: boolean = await shouldRunBBjTests();
-
     beforeAll(async () => {
         await initializeWorkspace(services.shared);
     });
@@ -291,7 +288,7 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
-    describe.runIf(isInteropRunning)("Interop related tests", () => {
+    describe("Java class linking (test double)", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
                 class public MyClass
@@ -302,7 +299,6 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
-    	
 		test('Imported java classes resolves', async () => {
         	const document = await validate(`
             	use java.util.HashMap
@@ -370,7 +366,6 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
-        
         test('Java FQN access - test for #6', async () => {
             const document = await validate(`
                 use java.sql.Date

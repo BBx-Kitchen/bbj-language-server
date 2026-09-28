@@ -72,7 +72,15 @@ export class JavaInteropTestService extends JavaInteropService {
             createHashMapClass(this.classpath),
             createJavaLangStringClass(this.classpath),
             createJavaLangClassClass(this.classpath),
-            createSysGuiClass(this.classpath)
+            createSysGuiClass(this.classpath),
+            createJavaLangObjectClass(this.classpath),
+            createJavaUtilDateClass(this.classpath),
+            createJavaUtilListClass(this.classpath),
+            createJavaUtilLinkedListClass(this.classpath),
+            createJavaUtilMapClass(this.classpath),
+            createJavaUtilMapEntryClass(this.classpath),
+            createJavaSqlDateClass(this.classpath),
+            createJavaLangBooleanClass(this.classpath)
         ]
         fakeJavaClasses.forEach(clazz => {
             this.classpath.classes.push(clazz)
@@ -208,7 +216,8 @@ function makeMethod(
     container: JavaClass,
     name: string,
     returnType: string,
-    paramSpecs: Array<{ name: string, type: string }> = []
+    paramSpecs: Array<{ name: string, type: string }> = [],
+    opts: { isStatic?: boolean } = {}
 ): JavaMethod {
     const method: JavaMethod = {
         $type: JavaMethod.$type,
@@ -216,7 +225,7 @@ function makeMethod(
         $containerProperty: 'methods',
         $container: container,
         returnType,
-        isStatic: false,
+        isStatic: opts.isStatic ?? false,
         deprecated: false,
         parameters: []
     }
@@ -406,4 +415,150 @@ function createJavaLangStringClass(container: Classpath): JavaClass {
         makeMethod(fakeStringClass, 'charAt', 'char')
     ]
     return fakeStringClass
+}
+
+// java.lang.Object: the base every BBj class falls back to for toString() resolution
+// (createBBjClassMemberScope reads it via getResolvedClass('java.lang.Object')).
+function createJavaLangObjectClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass.$type,
+        name: 'java.lang.Object',
+        packageName: 'java.lang',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+    clazz.methods = [
+        makeMethod(clazz, 'toString', 'java.lang.String')
+    ]
+    return clazz
+}
+
+// java.util.Date: makes `use java.util.Date` / direct-import declare/extends linking tests resolve.
+function createJavaUtilDateClass(container: Classpath): JavaClass {
+    return {
+        $type: JavaClass.$type,
+        name: 'java.util.Date',
+        packageName: 'java.util',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+}
+
+// java.util.List: makes `class List implements java.util.List` linkable.
+function createJavaUtilListClass(container: Classpath): JavaClass {
+    return {
+        $type: JavaClass.$type,
+        name: 'java.util.List',
+        packageName: 'java.util',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+}
+
+// java.util.LinkedList: makes `new java.util.LinkedList()` linkable.
+function createJavaUtilLinkedListClass(container: Classpath): JavaClass {
+    return {
+        $type: JavaClass.$type,
+        name: 'java.util.LinkedList',
+        packageName: 'java.util',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+}
+
+// java.util.Map: makes bare `java.util.Map.Entry` FQN references resolve through the java.util
+// package tree.
+function createJavaUtilMapClass(container: Classpath): JavaClass {
+    return {
+        $type: JavaClass.$type,
+        name: 'java.util.Map',
+        packageName: 'java.util',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+}
+
+// java.util.Map.Entry: Map.Entry's getValue for the nested-class FQN linking tests.
+function createJavaUtilMapEntryClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass.$type,
+        name: 'java.util.Map.Entry',
+        packageName: 'java.util',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+    clazz.methods = [
+        makeMethod(clazz, 'getValue', 'java.lang.Object')
+    ]
+    return clazz
+}
+
+// java.sql.Date: static valueOf for the FQN-access-without-use linking tests (#6).
+function createJavaSqlDateClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass.$type,
+        name: 'java.sql.Date',
+        packageName: 'java.sql',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+    clazz.methods = [
+        makeMethod(clazz, 'valueOf', 'java.sql.Date', [{ name: 's', type: 'java.lang.String' }], { isStatic: true })
+    ]
+    return clazz
+}
+
+// java.lang.Boolean: static TRUE field for the FQN-access-without-use linking tests (#6).
+function createJavaLangBooleanClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass.$type,
+        name: 'java.lang.Boolean',
+        packageName: 'java.lang',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: [],
+        constructors: [],
+        deprecated: false
+    }
+    clazz.fields = [
+        makeField(clazz, 'TRUE', 'java.lang.Boolean', { isStatic: true })
+    ]
+    return clazz
 }
