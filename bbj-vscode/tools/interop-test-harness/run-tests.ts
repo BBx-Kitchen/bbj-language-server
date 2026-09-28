@@ -222,6 +222,74 @@ function isPeerErrorReply(err: unknown): err is ResponseError {
     return !transportCodes.includes(err.code);
 }
 
+// ─── Critical fields and the exit gate ──────────────────────────────────────
+
+/**
+ * The one list of fields the language server depends on. The gate and the report both read this
+ * constant; nothing else in the harness declares its own critical-field list.
+ */
+export const CRITICAL_FIELDS = [
+    'isStatic', 'isDeprecated', 'constructors', 'name',
+    'returnType', 'type', 'parameters', 'packageName',
+] as const;
+
+/**
+ * The text after the last '.' in a field path, or the whole path when there is none. A field
+ * check named `methods[0].returnType` has the final segment `returnType`.
+ */
+function finalSegment(path: string): string {
+    const idx = path.lastIndexOf('.');
+    return idx === -1 ? path : path.slice(idx + 1);
+}
+
+/**
+ * True only when a field check's final path segment equals a CRITICAL_FIELDS entry exactly — no
+ * substring matching, so a check on `returnType` never matches `type` and `packageName` never
+ * matches `name`.
+ */
+function isCriticalFieldCheck(fieldCheck: FieldCheck): boolean {
+    return (CRITICAL_FIELDS as readonly string[]).includes(finalSegment(fieldCheck.field));
+}
+
+interface CriticalFailure {
+    caseName: string;
+    field: string;
+    present: boolean;
+    typeMatch: boolean;
+}
+
+interface GateVerdict {
+    passCount: number;
+    failCount: number;
+    errorCount: number;
+    criticalFailures: CriticalFailure[];
+    exitCode: number;
+}
+
+/**
+ * The one place the run's overall pass/fail verdict and exit code are decided. A critical field
+ * check counts as failed unless it is both present and correctly typed. exitCode is 1 when any
+ * case failed or errored, or any critical field check failed; 0 otherwise. The connection-failure
+ * path and the fatal handler keep exit code 2, decided outside this function.
+ */
+function evaluateGate(results: TestResult[]): GateVerdict {
+    const passCount = results.filter(r => r.status === 'pass').length;
+    const failCount = results.filter(r => r.status === 'fail').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+
+    const criticalFailures: CriticalFailure[] = [];
+    for (const r of results) {
+        for (const fc of r.fieldChecks) {
+            if (isCriticalFieldCheck(fc) && !(fc.present && fc.typeMatch)) {
+                criticalFailures.push({ caseName: r.name, field: fc.field, present: fc.present, typeMatch: fc.typeMatch });
+            }
+        }
+    }
+
+    const exitCode = (failCount > 0 || errorCount > 0 || criticalFailures.length > 0) ? 1 : 0;
+    return { passCount, failCount, errorCount, criticalFailures, exitCode };
+}
+
 /**
  * The one request scaffold every case runs through. Sends exactly one request, times it, and
  * lets `deriveStatus` alone decide pass or fail — no case builds its own result. A rejection
@@ -756,21 +824,17 @@ function statusBadge(status: TestStatus): string {
     return `<span style="background:${colors[status]};color:#fff;padding:2px 8px;border-radius:4px;font-size:0.85em;font-weight:600;">${labels[status]}</span>`;
 }
 
-function generateReport(results: TestResult[], matrixRows: MatrixRow[], host: string, port: number): string {
-    const passCount = results.filter(r => r.status === 'pass').length;
-    const failCount = results.filter(r => r.status === 'fail').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
+function generateReport(results: TestResult[], matrixRows: MatrixRow[], host: string, port: number, verdict: GateVerdict): string {
+    const { passCount, failCount, errorCount } = verdict;
     const total = results.length;
     const totalDuration = results.reduce((s, r) => s + r.durationMs, 0);
     const timestamp = new Date().toISOString();
-
-    const criticalFields = ['isStatic', 'isDeprecated', 'constructors', 'name', 'returnType', 'type', 'parameters', 'packageName'];
 
     let matrixHtml = '';
     if (matrixRows.length > 0) {
         matrixHtml = `
         <h2>Field Presence Matrix</h2>
-        <p class="subtitle">Shows which critical fields the Java interop service provides for each tested class.</p>
+        <p class="subtitle">Shows which critical fields the Java interop service provides for each tested class. Gated fields: ${escapeHtml(CRITICAL_FIELDS.join(', '))}.</p>
         <div class="table-wrap">
         <table class="matrix">
             <thead>
@@ -817,7 +881,7 @@ function generateReport(results: TestResult[], matrixRows: MatrixRow[], host: st
 
         const fieldCheckRows = r.fieldChecks.length > 0
             ? `<table class="field-table">
-                <thead><tr><th>Field</th><th>Expected</th><th>Actual</th><th>Present</th><th>Type Match</th></tr></thead>
+                <thead><tr><th>Field</th><th>Expected</th><th>Actual</th><th>Present</th><th>Type Match</th><th>Critical</th></tr></thead>
                 <tbody>${r.fieldChecks.map(fc => `
                     <tr class="${fc.present && fc.typeMatch ? '' : 'row-warn'}">
                         <td><code>${escapeHtml(fc.field)}</code></td>
@@ -825,6 +889,7 @@ function generateReport(results: TestResult[], matrixRows: MatrixRow[], host: st
                         <td>${escapeHtml(fc.actual)}</td>
                         <td>${fc.present ? '✓' : '✗'}</td>
                         <td>${fc.typeMatch ? '✓' : '✗'}</td>
+                        <td>${isCriticalFieldCheck(fc) ? '✓' : ''}</td>
                     </tr>`).join('')}
                 </tbody></table>`
             : '';
@@ -1130,31 +1195,25 @@ async function main(): Promise<void> {
     // Disconnect
     conn.dispose();
 
-    // Summary
-    const passCount = results.filter(r => r.status === 'pass').length;
-    const failCount = results.filter(r => r.status === 'fail').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
+    // Summary — the one verdict that drives the console output, the report and the exit code
+    const verdict = evaluateGate(results);
 
     console.log(`\n  ─────────────────────────────`);
-    console.log(`  Results: ${passCount} passed, ${failCount} failed, ${errorCount} errors`);
+    console.log(`  Results: ${verdict.passCount} passed, ${verdict.failCount} failed, ${verdict.errorCount} errors`);
+
+    if (verdict.criticalFailures.length > 0) {
+        console.log(`  Critical field failures:`);
+        for (const cf of verdict.criticalFailures) {
+            console.log(`    ✗ ${cf.caseName}: ${cf.field}`);
+        }
+    }
 
     // Generate report
-    const html = generateReport(results, matrixRows, HOST, PORT);
+    const html = generateReport(results, matrixRows, HOST, PORT, verdict);
     writeFileSync(OUTPUT_PATH, html, 'utf-8');
     console.log(`  Report: ${OUTPUT_PATH}\n`);
 
-    // Check for critical field failures
-    const criticalFailures = results.some(r => {
-        if (r.status === 'error') return false; // Connection errors don't count as field failures
-        return r.fieldChecks.some(fc => {
-            const isCritical = ['isStatic', 'isDeprecated', 'constructors'].some(cf => fc.field.includes(cf));
-            return isCritical && !fc.present;
-        }) || r.assertions.some(a => !a.passed);
-    });
-
-    if (failCount > 0 || criticalFailures) {
-        process.exit(1);
-    }
+    process.exit(verdict.exitCode);
 }
 
 main().catch(err => {
