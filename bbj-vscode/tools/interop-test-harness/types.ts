@@ -93,7 +93,7 @@ export interface MatrixRow {
     hasPackageName: boolean;
 }
 
-// ─── Case outcome types (the opt-in peer-error path, D-02/D-03/D-04) ───────
+// ─── Case outcome types (the opt-in peer-error path) ────────────────────────
 
 export interface ResponseOutcome<R> {
     kind: 'response';
