@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: verifying
-stopped_at: Completed 117-06-PLAN.md (DEP-05 repro closed, phase 117 requirements all complete)
-last_updated: "2026-09-28T18:15:39.534Z"
+stopped_at: Phase 118 context gathered
+last_updated: "2026-09-28T19:26:17.403Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 117 execution started
-state_head: a7c8943e28da652f830b402b7a27dca7472a60af
+state_head: 5f31891d6ca858099b8846bd9aba6cdc9ba24e6f
 progress:
   total_phases: 13
   completed_phases: 7
@@ -346,9 +346,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T18:15:39.208Z
-Stopped at: Completed 117-06-PLAN.md (DEP-05 repro closed, phase 117 requirements all complete)
-Resume file: None
+Last session: 2026-09-28T19:26:17.038Z
+Stopped at: Phase 118 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/118-small-dedup-drift-guards/118-CONTEXT.md
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
