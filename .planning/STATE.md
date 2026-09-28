@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 116
 current_phase_name: Java-Interop Test Coverage
 status: executing
-stopped_at: Completed 116-04-PLAN.md
-last_updated: "2026-09-28T12:51:04.639Z"
+stopped_at: Completed 116-05-PLAN.md
+last_updated: "2026-09-28T13:28:41.023Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 116 execution started
-state_head: b722d4ec31d9c5dde6a658842945b97ccc05e385
+state_head: e1704f92fb7d4a7ebbe1b5a33658afc5ff20f277
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 49
-  completed_plans: 47
+  completed_plans: 48
   percent: 46
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 116 (Java-Interop Test Coverage) — EXECUTING
-Plan: 5 of 6
+Plan: 2 of 6
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 116 execution started
 
@@ -166,6 +166,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 116 P02 | ~30min | 2 tasks | 8 files |
 | Phase 116 P03 | 20min | 2 tasks | 3 files |
 | Phase 116 P04 | ~20min | 2 tasks | 5 files |
+| Phase 116 P05 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,7 @@ decisions:
 - [Phase 116]: 116-03: the #505 scope-cost-regression signature-type test's fixture types moved from java.util.List/java.util.Map to java.util.Collection/java.util.SortedMap — the completed interop fixture now preloads List and Map, so the test needs distinct unpreloaded classes to keep its original assertion strength
 - [Phase 116]: 116-04: the JAVA_PRIMITIVE_TYPE_NAMES src fix is narrow — a new bbj-scope-local.ts processNode branch (SimpleTypeRef primitive) and a bbj-scope.ts resolveClassScopeByName offer (primitive-only, ahead of the unchanged global scope); every other name, including capitalized classes like Byte, is unaffected
 - [Phase 116]: 116-04: 'Array type ref' uses methodret #strings (not the null() fallback the plan allowed); it validated cleanly on the first attempt
+- [Phase 116]: 116-05: suppress-object-receiver-warning chosen for the java.lang.Object receiver Warning (Task 1's blocking-human checkpoint, resolved by the human at plan time); processLinkingErrors now skips a member reached through an exactly-java.lang.Object receiver, and 'Release usage' (TEST-04's last disabled assertion) asserts expectNoValidationErrors and passes
 
 ### Tech Debt
 
@@ -329,8 +331,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-28T12:51:04.368Z
-Stopped at: Completed 116-04-PLAN.md
+Last session: 2026-09-28T13:28:40.733Z
+Stopped at: Completed 116-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 115` (no 115 context yet), or `/gsd-plan-phase 115`.
