@@ -854,7 +854,48 @@ extend, so keep the move behaviour-neutral.
   3. The `java-interop-*.test.ts` suites, the Phase 116 fake-socket suite and the whole suite pass without assertion changes.
   4. Against a live BBjServices, hover, completion, the missing-USE quick fix and Refresh Java Classes behave as before in VS Code and IntelliJ.
 
-**Plans**: TBD
+**Plans:** 10 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 121-01-PLAN.md — Phase base captured first (base SHA, whole-suite failing names, 23 load-bearing suites, peer state). `services.java.JavadocProvider` DI key; JavaInteropService, hover and the workspace manager read it; test services register their own initialised provider, double guards gone, javadoc spies retargeted (REF-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 121-02-PLAN.md — #624 regression test first (red), then one provider per services set and `getInstance()` deleted (green); REF-09 measured against the base, REF-09 end commit recorded, REF-09 complete (REF-09)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 121-03-PLAN.md — Request lock into `java-interop-lock.ts` (`ResolutionLock`) with its unit test; D-08 exports check written (REF-12)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 121-04-PLAN.md — Shared connection, circuit breaker and connection generation into `java-interop-connection.ts` behind call-time hooks, protected hooks kept on the front, with its unit test (REF-12)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 121-05-PLAN.md — Dedicated parseProgram lane into the connection module; `disconnect()` carries clearCache step 6 (REF-12)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 121-06-PLAN.md — Complete class index into `java-interop-class-index.ts`; candidate lookups stay on the front and keep the overridable `ensureCompleteClassIndex` (REF-12)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 121-07-PLAN.md — Classpath and implicit-import loading into `java-interop-classpath.ts`; package-tree code behind a hook (REF-12)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 121-08-PLAN.md — Resolved-class cache and package tree into `java-interop-cache.ts`, limit read eagerly; resolution pipeline byte-identical (REF-12)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 121-09-PLAN.md — Resolution pipeline into the cache module with every override-sensitive call routed back through the front (REF-12)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 121-10-PLAN.md — Whole phase measured against the base, each module tested alone, both distributables built, blocking live hand check in VS Code and IntelliJ, REF-12 complete after approval (REF-12)
 
 *Planning notes:* do REF-09 first; it is small and touches the same DI wiring. Extract one
 responsibility at a time with the suite green after each step. Live-interop tests must warm up
