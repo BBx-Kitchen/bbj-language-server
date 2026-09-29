@@ -9,7 +9,6 @@ import { createBBjServices } from '../src/language/bbj-module.js';
 import { JavadocProvider, PackageDoc } from '../src/language/java-javadoc.js';
 import { logger, LogLevel } from '../src/language/logger.js';
 import { createBBjTestServices } from './bbj-test-module.js';
-import { createCountingInteropServices, rawMethod } from './counting-java-interop.js';
 import { createFakePeerServices } from './fake-interop-peer.js';
 
 class JavadocProviderUnderTest extends JavadocProvider {
@@ -180,6 +179,22 @@ class PackageFileSystem extends EmptyFileSystemProvider {
     }
 }
 
+/** A minimal Java class DTO shape, as `JavaInteropService`'s protected `resolveClass` accepts. */
+interface MinimalJavaClassDto {
+    name: string;
+    packageName: string;
+    fields: unknown[];
+    methods: Array<{ name: string, returnType: string, parameters: unknown[] }>;
+    constructors: unknown[];
+    classes: unknown[];
+    deprecated: boolean;
+}
+
+/** Structural view onto `JavaInteropService`'s protected `resolveClass`, reached via cast. */
+interface ResolvableInterop {
+    resolveClass(javaClass: MinimalJavaClassDto): Promise<unknown>;
+}
+
 describe('Independent JavadocProvider instances (#624)', () => {
 
     test('Two createBBjServices sets hand out distinct JavadocProvider objects', () => {
@@ -231,33 +246,37 @@ describe('Independent JavadocProvider instances (#624)', () => {
     })
 
     test('Resolving a scripted class through one services set consults only that set\'s provider', async () => {
-        const first = createCountingInteropServices();
-        const second = createCountingInteropServices();
-        first.interop.scripts.set('com.test.Documented', () => ({
-            simpleName: 'com.test.Documented',
+        const first = createBBjTestServices(EmptyFileSystem);
+        const second = createBBjTestServices(EmptyFileSystem);
+        const dto: MinimalJavaClassDto = {
+            name: 'com.test.Documented',
             packageName: 'com.test',
-            isDeprecated: false,
             fields: [],
-            methods: [rawMethod('go', 'void')],
-            constructors: []
-        }));
+            methods: [{ name: 'go', returnType: 'void', parameters: [] }],
+            constructors: [],
+            classes: [],
+            deprecated: false
+        };
+        const firstInterop = first.BBj.java.JavaInteropService as unknown as ResolvableInterop;
         const firstSpy = vi.spyOn(first.BBj.java.JavadocProvider, 'getDocumentation');
         const secondSpy = vi.spyOn(second.BBj.java.JavadocProvider, 'getDocumentation');
+        // JavaInteropTestService's constructor kicks off its own (unawaited) preload of fifteen
+        // fake classes, so each spy also sees unrelated leftover calls from its own set's
+        // construction. The assertion below checks specifically for `dto`'s own name rather than
+        // "called at all", so it stays correct regardless of that unrelated background activity.
         try {
-            await first.interop.resolveClassByName('com.test.Documented');
-            expect(firstSpy).toHaveBeenCalled();
-            expect(secondSpy).not.toHaveBeenCalled();
+            await firstInterop.resolveClass(dto);
+            const calledWithDto = (spy: typeof firstSpy) => spy.mock.calls.some(call => (call[0] as { name?: string }).name === dto.name);
+            expect(calledWithDto(firstSpy)).toBe(true);
+            expect(calledWithDto(secondSpy)).toBe(false);
         } finally {
             vi.restoreAllMocks();
         }
     })
 
-    test('createBBjTestServices, createCountingInteropServices and createFakePeerServices each hand out a synchronously-initialised provider', () => {
+    test('createBBjTestServices and createFakePeerServices each hand out a synchronously-initialised provider, built on the same createInitializedJavadocProvider primitive', () => {
         const testServices = createBBjTestServices(EmptyFileSystem);
         expect(testServices.BBj.java.JavadocProvider.isInitialized()).toBe(true);
-
-        const counting = createCountingInteropServices();
-        expect(counting.BBj.java.JavadocProvider.isInitialized()).toBe(true);
 
         const fakePeer = createFakePeerServices();
         expect(fakePeer.BBj.java.JavadocProvider.isInitialized()).toBe(true);
