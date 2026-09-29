@@ -360,6 +360,76 @@ describe('action pin and permission checker contract', () => {
         );
     });
 
+    test('a trailing comment on the jobs: key or the first job id does not suppress job attribution', () => {
+        const dir = newFixtureDir('action-pins-job-id-comment-');
+        const file = writeFixtureFile(dir, 'job-id-comment.yml', [
+            'name: Fixture',
+            'on: push',
+            'permissions:',
+            '  contents: read',
+            'jobs: # release jobs',
+            '  pusher: # pushes the tag',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            `      - uses: actions/checkout@${PINNED_SHA} # v4.4.0`,
+            '      - run: |',
+            '          git push origin main',
+        ]);
+
+        const result = runChecker([dir]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain(
+            `${file}:6: job 'pusher' pushes or creates a release but its token has contents: read`
+        );
+    });
+
+    test('a trailing comment on a later job id does not credit its steps to the job before it', () => {
+        const dir = newFixtureDir('action-pins-later-job-id-comment-');
+        const file = writeFixtureFile(dir, 'later-job-id-comment.yml', [
+            'name: Fixture',
+            'on: push',
+            'permissions:',
+            '  contents: read',
+            'jobs:',
+            '  writer:',
+            '    runs-on: ubuntu-latest',
+            '    permissions:',
+            '      contents: write',
+            '    steps:',
+            `      - uses: actions/checkout@${PINNED_SHA} # v4.4.0`,
+            '  pusher: # pushes the tag',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            '      - run: git push origin main',
+        ]);
+
+        const result = runChecker([dir]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain(
+            `${file}:12: job 'pusher' pushes or creates a release but its token has contents: read`
+        );
+    });
+
+    test('a workflow whose jobs: key yields no recognised job ids is a finding', () => {
+        const dir = newFixtureDir('action-pins-no-job-ids-');
+        const file = writeFixtureFile(dir, 'no-job-ids.yml', [
+            'name: Fixture',
+            'on: push',
+            'permissions:',
+            '  contents: read',
+            'jobs:',
+            '  "pusher":',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            `      - uses: actions/checkout@${PINNED_SHA} # v4.4.0`,
+            '      - run: git push origin main',
+        ]);
+
+        const result = runChecker([dir]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain(`${file}:1: workflow has a jobs: key but no job ids were recognised`);
+    });
+
     test('an inline comment on a job-level permissions entry does not drop that key', () => {
         const dir = newFixtureDir('action-pins-permissions-inline-comment-');
         writeFixtureFile(dir, 'inline-comment.yml', [

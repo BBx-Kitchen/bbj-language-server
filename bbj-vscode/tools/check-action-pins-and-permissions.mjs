@@ -21,9 +21,10 @@ import { collectRunBodies } from './check-workflow-secrets.mjs';
 const USES_LINE = /^\s*(?:-\s+)?uses:\s+(?:'([^']*)'|"([^"]*)"|(\S+))(?:\s+(#.*))?\s*$/;
 const PINNED_REF = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._/-]+@[0-9a-f]{40}$/;
 const VERSION_COMMENT = /^#\s*v\d+\.\d+\.\d+\b/;
-const JOBS_KEY_LINE = /^jobs:\s*$/;
-const RUNS_KEY_LINE = /^runs:\s*$/;
-const JOB_ID_LINE = /^(\s+)([A-Za-z0-9_-]+):\s*$/;
+// A mapping key may carry a trailing `# comment`, which YAML allows.
+const JOBS_KEY_LINE = /^jobs:\s*(?:#.*)?$/;
+const RUNS_KEY_LINE = /^runs:\s*(?:#.*)?$/;
+const JOB_ID_LINE = /^(\s+)([A-Za-z0-9_-]+):\s*(?:#.*)?$/;
 const PUSH_OR_RELEASE = /\bgit\s+push\b|\bgh\s+release\b/;
 
 function splitLines(content) {
@@ -365,6 +366,10 @@ export function scanTargets(targets) {
       findings.push({ file, line: 1, message: 'workflow has no top-level permissions block' });
     } else {
       checkTopLevelOverBroad(inspected.topBlock, file, findings);
+    }
+
+    if (inspected.jobs.length === 0) {
+      findings.push({ file, line: 1, message: 'workflow has a jobs: key but no job ids were recognised' });
     }
 
     for (const job of inspected.jobs) {
