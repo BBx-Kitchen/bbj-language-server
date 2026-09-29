@@ -46,8 +46,8 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **CI-02**: `build.yml` no longer duplicates the PR build and test, and has a concurrency group (#549)
 - [ ] **CI-03**: Every GitHub Actions reference is pinned to a commit SHA, with the version in a comment (#550)
 - [x] **CI-04**: Dependabot also watches the `github-actions` ecosystem and the `/documentation` npm tree (#551)
-- [ ] **CI-05**: Every workflow that installs npm or Gradle dependencies uses dependency caching (#518)
-- [ ] **CI-06**: The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it (#573)
+- [x] **CI-05**: Every workflow that installs npm or Gradle dependencies uses dependency caching (#518)
+- [x] **CI-06**: The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it (#573)
 - [ ] **CI-07**: `vscode:prepublish` builds only the bundles that ship, and ships them minified; the dead `esbuild-base` step is gone (#515)
 - [ ] **CI-08**: The `prepare` lifecycle hook no longer duplicates the generate, type-check and bundle pipeline that CI runs explicitly (#598)
 - [x] **CI-09**: The unreachable npm scripts, the unused TextMate generator directive and the self-contradictory `activationEvents` entries are removed from `package.json` (#600)
@@ -140,8 +140,8 @@ None deferred. Every still-open audit issue is in scope.
 | CI-02 | Phase 122 | Complete |
 | CI-03 | Phase 122 | Pending |
 | CI-04 | Phase 117 | Complete |
-| CI-05 | Phase 122 | Pending |
-| CI-06 | Phase 122 | Pending |
+| CI-05 | Phase 122 | Complete |
+| CI-06 | Phase 122 | Complete |
 | CI-07 | Phase 122 | Pending |
 | CI-08 | Phase 122 | Pending |
 | CI-09 | Phase 122 | Complete |
