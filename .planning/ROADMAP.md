@@ -416,7 +416,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
 - [x] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift (completed 2026-09-28)
 - [x] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses (completed 2026-09-29)
-- [ ] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed
+- [x] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed (completed 2026-09-29)
 - [ ] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged
 - [ ] **Phase 122: Release & CI Pipeline Hardening** - Least-privilege, SHA-pinned, cached workflows that share one preamble, and a minified VSIX built once without dead scripts, verified with care because every push to `main` publishes
 
@@ -817,7 +817,7 @@ keyword-as-identifier cases (a v4.5 lesson). `npm run build` does not regenerate
   3. The unused `bbj.em.credentials` secret fallback and the unreachable legacy `bbj.web.username`/`bbj.web.password` branch are gone. The activation, `Commands.cjs` and EM tests pass unchanged, and every contributed command is still registered after activation.
   4. A hand check in VS Code runs a GUI, a BUI and a DWC program, logs into EM and compiles a file, and each behaves as before.
 
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -933,13 +933,13 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 111. Java Class Data from the Interop Peer | 6/6 | Complete | 2026-09-27 |
 | 112. EM Login & Web Launch Fail Closed | 4/4 | Complete | 2026-09-27 |
 | 113. Composer Webview Hardening & Consolidation | 8/8 | Complete | 2026-09-27 |
-| 114. Lint, Type-Check & Test-Suite Gates | 13/13 | In progress |  |
-| 115. Honest Interop Test Harness | 6/6 | Planned |  |
-| 116. Java-Interop Test Coverage | 6/6 | Planned |  |
-| 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Not started |  |
-| 118. Small Dedup & Drift Guards | 3/3 | Not started |  |
-| 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Not started |  |
-| 120. ClassValidator & activate() Splits | 4/4 | Not started |  |
+| 114. Lint, Type-Check & Test-Suite Gates | 13/13 | Complete | 2026-09-27 |
+| 115. Honest Interop Test Harness | 6/6 | Complete | 2026-09-28 |
+| 116. Java-Interop Test Coverage | 6/6 | Complete | 2026-09-28 |
+| 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Executed — UAT pending |  |
+| 118. Small Dedup & Drift Guards | 3/3 | Complete | 2026-09-28 |
+| 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Complete | 2026-09-29 |
+| 120. ClassValidator & activate() Splits | 4/4 | Complete | 2026-09-29 |
 | 121. Java Interop Service Decomposition | 0/TBD | Not started | - |
 | 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
 

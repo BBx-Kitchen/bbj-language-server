@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 120
-current_phase_name: ClassValidator & activate() Splits
-status: executing
-stopped_at: Completed 120-04-PLAN.md (phase 120 complete)
-last_updated: "2026-09-29T08:01:46.708Z"
+current_phase: 121
+current_phase_name: Java Interop Service Decomposition
+status: planning
+stopped_at: Phase 120 complete (UAT + security verified), ready to plan Phase 121
+last_updated: "2026-09-29T08:32:43.186Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 120 execution started
-state_head: f816974a141c8557503c97f72561f56a7cbdbd73
+last_activity_desc: Phase 120 complete, transitioned to Phase 121
+state_head: b05e8cde0e956f024b1b39acf203cf8aec493c2c
 progress:
   total_phases: 13
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 64
   completed_plans: 64
-  percent: 69
+  percent: 77
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-28 (Phase 116 complete — verification 4/4, 4/4 requirements; next Phase 117)
+**Last Updated:** 2026-09-29 (Phase 120 complete — UAT 1/1, security 18/18 closed, 2/2 requirements; next Phase 121, Phase 117 UAT pending)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-28)
+See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 120 — ClassValidator & activate() Splits
+**Current Focus:** Phase 121 — Java Interop Service Decomposition (Phase 117 UAT still pending)
 
 ---
 
 ## Current Position
 
-Phase: 120 (ClassValidator & activate() Splits) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-09-29 — Completed 120-03-PLAN.md (EM login/validate shared runner and em-auth.ts split)
+Phase: 121 — Java Interop Service Decomposition
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-29 — Phase 120 complete (UAT 1/1, SECURITY 18/18 closed), transitioned to Phase 121
 
-Progress: [███████░░░] 69% (8/13 phases)
+Progress: [████████░░] 77% (10/13 phases)
 
 ### v4.7 milestone map
 
@@ -345,6 +345,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 - **Advisory review follow-ups still open:** `89-REVIEW` WR-01 (VS Code composer primary button always says "Insert"); `90-SECURITY` T-90-11 (`ComposerHandleCache` has no source guard forbidding a static map); `86-05-REVIEW` WR-02 (no exception handling around the bounded restart wait); `97-REVIEW` WR-01..WR-04 closed by FIX-04 in Phase 114. The `79-REVIEW` IN-02, `83-REVIEW` WR-02/WR-04 and `82-UI-REVIEW` colour items were retired by v4.4 phases 93, 94 and 96.
 
 - **No release since 0.16.0.** v4.5 is on `main` via PR #691 (merged 2026-09-24) and v4.6 via PR #699 (merged 2026-09-26); both still need a release. The `bbj-ls` endpoint MR (`feat/689-parse-program-endpoint`, BASIS GitLab) is opened by hand.
+- IntelliJ `ComposerRequestContractTest` fails since 116-02 moved the `bbj/refreshJavaClasses` literal from `main.ts` to `language/java-class-refresh.ts`; the test's scanned-file list needs that file (found at the Phase 120 UAT build, which used `-x test`).
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 - 117-05 halted: langium 4.4.0 regression repro (DEP-05) not reproduced despite toy + bbj-subset fallback grammars; human decision needed (accept negative result / invest in larger-scale grammar / port custom lexer split) before DEP-05 can close
 
@@ -367,11 +368,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T08:01:46.299Z
-Stopped at: Completed 120-04-PLAN.md (phase 120 complete)
+Last session: 2026-09-29T08:45:00Z
+Stopped at: Phase 120 complete, ready to plan Phase 121
 Resume file: None
 
-Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 120`.
+Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items

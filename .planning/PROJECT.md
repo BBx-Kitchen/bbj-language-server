@@ -432,6 +432,8 @@ until publication).
 - ✓ **REF-04**: The four built-in-catalog `.ts` wrappers share one closing shape (#583) — v4.7 Phase 118
 - ✓ **REF-05**: A byte-exact test fails when a `.bbl` catalog file drifts from its `.ts` source (#603) — v4.7 Phase 118
 - ✓ **REF-06**: A test fails in either direction when the `package.json` `bbj.compiler.*` contributions drift from the compiler-options table (#606) — v4.7 Phase 118
+- ✓ **REF-10**: `ClassValidator` is split into modules along its four responsibilities, with unchanged diagnostics (#625) — v4.7 Phase 120
+- ✓ **REF-11**: `activate()` is split into single-purpose registration functions sharing one exec-wrapping helper, with unchanged behaviour (#564) — v4.7 Phase 120
 
 ### Active
 
@@ -715,4 +717,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-28 after Phase 118*
+*Last updated: 2026-09-29 after Phase 120*
