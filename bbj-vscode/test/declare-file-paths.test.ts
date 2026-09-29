@@ -151,4 +151,18 @@ describe('Two file-path-qualified class references on one line (#527)', () => {
         expect(extendsRefTexts).toEqual(['::a::A']);
         expect(implementsRefTexts).toEqual(['::b::B']);
     });
+
+    test('a malformed path with three colons in a row ends at the first closing pair and is an error', async () => {
+        // The greedy terminal swallowed `::foo:::bar::` whole. The path token now stops at the
+        // first `::`, so the stray `:bar::` left behind cannot parse and the line is reported.
+        const text = 'declare ::foo:::bar::ClassA x\n';
+        const filePathImages = services.BBj.parser.Lexer.tokenize(text).tokens
+            .filter(t => t.tokenType.name === 'BBjFilePath')
+            .map(t => t.image);
+        expect(filePathImages[0]).toBe('::foo::');
+
+        const document = await parse(text, { documentUri: 'file:///issue527/malformed.bbj' });
+        const errorCount = document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length;
+        expect(errorCount).toBeGreaterThan(0);
+    });
 });
