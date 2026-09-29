@@ -13,6 +13,7 @@ import {
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
 import { registerOpenFilePrompts } from './open-file-prompts.js';
+import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import { registerAddWindowComposer } from './addwindow-composer-ui.js';
 import { registerAddChildWindowComposer } from './addchildwindow-composer-ui.js';
@@ -483,12 +484,29 @@ export function activate(context: vscode.ExtensionContext): void {
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
+
+    registerConfigFileCommands(context);
+    registerEmLoginCommand(context, { outputChannel });
+    registerRunCommands(context, { outputChannel });
+    registerCompileCommands(context);
+    registerJavaClasspathCommands(context, { client });
+    registerDocumentFormatter(context);
+    registerOpenFilePrompts(context);
+    registerDiagnosticStatusBars(context, { client });
+    registerConfigReloadStatus(context, { client, restartGate });
+    registerConfigAssociation(context, { client });
+}
+
+/** Registers bbj.config, bbj.properties and bbj.em. */
+function registerConfigFileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.config", Commands.openConfigFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager));
+}
 
-    // Register EM login command
-    registerEmLoginCommand(context, { outputChannel });
+/** Registers bbj.run and the BUI/DWC commands, both auto-prompting login and validating the token. */
+function registerRunCommands(context: vscode.ExtensionContext, deps: { outputChannel: vscode.LogOutputChannel }): void {
+    const { outputChannel } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.run", Commands.run));
 
     // BUI command with auto-prompt login and token validation
@@ -514,12 +532,20 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!creds) return; // User cancelled login
         Commands.runDWC({ fsPath: target }, creds);
     }));
+}
+
+/** Registers the compile/denumber/decompile commands and the compiler-options QuickPick. */
+function registerCompileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", Commands.denumber));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions));
+}
 
+/** Registers the Java classpath refresh command and the classpath-entries picker. */
+function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
         if (!client) {
             vscode.window.showErrorMessage('BBj language server not running');
@@ -573,72 +599,21 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
         }
     }));
+}
 
+/** Registers the BBj document formatter. */
+function registerDocumentFormatter(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider(
             "bbj",
             DocumentFormatter
         )
     );
+}
 
-    // Offer to decompile/denumber (or open read-only) tokenized and line-numbered BBj programs.
-    registerOpenFilePrompts(context);
-
-    // Diagnostic suppression status bar indicator
-    const suppressionStatusBar = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Left, 100
-    );
-    suppressionStatusBar.text = '$(warning) Diagnostics filtered';
-    suppressionStatusBar.tooltip = 'Parse errors detected — cascading linking and validation noise is hidden. Fix parse errors to see full diagnostics.';
-    context.subscriptions.push(suppressionStatusBar);
-
-    // Show/hide based on whether the active document has errors
-    const updateSuppressionStatus = () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.languageId !== 'bbj') {
-            suppressionStatusBar.hide();
-            return;
-        }
-        const diags = vscode.languages.getDiagnostics(editor.document.uri);
-        const hasError = diags.some(
-            d => d.severity === vscode.DiagnosticSeverity.Error
-        );
-        // Simple heuristic: show when any error exists (suppression is likely active)
-        // Phase 53 can refine with a custom LSP notification if needed
-        if (hasError && vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true)) {
-            suppressionStatusBar.show();
-        } else {
-            suppressionStatusBar.hide();
-        }
-    };
-
-    context.subscriptions.push(
-        vscode.languages.onDidChangeDiagnostics(() => updateSuppressionStatus())
-    );
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(() => updateSuppressionStatus())
-    );
-
-    // BBjCPL availability status bar indicator
-    // Hidden by default — shown only when BBjCPL is detected as unavailable
-    const bbjcplStatusBar = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Left, 99
-    );
-    bbjcplStatusBar.text = '$(warning) BBjCPL: unavailable';
-    bbjcplStatusBar.tooltip = 'BBjCPL compiler not found. Check that BBj is installed and bbj.home is configured.';
-    context.subscriptions.push(bbjcplStatusBar);
-
-    // Listen for BBjCPL availability notifications from the language server
-    context.subscriptions.push(
-        client.onNotification('bbj/bbjcplAvailability', (params: { available: boolean }) => {
-            if (params.available) {
-                bbjcplStatusBar.hide();
-            } else {
-                bbjcplStatusBar.show();
-            }
-        })
-    );
-
+/** Registers the config-reload status bar (#486) and the notification handler that drives it through the restart gate. */
+function registerConfigReloadStatus(context: vscode.ExtensionContext, deps: { client: LanguageClient, restartGate: RestartGate | undefined }): void {
+    const { client, restartGate } = deps;
     // Config-reload status bar indicator (#486) — hidden by default, driven
     // entirely by onConfigRestartPhase via the restart gate above.
     configReloadStatusBar = vscode.window.createStatusBarItem(
@@ -656,7 +631,11 @@ export function activate(context: vscode.ExtensionContext): void {
             restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
         })
     );
+}
 
+/** Registers the resolved-config-path handler and the config-file association listeners. */
+function registerConfigAssociation(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
     // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
     // throws and never blocks activation — a bad payload just means no cache update.
     context.subscriptions.push(
@@ -703,7 +682,6 @@ export function activate(context: vscode.ExtensionContext): void {
             sweepOpenDocumentsForConfigAssociation();
         })
     );
-
 }
 
 // This function is called when the extension is deactivated.
