@@ -16,8 +16,6 @@ import { readSimpleName } from "./utils.js";
  */
 export class JavadocProvider {
 
-    private static _instance: JavadocProvider;
-
     private lazyLoad: boolean = false;
     private initialized: boolean = false;
     private packages: Map<string, PackageDoc | URI | null> = new Map();
@@ -27,13 +25,6 @@ export class JavadocProvider {
 
     constructor(lazyLoad: boolean = true) {
         this.lazyLoad = lazyLoad;
-    }
-
-    static getInstance(): JavadocProvider {
-        if (!JavadocProvider._instance) {
-            JavadocProvider._instance = new JavadocProvider();
-        }
-        return JavadocProvider._instance;
     }
 
     /**

@@ -5,7 +5,6 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { Model } from '../../src/language/generated/ast.js';
 import { createBBjServices } from '../../src/language/bbj-module.js';
-import { JavadocProvider } from '../../src/language/java-javadoc.js';
 import { JavaSyntheticDocUri } from '../../src/language/java-interop.js';
 import { initializeWorkspace, shouldRunBBjTests } from '../test-helper.js';
 
@@ -24,8 +23,8 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
 
     beforeAll(async () => {
         if (!run) return;
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        if (!services.BBj.java.JavadocProvider.isInitialized()) {
+            services.BBj.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
         }
         const interop = services.BBj.java.JavaInteropService;
         interop.setConnectionConfig('127.0.0.1', 5008);

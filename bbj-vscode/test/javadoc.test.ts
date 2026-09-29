@@ -24,7 +24,7 @@ class JavadocProviderUnderTest extends JavadocProvider {
 describe('Javadoc tests', () => {
 
     test('Check initialize called', async () => {
-        const javadocProvider = JavadocProvider.getInstance();
+        const javadocProvider = new JavadocProvider();
         await expect(javadocProvider.getPackageDoc('test'))
             .rejects
             .toThrow('JavadocProvider not initialized. Call initialize() first.');

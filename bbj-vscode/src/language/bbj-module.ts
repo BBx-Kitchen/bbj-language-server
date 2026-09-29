@@ -96,7 +96,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     java: {
         JavaInteropService: (services) => new JavaInteropService(services),
-        JavadocProvider: () => JavadocProvider.getInstance()
+        JavadocProvider: () => new JavadocProvider()
     },
     compiler: {
         BBjCPLService: (services) => new BBjCPLService(services),

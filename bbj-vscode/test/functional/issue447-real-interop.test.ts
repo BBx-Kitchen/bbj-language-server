@@ -10,7 +10,6 @@ import { Model } from '../../src/language/generated/ast.js';
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../../src/language/bbj-module.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../../src/language/generated/module.js';
 import { JavaInteropService, METHOD_NOT_FOUND } from '../../src/language/java-interop.js';
-import { JavadocProvider } from '../../src/language/java-javadoc.js';
 import { registerValidationChecks } from '../../src/language/bbj-validator.js';
 import { initializeWorkspace, shouldRunBBjTests } from '../test-helper.js';
 import { createFakePeerServices } from '../fake-interop-peer.js';
@@ -121,8 +120,8 @@ describe('Issue #447 - suggest missing use statements (real interop)', async () 
 
     beforeAll(async () => {
         if (!run) return;
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        if (!services.BBj.java.JavadocProvider.isInitialized()) {
+            services.BBj.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
         }
         services.BBj.java.JavaInteropService.setConnectionConfig('127.0.0.1', 5008);
         await initializeWorkspace(services.shared);
@@ -199,8 +198,8 @@ describe('Issue #447 - forced fallback with a live backend (real interop)', asyn
 
     beforeAll(async () => {
         if (!run) return;
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        if (!services.BBj.java.JavadocProvider.isInitialized()) {
+            services.BBj.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
         }
         services.BBj.java.JavaInteropService.setConnectionConfig('127.0.0.1', 5008);
         await initializeWorkspace(services.shared);

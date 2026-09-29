@@ -4,7 +4,6 @@ import type { CancellationToken } from 'vscode-jsonrpc/node.js';
 import { createBBjServices } from '../../src/language/bbj-module.js';
 import { JavaClass } from '../../src/language/generated/ast.js';
 import { canonicalJavaClassName, isLocalJavaTypeName } from '../../src/language/java-interop.js';
-import { JavadocProvider } from '../../src/language/java-javadoc.js';
 import { LogLevel, logger } from '../../src/language/logger.js';
 import { initializeWorkspace, shouldRunBBjTests } from '../test-helper.js';
 
@@ -36,8 +35,8 @@ describe('Java class lookups against the real backend (real interop)', async () 
 
     beforeAll(async () => {
         if (!run) return;
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        if (!services.BBj.java.JavadocProvider.isInitialized()) {
+            services.BBj.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
         }
         interop.setConnectionConfig('127.0.0.1', 5008);
         logger.setLevel(LogLevel.DEBUG);

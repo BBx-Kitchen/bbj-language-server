@@ -17,7 +17,6 @@ import { EmptyFileSystem } from 'langium';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createBBjServices, type BBjServices } from '../src/language/bbj-module.js';
 import { JavaInteropService } from '../src/language/java-interop.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 import { neverAnswer, startLoopbackPeer, unusedLoopbackPort, type LoopbackPeer } from './loopback-jsonrpc-peer.js';
 
 /** Exposes connect()/createSocket()/getRawClass() as public passthroughs; overrides nothing. */
@@ -42,8 +41,8 @@ function newServices(): BBjServices {
 /** A fresh, unconfigured service. Mirrors test/fake-interop-peer.ts's JavadocProvider guard. */
 function newInterop(): LoopbackInterop {
     const services = newServices();
-    if (!JavadocProvider.getInstance().isInitialized()) {
-        JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+    if (!services.java.JavadocProvider.isInitialized()) {
+        services.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
     }
     return new LoopbackInterop(services);
 }
