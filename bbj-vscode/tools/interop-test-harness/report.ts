@@ -25,8 +25,8 @@ export function toJsonText(value: unknown): string {
 }
 
 // One token per JSON string, number, boolean or null. The JSON-string pattern keeps its
-// backslash-escape handling — see Pitfall 2 in the phase research: it already correctly matches
-// a string containing an escaped quote, so it stays untouched here.
+// backslash-escape handling: it already correctly matches a string containing an escaped quote,
+// so it stays untouched here.
 const JSON_TOKEN_PATTERN = /"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g;
 
 /**
