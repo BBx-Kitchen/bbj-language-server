@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: planning
-stopped_at: Phase 120 complete (UAT + security verified), ready to plan Phase 121
-last_updated: "2026-09-29T08:32:43.186Z"
+stopped_at: Phase 121 context gathered
+last_updated: "2026-09-29T09:15:01.016Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 120 complete, transitioned to Phase 121
-state_head: b05e8cde0e956f024b1b39acf203cf8aec493c2c
+state_head: 34ea5458036a3165bcecd6178a9626ccbcce04f3
 progress:
   total_phases: 13
   completed_phases: 10
@@ -368,9 +368,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T08:45:00Z
-Stopped at: Phase 120 complete, ready to plan Phase 121
-Resume file: None
+Last session: 2026-09-29T09:15:00.517Z
+Stopped at: Phase 121 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/121-java-interop-service-decomposition/121-CONTEXT.md
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
