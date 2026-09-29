@@ -83,13 +83,14 @@ export function checkBBjClass<N extends AstNode>(klass: BbjClass, uriOfDeclarati
         case "PUBLIC":
             //everything is allowed
             return;
-        case "PROTECTED":
+        case "PROTECTED": {
             const dirOfDeclaration = dirname(uriOfDeclaration);
             const dirOfUsage = dirname(uriOfUsage);
             if (!isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
                 accept("error", `Protected ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this directory.`, info);
             }
             break;
+        }
         case "PRIVATE":
             if (uriOfUsage !== uriOfDeclaration) {
                 accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this file.`, info);
