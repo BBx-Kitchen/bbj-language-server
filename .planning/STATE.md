@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Completed 121-03-PLAN.md
-last_updated: "2026-09-29T11:15:03.805Z"
+stopped_at: Completed 121-04-PLAN.md
+last_updated: "2026-09-29T11:31:34.724Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: 1686dc60a6aed37c75b39c89f7b8906a7a45554b
+state_head: a4f14de372cc92bcdfab85054e854e98f26df665
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 67
+  completed_plans: 68
   percent: 77
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 121 execution started
 
@@ -185,6 +185,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P01 | 12min | 2 tasks | 12 files |
 | Phase 121 P02 | 23min | 2 tasks | 9 files |
 | Phase 121 P03 | 8min | 2 tasks | 3 files |
+| Phase 121 P04 | 22min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -312,6 +313,8 @@ decisions:
 - [Phase 121]: 121-01: createBBjTestServices grew an optional javadocProvider parameter so inlay-hints-javadoc.test.ts can hand it a pre-loaded provider instead of racing to initialise the singleton first
 - [Phase 121]: 121-02: JavadocProvider.getInstance()/_instance deleted; the DI factory builds a fresh provider per services set; javadoc.test.ts's #624 regression suite proves two providers in one process share no state; REF-09 complete
 - [Phase 121]: 121-03: ResolutionLock (acquire/currentToken/reset) extracted verbatim into java-interop-lock.ts, a zero-import sibling module held by the front class as a private readonly field; exports-check.mjs (D-08) written for the remaining REF-12 plans to reuse
+- [Phase 121]: 121-04: the shared connection, breaker and generation move verbatim into java-interop-connection.ts as JavaInteropConnection, reached only through call-time hooks (createSocket/wrapSocket/connect) so every hermetic test double's override still fires; probeIfDue/requestClassInfo call hooks.connect() never the module's own connect() directly
+- [Phase 121]: 121-04: the backoff unit test's first draft mismeasured the next probe due time (assumed the gap doubles immediately); corrected to match the real onConnectAttemptSettled ordering, which uses the pre-doubling cooldown for the next due time and only doubles it afterward
 
 ### Tech Debt
 
@@ -375,8 +378,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T11:14:57.324Z
-Stopped at: Completed 121-03-PLAN.md
+Last session: 2026-09-29T11:31:28.944Z
+Stopped at: Completed 121-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.

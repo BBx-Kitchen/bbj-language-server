@@ -854,7 +854,7 @@ extend, so keep the move behaviour-neutral.
   3. The `java-interop-*.test.ts` suites, the Phase 116 fake-socket suite and the whole suite pass without assertion changes.
   4. Against a live BBjServices, hover, completion, the missing-USE quick fix and Refresh Java Classes behave as before in VS Code and IntelliJ.
 
-**Plans:** 3/10 plans executed
+**Plans:** 4/10 plans executed
 
 Plans:
 **Wave 1**
@@ -871,7 +871,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 121-04-PLAN.md — Shared connection, circuit breaker and connection generation into `java-interop-connection.ts` behind call-time hooks, protected hooks kept on the front, with its unit test (REF-12)
+- [x] 121-04-PLAN.md — Shared connection, circuit breaker and connection generation into `java-interop-connection.ts` behind call-time hooks, protected hooks kept on the front, with its unit test (REF-12)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -981,7 +981,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 118. Small Dedup & Drift Guards | 3/3 | Complete | 2026-09-28 |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Complete | 2026-09-29 |
 | 120. ClassValidator & activate() Splits | 4/4 | Complete | 2026-09-29 |
-| 121. Java Interop Service Decomposition | 3/10 | Not started |  |
+| 121. Java Interop Service Decomposition | 4/10 | Not started |  |
 | 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
 
 **Current milestone:** v4.7 Audit Hygiene Burn-down (Phases 110-122), started 2026-09-26.
