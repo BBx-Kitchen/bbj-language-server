@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 120
 current_phase_name: ClassValidator & activate() Splits
 status: executing
-stopped_at: Completed 120-03-PLAN.md
-last_updated: "2026-09-29T07:41:06.233Z"
+stopped_at: Completed 120-04-PLAN.md (phase 120 complete)
+last_updated: "2026-09-29T08:01:46.708Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 120 execution started
-state_head: 3602da3852a26c1f23ab68a2ceb3f8fdd750627f
+state_head: f816974a141c8557503c97f72561f56a7cbdbd73
 progress:
   total_phases: 13
   completed_phases: 9
   total_plans: 64
-  completed_plans: 63
+  completed_plans: 64
   percent: 69
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-28)
 ## Current Position
 
 Phase: 120 (ClassValidator & activate() Splits) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-29 — Completed 120-03-PLAN.md (EM login/validate shared runner and em-auth.ts split)
 
@@ -181,6 +181,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 120 P01 | 14min | 2 tasks | 7 files |
 | Phase 120 P02 | 11min | 2 tasks | 2 files |
 | Phase 120 P03 | 40min | 2 tasks | 8 files |
+| Phase 120 P04 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -303,6 +304,7 @@ decisions:
 - [Phase 120]: 120-01: check-classes.ts split into class-types.ts/check-cyclic-inheritance.ts/check-class-reference.ts/check-return-types.ts/check-constructor.ts as exported free functions taking their service (inferer/javaInterop) as a trailing argument; check-classes.ts keeps only registerClassChecks with no thisArg
 - [Phase 120]: 120-02: two characterization test files (activation-command-coverage.test.ts, activation-prompts-and-status-bars.test.ts) pin activate()'s command coverage/order and its open-prompt/status-bar behaviour on the unsplit extension.ts, ahead of plans 03/04's split; the derived literal sequence needed no correction against the base
 - [Phase 120]: 120-03: em-script-runner.ts has two entry points (createScriptOutputFile, runScriptToOwnerOnlyFile) rather than one combined call, so each EM caller keeps its own pre-launch steps at its base position relative to its own try boundary; em-auth-error-paths.test.ts is written and passes against the unmoved extension.ts before any source edit, then never edited again, proving no EM error path changed across the move. — The runner's real createOwnerOnlyFile calls in em-auth-error-paths.test.ts are suffixed with process.pid to avoid a genuine EEXIST race with test/em-login-username.test.ts's own real file creation across concurrent vitest workers.
+- [Phase 120]: 120-04: activate() is an eighteen-call ordered list of single-purpose register functions; the open prompts and diagnostic status bars moved to open-file-prompts.ts/diagnostic-status-bars.ts; the extracted functions are placed after activate() (not before) so an untouched-lines diff against the composer registrations stays clean; REF-11 complete, phase 120 closed
 
 ### Tech Debt
 
@@ -365,8 +367,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T07:41:05.801Z
-Stopped at: Completed 120-03-PLAN.md
+Last session: 2026-09-29T08:01:46.299Z
+Stopped at: Completed 120-04-PLAN.md (phase 120 complete)
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 120`.
