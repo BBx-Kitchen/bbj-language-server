@@ -1,5 +1,85 @@
 # Project Milestones: BBj Language Server
 
+## v4.7 Audit Hygiene Burn-down (Shipped: 2026-09-29)
+
+**Closed 2026-09-29** as an override closeout after a milestone audit with status `tech_debt`
+(`milestones/v4.7-MILESTONE-AUDIT.md`): 63/63 requirements satisfied, 13/13 phases verified
+(12 `passed`, 122 `human_needed` for post-release checks only), cross-phase integration and 5/5
+end-to-end flows clean. There are no gaps against requirements. The close counts as an override
+because the pre-close artifact scan found six open items, which were acknowledged rather than
+resolved (see Known verification overrides).
+
+**Where the code lives.** On `main` via PR #708 (merge dce2e301, 2026-09-29), which published
+preview 0.16.10 to the VS Code pre-release and JetBrains preview channels. It runs there for a few
+days before a stable release is cut. The pending Dependabot updates, including the GitHub Actions
+major bumps, are rolled up in PR #719.
+
+**Delivered:** the 2026-08-20 audit backlog closed: security hardening of settings, interop data,
+EM login and composer webviews; lint, type-check and test-suite gates; an honest interop harness;
+dependency hygiene; four refactors with no behaviour change; and a hardened release/CI pipeline.
+
+**Phases completed:** 110-122 (13 phases, 80 plans, 185 tasks); 506 commits, 272 files outside
+`.planning/` (+25,097 / −5,213), 2026-09-26 → 2026-09-29.
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 110 | Workspace Settings & Filesystem Trust | SEC-01, -02, -06..-09, REF-02 |
+| 111 | Java Class Data from the Interop Peer | SEC-03..-05, FIX-02, -03 |
+| 112 | EM Login & Web Launch Fail Closed | SEC-12..-14, TEST-09 |
+| 113 | Composer Webview Hardening & Consolidation | SEC-10, -11, TEST-10, REF-03, -07, -08, DOC-01 |
+| 114 | Lint, Type-Check & Test-Suite Gates | TEST-01..-03, -07, -11, FIX-04 |
+| 115 | Honest Interop Test Harness | HARN-01..-06, DEP-03 |
+| 116 | Java-Interop Test Coverage | TEST-04..-06, -08 |
+| 117 | Dependency Hygiene & Dependabot Coverage | DEP-01, -02, -04, -05, CI-04 |
+| 118 | Small Dedup & Drift Guards | REF-01, -04..-06 |
+| 119 | Grammar — DECLARE File Paths & Shared Channel Opening | FIX-01, REF-13 |
+| 120 | ClassValidator & activate() Splits | REF-10, -11 |
+| 121 | Java Interop Service Decomposition | REF-09, -12 |
+| 122 | Release & CI Pipeline Hardening | CI-01..-03, -05..-09 |
+
+**Key accomplishments:**
+
+- Settings and filesystem trust (110): one validator for the interop host/port on every entry
+  point, segment-based PREFIX containment for every USE read, lstat-first decompile probes, a
+  machine-scoped and verified `bbj.formatter.javaPath`, and a Workspace Trust gate for a
+  workspace-scoped `bbj.configPath`.
+- Interop data and IDE entry points (111-113): Java class data from the peer is bounded,
+  sanitized and render-escaped in `java-peer-guard.ts`; the "has no container" log line (#676)
+  is gone; EM login fails closed with a full JWT validity port and no default credentials; every
+  composer webview message is shape-checked, and CSP, call scanning and window UI helpers exist
+  once.
+- Test and quality gates (114-116): typescript-eslint recommended at zero warnings, a working
+  test-tree type-check (399 errors fixed), and hermetic test services as CI gates; the interop
+  harness reports real results under a pinned `tsx`; java-interop connection code runs against a
+  loopback peer and the whole suite has no known failures.
+- Dependency hygiene (117): vsce dev-only, an SBOM for the vendored formatter JAR, Guava 33.7.1,
+  Dependabot on every tree with langium 4.4.x held; the parse-recovery regression was filed
+  upstream as eclipse-langium/langium#2236.
+- Refactors with unchanged behaviour (118-121): one `getFunctionReference`, byte-exact `.bbl` and
+  compiler-option drift guards, two DECLARE file paths per line, one channel/options grammar rule,
+  ClassValidator and `activate()` split, `JavadocProvider` via DI and `JavaInteropService` split
+  into five modules.
+- Release and CI pipeline (122): least-privilege, SHA-pinned workflows with a permanent
+  `pin-hygiene` gate, npm/Gradle caching through one composite action and never in token-holding
+  jobs, `pr-vsix.yml` folded into `build.yml`, and a VSIX built once from two minified bundles.
+
+**Known verification overrides:** 6 newly acknowledged, 33 carried forward from prior closes
+(see STATE.md Deferred Items):
+- debug session g-110-1 — the vendored formatter jar crashes on block IFs with
+  `--single-line-if` (diagnosed; the fix belongs in the jar, #507)
+- 114-UAT.md — seven hand checks deferred at the user's request
+- 122-VERIFICATION.md — `human_needed`: the next manual-release dispatch and a PR Gradle cache
+  restore are still to observe
+- three pending todos: IntelliJ interop initOptions key mismatch, signature-help/snippet peer-name
+  escaping, Windows Node.js download progress
+
+**Tech debt carried:** Nyquist VALIDATION.md is reconciled only for 110-113 and 121 (compliant in
+112 and 121); no SECURITY.md for 114-116, 118 and 119; no UAT file for 115, 118 and 119.
+
+**Git tag:** none. Repository tags stay release versions.
+
+---
+
 ## v4.6 User-Facing Bug Burn-down (Shipped: 2026-09-26)
 
 **Closed 2026-09-26** as an override closeout after a milestone audit with status `tech_debt`

@@ -5,7 +5,12 @@ area: testing
 source: Phase 114 final checkpoint (user request, 2026-09-27)
 trigger: opportunistic, the next time a Windows machine is in use for testing anyway; not a release blocker
 files:
+
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java
+
+audit_acknowledged:
+  milestone: v4.7
+  at: 2026-09-29
 ---
 
 ## Problem
