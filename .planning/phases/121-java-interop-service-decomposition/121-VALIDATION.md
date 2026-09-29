@@ -2,10 +2,11 @@
 phase: "121"
 slug: "java-interop-service-decomposition"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-29"
+validated: "2026-09-29"
 ---
 
 # Phase 121 — Validation Strategy
@@ -41,9 +42,9 @@ Filled in by the planner or executor from the PLAN.md `<automated>` commands. Re
 
 | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
 |-------------|----------|-----------|-------------------|-------------|--------|
-| REF-09 | JavadocProvider DI-registered; getInstance() gone; two independent providers share no state | unit | `npx vitest run test/javadoc.test.ts test/inlay-hints-javadoc.test.ts test/javadoc-markdown-escape.test.ts` | ✅ (new test added) | ⬜ pending |
-| REF-12 | Each collaborator importable and testable on its own | unit | `npx vitest run test/java-interop-{lock,class-index,cache,classpath,connection}.test.ts` (final names per plan) | ❌ W0 | ⬜ pending |
-| REF-12 | Existing interop suites pass without assertion changes | unit+integration | `npx vitest run test/java-interop-service.test.ts test/java-interop-socket.test.ts test/java-interop-timeouts.test.ts test/java-interop-parse-lane.test.ts test/java-interop-breaker.test.ts test/java-interop-peer-guard.test.ts test/java-interop-local-types.test.ts test/java-interop-nested-class-names.test.ts` | ✅ | ⬜ pending |
+| REF-09 | JavadocProvider DI-registered; getInstance() gone; two independent providers share no state | unit | `npx vitest run test/javadoc.test.ts test/inlay-hints-javadoc.test.ts test/javadoc-markdown-escape.test.ts` | ✅ (new test added) | ✅ green |
+| REF-12 | Each collaborator importable and testable on its own | unit | `npx vitest run test/java-interop-{lock,class-index,cache,classpath,connection}.test.ts` (final names per plan) | ✅ | ✅ green |
+| REF-12 | Existing interop suites pass without assertion changes | unit+integration | `npx vitest run test/java-interop-service.test.ts test/java-interop-socket.test.ts test/java-interop-timeouts.test.ts test/java-interop-parse-lane.test.ts test/java-interop-breaker.test.ts test/java-interop-peer-guard.test.ts test/java-interop-local-types.test.ts test/java-interop-nested-class-names.test.ts` | ✅ | ✅ green |
 
 Per plan (every task's `<automated>` blocks are in the PLAN.md files; each plan's last auto task runs the whole suite against `suite-base-failed.txt`, lint, typecheck:test, build and the multiset hygiene check):
 
@@ -69,9 +70,9 @@ Per plan (every task's `<automated>` blocks are in the PLAN.md files; each plan'
 
 ## Wave 0 Requirements
 
-- [ ] Five new collaborator unit test files, one per extracted module
-- [ ] New #624 regression test in `test/javadoc.test.ts`
-- [ ] Base-comparison artifacts under `/home/coder/repos/tmp/phase-121/` (base SHA, whole-suite JSON + failed names, targeted run) captured before the first code change
+- [x] Five new collaborator unit test files, one per extracted module
+- [x] New #624 regression test in `test/javadoc.test.ts`
+- [x] Base-comparison artifacts under `/home/coder/repos/tmp/phase-121/` (base SHA, whole-suite JSON + failed names, targeted run) captured before the first code change
 
 ---
 
@@ -79,17 +80,29 @@ Per plan (every task's `<automated>` blocks are in the PLAN.md files; each plan'
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Hover, completion, missing-USE quick fix, Refresh Java Classes behave as before | REF-12 | No CI harness drives VS Code / IntelliJ UI against a live bbj-ls peer | Build VSIX and IntelliJ zip from the final tree (after code-review fixes); against live BBjServices, warm up large classes, then exercise each feature in both IDEs |
+| Hover, completion, missing-USE quick fix, Refresh Java Classes behave as before | REF-12 | No CI harness drives VS Code / IntelliJ UI against a live bbj-ls peer | Build VSIX and IntelliJ zip from the final tree (after code-review fixes); against live BBjServices, warm up large classes, then exercise each feature in both IDEs. **Done:** user approved 2026-09-29 (121-10-SUMMARY.md approval record) |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 240s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 240s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-29
+
+---
+
+## Validation Audit 2026-09-29
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Targeted re-run: 16 files, 248 tests passed (5 collaborator unit suites, 3 javadoc suites, 8 existing interop suites). REF-09 and REF-12 automated; the REF-12 live IDE check is manual-only and was approved by the user.
