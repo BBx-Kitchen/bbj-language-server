@@ -7,17 +7,18 @@
 import { AstUtils, EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
-import { DiagnosticSeverity } from 'vscode-languageserver';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { FieldStatement, IolistStatement, LabelDecl, LetStatement, OtherItem, Program, VariableDecl, isArrayElement, isBbjClass, isFieldStatement, isGotoStatement, isIolistStatement, isLetStatement, isOnGotoStatement, isOtherItem, isReadStatement, isUserLabelRef, isVariableDecl, isLibrary } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 import { builtinBBjAPI } from '../src/language/lib/bbj-api.js';
 
 // One shared services/parse/validate instance for the whole file (all describe blocks below,
-// including those added by later plans in this phase): each createBBjServices() +
-// initializeWorkspace() pair does real, non-trivial async setup work, and a second instance in
+// including those added by later plans in this phase): each createBBjTestServices() +
+// initializeWorkspace() pair builds the hermetic test-double services (no real Java-interop
+// socket round trip) and still does real, non-trivial async setup work, and a second instance in
 // this file re-triggers the beforeAll hook-timeout flake under contention.
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 let parse: ReturnType<typeof parseHelper<Program>>;
 let validate: ReturnType<typeof validationHelper<Program>>;
 
@@ -27,8 +28,8 @@ beforeAll(async () => {
     validate = validationHelper<Program>(services.BBj);
 });
 
-const lineBreakDiagnostics = (diagnostics: { message: string }[]) =>
-    diagnostics.filter(d => /new line|line break/i.test(d.message));
+const lineBreakDiagnostics = (diagnostics: Diagnostic[]) =>
+    diagnostics.filter(d => /new line|line break/i.test(Diagnostic.getMessageString(d)));
 
 describe('RECORD verbs LEN= channel option', () => {
     test.each([

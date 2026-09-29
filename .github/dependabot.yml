@@ -17,7 +17,18 @@ updates:
       # typescript-eslint adds support.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
-  # No `ignore:` block here (D-08, discretion resolved): letting Gradle wrapper
+      # langium 4.4.0 regresses parser error recovery: an unclosed call such as
+      # `x$ = CVS(` takes about 2.3 seconds per document to parse instead of
+      # 1-2 milliseconds on 4.3. It also drops DEF FN parameters from
+      # completion inside the function body — see PR #682. langium-cli must
+      # move in lockstep with the langium runtime, so it is held for the same
+      # reason — see PR #684. Only the 4.4.x line is held: 4.3.x patches and a
+      # later 4.5 release still arrive and are judged on their own merits.
+      - dependency-name: "langium"
+        versions: ["4.4.x"]
+      - dependency-name: "langium-cli"
+        versions: ["4.4.x"]
+  # No `ignore:` block here: letting Gradle wrapper
   # version bumps flow through is deliberate. workflow-hygiene.yml's
   # check-gradle-wrapper.mjs fails any Dependabot wrapper PR whose checksums
   # are not yet in GRADLE_CHECKSUMS — that red check is the intended control,
@@ -26,3 +37,34 @@ updates:
     directory: "/bbj-intellij"
     schedule:
       interval: "weekly"
+  # java-interop's Guava and lsp4j versions are pinned here too, so they need
+  # the same weekly drift check as bbj-intellij's Gradle dependencies.
+  - package-ecosystem: "gradle"
+    directory: "/java-interop"
+    schedule:
+      interval: "weekly"
+  # The actions used by the workflows under .github/workflows. Every merge to
+  # main publishes preview builds to both marketplaces, so these are grouped
+  # into one weekly pull request rather than one per action. This entry also
+  # keeps action versions current once they are pinned to commit SHAs.
+  # Composite actions under .github/actions are not scanned from the root
+  # directory, so each one is listed by its own directory below.
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/node-setup"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+  # The Docusaurus documentation site's packages. The @docusaurus/* packages
+  # are pinned to one exact version and must move together, so they are
+  # grouped into a single pull request.
+  - package-ecosystem: "npm"
+    directory: "/documentation"
+    schedule:
+      interval: "weekly"
+    groups:
+      docusaurus:
+        patterns: ["@docusaurus/*"]

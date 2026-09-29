@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
-import { composerHandlers, registerComposerRequests } from '../src/language/composer-commands';
-import { decodeMsgboxCall } from '../src/msgbox-composer';
-import { decodeCvsCall, cvsPreview } from '../src/cvs-composer';
+import { composerHandlers, registerComposerRequests } from '../src/composer-commands.js';
+import { decodeMsgboxCall } from '../src/msgbox-composer.js';
+import { decodeCvsCall, cvsPreview } from '../src/cvs-composer.js';
 
 // Thin pass-through handlers: these tests assert the request layer faithfully re-exposes the pure
 // composer API (the arithmetic itself is covered by msgbox-composer / addwindow-composer tests).

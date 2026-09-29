@@ -5,15 +5,11 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
-import { shouldRunBBjTests } from './test-helper.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    let isInteropRunning: boolean = await shouldRunBBjTests();
-
     beforeAll(async () => {
         await initializeWorkspace(services.shared);
     });
@@ -150,7 +146,7 @@ describe('Linking Tests', async () => {
             REM Type is BBjAPI - no linker error on assignment
         `)
         const linkingErrors = findLinkingErrors(document)
-        const bbjApiError = linkingErrors.find(err => err.message.includes('BBjAPI'))
+        const bbjApiError = linkingErrors.find(err => Diagnostic.getMessageString(err).includes('BBjAPI'))
         expect(bbjApiError).toBeUndefined()
     })
 
@@ -161,7 +157,7 @@ describe('Linking Tests', async () => {
             b!=b!.toString()
         `)
         const linkingErrors = findLinkingErrors(document)
-        const cyclicError = linkingErrors.find(err => err.message.toLowerCase().includes('cyclic'))
+        const cyclicError = linkingErrors.find(err => Diagnostic.getMessageString(err).toLowerCase().includes('cyclic'))
         expect(cyclicError).toBeUndefined()
     })
 
@@ -212,7 +208,7 @@ describe('Linking Tests', async () => {
         `)
         const warnings = document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? []
         expect(warnings.length).toBeGreaterThan(0)
-        const castWarning = warnings.find(w => w.message.includes('CAST'))
+        const castWarning = warnings.find(w => Diagnostic.getMessageString(w).includes('CAST'))
         expect(castWarning).toBeDefined()
     })
 
@@ -292,7 +288,7 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
-    describe.runIf(isInteropRunning)("Interop related tests", () => {
+    describe("Java class linking (test double)", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
                 class public MyClass
@@ -303,7 +299,6 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
-    	
 		test('Imported java classes resolves', async () => {
         	const document = await validate(`
             	use java.util.HashMap
@@ -371,7 +366,6 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
-        
         test('Java FQN access - test for #6', async () => {
             const document = await validate(`
                 use java.sql.Date
@@ -443,6 +437,29 @@ describe('Linking Tests', async () => {
                 comp = e.getValue()
             `)
             expectNoErrors(document)
+        });
+
+        test('A member reached through a java.lang.Object receiver is not flagged', async () => {
+            // A variable declared exactly java.lang.Object can legitimately hold any runtime
+            // value, so an unresolved member reached through it is not certain enough to report.
+            const document = await validate(`
+                declare java.lang.Object o!
+                o!.release()
+            `)
+            expectNoErrors(document)
+        });
+
+        test('An unknown member on another resolved Java class is still reported', async () => {
+            // Control: the java.lang.Object carve-out is scoped to that one type -- an unknown
+            // member on any other fully resolved Java class still gets exactly one diagnostic
+            // naming it.
+            const document = await validate(`
+                declare java.lang.String s!
+                s!.release()
+            `)
+            const diagnostics = document.diagnostics ?? []
+            expect(diagnostics.length).toBe(1)
+            expect(diagnostics[0].message).toContain('release')
         });
     });
 

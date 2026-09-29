@@ -1,10 +1,11 @@
 
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjServices } from '../src/language/bbj-module.js';
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
+import { Diagnostic } from 'vscode-languageserver';
 
-import { isBbjDocument } from '../src/language/bbj-scope-local';
+import { isBbjDocument } from '../src/language/bbj-scope-local.js';
 import { shouldRunBBjTests } from './test-helper.js';
 
 function expectNoParserLexerErrors(document: LangiumDocument) {
@@ -13,7 +14,7 @@ function expectNoParserLexerErrors(document: LangiumDocument) {
 }
 
 function expectNoValidationErrors(document: LangiumDocument) {
-    expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
+    expect(document.diagnostics?.map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('')
 }
 
 describe('Import tests', async () => {
@@ -210,7 +211,7 @@ describe('Import tests', async () => {
         // Should have exactly one validation error about unresolvable file
         const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
         expect(errors).toHaveLength(1);
-        expect(errors[0].message).toContain("could not be resolved");
+        expect(Diagnostic.getMessageString(errors[0])).toContain("could not be resolved");
     });
 
     test('USE with valid file path produces no file-path error', async () => {
@@ -250,10 +251,10 @@ describe('Prefix tests', () => {
         // Should have a file-path warning because the "binary" file has no BbjClass in the index
         // (severity 1 = Error for file-not-found, severity 2 = Warning for file-found-no-classes)
         const filePathErrors = document.diagnostics?.filter(d =>
-            (d.severity === 1 || d.severity === 2) && d.message.startsWith("File '")
+            (d.severity === 1 || d.severity === 2) && Diagnostic.getMessageString(d).startsWith("File '")
         ) ?? [];
         expect(filePathErrors).toHaveLength(1);
-        expect(filePathErrors[0].message).toContain("could not be resolved");
+        expect(Diagnostic.getMessageString(filePathErrors[0])).toContain("could not be resolved");
     });
 
     test('USE with PREFIX-resolved file path resolves classes', async () => {
@@ -273,7 +274,7 @@ describe('Prefix tests', () => {
         expectNoParserLexerErrors(document);
         // The BBjWidget class should resolve via the pre-parsed document
         const filePathErrors = document.diagnostics?.filter(d =>
-            d.severity === 1 && d.message.startsWith("File '")
+            d.severity === 1 && Diagnostic.getMessageString(d).startsWith("File '")
         ) ?? [];
         expect(filePathErrors).toHaveLength(0);
     });

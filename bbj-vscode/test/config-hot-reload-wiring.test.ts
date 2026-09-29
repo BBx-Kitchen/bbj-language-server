@@ -165,7 +165,7 @@ describe('config-watcher quiescence wait: a reload is never pushed while the bui
     }
 
     test('with the predicate held true, advancing past the debounce and several polls emits zero notifications', () => {
-        let pending = true;
+        const pending = true;
         const { records, notify, setContents } = setup('PREFIX /a/b/\n', () => pending);
         setContents('PREFIX /c/d/\n');
 
@@ -247,6 +247,15 @@ describe('main.ts wires the config watcher: armed once, re-armed at exactly two 
         );
     }
 
+    // The two updateResolvedPath( re-arm sites moved into configuration-change-handler.ts
+    // (#563) alongside the rest of the onDidChangeConfiguration body; createConfigWatcher( and
+    // configWatcher.start( stay in main.ts (the build-phase hook was never part of that move).
+    function configurationChangeHandlerSource(): string {
+        return stripLineComments(
+            fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'configuration-change-handler.ts'), 'utf-8')
+        );
+    }
+
     test('exactly one createConfigWatcher( call', () => {
         const source = mainSource();
         expect(source.match(/createConfigWatcher\(/g) ?? []).toHaveLength(1);
@@ -258,8 +267,8 @@ describe('main.ts wires the config watcher: armed once, re-armed at exactly two 
     });
 
     test('exactly two configWatcher.updateResolvedPath( calls, one per setConfigPath site', () => {
-        const source = mainSource();
-        expect(source.match(/configWatcher\.updateResolvedPath\(/g) ?? []).toHaveLength(2);
+        const source = configurationChangeHandlerSource();
+        expect(source.match(/deps\.configWatcher\.updateResolvedPath\(/g) ?? []).toHaveLength(2);
     });
 
     test('configWatcher.start( appears after the workspaceInitialized = true; assignment and the notifyResolvedConfigPath( call that precedes it', () => {

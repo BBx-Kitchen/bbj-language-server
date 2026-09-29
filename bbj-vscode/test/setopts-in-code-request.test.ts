@@ -4,7 +4,7 @@ import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { URI } from 'vscode-uri';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import {
     createComposeTriStateHandler, createDecodeInCodeHandler, NOT_EDITABLE_REASON_TEXT,
@@ -23,7 +23,7 @@ import { initializeWorkspace } from './test-helper.js';
  * for `LangiumDocuments`.
  */
 describe('bbj/composer/setopts/decodeInCode', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -415,7 +415,7 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
 });
 
 describe('bbj/composer/setopts/composeTriState', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -511,7 +511,7 @@ describe('setopts-in-code-request.ts wiring in main.ts', () => {
 
     test('neither new method-name literal appears inside composer-commands.ts (the pre-services registry)', () => {
         const composerCommandsSource = fs.readFileSync(
-            path.join(__dirname, '..', 'src', 'language', 'composer-commands.ts'),
+            path.join(__dirname, '..', 'src', 'composer-commands.ts'),
             'utf-8'
         );
         expect(composerCommandsSource).not.toContain(SETOPTS_DECODE_IN_CODE_METHOD);

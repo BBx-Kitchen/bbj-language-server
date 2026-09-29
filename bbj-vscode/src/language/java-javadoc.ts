@@ -9,13 +9,12 @@ import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
 import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast.js";
 import { logger } from "./logger.js";
+import { readSimpleName } from "./utils.js";
 
 /**
  * Provides Javadoc information for internal binary classes.
  */
 export class JavadocProvider {
-
-    private static _instance: JavadocProvider;
 
     private lazyLoad: boolean = false;
     private initialized: boolean = false;
@@ -24,15 +23,8 @@ export class JavadocProvider {
     private fsAccess: FileSystemProvider = new EmptyFileSystemProvider();
 
 
-    protected constructor(lazyLoad: boolean = true) {
+    constructor(lazyLoad: boolean = true) {
         this.lazyLoad = lazyLoad;
-    }
-
-    static getInstance(): JavadocProvider {
-        if (!JavadocProvider._instance) {
-            JavadocProvider._instance = new JavadocProvider();
-        }
-        return JavadocProvider._instance;
     }
 
     /**
@@ -101,7 +93,8 @@ export class JavadocProvider {
             clazz = node.$container;
         }
         if (clazz) {
-            const qName = clazz.name.indexOf('.') > -1 ? clazz.name : (clazz as any)['simpleName'] ? (clazz as any).simpleName : clazz.name;
+            const simpleName = readSimpleName(clazz);
+            const qName: string = clazz.name.indexOf('.') > -1 ? clazz.name : simpleName ? simpleName : clazz.name;
             const qnParts = qName.split('.')
             const className = qnParts.pop();
             const packageDoc = await this.getPackageDoc(qnParts.join('.'));
@@ -211,10 +204,10 @@ export type MethodDoc = NamedDoc & {
 }
 
 export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {
-    return item !== undefined && (item as any).params !== undefined;
+    return item !== undefined && (item as { params?: unknown }).params !== undefined;
 }
 
 
 export function isClassDoc(item: NamedDoc | undefined): item is ClassDoc {
-    return item !== undefined && (item as any).methods !== undefined && (item as any).fields !== undefined;
+    return item !== undefined && (item as { methods?: unknown }).methods !== undefined && (item as { fields?: unknown }).fields !== undefined;
 }

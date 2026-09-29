@@ -1,15 +1,15 @@
 import { DocumentValidator, EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 describe('Conformance regression Tests', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Model>>;
 
     beforeAll(async () => {

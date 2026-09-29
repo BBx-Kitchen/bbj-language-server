@@ -59,10 +59,11 @@ describe('Inlay hints with javadoc-backed parameter names', () => {
     let getHints: (content: string) => Promise<InlayHint[]>;
 
     beforeAll(async () => {
-        // Must run before createBBjTestServices, which would otherwise initialize
-        // the JavadocProvider singleton with no javadoc sources.
-        await JavadocProvider.getInstance().initialize([URI.parse('file:///javadoc')], new JavadocFileSystem());
-        const services = createBBjTestServices(EmptyFileSystem);
+        // The test services receive a provider that already reads the fake javadoc files, so
+        // the fake SysGui class is resolved with the javadoc parameter names.
+        const javadocProvider = new JavadocProvider();
+        await javadocProvider.initialize([URI.parse('file:///javadoc')], new JavadocFileSystem());
+        const services = createBBjTestServices(EmptyFileSystem, javadocProvider);
         await initializeWorkspace(services.shared);
         parse = parseHelper<Model>(services.BBj);
         getHints = async (content: string) => {

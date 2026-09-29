@@ -277,7 +277,10 @@ describe('Logger', () => {
     });
 
     test('maps debug=false to LogLevel.WARN', () => {
-      const debugEnabled = false;
+      // Boolean(false), not the `false` literal: a const literal narrows to its own literal
+      // type under control-flow analysis even with an explicit `: boolean` annotation, making
+      // `=== true` a same-value comparison TypeScript rejects as unintentional.
+      const debugEnabled: boolean = Boolean(false);
       const level = debugEnabled === true ? LogLevel.DEBUG : LogLevel.WARN;
       expect(level).toBe(LogLevel.WARN);
     });

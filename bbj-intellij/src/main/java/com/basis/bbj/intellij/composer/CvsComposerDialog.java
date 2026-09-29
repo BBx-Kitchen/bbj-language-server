@@ -65,7 +65,8 @@ public final class CvsComposerDialog extends DialogWrapper {
     private final JBTextField expressionField = new JBTextField();
     private final JBLabel strError = ComposerSwingHelpers.errorLabel();
     private JPanel assignToRow;
-    private final JBTextField assignTo = new JBTextField();
+    private final JBTextField assignTo = new JBTextField("s$");
+    private final JBLabel assignToError = ComposerSwingHelpers.errorLabel();
     private final JBLabel charsFieldLabel = new JBLabel("Replacement characters");
     private final JBTextField charsField = new JBTextField();
     private final JBLabel charsError = ComposerSwingHelpers.errorLabel();
@@ -130,7 +131,7 @@ public final class CvsComposerDialog extends DialogWrapper {
         root.add(ComposerSwingHelpers.labeled(editMode ? "String expression (kept verbatim)" : "String expression", expressionField));
         root.add(strError);
 
-        assignToRow = ComposerSwingHelpers.labeled("Assign result to (optional)", assignTo);
+        assignToRow = ComposerSwingHelpers.labeledWithError("Assign result to", assignTo, assignToError);
         // In both replace modes (edit-in-place and completing an unfinished call) any assignment
         // sits outside the replaced call span, so the row is visible only when composing new.
         assignToRow.setVisible(!editMode && !completing);
@@ -249,6 +250,7 @@ public final class CvsComposerDialog extends DialogWrapper {
         summary.setText(p.summary);
         strError.setText(p.strError == null ? " " : p.strError);
         charsError.setText(p.charsError == null ? " " : p.charsError);
+        assignToError.setText(p.assignToError == null ? " " : p.assignToError);
         // The chars field is disabled and drawn in the inactive text colour when the latest preview
         // reports charsEnabled: false -- it is never hidden and its tooltip is never cleared.
         charsField.setEnabled(p.charsEnabled);

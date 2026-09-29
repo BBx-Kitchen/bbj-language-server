@@ -19,8 +19,8 @@
  * reason: a composer may still build a whole call and replace the call's span, it just has
  * nothing to pre-fill from a mask.
  */
-import { scanArgs, trimmedRange } from './addwindow-composer.js';
-import { validateStringField } from './msgbox-composer.js';
+import { findCallAt, findCalls, scanArgs, trimmedRange } from './composer-call-scanner.js';
+import { validateAssignTo, validateStringField } from './msgbox-composer.js';
 
 export interface CvsBit {
     /** The single bit this operation sets, e.g. 1. */
@@ -140,9 +140,6 @@ export interface CvsCallInfo {
     args: string[];
 }
 
-/** `cvs(` not preceded by an identifier character or `.` — keeps longer names and method calls out. */
-const CVS_CALL_BOUNDARY_SOURCE = String.raw`(?<![A-Za-z0-9_.])cvs\s*\(`;
-
 function buildCvsCallInfo(line: string, callStart: number, open: number): CvsCallInfo {
     const { argRanges, callEnd } = scanArgs(line, open);
     const args = argRanges.map(([a, b]) => {
@@ -152,15 +149,13 @@ function buildCvsCallInfo(line: string, callStart: number, open: number): CvsCal
     return { callStart, callEnd, args };
 }
 
-/** Every `CVS(...)` call on the line, in source order. Matching is case-insensitive. */
+/**
+ * Every `CVS(...)` call on the line, in source order. Matching is case-insensitive and, per the
+ * `notAfterIdentifierOrDot` option, rejects `cvs(` preceded by an identifier character or a `.` —
+ * keeping longer names and method calls (`obj.cvs(`, `xcvs(`) out.
+ */
 export function findCvsCalls(line: string): CvsCallInfo[] {
-    const re = new RegExp(CVS_CALL_BOUNDARY_SOURCE, 'gi');
-    const calls: CvsCallInfo[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(line)) !== null) {
-        calls.push(buildCvsCallInfo(line, m.index, m.index + m[0].length));
-    }
-    return calls;
+    return findCalls(line, 'cvs', buildCvsCallInfo, { notAfterIdentifierOrDot: true });
 }
 
 /** First `CVS(...)` call on the line (convenience). */
@@ -173,9 +168,7 @@ export function parseCvsCallOnLine(line: string): CvsCallInfo | undefined {
  * (smallest span) containing the cursor wins.
  */
 export function findCvsCallAt(line: string, character: number): CvsCallInfo | undefined {
-    const containing = findCvsCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
-    if (containing.length === 0) return undefined;
-    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
+    return findCallAt(findCvsCalls(line), character);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -293,7 +286,12 @@ export interface CvsPreviewInput {
     str: string;
     bits: number[];
     chars: string;
-    assignTo?: string;
+    /**
+     * The assign-to target text. Present but empty/whitespace-only on a new insert with nothing
+     * typed yet; `undefined` or `null` when the field is hidden (edit mode or completing mode) —
+     * see {@link cvsPreview}'s `assignToError`/`valid` computation.
+     */
+    assignTo?: string | null;
     trailingArgs?: string[];
     /** In edit mode `str` is the preserved verbatim argument and `assignTo` is omitted. */
     editMode?: boolean;
@@ -306,6 +304,8 @@ export interface CvsPreview {
     charsEnabled: boolean;
     strError?: string;
     charsError?: string;
+    /** Set only when the assign-to field is shown (a new insert) and its text fails {@link validateAssignTo}. */
+    assignToError?: string;
     valid: boolean;
 }
 
@@ -320,11 +320,18 @@ export function cvsPreview(input: CvsPreviewInput): CvsPreview {
     const strV = input.editMode ? { ok: true } : validateStringField(input.str, { required: true });
     const charsV = charsEnabled && input.chars.trim() !== '' ? validateStringField(input.chars) : { ok: true };
 
+    // The assign-to field is shown only on a new insert (not edit mode, and completing mode
+    // passes assignTo undefined/null itself, see cvs-composer-webview.ts) — the same rule
+    // msgboxPreview applies, parameterised here for CVS's string result.
+    const assignToShown = input.editMode !== true && input.assignTo !== undefined && input.assignTo !== null;
+    const assignToV = assignToShown ? validateAssignTo(input.assignTo!, 'string') : undefined;
+    const assignToTrimmed = assignToShown ? input.assignTo!.trim() : undefined;
+
     const statement = composeCvsCall({
         str: input.str,
         mask,
         chars: charsEnabled ? (input.chars || undefined) : undefined,
-        assignTo: input.editMode ? undefined : input.assignTo,
+        assignTo: assignToShown ? (assignToTrimmed || undefined) : undefined,
         trailingArgs: input.trailingArgs,
     });
 
@@ -335,6 +342,7 @@ export function cvsPreview(input: CvsPreviewInput): CvsPreview {
         charsEnabled,
         strError: strV.ok ? undefined : strV.message,
         charsError: charsV.ok ? undefined : charsV.message,
-        valid: strV.ok && charsV.ok,
+        assignToError: assignToV && !assignToV.ok ? assignToV.message : undefined,
+        valid: strV.ok && charsV.ok && (!assignToV || assignToV.ok),
     };
 }

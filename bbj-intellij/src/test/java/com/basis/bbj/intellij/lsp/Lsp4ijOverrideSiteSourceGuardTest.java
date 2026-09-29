@@ -1,13 +1,21 @@
 package com.basis.bbj.intellij.lsp;
 
+import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
+import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
+import org.eclipse.lsp4j.jsonrpc.services.ServiceEndpoints;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -16,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  * that sits beside {@link Lsp4ijCouplingCanaryTest}'s reflective signature canaries. Every
  * assertion runs inside a located method-body window rather than searching the whole file, except
  * the fully-qualified-reference counts, which are explicitly whole-file because that is exactly
- * the property the allowlist fence's fully-qualified branch depends on.
+ * the property the allowlist fence's fully-qualified branch depends on. The bbjcplAvailability
+ * guard is the one exception to source-text scanning: it checks the compiled
+ * {@code BbjLanguageClient} class by reflection instead.
  */
 class Lsp4ijOverrideSiteSourceGuardTest {
 
@@ -135,13 +145,24 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
-    void theBbjcplAvailabilityHandlerIsDeclaredAndDoesNothingWithItsPayload() {
+    void theBbjcplAvailabilityHandlerIsARegisteredObjectNotificationThatDoesNothingWithItsPayload() throws Exception {
+        Method method = BbjLanguageClient.class.getMethod("bbjcplAvailability", Object.class);
+
+        JsonNotification annotation = method.getAnnotation(JsonNotification.class);
+        assertNotNull(annotation, "bbjcplAvailability(Object) must be annotated with @JsonNotification");
+        assertEquals("bbj/bbjcplAvailability", annotation.value(),
+            "the notification name must be exactly bbj/bbjcplAvailability, matching LSP4IJ's own "
+                + "registration lookup");
+
+        Map<String, JsonRpcMethod> supported = ServiceEndpoints.getSupportedMethods(BbjLanguageClient.class);
+        JsonRpcMethod registered = supported.get("bbj/bbjcplAvailability");
+        assertNotNull(registered, "bbj/bbjcplAvailability must be registered as a supported JSON-RPC method");
+        assertTrue(registered.isNotification(),
+            "bbj/bbjcplAvailability must be registered as a notification, not a request");
+        assertArrayEquals(new Type[] {Object.class}, registered.getParameterTypes(),
+            "the registered notification must take exactly one Object parameter");
+
         String text = readGuardedSource(CLIENT_SOURCE);
-
-        assertEquals(1, countOccurrences(text, "@JsonNotification(\"bbj/bbjcplAvailability\")"),
-            "the bbj/bbjcplAvailability notification must be declared exactly once, so LSP4IJ stops "
-                + "logging it as unsupported");
-
         String body = bodyOf(text, "public void bbjcplAvailability(");
         assertEquals("{}", body.replaceAll("\\s+", ""),
             "the bbjcplAvailability handler must be a true no-op -- it must not parse, validate or "

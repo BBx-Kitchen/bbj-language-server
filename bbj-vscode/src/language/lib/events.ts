@@ -1,5 +1,4 @@
-export const builtinEvents = `
-library
+export const builtinEvents = `library
 
 /@@
 Window Activation
@@ -721,5 +720,5 @@ eventtype ON_TIMER
 BBjServletEvent
 @/
 eventtype ON_WEB_CONNECTION	 
- 
+
 `;

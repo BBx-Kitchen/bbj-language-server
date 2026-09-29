@@ -1,5 +1,5 @@
 
-import os from 'os';
+import * as os from 'os';
 import { describe, expect, test } from 'vitest';
 import { parseSettings } from '../src/language/bbj-ws-manager.js';
 
@@ -8,7 +8,6 @@ classpath=~/git/bbj-language-server/examples/lib/com.google.guava_30.1.0.v202211
 PREFIX="~/BBJ/utils/" "~/BBJ/plugins/" "~/BBJ/utils/reporting/bbjasper/"
 `;
 const prefixfromconfigbbx = "/bbx/utils/ /bbx/plugins/";
-const bbjdir = "/bbx/";
 
 describe('Paths handling tests', () => {
 

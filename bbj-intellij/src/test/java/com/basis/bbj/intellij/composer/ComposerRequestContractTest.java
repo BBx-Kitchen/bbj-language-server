@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ComposerRequestContractTest {
 
     private static final Path COMPOSER_COMMANDS_TS = Paths.get(
-        "..", "bbj-vscode", "src", "language", "composer-commands.ts").toAbsolutePath().normalize();
+        "..", "bbj-vscode", "src", "composer-commands.ts").toAbsolutePath().normalize();
 
     private static final Path COMPILE_COMMAND_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "compile-command.ts").toAbsolutePath().normalize();
@@ -40,6 +40,9 @@ class ComposerRequestContractTest {
 
     private static final Path SETOPTS_IN_CODE_REQUEST_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "setopts-in-code-request.ts").toAbsolutePath().normalize();
+
+    private static final Path JAVA_CLASS_REFRESH_TS = Paths.get(
+        "..", "bbj-vscode", "src", "language", "java-class-refresh.ts").toAbsolutePath().normalize();
 
     /** The sixteen names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
@@ -96,14 +99,16 @@ class ComposerRequestContractTest {
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
         String mainSource = readLanguageServerSource(MAIN_TS);
         String setoptsInCodeSource = readLanguageServerSource(SETOPTS_IN_CODE_REQUEST_TS);
-        String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource + setoptsInCodeSource;
+        String javaClassRefreshSource = readLanguageServerSource(JAVA_CLASS_REFRESH_TS);
+        String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource + setoptsInCodeSource
+            + javaClassRefreshSource;
 
         for (String requestName : DECLARED_REQUESTS) {
             boolean present = combined.contains("'" + requestName + "'")
                 || combined.contains("\"" + requestName + "\"");
             assertTrue(present, "request name '" + requestName + "' not found as a quoted literal "
                 + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + ", " + RESOLVED_CONFIG_PATH_REQUEST_TS
-                + ", " + MAIN_TS + " or " + SETOPTS_IN_CODE_REQUEST_TS);
+                + ", " + MAIN_TS + ", " + SETOPTS_IN_CODE_REQUEST_TS + " or " + JAVA_CLASS_REFRESH_TS);
         }
     }
 

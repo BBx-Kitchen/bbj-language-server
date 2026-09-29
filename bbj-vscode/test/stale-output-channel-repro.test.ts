@@ -117,6 +117,8 @@ vi.mock('vscode', () => {
             onDidCloseTextDocument: vi.fn(() => disposable()),
             onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
+            isTrusted: true,
+            onDidGrantWorkspaceTrust: vi.fn(() => disposable()),
         },
         StatusBarAlignment: { Left: 1, Right: 2 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
@@ -169,7 +171,11 @@ vi.mock('vscode-languageclient/node', () => {
             return Promise.resolve();
         };
     }
-    return { LanguageClient, TransportKind: { ipc: 1 } };
+    return {
+        LanguageClient,
+        TransportKind: { ipc: 1 },
+        DidChangeConfigurationNotification: { type: { method: 'workspace/didChangeConfiguration' } },
+    };
 });
 
 vi.mock('../src/language/lib/fs-provider.js', () => ({

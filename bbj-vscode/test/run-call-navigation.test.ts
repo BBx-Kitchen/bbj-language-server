@@ -1,8 +1,8 @@
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
 import { parseHelper } from 'langium/test';
-import { WorkspaceFolder } from 'vscode-languageserver';
+import { Diagnostic, WorkspaceFolder } from 'vscode-languageserver';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { Model } from '../src/language/generated/ast.js';
 import { setTypeResolutionWarnings } from '../src/language/bbj-validator.js';
@@ -20,7 +20,7 @@ function positionInside(document: LangiumDocument, snippet: string) {
 }
 
 describe('RUN/CALL file target navigation (#663)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -90,7 +90,7 @@ describe('RUN/CALL file target navigation (#663)', () => {
 
         expect(result).toHaveLength(1);
         expect(result![0].targetUri).toBe(URI.file('/opt/progs/abs.bbj').toString());
-        expect((doc.diagnostics ?? []).some(d => d.message.includes('could not be resolved in the project directory'))).toBe(false);
+        expect((doc.diagnostics ?? []).some(d => Diagnostic.getMessageString(d).includes('could not be resolved in the project directory'))).toBe(false);
     });
 
     test('a Windows drive-letter target resolves as itself, with no unresolved-file warning', async () => {
@@ -108,7 +108,7 @@ describe('RUN/CALL file target navigation (#663)', () => {
 
         expect(result).toHaveLength(1);
         expect(result![0].targetUri).toBe(URI.file('C:/progs/drive.bbj').toString());
-        expect((doc.diagnostics ?? []).some(d => d.message.includes('could not be resolved in the project directory'))).toBe(false);
+        expect((doc.diagnostics ?? []).some(d => Diagnostic.getMessageString(d).includes('could not be resolved in the project directory'))).toBe(false);
     });
 
     test('an unresolvable RUN target returns no link', async () => {
@@ -254,7 +254,7 @@ describe('RUN/CALL file target navigation (#663)', () => {
 });
 
 describe('RUN/CALL navigation without project context or warnings (#663)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {

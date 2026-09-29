@@ -9,9 +9,32 @@
  */
 import * as vscode from 'vscode';
 import {
-    WINDOW_FLAGS, EVENT_MASK_BITS, unknownBits, describeFlags, findAddWindowCallAt,
+    WINDOW_FLAGS, EVENT_MASK_BITS, describeFlags, findAddWindowCallAt,
 } from './addwindow-composer.js';
 import { openAddWindowComposerPanel, AddWindowPanelArg } from './addwindow-composer-webview.js';
+import { windowPanelArgAt, WINDOW_TITLE_FALLBACK, type WindowPanelArgSpec } from './window-composer-ui.js';
+
+/** Fixed addWindow-only initial fields, merged alongside flags/eventMask/title by windowPanelArgAt. */
+interface AddWindowFixedInitial {
+    receiver: string;
+    sysgui: string;
+    x: string;
+    y: string;
+    width: string;
+    height: string;
+}
+
+const ADD_WINDOW_SPEC: WindowPanelArgSpec<AddWindowFixedInitial> = {
+    findCallAt: findAddWindowCallAt,
+    flagCatalog: WINDOW_FLAGS,
+    eventCatalog: EVENT_MASK_BITS,
+    describeFlags,
+    titleFallback: WINDOW_TITLE_FALLBACK,
+    fixedInitial: { receiver: '', sysgui: 'sysgui!', x: '', y: '', width: '', height: '' },
+    configureLabel: 'Configure window flags',
+    addLabel: 'Add window flags…',
+    requireFlagsSlot: false,
+};
 
 export function registerAddWindowComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -33,35 +56,7 @@ export function registerAddWindowComposer(context: vscode.ExtensionContext): voi
 export function addWindowPanelArgAt(
     uri: string, line: number, lineText: string, character: number,
 ): { arg: AddWindowPanelArg; label: string } | undefined {
-    const info = findAddWindowCallAt(lineText, character);
-    if (!info) return undefined;
-
-    const flags = info.flagsValue ?? 0;
-    const eventMask = info.eventMaskValue ?? null;
-    const arg: AddWindowPanelArg = {
-        target: {
-            uri,
-            line,
-            flagsRange: info.flagsRange,
-            flagsInsertOffset: info.flagsInsertOffset,
-            eventMaskRange: info.eventMaskRange,
-            eventMaskInsertOffset: info.eventMaskInsertOffset,
-            preservedFlagBits: unknownBits(flags, WINDOW_FLAGS),
-            preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, EVENT_MASK_BITS),
-        },
-        initial: {
-            flags, eventMask,
-            // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
-            receiver: '', sysgui: 'sysgui!',
-            x: '', y: '', width: '', height: '',
-            title: titleArg(info.args),
-        },
-    };
-
-    const label = info.flagsValue !== undefined
-        ? `Configure window flags (${describeFlags(flags)})`
-        : 'Add window flags…';
-    return { arg, label };
+    return windowPanelArgAt(ADD_WINDOW_SPEC, uri, line, lineText, character);
 }
 
 class AddWindowCodeActionProvider implements vscode.CodeActionProvider {
@@ -74,10 +69,4 @@ class AddWindowCodeActionProvider implements vscode.CodeActionProvider {
         action.command = { command: 'bbj.composeAddWindow', title: result.label, arguments: [result.arg] };
         return [action];
     }
-}
-
-/** Best-effort pick of the title argument for the preview: the last string-literal arg before the flags. */
-function titleArg(args: string[]): string {
-    const literal = [...args].reverse().find(a => /^"([^"]|"")*"$/.test(a));
-    return literal ?? '"Window"';
 }

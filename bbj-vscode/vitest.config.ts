@@ -4,12 +4,14 @@ export default defineConfig({
   test: {
     /* for example, use global to avoid globals imports (describe, test, expect): */
     // globals: true,
+    include: ['test/**/*.test.ts'],
+    exclude: ['out/**', 'node_modules/**'],
     coverage: {
       enabled: false, // Enable via --coverage flag, not by default
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
       reportsDirectory: './coverage',
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'src/**/*.cjs'],
       exclude: [
         'src/language/generated/**', // Langium-generated files
         'src/extension.ts',           // VS Code extension entry point (hard to unit test)

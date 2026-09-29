@@ -12,9 +12,9 @@
  * pushed `bbj/resolvedConfigPath` payload and answers every other VS Code consumer's
  * "is this document the config file" question through it — nothing here re-derives the
  * home-default fallback itself. Before the server has answered, the only fallback is the
- * explicit `bbj.configPath` setting, read verbatim; with neither, there is no answer.
+ * Workspace Trust-gated `bbj.configPath` value (see `./config-path-trust.ts`), read verbatim;
+ * with neither, there is no answer.
  */
-import * as vscode from 'vscode';
 import {
     canonicalizeConfigPath,
     expandHome,
@@ -22,6 +22,7 @@ import {
     samePath,
 } from './language/config-path-resolver.js';
 import type { ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
+import { effectiveConfigPath } from './config-path-trust.js';
 
 let cachedResult: ResolvedConfigPathResult | undefined;
 const warnedPaths = new Set<string>();
@@ -42,7 +43,7 @@ export function getResolvedConfigPath(): ResolvedConfigPathResult | undefined {
  * - A pushed payload with a non-null `path` wins.
  * - A pushed payload with a `null` path clears the cache back to the explicit-setting-only
  *   fallback below (the server determined there is no usable path either).
- * - With no push yet, the explicit `bbj.configPath` workspace setting is used verbatim
+ * - With no push yet, the Workspace Trust-gated `bbj.configPath` value is used verbatim
  *   (canonicalized) — never a derived home default.
  * - With neither, `undefined`.
  */
@@ -54,7 +55,7 @@ export function getActiveConfigPath(): string | undefined {
 }
 
 function explicitSettingPath(): string | undefined {
-    const raw = vscode.workspace.getConfiguration('bbj').get<string | null>('configPath', null);
+    const raw = effectiveConfigPath();
     const normalized = normalizeConfigSetting(raw);
     if (normalized === '') {
         return undefined;

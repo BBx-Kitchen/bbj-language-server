@@ -20,8 +20,8 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/generated/module.js';
 import { registerValidationChecks } from '../src/language/bbj-validator.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 import { JavaInteropService } from '../src/language/java-interop.js';
+import { createInitializedJavadocProvider } from './bbj-test-module.js';
 
 /** The nine names Guava's `Primitives.allPrimitiveTypes()` covers on both backends: the eight Java primitives plus `void`. */
 export const BACKEND_PRIMITIVE_NAMES: ReadonlySet<string> = new Set([
@@ -103,10 +103,6 @@ export class CountingJavaInteropService extends JavaInteropService {
 
     constructor(services: BBjServices) {
         super(services);
-        // Init JavadocProvider otherwise resolveClass() throws (mirrors test/bbj-test-module.ts).
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
-        }
     }
 
     // Hermetic: never opens a real socket, so this double never reaches the interop service on :5008.
@@ -134,7 +130,8 @@ export function createCountingInteropServices(): { shared: LangiumSharedServices
     );
     const testModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
         java: {
-            JavaInteropService: (services) => new CountingJavaInteropService(services)
+            JavaInteropService: (services) => new CountingJavaInteropService(services),
+            JavadocProvider: (services) => createInitializedJavadocProvider(services.shared.workspace.FileSystemProvider)
         }
     };
     const BBj = inject(

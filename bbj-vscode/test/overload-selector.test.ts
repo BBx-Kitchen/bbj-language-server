@@ -8,7 +8,7 @@ import { AstUtils, EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { toMethodData } from '../src/language/bbj-nodedescription-provider.js';
 import { initializeWorkspace } from './test-helper.js';
 import { findBestOverload } from '../src/language/bbj-overload-selector.js';
@@ -26,7 +26,7 @@ import { isMethodDecl, Model } from '../src/language/generated/ast.js';
  * inlay-hint provider, so the tie is constructible on demand.
  */
 describe('Overload selector: linked declaration wins an exact tie (P61-D5-007)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {

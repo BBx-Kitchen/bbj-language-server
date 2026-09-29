@@ -31,6 +31,39 @@ describe('bbj-language-configuration.json (P62-D2-006)', () => {
     });
 });
 
+describe('bbx-language-configuration.json (#629)', () => {
+    test('parses as strict JSON', () => {
+        const raw = readFileSync('bbx-language-configuration.json', 'utf8');
+        expect(() => JSON.parse(raw)).not.toThrow();
+    });
+
+    test('every collection keeps its entry count', () => {
+        const raw = readFileSync('bbx-language-configuration.json', 'utf8');
+        const config = JSON.parse(raw);
+        expect(Object.keys(config.comments)).toHaveLength(1);
+        expect(config.brackets).toHaveLength(4);
+        expect(config.autoClosingPairs).toHaveLength(6);
+        expect(config.surroundingPairs).toHaveLength(6);
+        expect(config.onEnterRules).toBeUndefined();
+    });
+
+    test('declares the config-file editor behaviour', () => {
+        const raw = readFileSync('bbx-language-configuration.json', 'utf8');
+        const config = JSON.parse(raw);
+        expect(config.comments.lineComment).toBe('#');
+        expect(config.brackets).toEqual(expect.arrayContaining([['<', '>']]));
+        expect(() => new RegExp(config.wordPattern)).not.toThrow();
+    });
+
+    test('package.json points bbx-config at bbx-language-configuration.json', () => {
+        const raw = readFileSync('package.json', 'utf8');
+        const pkg = JSON.parse(raw);
+        const bbxConfigLanguage = pkg.contributes.languages.find((l: { id: string }) => l.id === 'bbx-config');
+        expect(bbxConfigLanguage).toBeDefined();
+        expect(bbxConfigLanguage.configuration).toBe('./bbx-language-configuration.json');
+    });
+});
+
 /**
  * Regression for P62-D7-002: bbj-vscode/package.json's "bbj" language contribution
  * (contributes.languages) is the client-side source of truth for which files VS Code

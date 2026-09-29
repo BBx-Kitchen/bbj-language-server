@@ -95,16 +95,7 @@ public final class BbjNodeDownloader {
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
                     NodeInstallPipeline pipeline = productionPipeline();
-                    // The indicator must leave indeterminate mode before a fraction is meaningful --
-                    // the platform logs an exception when a fraction is reported while it is still
-                    // indeterminate.
-                    indicator.setIndeterminate(false);
-                    pipeline.install(
-                            (text, fraction) -> {
-                                indicator.setText(text);
-                                indicator.setFraction(fraction);
-                            },
-                            indicator::checkCanceled);
+                    pipeline.install(progressReporter(indicator), indicator::checkCanceled);
                     showDownloadSuccessNotification(project);
                 } catch (Exception e) {
                     showNotification(project,
@@ -116,6 +107,22 @@ public final class BbjNodeDownloader {
                 }
             }
         }.queue();
+    }
+
+    /**
+     * Builds the download-progress callback reported to {@code indicator} on every step. The
+     * indicator must leave indeterminate mode before a fraction is meaningful -- the platform
+     * logs an exception when a fraction is reported while it is still indeterminate. The
+     * platform's own file-save routine can reset the indicator back to indeterminate mode between
+     * chunks when the response carries no content length, so determinate mode is re-asserted on
+     * every step, not just the first.
+     */
+    static NodeInstallPipeline.Progress progressReporter(@NotNull ProgressIndicator indicator) {
+        return (text, fraction) -> {
+            indicator.setIndeterminate(false);
+            indicator.setText(text);
+            indicator.setFraction(fraction);
+        };
     }
 
     /**

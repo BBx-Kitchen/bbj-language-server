@@ -562,7 +562,7 @@ describe('cvs-composer-webview.ts source assertions (#649)', () => {
     });
 
     test('carries a nonce CSP like the other composer panels', () => {
-        expect(webviewSource).toMatch(/script-src 'nonce-\$\{nonce\}'/);
+        expect(readFileSync(fileURLToPath(new URL('../src/webview-csp.ts', import.meta.url)), 'utf-8')).toMatch(/script-src 'nonce-\$\{nonce\}'/);
     });
 });
 
@@ -579,7 +579,10 @@ describe('package.json manifest (#649)', () => {
         expect(entry).toEqual({ command: 'bbj.composeCvs', when: 'editorLangId == bbj', group: '1_modification' });
     });
 
-    test('activationEvents includes onCommand:bbj.composeCvs', () => {
-        expect(packageJson.activationEvents).toContain('onCommand:bbj.composeCvs');
+    test('bbj.composeCvs activates through its contributes.commands entry, not an activation event', () => {
+        const entry = packageJson.contributes.commands.find((c: any) => c.command === 'bbj.composeCvs');
+        expect(entry).toBeDefined();
+        expect(packageJson.activationEvents).toContain('onLanguage:bbj');
+        expect(packageJson.activationEvents).not.toContain('onCommand:bbj.composeCvs');
     });
 });

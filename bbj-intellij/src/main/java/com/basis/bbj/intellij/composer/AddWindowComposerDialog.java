@@ -28,10 +28,15 @@ import java.awt.GridLayout;
  * Swing composer for {@code BBjSysGui::addWindow} flags + event_mask (#430/#433). Renders grouped
  * flag checkboxes and an opt-in event-mask section; the language server computes the hex, the
  * statement, and the schematic ({@code bbj/composer/addwindow/preview}) so no flag logic lives here.
- * Create flow only for now — inserts a fresh {@code addWindow(...)} statement. Every input routes
- * through the inherited {@code scheduleRefresh()} over the shared {@code PreviewDebouncer} seam
- * ({@link AddWindowFamilyComposerDialogBase}, #630), so a burst of typing sends one preview request
- * per settle point instead of one per keystroke (#611).
+ * One constructor serves both flows its two public constructors reach: create (title
+ * "Compose addWindow", OK "Insert") shows the full receiver/sysgui/geometry/title form and inserts
+ * a brand-new {@code addWindow(...)} statement at the caret; edit-in-place (title "Configure window
+ * flags", OK "Apply"), opened by {@link ComposerLauncher} from a decoded existing call, hides the
+ * geometry panel and rewrites or inserts only the flags and event-mask hex tokens of that call,
+ * preserving any undocumented bits through {@code preservedFlagBits}/{@code preservedEventBits}.
+ * Every input routes through the inherited {@code scheduleRefresh()} over the shared
+ * {@code PreviewDebouncer} seam ({@link AddWindowFamilyComposerDialogBase}, #630), so a burst of
+ * typing sends one preview request per settle point instead of one per keystroke (#611).
  */
 public final class AddWindowComposerDialog extends AddWindowFamilyComposerDialogBase {
 

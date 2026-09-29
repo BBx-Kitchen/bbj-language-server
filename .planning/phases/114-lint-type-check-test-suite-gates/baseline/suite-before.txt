@@ -1,0 +1,29 @@
+interop5008=open
+numTotalTests=3485
+numPassedTests=3252
+numFailedTests=11
+numPendingTests=222
+failedSuites=9
+hookTimeoutSuites=1
+unexplainedFailedSuites=7
+durationSec=90
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests All BBj classes extends Object
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Class definition with direct import in extends
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Class definition with direct import in implements
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Declare with direct import
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Import Java class
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Import and declare simple Java class without using FQNs
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Java FQN access - test for #6
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Linked List is resolved
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Resolve nested class FQN
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Resolve nested class in use statement
+FAILED_TEST test/linking.test.ts :: Linking Tests Interop related tests Unloaded Java FQN access - test for #6
+FAILED_SUITE test/classes.test.ts other
+FAILED_SUITE test/functional/chevrotain-tokens.test.ts other
+FAILED_SUITE test/functional/installed-extension-e2e.test.ts other
+FAILED_SUITE test/line-break-validation.test.ts hook-timeout
+FAILED_SUITE test/linking.test.ts other
+FAILED_SUITE test/run-call-file-resolution.test.ts other
+FAILED_SUITE test/setopts-code-scanner.test.ts other
+FAILED_SUITE test/use-path-containment.test.ts other
+FAILED_SUITE test/use-project-root.test.ts other

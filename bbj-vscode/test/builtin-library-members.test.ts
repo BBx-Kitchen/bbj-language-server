@@ -1,13 +1,13 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { isLibEventType, isLibSymbolicLabelDecl, isLibVariable, Model } from '../src/language/generated/ast.js';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const parse = parseHelper<Model>(services.BBj);
 
 /**
@@ -92,17 +92,14 @@ describe('builtin library: labels, variables, events (P61-D5-017)', () => {
     });
 
     // .ts-vs-.bbl content-equivalence: the physical lib/*.bbl file on disk (never read by
-    // any production code path — same fact P61-D8-007 corrects the comment about) is parsed
-    // independently here and its declared name set compared against the .ts-derived virtual
-    // document actually served to the language server. This is the equivalence assertion
-    // the record names as missing (no drift guard currently exists on any of the four pairs).
-    //
-    // Compares the *unique* name set, not raw declaration counts: events.bbl still carries
-    // the pre-P61-D2-019 duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT entries that events.ts no
-    // longer has (that fix, landed elsewhere in this phase, only touched the consumed .ts
-    // file — the never-read .bbl sibling was correctly out of that fix's scope). A raw-count
-    // comparison would flag that pre-existing, already-understood staleness as new drift;
-    // the unique-name-set comparison still catches a genuinely added/removed/renamed entry.
+    // any production code path) is parsed independently here and its declared name set is
+    // compared against the .ts-derived virtual document actually served to the language
+    // server, so a .bbl that stops parsing fails here. The byte-for-byte comparison — every
+    // declaration, comment and piece of whitespace, not just the declared names — lives in
+    // bbl-catalog-drift.test.ts; that stricter test is the one that catches real drift, and
+    // this name-set check stays as a parse-level cross-check alongside the parsing assertions
+    // above. events.bbl and events.ts now declare the same mouse events, each one once: the
+    // duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT entries the physical file used to carry are gone.
     describe('.ts-vs-.bbl equivalence', () => {
         async function declaredNames(virtualSuffix: string, physicalFile: string, guard: (n: unknown) => boolean) {
             const virtualDoc = virtualDocument(virtualSuffix)!;

@@ -5,6 +5,7 @@ import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.CapturingProcessHandler;
 import com.intellij.execution.process.ProcessOutput;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -20,10 +21,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Action to authenticate with BBj Enterprise Manager and store JWT token.
- * Prompts for credentials, launches em-login.bbj, stores token in PasswordSafe.
+ * Action to authenticate with BBj Enterprise Manager, remember the username, and store the
+ * JWT token. Prompts for credentials, launches em-login.bbj, stores token in PasswordSafe.
  */
 public final class BbjEMLoginAction extends AnAction {
+
+    /** Application-level {@link PropertiesComponent} key for the remembered EM username. */
+    static final String LAST_USERNAME_KEY = "com.basis.bbj.intellij.emLastUsername";
+
+    private static final EmUsernameMemory USERNAME_MEMORY = new EmUsernameMemory(
+        () -> PropertiesComponent.getInstance().getValue(LAST_USERNAME_KEY, ""),
+        value -> PropertiesComponent.getInstance().setValue(LAST_USERNAME_KEY, value)
+    );
 
     public BbjEMLoginAction() {
         super("Login to Enterprise Manager",
@@ -182,6 +191,7 @@ public final class BbjEMLoginAction extends AnAction {
 
             // Store JWT securely
             BbjEMTokenStore.storeToken(stdout);
+            USERNAME_MEMORY.remember(username);
             showInfoOnEdt(
                 "Successfully logged in to Enterprise Manager",
                 "EM Login"
@@ -201,13 +211,14 @@ public final class BbjEMLoginAction extends AnAction {
     /** Routes a blocking username prompt to the EDT and returns the result to the calling thread. */
     @Nullable
     private static String promptUsername() {
+        String initial = USERNAME_MEMORY.initialUsername();
         String[] holder = new String[1];
         ApplicationManager.getApplication().invokeAndWait(() ->
                 holder[0] = Messages.showInputDialog(
                         "Enter EM username:",
                         "Enterprise Manager Login",
                         null,
-                        "admin",
+                        initial,
                         null
                 ));
         return holder[0];

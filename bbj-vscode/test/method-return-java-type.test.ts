@@ -1,4 +1,5 @@
 import { EmptyFileSystem } from 'langium';
+import { Diagnostic } from 'vscode-languageserver';
 import { beforeAll, afterEach, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
 import { createBBjTestServices } from './bbj-test-module.js';
@@ -19,8 +20,8 @@ const INCOMPATIBLE = 'returns a value of incompatible type';
 async function returnTypeDiagnostics(code: string): Promise<string[]> {
     const result = await validate(code);
     return result.diagnostics
-        .filter(d => d.message.includes(INCOMPATIBLE))
-        .map(d => d.message);
+        .filter(d => Diagnostic.getMessageString(d).includes(INCOMPATIBLE))
+        .map(d => Diagnostic.getMessageString(d));
 }
 
 describe('#437 validate returned value against a Java / non-BBj return type', () => {
@@ -50,7 +51,7 @@ class public Test
   methodend
 classend
 `);
-        const diag = result.diagnostics.find(d => d.message.includes(INCOMPATIBLE));
+        const diag = result.diagnostics.find(d => Diagnostic.getMessageString(d).includes(INCOMPATIBLE));
         expect(diag).toBeDefined();
         expect(diag!.severity).toBe(1); // 1 = Error
     });

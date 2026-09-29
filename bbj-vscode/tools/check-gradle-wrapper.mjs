@@ -85,8 +85,9 @@ const DISTRIBUTION_FILENAME = /gradle-([0-9][0-9A-Za-z.\-]*)-([A-Za-z]+)\.zip$/;
 const GRADLE_INVOCATION = /(^|[\s"'/])gradlew(\.bat)?(\s|$)|(^|[\s"'])gradle(\s+\S)/;
 const GRADLE_SETUP_USES = /^\s*(-\s+)?uses:\s*(gradle\/actions\/setup-gradle|gradle\/gradle-build-action)(@|\s|$)/;
 const WRAPPER_VALIDATION_USES = /^\s*(-\s+)?uses:\s*gradle\/actions\/wrapper-validation(@|\s|$)/;
-const JOB_ID_LINE = /^(\s+)([A-Za-z0-9_-]+):\s*$/;
-const JOBS_KEY_LINE = /^jobs:\s*$/;
+// A mapping key may carry a trailing `# comment`, which YAML allows.
+const JOB_ID_LINE = /^(\s+)([A-Za-z0-9_-]+):\s*(?:#.*)?$/;
+const JOBS_KEY_LINE = /^jobs:\s*(?:#.*)?$/;
 
 function splitLines(content) {
   return content.split(/\r\n|\n/);
@@ -263,11 +264,12 @@ function attributeJobs(lines) {
     return [];
   }
 
-  // Determine the job-id indentation from the first mapping key after `jobs:`.
+  // Determine the job-id indentation from the first mapping key after `jobs:`,
+  // skipping blank and comment lines.
   let jobIndent = null;
   for (let i = jobsKeyIndex + 1; i < lines.length; i += 1) {
     const line = lines[i];
-    if (line.trim() === '') continue;
+    if (line.trim() === '' || /^\s*#/.test(line)) continue;
     const match = line.match(JOB_ID_LINE);
     if (match) {
       jobIndent = match[1].length;

@@ -51,12 +51,12 @@ Window Mouse Button Down
 eventtype ON_MOUSE_DOWN
 
 /@@
-Window Mouse Enter
+Window Mouse Enter / Mouse Enter Event
 @/
 eventtype ON_MOUSE_ENTER
 
 /@@
-Window Mouse Exit
+Window Mouse Exit / Mouse Exit Event
 @/
 eventtype ON_MOUSE_EXIT
 
@@ -522,16 +522,6 @@ Control Focus Gained/Lost Event
 eventtype ON_LOST_FOCUS
 
 /@@
-Mouse Enter Event
-@/
-eventtype ON_MOUSE_ENTER
-
-/@@
-Mouse Exit Event
-@/
-eventtype ON_MOUSE_EXIT
-
-/@@
 Native JavaScript Event
 @/
 eventtype ON_NATIVE_JAVASCRIPT
@@ -730,3 +720,4 @@ eventtype ON_TIMER
 BBjServletEvent
 @/
 eventtype ON_WEB_CONNECTION	 
+

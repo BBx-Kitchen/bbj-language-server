@@ -1,8 +1,9 @@
 import { EmptyFileSystem } from 'langium';
+import { Diagnostic } from 'vscode-languageserver';
 import { validationHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { Program } from '../src/language/generated/ast.js';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { composeCvsCall } from '../src/cvs-composer.js';
 import { initializeWorkspace } from './test-helper.js';
 
@@ -10,7 +11,7 @@ import { initializeWorkspace } from './test-helper.js';
 const CALL_ISSUE = /but received \d|accepts at most|value is given|returns a .* value, but/;
 
 describe('builtin function call validation (#451)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
@@ -20,7 +21,7 @@ describe('builtin function call validation (#451)', () => {
 
     async function callIssues(code: string): Promise<string[]> {
         const result = await validate(code);
-        return result.diagnostics.filter(d => CALL_ISSUE.test(d.message)).map(d => d.message);
+        return result.diagnostics.filter(d => CALL_ISSUE.test(Diagnostic.getMessageString(d))).map(d => Diagnostic.getMessageString(d));
     }
 
     // The concrete correct/incorrect examples from issue #179.

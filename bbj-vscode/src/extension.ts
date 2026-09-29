@@ -7,14 +7,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import {
-    LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
+    DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
-import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
-import { isLineNumberedSource } from './line-numbering.js';
+import { registerOpenFilePrompts } from './open-file-prompts.js';
+import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import { registerAddWindowComposer } from './addwindow-composer-ui.js';
 import { registerAddChildWindowComposer } from './addchildwindow-composer-ui.js';
@@ -28,15 +27,15 @@ import {
     validateOptions,
     type CompilerOption
 } from './Commands/CompilerOptions.js';
-import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
-import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
+import { createConfigPathTrustMiddleware, effectiveConfigPath, registerTrustGrantRepush } from './config-path-trust.js';
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
+import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerEmLoginCommand } from './em-auth.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -405,246 +404,12 @@ export async function configureCompileOptions(): Promise<void> {
 }
 
 /**
- * Check if a JWT token is expired by decoding its payload
- * Returns true if token is expired, false otherwise or if unable to determine
+ * Reads the stored EM token through this activation's secret storage. Kept on
+ * the extension entry point (delegating to em-auth.ts's own implementation) so
+ * callers and tests can keep importing it from here with no arguments.
  */
-function isTokenExpired(token: string): boolean {
-    try {
-        // JWTs have 3 dot-separated parts: header.payload.signature
-        const parts = token.split('.');
-        if (parts.length !== 3) {
-            return false; // Not a JWT, let server decide
-        }
-
-        // Base64url-decode the payload (index 1)
-        // Replace base64url chars with base64 equivalents
-        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-
-        // Decode base64 to UTF-8 string
-        const decoded = Buffer.from(payload, 'base64').toString('utf-8');
-        const claims = JSON.parse(decoded);
-
-        // Check if exp field exists
-        if (!claims.exp) {
-            return false; // No expiration claim, can't determine
-        }
-
-        // Compare exp (Unix timestamp in seconds) against current time
-        const now = Math.floor(Date.now() / 1000);
-        return claims.exp <= now;
-    } catch (error) {
-        // If any parsing fails, let server validate
-        return false;
-    }
-}
-
-/**
- * Get EM credentials from SecretStorage
- * Returns {username, password} object or undefined if not stored
- */
-export async function getEMCredentials(): Promise<{username: string, password: string} | undefined> {
-    // Try token first
-    const token = await secretStorage?.get('bbj.em.token');
-    if (token) {
-        // Check if token is expired (client-side JWT decode)
-        if (isTokenExpired(token)) {
-            // Delete expired token from storage
-            await secretStorage?.delete('bbj.em.token');
-            return undefined; // Triggers re-login flow
-        }
-        return { username: '__token__', password: token };
-    }
-    // Try stored credentials (fallback if BBj doesn't support tokens)
-    const creds = await secretStorage?.get('bbj.em.credentials');
-    if (creds) return JSON.parse(creds);
-    return undefined;
-}
-
-/**
- * Validate a token server-side against EM by running em-validate-token.bbj
- * Returns true if token is valid, false otherwise
- */
-async function validateTokenServerSide(context: vscode.ExtensionContext, token: string): Promise<boolean> {
-    try {
-        const config = vscode.workspace.getConfiguration("bbj");
-        const bbjHome = config.get<string>("home");
-
-        if (!bbjHome) {
-            return false;
-        }
-
-        // Build path to em-validate-token.bbj
-        const emValidatePath = context.asAbsolutePath(path.join('tools', 'em-validate-token.bbj'));
-
-        // Create temp file for BBj output, owner-only and exclusively before the
-        // spawn — em-validate-token.bbj truncates it in place rather than deleting
-        // and recreating it, so the mode set here survives the write.
-        const tmpFile = createOwnerOnlyFile(path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`));
-
-        // Build argv: bbj -q em-validate-token.bbj - <tmpFile>; the token travels on
-        // argv.env (BBJ_EM_TOKEN), never as a positional argument.
-        const argv = buildEmValidateArgv({
-            home: bbjHome,
-            platform: process.platform,
-            scriptPath: emValidatePath,
-            token,
-            tmpFile
-        });
-
-        // Log command if debug mode is on (with masked token)
-        const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
-        if (isDebug) {
-            outputChannel.appendLine(`EM token validation: ${formatArgvForLog(argv, [token])}`);
-        }
-
-        let result: string;
-        try {
-            // Execute with 10s timeout. The secret env map must be spread over
-            // process.env, not passed alone — execFile replaces the child's
-            // environment wholesale when options.env is set, and omitting
-            // process.env here would strip PATH/BBJ_HOME from the child.
-            await runProcess(argv, { timeout: 10000, env: { ...process.env, ...argv.env } });
-            result = fs.readFileSync(tmpFile, 'utf-8').trim();
-        } finally {
-            // Clean up temp file
-            try { fs.unlinkSync(tmpFile); } catch {}
-        }
-
-        // Return true only if output is "VALID"
-        return result === 'VALID';
-    } catch (error) {
-        // On any error, consider token invalid
-        return false;
-    }
-}
-
-/**
- * Ensure valid EM credentials are available, with automatic re-login on expired/invalid tokens
- * Returns credentials or undefined if user cancelled login
- */
-async function ensureValidToken(context: vscode.ExtensionContext): Promise<{username: string, password: string} | undefined> {
-    let creds = await getEMCredentials();
-    if (!creds) {
-        const login = await vscode.window.showInformationMessage(
-            'EM login required. Login now?', 'Login', 'Cancel'
-        );
-        if (login === 'Login') {
-            await vscode.commands.executeCommand('bbj.loginEM');
-            creds = await getEMCredentials();
-        }
-        if (!creds) return undefined;
-    }
-
-    // Server-side validation for token auth (catches revoked tokens)
-    if (creds.username === '__token__') {
-        const valid = await validateTokenServerSide(context, creds.password);
-        if (!valid) {
-            await context.secrets.delete('bbj.em.token');
-            vscode.window.showInformationMessage('EM token expired or invalid. Please log in again.');
-            await vscode.commands.executeCommand('bbj.loginEM');
-            creds = await getEMCredentials();
-            if (!creds) return undefined;
-        }
-    }
-
-    return creds;
-}
-
-// Tracks files we've already prompted about this session so re-focusing the tab
-// (or reopening it) doesn't nag the user again.
-const promptedTokenizedFiles = new Set<string>();
-
-/** Read the first `length` bytes of a file, or undefined if it can't be read. */
-async function readLeadingBytes(fsPath: string, length: number): Promise<Uint8Array | undefined> {
-    let handle: fs.promises.FileHandle | undefined;
-    try {
-        handle = await fs.promises.open(fsPath, 'r');
-        const buffer = Buffer.alloc(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, 0);
-        return buffer.subarray(0, bytesRead);
-    } catch {
-        return undefined;
-    } finally {
-        await handle?.close().catch(() => { });
-    }
-}
-
-/** Extract a file URI from any tab whose input carries one (text, custom, notebook…). */
-function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
-    const input = tab.input as { uri?: vscode.Uri } | undefined;
-    return input?.uri instanceof vscode.Uri ? input.uri : undefined;
-}
-
-/**
- * When a tokenized (binary) BBj program is opened, offer to decompile it to
- * editable source (replacing the file) or open a read-only decompiled copy (#65).
- * Detection is content-based (magic bytes), so it works regardless of the file's
- * extension — tokenized programs are often named `.pub`, `.src`, or extensionless.
- */
-async function maybePromptTokenized(uri: vscode.Uri | undefined): Promise<void> {
-    if (!uri || uri.scheme !== 'file') return;
-    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('decompile.promptOnOpen', true)) return;
-
-    const key = uri.toString();
-    if (promptedTokenizedFiles.has(key)) return;
-    // Reserve synchronously: the same file can surface from both the tab-change
-    // event and the activation scan, and we must not prompt (or decompile) twice.
-    promptedTokenizedFiles.add(key);
-
-    const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
-    if (!bytes || !isTokenizedBBjHeader(bytes)) {
-        // Not tokenized after all — allow a later check (e.g. if the file changes).
-        promptedTokenizedFiles.delete(key);
-        return;
-    }
-
-    const decompileAction = 'Decompile & Replace';
-    const readOnlyAction = 'Open Read-only';
-    const choice = await vscode.window.showInformationMessage(
-        `"${path.basename(uri.fsPath)}" is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy?`,
-        decompileAction, readOnlyAction
-    );
-    if (choice === decompileAction) {
-        Commands.decompileReplace(uri);
-    } else if (choice === readOnlyAction) {
-        Commands.decompileReadonly(uri);
-    }
-}
-
-// Tracks documents we've already prompted about this session, so switching
-// back to a line-numbered editor doesn't nag the user again.
-const promptedLineNumberedDocs = new Set<string>();
-
-/**
- * When a line-numbered BBj program is opened, ask whether to denumber it
- * (replacing the file with editable source) or open it read-only (issue #64).
- */
-async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): Promise<void> {
-    if (!editor) return;
-    const doc = editor.document;
-    if (doc.languageId !== 'bbj' || doc.uri.scheme !== 'file') return;
-    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('denumber.promptOnOpen', true)) return;
-
-    const key = doc.uri.toString();
-    if (promptedLineNumberedDocs.has(key)) return;
-    if (!isLineNumberedSource(doc.getText())) return;
-    promptedLineNumberedDocs.add(key);
-
-    const denumberAction = 'Denumber & Replace';
-    const readOnlyAction = 'Open Read-only';
-    const choice = await vscode.window.showInformationMessage(
-        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
-        denumberAction, readOnlyAction
-    );
-    if (choice === denumberAction) {
-        // bbj.denumber runs bbjlst and replaces the file in place with denumbered source.
-        vscode.commands.executeCommand('bbj.denumber', doc.uri);
-    } else if (choice === readOnlyAction) {
-        // Make sure our editor is the active one before flipping it read-only in-session,
-        // in case the user navigated away while the prompt was open.
-        await vscode.window.showTextDocument(doc, { preview: false });
-        await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
-    }
+export function getEMCredentials(): Promise<{ username: string, password: string } | undefined> {
+    return getStoredEMCredentials(secretStorage);
 }
 
 const CONFIG_LANGUAGE_ID = CONFIG_DOCUMENT_LANGUAGE_ID;
@@ -718,94 +483,30 @@ export function activate(context: vscode.ExtensionContext): void {
     // client instance (stop then start) so its already-registered notification handlers
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
-    (Commands as any).setOutputChannel(outputChannel);
+    (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
+
+    registerConfigFileCommands(context);
+    registerEmLoginCommand(context, { outputChannel });
+    registerRunCommands(context, { outputChannel });
+    registerCompileCommands(context);
+    registerJavaClasspathCommands(context, { client });
+    registerDocumentFormatter(context);
+    registerOpenFilePrompts(context);
+    registerDiagnosticStatusBars(context, { client });
+    registerConfigReloadStatus(context, { client, restartGate });
+    registerConfigAssociation(context, { client });
+}
+
+/** Registers bbj.config, bbj.properties and bbj.em. */
+function registerConfigFileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.config", Commands.openConfigFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager));
+}
 
-    // Register EM login command
-    context.subscriptions.push(vscode.commands.registerCommand("bbj.loginEM", async () => {
-        const config = vscode.workspace.getConfiguration("bbj");
-        const bbjHome = config.get<string>("home");
-
-        if (!bbjHome) {
-            vscode.window.showErrorMessage("Please set bbj.home first", "Open Settings").then(sel => {
-                if (sel === "Open Settings") {
-                    vscode.commands.executeCommand('workbench.action.openSettings', 'bbj.home');
-                }
-            });
-            return;
-        }
-
-        // Prompt for credentials
-        const username = await vscode.window.showInputBox({
-            prompt: "EM Username",
-            value: "admin",
-            ignoreFocusOut: true
-        });
-        if (!username) return;
-
-        const password = await vscode.window.showInputBox({
-            prompt: "EM Password",
-            password: true,
-            ignoreFocusOut: true
-        });
-        if (password === undefined) return;
-
-        // Launch em-login.bbj to validate credentials and get token
-        const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
-
-        // Create temp file for BBj output, owner-only and exclusively before the
-        // spawn — em-login.bbj truncates it in place rather than deleting and
-        // recreating it, so the mode set here survives the write and holds for the
-        // whole life of the file, including while it carries the returned JWT.
-        const tmpFile = createOwnerOnlyFile(path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`));
-
-        const platformLabel = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
-        const infoString = `VS Code on ${platformLabel} as ${os.userInfo().username}`;
-
-        const argv = buildEmLoginArgv({
-            home: bbjHome,
-            platform: process.platform,
-            scriptPath: emLoginPath,
-            username,
-            password,
-            tmpFile,
-            infoString
-        });
-
-        const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
-        if (isDebug) {
-            outputChannel.appendLine(`EM login: ${formatArgvForLog(argv, [password])}`);
-        }
-
-        try {
-            let output: string;
-            try {
-                // Execute with 15s timeout. The secret env map must be spread over
-                // process.env, not passed alone — execFile replaces the child's
-                // environment wholesale when options.env is set, and omitting
-                // process.env here would strip PATH/BBJ_HOME from the child.
-                await runProcess(argv, { timeout: 15000, env: { ...process.env, ...argv.env } });
-                output = fs.readFileSync(tmpFile, 'utf-8').trim();
-            } catch (err) {
-                const pe = err as ProcessError;
-                throw new Error(pe.stderr || pe.message);
-            } finally {
-                try { fs.unlinkSync(tmpFile); } catch {}
-            }
-
-            if (output.startsWith('ERROR:')) {
-                throw new Error(output.substring(6));
-            }
-
-            // Store token in SecretStorage
-            await context.secrets.store('bbj.em.token', output);
-            vscode.window.showInformationMessage('Successfully logged in to Enterprise Manager');
-        } catch (error) {
-            vscode.window.showErrorMessage(`EM login failed: ${error}`);
-        }
-    }));
+/** Registers bbj.run and the BUI/DWC commands, both auto-prompting login and validating the token. */
+function registerRunCommands(context: vscode.ExtensionContext, deps: { outputChannel: vscode.LogOutputChannel }): void {
+    const { outputChannel } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.run", Commands.run));
 
     // BUI command with auto-prompt login and token validation
@@ -815,7 +516,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
             return;
         }
-        const creds = await ensureValidToken(context);
+        const creds = await ensureValidToken(context, { outputChannel });
         if (!creds) return; // User cancelled login
         Commands.runBUI({ fsPath: target }, creds);
     }));
@@ -827,16 +528,24 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage(NO_ACTIVE_BBJ_FILE_MESSAGE);
             return;
         }
-        const creds = await ensureValidToken(context);
+        const creds = await ensureValidToken(context, { outputChannel });
         if (!creds) return; // User cancelled login
         Commands.runDWC({ fsPath: target }, creds);
     }));
+}
+
+/** Registers the compile/denumber/decompile commands and the compiler-options QuickPick. */
+function registerCompileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", Commands.denumber));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions));
+}
 
+/** Registers the Java classpath refresh command and the classpath-entries picker. */
+function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
         if (!client) {
             vscode.window.showErrorMessage('BBj language server not running');
@@ -890,93 +599,21 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
         }
     }));
+}
 
+/** Registers the BBj document formatter. */
+function registerDocumentFormatter(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider(
             "bbj",
             DocumentFormatter
         )
     );
+}
 
-    // Offer to decompile (or open read-only) when a tokenized/binary BBj program is
-    // opened. Tokenized files are binary, so they may open in a non-text editor —
-    // the Tabs API sees them regardless, and detection reads the file's magic bytes.
-    context.subscriptions.push(
-        vscode.window.tabGroups.onDidChangeTabs((event) => {
-            for (const tab of event.opened) {
-                void maybePromptTokenized(uriFromTab(tab));
-            }
-        })
-    );
-    // Inspect tabs already open when the extension activates.
-    for (const group of vscode.window.tabGroups.all) {
-        for (const tab of group.tabs) {
-            void maybePromptTokenized(uriFromTab(tab));
-        }
-    }
-
-    // Offer to denumber (or open read-only) when a line-numbered BBj program is opened.
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor((editor) => { void maybePromptLineNumbered(editor); })
-    );
-    // Handle the editor that is already active when the extension activates.
-    void maybePromptLineNumbered(vscode.window.activeTextEditor);
-
-    // Diagnostic suppression status bar indicator
-    const suppressionStatusBar = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Left, 100
-    );
-    suppressionStatusBar.text = '$(warning) Diagnostics filtered';
-    suppressionStatusBar.tooltip = 'Parse errors detected — cascading linking and validation noise is hidden. Fix parse errors to see full diagnostics.';
-    context.subscriptions.push(suppressionStatusBar);
-
-    // Show/hide based on whether the active document has errors
-    const updateSuppressionStatus = () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.languageId !== 'bbj') {
-            suppressionStatusBar.hide();
-            return;
-        }
-        const diags = vscode.languages.getDiagnostics(editor.document.uri);
-        const hasError = diags.some(
-            d => d.severity === vscode.DiagnosticSeverity.Error
-        );
-        // Simple heuristic: show when any error exists (suppression is likely active)
-        // Phase 53 can refine with a custom LSP notification if needed
-        if (hasError && vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true)) {
-            suppressionStatusBar.show();
-        } else {
-            suppressionStatusBar.hide();
-        }
-    };
-
-    context.subscriptions.push(
-        vscode.languages.onDidChangeDiagnostics(() => updateSuppressionStatus())
-    );
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(() => updateSuppressionStatus())
-    );
-
-    // BBjCPL availability status bar indicator
-    // Hidden by default — shown only when BBjCPL is detected as unavailable
-    const bbjcplStatusBar = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Left, 99
-    );
-    bbjcplStatusBar.text = '$(warning) BBjCPL: unavailable';
-    bbjcplStatusBar.tooltip = 'BBjCPL compiler not found. Check that BBj is installed and bbj.home is configured.';
-    context.subscriptions.push(bbjcplStatusBar);
-
-    // Listen for BBjCPL availability notifications from the language server
-    context.subscriptions.push(
-        client.onNotification('bbj/bbjcplAvailability', (params: { available: boolean }) => {
-            if (params.available) {
-                bbjcplStatusBar.hide();
-            } else {
-                bbjcplStatusBar.show();
-            }
-        })
-    );
-
+/** Registers the config-reload status bar (#486) and the notification handler that drives it through the restart gate. */
+function registerConfigReloadStatus(context: vscode.ExtensionContext, deps: { client: LanguageClient, restartGate: RestartGate | undefined }): void {
+    const { client, restartGate } = deps;
     // Config-reload status bar indicator (#486) — hidden by default, driven
     // entirely by onConfigRestartPhase via the restart gate above.
     configReloadStatusBar = vscode.window.createStatusBarItem(
@@ -994,7 +631,11 @@ export function activate(context: vscode.ExtensionContext): void {
             restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
         })
     );
+}
 
+/** Registers the resolved-config-path handler and the config-file association listeners. */
+function registerConfigAssociation(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
     // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
     // throws and never blocks activation — a bad payload just means no cache update.
     context.subscriptions.push(
@@ -1041,7 +682,6 @@ export function activate(context: vscode.ExtensionContext): void {
             sweepOpenDocumentsForConfigAssociation();
         })
     );
-
 }
 
 // This function is called when the extension is deactivated.
@@ -1075,6 +715,13 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
     const fileSystemWatcher = vscode.workspace.createFileSystemWatcher('**/*.bbj');
     context.subscriptions.push(fileSystemWatcher);
 
+    // Referenced by sendBbjSettings below, assigned once the client is constructed further
+    // down; the closure is only ever invoked after that assignment (on a later push or a
+    // trust-grant re-push), never synchronously during client construction itself.
+    let client: LanguageClient;
+    const sendBbjSettings = (settings: Record<string, unknown>): Promise<void> =>
+        client.sendNotification(DidChangeConfigurationNotification.type, { settings });
+
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         // Supplying our own channel here makes vscode-languageclient treat it as
@@ -1094,14 +741,21 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
             fileEvents: fileSystemWatcher,
             configurationSection: 'bbj'
         },
+        // The push and pull settings handoffs must stay trust-gated too (issue #511):
+        // vscode-languageclient's own `next()` for `didChangeConfiguration` re-reads the raw
+        // workspace value and cannot be handed a substituted one, so this middleware builds
+        // and sends the payload itself instead of calling `next` for an actual section list.
+        middleware: {
+            workspace: createConfigPathTrustMiddleware(sendBbjSettings)
+        },
         initializationOptions: {
             version: context.extension.packageJSON.version,
             home: vscode.workspace.getConfiguration("bbj").get("home"),
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
             typeResolutionWarnings: vscode.workspace.getConfiguration("bbj").get("typeResolution.warnings", true),
-            configPath: vscode.workspace.getConfiguration("bbj").get("configPath", null),
-            interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host", "localhost"),
-            interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008),
+            configPath: effectiveConfigPath(),
+            interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host"),
+            interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port"),
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
             maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20),
             compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced"),
@@ -1110,7 +764,7 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
     };
 
     // Create the language client and start the client.
-    const client = new LanguageClient(
+    client = new LanguageClient(
         'bbj',
         'BBj',
         serverOptions,
@@ -1125,5 +779,14 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
         console.error('BBj language server failed to start:', error);
         vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
     });
+
+    // Granting Workspace Trust makes the workspace-scoped bbj.configPath take effect without a
+    // reload: re-send the gated settings through the same builder the push path uses (issue #511).
+    context.subscriptions.push(
+        registerTrustGrantRepush(sendBbjSettings, error => {
+            const detail = error instanceof Error ? error.message : String(error);
+            appendOutputLine(`Re-sending settings after the workspace trust grant failed: ${detail}`);
+        })
+    );
     return client;
 }

@@ -2,7 +2,7 @@ import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { documentationHeader, methodSignature } from '../src/language/bbj-hover.js';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { JavaMethod, JavaField, Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
@@ -45,7 +45,7 @@ describe('hover helpers are robust against malformed Java data', () => {
  * (D-13, no red state producible: all three already behave correctly).
  */
 describe('Hover content: documented members, inheritance, and error resilience (P61-D5-012)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -167,7 +167,7 @@ PRINT d!.x.y
  * `References.findDeclarations`) would never fire for it.
  */
 describe('SETOPTS-in-code hover: absolute shape decode (88-01, DISC-05)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -266,7 +266,7 @@ describe('SETOPTS-in-code hover: absolute shape decode (88-01, DISC-05)', async 
  * hook the tracer (88-01) proved for the absolute shape.
  */
 describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-05)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {

@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import {
     BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, MAX_BYTES, MAX_RAW_TAIL_DIGITS, SETOPTS_BITS,
     SETOPTS_IN_CODE_DEFAULT_VAR,
-    bbjHexLiteral, composeSetOptsBlock, composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector,
+    bbjHexLiteral, composeSetOptsBlock, describeIorAndMask, describeMaskVector, describeVector,
     encodeVector, emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector,
     rawTail, setBit, setMaskChar, setRawTail, setoptsPreview, singleBitAndMask, singleBitIorMask,
     triStateFromChainEffect, unknownBitsInByte,

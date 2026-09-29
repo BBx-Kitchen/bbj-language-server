@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import path from 'path';
+import * as path from 'path';
 
 /**
  * GHSA-p5f3-9456-9pcx (CWE-78): proves the launcher hands its argument array to

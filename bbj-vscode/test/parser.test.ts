@@ -2,10 +2,12 @@ import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast';
+import { Diagnostic } from 'vscode-languageserver';
+import { createBBjTestServices } from './bbj-test-module.js';
+import { indexJavaClasspathDocument } from './test-helper.js';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBinaryExpression, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLastVerifyOption, isLetStatement, isLibrary, isNumberLiteral, isPrefixExpression, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isStringLiteral, isSwitchCase, isSwitchStatement, isSymbolRef, isTableStatement, isUserLabelRef, isVerifyOption, isVerifyOptions, isWaitStatement } from '../src/language/generated/ast.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 
 const parse = parseHelper<Model>(services.BBj);
 describe('Parser Tests', () => {
@@ -25,7 +27,10 @@ describe('Parser Tests', () => {
         expect(AstUtils.streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
     }
 
-    beforeAll(() => services.shared.workspace.WorkspaceManager.initializeWorkspace([]));
+    beforeAll(async () => {
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        await indexJavaClasspathDocument(services.shared);
+    });
 
 
     test('Performance test', async () => {
@@ -527,10 +532,7 @@ describe('Parser Tests', () => {
         new String()(1)
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: 'String' is a Java class that cannot be resolved in EmptyFileSystem test context.
-        // To enable: either run tests with a real Java classpath (USE "java.lang.String") or
-        // add String as a synthetic BBj built-in type in the test workspace setup.
-        // expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Use Symbolic label in a verb', async () => {
@@ -808,11 +810,11 @@ describe('Parser Tests', () => {
         requestSemaphore!.release()
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: BBjAPI() method chain (getGlobalNamespace, getValue, release) cannot be resolved
-        // without Java interop classpath. The synthetic BBjAPI stub in bbj-api.ts has no methods.
-        // To enable: run tests with a real BBj classpath or expand the synthetic BBjAPI stub
-        // with the BBjNamespace/BBjSemaphore method signatures.
-        // expectNoValidationErrors(result);
+        // BBjAPI().getGlobalNamespace() returns the real com.basis.bbj.proxies.BBjNamespace,
+        // and its getValue() returns the real java.lang.Object -- release() on that
+        // Object-typed variable is not flagged, since a receiver typed exactly java.lang.Object
+        // can hold any runtime value (bbj-document-validator.ts's processLinkingErrors skip).
+        expectNoValidationErrors(result);
     });
 
     test('Call: fileId as expression', async () => {
@@ -845,6 +847,22 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Java primitive types link in field, parameter and return positions (#660)', async () => {
+        const result = await parse(`
+
+        class public OutputHandler
+
+            field public int count
+
+            method public boolean isReady(long a, double b, char c)
+                methodret 1
+            methodend
+        classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Array type ref', async () => {
         const result = await parse(`
 
@@ -853,15 +871,12 @@ describe('Parser Tests', () => {
             field protected String[] strings
 
             method public String[] createHTML(byte[] bytes)
+                methodret #strings
             methodend
         classend
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        // DISABLED: 'String' and 'byte' are Java types that cannot be resolved in EmptyFileSystem
-        // test context. Array type notation (String[], byte[]) in class field/method declarations
-        // requires a Java classpath. To enable: run tests with a real Java classpath or register
-        // these primitive Java types as synthetic built-ins.
-        // expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check SQLSET statement', async () => {
@@ -2817,7 +2832,7 @@ classend
         expectNoParserLexerErrors(document);
         // Validator should report an error about DECLARE at class member level
         expect(document.diagnostics?.length).toBeGreaterThan(0);
-        expect(document.diagnostics?.some(d => d.message.toLowerCase().includes('declare'))).toBeTruthy();
+        expect(document.diagnostics?.some(d => Diagnostic.getMessageString(d).toLowerCase().includes('declare'))).toBeTruthy();
     });
 
     test('DECLARE inside method body is valid', async () => {

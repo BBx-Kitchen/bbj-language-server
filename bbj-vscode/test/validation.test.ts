@@ -6,14 +6,15 @@
 
 import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 
 import { expectError, expectNoIssues, expectWarning, validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isDefFunction, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
+import { createBBjTestServices } from './bbj-test-module.js';
+import { Program, isBinaryExpression, isDefFunction, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, isLabelDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
@@ -231,7 +232,7 @@ describe('BBj validation', async () => {
         // The single-line DEF FN must actually be parsed as a DefFunction node...
         expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
         // ...and produce no line-break errors.
-        const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
+        const lineBreakErrors = validationResult.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('line break'));
         expect(lineBreakErrors.map(d => d.message)).toEqual([]);
     });
 
@@ -245,7 +246,7 @@ describe('BBj validation', async () => {
             classend
         `);
         expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
-        const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
+        const lineBreakErrors = validationResult.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('line break'));
         expect(lineBreakErrors.map(d => d.message)).toEqual([]);
     });
 
@@ -469,7 +470,7 @@ describe('BBj validation', async () => {
         const validationResult = await validate(`
         red = 0; else red = 1
         `);
-        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(Diagnostic.getMessageString(d)));
         expect(lineBreakErrors.length).toBeGreaterThan(0);
     });
 
@@ -479,7 +480,7 @@ describe('BBj validation', async () => {
         const validationResult = await validate(`
         red = 0; fi
         `);
-        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(Diagnostic.getMessageString(d)));
         expect(lineBreakErrors.length).toBeGreaterThan(0);
     });
 
@@ -594,7 +595,7 @@ describe('BBj validation', async () => {
             CASE DEFAULT; PRINT "Hard"; BREAK
         SWEND
         `, { validation: true });
-        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        const caseErrors = result.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('only allowed inside a SWITCH'));
         expect(caseErrors).toHaveLength(0);
     });
 
@@ -603,7 +604,7 @@ describe('BBj validation', async () => {
         LET t = 123
         SWITCH t; CASE 1; PRINT "1"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
         `, { validation: true });
-        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        const caseErrors = result.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('only allowed inside a SWITCH'));
         expect(caseErrors).toHaveLength(0);
     });
 
@@ -621,7 +622,7 @@ describe('BBj validation', async () => {
         SWEND
         CASE 2
         `, { validation: true });
-        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        const caseErrors = result.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('only allowed inside a SWITCH'));
         expect(caseErrors).toHaveLength(1);
         expect(caseErrors[0].message).toBe("'CASE' is only allowed inside a SWITCH block.");
     });
@@ -644,7 +645,7 @@ describe('BBj validation', async () => {
             methodend
         classend
         `, { validation: true });
-        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        const caseErrors = result.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('only allowed inside a SWITCH'));
         expect(caseErrors).toHaveLength(0);
     });
 
@@ -658,7 +659,7 @@ describe('BBj validation', async () => {
                 CASE 3; BREAK
         SWEND
         `, { validation: true });
-        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        const caseErrors = result.diagnostics.filter(d => Diagnostic.getMessageString(d).includes('only allowed inside a SWITCH'));
         expect(caseErrors).toHaveLength(0);
     });
 });

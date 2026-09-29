@@ -23,8 +23,8 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/generated/module.js';
 import { registerValidationChecks } from '../src/language/bbj-validator.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 import { JavaInteropService } from '../src/language/java-interop.js';
+import { createInitializedJavadocProvider } from './bbj-test-module.js';
 
 /** One request recorded by the fake peer's `sendRequest` override. */
 export interface SentRequest {
@@ -87,11 +87,6 @@ export class FakePeerInteropService extends JavaInteropService {
 
     constructor(services: BBjServices) {
         super(services);
-        // Mirrors MockableJavaInteropService (test/java-interop-service.test.ts): resolveClass()
-        // throws without an initialized JavadocProvider.
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
-        }
     }
 
     /** A fresh minimal `JavaClass` DTO for `className`, as the real backend would answer. */
@@ -225,7 +220,8 @@ export class FakePeerInteropService extends JavaInteropService {
 
 const FakePeerModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
     java: {
-        JavaInteropService: (services) => new FakePeerInteropService(services)
+        JavaInteropService: (services) => new FakePeerInteropService(services),
+        JavadocProvider: (services) => createInitializedJavadocProvider(services.shared.workspace.FileSystemProvider)
     }
 };
 

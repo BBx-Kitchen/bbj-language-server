@@ -27,14 +27,26 @@ const stripSentinel = (v) => v === '--' ? '' : (v || '');
  */
 const NO_CONFIG_PATH_MESSAGE = 'No config file could be resolved for this run. Set the "bbj.configPath" setting, or configure "bbj.home" so the default config file can be found.';
 
+/**
+ * Shown when a web run (BUI/DWC) has no credentials to launch with. Web runs never fall
+ * back to settings for credentials: both `bbj.runBUI`/`bbj.runDWC` wrappers in
+ * extension.ts already return early when `ensureValidToken` yields nothing, so this is
+ * a defence-in-depth guard, not the primary gate (issue #546/#565).
+ */
+const NO_EM_CREDENTIALS_MESSAGE = 'Enterprise Manager login required. Run "Login to Enterprise Manager" and try again.';
+
 const setOutputChannel = (channel) => {
   outputChannel = channel;
 };
 
 /**
  * Helper function to run an Argv (executable path + argument array) in a Promise
- * for use with withProgress. Delegates to process-runner.js's runProcess, which
- * launches via execFile — never a shell (GHSA-p5f3-9456-9pcx).
+ * for use with withProgress. `runProcess`, from process-runner.js, is the one
+ * shared launcher every launch in this file goes through — execFile only, never
+ * a shell (GHSA-p5f3-9456-9pcx) — and the same launcher the extension's EM
+ * helper scripts (em-validate-token.bbj, em-login.bbj) reach through their own
+ * owner-only-output runner (src/em-script-runner.ts). `execWithProgress` is
+ * kept here as a local alias onto that shared launcher.
  * @param {import('./process-args').Argv} argv - The executable path + argument array to run
  * @returns {Promise<{stdout: string, stderr: string}>} Promise that resolves with stdout/stderr or rejects with error
  */
@@ -67,27 +79,27 @@ const runWeb = (params, client, credentials) => {
   const home = getBBjHome();
   if (!home) return;
 
+  if (!credentials) {
+    vscode.window.showErrorMessage(NO_EM_CREDENTIALS_MESSAGE);
+    return;
+  }
+
   const webConfig = vscode.workspace.getConfiguration("bbj.web");
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
 
-  // Use provided credentials (from SecretStorage) or fall back to config
+  // Web runs never fall back to settings for credentials (issue #546/#565).
   let username, password, token;
-  if (credentials) {
-    if (credentials.username === '__token__') {
-      // Token-based authentication
-      token = credentials.password;
-      username = "";
-      password = "";
-    } else {
-      // Username/password from SecretStorage
-      username = credentials.username;
-      password = credentials.password;
-      token = "";
-    }
+  if (credentials.username === '__token__') {
+    // Token-based authentication
+    token = credentials.password;
+    username = "";
+    password = "";
   } else {
-    // Legacy fallback to config (backward compatibility)
-    username = vscode.workspace.getConfiguration("bbj").web?.username || "";
-    password = vscode.workspace.getConfiguration("bbj").web?.password || "";
+    // The extension itself only ever hands runWeb the EM token now (getEMCredentials
+    // has no other credential shape to produce); this branch routes a username and
+    // password for callers that pass them directly.
+    username = credentials.username;
+    password = credentials.password;
     token = "";
   }
 
@@ -275,17 +287,34 @@ const Commands = {
 
   openEnterpriseManager() {
     const home = getBBjHome();
-    if (home) {
-      const properties = PropertiesReader(`${home}/cfg/BBj.properties`);
-      const url = `${
-        'http://' +
-        properties.get('com.basis.jetty.host') +
-        ':' +
-        properties.get('com.basis.jetty.port') +
-        '/bbjem/em'
-      }`;
-      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
+    if (!home) return;
+
+    // The properties-reader@3.0.1 default export (see em-properties-reader-guard.test.ts)
+    // takes an options object, not a bare path; passing a bare string leaves `sourceFile`
+    // undefined, so no file is read and every .get() returns null (issue #565: never
+    // caught before, because this call site could not be exercised under Vitest).
+    // PropertiesReader's append() reads sourceFile synchronously, so a missing or
+    // unreadable properties file (partial install, wrong bbj.home) throws here; catch
+    // it and report through the extension's usual showErrorMessage pattern instead of
+    // letting it propagate as an unhandled command error.
+    const propertiesFile = `${home}/cfg/BBj.properties`;
+    let properties;
+    try {
+      properties = PropertiesReader({ sourceFile: propertiesFile });
+    } catch (err) {
+      vscode.window.showErrorMessage(`Could not open Enterprise Manager: could not read ${propertiesFile}${err && err.message ? ` (${err.message})` : ''}`);
+      return;
     }
+
+    const jettyHost = properties.get('com.basis.jetty.host');
+    const jettyPort = properties.get('com.basis.jetty.port');
+    if (!jettyHost || !jettyPort) {
+      vscode.window.showErrorMessage(`Could not read com.basis.jetty.host/com.basis.jetty.port from ${propertiesFile}`);
+      return;
+    }
+
+    const url = `http://${jettyHost}:${jettyPort}/bbjem/em`;
+    vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
   },
 
   run: function (params) {
@@ -460,3 +489,4 @@ const Commands = {
 
 module.exports = Commands;
 module.exports.setOutputChannel = setOutputChannel;
+module.exports.NO_EM_CREDENTIALS_MESSAGE = NO_EM_CREDENTIALS_MESSAGE;

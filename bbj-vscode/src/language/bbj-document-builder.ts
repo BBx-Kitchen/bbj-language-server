@@ -9,7 +9,8 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
-import { normalize, resolve, join } from "path";
+import { normalize, join } from "path";
+import { containedPrefixCandidates } from "./path-containment.js";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
@@ -115,7 +116,7 @@ export function eventArmsCheck(trigger: ReturnType<typeof getCompilerTrigger>, r
  * Otherwise {@link COMPILER_CHECK_DEBOUNCE_MS}, unchanged from every arming path's behaviour
  * before this phase.
  */
-export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, reason: LiveParseArmReason): number {
+export function armDelayMs(trigger: ReturnType<typeof getCompilerTrigger>, _reason: LiveParseArmReason): number {
     return trigger === 'on-save' ? 0 : COMPILER_CHECK_DEBOUNCE_MS;
 }
 
@@ -1074,7 +1075,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     async addImportedBBjDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken) {
         const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
-        let prefixes = bbjWsManager.getSettings()?.prefixes;
+        const prefixes = bbjWsManager.getSettings()?.prefixes;
         if (!prefixes) {
             return
         }
@@ -1113,13 +1114,21 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             const addedDocuments: URI[] = []
             for (const importPath of bbjImports) {
                 let docFileData;
-                for (const prefixPath of prefixes) {
-                    const prefixedPath = URI.file(resolve(prefixPath, importPath));
+                // Only candidates that lie inside the PREFIX root they were resolved
+                // against are ever opened (issue #526) -- a `..` escape or an absolute path
+                // outside every root is skipped without a read, and resolution continues
+                // with the next prefix exactly as a not-found candidate would.
+                const candidates = containedPrefixCandidates(prefixes, importPath);
+                if (candidates.length < prefixes.length) {
+                    logger.debug(`Skipped ${prefixes.length - candidates.length} PREFIX candidate(s) outside their root for USE path: ${importPath}`);
+                }
+                for (const candidate of candidates) {
+                    const prefixedPath = URI.file(candidate);
                     try {
                         const fileContent = await fsProvider.readFile(prefixedPath);
                         docFileData = { uri: prefixedPath, text: fileContent };
                         break; // early stop iterating prefixes when file is found
-                    } catch (e) {
+                    } catch {
                         // File not found at this prefix, try next
                     }
                 }
@@ -1213,11 +1222,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 }
                 const cleanPath = pathMatch[1];
 
-                // Build candidate URIs (same logic as checkUsedClassExists)
+                // Build candidate URIs (same logic as checkUsedClassExists). Only PREFIX
+                // candidates that lie inside their root are offered (issue #526), so this
+                // revalidation agrees with the scope and the validator.
                 const adjustedFileUris = [
                     UriUtils.resolvePath(UriUtils.dirname(document.uri), cleanPath)
                 ].concat(
-                    prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
+                    containedPrefixCandidates(prefixes, cleanPath).map(p => URI.file(p))
                 );
 
                 // Check if any BbjClass now exists at these URIs, via the Map built once

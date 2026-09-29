@@ -1,10 +1,13 @@
 # .github/workflows/workflow-hygiene.yml
 #
-# Asserts that no workflow `run:` body inlines a `${{ secrets.* }}` expression;
-# secrets must be bound through a step-scoped `env:` mapping instead. Runs
-# install-free — the checker is a zero-dependency Node script. It also
-# asserts that each Gradle wrapper pins its distribution checksum and that
-# every workflow job invoking Gradle validates the wrapper first.
+# Three permanent checks over the workflow tree, each a zero-dependency
+# Node script run install-free: no workflow or composite-action `run:` body
+# inlines a `${{ secrets.* }}` expression (secrets must be bound through a
+# step-scoped `env:` mapping instead); every Gradle wrapper pins its
+# distribution checksum and every job invoking Gradle validates the wrapper
+# before its first Gradle call; and every `uses:` reference across the
+# workflows and the composite actions is pinned to a commit SHA with a
+# version comment, with least-privilege permissions on every workflow.
 name: Workflow Hygiene
 
 on:
@@ -23,15 +26,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: ./.github/actions/node-setup
         with:
-          node-version: 22
+          install: 'false'
+          cache: 'false'
 
       - name: Scan workflow run bodies for inline secret expressions
-        run: node bbj-vscode/tools/check-workflow-secrets.mjs
+        run: node bbj-vscode/tools/check-workflow-secrets.mjs .github/workflows .github/actions/*
 
   wrapper-hygiene:
     name: Gradle wrapper pinned and validated
@@ -39,12 +43,30 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: ./.github/actions/node-setup
         with:
-          node-version: 22
+          install: 'false'
+          cache: 'false'
 
       - name: Check the Gradle wrapper pin and workflow validation steps
         run: node bbj-vscode/tools/check-gradle-wrapper.mjs
+
+  pin-hygiene:
+    name: Actions pinned, permissions least-privilege
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Node
+        uses: ./.github/actions/node-setup
+        with:
+          install: 'false'
+          cache: 'false'
+
+      - name: Check action pins and workflow permissions
+        run: node bbj-vscode/tools/check-action-pins-and-permissions.mjs

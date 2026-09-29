@@ -20,8 +20,12 @@ import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     msgboxPreview, findMsgboxCalls,
 } from './msgbox-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
+import {
+    isBoolean, isFiniteInt, isIntArray, isPanelMessage, isPlainObject, isString, isStringArray,
+    PanelMessage,
+} from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface MsgboxEditTarget {
@@ -69,6 +73,30 @@ interface Selection {
     title: string;
     assignTo: string;
     useConstants: boolean;
+}
+
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isMsgboxSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isFiniteInt(value.buttonSet)
+        && isFiniteInt(value.icon)
+        && isFiniteInt(value.defaultButton)
+        && isIntArray(value.flags)
+        && isStringArray(value.customButtons)
+        && isString(value.message)
+        && isString(value.title)
+        && isString(value.assignTo)
+        && isBoolean(value.useConstants);
+}
+
+/** Guards the msgbox panel's message before its handler acts on it (#604): `type` must be a known
+ * msgbox type, and a present `change`/`insert` payload must be a well-formed {@link Selection}. */
+export function isMsgboxPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isMsgboxSelection,
+    });
 }
 
 /**
@@ -131,7 +159,8 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
         trailingArgs, editMode,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isMsgboxPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -179,12 +208,7 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -287,8 +311,9 @@ function getHtml(webview: vscode.Webview): string {
     <div class="error" id="title-error"></div>
   </div>
   <div class="row" id="assignTo-row">
-    <label for="assignTo">Assign result to (optional)</label>
+    <label for="assignTo">Assign result to</label>
     <input type="text" id="assignTo">
+    <div class="error" id="assignTo-error"></div>
   </div>
 
   <div class="row">
@@ -412,8 +437,10 @@ function getHtml(webview: vscode.Webview): string {
       $('message-error').textContent = m.messageError || '';
       $('title-error').textContent = m.titleError || '';
       $('custom-error').textContent = m.customError || '';
+      $('assignTo-error').textContent = m.assignToError || '';
       $('message').classList.toggle('invalid', !!m.messageError);
       $('title').classList.toggle('invalid', !!m.titleError);
+      $('assignTo').classList.toggle('invalid', !!m.assignToError);
       $('insert').disabled = !m.valid;
       // schematic dialog
       const r = m.render;

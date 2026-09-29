@@ -1,6 +1,10 @@
+---
+last_mapped_commit: 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
+---
+
 # External Integrations
 
-**Analysis Date:** 2026-09-24
+**Analysis Date:** 2026-09-28
 
 ## APIs & External Services
 
@@ -96,15 +100,50 @@
 - GitHub Pages (Docusaurus documentation site)
 - GitHub Releases (release artifacts)
 
-**CI Pipeline:**
-- GitHub Actions workflows (`.github/workflows/`)
-  - `build.yml` - Test and build on every commit
-  - `pr-validation.yml` - Lint, test, build validation for PRs
-  - `pr-vsix.yml` - Build VSIX artifact on PR (for manual testing)
-  - `preview.yml` - Build preview releases (dev channel)
-  - `manual-release.yml` - Manual release trigger (workflow_dispatch)
-  - `deploy-docs.yml` - Docusaurus site deployment
-  - `workflow-hygiene.yml` - Gradle/dependencies checks
+**GitHub Actions Workflows:**
+
+**Build Validation (`.github/workflows/build.yml`):**
+- **Triggers**: Pull requests to main
+- **Runner**: ubuntu-latest, 20-minute timeout
+- **Steps**: Checkout → Node 22 setup → npm ci → npm run build → npm run lint → npm run typecheck:test → npm run test → npx vsce package
+- **Artifacts**: VS Code extension (.vsix)
+
+**Workflow Hygiene (`.github/workflows/workflow-hygiene.yml`):**
+- **Triggers**: Push and pull request to main
+- **Checks**:
+  - No secrets in workflow `run:` bodies (via `bbj-vscode/tools/check-workflow-secrets.mjs`)
+  - Gradle wrapper checksum validation (via `bbj-vscode/tools/check-gradle-wrapper.mjs`)
+
+**Preview Releases (`.github/workflows/preview.yml`):**
+- **Triggers**: Push to main (serialized concurrency to prevent duplicate version bumps)
+- **Workflow_dispatch**: Manual trigger available
+- **Steps**:
+  1. Verify: Build, test, auto-bump patch version, package both extensions
+  2. Bump version: Commit and push version bump to main
+  3. Publish VS Code: `vsce publish --pre-release` with `VSCE_PAT` secret
+  4. Publish IntelliJ: `./gradlew publishPlugin -PintellijChannel=preview` with `JETBRAINS_MARKETPLACE_TOKEN` secret
+- **Version scheme**: Auto-increments patch (e.g., 25.12.0 → 25.12.1)
+- **Artifacts**: Retained 7 days
+
+**Manual Release (`.github/workflows/manual-release.yml`):**
+- **Triggers**: `workflow_dispatch` with version input (must match x.y.0 format and be greater than current)
+- **Runner**: ubuntu-latest
+- **Verification gate**: All jobs depend on `verify` job; nothing publishes or tags until verification succeeds
+- **Steps**:
+  1. Verify (required): Build, test, package both extensions, run `verifyPlugin` on IntelliJ plugin against recommended IDEs
+  2. Publish VS Code: `vsce publish` with `VSCE_PAT` secret (depends on verify)
+  3. Publish IntelliJ: `./gradlew publishPlugin` with `JETBRAINS_MARKETPLACE_TOKEN` secret (depends on verify)
+  4. Tag release: Create git tag `v<VERSION>`, push to main, push tag (depends on both publishes)
+  5. Create GitHub Release: Upload artifacts with pre-formatted installation instructions (depends on tag)
+- **Artifacts**: Retained 1 day
+- **Plugin Verifier cache**: Cached per OS; ~210 MB for Plugin Verifier downloads; IDE downloads NOT cached (too large, 4.9–14.6 GB)
+
+**Documentation Deployment (`.github/workflows/deploy-docs.yml`):**
+- **Triggers**: Push to main with changes under `documentation/` or workflow file itself; manual via workflow_dispatch
+- **Runner**: ubuntu-latest
+- **Environment**: GitHub Pages (write permission required)
+- **Steps**: Checkout → Node 22 setup → npm ci → npm run build → upload artifact → deploy to Pages
+- **Result**: Published at https://BBx-Kitchen.github.io/bbj-language-server/
 
 **Build Process:**
 ```bash
@@ -115,12 +154,18 @@ npm test                       # Run all vitest suites
 npm run lint                   # ESLint check
 npx vsce package               # Create VSIX for VS Code
 ./gradlew buildPlugin          # Create ZIP for IntelliJ
+./gradlew verifyPlugin         # Verify IntelliJ plugin compatibility
 ```
 
 **Release Publishing:**
-- VS Code: `vsce publish` (authenticated to Marketplace)
-- IntelliJ: Gradle `intellijPlatformPublishing` block (authenticated to JetBrains)
-- Docs: `docusaurus deploy` (GitHub Pages, main branch only)
+- VS Code: `vsce publish` (authenticated via `VSCE_PAT` secret from account settings)
+- IntelliJ: Gradle `intellijPlatformPublishing` block (authenticated via `JETBRAINS_MARKETPLACE_TOKEN` secret)
+- Docs: GitHub Pages deploy action (automatic with `id-token: write` permission)
+
+**Secrets Management:**
+- `VSCE_PAT`: VS Code Marketplace Personal Access Token (stored in GitHub repository secrets)
+- `JETBRAINS_MARKETPLACE_TOKEN`: JetBrains Marketplace authentication token (stored in GitHub repository secrets)
+- `GITHUB_TOKEN`: Automatically provided by GitHub Actions for release creation and artifact access
 
 ## Environment Configuration
 
@@ -157,6 +202,7 @@ npx vsce package               # Create VSIX for VS Code
 **Secrets location:**
 - VS Code secret storage (platform-specific: macOS Keychain, Windows Credential Manager, Linux libsecret)
 - EM login credentials stored via `secretStorage.store('bbj.em.password', ...)`
+- GitHub Actions repository secrets (accessible only during workflow runs via `secrets.*` context)
 
 **Decompile/Denumber prompts:**
 - `bbj.decompile.promptOnOpen` - Prompt when opening tokenized files (default: true)
@@ -224,6 +270,19 @@ npx vsce package               # Create VSIX for VS Code
 - If config file not found: uses BBj home defaults, logs warning
 - If config parsing fails: falls back to computed classpath
 
+## Dependency Management
+
+**Automated Updates (Dependabot):**
+- **npm (bbj-vscode)**: Weekly schedule
+  - Ignored: `chevrotain` (pinned to Langium version — manual updates only with Langium upgrades)
+  - Ignored: TypeScript major versions (gated by typescript-eslint support, which currently supports TS 4.8.4–6.0.x)
+  - Configuration: `.github/dependabot.yml`
+
+- **Gradle (bbj-intellij)**: Weekly schedule
+  - Wrapper version updates allowed but checked by `.github/workflows/workflow-hygiene.yml`
+  - Check validates wrapper checksums are recorded in `check-gradle-wrapper.mjs` allowlist
+  - Configuration: `.github/dependabot.yml`
+
 ---
 
-*Integration audit: 2026-09-24*
+*Integration audit: 2026-09-28*

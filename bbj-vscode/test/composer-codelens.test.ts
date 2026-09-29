@@ -1,7 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { BBjComposerCodeLensProvider } from '../src/language/composer-codelens.js';
 import { COMPOSER_LENS_COMMAND } from '../src/composer-lens-contract.js';
@@ -13,13 +13,13 @@ import { initializeWorkspace } from './test-helper.js';
  * range, command and target, comment/string exclusion, multi-call suffixing and ordering.
  */
 describe('BBjComposerCodeLensProvider (#650)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
     const provider = new BBjComposerCodeLensProvider();
 
     async function lensesFor(source: string) {
         const document = await parse(source);
-        return provider.provideCodeLens(document, { textDocument: { uri: document.uri.toString() } });
+        return provider.provideCodeLens(document);
     }
 
     test('a single addWindow call yields exactly one lens with the expected title, range, command and target', async () => {
@@ -88,9 +88,8 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
     test('the returned list is ordered by line then start character, and repeated requests on an unchanged document return deep-equal lists', async () => {
         const source = 'b! = sysgui!.addWindow(2,2,2,2)\na! = sysgui!.addWindow(1,1,1,1)\n';
         const document = await parse(source);
-        const params = { textDocument: { uri: document.uri.toString() } };
-        const first = await provider.provideCodeLens(document, params);
-        const second = await provider.provideCodeLens(document, params);
+        const first = await provider.provideCodeLens(document);
+        const second = await provider.provideCodeLens(document);
         expect(first![0].range.start.line).toBe(0);
         expect(first![1].range.start.line).toBe(1);
         expect(second).toEqual(first);
@@ -112,7 +111,7 @@ describe('BBjComposerCodeLensProvider (#650)', () => {
  * `decodeCvsCall`, and `createDecodeInCodeHandler` (via the provider's own `decodeSetoptsInCode`).
  */
 describe('BBjComposerCodeLensProvider — MSGBOX, addChildWindow, CVS and in-code SETOPTS (#650)', () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
     const provider = new BBjComposerCodeLensProvider();
 
@@ -125,7 +124,7 @@ describe('BBjComposerCodeLensProvider — MSGBOX, addChildWindow, CVS and in-cod
 
     async function lensesFor(source: string) {
         const document = await parse(source);
-        return provider.provideCodeLens(document, { textDocument: { uri: document.uri.toString() } });
+        return provider.provideCodeLens(document);
     }
 
     test('MSGBOX calls with a literal expr, a variable expr, and no options argument each yield one Compose MSGBOX cue', async () => {

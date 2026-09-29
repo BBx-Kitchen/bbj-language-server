@@ -40,13 +40,14 @@ import {
     isMethodDecl,
     isProgram,
     isReadStatement,
+    isSimpleTypeRef,
     isSymbolRef, isUse,
     isVariableDecl,
     MemberCall,
     MethodDecl,
     Use
 } from './generated/ast.js';
-import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
+import { JAVA_PRIMITIVE_TYPE_NAMES, JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
 
 /** Minimal shape needed to detect a real `BBjWorkspaceManager` without a runtime import of
  * bbj-ws-manager.ts, which would close an import cycle (bbj-ws-manager -> bbj-document-validator
@@ -233,6 +234,15 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const javaClassName = getFQNFullname(node);
             // just trigger resolution so the class reference is loaded into the synthetic document.
             await this.tryResolveJavaReference(javaClassName, this.javaInterop);
+        } else if (isSimpleTypeRef(node) && JAVA_PRIMITIVE_TYPE_NAMES.has(node.simpleClass.$refText)) {
+            // #660: a Java primitive named directly in a field, parameter or return-type
+            // position (a SimpleTypeRef, not a qualified JavaTypeRef) must be resolved locally
+            // before linking, exactly like the qualified-name branch above — otherwise
+            // resolveClassScopeByName's global scope never sees it, because a locally resolved
+            // primitive lives inside the java.lang package, never as a direct classpath child.
+            // Read the reference text directly (`.$refText`); never `.ref`, which would trigger
+            // linking itself before this local resolution has run.
+            await this.tryResolveJavaReference(node.simpleClass.$refText, this.javaInterop);
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
             if (isSymbolRef(node.variable) && node.variable.symbol) {
@@ -378,6 +388,16 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     }
 
     private async tryResolveJavaReference(javaClassName: string, javaInterop: JavaInteropService) {
+        // A name that already names a registered Java package must never be sent into class
+        // resolution: the peer answers "not found" and storeJavaClass's leaf step then tries to
+        // store a class under the same name as the existing package, leaving no container
+        // (issue #676). This single check, first thing in the one function every caller funnels
+        // through, covers the USE branch, its `$` inner-class fallback, the qualified JavaTypeRef
+        // branch and the MemberCall FQN preload alike.
+        if (javaInterop.isKnownJavaPackage(javaClassName)) {
+            logger.debug(`Java '${javaClassName}' is a package, not resolved as a class.`);
+            return undefined;
+        }
         let javaClass = javaInterop.getResolvedClass(javaClassName)
         if (!javaClass) {
             // try resolve using Java service

@@ -575,7 +575,7 @@ describe('activation wiring guards (Task 3)', () => {
         expect(code).toMatch(/registerSetOptsInCodeComposer\(context,/);
     });
 
-    test('package.json declares the command, its context-menu entry (scoped to bbj, not bbx-config) and its activation event', () => {
+    test('package.json declares the command, its context-menu entry (scoped to bbj, not bbx-config) and leaves activation to contributes.commands', () => {
         const pkg = JSON.parse(fs.readFileSync(PACKAGE_JSON, 'utf-8'));
 
         const commandEntry = (pkg.contributes.commands as Array<{ command: string; title: string; category: string }>)
@@ -590,7 +590,8 @@ describe('activation wiring guards (Task 3)', () => {
         expect(menuEntry?.when).not.toMatch(/bbx-config/);
         expect(menuEntry?.group).toBe('1_modification');
 
-        expect(pkg.activationEvents as string[]).toContain(`onCommand:${COMMAND_ID}`);
+        expect(pkg.activationEvents as string[]).toContain('onLanguage:bbj');
+        expect(pkg.activationEvents as string[]).not.toContain(`onCommand:${COMMAND_ID}`);
     });
 
     test('package.json remains valid JSON', () => {

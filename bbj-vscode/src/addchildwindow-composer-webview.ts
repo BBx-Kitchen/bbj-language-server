@@ -21,8 +21,11 @@ import * as vscode from 'vscode';
 import {
     CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, addchildwindowPreview,
 } from './addchildwindow-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
+import {
+    isBoolean, isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage,
+} from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddChildWindowEditTarget {
@@ -74,6 +77,32 @@ interface Selection {
     title: string;
 }
 
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isAddChildWindowSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isIntArray(value.flags)
+        && isBoolean(value.eventMaskEnabled)
+        && isIntArray(value.eventMask)
+        && isString(value.receiver)
+        && isString(value.window)
+        && isString(value.id)
+        && isString(value.context)
+        && isString(value.x)
+        && isString(value.y)
+        && isString(value.width)
+        && isString(value.height)
+        && isString(value.title);
+}
+
+/** Guards the addChildWindow panel's message before its handler acts on it (#604). */
+export function isAddChildWindowPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isAddChildWindowSelection,
+    });
+}
+
 const DEFAULT_INITIAL = {
     // Keyboard navigation — the most common non-zero child-window mask ($00010000$).
     flags: 0x00010000,
@@ -116,7 +145,8 @@ export function openAddChildWindowComposerPanel(context: vscode.ExtensionContext
         preservedEventBits: target?.preservedEventBits ?? 0,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isAddChildWindowPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -155,10 +185,12 @@ function applyEdit(edit: vscode.WorkspaceEdit, r: { flagsHex: string; eventHex: 
     const uri = vscode.Uri.parse(target.uri);
     const at = (col: number) => new vscode.Position(target.line, col);
 
-    // Apply insertions right-to-left so the flags insert doesn't shift the event-mask offset
-    // (for addChildWindow the event_mask insert point — after the context — lies to the RIGHT of
-    // the flags insert point — after the title). VS Code applies WorkspaceEdit entries per range,
-    // so distinct positions are safe in either order; ranges are computed from the same line text.
+    // Order doesn't matter here: every edit.replace/edit.insert call added to this WorkspaceEdit
+    // is computed against the document's original (pre-edit) offsets and applied together, not
+    // sequentially in call order, so the event-mask edit can never shift the flags offset (or vice
+    // versa) no matter which one is added first. (Contrast the IntelliJ counterpart,
+    // ComposerLauncher.applyHexEdit, which mutates one shared Document via sequential
+    // doc.replaceString() calls and genuinely must sort by descending offset.)
     if (r.eventHex !== null) {
         if (target.eventMaskRange) {
             edit.replace(uri, new vscode.Range(at(target.eventMaskRange[0]), at(target.eventMaskRange[1])), r.eventHex);
@@ -174,12 +206,7 @@ function applyEdit(edit: vscode.WorkspaceEdit, r: { flagsHex: string; eventHex: 
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -8,14 +8,16 @@ import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
+import { escapeJavadocMarkdown, escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, truncateText } from "./java-peer-guard.js";
 import { logger } from './logger.js';
 import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 import { findRunCallTargetAtLeaf, resolveRunCallPath, runCallHoverMarkdown, type RunCallResolutionContext } from "./run-call-target.js";
 import type { BBjWorkspaceManager } from "./bbj-ws-manager.js";
+import { readSimpleName } from "./utils.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
-    protected javadocProvider = JavadocProvider.getInstance();
+    protected readonly javadocProvider: JavadocProvider;
     protected readonly commentProvider: CommentProvider;
     protected readonly typeInferer: TypeInferer;
     private readonly runCallContext: RunCallResolutionContext;
@@ -25,6 +27,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
 
     constructor(services: BBjServices) {
         super(services);
+        this.javadocProvider = services.java.JavadocProvider;
         this.documentationProvider = services.documentation.DocumentationProvider;
         this.commentProvider = services.documentation.CommentProvider;
         this.typeInferer = services.types.Inferer;
@@ -118,7 +121,11 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
             let javaDoc: { signature?: string, javadoc: string } | undefined = node.docu
             if (!javaDoc && this.javadocProvider.isInitialized()) {
                 const documentation = await this.javadocProvider.getDocumentation(node);
-                const javadocContent = documentation?.docu ? this.tryParseJavaDoc(documentation.docu) : ''
+                // Bounded before it is rendered (issue #524): the javadoc-file fallback reads
+                // an installed javadoc file, which can be arbitrarily large.
+                const javadocContent = typeof documentation?.docu === 'string'
+                    ? truncateText(this.tryParseJavaDoc(documentation.docu), MAX_JAVADOC_LENGTH)
+                    : ''
                 if (isMethodDoc(documentation)) {
                     const javaMethodNode = node as JavaMethod
                     const signature = `${javaTypeAdjust(javaMethodNode.returnType)} ${ownerClass(javaMethodNode)}${methodSignature(toMethodDocToMethodData(documentation, javaMethodNode), javaTypeAdjust)}`
@@ -133,7 +140,16 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
                     }
                 }
             }
-            return this.createMarkdownContent(javaDoc?.signature, javaDoc?.javadoc);
+            // Render-boundary escape (issue #524): this one site covers both the stored
+            // node.docu and the javadoc-file fallback built above it, including a
+            // documentationHeader() signature for a Java node. Escaping is applied here, at
+            // return time, never at storage — node.docu stays plain for any other consumer.
+            // The javadoc body keeps its one trailing BASIS documentation link clickable, and
+            // the signature is escaped in full.
+            return this.createMarkdownContent(
+                javaDoc?.signature !== undefined ? escapeMarkdown(javaDoc.signature) : undefined,
+                escapeJavadocMarkdown(javaDoc?.javadoc ?? '')
+            );
         }
         return header ? this.createMarkdownContent(header) : undefined;
     }
@@ -187,10 +203,12 @@ export function documentationHeader(node: AstNode): string | undefined {
 
     // Java
     if (isJavaClass(node)) {
-        return `class ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `class ${simpleName ? simpleName : node.name}`;
     }
     if (isJavaField(node)) {
-        return `${javaTypeAdjust(node.type)} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${javaTypeAdjust(node.type)} ${simpleName ? simpleName : node.name}`;
     }
     if (isJavaMethod(node)) {
         return `${javaTypeAdjust(node.returnType)} ${ownerClass(node)}${methodSignature(node, javaTypeAdjust)}`;
@@ -203,10 +221,12 @@ export function documentationHeader(node: AstNode): string | undefined {
         return `${type ? type + ' ' : ''}${owner}${methodSignature(toMethodData(node))}`;
     }
     if (isFieldDecl(node)) {
-        return `${javaTypeAdjust(getFQNFullname(node.type) ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${javaTypeAdjust(getFQNFullname(node.type) ?? 'Object')} ${simpleName ? simpleName : node.name}`;
     }
     if (isBbjClass(node)) {
-        return `${node.interface ? 'interface' : 'class'} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        const simpleName = readSimpleName(node);
+        return `${node.interface ? 'interface' : 'class'} ${simpleName ? simpleName : node.name}`;
     }
     return undefined;
 }
@@ -228,13 +248,23 @@ export function methodSignature(nodeDescription: MethodData, typeAdjust: ((type:
     return `${nodeDescription.name}(${parameters.map(p => `${typeAdjust(p.type)} ${p.realName ?? p.name}${p.optional ? '?' : ''}`).join(', ')})`
 }
 
+/**
+ * Bounds a name read from an installed javadoc file the way the interop path bounds a
+ * parameter's real name (issue #523): a string value is truncated at
+ * {@link MAX_JAVA_IDENTIFIER_LENGTH}, and a name that is not text is replaced by `fallback`,
+ * the node's own name, which was already bounded when its class was resolved.
+ */
+function boundedJavadocName(value: unknown, fallback: string): string {
+    return typeof value === 'string' ? truncateText(value, MAX_JAVA_IDENTIFIER_LENGTH) : fallback;
+}
+
 function toMethodDocToMethodData(methodDoc: MethodDoc, node: JavaMethod): MethodData {
     // Both arrays come from external sources (classpath payload / javadoc JSON) and may
     // be absent for a given method — default to empty so index access can't throw.
     const javaParams = node.parameters ?? []
     return {
-        name: methodDoc.name,
-        parameters: (methodDoc.params ?? []).map((p, idx) => ({ name: p.name, type: javaParams[idx]?.type ?? 'Object', optional: false })),
+        name: boundedJavadocName(methodDoc.name, node.name),
+        parameters: (methodDoc.params ?? []).map((p, idx) => ({ name: boundedJavadocName(p.name, javaParams[idx]?.name ?? ''), type: javaParams[idx]?.type ?? 'Object', optional: false })),
         returnType: node.returnType
     }
 }

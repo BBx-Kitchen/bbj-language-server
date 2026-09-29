@@ -4,7 +4,7 @@ import type { LangiumDocument } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
 import { CancellationToken, CancellationTokenSource, CompletionItemKind, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
-import { createBBjTestServices } from './bbj-test-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { isBbjClass, isSymbolRef, Model } from '../src/language/generated/ast.js';
 
 describe('BBJ completion provider', async () => {

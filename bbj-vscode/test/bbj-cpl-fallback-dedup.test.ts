@@ -1,5 +1,5 @@
 import { DocumentState, DocumentValidator, EmptyFileSystem, URI } from 'langium';
-import type { LangiumDocument } from 'langium';
+import type { LangiumDocument, TextDocument } from 'langium';
 import { validationHelper } from 'langium/test';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { CancellationToken } from 'vscode-jsonrpc';
@@ -44,7 +44,7 @@ function createHarness() {
     const privates = builder as unknown as BuilderPrivates;
     privates.bbjcplAvailable = true;
     const interopService = BBj.java.JavaInteropService as JavaInteropTestService;
-    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments;
+    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments<TextDocument>;
     const client = listenOnFakeConnection(textDocuments);
     return { shared, BBj, builder, privates, interopService, client };
 }
@@ -157,7 +157,6 @@ describe('bbjcpl fallback dedup', () => {
 
 describe('the dedup applies only when bbjcpl checked the editor text', () => {
     let firstFlaggedLine: number;
-    let secondFlaggedLine: number;
 
     beforeAll(async () => {
         const probeServices = createBBjTestServices(EmptyFileSystem);
@@ -171,7 +170,6 @@ describe('the dedup applies only when bbjcpl checked the editor text', () => {
         const flaggedLines = [...new Set(parseErrors.map(d => d.range.start.line))];
         expect(flaggedLines.length).toBe(2);
         firstFlaggedLine = Math.min(...flaggedLines);
-        secondFlaggedLine = flaggedLines.find(l => l !== firstFlaggedLine)!;
     });
 
     test('debounced, file saved: a save records the version, and the rebuild path dedups an overlapping complaint for that version', async () => {

@@ -1,9 +1,10 @@
-import { AstNode, MaybePromise, Reference } from "langium";
+import { AstNode, MaybePromise } from "langium";
 import { AbstractSignatureHelpProvider } from "langium/lsp";
 import { SignatureHelp, SignatureInformation, ParameterInformation, SignatureHelpOptions, CancellationToken } from "vscode-languageserver";
 import { methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider.js";
-import { isMemberCall, isMethodCall, isSymbolRef, MethodCall, NamedElement } from "./generated/ast.js";
+import { isMethodCall, MethodCall } from "./generated/ast.js";
+import { getFunctionReference } from "./utils.js";
 
 export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
 
@@ -22,7 +23,7 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
         }
 
         // Get the reference to the function/method being called
-        const functionRef = this.getFunctionReference(callNode);
+        const functionRef = getFunctionReference(callNode);
         if (!functionRef) {
             return undefined;
         }
@@ -53,16 +54,6 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
                 return current;
             }
             current = current.$container;
-        }
-        return undefined;
-    }
-
-    protected getFunctionReference(callNode: MethodCall): Reference<NamedElement> | undefined {
-        const method = callNode.method;
-        if (isSymbolRef(method)) {
-            return method.symbol;
-        } else if (isMemberCall(method)) {
-            return method.member;
         }
         return undefined;
     }

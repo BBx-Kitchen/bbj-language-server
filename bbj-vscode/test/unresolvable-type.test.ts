@@ -1,6 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { ParseHelperOptions, validationHelper } from 'langium/test';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Program } from '../src/language/generated/ast.js';
 import { setTypeResolutionWarnings } from '../src/language/bbj-validator.js';
@@ -33,8 +34,8 @@ describe('Unresolvable type references (#438)', () => {
         }
     });
 
-    function unresolvableWarnings(diagnostics: { message: string }[], name: string) {
-        return diagnostics.filter(d => d.message === `Type '${name}' cannot be resolved.`);
+    function unresolvableWarnings(diagnostics: Diagnostic[], name: string) {
+        return diagnostics.filter(d => Diagnostic.getMessageString(d) === `Type '${name}' cannot be resolved.`);
     }
 
     test('unresolvable return type warns', async () => {
@@ -94,7 +95,7 @@ describe('Unresolvable type references (#438)', () => {
                 methodend
             classend
         `);
-        expect(diagnostics.filter(d => /cannot be resolved/.test(d.message))).toHaveLength(0);
+        expect(diagnostics.filter(d => /cannot be resolved/.test(Diagnostic.getMessageString(d)))).toHaveLength(0);
     });
 
     test('resolvable Java fake (java.util.HashMap) does NOT warn', async () => {
@@ -105,7 +106,7 @@ describe('Unresolvable type references (#438)', () => {
                 field public java.util.HashMap m!
             classend
         `);
-        expect(diagnostics.filter(d => /cannot be resolved/.test(d.message))).toHaveLength(0);
+        expect(diagnostics.filter(d => /cannot be resolved/.test(Diagnostic.getMessageString(d)))).toHaveLength(0);
     });
 
     test('built-in BBj scalar types (BBjString, BBjNumber) do NOT warn', async () => {
@@ -118,7 +119,7 @@ describe('Unresolvable type references (#438)', () => {
                 methodend
             classend
         `);
-        expect(diagnostics.filter(d => /cannot be resolved/.test(d.message))).toHaveLength(0);
+        expect(diagnostics.filter(d => /cannot be resolved/.test(Diagnostic.getMessageString(d)))).toHaveLength(0);
     });
 
     test('with type-resolution warnings disabled there is NO warning', async () => {
@@ -131,7 +132,7 @@ describe('Unresolvable type references (#438)', () => {
                     methodend
                 classend
             `);
-            expect(diagnostics.filter(d => /cannot be resolved/.test(d.message))).toHaveLength(0);
+            expect(diagnostics.filter(d => /cannot be resolved/.test(Diagnostic.getMessageString(d)))).toHaveLength(0);
         } finally {
             setTypeResolutionWarnings(true);
         }

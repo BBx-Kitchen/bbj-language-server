@@ -10,8 +10,10 @@ import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConst
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
+import { escapeJavadocMarkdown, escapeMarkdown, isJavaQualifiedName, toFenceSafeLine } from "./java-peer-guard.js";
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
+import { logger } from "./logger.js";
 
 
 /**
@@ -154,7 +156,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return;
         }
         const insertPosition = useInsertPosition(context.document);
+        let dropped = 0;
         for (const fqn of fqns) {
+            // A candidate that is not a Java qualified name is dropped before its simple name is
+            // even computed (issue #525), so it never consumes — and hides — a valid candidate
+            // that happens to share the same simple name.
+            if (!isJavaQualifiedName(fqn)) {
+                dropped++;
+                continue;
+            }
             const simple = fqn.substring(fqn.lastIndexOf('.') + 1);
             if (alreadyOffered.has(simple)) {
                 continue; // already reachable in scope — no `use` needed
@@ -169,6 +179,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 additionalTextEdits: [TextEdit.insert(insertPosition, `use ${fqn}\n`)],
                 documentation: { kind: 'markdown', value: `Adds \`use ${fqn}\`` }
             });
+        }
+        if (dropped > 0) {
+            logger.debug(() => `Dropped ${dropped} auto-import candidate(s) that are not Java qualified names`);
         }
     }
 
@@ -783,7 +796,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         }
         if (isFunctionNodeDescription(nodeDescription)) {
 
-            const label = (paramAdjust: ((param: string, index: number) => string) = (p, i) => p) =>
+            const label = (paramAdjust: ((param: string, index: number) => string) = (p) => p) =>
                 `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.realName ?? p.name, idx)).join(', ')})`
 
             const retType = ': ' + toSimpleName(nodeDescription.returnType)
@@ -802,12 +815,16 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 // during class resolution from Javadoc) or fall back to the signature header.
                 const node = nodeDescription.node;
                 if (isDocumented(node) && node.docu) {
+                    // Render-boundary treatment (issue #524): the fenced signature is made
+                    // fence-safe (no backslash-escaping inside a fence), the javadoc part
+                    // keeps its one trailing BASIS documentation link clickable and is
+                    // otherwise Markdown-escaped so link/image syntax renders literally.
                     const parts: string[] = [];
                     if (node.docu.signature) {
-                        parts.push(`\`\`\`java\n${node.docu.signature}\n\`\`\``);
+                        parts.push(`\`\`\`java\n${toFenceSafeLine(node.docu.signature)}\n\`\`\``);
                     }
                     if (node.docu.javadoc) {
-                        parts.push(node.docu.javadoc);
+                        parts.push(escapeJavadocMarkdown(node.docu.javadoc));
                     }
                     if (parts.length > 0) {
                         superImpl.documentation = { kind: 'markdown', value: parts.join('\n\n') };
@@ -816,7 +833,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 if (!superImpl.documentation) {
                     const content = documentationHeader(node);
                     if (content) {
-                        superImpl.documentation = { kind: 'markdown', value: content };
+                        // A Java node's documentationHeader() is peer-supplied text; a BBj or
+                        // lib node's is not (issue #524) — only the former is escaped.
+                        superImpl.documentation = { kind: 'markdown', value: isDocumented(node) ? escapeMarkdown(content) : content };
                     }
                 }
             }

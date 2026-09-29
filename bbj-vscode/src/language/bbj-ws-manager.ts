@@ -22,11 +22,13 @@ import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
 import { resolveConfigPath, extractConsumedConfigContent, consumedConfigSnapshot, type ResolvedConfigPath } from "./config-path-resolver.js";
+import { isPathInside } from "./path-containment.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
+    private javadocProvider: JavadocProvider;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
@@ -68,10 +70,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 logger.info(`BBj home: ${this.bbjdir}`);
                 logger.debug(`Classpath from settings: ${this.classpathFromSettings}`);
 
-                // Extract interop settings and apply to JavaInteropService
-                const interopHost = params.initializationOptions.interopHost || 'localhost';
-                const interopPort = params.initializationOptions.interopPort || 5008;
-                this.javaInterop.setConnectionConfig(interopHost, interopPort);
+                // Extract interop settings and apply to JavaInteropService. Validation and
+                // defaults live in setConnectionConfig itself (interop-config.ts); this call
+                // site carries no default of its own.
+                this.javaInterop.setConnectionConfig(params.initializationOptions.interopHost, params.initializationOptions.interopPort);
 
                 // Extract configPath setting
                 this.configPath = params.initializationOptions.configPath || "";
@@ -131,6 +133,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
+        this.javadocProvider = bbjServices.java.JavadocProvider;
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
@@ -189,7 +192,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 );
             }
             logger.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
-            await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+            await tryInitializeJavaDoc(this.javadocProvider, wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             // Use classpath from project.properties if available, otherwise fall back to VS Code settings
             let classpathToUse = this.settings!.classpath;
@@ -274,7 +277,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (prefix.length > 0 && documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
+                // Membership is decided on path segments (issue #579), not a raw string
+                // prefix -- a sibling directory that merely shares a name prefix (e.g.
+                // /libs/foo2 against the prefix /libs/foo) is not external.
+                if (prefix.length > 0 && isPathInside(URI.file(prefix).fsPath, documentUri.fsPath)) {
                     return true;
                 }
             }
@@ -326,8 +332,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
 export function parseSettings(input: string, prefixfromconfigbbx: string | undefined): { prefixes: string[], classpath: string[] } {
 
-    let props: KeyValuePairObject;
-    props = getProperties(input);
+    const props: KeyValuePairObject = getProperties(input);
     let cp = "";
     if (props.classpath) {
         cp = resolveTilde(props.classpath);
@@ -359,9 +364,8 @@ export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
 }
 
-async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
+async function tryInitializeJavaDoc(javadocProvider: JavadocProvider, wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
     try {
-        const javadocProvider = JavadocProvider.getInstance();
         if (!javadocProvider.isInitialized()) {
             return await javadocProvider.initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
         }

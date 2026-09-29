@@ -5,7 +5,8 @@
  ******************************************************************************/
 
 import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { basename, normalize, resolve } from 'path';
+import { basename, normalize } from 'path';
+import { containedPrefixCandidates } from './path-containment.js';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BbjClass, BeginStatement, CallStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, RunStatement, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSwitchStatement, isSymbolRef } from './generated/ast.js';
@@ -341,7 +342,10 @@ export class BBjValidator {
                     // Also resolve relative to each workspace/project root (#378), matching
                     // the scope provider so the diagnostic agrees with actual resolution.
                     .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, cleanPath)))
-                    .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath))));
+                    // Only PREFIX candidates that lie inside their root are offered here too
+                    // (issue #526), so a path that escapes every root is reported as not
+                    // resolved instead of resolving through the escaping candidate.
+                    .concat(containedPrefixCandidates(prefixes, cleanPath).map(p => URI.file(p)));
                 // Check if a document exists at any candidate URI. We check document
                 // existence rather than BbjClass index entries because external files
                 // may have parser errors that prevent BbjClass nodes from being created,

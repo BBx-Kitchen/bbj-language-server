@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { WorkspaceFolder } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { Model } from '../src/language/generated/ast.js';
@@ -24,7 +24,7 @@ import { Model } from '../src/language/generated/ast.js';
  * resolution.
  */
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const parse = parseHelper<Model>(services.BBj);
 
 /** The members under test are protected/private by design; reach them explicitly. */

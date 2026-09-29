@@ -1,0 +1,46 @@
+# .github/actions/node-setup/action.yml
+#
+# Sets up Node.js with an optional npm download cache and, optionally, runs
+# npm ci. This is a local composite action, so a job must run
+# actions/checkout before using it — a local action only exists in the
+# checked-out working copy. Jobs that only need the toolchain (no install,
+# no lockfile to key a cache on) pass cache 'false'; jobs whose token holds
+# a credential still install here, since npm ci itself never sees a secret.
+name: Node setup
+description: Sets up Node.js with an optional npm cache and optional npm ci.
+
+inputs:
+  working-directory:
+    description: Directory holding package.json and the lockfile.
+    required: false
+    default: 'bbj-vscode'
+  cache-dependency-path:
+    description: Lockfile path passed to setup-node's npm cache key.
+    required: false
+    default: 'bbj-vscode/package-lock.json'
+  install:
+    description: Whether to run npm ci after setting up Node.js.
+    required: false
+    default: 'true'
+  cache:
+    description: Whether to enable setup-node's npm download cache.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      # The langium 4.3 toolchain needs Node 22 or later, and this is the
+      # one place the version is set.
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: 22
+        cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
+        cache-dependency-path: ${{ inputs.cache == 'true' && inputs.cache-dependency-path || '' }}
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci

@@ -1,5 +1,4 @@
-export const builtinVariables = `
-library
+export const builtinVariables = `library
 
 /@@
 ARGC returns the number of user-defined command line arguments passed to PRO/5.
@@ -84,4 +83,4 @@ The UNT variable returns an unused channel number. This variable is used in stan
 @/
 var UNT: int
 
-`
+`;

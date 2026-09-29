@@ -4,16 +4,25 @@ import * as path from 'path';
 
 /**
  * GHSA-p5f3-9456-9pcx (CWE-78): this guard is what keeps the fix from silently
- * regressing. `Commands.cjs` is a CommonJS file resolved by Node's native
- * loader, so `vi.mock('vscode')` never reaches its `require` and it cannot be
- * loaded under Vitest — this source scan is the only automated check covering
- * the wiring inside it. Both this file and `extension.ts` are asserted to
+ * regressing. `Commands.cjs`'s command bodies now run for real in
+ * commands-cjs-execution.test.ts, through commands-cjs-harness.ts's
+ * `node:module` loader (issue #565); this source scan stays as defence in
+ * depth, covering the wiring even if a future call site is never exercised by
+ * an execution test. Both this file and `extension.ts` are asserted to
  * contain zero shell-string process launches and zero `child_process` imports.
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
+const EM_AUTH_TS = path.join(REPO_ROOT, 'src/em-auth.ts');
+const EM_SCRIPT_RUNNER_TS = path.join(REPO_ROOT, 'src/em-script-runner.ts');
+const OPEN_FILE_PROMPTS_TS = path.join(REPO_ROOT, 'src/open-file-prompts.ts');
+const DIAGNOSTIC_STATUS_BARS_TS = path.join(REPO_ROOT, 'src/diagnostic-status-bars.ts');
+// extension.ts plus the host modules split out of activate(): the EM
+// login/validation code this guard used to scan inline in extension.ts now
+// lives here too.
+const HOST_TS_FILES = [EXTENSION_TS, EM_AUTH_TS, EM_SCRIPT_RUNNER_TS, OPEN_FILE_PROMPTS_TS, DIAGNOSTIC_STATUS_BARS_TS];
 
 /** Strip `//` line comments (a reasonable approximation; good enough for a source guard). */
 function stripLineComments(source: string): string {
@@ -37,7 +46,7 @@ describe('no-shell-command-construction guard', () => {
     });
 
     test('extension.ts contains zero shell-string process launches', () => {
-        const source = readStripped(EXTENSION_TS);
+        const source = HOST_TS_FILES.map(readStripped).join('\n');
         const matches = source.match(new RegExp(SHELL_EXEC_CALL, 'g')) ?? [];
         expect(matches).toHaveLength(0);
     });
@@ -48,7 +57,7 @@ describe('no-shell-command-construction guard', () => {
     });
 
     test('extension.ts does not import child_process directly', () => {
-        const source = readStripped(EXTENSION_TS);
+        const source = HOST_TS_FILES.map(readStripped).join('\n');
         expect(source).not.toMatch(/from\s+['"]child_process['"]/);
         expect(source).not.toMatch(/require\(\s*['"]child_process['"]\s*\)/);
     });
@@ -82,8 +91,10 @@ function filesImportingChildProcess(dir: string): string[] {
 /**
  * Pins which modules under src/ may launch a process at all: a fourth importer
  * of child_process is a new execution site to review, not test data to widen
- * the expected set for. document-formatter.ts is on the list because it runs
- * `java` from PATH, not a path derived from a configured setting.
+ * the expected set for. document-formatter.ts is on the list because it launches the
+ * formatter's java executable, which is either the machine-scoped bbj.formatter.javaPath
+ * setting or the absolute path resolveFormatterJava's own PATH walk found — verified by
+ * formatter-java-resolver.ts before every spawn (issue #605).
  */
 describe('no-shell-command-construction guard — which modules may launch a process', () => {
     test('the set of files under src/ importing child_process is exactly the three known launchers', () => {
@@ -118,5 +129,28 @@ describe('no-shell-command-construction guard — which modules may launch a pro
         expect(verifyCallIndex).toBeGreaterThan(-1);
         expect(spawnCallIndex).toBeGreaterThan(-1);
         expect(verifyCallIndex).toBeLessThan(spawnCallIndex);
+    });
+
+    // The java executable the formatter spawns is resolved and verified (issue #605), never a
+    // bare command name looked up implicitly by the OS. These two tests exist so a later
+    // refactor cannot quietly drop that resolution step or reorder it after the spawn it gates.
+    test('document-formatter.ts imports resolveFormatterJava from formatter-java-resolver', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        expect(source).toMatch(/import\s*\{\s*resolveFormatterJava\s*\}\s*from\s*['"]\.\/formatter-java-resolver\.js['"]/);
+    });
+
+    test('document-formatter.ts calls resolveFormatterJava( before cp.spawn(', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        const resolveCallIndex = source.indexOf('resolveFormatterJava(');
+        const spawnCallIndex = source.indexOf('cp.spawn(');
+
+        expect(resolveCallIndex).toBeGreaterThan(-1);
+        expect(spawnCallIndex).toBeGreaterThan(-1);
+        expect(resolveCallIndex).toBeLessThan(spawnCallIndex);
+    });
+
+    test('document-formatter.ts never spawns a string literal as the java executable', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        expect(source).not.toMatch(/cp\.spawn\(\s*['"]/);
     });
 });

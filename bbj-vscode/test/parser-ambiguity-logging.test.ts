@@ -1,7 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { expectCompletion } from 'langium/test';
 import { describe, expect, test, vi } from 'vitest';
-import { createBBjTestServices } from './bbj-test-module';
+import { createBBjTestServices } from './bbj-test-module.js';
 
 // Regression: chevrotain-allstar's lookahead strategy logs "Ambiguous Alternatives
 // Detected" via console.log. The main LangiumParser reroutes that to the debug

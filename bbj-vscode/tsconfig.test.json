@@ -2,12 +2,21 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": "test"
+    "rootDir": ".",
+    // noImplicitAny is relaxed only for the test program: implicit-any parameters in test
+    // fakes and callbacks hide no product bug, matching lint's no-explicit-any being off for
+    // test/ for the same reason. Every other option (strict, noUnusedLocals,
+    // noImplicitReturns, noImplicitOverride) stays inherited from ./tsconfig.json.
+    // The harness is included here and is also checked at src strictness by tsconfig.harness.json.
+    "noImplicitAny": false
   },
-  "references": [{
-    "path": "tsconfig.json"
-  }],
   "include": [
-    "test/**/*",
+    "test/**/*.ts",
+    "tools/interop-test-harness/**/*.ts"
+  ],
+  "exclude": [
+    "out",
+    "node_modules",
+    "test/.tmp"
   ]
 }

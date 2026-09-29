@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { findLeafNodeAtOffset } from '../src/language/bbj-validator.js';
 import { Model, MethodCall, SetOptsStatement, isMethodCall, isSetOptsStatement } from '../src/language/generated/ast.js';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 import {
     detectSetOptsShape, foldChainEffect, setoptsHoverMarkdown, setoptsHoverTarget, traceOptsChain,
     UNSAFE_REASON_TEXT, type SetOptsUnsafeReason,
@@ -19,7 +19,7 @@ import { initializeWorkspace } from './test-helper.js';
  * reaches BBjCPL/java-interop on :5008 and is flaky outside a live BBj environment).
  */
 describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -169,7 +169,7 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
  * case gets its own executing test — an ambiguity must never resolve to a false "safe".
  */
 describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-06)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -486,7 +486,7 @@ classend`;
  * DISC-05, plan 88-02).
  */
 describe('setoptsHoverTarget: shape (c) - single IOR/AND call resolution (88-02)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {
@@ -531,7 +531,7 @@ describe('setoptsHoverTarget: shape (c) - single IOR/AND call resolution (88-02)
  * plan 88-02).
  */
 describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', async () => {
-    const services = createBBjServices(EmptyFileSystem);
+    const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
     beforeAll(async () => {

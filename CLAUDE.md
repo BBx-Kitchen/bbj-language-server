@@ -30,6 +30,7 @@ npx vitest run <file>          # Run a single test file, e.g. npx vitest run tes
 npm run test:watch             # Watch mode
 npm run test:coverage          # Coverage report (V8)
 npm run lint                   # ESLint
+npm run interop-harness -- --host … --port …   # Java interop test harness against a live interop peer (writes tools/interop-test-harness/report.html)
 ```
 
 Java interop (from `java-interop/`):

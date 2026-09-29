@@ -21,8 +21,9 @@
  */
 import * as vscode from 'vscode';
 import { CVS_BITS, CVS_CHARS_TOOLTIP, cvsPreview, findCvsCalls } from './cvs-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
+import { isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage } from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: the call's span, its verbatim text (for staleness checks), and trailing args. */
 export interface CvsEditTarget {
@@ -40,7 +41,7 @@ export interface CvsEditTarget {
 export interface CvsPanelArg {
     /** Present = EDIT an existing call's bits/chars in place. Absent = insert a NEW call. */
     target?: CvsEditTarget;
-    initial?: { str: string; bits: number[]; chars: string };
+    initial?: { str: string; bits: number[]; chars: string; assignTo?: string };
 }
 
 interface Selection {
@@ -48,6 +49,24 @@ interface Selection {
     bits: number[];
     chars: string;
     assignTo: string;
+}
+
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isCvsSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isString(value.str)
+        && isIntArray(value.bits)
+        && isString(value.chars)
+        && isString(value.assignTo);
+}
+
+/** Guards the CVS panel's message before its handler acts on it (#604). */
+export function isCvsPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isCvsSelection,
+    });
 }
 
 /**
@@ -84,7 +103,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
         insertPosition = editor.selection.active;
     }
 
-    const initial = arg?.initial ?? { str: 'a$', bits: [], chars: '' };
+    const initial = arg?.initial ?? { str: 'a$', bits: [], chars: '', assignTo: 's$' };
     const trailingArgs = target?.trailingArgs ?? [];
 
     const title = completing ? 'Complete CVS() call' : (editMode ? 'Edit CVS()' : 'CVS() Composer');
@@ -106,7 +125,8 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
         trailingArgs, editMode,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isCvsPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -151,12 +171,7 @@ export function openCvsComposerPanel(context: vscode.ExtensionContext, arg?: Cvs
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -210,8 +225,9 @@ function getHtml(webview: vscode.Webview): string {
   </div>
 
   <div class="row" id="assignTo-row">
-    <label for="assignTo">Assign result to (optional)</label>
+    <label for="assignTo">Assign result to</label>
     <input type="text" id="assignTo">
+    <div class="error" id="assignTo-error"></div>
   </div>
 
   <fieldset>
@@ -271,7 +287,7 @@ function getHtml(webview: vscode.Webview): string {
       if (editMode || completing) {
         $('assignTo-row').classList.add('hidden');
       } else {
-        $('assignTo').value = '';
+        $('assignTo').value = init.assignTo || '';
       }
 
       const bitsHost = $('bits');
@@ -298,8 +314,10 @@ function getHtml(webview: vscode.Webview): string {
       $('summary').textContent = m.summary;
       $('str-error').textContent = m.strError || '';
       $('chars-error').textContent = m.charsError || '';
+      $('assignTo-error').textContent = m.assignToError || '';
       $('str').classList.toggle('invalid', !!m.strError);
       $('chars').classList.toggle('invalid', !!m.charsError);
+      $('assignTo').classList.toggle('invalid', !!m.assignToError);
       $('chars').disabled = !m.charsEnabled;
       $('insert').disabled = !m.valid;
     }

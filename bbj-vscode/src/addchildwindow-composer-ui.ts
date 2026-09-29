@@ -10,9 +10,37 @@
  */
 import * as vscode from 'vscode';
 import {
-    CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, unknownBits, describeChildFlags, findAddChildWindowCallAt,
+    CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS, describeChildFlags, findAddChildWindowCallAt,
 } from './addchildwindow-composer.js';
 import { openAddChildWindowComposerPanel, AddChildWindowPanelArg } from './addchildwindow-composer-webview.js';
+import { windowPanelArgAt, CHILD_WINDOW_TITLE_FALLBACK, type WindowPanelArgSpec } from './window-composer-ui.js';
+
+/** Fixed addChildWindow-only initial fields, merged alongside flags/eventMask/title by windowPanelArgAt. */
+interface AddChildWindowFixedInitial {
+    receiver: string;
+    window: string;
+    id: string;
+    context: string;
+    x: string;
+    y: string;
+    width: string;
+    height: string;
+}
+
+const ADD_CHILD_WINDOW_SPEC: WindowPanelArgSpec<AddChildWindowFixedInitial> = {
+    findCallAt: findAddChildWindowCallAt,
+    flagCatalog: CHILD_WINDOW_FLAGS,
+    eventCatalog: CHILD_EVENT_MASK_BITS,
+    describeFlags: describeChildFlags,
+    titleFallback: CHILD_WINDOW_TITLE_FALLBACK,
+    fixedInitial: { receiver: '', window: 'window!', id: '', context: '', x: '', y: '', width: '', height: '' },
+    configureLabel: 'Configure child window flags',
+    addLabel: 'Add child window flags…',
+    // addChildWindow's no-title overloads cannot take flags: a call with neither a flags value
+    // nor a flags-insert slot yields no Code Action. This refusal is specific to addChildWindow;
+    // addWindow's spec leaves requireFlagsSlot false.
+    requireFlagsSlot: true,
+};
 
 export function registerAddChildWindowComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -36,36 +64,7 @@ export function registerAddChildWindowComposer(context: vscode.ExtensionContext)
 export function addChildWindowPanelArgAt(
     uri: string, line: number, lineText: string, character: number,
 ): { arg: AddChildWindowPanelArg; label: string } | undefined {
-    const info = findAddChildWindowCallAt(lineText, character);
-    if (!info) return undefined;
-    if (info.flagsValue === undefined && info.flagsInsertOffset === undefined) return undefined;
-
-    const flags = info.flagsValue ?? 0;
-    const eventMask = info.eventMaskValue ?? null;
-    const arg: AddChildWindowPanelArg = {
-        target: {
-            uri,
-            line,
-            flagsRange: info.flagsRange,
-            flagsInsertOffset: info.flagsInsertOffset,
-            eventMaskRange: info.eventMaskRange,
-            eventMaskInsertOffset: info.eventMaskInsertOffset,
-            preservedFlagBits: unknownBits(flags, CHILD_WINDOW_FLAGS),
-            preservedEventBits: eventMask === null ? 0 : unknownBits(eventMask, CHILD_EVENT_MASK_BITS),
-        },
-        initial: {
-            flags, eventMask,
-            // Geometry/title are fixed in the source in EDIT mode; pass the title for the preview.
-            receiver: '', window: 'window!', id: '', context: '',
-            x: '', y: '', width: '', height: '',
-            title: titleArg(info.args),
-        },
-    };
-
-    const label = info.flagsValue !== undefined
-        ? `Configure child window flags (${describeChildFlags(flags)})`
-        : 'Add child window flags…';
-    return { arg, label };
+    return windowPanelArgAt(ADD_CHILD_WINDOW_SPEC, uri, line, lineText, character);
 }
 
 class AddChildWindowCodeActionProvider implements vscode.CodeActionProvider {
@@ -78,10 +77,4 @@ class AddChildWindowCodeActionProvider implements vscode.CodeActionProvider {
         action.command = { command: 'bbj.composeAddChildWindow', title: result.label, arguments: [result.arg] };
         return [action];
     }
-}
-
-/** Best-effort pick of the title argument for the preview: the last string-literal arg. */
-function titleArg(args: string[]): string {
-    const literal = [...args].reverse().find(a => /^"([^"]|"")*"$/.test(a));
-    return literal ?? '"Child"';
 }

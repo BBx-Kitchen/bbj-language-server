@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, test } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describeWrapperJar, GRADLE_CHECKSUMS } from '../tools/check-gradle-wrapper.mjs';
 
@@ -428,6 +428,61 @@ describe('gradle-wrapper-hygiene checker contract', () => {
         ];
         const fixture = buildFixtureRepo({
             prefix: 'gradle-wrapper-hygiene-other-job-',
+            propertiesLines: GOOD_PROPERTIES_LINES,
+            jarBytes: GOOD_WRAPPER_JAR_BYTES,
+            workflows: { 'fixture.yml': workflowLines },
+        });
+
+        const result = runChecker(['--repo-root', fixture.root]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain("job 'build' invokes Gradle with no gradle/actions/wrapper-validation step");
+    });
+
+    test('comments under jobs: and on the jobs: key or first job id do not stop job attribution', () => {
+        const workflowLines = [
+            'name: Fixture',
+            'on: push',
+            'jobs: # build jobs',
+            '  # the Gradle build',
+            '  build: # runs gradlew',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            '      - name: Build',
+            '        run: ./gradlew build',
+        ];
+        const fixture = buildFixtureRepo({
+            prefix: 'gradle-wrapper-hygiene-jobs-comments-',
+            propertiesLines: GOOD_PROPERTIES_LINES,
+            jarBytes: GOOD_WRAPPER_JAR_BYTES,
+            workflows: { 'fixture.yml': workflowLines },
+        });
+
+        const result = runChecker(['--repo-root', fixture.root]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain(
+            `${fixture.workflowPaths['fixture.yml']}:${lineNumberOf(workflowLines, './gradlew build')}: `
+            + "job 'build' invokes Gradle with no gradle/actions/wrapper-validation step"
+        );
+    });
+
+    test('a trailing comment on a later job id does not credit its steps to the validating job before it', () => {
+        const workflowLines = [
+            'name: Fixture',
+            'on: push',
+            'jobs:',
+            '  validate:',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            '      - name: Validate Gradle wrapper',
+            '        uses: gradle/actions/wrapper-validation@v6',
+            '  build: # runs gradlew',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            '      - name: Build',
+            '        run: ./gradlew build',
+        ];
+        const fixture = buildFixtureRepo({
+            prefix: 'gradle-wrapper-hygiene-later-job-comment-',
             propertiesLines: GOOD_PROPERTIES_LINES,
             jarBytes: GOOD_WRAPPER_JAR_BYTES,
             workflows: { 'fixture.yml': workflowLines },

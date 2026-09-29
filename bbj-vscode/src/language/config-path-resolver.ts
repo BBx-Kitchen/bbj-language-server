@@ -17,6 +17,10 @@
  * Kept free of Langium and editor imports (plain Node `fs`/`os`/`path` only) so it is
  * unit-testable with plain stubs and reusable from both the request handler and
  * `BBjWorkspaceManager`.
+ *
+ * The VS Code client hands over a workspace-scoped `configPath` only in a trusted workspace
+ * (see `../config-path-trust.ts`); this module's resolution is unchanged and stays
+ * un-anchored to any workspace folder.
  */
 import * as fs from 'fs';
 import * as os from 'os';

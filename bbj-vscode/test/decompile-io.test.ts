@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst } from '../src/decompile-io.js';
+import { execFileSync } from 'child_process';
+import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst, statSize } from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
 
@@ -23,6 +24,10 @@ describe('decompile-io', () => {
     });
 
     describe('isTokenizedFile', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
         test('true for a file starting with the "<<bbj>>" magic', async () => {
             const f = path.join(dir, 'prog');
             fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
@@ -36,10 +41,115 @@ describe('decompile-io', () => {
         test('false for a missing file', async () => {
             expect(await isTokenizedFile(path.join(dir, 'nope'))).toBe(false);
         });
+
+        test('false for a symlink pointing at a real tokenized file', async () => {
+            const target = path.join(dir, 'prog');
+            fs.writeFileSync(target, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            const link = path.join(dir, 'prog-link');
+            fs.symlinkSync(target, link);
+            expect(await isTokenizedFile(link)).toBe(false);
+        });
+
+        test('false for a directory', async () => {
+            const d = path.join(dir, 'a-directory');
+            fs.mkdirSync(d);
+            expect(await isTokenizedFile(d)).toBe(false);
+        });
+
+        test.skipIf(process.platform === 'win32')(
+            'false for a FIFO, returning promptly instead of blocking on open',
+            async () => {
+                const fifo = path.join(dir, 'a-fifo');
+                execFileSync('mkfifo', [fifo]);
+                expect(await isTokenizedFile(fifo)).toBe(false);
+            },
+            2000
+        );
+
+        test('opens with O_NOFOLLOW and O_NONBLOCK where the platform defines them', async () => {
+            const f = path.join(dir, 'prog');
+            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            const openSpy = vi.spyOn(fs.promises, 'open');
+
+            expect(await isTokenizedFile(f)).toBe(true);
+
+            expect(openSpy).toHaveBeenCalledTimes(1);
+            const flags = openSpy.mock.calls[0][1] as number;
+            if (typeof fs.constants.O_NOFOLLOW === 'number') {
+                expect(flags & fs.constants.O_NOFOLLOW).not.toBe(0);
+            }
+            if (typeof fs.constants.O_NONBLOCK === 'number') {
+                expect(flags & fs.constants.O_NONBLOCK).not.toBe(0);
+            }
+        });
+
+        test('reports false and still closes the handle when the opened handle is not a regular file on fstat re-check', async () => {
+            const f = path.join(dir, 'prog');
+            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            const closeSpy = vi.fn().mockResolvedValue(undefined);
+            const fakeHandle = {
+                stat: vi.fn().mockResolvedValue({ isFile: () => false }),
+                close: closeSpy,
+                read: vi.fn(),
+            };
+            vi.spyOn(fs.promises, 'open').mockResolvedValueOnce(fakeHandle as unknown as fs.promises.FileHandle);
+
+            expect(await isTokenizedFile(f)).toBe(false);
+            expect(closeSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('statSize', () => {
+        test('returns the byte size for a regular file', async () => {
+            const f = path.join(dir, 'prog.bbj');
+            const content = '0010 print "hi"\n';
+            fs.writeFileSync(f, content);
+            expect(await statSize(f)).toEqual({ size: Buffer.byteLength(content) });
+        });
+
+        test('returns undefined for a symlink to a regular file', async () => {
+            const target = path.join(dir, 'prog.lst');
+            fs.writeFileSync(target, '0010 print "hi"\n');
+            const link = path.join(dir, 'prog-link.lst');
+            fs.symlinkSync(target, link);
+            expect(await statSize(link)).toBeUndefined();
+        });
+
+        test('returns undefined for a directory', async () => {
+            const d = path.join(dir, 'a-directory');
+            fs.mkdirSync(d);
+            expect(await statSize(d)).toBeUndefined();
+        });
+
+        test.skipIf(process.platform === 'win32')(
+            'returns undefined for a FIFO',
+            async () => {
+                const fifo = path.join(dir, 'a-fifo');
+                execFileSync('mkfifo', [fifo]);
+                expect(await statSize(fifo)).toBeUndefined();
+            },
+            2000
+        );
+
+        test('returns undefined for a missing path', async () => {
+            expect(await statSize(path.join(dir, 'nope'))).toBeUndefined();
+        });
     });
 
     describe('waitForDecompileOutput', () => {
         const fast = { pollMs: 5, timeoutMs: 2000 };
+
+        test('does not resolve to a symlinked .lst pointing at a real listing, and rejects on timeout', async () => {
+            const input = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(input, MAGIC);
+            const realListing = path.join(dir, 'real.lst');
+            fs.writeFileSync(realListing, '0010 print "hi"\n');
+            const lst = input + '.lst';
+            fs.symlinkSync(realListing, lst);
+
+            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 150 }))
+                .rejects.toThrow(/Timed out/);
+        });
 
         test('resolves to the .lst path once it appears and its size settles', async () => {
             const input = path.join(dir, 'prog.bbj');

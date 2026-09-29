@@ -18,9 +18,12 @@ import {
     BYTE_GROUPS, SETOPTS_BITS, bbjHexLiteral, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
     parseVector, rawTail, setoptsPreview, SetOptsSelection, SetOptsVector,
 } from './setopts-catalog.js';
-import { getNonce } from './webview-nonce.js';
 import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
+import {
+    isPanelMessage, isPlainObject, isString, isStringArray, PanelMessage,
+} from './webview-message-guard.js';
 
 export interface SetOptsEditTarget {
     uri: string;
@@ -63,6 +66,31 @@ interface PanelSelection {
     rawTail: string;
 }
 
+/** The only shape a `checked` entry may take: plain decimal `byte:mask`, matching how
+ * {@link initialSelection} and the webview script build these ids (`${b.byte}:${b.mask}`). */
+const BIT_ID_PATTERN = /^\d+:\d+$/;
+
+/** Whether `value` is a well-formed {@link PanelSelection}: every field has its declared runtime
+ * type, and every `checked` entry matches the `"<byte>:<mask>"` shape {@link toSelection} assumes
+ * — not just "is a string" (a malformed entry would otherwise parse to `{ byte: NaN, mask:
+ * undefined }` with no error). */
+function isSetOptsSelection(value: unknown): value is PanelSelection {
+    return isPlainObject(value)
+        && isStringArray(value.checked) && value.checked.every(id => BIT_ID_PATTERN.test(id))
+        && isString(value.maskComma)
+        && isString(value.maskDot)
+        && isString(value.rawTail);
+}
+
+/** Guards the config.bbx SETOPTS panel's message before its handler acts on it (#604). */
+export function isSetOptsPanelMessage(msg: unknown): msg is PanelMessage<PanelSelection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'apply', 'cancel'],
+        payloadTypes: ['change', 'apply'],
+        isPayload: isSetOptsSelection,
+    });
+}
+
 export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: SetOptsPanelArg): void {
     const target = arg.target;
     const editMode = !!target;
@@ -90,7 +118,8 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
 
     const build = (sel: PanelSelection) => setoptsPreview(original, toSelection(sel));
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: PanelSelection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isSetOptsPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -159,12 +188,7 @@ function initialSelection(original: SetOptsVector | undefined): PanelSelection {
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Gson-serializable data objects carrying the language server's {@code bbj/composer/*} request
  * params and results relevant to the IntelliJ dialogs (see
- * {@code bbj-vscode/src/language/composer-commands.ts}). The BBj-side TypeScript is the single
+ * {@code bbj-vscode/src/composer-commands.ts}). The BBj-side TypeScript is the single
  * source of truth for the flag/hex arithmetic (#433); these classes only carry the JSON across
  * LSP4IJ. Field names must match the JSON keys exactly.
  *
@@ -90,6 +90,8 @@ public final class ComposerModels {
         public String messageError;
         public String titleError;
         public String customError;
+        /** The server's verdict on the assign-to field; null when valid or when the field is hidden. */
+        public String assignToError;
         public boolean valid;
         public MsgboxRender render;
     }
@@ -626,6 +628,8 @@ public final class ComposerModels {
         public boolean charsEnabled;
         public String strError;
         public String charsError;
+        /** The server's verdict on the assign-to field; null when valid or when the field is hidden. */
+        public String assignToError;
         public boolean valid;
     }
 

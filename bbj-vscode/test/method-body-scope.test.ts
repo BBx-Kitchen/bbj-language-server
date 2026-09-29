@@ -1,6 +1,6 @@
 import { AstUtils, DocumentValidator, EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { CompletionParams, CompletionTriggerKind, DiagnosticSeverity } from 'vscode-languageserver';
+import { CompletionParams, CompletionTriggerKind, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { isMethodDecl, isSymbolRef, Model, SymbolRef } from '../src/language/generated/ast.js';
@@ -199,8 +199,8 @@ describe('program variables stay out of class method bodies', () => {
         }
 
         const warnings = linkingErrors(doc).filter(d => d.severity === DiagnosticSeverity.Warning);
-        expect(warnings.some(w => w.message.includes("named 'a$'"))).toBe(true);
-        expect(warnings.some(w => w.message.includes("named 'x!'"))).toBe(true);
+        expect(warnings.some(w => Diagnostic.getMessageString(w).includes("named 'a$'"))).toBe(true);
+        expect(warnings.some(w => Diagnostic.getMessageString(w).includes("named 'x!'"))).toBe(true);
     });
 
     test('no program-level variable kind is visible inside a method', async () => {
@@ -228,7 +228,7 @@ describe('program variables stay out of class method bodies', () => {
         const warnings = linkingErrors(doc).filter(d => d.severity === DiagnosticSeverity.Warning);
         expect(warnings).toHaveLength(6);
         for (const name of names) {
-            expect(warnings.some(w => w.message.includes(`named '${name}'`))).toBe(true);
+            expect(warnings.some(w => Diagnostic.getMessageString(w).includes(`named '${name}'`))).toBe(true);
         }
     });
 
@@ -274,7 +274,7 @@ describe('program variables stay out of class method bodies', () => {
         // an expected, un-suppressed "Could not resolve reference to Class named 'BBjString'"
         // Warning. Do not assert zero linking diagnostics for this fixture.
         const bbjStringWarnings = linkingErrors(doc).filter(d =>
-            d.severity === DiagnosticSeverity.Warning && d.message.includes("Class named 'BBjString'"));
+            d.severity === DiagnosticSeverity.Warning && Diagnostic.getMessageString(d).includes("Class named 'BBjString'"));
         expect(bbjStringWarnings).toHaveLength(2);
     });
 });

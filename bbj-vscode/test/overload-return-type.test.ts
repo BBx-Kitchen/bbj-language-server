@@ -1,6 +1,6 @@
 import { AstUtils, EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
+import { CompletionParams, CompletionTriggerKind, Diagnostic } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -77,8 +77,8 @@ async function incompatibleReturnDiagnostics(code: string): Promise<string[]> {
     const document = await parseHelper<Model>(BBj)(
         code, { documentUri: `file:///overload-return-type-methodret-${probeCounter++}.bbj`, validation: true });
     return (document.diagnostics ?? [])
-        .filter(d => d.message.includes('returns a value of incompatible type'))
-        .map(d => d.message);
+        .filter(d => Diagnostic.getMessageString(d).includes('returns a value of incompatible type'))
+        .map(d => Diagnostic.getMessageString(d));
 }
 
 /** Diagnostics carrying the unknown-Java-member Error code. */

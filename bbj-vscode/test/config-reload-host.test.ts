@@ -4,11 +4,10 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi, type Mock } from 'vitest';
 import {
     createRestartGate,
     CONFIG_RELOAD_RESTART_DELAY_MS,
-    type RestartTarget,
 } from '../src/restart-gate.js';
 
 /**
@@ -19,11 +18,22 @@ import {
  * whole-`vscode`-mock convention `test/config-file-association.test.ts` established.
  */
 
-function createFakeTarget(overrides: Partial<RestartTarget> = {}): RestartTarget & {
-    needsStop: ReturnType<typeof vi.fn>;
-    stop: ReturnType<typeof vi.fn>;
-    start: ReturnType<typeof vi.fn>;
-} {
+/**
+ * Declared without intersecting `RestartTarget` directly: `RestartTarget`'s own method
+ * signatures (`needsStop(): boolean`, ...) would otherwise merge with these `Mock<...>`
+ * property types into an unsatisfiable combined type. `Mock<T>`'s own call signature already
+ * makes each property structurally callable exactly like the `RestartTarget` method it stands
+ * in for, so this type is still a valid `RestartTarget` at every call site below.
+ */
+type FakeRestartTarget = {
+    needsStop: Mock<() => boolean>;
+    stop: Mock<() => Promise<void>>;
+    start: Mock<() => Promise<void>>;
+};
+
+// Every call site below passes `vi.fn(...)` overrides, never plain functions -- typed against
+// the Mock-shaped fake, not the plain-function `RestartTarget` its return value stands in for.
+function createFakeTarget(overrides: Partial<FakeRestartTarget> = {}): FakeRestartTarget {
     return {
         needsStop: vi.fn(() => true),
         stop: vi.fn(() => Promise.resolve()),
@@ -212,6 +222,8 @@ vi.mock('vscode', () => {
             onDidCloseTextDocument: vi.fn(() => disposable()),
             onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
+            isTrusted: true,
+            onDidGrantWorkspaceTrust: vi.fn(() => disposable()),
         },
         StatusBarAlignment: { Left: 1, Right: 2 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
@@ -231,7 +243,11 @@ vi.mock('vscode-languageclient/node', () => {
         onNotification = clientOnNotificationMock;
         constructor() { }
     }
-    return { LanguageClient, TransportKind: { ipc: 1 } };
+    return {
+        LanguageClient,
+        TransportKind: { ipc: 1 },
+        DidChangeConfigurationNotification: { type: { method: 'workspace/didChangeConfiguration' } },
+    };
 });
 
 vi.mock('../src/language/lib/fs-provider.js', () => ({

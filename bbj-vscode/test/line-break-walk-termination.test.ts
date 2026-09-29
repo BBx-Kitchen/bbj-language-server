@@ -1,6 +1,7 @@
 import { EmptyFileSystem } from 'langium';
 import { validationHelper, ValidationResult } from 'langium/test';
 import { describe, expect, test } from 'vitest';
+import { Diagnostic } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import type { Program } from '../src/language/generated/ast.js';
 import { walkInputs } from './support/line-break-walk-inputs.js';
@@ -11,7 +12,9 @@ const validate = validationHelper<Program>(services.BBj);
 const LINE_BREAK_MESSAGE = /new line|line break/;
 
 function lineBreakDiagnostics(result: ValidationResult<Program>): string[] {
-    return result.diagnostics.filter(d => LINE_BREAK_MESSAGE.test(d.message)).map(d => d.message);
+    return result.diagnostics
+        .map(d => Diagnostic.getMessageString(d))
+        .filter(message => LINE_BREAK_MESSAGE.test(message));
 }
 
 /**

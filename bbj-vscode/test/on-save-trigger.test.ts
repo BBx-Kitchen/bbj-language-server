@@ -3,6 +3,7 @@ import type { LangiumDocument } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import type { InitializeParams, InitializeResult } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
@@ -34,7 +35,7 @@ function createHarness() {
     const privates = builder as unknown as BuilderPrivates;
     privates.bbjcplAvailable = true;
     const interopService = BBj.java.JavaInteropService as JavaInteropTestService;
-    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments;
+    const textDocuments = shared.workspace.TextDocuments as unknown as NormalizedTextDocuments<TextDocument>;
     const client = listenOnFakeConnection(textDocuments);
     return { shared, BBj, builder, privates, interopService, client };
 }

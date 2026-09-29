@@ -4,7 +4,7 @@ import {
     formatHex, parseHexLiteral, describeMask, describeFlags, describeEventMask,
     composeAddWindow, parseAddWindowCallOnLine, findAddWindowCallAt, windowSchematic, WINDOW_FLAG,
     addwindowPreview, validateNumericField, AddWindowPreviewInput,
-} from '../src/addwindow-composer';
+} from '../src/addwindow-composer.js';
 
 describe('addWindow composer logic (#430)', () => {
     test('catalogs cover the documented bit counts and have unique bits', () => {

@@ -812,4 +812,56 @@ class ComposerModelsJsonBoundaryTest {
 
         assertNull(result.titleError, "an omitted optional field must parse to null, not fail");
     }
+
+    // ---- assignTo verdict (#626) -----------------------------------------------------------------
+
+    /** An invalid or empty assign-to target is reported the same way every other field error is. */
+    @Test
+    void aMsgboxPreviewCarryingAnAssignToErrorParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "expr":513,"statement":"MSGBOX(\\"Hello\\",513,\\"Title\\")",
+              "summary":"OK button, question icon","messageError":null,"titleError":null,"customError":null,
+              "assignToError":"Required","valid":false,
+              "render":{"title":"Title","message":"Hello","icon":32,"buttons":["OK"],"defaultIndex":0}
+            }}""";
+
+        MsgboxPreview result = parse("bbj/composer/msgbox/preview", MsgboxPreview.class, envelope,
+            MsgboxPreviewParams.class);
+
+        assertEquals("Required", result.assignToError);
+        assertFalse(result.valid);
+    }
+
+    @Test
+    void aCvsPreviewCarryingAnAssignToErrorParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "mask":255,"statement":"a$ = CVS(a$, 255, \\"*\\")",
+              "summary":"Strip leading spaces \\u00b7 Strip all spaces \\u2014 applied in ascending order",
+              "charsEnabled":true,"strError":null,"charsError":null,
+              "assignToError":"Not a string or object variable — e.g. s$, s! or s$[1]","valid":false
+            }}""";
+
+        CvsPreview result = parse("bbj/composer/cvs/preview", CvsPreview.class, envelope, CvsPreviewParams.class);
+
+        assertEquals("Not a string or object variable — e.g. s$, s! or s$[1]", result.assignToError);
+        assertFalse(result.valid);
+    }
+
+    /** A CVS preview envelope with no assignToError key must parse to null, not fail. */
+    @Test
+    void aCvsPreviewWithNoAssignToErrorKeyParsesToNull() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "mask":255,"statement":"a$ = CVS(a$, 255, \\"*\\")",
+              "summary":"Strip leading spaces \\u00b7 Strip all spaces \\u2014 applied in ascending order",
+              "charsEnabled":true,"strError":null,"charsError":null,"valid":true
+            }}""";
+
+        CvsPreview result = parse("bbj/composer/cvs/preview", CvsPreview.class, envelope, CvsPreviewParams.class);
+
+        assertNull(result.assignToError, "an omitted assignToError must parse to null, not fail");
+        assertTrue(result.valid);
+    }
 }

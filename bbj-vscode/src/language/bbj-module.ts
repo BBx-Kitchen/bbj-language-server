@@ -38,6 +38,7 @@ import { BBjValueConverter } from './bbj-value-converter.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module.js';
 import { JavaInteropService } from './java-interop.js';
+import { JavadocProvider } from './java-javadoc.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
@@ -56,7 +57,8 @@ export type BBjAddedServices = {
         BBjValidator: BBjValidator
     },
     java: {
-        JavaInteropService: JavaInteropService
+        JavaInteropService: JavaInteropService,
+        JavadocProvider: JavadocProvider
     },
     types: {
         Inferer: TypeInferer
@@ -93,7 +95,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         DocumentValidator: (services) => new BBjDocumentValidator(services)
     },
     java: {
-        JavaInteropService: (services) => new JavaInteropService(services)
+        JavaInteropService: (services) => new JavaInteropService(services),
+        JavadocProvider: () => new JavadocProvider()
     },
     compiler: {
         BBjCPLService: (services) => new BBjCPLService(services),
@@ -128,13 +131,26 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
 let ambiguitiesReported = false;
 
 /**
+ * Chevrotain's parser internals (the `wrapper.lookaheadStrategy.logging` chain) are not part of
+ * any published type — this narrow structural type describes only the shape this module reads
+ * and writes, so the cast below doesn't need `any`.
+ */
+type ChevrotainParserInternals = {
+    wrapper?: {
+        lookaheadStrategy?: {
+            logging?: (message: string) => void;
+        };
+    };
+};
+
+/**
  * Reroute Chevrotain's ambiguity logging (from chevrotain-allstar's LLStar
  * lookahead strategy) so it doesn't spam the LS output channel. The strategy
  * captures `this.logging` into its per-alternation prediction closures during
  * `finalize()`, so this MUST run before `finalize()` to take effect at runtime.
  */
 function overrideAmbiguityLogging(parser: LangiumParser | LangiumCompletionParser): void {
-    const lookaheadStrategy = (parser as any).wrapper?.lookaheadStrategy;
+    const lookaheadStrategy = (parser as unknown as ChevrotainParserInternals).wrapper?.lookaheadStrategy;
     if (lookaheadStrategy) {
         lookaheadStrategy.logging = (message: string) => {
             if (logger.isDebug()) {

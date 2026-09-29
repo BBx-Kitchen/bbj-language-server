@@ -5,7 +5,6 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { Model } from '../../src/language/generated/ast.js';
 import { createBBjServices } from '../../src/language/bbj-module.js';
-import { JavadocProvider } from '../../src/language/java-javadoc.js';
 import { JavaSyntheticDocUri } from '../../src/language/java-interop.js';
 import { initializeWorkspace, shouldRunBBjTests } from '../test-helper.js';
 
@@ -24,8 +23,8 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
 
     beforeAll(async () => {
         if (!run) return;
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        if (!services.BBj.java.JavadocProvider.isInitialized()) {
+            services.BBj.java.JavadocProvider.initialize([], services.shared.workspace.FileSystemProvider);
         }
         const interop = services.BBj.java.JavaInteropService;
         interop.setConnectionConfig('127.0.0.1', 5008);
@@ -77,7 +76,7 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
         expect(matches).toHaveLength(1);
         expect(matches[0].severity).toBe(DiagnosticSeverity.Error);
         expect(matches[0].message).toBe("Method 'anyInvalidMethod' is not defined on BBjAPI");
-        expect(linkingDiagnostics(document).some(d => d.message.includes('anyInvalidMethod'))).toBe(false);
+        expect(linkingDiagnostics(document).some(d => Diagnostic.getMessageString(d).includes('anyInvalidMethod'))).toBe(false);
     }, 60000);
 
     test.runIf(run)('x! = BBjAPI().anyInvalidMethod() is one Error', async () => {
@@ -98,7 +97,7 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
 
     test.runIf(run)('a real BBjAPI method stays clean', async () => {
         const document = await validate('bbjApiHandle! = BBjAPI()\nsysGuiHandle! = bbjApiHandle!.getSysGui()\n');
-        expect((document.diagnostics ?? []).some(d => d.message.includes('getSysGui'))).toBe(false);
+        expect((document.diagnostics ?? []).some(d => Diagnostic.getMessageString(d).includes('getSysGui'))).toBe(false);
     }, 60000);
 
     test.runIf(run)('a java.lang.Object receiver never gets the new Error (an array is legitimately reachable through it)', async () => {
@@ -109,6 +108,6 @@ describe('Unknown Java member on the real BBjAPI class (real interop)', async ()
         // missing. The test double has no fake java.lang.Object class to reproduce this against,
         // so this guard can only be proven end to end here.
         const document = await validate('declare java.lang.Object o!\nx! = o!.length\n');
-        expect(unknownMemberDiagnostics(document).some(d => d.message.includes('length'))).toBe(false);
+        expect(unknownMemberDiagnostics(document).some(d => Diagnostic.getMessageString(d).includes('length'))).toBe(false);
     }, 60000);
 });

@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createMessageConnection, IPCMessageReader, IPCMessageWriter, MessageConnection } from 'vscode-jsonrpc/node';
+import { createMessageConnection, IPCMessageReader, IPCMessageWriter, MessageConnection } from 'vscode-jsonrpc/node.js';
 import {
     SETOPTS_COMPOSE_TRISTATE_METHOD, SETOPTS_DECODE_IN_CODE_METHOD, SetOptsComposeTriStateParams,
     SetOptsComposeTriStateResult, SetOptsInCodeDecodeParams, SetOptsInCodeDecodeResult,
@@ -263,10 +263,11 @@ describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code (#475
             expect(menuEntries.some(m => m.command === 'bbj.composeSetoptsInCode')).toBe(true);
         });
 
-        test('client manifest: activationEvents includes onCommand:bbj.composeSetoptsInCode', () => {
+        test('client manifest: activationEvents leaves bbj.composeSetoptsInCode to contributes.commands', () => {
             const pkg = JSON.parse(fs.readFileSync(install!.packageJsonPath, 'utf-8'));
             const events: string[] = pkg.activationEvents ?? [];
-            expect(events).toContain('onCommand:bbj.composeSetoptsInCode');
+            expect(events).toContain('onLanguage:bbj');
+            expect(events).not.toContain('onCommand:bbj.composeSetoptsInCode');
         });
 
         test('client bundle: the compiled out/extension.cjs carries the command id literal', () => {

@@ -22,8 +22,8 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/generated/module.js';
 import { registerValidationChecks } from '../src/language/bbj-validator.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 import { JavaInteropService, RESOLVED_CLASSES_CACHE_LIMIT } from '../src/language/java-interop.js';
+import { createInitializedJavadocProvider } from './bbj-test-module.js';
 
 /**
  * A minimal in-memory stand-in for `net.Socket`, implementing only what vscode-jsonrpc's
@@ -62,10 +62,6 @@ class MockableJavaInteropService extends JavaInteropService {
 
     constructor(services: BBjServices) {
         super(services);
-        // Init JavadocProvider otherwise resolveClass() throws (mirrors test/bbj-test-module.ts).
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
-        }
     }
 
     protected override createSocket(): Promise<Socket> {
@@ -147,7 +143,8 @@ function createServices(javaInteropServiceFactory: (services: BBjServices) => Mo
     );
     const testModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
         java: {
-            JavaInteropService: (services) => javaInteropServiceFactory(services)
+            JavaInteropService: (services) => javaInteropServiceFactory(services),
+            JavadocProvider: (services) => createInitializedJavadocProvider(services.shared.workspace.FileSystemProvider)
         }
     };
     const BBj = inject(

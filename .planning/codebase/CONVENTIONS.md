@@ -1,6 +1,8 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-09-21
+<!-- refreshed: 2026-09-28 -->
+
+**Analysis Date:** 2026-09-28
 
 ## Naming Patterns
 
@@ -49,11 +51,12 @@
 - 4-space indentation (TypeScript default)
 
 **Linting:**
-- Tool: ESLint with `typescript-eslint` plugin (see `bbj-vscode/eslint.config.js`)
-- Config: `eslint.config.js` using flat config format
+- Tool: ESLint with `typescript-eslint` plugin
+- Config: `bbj-vscode/eslint.config.js` using flat config format
 - Ignored paths: `out/**`, `src/language/generated/**` (auto-generated code)
 - Rule set: TypeScript-specific strict rules (minimal custom overrides currently)
-- Run via: `npm run lint`
+- Run via: `npm run lint` (from `bbj-vscode/` directory)
+- CI trigger: Runs on every PR after successful build via `.github/workflows/build.yml`
 
 **TypeScript Configuration (`tsconfig.json`):**
 - Target: ES6
@@ -64,6 +67,7 @@
   - `noImplicitReturns: true` (all code paths must return)
   - `noImplicitOverride: true` (override keyword required)
   - `forceConsistentCasingInFileNames: true`
+- Type-check test tree: `npm run typecheck:test` (runs in CI on every PR)
 
 ## Import Organization
 
@@ -278,6 +282,50 @@ export function registerValidationChecks(services: BBjServices) { ... }
 - No global singletons except logger (which is explicitly `getInstance()`)
 - JavadocProvider uses explicit `getInstance()` initialization check
 
+## Workflow & Quality Checks
+
+**Continuous Integration:** GitHub Actions workflows in `.github/workflows/`
+
+**Build Workflow** (`.github/workflows/build.yml`):
+- Runs on every PR to main
+- Node.js v22 (Langium 4.x requirement)
+- Steps (in order, continue on failure for tests):
+  1. Build: `npm ci && npm run build`
+  2. Lint: `npm run lint` (if build succeeds)
+  3. Type-check: `npm run typecheck:test` (if build succeeds)
+  4. Test: `npm run test` (always runs)
+  5. Bundle: `npx vsce package` (VSCode extension)
+
+**PR Validation Workflow** (`.github/workflows/pr-validation.yml`):
+- Runs only on changes to core language, IntelliJ, or workflows
+- Builds VSCode extension first, then validates IntelliJ plugin against it
+- IntelliJ plugin verifier checks against official IDE releases
+
+**Workflow Hygiene Checks** (`.github/workflows/workflow-hygiene.yml`):
+- **Secret hygiene:** Scans all `.github/workflows/*.yml` files for inline `${{ secrets.* }}` expressions
+  - Secrets must be bound via step-level `env:` mapping instead
+  - Tool: `bbj-vscode/tools/check-workflow-secrets.mjs`
+- **Gradle wrapper validation:** Ensures wrapper checksums are pinned and every Gradle job validates the wrapper
+  - Tool: `bbj-vscode/tools/check-gradle-wrapper.mjs`
+- Both checks run on every push to main and every PR
+
+**VSCode Extension Testing** (`.github/workflows/pr-vsix.yml`):
+- Builds, tests, and packages installable `.vsix` for each PR
+- Artifact retained 14 days; link posted on PR for manual testing
+- Node.js v22 required
+
+## Development Environment
+
+**Gitpod Setup** (`.gitpod.yml`):
+- Auto-installs Node dependencies in `bbj-vscode/`
+- Builds `java-interop/` via Gradle
+- Pre-installs VSCode extensions:
+  - `langium.langium-vscode` — Langium grammar support
+  - `dbaeumer.vscode-eslint` — ESLint integration
+  - `vscjava.vscode-java-pack` — Java support
+
+**Node Requirement:** v22 minimum (Langium 4.x toolchain)
+
 ## Cross-Cutting Concerns
 
 **Logging:** Logger singleton (see Logging section)
@@ -294,4 +342,6 @@ export function registerValidationChecks(services: BBjServices) { ... }
 
 ---
 
-*Convention analysis: 2026-09-21*
+last_mapped_commit: 3a02c40ab6022a5dcc590e6a19bd9ce0f5cdebbb
+
+*Convention analysis: 2026-09-28*

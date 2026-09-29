@@ -20,8 +20,11 @@ import * as vscode from 'vscode';
 import {
     WINDOW_FLAGS, EVENT_MASK_BITS, addwindowPreview,
 } from './addwindow-composer.js';
-import { getNonce } from './webview-nonce.js';
 import { registerPanelMessageHandler } from './webview-panel-lifecycle.js';
+import { buildComposerCsp } from './webview-csp.js';
+import {
+    isBoolean, isIntArray, isPanelMessage, isPlainObject, isString, PanelMessage,
+} from './webview-message-guard.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddWindowEditTarget {
@@ -69,6 +72,30 @@ interface Selection {
     title: string;
 }
 
+/** Whether `value` is a well-formed {@link Selection}: every field has its declared runtime type. */
+function isAddWindowSelection(value: unknown): value is Selection {
+    return isPlainObject(value)
+        && isIntArray(value.flags)
+        && isBoolean(value.eventMaskEnabled)
+        && isIntArray(value.eventMask)
+        && isString(value.receiver)
+        && isString(value.sysgui)
+        && isString(value.x)
+        && isString(value.y)
+        && isString(value.width)
+        && isString(value.height)
+        && isString(value.title);
+}
+
+/** Guards the addWindow panel's message before its handler acts on it (#604). */
+export function isAddWindowPanelMessage(msg: unknown): msg is PanelMessage<Selection> {
+    return isPanelMessage(msg, {
+        types: ['ready', 'change', 'insert', 'cancel'],
+        payloadTypes: ['change', 'insert'],
+        isPayload: isAddWindowSelection,
+    });
+}
+
 const DEFAULT_INITIAL = {
     // Resizable + Close box + Keyboard navigation — the shape of the BASIS doc example ($00010003$).
     flags: 0x00010003,
@@ -111,7 +138,8 @@ export function openAddWindowComposerPanel(context: vscode.ExtensionContext, arg
         preservedEventBits: target?.preservedEventBits ?? 0,
     });
 
-    registerPanelMessageHandler(panel, async (msg: { type: string; payload?: Selection }) => {
+    registerPanelMessageHandler(panel, async (msg: unknown) => {
+        if (!isAddWindowPanelMessage(msg)) return;
         switch (msg.type) {
             case 'ready':
                 panel.webview.postMessage({
@@ -168,12 +196,7 @@ function applyEdit(edit: vscode.WorkspaceEdit, sel: Selection, r: { flagsHex: st
 }
 
 function getHtml(webview: vscode.Webview): string {
-    const nonce = getNonce();
-    const csp = [
-        `default-src 'none'`,
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}'`,
-    ].join('; ');
+    const { nonce, csp } = buildComposerCsp(webview);
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>

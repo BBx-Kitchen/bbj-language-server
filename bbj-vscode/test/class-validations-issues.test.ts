@@ -1,11 +1,12 @@
 import { EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { parseHelper, validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { Diagnostic } from 'vscode-languageserver';
+import { createBBjTestServices } from './bbj-test-module.js';
 import { Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
 const parse = parseHelper<Model>(services.BBj);
 
@@ -15,7 +16,7 @@ const parse = parseHelper<Model>(services.BBj);
 // the specific validation messages under test rather than the total diagnostic count.
 async function messagesOf(code: string): Promise<string[]> {
     const result = await validate(code);
-    return (result.diagnostics ?? []).map(d => d.message);
+    return (result.diagnostics ?? []).map(d => Diagnostic.getMessageString(d));
 }
 
 describe('Class validation issues (#79, #80, #86, #87)', () => {
@@ -71,14 +72,14 @@ class public Test
   methodend
 classend
 `);
-            const dangling = (result.diagnostics ?? []).find(d => /named 'window!'/.test(d.message));
+            const dangling = (result.diagnostics ?? []).find(d => /named 'window!'/.test(Diagnostic.getMessageString(d)));
             expect(dangling).toBeDefined();
             expect(dangling!.severity).toBe(1 /* DiagnosticSeverity.Error */);
         });
 
         test('an ordinary unresolved variable reference stays a warning', async () => {
             const result = await validate(`print undefinedVar\n`);
-            const dangling = (result.diagnostics ?? []).find(d => /named 'undefinedVar'/.test(d.message));
+            const dangling = (result.diagnostics ?? []).find(d => /named 'undefinedVar'/.test(Diagnostic.getMessageString(d)));
             expect(dangling).toBeDefined();
             expect(dangling!.severity).toBe(2 /* DiagnosticSeverity.Warning */);
         });

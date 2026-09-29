@@ -5,7 +5,7 @@ import {
     splitButtonsAndTrailing, DEFAULT_STATE, resolvesToString, validateStringField, quoteAsStringLiteral,
     msgboxPreview, msgboxConstantsExpr, parseMsgboxOptionsSum, MSGBOX_REPLACE_BANNER_TEXT, decodeMsgboxCall,
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS,
-} from '../src/msgbox-composer';
+} from '../src/msgbox-composer.js';
 
 describe('MSGBOX composer logic (#426)', () => {
     test('encode combines button set + icon + default button + flags', () => {
