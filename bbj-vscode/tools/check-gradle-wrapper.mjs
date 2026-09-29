@@ -66,6 +66,10 @@ export const GRADLE_CHECKSUMS = {
     wrapper: '7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d',
     bin: 'acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a',
   },
+  '9.8.0': {
+    wrapper: '238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5',
+    bin: 'bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c',
+  },
 };
 
 const SKIP_DIR_NAMES = new Set([
