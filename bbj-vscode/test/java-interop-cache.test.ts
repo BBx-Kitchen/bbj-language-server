@@ -8,12 +8,13 @@
  * `JavaResolutionCache` on its own, built with a stub classpath hook and no owning interop
  * service (#558): the LRU cap and recency, the package tree built by storeJavaClass/
  * addTopLevelPackage, the #676 leaf-collision guard, findClassCandidatesBySimpleName, canonical
- * ($-spelled) name lookup and reset().
+ * ($-spelled) name lookup, reset(), and the class resolution routing added in this plan.
  */
 import { Mutable } from 'langium';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { Classpath, isJavaPackage, JavaClass, JavaPackage } from '../src/language/generated/ast.js';
-import { JavaResolutionCache } from '../src/language/java-interop-cache.js';
+import { ResolutionCacheHooks, JavaResolutionCache } from '../src/language/java-interop-cache.js';
+import { ResolutionLock } from '../src/language/java-interop-lock.js';
 
 /** A minimal, well-formed JavaClass with no fields/methods/constructors. */
 function minimalJavaClass(name: string, packageName: string): Mutable<JavaClass> {
@@ -36,7 +37,7 @@ describe('JavaResolutionCache (#558)', () => {
     });
 
     function createCache(limit = 5000): JavaResolutionCache {
-        return new JavaResolutionCache(limit, { classpath: () => classpath });
+        return new JavaResolutionCache(limit, new ResolutionLock(), { classpath: () => classpath } as ResolutionCacheHooks);
     }
 
     test('the LRU is bounded: registering a class past the limit evicts the least-recently-used entry, and a getResolvedClass read refreshes recency', () => {
@@ -132,5 +133,144 @@ describe('JavaResolutionCache (#558)', () => {
 
         expect(cache.isClasspathAvailable()).toBe(false);
         expect(cache.getChildOf(classpath, 'com')).toBeUndefined();
+    });
+
+    describe('class resolution routing (#558)', () => {
+        /**
+         * Builds a cache whose `resolveClass`/`resolveClassByName` hooks route straight back to
+         * the cache's own same-named methods — mirroring how the front class's hooks route back
+         * through itself — so the pipeline's internal recursive calls are exercised for real. The
+         * `getRawClass` hook answers a fresh, member-less DTO for any requested name unless a
+         * scripted answer is installed via `scripts`.
+         */
+        function createRoutedCache(limit = 5000): {
+            cache: JavaResolutionCache;
+            rawClassCalls: string[];
+            resolveClassCalls: string[];
+            scripts: Map<string, Mutable<JavaClass>>;
+        } {
+            const rawClassCalls: string[] = [];
+            // The name requested of resolveClass, captured before resolveClass's own
+            // storeJavaClass mutates javaClass.name down to its simple (unqualified) spelling.
+            const resolveClassCalls: string[] = [];
+            const scripts = new Map<string, Mutable<JavaClass>>();
+            let cache!: JavaResolutionCache;
+            const hooks: ResolutionCacheHooks = {
+                classpath: () => classpath,
+                ensureClasspathDocument: () => { /* no-op */ },
+                getDocumentation: async () => undefined,
+                getRawClass: async (className) => {
+                    rawClassCalls.push(className);
+                    return scripts.get(className) ?? ({
+                        $type: 'JavaClass', name: className, packageName: 'test', fields: [], methods: [], constructors: []
+                    } as unknown as Mutable<JavaClass>);
+                },
+                resolveClass: (javaClass, token, depth) => {
+                    resolveClassCalls.push(javaClass.name);
+                    return cache.resolveClass(javaClass, token, depth);
+                },
+                resolveClassByName: (className, token, depth) => cache.resolveClassByName(className, token, depth)
+            };
+            cache = new JavaResolutionCache(limit, new ResolutionLock(), hooks);
+            return { cache, rawClassCalls, resolveClassCalls, scripts };
+        }
+
+        test('resolveClass hands every field/method/constructor member type to the resolveClassByName hook at depth 1, never calls getRawClass, and caches the resolved class', async () => {
+            const resolveClassByNameCalls: Array<{ className: string; depth: number | undefined }> = [];
+            const getRawClassCalls: string[] = [];
+            let cache!: JavaResolutionCache;
+            const hooks: ResolutionCacheHooks = {
+                classpath: () => classpath,
+                ensureClasspathDocument: () => { /* no-op */ },
+                getDocumentation: async () => undefined,
+                getRawClass: async (className) => {
+                    getRawClassCalls.push(className);
+                    return minimalJavaClass(className, '');
+                },
+                resolveClass: (javaClass, token, depth) => cache.resolveClass(javaClass, token, depth),
+                resolveClassByName: async (className, _token, depth) => {
+                    resolveClassByNameCalls.push({ className, depth });
+                    return minimalJavaClass(className, '');
+                }
+            };
+            cache = new JavaResolutionCache(5000, new ResolutionLock(), hooks);
+
+            const dto: Mutable<JavaClass> = {
+                $type: 'JavaClass',
+                name: 'test.Widget',
+                packageName: 'test',
+                classes: [],
+                constructors: [{ name: '<init>', returnType: 'test.Widget', parameters: [{ name: 'p0', type: 'test.CtorParam' }] }],
+                fields: [{ name: 'field1', type: 'test.FieldType' }],
+                methods: [{ name: 'doIt', returnType: 'test.ReturnType', parameters: [{ name: 'p0', type: 'test.MethodParam' }] }],
+            } as unknown as Mutable<JavaClass>;
+
+            const resolved = await cache.resolveClass(dto);
+
+            expect(getRawClassCalls).toEqual([]);
+            expect(resolveClassByNameCalls.map(c => c.className).sort()).toEqual(
+                ['test.CtorParam', 'test.FieldType', 'test.MethodParam', 'test.ReturnType', 'test.Widget'].sort()
+            );
+            expect(resolveClassByNameCalls.every(c => c.depth === 1)).toBe(true);
+            expect(cache.getResolvedClass('test.Widget')).toBe(resolved);
+        });
+
+        test('resolveClassByName for a new class calls the getRawClass hook once with the requested spelling, and passes its answer to the resolveClass hook', async () => {
+            const { cache, rawClassCalls, resolveClassCalls } = createRoutedCache();
+
+            const resolved = await cache.resolveClassByName('test.Outer$Inner');
+
+            expect(rawClassCalls).toEqual(['test.Outer$Inner']);
+            expect(resolveClassCalls).toHaveLength(1);
+            expect(resolveClassCalls[0]).toBe('test.Outer$Inner');
+            // storeJavaClass (run inside resolveClass) strips the 'test.' package prefix,
+            // leaving javaClass.name as the simple (unqualified) spelling under the package node.
+            expect(resolved.name).toBe('Outer.Inner');
+            expect(cache.getResolvedClass('test.Outer.Inner')).toBe(resolved);
+        });
+
+        test('a second resolveClassByName lookup of the same class returns the cached object with no further getRawClass call', async () => {
+            const { cache, rawClassCalls } = createRoutedCache();
+
+            const first = await cache.resolveClassByName('test.Outer$Inner');
+            const second = await cache.resolveClassByName('test.Outer$Inner');
+
+            expect(second).toBe(first);
+            expect(rawClassCalls).toEqual(['test.Outer$Inner']);
+        });
+
+        test("the 'Outer.Inner' dotted spelling of an already-resolved 'Outer$Inner' class returns the cached object with no further getRawClass call", async () => {
+            const { cache, rawClassCalls } = createRoutedCache();
+
+            const first = await cache.resolveClassByName('test.Outer$Inner');
+            const dotted = await cache.resolveClassByName('test.Outer.Inner');
+
+            expect(dotted).toBe(first);
+            expect(rawClassCalls).toEqual(['test.Outer$Inner']);
+        });
+
+        test("resolveClassByName('int') goes to the resolveClass hook with a local primitive DTO and never calls getRawClass", async () => {
+            const { cache, rawClassCalls, resolveClassCalls } = createRoutedCache();
+
+            const resolved = await cache.resolveClassByName('int');
+
+            expect(rawClassCalls).toEqual([]);
+            expect(resolveClassCalls).toHaveLength(1);
+            expect(resolveClassCalls[0]).toBe('int');
+            expect(resolved.packageName).toBe('java.lang');
+            expect(resolved.error).toBeUndefined();
+        });
+
+        test('two concurrent lookups of one new class name share a single getRawClass call', async () => {
+            const { cache, rawClassCalls } = createRoutedCache();
+
+            const first = cache.resolveClassByName('test.Concurrent');
+            const second = cache.resolveClassByName('test.Concurrent');
+
+            const [a, b] = await Promise.all([first, second]);
+
+            expect(a).toBe(b);
+            expect(rawClassCalls).toEqual(['test.Concurrent']);
+        });
     });
 });
