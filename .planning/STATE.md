@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Completed 121-02-PLAN.md
-last_updated: "2026-09-29T11:06:04.850Z"
+stopped_at: Completed 121-03-PLAN.md
+last_updated: "2026-09-29T11:15:03.805Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: 1842aff95021a04c36bb8917471a16f425ac4a5d
+state_head: 1686dc60a6aed37c75b39c89f7b8906a7a45554b
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 66
+  completed_plans: 67
   percent: 77
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 3 of 10
+Plan: 4 of 10
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 121 execution started
 
@@ -184,6 +184,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 120 P04 | 20min | 3 tasks | 6 files |
 | Phase 121 P01 | 12min | 2 tasks | 12 files |
 | Phase 121 P02 | 23min | 2 tasks | 9 files |
+| Phase 121 P03 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -310,6 +311,7 @@ decisions:
 - [Phase 121]: 121-01: services.java.JavadocProvider registered; the production factory still hands out the existing getInstance() instance (plan 02 makes it fresh and deletes getInstance())
 - [Phase 121]: 121-01: createBBjTestServices grew an optional javadocProvider parameter so inlay-hints-javadoc.test.ts can hand it a pre-loaded provider instead of racing to initialise the singleton first
 - [Phase 121]: 121-02: JavadocProvider.getInstance()/_instance deleted; the DI factory builds a fresh provider per services set; javadoc.test.ts's #624 regression suite proves two providers in one process share no state; REF-09 complete
+- [Phase 121]: 121-03: ResolutionLock (acquire/currentToken/reset) extracted verbatim into java-interop-lock.ts, a zero-import sibling module held by the front class as a private readonly field; exports-check.mjs (D-08) written for the remaining REF-12 plans to reuse
 
 ### Tech Debt
 
@@ -373,8 +375,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T11:06:04.315Z
-Stopped at: Completed 121-02-PLAN.md
+Last session: 2026-09-29T11:14:57.324Z
+Stopped at: Completed 121-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
