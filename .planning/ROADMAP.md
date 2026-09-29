@@ -817,7 +817,24 @@ keyword-as-identifier cases (a v4.5 lesson). `npm run build` does not regenerate
   3. The unused `bbj.em.credentials` secret fallback and the unreachable legacy `bbj.web.username`/`bbj.web.password` branch are gone. The activation, `Commands.cjs` and EM tests pass unchanged, and every contributed command is still registered after activation.
   4. A hand check in VS Code runs a GUI, a BUI and a DWC program, logs into EM and compiles a file, and each behaves as before.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 120-01-PLAN.md — Phase base captured first (base SHA, whole-suite failing names, 27 load-bearing suites). `ClassValidator` split into `check-class-reference.ts`, `check-return-types.ts` (FINAL_TYPE_ASSIGNABLE_TO unchanged), `check-constructor.ts` and `check-cyclic-inheritance.ts` plus `class-types.ts`; `check-classes.ts` only registers, in the base order, with byte-identical messages (REF-10) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 120-02-PLAN.md — Safety net on the unsplit `extension.ts`: a test that every contributed command is registered (checked six-entry composer allow-list) with the activation sequence pinned, and behaviour pins for the open prompts and the two diagnostic status bars (REF-11) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 120-03-PLAN.md — One owner-only-output runner (`runScriptToOwnerOnlyFile`, own unit tests) for EM login and validation; `em-auth.ts` holds the EM command, validation, `ensureValidToken` and `getEMCredentials`; the `bbj.em.credentials` fallback deleted; `runWeb`'s username/password branch kept because tests drive it; guards widened, one two-site count re-expressed (REF-11) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 120-04-PLAN.md — `activate()` as an ordered list of register calls, with `open-file-prompts.ts` and `diagnostic-status-bars.ts`; whole phase measured against the base, guard ledger, D-18 hand-UAT list, `COVERAGE.md`, and the `Closes #625` / `Closes #564` lines (REF-11) (wave 4)
 
 *Planning notes:* `activate()` is 352 lines now (the issue says about 250) and `ClassValidator`
 about 414. REF-10 moves `FINAL_TYPE_ASSIGNABLE_TO`, which the open feature request #466 would
