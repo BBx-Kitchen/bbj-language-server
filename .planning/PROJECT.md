@@ -434,6 +434,8 @@ until publication).
 - ✓ **REF-06**: A test fails in either direction when the `package.json` `bbj.compiler.*` contributions drift from the compiler-options table (#606) — v4.7 Phase 118
 - ✓ **REF-10**: `ClassValidator` is split into modules along its four responsibilities, with unchanged diagnostics (#625) — v4.7 Phase 120
 - ✓ **REF-11**: `activate()` is split into single-purpose registration functions sharing one exec-wrapping helper, with unchanged behaviour (#564) — v4.7 Phase 120
+- ✓ **REF-09**: `JavadocProvider` is an injected DI service instead of a `getInstance()` singleton (#624) — v4.7 Phase 121
+- ✓ **REF-12**: `JavaInteropService` is split along its five responsibilities (connection, resolution cache, request lock, classpath loading, complete class index), with unchanged behaviour (#558) — v4.7 Phase 121
 
 ### Active
 
@@ -717,4 +719,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-29 after Phase 120*
+*Last updated: 2026-09-29 after Phase 121*

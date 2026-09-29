@@ -20,7 +20,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-29 (Phase 120 complete — UAT 1/1, security 18/18 closed, 2/2 requirements; next Phase 121, Phase 117 UAT pending)
+**Last Updated:** 2026-09-29 (Phase 121 complete — UAT 24/24, security 0 open, Nyquist compliant, 2/2 requirements; remaining: Phase 117 (117-05 halted on DEP-05, UAT partial) and Phase 122)
 
 ## Project Reference
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 121 — Java Interop Service Decomposition
+**Current Focus:** Phase 117 — Dependency Hygiene & Dependabot Coverage (117-05 DEP-05 decision pending), then Phase 122
 
 ---
 
@@ -39,7 +39,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-09-29 — Phase 121 complete, transitioned to Phase 117
 
-Progress: [████████░░] 77% (10/13 phases)
+Progress: [████████░░] 85% (11/13 phases)
 
 ### v4.7 milestone map
 
@@ -390,7 +390,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T13:15:02.784Z
+Last session: 2026-09-29T14:05:18.000Z
 Stopped at: Phase 121 complete, ready to plan Phase 117
 Resume file: None
 
