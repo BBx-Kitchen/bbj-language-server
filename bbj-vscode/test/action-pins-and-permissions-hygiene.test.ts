@@ -360,6 +360,29 @@ describe('action pin and permission checker contract', () => {
         );
     });
 
+    test('an inline comment on a job-level permissions entry does not drop that key', () => {
+        const dir = newFixtureDir('action-pins-permissions-inline-comment-');
+        writeFixtureFile(dir, 'inline-comment.yml', [
+            'name: Fixture',
+            'on: push',
+            'permissions:',
+            '  contents: read',
+            'jobs:',
+            '  pusher:',
+            '    runs-on: ubuntu-latest',
+            '    permissions:',
+            '      contents: write # needed to push the release tag',
+            '    steps:',
+            `      - uses: actions/checkout@${PINNED_SHA} # v4.4.0`,
+            '      - run: |',
+            '          git push origin main',
+        ]);
+
+        const result = runChecker([dir]);
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/0 findings\.\s*$/);
+    });
+
     test('a composite action is checked for pin compliance only', () => {
         const dirGood = newFixtureDir('action-pins-composite-good-');
         writeFixtureFile(dirGood, 'action.yml', [

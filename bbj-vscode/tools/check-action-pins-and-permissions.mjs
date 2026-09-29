@@ -165,7 +165,8 @@ function parsePermissionsAt(numberedLines, index, baseIndent) {
     if (indent <= baseIndent) {
       break;
     }
-    const entryMatch = candidate.text.match(/^\s*([A-Za-z-]+):\s*(\S+)\s*$/);
+    const withoutComment = candidate.text.replace(/\s+#.*$/, '');
+    const entryMatch = withoutComment.match(/^\s*([A-Za-z-]+):\s*(\S+)\s*$/);
     if (entryMatch) {
       entries[entryMatch[1]] = entryMatch[2];
     }
