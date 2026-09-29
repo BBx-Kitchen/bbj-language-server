@@ -38,6 +38,9 @@ runs:
         node-version: 22
         cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
         cache-dependency-path: ${{ inputs.cache == 'true' && inputs.cache-dependency-path || '' }}
+        # setup-node 5+ also caches on its own when package.json names npm in
+        # packageManager; keep that off whenever the caller turned caching off.
+        package-manager-cache: ${{ inputs.cache == 'true' }}
 
     - name: Install dependencies
       if: inputs.install == 'true'
