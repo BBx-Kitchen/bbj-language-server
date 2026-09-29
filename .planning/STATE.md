@@ -363,7 +363,7 @@ Last session: 2026-09-29T00:14:58.718Z
 Stopped at: Phase 119 complete; Phase 117 awaits UAT (verify-work)
 Resume file: None
 
-Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 119`.
+Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 120`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
