@@ -41,8 +41,12 @@ const setOutputChannel = (channel) => {
 
 /**
  * Helper function to run an Argv (executable path + argument array) in a Promise
- * for use with withProgress. Delegates to process-runner.js's runProcess, which
- * launches via execFile — never a shell (GHSA-p5f3-9456-9pcx).
+ * for use with withProgress. `runProcess`, from process-runner.js, is the one
+ * shared launcher every launch in this file goes through — execFile only, never
+ * a shell (GHSA-p5f3-9456-9pcx) — and the same launcher the extension's EM
+ * helper scripts (em-validate-token.bbj, em-login.bbj) reach through their own
+ * owner-only-output runner (src/em-script-runner.ts). `execWithProgress` is
+ * kept here as a local alias onto that shared launcher.
  * @param {import('./process-args').Argv} argv - The executable path + argument array to run
  * @returns {Promise<{stdout: string, stderr: string}>} Promise that resolves with stdout/stderr or rejects with error
  */
@@ -91,7 +95,9 @@ const runWeb = (params, client, credentials) => {
     username = "";
     password = "";
   } else {
-    // Username/password from SecretStorage
+    // The extension itself only ever hands runWeb the EM token now (getEMCredentials
+    // has no other credential shape to produce); this branch routes a username and
+    // password for callers that pass them directly.
     username = credentials.username;
     password = credentials.password;
     token = "";
