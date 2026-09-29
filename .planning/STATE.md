@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 122
 current_phase_name: Release & CI Pipeline Hardening
-status: executing
-stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-09-29T17:34:04.489Z"
+status: verifying
+stopped_at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
+last_updated: "2026-09-29T18:48:52.057Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 122 execution started
-state_head: 9d91a48a442682954257b5197eba9962f26d8a4a
+state_head: 8214e3880b84c39a95374ac9f11554178103d0c0
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 80
-  completed_plans: 79
+  completed_plans: 80
   percent: 85
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-29 — Phase 122 execution started
 
 Progress: [█████████░] 85% (11/13 phases)
@@ -197,6 +197,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 122 P03 | 11min | 2 tasks | 2 files |
 | Phase 122 P04 | 9min | 3 tasks | 6 files |
 | Phase 122 P05 | 34min | 2 tasks | 2 files |
+| Phase 122 P06 | 11min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -340,6 +341,7 @@ decisions:
 - [Phase 122]: 122-03: a single effective-scope helper (job block, else top-level block, else 'default') computes the push-scope rule's reported contents value across all three cases, supporting both block-mapping and same-line scalar/flow-mapping permissions syntax
 - [Phase 122]: 122-04: a shared, pinned composite action (.github/actions/node-setup) is the one Node preamble every workflow uses; build.yml absorbs pr-vsix.yml as the single unconditional PR gate with its own build-<PR#> concurrency group, and pr-validation.yml/deploy-docs.yml adopt the action with least-privilege permissions and distinct concurrency naming so the two PR workflows never cancel each other
 - [Phase 122]: Phase 122 P05: preview.yml and manual-release.yml top-level permissions:contents:read; write only on bump-version, tag-release and create-release; both verify jobs use the shared node-setup action (cached) with lint/typecheck:test gates after Build; both publish-vscode jobs install cold (cache:'false'); every uses reference pinned
+- [Phase 122]: 122-06: pin-hygiene job wired into workflow-hygiene.yml permanently; every tree pin verified clean against GitHub (12/12, no re-pins needed, all already latest-in-major); Dependabot directories now cover the composite action; a fresh Node 22 scratch worktree proved the release-shaped packaging pipeline end to end; IntelliJ buildPlugin used the documented -x test workaround for the pre-existing ComposerRequestContractTest failure; Phase 122 complete, all eight requirements delivered
 
 ### Tech Debt
 
@@ -403,8 +405,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T17:34:03.927Z
-Stopped at: Completed 122-05-PLAN.md
+Last session: 2026-09-29T18:48:51.476Z
+Stopped at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
