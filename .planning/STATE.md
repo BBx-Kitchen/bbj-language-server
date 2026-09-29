@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Completed 121-01-PLAN.md
-last_updated: "2026-09-29T10:41:01.528Z"
+stopped_at: Completed 121-02-PLAN.md
+last_updated: "2026-09-29T11:06:04.850Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: 0e39b69a327f344511653415d0126ee5dd5c99ff
+state_head: 1842aff95021a04c36bb8917471a16f425ac4a5d
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 65
+  completed_plans: 66
   percent: 77
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 121 execution started
 
@@ -183,6 +183,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 120 P03 | 40min | 2 tasks | 8 files |
 | Phase 120 P04 | 20min | 3 tasks | 6 files |
 | Phase 121 P01 | 12min | 2 tasks | 12 files |
+| Phase 121 P02 | 23min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,7 @@ decisions:
 - [Phase 120]: 120-04: activate() is an eighteen-call ordered list of single-purpose register functions; the open prompts and diagnostic status bars moved to open-file-prompts.ts/diagnostic-status-bars.ts; the extracted functions are placed after activate() (not before) so an untouched-lines diff against the composer registrations stays clean; REF-11 complete, phase 120 closed
 - [Phase 121]: 121-01: services.java.JavadocProvider registered; the production factory still hands out the existing getInstance() instance (plan 02 makes it fresh and deletes getInstance())
 - [Phase 121]: 121-01: createBBjTestServices grew an optional javadocProvider parameter so inlay-hints-javadoc.test.ts can hand it a pre-loaded provider instead of racing to initialise the singleton first
+- [Phase 121]: 121-02: JavadocProvider.getInstance()/_instance deleted; the DI factory builds a fresh provider per services set; javadoc.test.ts's #624 regression suite proves two providers in one process share no state; REF-09 complete
 
 ### Tech Debt
 
@@ -371,8 +373,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T10:41:00.999Z
-Stopped at: Completed 121-01-PLAN.md
+Last session: 2026-09-29T11:06:04.315Z
+Stopped at: Completed 121-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
