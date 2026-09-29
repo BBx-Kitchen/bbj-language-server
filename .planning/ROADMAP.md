@@ -786,7 +786,7 @@ the plan SUMMARYs and posted by hand.
   2. The two fragments that open with channel, options and RPAREN share one rule, with the output variant's extra alternative kept or its necessity documented. `npm run langium:generate` and the whole suite, including `example-files.test.ts`, pass with no new failures.
   3. A before/after parse probe over the repository's examples and test data, and a local run of the private conformance corpus, show no changed parse outcome, compared by file set rather than totals.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 **Wave 1**
@@ -795,7 +795,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 119-02-PLAN.md — One `ChannelAndOptions` fragment opens both item fragments, with the output-only trailing-comma alternatives documented and `ast.ts` byte-identical. The probe, corpus and whole suite are re-measured against the base after the last source change, and the SUMMARY carries the `Closes #527` / `Closes #602` lines and closing notes (REF-13) (wave 2)
+- [x] 119-02-PLAN.md — One `ChannelAndOptions` fragment opens both item fragments, with the output-only trailing-comma alternatives documented and `ast.ts` byte-identical. The probe, corpus and whole suite are re-measured against the base after the last source change, and the SUMMARY carries the `Closes #527` / `Closes #602` lines and closing notes (REF-13) (wave 2)
 
 *Planning notes:* the tests research suggested #527 might already be effectively fixed. Start
 with a test on the phase base: if it already passes, keep it as the regression file and close
@@ -921,7 +921,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 116. Java-Interop Test Coverage | 6/6 | Planned |  |
 | 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Not started |  |
 | 118. Small Dedup & Drift Guards | 3/3 | Not started |  |
-| 119. Grammar — DECLARE File Paths & Shared Channel Opening | 1/2 | Not started |  |
+| 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Not started |  |
 | 120. ClassValidator & activate() Splits | 0/TBD | Not started | - |
 | 121. Java Interop Service Decomposition | 0/TBD | Not started | - |
 | 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
