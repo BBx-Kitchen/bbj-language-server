@@ -127,6 +127,11 @@ Nothing else changes. No new validation rules, no `FINAL_TYPE_ASSIGNABLE_TO` cov
   compile a file. Build and install the VSIX from the final tree first (after any code-review
   fixes).
 
+### Amendments during planning (2026-09-29)
+- **D-07:** the user confirmed that base behaviour is kept exactly. EM login's pre-launch steps (output-file creation, login info, argv, debug line) stay outside its try block, so a failure there still rejects the command unchanged. `test/em-auth-error-paths.test.ts` pins this and is committed green at base before the move.
+- **D-15:** one exception, approved by the user. The `em-secret-env-channel.test.ts` test that counts two `createOwnerOnlyFile`/`runProcess(argv,` pairs in `extension.ts` is rewritten against `em-script-runner.ts`/`em-auth.ts` at equal or greater strength. It is the only `expect()` change in the phase.
+- **D-10 outcome from research:** five `commands-cjs-execution` tests drive a username/password credential through `runWeb`, so the non-token branch stays.
+
 ### Claude's Discretion
 - File names for the four validation modules, the helper module, the EM temp-file helper and the
   new activate() modules.

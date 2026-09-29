@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 117
-current_phase_name: Dependency Hygiene & Dependabot Coverage
+current_phase: 120
+current_phase_name: ClassValidator & activate() Splits
 status: verifying
 stopped_at: Phase 120 context gathered
-last_updated: "2026-09-29T04:38:31.985Z"
+last_updated: "2026-09-29T06:17:59.694Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 119 complete, transitioned to Phase 117
-state_head: bb4e26467f7b11d748c8fdac262569a0ad0c195d
+state_head: 7f40ce41c413686796a6ed6c43680afff95b5c8d
 progress:
   total_phases: 13
   completed_phases: 9
-  total_plans: 60
+  total_plans: 64
   completed_plans: 60
   percent: 69
 ---
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-28)
 
 ## Current Position
 
-Phase: 117 — Dependency Hygiene & Dependabot Coverage
+Phase: 120 (ClassValidator & activate() Splits) — READY TO EXECUTE
 Plan: 6 of 6 (all executed)
 Status: Awaiting UAT — 117-VERIFICATION.md is human_needed, 3 UAT items pending
 Last activity: 2026-09-29 — Phase 119 complete, transitioned to Phase 117
