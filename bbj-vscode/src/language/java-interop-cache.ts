@@ -106,7 +106,7 @@ export class JavaResolutionCache {
 
     /**
      * The bounded cache of resolved Java classes, evicting the least-recently-used entry once the
-     * front's overridable cache limit is exceeded (P61-D3-001).
+     * front's overridable cache limit is exceeded (see {@link LruMap}).
      */
     readonly resolvedClasses: LruMap<string, JavaClass>;
 

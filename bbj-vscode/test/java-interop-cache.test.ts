@@ -99,7 +99,7 @@ describe('JavaResolutionCache (#558)', () => {
         const second = cache.getChildOf(classpath, 'org');
 
         expect(second).toBe(first);
-        expect(cache.getChildrenOf(classpath)).toHaveLength(1);
+        expect(cache.getChildrenOf()).toHaveLength(1);
     });
 
     test('findClassCandidatesBySimpleName finds a registered packaged class case-insensitively, and skips inner ($) and packageless names', () => {
