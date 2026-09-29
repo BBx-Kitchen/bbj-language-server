@@ -415,7 +415,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures (completed 2026-09-28)
 - [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
 - [x] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift (completed 2026-09-28)
-- [ ] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses
+- [x] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses (completed 2026-09-29)
 - [ ] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed
 - [ ] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged
 - [ ] **Phase 122: Release & CI Pipeline Hardening** - Least-privilege, SHA-pinned, cached workflows that share one preamble, and a minified VSIX built once without dead scripts, verified with care because every push to `main` publishes
@@ -786,7 +786,7 @@ the plan SUMMARYs and posted by hand.
   2. The two fragments that open with channel, options and RPAREN share one rule, with the output variant's extra alternative kept or its necessity documented. `npm run langium:generate` and the whole suite, including `example-files.test.ts`, pass with no new failures.
   3. A before/after parse probe over the repository's examples and test data, and a local run of the private conformance corpus, show no changed parse outcome, compared by file set rather than totals.
 
-**Plans:** 2/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**

@@ -1,21 +1,18 @@
 ---
 phase: 119-grammar-declare-file-paths-shared-channel-opening
 verified: 2026-09-29T00:30:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
-  - test: "Decide whether the non-greedy BBjFilePath terminal's behavior on 3+ consecutive colons (e.g. `declare ::foo:::bar::ClassA x`) needs a regression test or a documented-acceptable-risk comment next to the terminal"
-    expected: "Either a test pins the new (different) behavior for a malformed 3+-colon path, or a grammar comment next to `terminal BBjFilePath` explicitly accepts the current fallout as the reviewer's suggested fix proposed"
-    why_human: "This is an unresolved WARNING (WR-01) from 119-REVIEW.md: a genuine, narrow behavior change with zero test coverage in either direction. It does not fail any roadmap success criterion or must-have truth (the private corpus and probe show zero unexplained differences, meaning this shape does not occur in the measured corpus), so it does not block phase completion, but it was never closed, documented, or logged to WINDOWS.md, and 119-02-SUMMARY.md's Next Phase Readiness section does not mention it as a carried-forward item."
+human_verification: []
 ---
 
 # Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening Verification Report
 
 **Phase Goal:** Two DECLARE statements with library file paths on one line parse as two declarations, and the channel/options/RPAREN opening shared by the output-item and input-item statements is one grammar rule, with every other parse unchanged.
 **Verified:** 2026-09-29T00:30:00Z
-**Status:** human_needed
+**Status:** passed
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -87,3 +84,8 @@ No gaps block the phase goal. All 3 roadmap success criteria and both requiremen
 
 _Verified: 2026-09-29T00:30:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+
+## Resolution (2026-09-29)
+
+WR-01 resolved by user decision "pin with a test": `bbj-vscode/test/declare-file-paths.test.ts` now asserts that `declare ::foo:::bar::ClassA x` lexes its first file-path token as `::foo::` (the greedy terminal gave `::foo:::bar::`) and reports an error. Commit `9942582b`. Human verification item closed; status set to passed.

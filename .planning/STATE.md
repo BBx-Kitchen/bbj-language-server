@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 119
-current_phase_name: Grammar — DECLARE File Paths & Shared Channel Opening
+current_phase: 117
+current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: verifying
-stopped_at: Completed 119-02-PLAN.md
-last_updated: "2026-09-29T00:14:59.184Z"
-last_activity: 2026-09-28
-last_activity_desc: Phase 119 execution started
-state_head: efcb7105823910a21612a8f0930b4f7ec3730208
+stopped_at: Phase 119 complete; Phase 117 awaits UAT (verify-work)
+last_updated: "2026-09-29T03:15:31.006Z"
+last_activity: 2026-09-29
+last_activity_desc: Phase 119 complete, transitioned to Phase 117
+state_head: 9942582bc4258e63ef23bac7ff5e6820b54ca159
 progress:
   total_phases: 13
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 60
   completed_plans: 60
-  percent: 62
+  percent: 69
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-28)
 
 ## Current Position
 
-Phase: 119 (Grammar — DECLARE File Paths & Shared Channel Opening) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-09-28 — Phase 119 execution started
+Phase: 117 — Dependency Hygiene & Dependabot Coverage
+Plan: 6 of 6 (all executed)
+Status: Awaiting UAT — 117-VERIFICATION.md is human_needed, 3 UAT items pending
+Last activity: 2026-09-29 — Phase 119 complete, transitioned to Phase 117
 
 Progress: [██████░░░░] 62% (8/13 phases)
 
@@ -360,7 +360,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-29T00:14:58.718Z
-Stopped at: Completed 119-02-PLAN.md
+Stopped at: Phase 119 complete; Phase 117 awaits UAT (verify-work)
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 119`.
