@@ -1,4 +1,4 @@
-import { DeepPartial, Module, inject } from "langium";
+import { DeepPartial, FileSystemProvider, Module, inject } from "langium";
 import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule, LangiumSharedServices, DefaultSharedModuleContext } from "langium/lsp";
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
@@ -9,7 +9,7 @@ import { CancellationToken, ErrorCodes, MessageConnection, ResponseError } from 
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
 
-export function createBBjTestServices(context: DefaultSharedModuleContext): {
+export function createBBjTestServices(context: DefaultSharedModuleContext, javadocProvider?: JavadocProvider): {
     shared: LangiumSharedServices,
     BBj: BBjServices
 } {
@@ -18,11 +18,15 @@ export function createBBjTestServices(context: DefaultSharedModuleContext): {
         BBjGeneratedSharedModule,
         BBjSharedModule
     );
+    const javadocOverrideModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = javadocProvider
+        ? { java: { JavadocProvider: () => javadocProvider } }
+        : {};
     const BBj = inject(
         createDefaultModule({ shared }),
         BBjGeneratedModule,
         BBjModule,
-        BBjTestModule
+        BBjTestModule,
+        javadocOverrideModule
     );
     shared.ServiceRegistry.register(BBj);
     registerValidationChecks(BBj);
@@ -34,8 +38,25 @@ export const BBjTestModule: Module<BBjServices, PartialLangiumServices & DeepPar
         Lexer: (services) => new TestableBBjLexer(services)
     },
     java: {
-        JavaInteropService: (services) => new JavaInteropTestService(services)
+        JavaInteropService: (services) => new JavaInteropTestService(services),
+        JavadocProvider: (services) => createInitializedJavadocProvider(services.shared.workspace.FileSystemProvider)
     }
+}
+
+/**
+ * Builds a {@link JavadocProvider} already initialised with no javadoc roots, so each services
+ * set built by this module gets its own instance instead of sharing one process-wide singleton.
+ * `initialize([], fileSystemProvider)` has no root to scan, so `isInitialized()` is synchronously
+ * true by the time this function returns; the check below guards against that ever silently
+ * stopping being the case.
+ */
+export function createInitializedJavadocProvider(fileSystemProvider: FileSystemProvider): JavadocProvider {
+    const provider = new JavadocProvider();
+    void provider.initialize([], fileSystemProvider);
+    if (!provider.isInitialized()) {
+        throw new Error('JavadocProvider was not initialized synchronously for an empty root list');
+    }
+    return provider;
 }
 
 export class TestableBBjLexer extends BbjLexer {
@@ -62,10 +83,6 @@ export class JavaInteropTestService extends JavaInteropService {
     constructor(services: BBjServices) {
         super(services)
 
-        // Init JavadocProvider otherwise adding Classes will throw an error
-        if (!JavadocProvider.getInstance().isInitialized()) {
-            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
-        }
         // Add some faked Java classes to test java service related code.
         const fakeJavaClasses: JavaClass[] = [
             createBBjApiClass(this.classpath),

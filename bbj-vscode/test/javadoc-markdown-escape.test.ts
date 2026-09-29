@@ -6,7 +6,7 @@ import { documentationHeader } from '../src/language/bbj-hover.js';
 import { escapeJavadocMarkdown, escapeMarkdown, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, TRUNCATION_MARKER, toFenceSafeLine, truncateText } from '../src/language/java-peer-guard.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { DocumentationInfo, Model } from '../src/language/generated/ast.js';
-import { JavadocProvider, type MethodDoc } from '../src/language/java-javadoc.js';
+import { type MethodDoc } from '../src/language/java-javadoc.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /**
@@ -263,7 +263,7 @@ describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are
         expect(hashMap!.docu).toBeUndefined();
 
         const oversizedDocu = '/**' + 'a'.repeat(40000) + ' [x](https://evil.example)' + '*/';
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: oversizedDocu });
+        vi.spyOn(services.BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: oversizedDocu });
 
         const document = await parse('declare java.util.HashMap h!\n', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
@@ -286,7 +286,7 @@ describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are
     test('a short javadoc-file fallback containing link syntax renders escaped', async () => {
         const javaInterop = services.BBj.java.JavaInteropService;
         const hashMap = javaInterop.getResolvedClass('java.util.HashMap');
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(services.BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'HashMap',
             docu: '/** See [x](https://evil.example) */'
         });
@@ -348,7 +348,7 @@ describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are
             docu: '/** Short text. */',
             params: [{ name: 'q'.repeat(5000) }]
         };
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue(methodDoc);
+        vi.spyOn(services.BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue(methodDoc);
 
         const document = await parse('declare java.util.HashMap h!\nh!.put()\n', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
@@ -380,7 +380,7 @@ describe("Hover's javadoc-file fallback is bounded and escaped, Java headers are
         expect(put!.docu).toBeUndefined();
 
         const methodDoc = { name: 42, docu: '/** Short. */', params: [{ name: 7 }] } as unknown as MethodDoc;
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue(methodDoc);
+        vi.spyOn(services.BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue(methodDoc);
 
         const document = await parse('declare java.util.HashMap h!\nh!.put()\n', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);
@@ -432,7 +432,7 @@ PRINT d!.title
         expect(hashMap).toBeDefined();
         expect(hashMap!.docu).toBeUndefined();
 
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: REAL_IS_PAGING_TAIL });
+        vi.spyOn(services.BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({ name: 'HashMap', docu: REAL_IS_PAGING_TAIL });
 
         const document = await parse('declare java.util.HashMap h!\n', { validation: true });
         expect(document.parseResult.lexerErrors).toHaveLength(0);

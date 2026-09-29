@@ -13,7 +13,6 @@
  */
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Classpath, type JavaClass } from '../src/language/generated/ast.js';
-import { JavadocProvider } from '../src/language/java-javadoc.js';
 import type { ClassDoc } from '../src/language/java-javadoc.js';
 import {
     MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, MAX_PEER_ERROR_LENGTH, TRUNCATION_MARKER,
@@ -418,7 +417,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
     });
 
     test('an oversized docu and an oversized javadoc parameter name are both truncated with the marker; the signature is built from the bounded real name', async () => {
-        const { interop } = createCountingInteropServices();
+        const { BBj, interop } = createCountingInteropServices();
         interop.scripts.set('com.test.Documented', () => ({
             packageName: 'com.test',
             isDeprecated: false,
@@ -428,7 +427,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
         }));
         const oversizedDocu = '/**' + 'a'.repeat(40000) + '*/';
         const oversizedParamName = 'p'.repeat(1100);
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'Documented',
             fields: [],
             methods: [{ name: 'run', docu: oversizedDocu, params: [{ name: oversizedParamName }] }],
@@ -445,7 +444,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
     });
 
     test('a short docu is stored exactly as its JSDoc-to-Markdown conversion, with no marker', async () => {
-        const { interop } = createCountingInteropServices();
+        const { BBj, interop } = createCountingInteropServices();
         interop.scripts.set('com.test.ShortDoc', () => ({
             packageName: 'com.test',
             isDeprecated: false,
@@ -453,7 +452,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             methods: [rawMethod('addOne', 'void', ['int'])],
             constructors: [],
         }));
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'ShortDoc',
             fields: [],
             methods: [{ name: 'addOne', docu: '/** Adds one. */', params: [{ name: 'p0' }] }],
@@ -467,7 +466,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
     });
 
     test('a methodDoc whose docu is not a string and whose param name is not a string leaves docu and realName unset; the class still resolves with its methods', async () => {
-        const { interop } = createCountingInteropServices();
+        const { BBj, interop } = createCountingInteropServices();
         interop.scripts.set('com.test.OddDoc', () => ({
             packageName: 'com.test',
             isDeprecated: false,
@@ -475,7 +474,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             methods: [rawMethod('go', 'void', ['int'])],
             constructors: [],
         }));
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'OddDoc',
             fields: [],
             methods: [{ name: 'go', docu: 42 as unknown as string, params: [{ name: 7 as unknown as string }] }],
@@ -489,7 +488,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
     });
 
     test('the stored javadoc still contains the Markdown characters it arrived with (no escaping at storage)', async () => {
-        const { interop } = createCountingInteropServices();
+        const { BBj, interop } = createCountingInteropServices();
         interop.scripts.set('com.test.MarkdownDoc', () => ({
             packageName: 'com.test',
             isDeprecated: false,
@@ -497,7 +496,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             methods: [rawMethod('render', 'void', ['int'])],
             constructors: [],
         }));
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'MarkdownDoc',
             fields: [],
             methods: [{ name: 'render', docu: '/** [click](https://evil.example) */', params: [{ name: 'p0' }] }],
@@ -510,7 +509,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
     });
 
     test('a class with a dropped field and a truncated javadoc produces exactly one logger.warn line naming both field paths', async () => {
-        const { interop } = createCountingInteropServices();
+        const { BBj, interop } = createCountingInteropServices();
         interop.scripts.set('com.test.Combined', () => ({
             packageName: 'com.test',
             isDeprecated: false,
@@ -518,7 +517,7 @@ describe('javadoc text and parameter real names copied in Phase 2 are bounded', 
             methods: [rawMethod('run', 'void', ['int'])],
             constructors: [],
         } as unknown as Omit<RawClassInfo, 'name'>));
-        vi.spyOn(JavadocProvider.getInstance(), 'getDocumentation').mockResolvedValue({
+        vi.spyOn(BBj.java.JavadocProvider, 'getDocumentation').mockResolvedValue({
             name: 'Combined',
             fields: [],
             methods: [{ name: 'run', docu: '/**' + 'a'.repeat(40000) + '*/', params: [{ name: 'p0' }] }],
