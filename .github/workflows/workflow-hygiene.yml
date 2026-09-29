@@ -23,12 +23,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: ./.github/actions/node-setup
         with:
-          node-version: 22
+          install: 'false'
+          cache: 'false'
 
       - name: Scan workflow run bodies for inline secret expressions
         run: node bbj-vscode/tools/check-workflow-secrets.mjs
@@ -39,12 +40,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: ./.github/actions/node-setup
         with:
-          node-version: 22
+          install: 'false'
+          cache: 'false'
 
       - name: Check the Gradle wrapper pin and workflow validation steps
         run: node bbj-vscode/tools/check-gradle-wrapper.mjs
