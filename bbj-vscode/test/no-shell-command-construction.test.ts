@@ -17,10 +17,11 @@ const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
 const EM_AUTH_TS = path.join(REPO_ROOT, 'src/em-auth.ts');
 const EM_SCRIPT_RUNNER_TS = path.join(REPO_ROOT, 'src/em-script-runner.ts');
+const OPEN_FILE_PROMPTS_TS = path.join(REPO_ROOT, 'src/open-file-prompts.ts');
 // extension.ts plus the host modules split out of activate(): the EM
 // login/validation code this guard used to scan inline in extension.ts now
 // lives here too.
-const HOST_TS_FILES = [EXTENSION_TS, EM_AUTH_TS, EM_SCRIPT_RUNNER_TS];
+const HOST_TS_FILES = [EXTENSION_TS, EM_AUTH_TS, EM_SCRIPT_RUNNER_TS, OPEN_FILE_PROMPTS_TS];
 
 /** Strip `//` line comments (a reasonable approximation; good enough for a source guard). */
 function stripLineComments(source: string): string {
