@@ -133,6 +133,12 @@ action majors (see D-06), and any language-server or IntelliJ plugin code change
   researcher). Otherwise the pins inside the composite go stale. This is a small follow-on edit to
   the Phase 117 CI-04 entry.
 
+### Gradle cache provider (decided during planning, 2026-09-29)
+- The user chose setup-gradle's default Enhanced Caching provider with `gradle-home-cache-excludes`
+  for the IntelliJ IDE downloads (plan 02 option-a), accepting the Gradle Technologies Terms of Use
+  for this public repository. Publish jobs keep caching disabled, so it never loads next to a
+  marketplace token. [informational]
+
 ### Claude's Discretion
 - The composite action's name, input names and defaults.
 - Whether the token-holding publish jobs run `npm ci --ignore-scripts` (they only need vsce).
