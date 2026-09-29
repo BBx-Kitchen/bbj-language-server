@@ -15,6 +15,7 @@ import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, isJavaPackage, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
+import { ResolutionLock } from './java-interop-lock.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
 import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
 import { logger } from './logger.js';
@@ -239,11 +240,7 @@ export class JavaInteropService {
      * {@link resolveClass}'s identity-guarded `finally` and by {@link clearCache}.
      */
     private readonly _inFlightPhase2: Map<string, JavaClass> = new Map();
-    /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
-    private lockQueue: Array<() => void> = [];
-    private lockHeld = false;
-    /** Tracks the current lock owner to allow re-entrant acquisition during recursive resolveClass calls. */
-    private currentLockToken: object | null = null;
+    private readonly lock = new ResolutionLock();
     /** In-flight resolution promises keyed by class name, preventing duplicate concurrent resolution of the same class. */
     private readonly _pendingResolutions: Map<string, Promise<JavaClass>> = new Map();
     /** Maximum recursion depth for Java class resolution to prevent runaway resolution chains. */
@@ -1079,8 +1076,8 @@ export class JavaInteropService {
 
         // Create a lock token scoped to this top-level resolution chain.
         // Re-entrant calls from resolveClass (field/method type resolution) share the same token.
-        const lockToken = depth === 0 ? {} : (this.currentLockToken ?? {});
-        const release = await this.acquireLock(lockToken);
+        const lockToken = depth === 0 ? {} : (this.lock.currentToken ?? {});
+        const release = await this.lock.acquire(lockToken);
         try {
             // Double-check after acquiring lock
             if (this.resolvedClasses.has(key)) {
@@ -1512,9 +1509,7 @@ export class JavaInteropService {
         this.clearCompleteClassIndex();
 
         // Reset lock state
-        this.lockQueue = [];
-        this.lockHeld = false;
-        this.currentLockToken = null;
+        this.lock.reset();
 
         // Reset the circuit breaker so the next lookup attempts a socket immediately, and bump
         // the generation so a connect attempt started before this reset cannot report its
@@ -1548,46 +1543,6 @@ export class JavaInteropService {
         this.parseLaneRetiredGeneration = -1;
 
         logger.info('Java interop cache cleared');
-    }
-
-    /**
-     * Acquires the resolution lock. Uses a queue-based async mutex that supports
-     * re-entrant acquisition: if the current async context already holds the lock
-     * (tracked via lockToken), the call returns immediately without deadlocking.
-     * @returns a release function that MUST be called when the critical section is done
-     */
-    private acquireLock(lockToken: object): Promise<() => void> {
-        // Re-entrant: if this token already owns the lock, return a no-op release
-        if (this.lockHeld && this.currentLockToken === lockToken) {
-            return Promise.resolve(() => { /* re-entrant, no-op release */ });
-        }
-
-        if (!this.lockHeld) {
-            this.lockHeld = true;
-            this.currentLockToken = lockToken;
-            return Promise.resolve(() => {
-                this.drainLockQueue();
-            });
-        }
-
-        return new Promise<() => void>((resolve) => {
-            this.lockQueue.push(() => {
-                this.currentLockToken = lockToken;
-                resolve(() => {
-                    this.drainLockQueue();
-                });
-            });
-        });
-    }
-
-    private drainLockQueue(): void {
-        if (this.lockQueue.length > 0) {
-            const next = this.lockQueue.shift()!;
-            next();
-        } else {
-            this.lockHeld = false;
-            this.currentLockToken = null;
-        }
     }
 }
 
