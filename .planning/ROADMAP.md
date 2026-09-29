@@ -916,7 +916,7 @@ large classes first (cold resolution returns "no document").
   4. `vscode:prepublish` builds only the shipped bundles, minified, and `prepare` no longer runs the full generate, type-check and bundle pipeline that CI runs explicitly. The packaged VSIX installs, activates and carries the bumped version.
   5. The unreachable npm scripts, the unused TextMate generator directive and the contradictory `activationEvents` entries are gone, and `npm run build`, `npm run langium:generate` and the whole suite still pass.
 
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -930,7 +930,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 122-04-PLAN.md — Composite action `.github/actions/node-setup`; `build.yml` absorbs `pr-vsix.yml` (deleted) as the single PR gate with the test VSIX and sticky comment; pr-validation, deploy-docs and workflow-hygiene on the action, pinned, least-privilege, distinct per-PR cancel groups (CI-02, CI-06, CI-01, CI-03, CI-05)
+- [x] 122-04-PLAN.md — Composite action `.github/actions/node-setup`; `build.yml` absorbs `pr-vsix.yml` (deleted) as the single PR gate with the test VSIX and sticky comment; pr-validation, deploy-docs and workflow-hygiene on the action, pinned, least-privilege, distinct per-PR cancel groups (CI-02, CI-06, CI-01, CI-03, CI-05)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -1004,7 +1004,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Complete | 2026-09-29 |
 | 120. ClassValidator & activate() Splits | 4/4 | Complete | 2026-09-29 |
 | 121. Java Interop Service Decomposition | 10/10 | Not started |  |
-| 122. Release & CI Pipeline Hardening | 3/6 | Not started |  |
+| 122. Release & CI Pipeline Hardening | 4/6 | Not started |  |
 
 **Current milestone:** v4.7 Audit Hygiene Burn-down (Phases 110-122), started 2026-09-26.
 63/63 requirements mapped to 13 phases, no orphans and no duplicates; 61 GitHub issues to close.

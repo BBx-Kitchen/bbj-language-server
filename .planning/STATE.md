@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 122
 current_phase_name: Release & CI Pipeline Hardening
 status: executing
-stopped_at: Completed 122-03-PLAN.md
-last_updated: "2026-09-29T16:41:06.178Z"
+stopped_at: Completed 122-04-PLAN.md
+last_updated: "2026-09-29T16:58:26.756Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 122 execution started
-state_head: 5e60ede16e1a400fb11d46de63b7baac1c3320a8
+state_head: 1b0a8a297819dcf60d39eae7d3096267022b48c6
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 80
-  completed_plans: 77
+  completed_plans: 78
   percent: 85
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 122 execution started
 
@@ -195,6 +195,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 122 P01 | 18min | 2 tasks | 8 files |
 | Phase 122 P02 | 22min | 3 tasks | 3 files |
 | Phase 122 P03 | 11min | 2 tasks | 2 files |
+| Phase 122 P04 | 9min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -336,6 +337,7 @@ decisions:
 - [Phase 122]: 122-02: all five Gradle jobs set up Gradle through pinned gradle/actions/setup-gradle after inline wrapper-validation; the three verify-style jobs cache Gradle User Home via the user-approved Enhanced Caching provider with a four-line gradle-home-cache-excludes (IDE archive group, com.jetbrains.intellij.* group, both Gradle-9 and legacy transforms layouts); both publish-intellij jobs (preview, manual-release) run setup-gradle with cache-disabled: true and no restore/save step
 - [Phase 122]: 122-02 Task 1: pre-answered checkpoint recorded option-a (Enhanced Caching, gradle-home-cache-excludes) per the user's 2026-09-29 answer during /gsd-plan-phase 122, accepting the Gradle Technologies Terms of Use for this public repository; publish jobs stay caching-disabled so the proprietary component never loads there
 - [Phase 122]: 122-03: a single effective-scope helper (job block, else top-level block, else 'default') computes the push-scope rule's reported contents value across all three cases, supporting both block-mapping and same-line scalar/flow-mapping permissions syntax
+- [Phase 122]: 122-04: a shared, pinned composite action (.github/actions/node-setup) is the one Node preamble every workflow uses; build.yml absorbs pr-vsix.yml as the single unconditional PR gate with its own build-<PR#> concurrency group, and pr-validation.yml/deploy-docs.yml adopt the action with least-privilege permissions and distinct concurrency naming so the two PR workflows never cancel each other
 
 ### Tech Debt
 
@@ -399,8 +401,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T16:41:05.602Z
-Stopped at: Completed 122-03-PLAN.md
+Last session: 2026-09-29T16:58:26.082Z
+Stopped at: Completed 122-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.

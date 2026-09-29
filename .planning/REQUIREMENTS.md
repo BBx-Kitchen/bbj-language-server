@@ -43,7 +43,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 ### CI
 
 - [ ] **CI-01**: Every workflow declares a least-privilege `permissions:` block (#547)
-- [ ] **CI-02**: `build.yml` no longer duplicates the PR build and test, and has a concurrency group (#549)
+- [x] **CI-02**: `build.yml` no longer duplicates the PR build and test, and has a concurrency group (#549)
 - [ ] **CI-03**: Every GitHub Actions reference is pinned to a commit SHA, with the version in a comment (#550)
 - [x] **CI-04**: Dependabot also watches the `github-actions` ecosystem and the `/documentation` npm tree (#551)
 - [ ] **CI-05**: Every workflow that installs npm or Gradle dependencies uses dependency caching (#518)
@@ -137,7 +137,7 @@ None deferred. Every still-open audit issue is in scope.
 | DEP-04 | Phase 117 | Complete |
 | DEP-05 | Phase 117 | Complete |
 | CI-01 | Phase 122 | Pending |
-| CI-02 | Phase 122 | Pending |
+| CI-02 | Phase 122 | Complete |
 | CI-03 | Phase 122 | Pending |
 | CI-04 | Phase 117 | Complete |
 | CI-05 | Phase 122 | Pending |
