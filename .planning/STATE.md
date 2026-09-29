@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Completed 121-07-PLAN.md
-last_updated: "2026-09-29T12:06:12.451Z"
+stopped_at: Completed 121-08-PLAN.md
+last_updated: "2026-09-29T12:28:14.394Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: 6762851b959b4bef35e7d0949cc12674dec2ea72
+state_head: 23ddb4a8d91dc90125eae72907c943604edb7fbb
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 71
+  completed_plans: 72
   percent: 77
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 121 execution started
 
@@ -189,6 +189,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P05 | 13min | 2 tasks | 3 files |
 | Phase 121 P06 | 9min | 2 tasks | 3 files |
 | Phase 121 P07 | 9min | 2 tasks | 3 files |
+| Phase 121 P08 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -321,6 +322,7 @@ decisions:
 - [Phase 121]: 121-05: the dedicated parseProgram lane moves verbatim into java-interop-connection.ts, completing D-05's end state; disconnect() now disposes the lane and resets the retired generation itself, collapsing clearCache's step 6 to one call; parseProgram is a plain delegate on the front
 - [Phase 121]: 121-06: the complete class index (build, has, clear, size, simpleNameMatches, prefixMatches, ensure/getAllClassNames) moves to java-interop-class-index.ts as CompleteClassIndex; resolveClassCandidatesBySimpleName and findClassCandidatesByPrefix stay on the front as orchestration and keep calling this.ensureCompleteClassIndex(token), closing the hazard where a hermetic double's override could be bypassed
 - [Phase 121]: 121-07: the loader's implicit-import loading routes through call-time hooks (connect/resolveClass/registerResolvedClass/classpath/ensureClasspathDocument/addTopLevelPackage) bound to the front class; the top-level package tree stays a private front method (addTopLevelPackage) behind a hook since it is resolution/cache (D-06), not loading, and plan 08 carries it into the resolution module
+- [Phase Phase 121]: 121-08: the resolved-class cache and the package tree move into java-interop-cache.ts as JavaResolutionCache, built as a front field initializer so the overridable cache limit is still read eagerly; three fields stay public-in-this-plan only, read through private front getters so the byte-identical resolution pipeline (plan 09) keeps working unchanged; the #676 leaf-collision guard and clearCache's reset order are pinned by a new 7-test unit suite — REF-12 fifth responsibility, first half; plan 09 moves the resolution pipeline itself and makes the three fields private
 
 ### Tech Debt
 
@@ -384,8 +386,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T12:06:11.940Z
-Stopped at: Completed 121-07-PLAN.md
+Last session: 2026-09-29T12:28:08.657Z
+Stopped at: Completed 121-08-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
