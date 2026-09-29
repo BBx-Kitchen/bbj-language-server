@@ -86,7 +86,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **REF-07**: The composer webview CSP array is built by one shared helper (#533)
 - [x] **REF-08**: The call-locator and argument-scanner logic exists once, shared by the composer logic and UI layers (#534)
 - [ ] **REF-09**: `JavadocProvider` is an injected DI service instead of a `getInstance()` singleton (#624)
-- [ ] **REF-10**: `ClassValidator` is split into modules along its four responsibilities, with unchanged diagnostics (#625)
+- [x] **REF-10**: `ClassValidator` is split into modules along its four responsibilities, with unchanged diagnostics (#625)
 - [ ] **REF-11**: `activate()` is split into single-purpose registration functions sharing one exec-wrapping helper, with unchanged behaviour (#564)
 - [ ] **REF-12**: `JavaInteropService` is split along its five responsibilities, with unchanged behaviour (#558)
 - [x] **REF-13**: The two grammar fragments with the channel/options/RPAREN opening share one rule, and parsing is unchanged (#602)
@@ -171,7 +171,7 @@ None deferred. Every still-open audit issue is in scope.
 | REF-07 | Phase 113 | Complete |
 | REF-08 | Phase 113 | Complete |
 | REF-09 | Phase 121 | Pending |
-| REF-10 | Phase 120 | Pending |
+| REF-10 | Phase 120 | Complete |
 | REF-11 | Phase 120 | Pending |
 | REF-12 | Phase 121 | Pending |
 | REF-13 | Phase 119 | Complete |
