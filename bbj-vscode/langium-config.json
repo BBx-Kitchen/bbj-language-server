@@ -9,10 +9,7 @@
                 ".bbl",
                 ".bbjt"
             ],
-            "caseInsensitive": true,
-            "textMate": {
-                "out": "syntaxes/gen-bbj.tmLanguage.json"
-            }
+            "caseInsensitive": true
         }
     ],
     "out": "src/language/generated",
