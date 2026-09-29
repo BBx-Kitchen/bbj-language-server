@@ -336,6 +336,30 @@ describe('action pin and permission checker contract', () => {
         expect(resultDefault.stdout).toContain('2 finding(s).');
     });
 
+    test('a comment line directly under jobs: does not suppress job attribution', () => {
+        const dir = newFixtureDir('action-pins-jobs-comment-');
+        const file = writeFixtureFile(dir, 'jobs-comment.yml', [
+            'name: Fixture',
+            'on: push',
+            'permissions:',
+            '  contents: read',
+            'jobs:',
+            '  # a job comment',
+            '  pusher:',
+            '    runs-on: ubuntu-latest',
+            '    steps:',
+            `      - uses: actions/checkout@${PINNED_SHA} # v4.4.0`,
+            '      - run: |',
+            '          git push origin main',
+        ]);
+
+        const result = runChecker([dir]);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain(
+            `${file}:7: job 'pusher' pushes or creates a release but its token has contents: read`
+        );
+    });
+
     test('a composite action is checked for pin compliance only', () => {
         const dirGood = newFixtureDir('action-pins-composite-good-');
         writeFixtureFile(dirGood, 'action.yml', [

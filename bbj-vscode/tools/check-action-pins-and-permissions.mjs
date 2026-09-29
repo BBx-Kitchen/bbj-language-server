@@ -225,7 +225,7 @@ function attributeJobs(lines) {
   let jobIndent = null;
   for (let i = jobsKeyIndex + 1; i < lines.length; i += 1) {
     const line = lines[i];
-    if (line.trim() === '') {
+    if (line.trim() === '' || /^\s*#/.test(line)) {
       continue;
     }
     const match = line.match(JOB_ID_LINE);
