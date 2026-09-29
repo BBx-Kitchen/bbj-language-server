@@ -331,6 +331,7 @@ describe('em-secret-env-channel guard — cross-layer BBJ_EM_* name contract', (
 describe('em-secret-env-channel guard — the environment map has no path to the debug log', () => {
     const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
     const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
+    const EM_AUTH_TS = path.join(REPO_ROOT, 'src/em-auth.ts');
 
     function appendLineCallArguments(filePath: string): string[] {
         const source = stripLineComments(readFileOrThrow(filePath));
@@ -338,7 +339,7 @@ describe('em-secret-env-channel guard — the environment map has no path to the
     }
 
     test('every appendLine call whose argument mentions an invocation (argv) renders it through formatArgvForLog', () => {
-        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS, EM_AUTH_TS]) {
             const calls = appendLineCallArguments(filePath);
             expect(calls.length).toBeGreaterThan(0);
             for (const call of calls) {
@@ -350,7 +351,7 @@ describe('em-secret-env-channel guard — the environment map has no path to the
     });
 
     test('neither file passes an options object, an environment map, or a bare argv/invocation, directly to appendLine', () => {
-        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS, EM_AUTH_TS]) {
             for (const call of appendLineCallArguments(filePath)) {
                 expect(call).not.toMatch(/\boptions\b/);
                 // A bare "argv"/"invocation"/"env" mention that is not inside a
@@ -379,6 +380,8 @@ describe('em-secret-env-channel guard — the environment map has no path to the
 describe('em-secret-env-channel guard — VS Code call sites spread process.env and reference only exported builders', () => {
     const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
     const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
+    const EM_AUTH_TS = path.join(REPO_ROOT, 'src/em-auth.ts');
+    const EM_SCRIPT_RUNNER_TS = path.join(REPO_ROOT, 'src/em-script-runner.ts');
     const SECRET_BUILDERS = ['buildEmValidateArgv', 'buildEmLoginArgv', 'buildWebRunArgv'];
 
     /** Returns the full text of the balanced-parens call starting at `callStartIndex` (the index of the call's identifier). */
@@ -430,9 +433,20 @@ describe('em-secret-env-channel guard — VS Code call sites spread process.env 
     }
 
     test('every call to the process launcher that follows a secret-bearing builder passes an options object whose env property spreads process.env', () => {
-        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
-            const source = stripLineComments(readFileOrThrow(filePath));
-            const launcherCalls = launcherCallsFollowingSecretBuilders(filePath, source);
+        // EM login and validation build their argv in em-auth.ts and launch it
+        // through the shared runner in em-script-runner.ts, so both files' stripped
+        // text is searched together as the one EM launch path (each builder call
+        // then reaches the runner's one launch call).
+        const emLaunchPathLabel = `${EM_AUTH_TS} + ${EM_SCRIPT_RUNNER_TS}`;
+        const emLaunchSource = [EM_AUTH_TS, EM_SCRIPT_RUNNER_TS]
+            .map((filePath) => stripLineComments(readFileOrThrow(filePath)))
+            .join('\n');
+        const sources: Array<[string, string]> = [
+            [emLaunchPathLabel, emLaunchSource],
+            [COMMANDS_CJS, stripLineComments(readFileOrThrow(COMMANDS_CJS))]
+        ];
+        for (const [label, source] of sources) {
+            const launcherCalls = launcherCallsFollowingSecretBuilders(label, source);
             expect(launcherCalls.length).toBeGreaterThan(0);
             for (const call of launcherCalls) {
                 expect(call).toMatch(/env:\s*\{[^}]*\.\.\.process\.env/);
@@ -444,7 +458,7 @@ describe('em-secret-env-channel guard — VS Code call sites spread process.env 
         const tsSource = readFileOrThrow(PROCESS_ARGS_TS);
         const exported = exportedBuilderNames(tsSource);
         expect(exported.length).toBeGreaterThan(0);
-        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+        for (const filePath of [EM_AUTH_TS, COMMANDS_CJS]) {
             const source = stripLineComments(readFileOrThrow(filePath));
             const used = builderCallsUsed(source);
             expect(used.length).toBeGreaterThan(0);
@@ -472,15 +486,45 @@ describe('em-secret-env-channel guard — VS Code call sites spread process.env 
         return indices;
     }
 
-    test('both output-file paths in extension.ts are created through createOwnerOnlyFile before their launcher call', () => {
-        const source = stripLineComments(readFileOrThrow(EXTENSION_TS));
-        const creationIndices = orderedIndicesOf(source, 'createOwnerOnlyFile(');
-        expect(creationIndices.length).toBe(2);
-        const launcherIndices = orderedIndicesOf(source, 'runProcess(argv,');
-        expect(launcherIndices.length).toBe(2);
-        for (let i = 0; i < creationIndices.length; i++) {
-            expect(creationIndices[i]).toBeLessThan(launcherIndices[i]);
+    test('both EM output files are created through createOwnerOnlyFile through the one runner em-auth.ts calls for both scripts', () => {
+        // The two output-file creation/launch pairs extension.ts used to hold
+        // directly now live in one runner (em-script-runner.ts) with two entry
+        // points, called twice each from em-auth.ts. This is a user-approved
+        // exception (2026-09-29): the old two-site count in extension.ts is
+        // impossible once the sites move, so the same pairing is proven where the
+        // calls now live, at equal or greater strength (each runner call pinned
+        // inside its own entry point, the unlink-in-finally added, and a direct
+        // create/launch in em-auth.ts or extension.ts forbidden).
+        const runnerSource = stripLineComments(readFileOrThrow(EM_SCRIPT_RUNNER_TS));
+        const creationEntryPointMarker = 'export function createScriptOutputFile(';
+        const launchEntryPointMarker = 'export async function runScriptToOwnerOnlyFile(';
+        const creationEntryPointOffset = runnerSource.indexOf(creationEntryPointMarker);
+        const launchEntryPointOffset = runnerSource.indexOf(launchEntryPointMarker);
+        expect(creationEntryPointOffset).toBeGreaterThan(-1);
+        expect(launchEntryPointOffset).toBeGreaterThan(creationEntryPointOffset);
+
+        const runnerCreationEntryPointBody = runnerSource.slice(creationEntryPointOffset, launchEntryPointOffset);
+        const runnerLaunchEntryPointBody = runnerSource.slice(launchEntryPointOffset);
+        const runnerCreationCallOffsets = orderedIndicesOf(runnerCreationEntryPointBody, 'createOwnerOnlyFile(');
+        expect(runnerCreationCallOffsets.length).toBe(1);
+        const runnerLaunchCallOffsets = orderedIndicesOf(runnerLaunchEntryPointBody, 'runProcess(argv,');
+        expect(runnerLaunchCallOffsets.length).toBe(1);
+        expect(creationEntryPointOffset + runnerCreationCallOffsets[0])
+            .toBeLessThan(launchEntryPointOffset + runnerLaunchCallOffsets[0]);
+        expect(runnerLaunchEntryPointBody).toMatch(/finally\s*\{[\s\S]*unlinkSync\(/);
+
+        const authSource = stripLineComments(readFileOrThrow(EM_AUTH_TS));
+        const authCreationCallOffsets = orderedIndicesOf(authSource, 'createScriptOutputFile(');
+        expect(authCreationCallOffsets.length).toBe(2);
+        const authLaunchCallOffsets = orderedIndicesOf(authSource, 'runScriptToOwnerOnlyFile(');
+        expect(authLaunchCallOffsets.length).toBe(2);
+        for (let i = 0; i < authCreationCallOffsets.length; i++) {
+            expect(authCreationCallOffsets[i]).toBeLessThan(authLaunchCallOffsets[i]);
         }
+        expect(authSource).not.toMatch(/createOwnerOnlyFile\(|\brunProcess(Callback)?\(/);
+
+        const extensionSource = stripLineComments(readFileOrThrow(EXTENSION_TS));
+        expect(extensionSource).not.toMatch(/createOwnerOnlyFile\(|\brunProcess(Callback)?\(|\bbuild[A-Za-z]*Argv\(/);
     });
 });
 

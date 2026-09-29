@@ -15,6 +15,12 @@ import * as path from 'path';
 const REPO_ROOT = path.resolve(__dirname, '..');
 const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
+const EM_AUTH_TS = path.join(REPO_ROOT, 'src/em-auth.ts');
+const EM_SCRIPT_RUNNER_TS = path.join(REPO_ROOT, 'src/em-script-runner.ts');
+// extension.ts plus the host modules split out of activate(): the EM
+// login/validation code this guard used to scan inline in extension.ts now
+// lives here too.
+const HOST_TS_FILES = [EXTENSION_TS, EM_AUTH_TS, EM_SCRIPT_RUNNER_TS];
 
 /** Strip `//` line comments (a reasonable approximation; good enough for a source guard). */
 function stripLineComments(source: string): string {
@@ -38,7 +44,7 @@ describe('no-shell-command-construction guard', () => {
     });
 
     test('extension.ts contains zero shell-string process launches', () => {
-        const source = readStripped(EXTENSION_TS);
+        const source = HOST_TS_FILES.map(readStripped).join('\n');
         const matches = source.match(new RegExp(SHELL_EXEC_CALL, 'g')) ?? [];
         expect(matches).toHaveLength(0);
     });
@@ -49,7 +55,7 @@ describe('no-shell-command-construction guard', () => {
     });
 
     test('extension.ts does not import child_process directly', () => {
-        const source = readStripped(EXTENSION_TS);
+        const source = HOST_TS_FILES.map(readStripped).join('\n');
         expect(source).not.toMatch(/from\s+['"]child_process['"]/);
         expect(source).not.toMatch(/require\(\s*['"]child_process['"]\s*\)/);
     });
