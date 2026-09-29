@@ -12,9 +12,10 @@ import { BBjServices } from './bbj-module.js';
 import { Classpath, DocumentationInfo, isJavaPackage, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import {
-    createSocketMessageConnection, InteropTransportError, isInteropTransportFailure, JavaInteropConnection, METHOD_NOT_FOUND,
+    createSocketMessageConnection, InteropTransportError, isInteropTransportFailure, JavaInteropConnection,
     type ParseProgramParams, type ParseProgramResult
 } from './java-interop-connection.js';
+import { CompleteClassIndex } from './java-interop-class-index.js';
 import { ResolutionLock } from './java-interop-lock.js';
 import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
 import { logger } from './logger.js';
@@ -504,75 +505,44 @@ export class JavaInteropService {
     }
 
     /**
-     * Complete `simpleName(lowercased) → FQN[]` index built from the augmented bbj-ls
-     * `getAllClassNames` endpoint, or null when that endpoint is unavailable (older server).
+     * The complete class index, built with hooks bound to this service's own (possibly
+     * overridden) connect/buildCompleteClassIndex and to the shared connection's probeIfDue
+     * (#558).
      */
-    private completeClassIndex: Map<string, string[]> | null = null;
-    /** True once we have determined — by success or a definitive MethodNotFound — whether {@link completeClassIndex} is available. */
-    private completeIndexResolved = false;
+    private readonly classIndex = new CompleteClassIndex({
+        connect: () => this.connect(),
+        probeIfDue: () => this.interopConnection.probeIfDue(),
+        buildCompleteClassIndex: (fqns) => this.buildCompleteClassIndex(fqns)
+    });
 
     /**
-     * Builds the {@link completeClassIndex} from the augmented bbj-ls `getAllClassNames` endpoint,
-     * at most once, and reports whether a complete index is available. Servers that predate the
+     * Builds the complete class index from the augmented bbj-ls `getAllClassNames` endpoint, at
+     * most once, and reports whether a complete index is available. Servers that predate the
      * endpoint answer with a MethodNotFound error, which is latched so callers transparently fall
      * back to the on-demand probe/index (issue #447). Transient connection errors are NOT latched,
      * so a later call can still succeed once interop is reachable.
      */
-    public async ensureCompleteClassIndex(token?: CancellationToken): Promise<boolean> {
-        if (this.completeIndexResolved) {
-            this.interopConnection.probeIfDue();
-            return this.completeClassIndex !== null;
-        }
-        try {
-            const connection = await this.connect();
-            const fqns = await connection.sendRequest(getAllClassNamesRequest, {}, token);
-            this.buildCompleteClassIndex(fqns);
-            logger.info(() => `Loaded complete Java class index (${this.completeClassIndex!.size} distinct simple names)`);
-            return true;
-        } catch (e) {
-            if ((e as { code?: number } | undefined)?.code === METHOD_NOT_FOUND) {
-                // Server predates the augmented endpoint — stop probing and use the fallback path.
-                this.completeIndexResolved = true;
-                logger.debug('Interop service has no getAllClassNames; using on-demand class suggestions.');
-            } else {
-                logger.debug(() => 'getAllClassNames failed (will retry): ' + (e instanceof Error ? e.message : String(e)));
-            }
-            return false;
-        }
+    public ensureCompleteClassIndex(token?: CancellationToken): Promise<boolean> {
+        return this.classIndex.ensure(token);
     }
 
     /** True once a complete class index has been built (i.e. the augmented endpoint is available). */
     public hasCompleteClassIndex(): boolean {
-        return this.completeClassIndex !== null;
+        return this.classIndex.has();
     }
 
     /** Drops the complete class index so it is rebuilt on the next request (e.g. after a classpath change). */
     protected clearCompleteClassIndex(): void {
-        this.completeClassIndex = null;
-        this.completeIndexResolved = false;
+        this.classIndex.clear();
     }
 
     /**
-     * Builds {@link completeClassIndex} from a list of fully-qualified class names, indexing each by
+     * Builds the complete class index from a list of fully-qualified class names, indexing each by
      * its lowercased simple name. Inner classes and packageless names are skipped. Marks the index
      * as resolved. Shared by the live `getAllClassNames` path and test seeding.
      */
     protected buildCompleteClassIndex(fqns: string[]): void {
-        const index = new Map<string, string[]>();
-        for (const fqn of fqns) {
-            const simple = fqn.substring(fqn.lastIndexOf('.') + 1);
-            if (!simple || simple.includes('$') || !fqn.includes('.')) {
-                continue;
-            }
-            const key = simple.toLowerCase();
-            let bucket = index.get(key);
-            if (!bucket) {
-                index.set(key, bucket = []);
-            }
-            bucket.push(fqn);
-        }
-        this.completeClassIndex = index;
-        this.completeIndexResolved = true;
+        this.classIndex.build(fqns);
     }
 
     /**
@@ -584,7 +554,7 @@ export class JavaInteropService {
      */
     public async resolveClassCandidatesBySimpleName(simpleName: string, token?: CancellationToken): Promise<string[]> {
         if (await this.ensureCompleteClassIndex(token)) {
-            return [...(this.completeClassIndex!.get(simpleName.toLowerCase()) ?? [])].sort();
+            return this.classIndex.simpleNameMatches(simpleName).sort();
         }
         const found = new Set<string>(this.findClassCandidatesBySimpleName(simpleName));
         await Promise.all(autoImportCandidatePackages.map(async pack => {
@@ -611,11 +581,8 @@ export class JavaInteropService {
         const lower = prefix.toLowerCase();
         const matches = new Set<string>();
         if (await this.ensureCompleteClassIndex(token)) {
-            for (const [key, fqns] of this.completeClassIndex!) {
-                if (key.startsWith(lower)) {
-                    fqns.forEach(fqn => matches.add(fqn));
-                    if (matches.size >= limit * 2) break;
-                }
+            for (const fqn of this.classIndex.prefixMatches(lower, limit)) {
+                matches.add(fqn);
             }
         } else {
             for (const javaClass of this.resolvedClasses.values()) {
@@ -1276,13 +1243,6 @@ const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], nul
  * Request type for retrieving all top-level packages available in the classpath.
  */
 const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
-
-/**
- * Request type for retrieving every fully-qualified class name known to the interop service
- * (classpath jars plus JDK modules). Provided only by an augmented bbj-ls; older servers answer
- * with a MethodNotFound error, which callers use to fall back to on-demand class suggestions.
- */
-const getAllClassNamesRequest = new RequestType<null, string[], null>('getAllClassNames');
 
 /**
  * Parameters for package information requests.
