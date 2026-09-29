@@ -817,7 +817,7 @@ keyword-as-identifier cases (a v4.5 lesson). `npm run build` does not regenerate
   3. The unused `bbj.em.credentials` secret fallback and the unreachable legacy `bbj.web.username`/`bbj.web.password` branch are gone. The activation, `Commands.cjs` and EM tests pass unchanged, and every contributed command is still registered after activation.
   4. A hand check in VS Code runs a GUI, a BUI and a DWC program, logs into EM and compiles a file, and each behaves as before.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -830,7 +830,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 120-03-PLAN.md — One owner-only-output runner (`runScriptToOwnerOnlyFile`, own unit tests) for EM login and validation; `em-auth.ts` holds the EM command, validation, `ensureValidToken` and `getEMCredentials`; the `bbj.em.credentials` fallback deleted; `runWeb`'s username/password branch kept because tests drive it; guards widened, one two-site count re-expressed (REF-11) (wave 3)
+- [x] 120-03-PLAN.md — One owner-only-output runner (`runScriptToOwnerOnlyFile`, own unit tests) for EM login and validation; `em-auth.ts` holds the EM command, validation, `ensureValidToken` and `getEMCredentials`; the `bbj.em.credentials` fallback deleted; `runWeb`'s username/password branch kept because tests drive it; guards widened, one two-site count re-expressed (REF-11) (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -939,7 +939,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Not started |  |
 | 118. Small Dedup & Drift Guards | 3/3 | Not started |  |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Not started |  |
-| 120. ClassValidator & activate() Splits | 2/4 | Not started |  |
+| 120. ClassValidator & activate() Splits | 3/4 | Not started |  |
 | 121. Java Interop Service Decomposition | 0/TBD | Not started | - |
 | 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
 
