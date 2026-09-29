@@ -6,7 +6,7 @@
 
 import { AstUtils, isJSDoc, LangiumDocument, LangiumDocuments, Mutable, parseJSDoc } from 'langium';
 import { Socket } from 'net';
-import { CancellationToken, MessageConnection, RequestType } from 'vscode-jsonrpc/node.js';
+import { CancellationToken, MessageConnection } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { Classpath, DocumentationInfo, isJavaPackage, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
@@ -16,6 +16,7 @@ import {
     type ParseProgramParams, type ParseProgramResult
 } from './java-interop-connection.js';
 import { CompleteClassIndex } from './java-interop-class-index.js';
+import { ClasspathLoader } from './java-interop-classpath.js';
 import { ResolutionLock } from './java-interop-lock.js';
 import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
 import { logger } from './logger.js';
@@ -26,8 +27,6 @@ export {
     InteropTransportError, isInteropTransportFailure, METHOD_NOT_FOUND
 } from './java-interop-connection.js';
 export type { ParseProgramParams, ParseError, ParseProgramResult } from './java-interop-connection.js';
-
-const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 /**
  * Packages probed (as `pkg.SimpleName`) when suggesting a `use` statement for an unresolved
@@ -211,8 +210,18 @@ export class JavaInteropService {
     private static readonly MAX_RESOLUTION_DEPTH = 50;
     /** Maximum time (ms) allowed for a single resolveClassByName call chain before aborting. */
     private static readonly RESOLUTION_TIMEOUT_MS = 30_000;
-    /** Simple-name copies already added by loadImplicitImports(), keyed by "package.simpleName", so re-running it adds no duplicate entry to the synthetic classpath document. */
-    private readonly implicitImportCopies = new Map<string, Mutable<JavaClass>>();
+    /**
+     * Classpath and implicit-import loading, built with hooks bound to this service's own
+     * (possibly overridden) connect/resolveClass and to its classpath-document bookkeeping (#558).
+     */
+    private readonly classpathLoader = new ClasspathLoader({
+        connect: () => this.connect(),
+        resolveClass: (javaClass, token) => this.resolveClass(javaClass, token),
+        registerResolvedClass: (name, javaClass) => this.resolvedClasses.set(name, javaClass),
+        classpath: () => this.classpath,
+        ensureClasspathDocument: () => this.ensureClasspathDocument(),
+        addTopLevelPackage: (packageName) => this.addTopLevelPackage(packageName)
+    });
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -368,44 +377,13 @@ export class JavaInteropService {
     }
 
     /**
-     * Sends a request to the Java backend service, returning `fallback` and logging the error
-     * instead of throwing if connecting or the request itself fails (P61-D4-003). Shared by
-     * request paths whose error handling is exactly "connect, send, log-and-return-fallback on
-     * failure" — {@link loadClasspath} today; paths with additional success/error-branch logic
-     * (e.g. {@link ensureCompleteClassIndex}'s METHOD_NOT_FOUND latch, or {@link getRawClass}'s
-     * timeout race) are not routed through this helper since they don't fit the plain shape.
-     * @param request the JSON-RPC request type to send
-     * @param params request parameters
-     * @param fallback value returned when connecting or the request fails
-     * @param token cancellation token for request cancellation
-     */
-    private async sendRequestSafe<P, R>(request: RequestType<P, R, null>, params: P, fallback: R, token?: CancellationToken): Promise<R> {
-        try {
-            const connection = await this.connect();
-            return await connection.sendRequest(request, params, token);
-        } catch (e) {
-            console.error(e)
-            return fallback;
-        }
-    }
-
-    /**
      * Loads the Java classpath from the specified entries.
      * @param classPath array of classpath entries (file paths or BBj classpath notation)
      * @param token cancellation token for request cancellation
      * @returns true if classpath was loaded successfully, false otherwise
      */
-    public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
-        logger.debug(() => "Load classpath from: " + classPath.join(', '))
-        const entries = classPath.filter(entry => entry.length > 0).map(entry => {
-            // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
-            // Otherwise, add 'file:' prefix for regular file paths
-            if (entry.startsWith('[') && entry.endsWith(']')) {
-                return entry;
-            }
-            return 'file:' + entry;
-        });
-        return this.sendRequestSafe(loadClasspathRequest, { classPathEntries: entries }, false, token);
+    public loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
+        return this.classpathLoader.loadClasspath(classPath, token);
     }
 
     /**
@@ -413,95 +391,54 @@ export class JavaInteropService {
      * @param token cancellation token for request cancellation
      * @returns true if implicit imports were loaded successfully, false otherwise
      */
-    public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
-        logger.debug(() => "Load package classes: " + implicitJavaImports.join(', '))
-        try {
-            const connection = await this.connect();
-            await Promise.all(implicitJavaImports.concat('java.sql').map(async pack => {
-                const classInfosResponse = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
-                // A getClassInfos answer that is not an array is treated as empty (issue #523):
-                // the package simply contributes nothing this round, rather than throwing.
-                const classInfos = Array.isArray(classInfosResponse) ? classInfosResponse : [];
-                await Promise.all(classInfos.map(async javaClass => {
-                    const rawEntry = javaClass as unknown;
-                    if (typeof rawEntry !== 'object' || rawEntry === null) {
-                        // Not a class-shaped entry at all: skip without ever calling resolveClass.
-                        return;
-                    }
-                    await this.resolveClass(javaClass, token)
+    public loadImplicitImports(token?: CancellationToken): Promise<boolean> {
+        return this.classpathLoader.loadImplicitImports(token);
+    }
 
-                    if (!isUsableJavaClassName(javaClass.name)) {
-                        // resolveClass's own entry guard already logged and returned an uncached
-                        // stub for this entry; no simple-name copy can be built from a name that
-                        // is not usable, and no exception should escape this Promise.all.
-                        return;
-                    }
-
-                    if (pack !== 'java.sql') { // Not an implicit import but sql package preload.
-                        // add as implicit Java package import
-                        const simpleName = javaClass.name.replace(pack + '.', '')
-                        const copyKey = `${pack}.${simpleName}`;
-                        const existingCopy = this.implicitImportCopies.get(copyKey);
-                        if (existingCopy) {
-                            // Already added by an earlier run: reuse it instead of pushing a
-                            // second entry into the synthetic classpath document.
-                            this.resolvedClasses.set(simpleName, existingCopy);
-                        } else {
-                            const simpleNameCopy = { ...javaClass }
-                            simpleNameCopy.name = simpleName
-                            simpleNameCopy.$containerIndex = this.classpath.classes.length;
-                            this.classpath.classes.push(simpleNameCopy);
-                            this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
-                            this.implicitImportCopies.set(copyKey, simpleNameCopy);
-                        }
-                    }
-                }))
-            }))
-            logger.info(() => "Loaded " + this.classpath.classes.length + " classes")
-
-            if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
-                this.langiumDocuments.addDocument(this.classpathDocument);
-            }
-            // Try to get top level packages, but handle gracefully if not supported
-            try {
-                const topLevelPackages = await connection.sendRequest(getTopLevelPackages, {}, token);
-                for (const pack of topLevelPackages) {
-                    const parts = pack.packageName.split('.');
-                    let parent: Classpath | JavaPackage = this.classpath;
-                    parts.forEach((part) => {
-                        if (!this.childrenOfByName.has(parent)) {
-                            this.childrenOfByName.set(parent, new Map());
-                        }
-                        const children = this.childrenOfByName.get(parent)!;
-                        if (!children.get(part)) {
-                            // Ensure parent.packages exists
-                            if (!parent.packages) {
-                                parent.packages = [];
-                            }
-                            const javaPackage: JavaPackage = {
-                                $container: parent,
-                                $type: JavaPackage.$type,
-                                classes: [],
-                                packages: [],
-                                name: part,
-                                $containerIndex: parent.packages.length,
-                                $containerProperty: 'packages',
-                            };
-                            parent.packages.push(javaPackage);
-                            children.set(part, javaPackage);
-                        }
-                        parent = children.get(part) as JavaPackage;
-                    })
-                }
-            } catch {
-                // getTopLevelPackages might not be supported by older Java interop versions
-                logger.debug("getTopLevelPackages not supported, skipping top-level package initialization");
-            }
-            return true;
-        } catch (e) {
-            console.error(e)
-            return false;
+    /**
+     * Adds {@link classpathDocument} to {@link langiumDocuments} if it is not already registered,
+     * so the synthetic classpath document participates in linking. Called by
+     * {@link classpathLoader} after `loadImplicitImports()` populates the document.
+     */
+    private ensureClasspathDocument(): void {
+        if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
+            this.langiumDocuments.addDocument(this.classpathDocument);
         }
+    }
+
+    /**
+     * Adds one top-level package name to the package tree ({@link childrenOfByName}), creating
+     * intermediate {@link JavaPackage} nodes as needed. Called by {@link classpathLoader} once
+     * per package name returned by `getTopLevelPackages`.
+     * @param packageName the dotted top-level package name (e.g. "java.util")
+     */
+    private addTopLevelPackage(packageName: string): void {
+        const parts = packageName.split('.');
+        let parent: Classpath | JavaPackage = this.classpath;
+        parts.forEach((part) => {
+            if (!this.childrenOfByName.has(parent)) {
+                this.childrenOfByName.set(parent, new Map());
+            }
+            const children = this.childrenOfByName.get(parent)!;
+            if (!children.get(part)) {
+                // Ensure parent.packages exists
+                if (!parent.packages) {
+                    parent.packages = [];
+                }
+                const javaPackage: JavaPackage = {
+                    $container: parent,
+                    $type: JavaPackage.$type,
+                    classes: [],
+                    packages: [],
+                    name: part,
+                    $containerIndex: parent.packages.length,
+                    $containerProperty: 'packages',
+                };
+                parent.packages.push(javaPackage);
+                children.set(part, javaPackage);
+            }
+            parent = children.get(part) as JavaPackage;
+        })
     }
 
     /**
@@ -1142,7 +1079,7 @@ export class JavaInteropService {
         this.interopConnection.resetBreaker();
 
         // Clear implicit-import bookkeeping so a later loadImplicitImports() rebuilds it from scratch.
-        this.implicitImportCopies.clear();
+        this.classpathLoader.reset();
 
         // Reset classpath document arrays
         this.classpath.packages = [];
@@ -1227,33 +1164,4 @@ function tryParseJavaDoc(comment: string): string {
         }
     }
     return comment;
-}
-
-/**
- * Request type for loading classpath entries into the Java backend service.
- */
-const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
-
-/**
- * Request type for retrieving information about all classes in a package.
- */
-const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
-
-/**
- * Request type for retrieving all top-level packages available in the classpath.
- */
-const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
-
-/**
- * Parameters for package information requests.
- */
-interface PackageInfoParams {
-    packageName: string
-}
-
-/**
- * Parameters for classpath loading requests.
- */
-interface ClassPathInfoParams {
-    classPathEntries: string[]
 }
