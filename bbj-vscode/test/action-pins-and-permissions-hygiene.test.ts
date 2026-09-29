@@ -9,16 +9,16 @@ import { fileURLToPath } from 'node:url';
  * Regression coverage for `check-action-pins-and-permissions.mjs`: pins its
  * CLI contract (exit codes and stdout shape) for the SHA-pin rule, the
  * version-comment rule, the top-level and job-level permissions rules, the
- * push/release token-scope rule, and the composite-action pin-only rule,
- * against temporary fixtures and against the real workflow tree, so none of
- * those checks can silently go vacuous.
+ * push/release token-scope rule, the composite-action pin-only rule, one-
+ * level directory descent, and `--print`, against temporary fixtures, so
+ * none of those checks can silently go vacuous. The real-workflow-tree case
+ * is added once every workflow is pinned.
  */
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TEST_DIR, '..', '..');
 const CHECKER_PATH = process.env.ACTION_PINS_CHECKER_PATH
     ?? path.join(REPO_ROOT, 'bbj-vscode', 'tools', 'check-action-pins-and-permissions.mjs');
-const WORKFLOWS_DIR = path.join(REPO_ROOT, '.github', 'workflows');
 
 const PINNED_SHA = '11d5960a326750d5838078e36cf38b85af677262'; // actions/checkout v4.4.0
 
