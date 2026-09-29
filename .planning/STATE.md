@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Phase 121 context gathered
-last_updated: "2026-09-29T10:26:30.074Z"
+stopped_at: Completed 121-01-PLAN.md
+last_updated: "2026-09-29T10:41:01.528Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 120 complete, transitioned to Phase 121
-state_head: 7603e20161de1dd7a8ab1f3236a348f708b550dc
+last_activity_desc: Phase 121 execution started
+state_head: 0e39b69a327f344511653415d0126ee5dd5c99ff
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 64
+  completed_plans: 65
   percent: 77
 ---
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 121 — Java Interop Service Decomposition (Phase 117 UAT still pending)
+**Current Focus:** Phase 121 — Java Interop Service Decomposition
 
 ---
 
 ## Current Position
 
-Phase: 121 (Java Interop Service Decomposition) — READY TO EXECUTE
-Plan: Not started
+Phase: 121 (Java Interop Service Decomposition) — EXECUTING
+Plan: 2 of 10
 Status: Ready to execute
-Last activity: 2026-09-29 — Phase 120 complete (UAT 1/1, SECURITY 18/18 closed), transitioned to Phase 121
+Last activity: 2026-09-29 — Phase 121 execution started
 
 Progress: [████████░░] 77% (10/13 phases)
 
@@ -182,6 +182,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 120 P02 | 11min | 2 tasks | 2 files |
 | Phase 120 P03 | 40min | 2 tasks | 8 files |
 | Phase 120 P04 | 20min | 3 tasks | 6 files |
+| Phase 121 P01 | 12min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -305,6 +306,8 @@ decisions:
 - [Phase 120]: 120-02: two characterization test files (activation-command-coverage.test.ts, activation-prompts-and-status-bars.test.ts) pin activate()'s command coverage/order and its open-prompt/status-bar behaviour on the unsplit extension.ts, ahead of plans 03/04's split; the derived literal sequence needed no correction against the base
 - [Phase 120]: 120-03: em-script-runner.ts has two entry points (createScriptOutputFile, runScriptToOwnerOnlyFile) rather than one combined call, so each EM caller keeps its own pre-launch steps at its base position relative to its own try boundary; em-auth-error-paths.test.ts is written and passes against the unmoved extension.ts before any source edit, then never edited again, proving no EM error path changed across the move. — The runner's real createOwnerOnlyFile calls in em-auth-error-paths.test.ts are suffixed with process.pid to avoid a genuine EEXIST race with test/em-login-username.test.ts's own real file creation across concurrent vitest workers.
 - [Phase 120]: 120-04: activate() is an eighteen-call ordered list of single-purpose register functions; the open prompts and diagnostic status bars moved to open-file-prompts.ts/diagnostic-status-bars.ts; the extracted functions are placed after activate() (not before) so an untouched-lines diff against the composer registrations stays clean; REF-11 complete, phase 120 closed
+- [Phase 121]: 121-01: services.java.JavadocProvider registered; the production factory still hands out the existing getInstance() instance (plan 02 makes it fresh and deletes getInstance())
+- [Phase 121]: 121-01: createBBjTestServices grew an optional javadocProvider parameter so inlay-hints-javadoc.test.ts can hand it a pre-loaded provider instead of racing to initialise the singleton first
 
 ### Tech Debt
 
@@ -368,9 +371,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T09:15:00.517Z
-Stopped at: Phase 121 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/121-java-interop-service-decomposition/121-CONTEXT.md
+Last session: 2026-09-29T10:41:00.999Z
+Stopped at: Completed 121-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
