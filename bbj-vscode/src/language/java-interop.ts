@@ -9,23 +9,24 @@ import { Socket } from 'net';
 import { CancellationToken, MessageConnection } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
-import { Classpath, DocumentationInfo, isJavaPackage, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
+import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import {
     createSocketMessageConnection, InteropTransportError, isInteropTransportFailure, JavaInteropConnection,
     type ParseProgramParams, type ParseProgramResult
 } from './java-interop-connection.js';
+import { canonicalJavaClassName, JavaResolutionCache } from './java-interop-cache.js';
 import { CompleteClassIndex } from './java-interop-class-index.js';
 import { ClasspathLoader } from './java-interop-classpath.js';
 import { ResolutionLock } from './java-interop-lock.js';
 import { isUsableJavaClassName, MAX_JAVADOC_LENGTH, MAX_JAVA_IDENTIFIER_LENGTH, sanitizeJavaClassDto, truncateText } from './java-peer-guard.js';
 import { logger } from './logger.js';
-import { assertType } from './utils.js';
 
 export {
     INTEROP_BREAKER_BACKOFF_FACTOR, INTEROP_BREAKER_INITIAL_COOLDOWN_MS, INTEROP_BREAKER_MAX_COOLDOWN_MS,
     InteropTransportError, isInteropTransportFailure, METHOD_NOT_FOUND
 } from './java-interop-connection.js';
+export { canonicalJavaClassName } from './java-interop-cache.js';
 export type { ParseProgramParams, ParseError, ParseProgramResult } from './java-interop-connection.js';
 
 /**
@@ -40,7 +41,7 @@ const autoImportCandidatePackages = ['java.util', 'java.util.concurrent', 'java.
 export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
- * Maximum number of resolved Java classes kept in {@link JavaInteropService._resolvedClasses}
+ * Maximum number of resolved Java classes kept in the resolved-class cache ({@link JavaResolutionCache})
  * before the least-recently-used entry is evicted (P61-D3-001) — an open-ended editor session
  * against a large/varied classpath must not grow this cache without bound. No specific number is
  * named by the finding record; 5000 is a discretionary choice, large enough to comfortably hold a
@@ -107,79 +108,6 @@ function localJavaTypeDto(name: string): Mutable<JavaClass> {
 }
 
 /**
- * Canonicalizes a nested Java class name to the Java source spelling (`Outer.Inner`), the single
- * identity `java-interop.ts` uses for a class: the key of `resolvedClasses`, the in-flight
- * registry and the pending-resolution map, and the display name shown in hover, completion detail
- * and messages. The backend echoes back whichever spelling was requested — a member type's own
- * name via `getCanonicalName` (dotted) but a constructor's return type via `getName` (`$`) — so
- * without this normalization the two spellings are fetched and cached as two distinct classes
- * (issue #659).
- *
- * Anonymous and local classes (`Foo$1`, `Foo$1$Bar`, `Foo$1Local`) have no canonical name and are
- * left entirely unchanged: a `$` directly followed by a digit anywhere in the name means the whole
- * name is returned as is. Otherwise, a `$` that directly follows a letter, digit or underscore and
- * directly precedes a letter or underscore is a nested-class separator and becomes `.`; a `$`
- * starting a segment (`$Proxy12`), a `$$` run, and a trailing `$` are part of the name, not a
- * separator, and are left untouched.
- */
-export function canonicalJavaClassName(name: string): string {
-    if (/\$[0-9]/.test(name)) {
-        return name;
-    }
-    // Capture the preceding character instead of a lookbehind, so the "follows a letter, digit or
-    // underscore" check works the same on every supported JS engine.
-    return name.replace(/([A-Za-z0-9_])\$(?=[A-Za-z_])/g, '$1.');
-}
-
-/**
- * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
- * exceeded (P61-D3-001). Recency is refreshed on both `get` and `set` by deleting and
- * re-inserting the key, relying on `Map`'s insertion-order iteration to find the oldest entry.
- */
-class LruMap<K, V> {
-    private readonly map = new Map<K, V>();
-
-    constructor(private readonly limit: number) { }
-
-    get size(): number {
-        return this.map.size;
-    }
-
-    has(key: K): boolean {
-        return this.map.has(key);
-    }
-
-    get(key: K): V | undefined {
-        const value = this.map.get(key);
-        if (value !== undefined) {
-            // Refresh recency: delete + re-insert moves the key to the end of iteration order.
-            this.map.delete(key);
-            this.map.set(key, value);
-        }
-        return value;
-    }
-
-    set(key: K, value: V): void {
-        this.map.delete(key);
-        this.map.set(key, value);
-        if (this.map.size > this.limit) {
-            const oldestKey = this.map.keys().next().value;
-            if (oldestKey !== undefined) {
-                this.map.delete(oldestKey);
-            }
-        }
-    }
-
-    values(): IterableIterator<V> {
-        return this.map.values();
-    }
-
-    clear(): void {
-        this.map.clear();
-    }
-}
-
-/**
  * Manages Java interop operations including class resolution, classpath loading,
  * and communication with the Java backend service.
  */
@@ -194,18 +122,15 @@ export class JavaInteropService {
         wrapSocket: (socket) => this.wrapSocket(socket),
         connect: () => this.connect()
     });
-    private readonly _resolvedClasses = new LruMap<string, JavaClass>(this.resolvedClassesCacheLimit());
-    private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
     /**
-     * Classes registered in {@link _resolvedClasses} whose async member-type resolution (Phase 2 of
-     * {@link resolveClass}) is still running (#497). Consulted by every fast path that would
-     * otherwise miss a class evicted from the LRU during its own cyclic resolution; cleared in
-     * {@link resolveClass}'s identity-guarded `finally` and by {@link clearCache}.
+     * The resolved-class cache and the Java package tree, built with the overridable cache limit
+     * read eagerly — before any subclass field exists, matching the timing the old field
+     * initializer relied on — and a hook bound to this service's own classpath document (#558).
      */
-    private readonly _inFlightPhase2: Map<string, JavaClass> = new Map();
+    private readonly resolutionCache = new JavaResolutionCache(this.resolvedClassesCacheLimit(), {
+        classpath: () => this.classpath
+    });
     private readonly lock = new ResolutionLock();
-    /** In-flight resolution promises keyed by class name, preventing duplicate concurrent resolution of the same class. */
-    private readonly _pendingResolutions: Map<string, Promise<JavaClass>> = new Map();
     /** Maximum recursion depth for Java class resolution to prevent runaway resolution chains. */
     private static readonly MAX_RESOLUTION_DEPTH = 50;
     /** Maximum time (ms) allowed for a single resolveClassByName call chain before aborting. */
@@ -217,10 +142,10 @@ export class JavaInteropService {
     private readonly classpathLoader = new ClasspathLoader({
         connect: () => this.connect(),
         resolveClass: (javaClass, token) => this.resolveClass(javaClass, token),
-        registerResolvedClass: (name, javaClass) => this.resolvedClasses.set(name, javaClass),
+        registerResolvedClass: (name, javaClass) => this.resolutionCache.registerResolvedClass(name, javaClass),
         classpath: () => this.classpath,
         ensureClasspathDocument: () => this.ensureClasspathDocument(),
-        addTopLevelPackage: (packageName) => this.addTopLevelPackage(packageName)
+        addTopLevelPackage: (packageName) => this.resolutionCache.addTopLevelPackage(packageName)
     });
 
     protected readonly langiumDocuments: LangiumDocuments;
@@ -250,8 +175,23 @@ export class JavaInteropService {
         this.interopConnection.generation = value;
     }
 
-    private get resolvedClasses(): LruMap<string, JavaClass> {
-        return this._resolvedClasses;
+    /**
+     * Test seam: the resolution pipeline (still on this class) reads its cache through this and
+     * the two getters below, so `resolveClassByName`/`doResolveClassByName`/`resolveClass` keep
+     * their exact text while the state they read now lives in {@link resolutionCache} (#558).
+     */
+    private get resolvedClasses() {
+        return this.resolutionCache.resolvedClasses;
+    }
+
+    /** See {@link resolvedClasses}. */
+    private get _inFlightPhase2() {
+        return this.resolutionCache.inFlightPhase2;
+    }
+
+    /** See {@link resolvedClasses}. */
+    private get _pendingResolutions() {
+        return this.resolutionCache.pendingResolutions;
     }
 
     /** See {@link _connectionGeneration}. */
@@ -260,8 +200,9 @@ export class JavaInteropService {
     }
 
     /**
-     * Test seam: the {@link _resolvedClasses} bound. Read during field initialization — before any
-     * subclass field exists — so an override must return a literal and read no subclass state.
+     * Test seam: the {@link resolutionCache}'s cache bound. Read during field initialization —
+     * before any subclass field exists — so an override must return a literal and read no
+     * subclass state.
      */
     protected resolvedClassesCacheLimit(): number {
         return RESOLVED_CLASSES_CACHE_LIMIT;
@@ -269,7 +210,7 @@ export class JavaInteropService {
 
     /** Test seam: number of classes whose Phase 2 (async member-type resolution) is currently in flight. */
     protected inFlightResolutionCount(): number {
-        return this._inFlightPhase2.size;
+        return this.resolutionCache.inFlightCount();
     }
 
     /**
@@ -280,7 +221,7 @@ export class JavaInteropService {
      * reachable :5008), so an unresolved reference means "interop unavailable", not "invalid type".
      */
     public isClasspathAvailable(): boolean {
-        return this._resolvedClasses.size > 0;
+        return this.resolutionCache.isClasspathAvailable();
     }
 
     /**
@@ -338,20 +279,7 @@ export class JavaInteropService {
      * @returns the resolved JavaClass or undefined if not found
      */
     getResolvedClass(className: string): JavaClass | undefined {
-        if (className === 'java.lang.Object') {
-            // called very often, so cache it
-            return this.javaLangObject()
-        }
-        return this.resolvedClasses.get(canonicalJavaClassName(className));
-    }
-
-    private JAVA_LANG_OBJECT: JavaClass | undefined = undefined;
-
-    private javaLangObject(): JavaClass | undefined {
-        if (!this.JAVA_LANG_OBJECT) {
-            this.JAVA_LANG_OBJECT = this.resolvedClasses.get('java.lang.Object');
-        }
-        return this.JAVA_LANG_OBJECT;
+        return this.resolutionCache.getResolvedClass(className);
     }
 
     /**
@@ -404,41 +332,6 @@ export class JavaInteropService {
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
-    }
-
-    /**
-     * Adds one top-level package name to the package tree ({@link childrenOfByName}), creating
-     * intermediate {@link JavaPackage} nodes as needed. Called by {@link classpathLoader} once
-     * per package name returned by `getTopLevelPackages`.
-     * @param packageName the dotted top-level package name (e.g. "java.util")
-     */
-    private addTopLevelPackage(packageName: string): void {
-        const parts = packageName.split('.');
-        let parent: Classpath | JavaPackage = this.classpath;
-        parts.forEach((part) => {
-            if (!this.childrenOfByName.has(parent)) {
-                this.childrenOfByName.set(parent, new Map());
-            }
-            const children = this.childrenOfByName.get(parent)!;
-            if (!children.get(part)) {
-                // Ensure parent.packages exists
-                if (!parent.packages) {
-                    parent.packages = [];
-                }
-                const javaPackage: JavaPackage = {
-                    $container: parent,
-                    $type: JavaPackage.$type,
-                    classes: [],
-                    packages: [],
-                    name: part,
-                    $containerIndex: parent.packages.length,
-                    $containerProperty: 'packages',
-                };
-                parent.packages.push(javaPackage);
-                children.set(part, javaPackage);
-            }
-            parent = children.get(part) as JavaPackage;
-        })
     }
 
     /**
@@ -522,7 +415,7 @@ export class JavaInteropService {
                 matches.add(fqn);
             }
         } else {
-            for (const javaClass of this.resolvedClasses.values()) {
+            for (const javaClass of this.resolutionCache.values()) {
                 if (javaClass.error || !javaClass.packageName) {
                     continue;
                 }
@@ -544,19 +437,7 @@ export class JavaInteropService {
      * `use`) are skipped. Results are de-duplicated and sorted.
      */
     public findClassCandidatesBySimpleName(simpleName: string): string[] {
-        const target = simpleName.toLowerCase();
-        const matches = new Set<string>();
-        for (const javaClass of this.resolvedClasses.values()) {
-            if (javaClass.error || !javaClass.packageName) {
-                continue;
-            }
-            const simple = javaClass.name.substring(javaClass.name.lastIndexOf('.') + 1);
-            if (simple.includes('$') || simple.toLowerCase() !== target) {
-                continue;
-            }
-            matches.add(`${javaClass.packageName}.${simple}`);
-        }
-        return [...matches].sort();
+        return this.resolutionCache.findClassCandidatesBySimpleName(simpleName);
     }
 
     /**
@@ -924,11 +805,7 @@ export class JavaInteropService {
      * @returns array of child JavaClass and JavaPackage elements
      */
     getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
-        const children = this.childrenOfByName.get(javaPackageLike ?? this.classpath);
-        if (!children) {
-            return [];
-        }
-        return [...children.values()];
+        return this.resolutionCache.getChildrenOf(javaPackageLike);
     }
 
     /**
@@ -938,7 +815,7 @@ export class JavaInteropService {
      * @returns the matching JavaClass or JavaPackage, or undefined if not found
      */
     getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath = this.classpath, childName: string): JavaClass | JavaPackage | undefined {
-        return this.childrenOfByName.get(javaPackageLike)?.get(childName);
+        return this.resolutionCache.getChildOf(javaPackageLike, childName);
     }
 
     /**
@@ -950,19 +827,7 @@ export class JavaInteropService {
      * and the last one must be a {@link JavaPackage}; a class of the same name is not a package.
      */
     public isKnownJavaPackage(qualifiedName: string): boolean {
-        const canonical = canonicalJavaClassName(qualifiedName);
-        if (!canonical) {
-            return false;
-        }
-        let parent: Classpath | JavaPackage | JavaClass = this.classpath;
-        for (const part of canonical.split('.')) {
-            const child = this.getChildOf(parent, part);
-            if (!child) {
-                return false;
-            }
-            parent = child;
-        }
-        return isJavaPackage(parent);
+        return this.resolutionCache.isKnownJavaPackage(qualifiedName);
     }
 
     /**
@@ -972,78 +837,7 @@ export class JavaInteropService {
      * @param packageName the fully qualified package name (e.g., "java.lang")
      */
     storeJavaClass(javaClass: Mutable<JavaClass>, packageName: string): void {
-
-        // Defensive check for javaClass.name
-        if (!javaClass.name || typeof javaClass.name !== 'string') {
-            console.error('Invalid javaClass.name:', javaClass.name);
-            return;
-        }
-        javaClass.$type = JavaClass.$type;
-
-        const simpleName = (packageName.length > 0) ? javaClass.name.replace(packageName + '.', '') : javaClass.name;
-        if (javaClass.packageName !== packageName) {
-            logger.warn(`Package name mismatch for class ${javaClass.name}: expected '${javaClass.packageName}', got '${packageName}'`);
-        }
-
-        const classpath = this.classpath;
-        let parent: Classpath | JavaPackage | JavaClass = classpath;
-
-        const parts = packageName.split('.').concat(simpleName);
-
-        parts.forEach((part, index) => {
-            if (!this.childrenOfByName.has(parent)) {
-                this.childrenOfByName.set(parent, new Map());
-            }
-            const children = this.childrenOfByName.get(parent)!;
-            if (!children.has(part)) {
-                if (index === parts.length - 1) {
-                    javaClass.$container = parent;
-                    javaClass.$containerProperty = 'classes';
-                    // Ensure parent.classes exists
-                    if (!parent.classes) {
-                        parent.classes = [];
-                    }
-                    javaClass.$containerIndex = parent.classes.length;
-                    javaClass.name = part;
-                    parent.classes.push(javaClass);
-                    children.set(part, javaClass);
-                } else {
-                    assertType<JavaPackage>(parent);
-                    // Ensure parent.packages exists
-                    if (!parent.packages) {
-                        parent.packages = [];
-                    }
-                    const javaPackage: JavaPackage = {
-                        $container: parent,
-                        $type: JavaPackage.$type,
-                        classes: [],
-                        packages: [],
-                        name: part,
-                        $containerIndex: parent.packages.length,
-                        $containerProperty: 'packages',
-                    };
-                    parent.packages.push(javaPackage);
-                    children.set(part, javaPackage);
-                }
-            } else if (index === parts.length - 1) {
-                // Defence in depth for issue #676: the leaf name already names a registered
-                // child. When that child is a JavaPackage, a class must never overwrite it or
-                // be pushed into it — the package and its own classes stay reachable exactly as
-                // they were. The class is kept outside the package tree instead, on the same
-                // classpath fallback shape createStubClass uses. An existing JavaClass at the
-                // leaf is left unchanged, so resolveClass's "has no container" console.error
-                // still reports any other genuinely unexpected missing container.
-                const existingChild = children.get(part)!;
-                if (isJavaPackage(existingChild)) {
-                    javaClass.$container = classpath;
-                    javaClass.$containerProperty = 'classes';
-                    javaClass.$containerIndex = classpath.classes.length;
-                    logger.debug(`Java class ${javaClass.name} matches an existing package '${part}' and is kept outside the package tree.`);
-                    return;
-                }
-            }
-            parent = children.get(part)!;
-        });
+        this.resolutionCache.storeJavaClass(javaClass, packageName);
     }
 
     /**
@@ -1051,21 +845,9 @@ export class JavaInteropService {
      * and resets the classpath document. Call this before reloading classpath.
      */
     public clearCache(): void {
-        // Clear resolved classes cache
-        this._resolvedClasses.clear();
-
-        // Clear in-flight resolution promises
-        this._pendingResolutions.clear();
-
-        // Clear the in-flight Phase-2 registry (#497) so a class from a cleared classpath is
-        // never put back into the LRU by a Phase 2 that settles after this reset.
-        this._inFlightPhase2.clear();
-
-        // Clear children-of-by-name map
-        this.childrenOfByName.clear();
-
-        // Clear java.lang.Object cache
-        this.JAVA_LANG_OBJECT = undefined;
+        // Clear the resolved-class cache, the pending resolutions, the in-flight Phase 2
+        // registry, the package tree and the java.lang.Object cache.
+        this.resolutionCache.reset();
 
         // Clear the complete class index so it is rebuilt against the new classpath instead of
         // continuing to answer auto-import suggestions with stale FQNs (P61-D2-004)
