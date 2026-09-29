@@ -168,6 +168,12 @@ None - no external service configuration required.
 
 REF-10 is complete. `check-classes.ts` is a pure registration entry point; the four responsibility modules and `class-types.ts` are available for Phase 121's `JavaInteropService` decomposition (REF-09/REF-12) to reference as an established free-function-module precedent, alongside the pre-existing `check-function-calls.ts`/`check-unknown-java-member.ts`. No blockers for REF-11 (`activate()` split), which is independent and can proceed in parallel or in the next plan.
 
+## Self-Check: PASSED
+
+- All 5 created source files verified present on disk.
+- SUMMARY.md verified present on disk.
+- All 3 commits (`4ff63858`, `61b0d71f`, `6db81c38`) verified present in `git log --oneline --all`.
+
 ---
 *Phase: 120-classvalidator-activate-splits*
 *Completed: 2026-09-29*
