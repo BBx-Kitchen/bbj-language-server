@@ -685,8 +685,8 @@
   ],
   "main": "./out/extension.cjs",
   "scripts": {
-    "prepare": "npm run langium:generate && npm run build",
-    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run build && npm run esbuild-base -- --minify && npm run lint",
+    "prepare": "npm run langium:generate",
+    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE && node ./esbuild.mjs --minify",
     "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
     "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
     "lint": "eslint src test tools/interop-test-harness --max-warnings 0",
@@ -695,10 +695,6 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "interop-harness": "tsx tools/interop-test-harness/run-tests.ts",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "test-compile": "tsc -p ./",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
     "test:bbj": "RUN_BBJ_TESTS=1 vitest run"

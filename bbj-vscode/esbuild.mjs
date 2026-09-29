@@ -17,7 +17,10 @@ const ctx = await esbuild.context({
     external: ['vscode'], // the vscode-module is created on-the-fly and must be excluded.
     platform: 'node', // VSCode extensions run in a node process
     sourcemap: !minify,
-    minify
+    minify,
+    // Keep function and class names in the minified bundles so stack traces
+    // from the shipped code stay readable in user bug reports.
+    keepNames: true
 });
 
 if (watch) {

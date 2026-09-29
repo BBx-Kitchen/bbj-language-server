@@ -10,3 +10,12 @@ src/
 tsconfig.json
 webpack.config.js
 test/
+# Sourcemaps from a development build left in out/ never ship; the minified
+# bundles carry none, and this exclusion holds regardless of what order the
+# build and package steps run in.
+**/*.map
+# An older checkout may still hold the bundle produced by the removed
+# esbuild-base script; nothing loads it.
+out/main.js
+# Local test and coverage output.
+coverage/**
