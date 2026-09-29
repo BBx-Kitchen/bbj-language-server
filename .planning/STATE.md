@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 122
 current_phase_name: Release & CI Pipeline Hardening
 status: executing
-stopped_at: Phase 122 context gathered
-last_updated: "2026-09-29T15:35:07.540Z"
+stopped_at: Completed 122-01-PLAN.md
+last_updated: "2026-09-29T16:04:28.252Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 121 complete, transitioned to Phase 117
-state_head: 384e286e9c03030054e0b29a3d73734709a6dcc2
+last_activity_desc: Phase 122 execution started
+state_head: e992dccc368ccabe3dffcb0cd6da386abbbb8bbd
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 80
-  completed_plans: 74
+  completed_plans: 75
   percent: 85
 ---
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 117 — Dependency Hygiene & Dependabot Coverage (117-05 DEP-05 decision pending), then Phase 122
+**Current Focus:** Phase 122 — Release & CI Pipeline Hardening
 
 ---
 
 ## Current Position
 
-Phase: 122 (Release & CI Pipeline Hardening) — READY TO EXECUTE
-Plan: Not started
+Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-09-29 — Phase 121 complete, transitioned to Phase 117
+Last activity: 2026-09-29 — Phase 122 execution started
 
-Progress: [████████░░] 85% (11/13 phases)
+Progress: [█████████░] 85% (11/13 phases)
 
 ### v4.7 milestone map
 
@@ -192,6 +192,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P08 | 20min | 2 tasks | 3 files |
 | Phase 121 P09 | 25min | 2 tasks | 3 files |
 | Phase 121 P10 | 42min | 2 tasks | 2 files |
+| Phase 122 P01 | 18min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -327,6 +328,9 @@ decisions:
 - [Phase Phase 121]: 121-08: the resolved-class cache and the package tree move into java-interop-cache.ts as JavaResolutionCache, built as a front field initializer so the overridable cache limit is still read eagerly; three fields stay public-in-this-plan only, read through private front getters so the byte-identical resolution pipeline (plan 09) keeps working unchanged; the #676 leaf-collision guard and clearCache's reset order are pinned by a new 7-test unit suite — REF-12 fifth responsibility, first half; plan 09 moves the resolution pipeline itself and makes the three fields private
 - [Phase 121]: 121-09: the class resolution pipeline (resolveClassByName/doResolveClassByName/createStubClass/resolveClass) moves into JavaResolutionCache behind six call-time hooks (classpath/ensureClasspathDocument/getDocumentation/getRawClass/resolveClass/resolveClassByName) routed back through the front's own (possibly overridden) methods, closing hazard 1 (a hermetic double's resolveClassByName/getRawClass override staying live); resolveClass is hooked even though nothing overrides it, per CONTEXT's discretion, at zero cost; storeJavaClass/getChildOf/createStubClass/doResolveClassByName stay module-internal since nothing overrides or spies on them (re-checked); the lock field moves above resolutionCache and is passed into its constructor; java-interop.ts is now a 467-line pure wiring/delegate front class — REF-12 fifth responsibility complete, plan 10 closes out and marks the requirement
 - [Phase 121]: 121-10: Task 2's live hand check (hover, completion, missing-USE quick fix, Refresh Java Classes) approved in VS Code and IntelliJ against a live BBjServices; REF-12 marked complete, phase 121 fully closed (10/10 plans, REF-09 and REF-12 both complete)
+- [Phase 122]: 122-01: prepare = langium:generate only; vscode:prepublish = LICENSE copy + minified esbuild only (no tsc/lint/second bundler); esbuild.mjs sets keepNames: true; .vscodeignore excludes **/*.map, out/main.js, coverage/**
+- [Phase 122]: 122-01: activationEvents narrowed to onLanguage:bbj + onLanguage:bbx-config (all onCommand entries removed, incl. a third RESEARCH-found test site); langium-config.json's textMate block and its generated grammar/.gitignore line removed
+- [Phase 122]: 122-01: documented (not fixed) a pre-existing beforeAll race in installed-extension-e2e.test.ts's SETOPTS-in-code describe block ("No document found for URI"), proven identical at the phase base and out of this plan's file scope
 
 ### Tech Debt
 
@@ -390,9 +394,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T14:13:49.317Z
-Stopped at: Phase 122 context gathered
-Resume file: .planning/phases/122-release-ci-pipeline-hardening/122-CONTEXT.md
+Last session: 2026-09-29T16:04:27.727Z
+Stopped at: Completed 122-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.

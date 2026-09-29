@@ -50,7 +50,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [ ] **CI-06**: The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it (#573)
 - [ ] **CI-07**: `vscode:prepublish` builds only the bundles that ship, and ships them minified; the dead `esbuild-base` step is gone (#515)
 - [ ] **CI-08**: The `prepare` lifecycle hook no longer duplicates the generate, type-check and bundle pipeline that CI runs explicitly (#598)
-- [ ] **CI-09**: The unreachable npm scripts, the unused TextMate generator directive and the self-contradictory `activationEvents` entries are removed from `package.json` (#600)
+- [x] **CI-09**: The unreachable npm scripts, the unused TextMate generator directive and the self-contradictory `activationEvents` entries are removed from `package.json` (#600)
 
 ### Tests and lint
 
@@ -144,7 +144,7 @@ None deferred. Every still-open audit issue is in scope.
 | CI-06 | Phase 122 | Pending |
 | CI-07 | Phase 122 | Pending |
 | CI-08 | Phase 122 | Pending |
-| CI-09 | Phase 122 | Pending |
+| CI-09 | Phase 122 | Complete |
 | TEST-01 | Phase 114 | Complete |
 | TEST-02 | Phase 114 | Complete |
 | TEST-03 | Phase 114 | Complete |
