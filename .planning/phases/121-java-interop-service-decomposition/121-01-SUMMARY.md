@@ -167,6 +167,10 @@ None - no external service configuration required.
 - `services.java.JavadocProvider` exists and is read by all three production consumers and all four test services factories; `getInstance()`/`_instance` remain in place for plan 02 to delete once no caller is left (`javadoc.test.ts`, `java-interop-socket.test.ts`, and the four functional live-interop tests still call `getInstance()` directly, as planned).
 - Plan 02 can now give the production factory a fresh `JavadocProvider` per services set, delete `getInstance()`/`_instance`, migrate the remaining five call sites, and add the #624 regression test (two independently configured providers sharing no state).
 
+## Self-Check: PASSED
+
+All key files (java-javadoc.ts, bbj-module.ts, java-interop.ts, bbj-hover.ts, bbj-ws-manager.ts, bbj-test-module.ts) confirmed present on disk. All three commits (`5bb265c8`, `0e39b69a`, `a199b3b4`) confirmed present in `git log`.
+
 ---
 *Phase: 121-java-interop-service-decomposition*
 *Completed: 2026-09-29*
