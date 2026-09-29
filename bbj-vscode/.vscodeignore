@@ -19,3 +19,14 @@ test/
 out/main.js
 # Local test and coverage output.
 coverage/**
+# CI hygiene scripts and the Java-interop test harness source tree are
+# dev/CI-only; nothing under src/ loads them at runtime.
+tools/check-action-pins-and-permissions.mjs
+tools/check-gradle-wrapper.mjs
+tools/check-workflow-secrets.mjs
+tools/interop-test-harness/**
+tsconfig.harness.json
+tsconfig.test.json
+tsconfig.tsbuildinfo
+eslint.config.js
+vitest.config.ts
