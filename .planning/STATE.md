@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
 status: executing
-stopped_at: Completed 121-05-PLAN.md
-last_updated: "2026-09-29T11:45:08.535Z"
+stopped_at: Completed 121-06-PLAN.md
+last_updated: "2026-09-29T11:55:01.643Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: e0f211524c0350e3bd32e0840ab96953920fa51d
+state_head: cb7c917808c2aa92e230a2ab1a1a6ea0ae894a27
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 69
+  completed_plans: 70
   percent: 77
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 121 execution started
 
@@ -187,6 +187,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P03 | 8min | 2 tasks | 3 files |
 | Phase 121 P04 | 22min | 3 tasks | 3 files |
 | Phase 121 P05 | 13min | 2 tasks | 3 files |
+| Phase 121 P06 | 9min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -317,6 +318,7 @@ decisions:
 - [Phase 121]: 121-04: the shared connection, breaker and generation move verbatim into java-interop-connection.ts as JavaInteropConnection, reached only through call-time hooks (createSocket/wrapSocket/connect) so every hermetic test double's override still fires; probeIfDue/requestClassInfo call hooks.connect() never the module's own connect() directly
 - [Phase 121]: 121-04: the backoff unit test's first draft mismeasured the next probe due time (assumed the gap doubles immediately); corrected to match the real onConnectAttemptSettled ordering, which uses the pre-doubling cooldown for the next due time and only doubles it afterward
 - [Phase 121]: 121-05: the dedicated parseProgram lane moves verbatim into java-interop-connection.ts, completing D-05's end state; disconnect() now disposes the lane and resets the retired generation itself, collapsing clearCache's step 6 to one call; parseProgram is a plain delegate on the front
+- [Phase 121]: 121-06: the complete class index (build, has, clear, size, simpleNameMatches, prefixMatches, ensure/getAllClassNames) moves to java-interop-class-index.ts as CompleteClassIndex; resolveClassCandidatesBySimpleName and findClassCandidatesByPrefix stay on the front as orchestration and keep calling this.ensureCompleteClassIndex(token), closing the hazard where a hermetic double's override could be bypassed
 
 ### Tech Debt
 
@@ -380,8 +382,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T11:45:02.119Z
-Stopped at: Completed 121-05-PLAN.md
+Last session: 2026-09-29T11:54:56.602Z
+Stopped at: Completed 121-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
