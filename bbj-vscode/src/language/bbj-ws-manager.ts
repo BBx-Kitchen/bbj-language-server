@@ -28,6 +28,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
+    private javadocProvider: JavadocProvider;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
@@ -132,6 +133,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
+        this.javadocProvider = bbjServices.java.JavadocProvider;
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
@@ -190,7 +192,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 );
             }
             logger.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
-            await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+            await tryInitializeJavaDoc(this.javadocProvider, wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             // Use classpath from project.properties if available, otherwise fall back to VS Code settings
             let classpathToUse = this.settings!.classpath;
@@ -362,9 +364,8 @@ export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
 }
 
-async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
+async function tryInitializeJavaDoc(javadocProvider: JavadocProvider, wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
     try {
-        const javadocProvider = JavadocProvider.getInstance();
         if (!javadocProvider.isInitialized()) {
             return await javadocProvider.initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
         }

@@ -17,7 +17,7 @@ import { readSimpleName } from "./utils.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
-    protected javadocProvider = JavadocProvider.getInstance();
+    protected readonly javadocProvider: JavadocProvider;
     protected readonly commentProvider: CommentProvider;
     protected readonly typeInferer: TypeInferer;
     private readonly runCallContext: RunCallResolutionContext;
@@ -27,6 +27,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
 
     constructor(services: BBjServices) {
         super(services);
+        this.javadocProvider = services.java.JavadocProvider;
         this.documentationProvider = services.documentation.DocumentationProvider;
         this.commentProvider = services.documentation.CommentProvider;
         this.typeInferer = services.types.Inferer;

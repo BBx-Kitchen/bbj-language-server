@@ -38,6 +38,7 @@ import { BBjValueConverter } from './bbj-value-converter.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module.js';
 import { JavaInteropService } from './java-interop.js';
+import { JavadocProvider } from './java-javadoc.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
@@ -56,7 +57,8 @@ export type BBjAddedServices = {
         BBjValidator: BBjValidator
     },
     java: {
-        JavaInteropService: JavaInteropService
+        JavaInteropService: JavaInteropService,
+        JavadocProvider: JavadocProvider
     },
     types: {
         Inferer: TypeInferer
@@ -93,7 +95,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         DocumentValidator: (services) => new BBjDocumentValidator(services)
     },
     java: {
-        JavaInteropService: (services) => new JavaInteropService(services)
+        JavaInteropService: (services) => new JavaInteropService(services),
+        JavadocProvider: () => JavadocProvider.getInstance()
     },
     compiler: {
         BBjCPLService: (services) => new BBjCPLService(services),

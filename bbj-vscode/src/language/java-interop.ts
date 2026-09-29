@@ -297,7 +297,7 @@ export class JavaInteropService {
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
-    protected javadocProvider = JavadocProvider.getInstance();
+    protected readonly javadocProvider: JavadocProvider;
 
     /**
      * @param services BBj language services providing access to documents and workspace
@@ -310,6 +310,7 @@ export class JavaInteropService {
             packages: [],
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
+        this.javadocProvider = services.java.JavadocProvider;
     }
 
     private get resolvedClasses(): LruMap<string, JavaClass> {

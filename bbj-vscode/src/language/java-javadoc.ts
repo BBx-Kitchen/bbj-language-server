@@ -25,7 +25,7 @@ export class JavadocProvider {
     private fsAccess: FileSystemProvider = new EmptyFileSystemProvider();
 
 
-    protected constructor(lazyLoad: boolean = true) {
+    constructor(lazyLoad: boolean = true) {
         this.lazyLoad = lazyLoad;
     }
 
