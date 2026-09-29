@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 121
-current_phase_name: Java Interop Service Decomposition
-status: verifying
-stopped_at: Completed 121-10-PLAN.md (phase 121 closed, REF-12 complete)
-last_updated: "2026-09-29T13:15:03.290Z"
+current_phase: 117
+current_phase_name: Dependency Hygiene & Dependabot Coverage
+status: planning
+stopped_at: Phase 121 complete, ready to plan Phase 117
+last_updated: "2026-09-29T13:27:46.880Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 121 execution started
-state_head: 9c9f0c8911261d856d9334406f8f0c6e2b93684b
+last_activity_desc: Phase 121 complete, transitioned to Phase 117
+state_head: cc8173611f6ef692c13c4c468952457b3d957636
 progress:
   total_phases: 13
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 74
   completed_plans: 74
-  percent: 77
+  percent: 85
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 ## Current Position
 
-Phase: 121 (Java Interop Service Decomposition) — EXECUTING
-Plan: 10 of 10
-Status: Phase complete — ready for verification
-Last activity: 2026-09-29 — Phase 121 execution started
+Phase: 117 — Dependency Hygiene & Dependabot Coverage
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-29 — Phase 121 complete, transitioned to Phase 117
 
 Progress: [████████░░] 77% (10/13 phases)
 
@@ -391,7 +391,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-29T13:15:02.784Z
-Stopped at: Completed 121-10-PLAN.md (phase 121 closed, REF-12 complete)
+Stopped at: Phase 121 complete, ready to plan Phase 117
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.

@@ -417,7 +417,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift (completed 2026-09-28)
 - [x] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses (completed 2026-09-29)
 - [x] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed (completed 2026-09-29)
-- [ ] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged
+- [x] **Phase 121: Java Interop Service Decomposition** - `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged (completed 2026-09-29)
 - [ ] **Phase 122: Release & CI Pipeline Hardening** - Least-privilege, SHA-pinned, cached workflows that share one preamble, and a minified VSIX built once without dead scripts, verified with care because every push to `main` publishes
 
 ## Phase Details
@@ -854,7 +854,7 @@ extend, so keep the move behaviour-neutral.
   3. The `java-interop-*.test.ts` suites, the Phase 116 fake-socket suite and the whole suite pass without assertion changes.
   4. Against a live BBjServices, hover, completion, the missing-USE quick fix and Refresh Java Classes behave as before in VS Code and IntelliJ.
 
-**Plans:** 10/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 **Wave 1**
