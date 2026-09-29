@@ -19,8 +19,8 @@ export interface EmAuthDeps {
 }
 
 /**
- * Get EM credentials from SecretStorage
- * Returns {username, password} object or undefined if not stored
+ * Returns the stored EM token as the `__token__` credential, or undefined
+ * when there is none or it is expired (then deleted).
  */
 export async function getEMCredentials(secrets: vscode.SecretStorage | undefined): Promise<{ username: string, password: string } | undefined> {
     // Try token first
@@ -36,9 +36,6 @@ export async function getEMCredentials(secrets: vscode.SecretStorage | undefined
         }
         return { username: '__token__', password: token };
     }
-    // Try stored credentials (fallback if BBj doesn't support tokens)
-    const creds = await secrets?.get('bbj.em.credentials');
-    if (creds) return JSON.parse(creds);
     return undefined;
 }
 
