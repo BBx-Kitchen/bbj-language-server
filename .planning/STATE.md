@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 120
 current_phase_name: ClassValidator & activate() Splits
 status: executing
-stopped_at: Completed 120-01-PLAN.md
-last_updated: "2026-09-29T06:34:32.922Z"
+stopped_at: Completed 120-02-PLAN.md
+last_updated: "2026-09-29T06:52:58.149Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 120 execution started
-state_head: 61b0d71f37a7b5a9d5d1afcf961fc09b0e041470
+state_head: 2f28f673e72096b767f97436b711c1a910ebb6ee
 progress:
   total_phases: 13
   completed_phases: 9
   total_plans: 64
-  completed_plans: 61
+  completed_plans: 62
   percent: 69
 ---
 
@@ -179,6 +179,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 119 P01 | 68min | 2 tasks | 4 files |
 | Phase 119 P02 | 55min | 2 tasks | 2 files |
 | Phase 120 P01 | 14min | 2 tasks | 7 files |
+| Phase 120 P02 | 11min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -299,6 +300,7 @@ decisions:
 - [Phase 119]: 119-02: shared ChannelAndOptions fragment for the PRINT/WRITE and READ/INPUT openings; generated/ast.ts stays byte-identical and the whole phase re-measures clean against the base
 - [Phase 119]: 119-02: whole-suite contention flakes recurred on a different unrelated test each of three runs (parser-keyword-statements, document-symbol, on-save-kept-errors); all pass in isolation and a third run matched the base's failed-name list exactly, confirming pre-existing worker contention, not a regression
 - [Phase 120]: 120-01: check-classes.ts split into class-types.ts/check-cyclic-inheritance.ts/check-class-reference.ts/check-return-types.ts/check-constructor.ts as exported free functions taking their service (inferer/javaInterop) as a trailing argument; check-classes.ts keeps only registerClassChecks with no thisArg
+- [Phase 120]: 120-02: two characterization test files (activation-command-coverage.test.ts, activation-prompts-and-status-bars.test.ts) pin activate()'s command coverage/order and its open-prompt/status-bar behaviour on the unsplit extension.ts, ahead of plans 03/04's split; the derived literal sequence needed no correction against the base
 
 ### Tech Debt
 
@@ -361,8 +363,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T06:34:32.535Z
-Stopped at: Completed 120-01-PLAN.md
+Last session: 2026-09-29T06:52:57.740Z
+Stopped at: Completed 120-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 120`.

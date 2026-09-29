@@ -817,7 +817,7 @@ keyword-as-identifier cases (a v4.5 lesson). `npm run build` does not regenerate
   3. The unused `bbj.em.credentials` secret fallback and the unreachable legacy `bbj.web.username`/`bbj.web.password` branch are gone. The activation, `Commands.cjs` and EM tests pass unchanged, and every contributed command is still registered after activation.
   4. A hand check in VS Code runs a GUI, a BUI and a DWC program, logs into EM and compiles a file, and each behaves as before.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -826,7 +826,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 120-02-PLAN.md — Safety net on the unsplit `extension.ts`: a test that every contributed command is registered (checked six-entry composer allow-list) with the activation sequence pinned, and behaviour pins for the open prompts and the two diagnostic status bars (REF-11) (wave 2)
+- [x] 120-02-PLAN.md — Safety net on the unsplit `extension.ts`: a test that every contributed command is registered (checked six-entry composer allow-list) with the activation sequence pinned, and behaviour pins for the open prompts and the two diagnostic status bars (REF-11) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -939,7 +939,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 117. Dependency Hygiene & Dependabot Coverage | 6/6 | Not started |  |
 | 118. Small Dedup & Drift Guards | 3/3 | Not started |  |
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Not started |  |
-| 120. ClassValidator & activate() Splits | 1/4 | Not started |  |
+| 120. ClassValidator & activate() Splits | 2/4 | Not started |  |
 | 121. Java Interop Service Decomposition | 0/TBD | Not started | - |
 | 122. Release & CI Pipeline Hardening | 0/TBD | Not started | - |
 
