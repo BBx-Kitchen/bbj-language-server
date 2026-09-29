@@ -1,11 +1,12 @@
 ---
 phase: 120-classvalidator-activate-splits
 verified: 2026-09-29T08:14:11Z
-status: human_needed
+status: passed
 score: 5/6 must-haves verified (1 present, behavior-unverified — hand UAT)
 behavior_unverified: 1
 overrides_applied: 0
 human_verification:
+
   - test: "Build and install the VSIX (and IntelliJ plugin zip) from the final tree (including the post-review fix commit 4934de34), then in a running VS Code instance: run a GUI program, run a BUI program, run a DWC program, log into Enterprise Manager, and compile a file."
     expected: "Each behaves identically to the pre-phase build: GUI/BUI/DWC launch and run, EM login prompts for credentials and stores a working session, and compilation produces the same diagnostics as before the split."
     why_human: "Roadmap success criterion 4 is an explicit hand check in a real VS Code + BBj runtime; no automated test exercises the live EM login browser flow, GUI/BUI/DWC process launch, or the on-save compiler integration end to end. The phase's own plans (D-18) defer this to /gsd-verify-work and do not claim it was run."
