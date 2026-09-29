@@ -46,7 +46,7 @@ created: "2026-09-29"
 | T-122-10 | Tampering | secrets in publish run bodies | medium | mitigate | `workflow-secret-hygiene.test.ts` passes; `check-workflow-secrets.mjs` reports 0 findings across 39 run blocks | closed |
 | T-122-11 | Tampering | pin/permission checker false negative | medium | mitigate | Empty scan exits 2 (verified); composite-action descent; comment-under-`jobs:` false negative fixed with regression fixtures; checker suite passes | closed |
 | T-122-12 | Elevation of Privilege | future workflow widening the top-level token | medium | mitigate | Top-level `write-all` and write scopes are findings (`check-action-pins-and-permissions.mjs:320-321`) | closed |
-| T-122-13 | Denial of Service | release job under-scoped for its push | medium | mitigate | `PUSH_OR_RELEASE` rule (`check-action-pins-and-permissions.mjs:27`) requires effective `contents: write` | closed |
+| T-122-13 | Denial of Service | release job under-scoped for its push | medium | mitigate | `PUSH_OR_RELEASE` rule requires effective `contents: write`; job ids and the `jobs:` key are recognised with trailing comments, and a workflow with no recognised job ids is a finding (8f794c98, regression tests) | closed |
 | T-122-14 | Tampering | `uses` references in PR-side workflows and the action | high | mitigate | Every non-local reference is `@<40-hex> # vX.Y.Z`; checker reports 0 findings over 64 references | closed |
 | T-122-15 | Elevation of Privilege | build.yml job token (`pull-requests: write`) while running PR code | medium | accept | See accepted risks log | closed |
 | T-122-16 | Elevation of Privilege | deploy-docs build job running third-party npm packages | medium | mitigate | Top-level `contents: read`; build job `contents: read` + `pages: read`; `pages: write` / `id-token: write` only on the deploy job | closed |
@@ -87,6 +87,7 @@ created: "2026-09-29"
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-09-29 | 30 | 30 | 0 | /gsd-secure-phase (orchestrator, L1: grep + checker runs + GitHub API pin re-resolution + hygiene suites 21/21) |
+| 2026-09-29 | 30 | 30 | 0 | Re-check after verifier found a T-122-13 bypass (trailing comment on a job id); fixed in 8f794c98, checker suite 19/19 |
 
 ---
 
