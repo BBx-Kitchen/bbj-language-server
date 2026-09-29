@@ -5,11 +5,11 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 117
 current_phase_name: Dependency Hygiene & Dependabot Coverage
 status: verifying
-stopped_at: Phase 119 complete; Phase 117 awaits UAT (verify-work)
-last_updated: "2026-09-29T03:15:31.006Z"
+stopped_at: Phase 120 context gathered
+last_updated: "2026-09-29T04:38:31.985Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 119 complete, transitioned to Phase 117
-state_head: 9942582bc4258e63ef23bac7ff5e6820b54ca159
+state_head: bb4e26467f7b11d748c8fdac262569a0ad0c195d
 progress:
   total_phases: 13
   completed_phases: 9
@@ -359,9 +359,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T00:14:58.718Z
-Stopped at: Phase 119 complete; Phase 117 awaits UAT (verify-work)
-Resume file: None
+Last session: 2026-09-29T04:38:31.601Z
+Stopped at: Phase 120 context gathered
+Resume file: .planning/phases/120-classvalidator-activate-splits/120-CONTEXT.md
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 120`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
