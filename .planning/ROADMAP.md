@@ -916,7 +916,7 @@ large classes first (cold resolution returns "no document").
   4. `vscode:prepublish` builds only the shipped bundles, minified, and `prepare` no longer runs the full generate, type-check and bundle pipeline that CI runs explicitly. The packaged VSIX installs, activates and carries the bumped version.
   5. The unreachable npm scripts, the unused TextMate generator directive and the contradictory `activationEvents` entries are gone, and `npm run build`, `npm run langium:generate` and the whole suite still pass.
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -926,7 +926,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 122-02-PLAN.md — Decision checkpoint on the setup-gradle cache provider (its exclude-capable default is proprietary), then setup-gradle after the inline wrapper validation in all five Gradle jobs, IDE downloads excluded, publish-intellij cache-disabled, Java/Gradle/cache steps SHA-pinned (CI-05, CI-03)
-- [ ] 122-03-PLAN.md — `check-action-pins-and-permissions.mjs` test-first: SHA pin with `# vX.Y.Z`, top-level least-privilege permissions, contents: write on pushing jobs, composite actions one level down, refusals, `--print` (CI-01, CI-03)
+- [x] 122-03-PLAN.md — `check-action-pins-and-permissions.mjs` test-first: SHA pin with `# vX.Y.Z`, top-level least-privilege permissions, contents: write on pushing jobs, composite actions one level down, refusals, `--print` (CI-01, CI-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -1004,7 +1004,7 @@ v4.3's, v4.4's, v4.5's and v4.6's artifacts (78-109) carry no advisory detail an
 | 119. Grammar — DECLARE File Paths & Shared Channel Opening | 2/2 | Complete | 2026-09-29 |
 | 120. ClassValidator & activate() Splits | 4/4 | Complete | 2026-09-29 |
 | 121. Java Interop Service Decomposition | 10/10 | Not started |  |
-| 122. Release & CI Pipeline Hardening | 2/6 | Not started |  |
+| 122. Release & CI Pipeline Hardening | 3/6 | Not started |  |
 
 **Current milestone:** v4.7 Audit Hygiene Burn-down (Phases 110-122), started 2026-09-26.
 63/63 requirements mapped to 13 phases, no orphans and no duplicates; 61 GitHub issues to close.
