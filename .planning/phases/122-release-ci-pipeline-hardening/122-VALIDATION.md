@@ -53,14 +53,35 @@ Filled in by the planner/executor once task IDs exist. Requirement-level map fro
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
+Task-level map (planner, 2026-09-29):
+
+| Task | Wave | Requirement | Behavior | Automated verify (see the PLAN for the exact command) | Status |
+|------|------|-------------|----------|-------------------------------------------------------|--------|
+| 122-01 T1 (tracer) | 1 | CI-07, CI-08 | Base captured; prepare = generate only; prepublish = LICENSE + minified esbuild with keepNames; VSIX after a sourcemapped build has no out/main.js, maps or coverage; installed minified server passes e2e | packaging-config node check; `unzip` checks on tracer.vsix; `npx vitest run test/functional/installed-extension-e2e.test.ts test/language-server-lifecycle.test.ts` | ⬜ pending |
+| 122-01 T2 | 1 | CI-09 | Two activation events; three manifest tests rewritten; no TextMate output; Node 22 generate; vsce file list only loses the four stale kinds | node manifest check; `npx --yes node@22 …langium.js generate`; the three test files; vsce ls diff; whole suite; lint/typecheck/build | ⬜ pending |
+| 122-02 T1 (checkpoint:decision) | 2 | CI-05 | User picks the Gradle cache provider (proprietary Enhanced vs MIT basic vs actions/cache) | gradle-cache-option.txt holds A, B or C | ⬜ pending |
+| 122-02 T2 (tracer) | 2 | CI-05, CI-03 | validate-intellij: pinned setup-java, wrapper validation, then setup-gradle with the chosen caching | region order/pin/option check; `check-gradle-wrapper.mjs` = 5 jobs, 0 findings | ⬜ pending |
+| 122-02 T3 | 2 | CI-05, CI-03 | Release verify jobs cached, publish-intellij cache-disabled; publish steps and verifier comments unchanged | region checks; base diffs; `npx vitest run test/workflow-secret-hygiene.test.ts test/gradle-wrapper-hygiene.test.ts`; whole suite | ⬜ pending |
+| 122-03 T1 (tracer, TDD) | 2 | CI-03 | Pin rule with version comment through the CLI; real tree exits 1 | `npx vitest run test/action-pins-and-permissions-hygiene.test.ts`; checker on the real tree | ⬜ pending |
+| 122-03 T2 (TDD) | 2 | CI-01 | Top-level permissions, no top-level write, push scope, composite actions, refusals, --print | same test file (≥13 tests); real-tree findings; whole suite; lint/typecheck | ⬜ pending |
+| 122-04 T1 (tracer) | 3 | CI-06 | Composite action; workflow-hygiene on it | action content greps; pin/secret/wrapper checkers | ⬜ pending |
+| 122-04 T2 | 3 | CI-02 | build.yml single PR gate with VSIX + sticky comment; pr-vsix.yml deleted | shape greps; whitespace-normalised script diffs vs base; checker --print | ⬜ pending |
+| 122-04 T3 | 3 | CI-01, CI-03, CI-05 | pr-validation and deploy-docs on the action, pinned, least-privilege, distinct cancel groups | on-block diff; --print scopes; four workflows + action clean; hygiene tests; whole suite | ⬜ pending |
+| 122-05 T1 (tracer) | 4 | CI-01, CI-03, CI-06 | preview.yml: read-only top, write on bump-version, action (cold in publish-vscode), lint/typecheck gates, bump before build | --print scopes; step order; run-body set vs base; comments kept | ⬜ pending |
+| 122-05 T2 | 4 | CI-01, CI-08 | manual-release.yml likewise; whole tree clean | --print scopes; step order; run-body set; default checker scan = 6 workflows + action, 0 findings; whole suite | ⬜ pending |
+| 122-06 T1 (tracer) | 5 | CI-01, CI-03 | pin-hygiene CI job; secret scan covers actions; real-tree test; Dependabot directories | real-tree vitest case; replay of the three hygiene commands; dependabot region check | ⬜ pending |
+| 122-06 T2 | 5 | CI-07, CI-08 | Pins equal tag commits (GitHub API); Node 22 scratch worktree packages the bumped VSIX; both distributables; phase hygiene | pins-verified.txt; dryrun.vsix checks; cmp of main.cjs; whole suite; lint/typecheck; phase-wide id scan | ⬜ pending |
+
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `bbj-vscode/tools/<pin-permissions checker>.mjs` — new zero-dependency checker (CI-01, CI-03)
-- [ ] `bbj-vscode/test/<pin-permissions>-hygiene.test.ts` — its vitest test
-- [ ] `.github/actions/<name>/action.yml` — the composite action (CI-06)
-- [ ] Rewrites of `test/cvs-composer-ui.test.ts`, `test/setopts-in-code-ui.test.ts`, `test/functional/installed-extension-e2e.test.ts` `onCommand:` assertions
+Created inside the plans, before their first consumer:
+
+- [ ] `bbj-vscode/tools/check-action-pins-and-permissions.mjs` — new zero-dependency checker (CI-01, CI-03); plan 03 (wave 2), used by plans 04-06
+- [ ] `bbj-vscode/test/action-pins-and-permissions-hygiene.test.ts` — its vitest test; plan 03, real-tree case in plan 06
+- [ ] `.github/actions/node-setup/action.yml` — the composite action (CI-06); plan 04 Task 1
+- [ ] Rewrites of `test/cvs-composer-ui.test.ts`, `test/setopts-in-code-ui.test.ts`, `test/functional/installed-extension-e2e.test.ts` `onCommand:` assertions; plan 01 Task 2
 
 ---
 
@@ -73,6 +94,8 @@ Filled in by the planner/executor once task IDs exist. Requirement-level map fro
 | IntelliJ plugin starts the minified `main.cjs` | CI-07 | Needs IntelliJ | Build the plugin zip from the final tree, install, open a `.bbj` file |
 | `preview.yml` first post-merge run | CI-01, CI-03, CI-05, CI-08 | Publishes to both marketplaces; cannot run from branch | Watch the first run after merge: bump commit pushed, both publishes green, both artifacts present |
 | `manual-release.yml` | CI-01, CI-03 | Dispatch-only, publishes | Static review of job permissions vs. push/tag/release steps; first real release is the true test |
+| Gradle cache provider choice | CI-05 | Accepting the Gradle Technologies Terms of Use (setup-gradle's default Enhanced Caching, the only provider with cache excludes) is a policy call | Plan 02 Task 1 checkpoint:decision; the answer is recorded in the 122-02 SUMMARY |
+| Gradle cache size and hit | CI-05 | Only main writes the Gradle cache | After the merge: setup-gradle job summary in the first preview run shows the entry size; a later PR shows a restore in validate-intellij |
 
 ---
 

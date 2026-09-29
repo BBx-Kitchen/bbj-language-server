@@ -916,7 +916,29 @@ large classes first (cold resolution returns "no document").
   4. `vscode:prepublish` builds only the shipped bundles, minified, and `prepare` no longer runs the full generate, type-check and bundle pipeline that CI runs explicitly. The packaged VSIX installs, activates and carries the bumped version.
   5. The unreachable npm scripts, the unused TextMate generator directive and the contradictory `activationEvents` entries are gone, and `npm run build`, `npm run langium:generate` and the whole suite still pass.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 122-01-PLAN.md — Phase base captured first. `prepare` generates only; `vscode:prepublish` bundles the two shipped entry points minified with keepNames; `.vscodeignore` drops sourcemaps, the stale out/main.js and coverage; two activation events with the three manifest tests rewritten; TextMate generator output removed; VSIX installed into the ext-test rig (CI-07, CI-08, CI-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 122-02-PLAN.md — Decision checkpoint on the setup-gradle cache provider (its exclude-capable default is proprietary), then setup-gradle after the inline wrapper validation in all five Gradle jobs, IDE downloads excluded, publish-intellij cache-disabled, Java/Gradle/cache steps SHA-pinned (CI-05, CI-03)
+- [ ] 122-03-PLAN.md — `check-action-pins-and-permissions.mjs` test-first: SHA pin with `# vX.Y.Z`, top-level least-privilege permissions, contents: write on pushing jobs, composite actions one level down, refusals, `--print` (CI-01, CI-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 122-04-PLAN.md — Composite action `.github/actions/node-setup`; `build.yml` absorbs `pr-vsix.yml` (deleted) as the single PR gate with the test VSIX and sticky comment; pr-validation, deploy-docs and workflow-hygiene on the action, pinned, least-privilege, distinct per-PR cancel groups (CI-02, CI-06, CI-01, CI-03, CI-05)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 122-05-PLAN.md — preview.yml and manual-release.yml: read-only top-level token with write only on bump-version, tag-release and create-release; the action (cold in publish-vscode); lint and type-check gates in verify; bump kept between npm ci and build; whole tree pinned (CI-01, CI-03, CI-05, CI-06, CI-08)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 122-06-PLAN.md — pin-hygiene CI job and real-tree test; secret scan covers composite actions; Dependabot lists the composite action; pins verified against GitHub; Node 22 scratch-worktree packaging with the release-style bump; both distributables; manual watch list for the milestone PR and the first preview run (CI-01, CI-03, CI-07, CI-08)
 
 *Planning notes:* `preview.yml` and `manual-release.yml` hold the marketplace tokens and push
 commits and tags, so under-scoping `contents: write` would break them silently on their next run.
