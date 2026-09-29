@@ -23,7 +23,7 @@ import {
     isProgram,
 } from '../generated/ast.js';
 import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
-import { bbjTypesAreRelated, KNOWN_BBJ_SCALAR_TYPES } from './check-classes.js';
+import { bbjTypesAreRelated, KNOWN_BBJ_SCALAR_TYPES } from './class-types.js';
 
 /**
  * Register variable scoping validation checks for both Program and MethodDecl scopes.

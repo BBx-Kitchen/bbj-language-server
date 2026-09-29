@@ -5,7 +5,9 @@ import { TypeInferer } from '../bbj-type-inferer.js';
 import { JavaInteropService } from '../java-interop.js';
 import { isTypeResolutionWarningsEnabled } from '../bbj-validator.js';
 import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
-import { BBjAstType, BbjClass, Class, ConstructorCall, Expression, FieldDecl, isBbjClass, isClass, isJavaClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, JavaClass, MethodDecl, QualifiedClass } from '../generated/ast.js';
+import { BBjAstType, BbjClass, Class, ConstructorCall, Expression, FieldDecl, isBbjClass, isClass, isJavaClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, MethodDecl, QualifiedClass } from '../generated/ast.js';
+import { checkCyclicInheritance } from './check-cyclic-inheritance.js';
+import { classFqn, bbjSupertypesReach, KNOWN_BBJ_SCALAR_TYPES } from './class-types.js';
 
 export function registerClassChecks(registry: ValidationRegistry, services: BBjServices) {
     const validator = new ClassValidator(services.types.Inferer, services.java.JavaInteropService);
@@ -49,7 +51,7 @@ export function registerClassChecks(registry: ValidationRegistry, services: BBjS
             });
             // Check for cyclic inheritance
             if (decl.extends.length > 0) {
-                validator.checkCyclicInheritance(decl, accept);
+                checkCyclicInheritance(decl, accept);
             }
         },
         ConstructorCall: (call, accept) => {
@@ -84,82 +86,6 @@ export function registerClassChecks(registry: ValidationRegistry, services: BBjS
         }),
     };
     registry.register(classChecks, validator);
-}
-
-/** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
-export function classFqn(klass: Class): string {
-    if (isJavaClass(klass)) {
-        const name = (klass as JavaClass).name;
-        if (name.includes('.')) {
-            return name;
-        }
-        const pkg = (klass as JavaClass).packageName;
-        return pkg ? `${pkg}.${name}` : name;
-    }
-    return klass.name;
-}
-
-/** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
-export function bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
-    const visited = new Set<Class>();
-    const queue: BbjClass[] = [klass];
-    while (queue.length > 0) {
-        const current = queue.pop()!;
-        if (visited.has(current)) {
-            continue;
-        }
-        visited.add(current);
-        for (const ref of [...current.extends, ...current.implements]) {
-            const superType = getClass(ref);
-            if (!superType) {
-                continue;
-            }
-            if (superType === target) {
-                return true;
-            }
-            if (isBbjClass(superType)) {
-                queue.push(superType);
-            }
-        }
-    }
-    return false;
-}
-
-/**
- * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
- * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
- * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
- * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
- * partially-loaded classpath (or a test double that does not preload them) must not produce a
- * false positive.
- */
-export const KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
-
-/**
- * True when two resolved classes are related closely enough that a conflicting-DECLARE
- * diagnostic between them should stay silent: they are the same class object, they share a
- * fully-qualified name (case-insensitive), either one is `java.lang.Object` (the universal top
- * type), or either one is a BBj class whose resolvable supertype chain reaches the other.
- */
-export function bbjTypesAreRelated(a: Class, b: Class): boolean {
-    if (a === b) {
-        return true;
-    }
-    const aFqn = classFqn(a).toLowerCase();
-    const bFqn = classFqn(b).toLowerCase();
-    if (aFqn === bFqn) {
-        return true;
-    }
-    if (aFqn === 'java.lang.object' || bFqn === 'java.lang.object') {
-        return true;
-    }
-    if (isBbjClass(a) && bbjSupertypesReach(a, b)) {
-        return true;
-    }
-    if (isBbjClass(b) && bbjSupertypesReach(b, a)) {
-        return true;
-    }
-    return false;
 }
 
 class ClassValidator {
@@ -550,30 +476,5 @@ class ClassValidator {
         return afterClass.startsWith('[');
     }
 
-    public checkCyclicInheritance(klass: BbjClass, accept: ValidationAcceptor): void {
-        const visited = new Set<BbjClass>();
-        visited.add(klass);
-        let current: BbjClass | undefined = klass;
-        const MAX_INHERITANCE_DEPTH = 20;
-        let depth = 0;
-
-        while (current && current.extends.length > 0 && depth < MAX_INHERITANCE_DEPTH) {
-            const superType = getClass(current.extends[0]);
-            if (!isBbjClass(superType)) {
-                break; // Java class or unresolvable -- stop walking
-            }
-            if (visited.has(superType)) {
-                accept("error", `Cyclic inheritance detected: class '${klass.name}' is involved in an inheritance cycle.`, {
-                    node: klass,
-                    property: 'extends',
-                    index: 0
-                });
-                return;
-            }
-            visited.add(superType);
-            current = superType;
-            depth++;
-        }
-    }
 }
 
