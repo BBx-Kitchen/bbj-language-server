@@ -4,17 +4,17 @@ milestone: v4.7
 milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 121
 current_phase_name: Java Interop Service Decomposition
-status: executing
-stopped_at: Completed 121-09-PLAN.md
-last_updated: "2026-09-29T12:55:25.690Z"
+status: verifying
+stopped_at: Completed 121-10-PLAN.md (phase 121 closed, REF-12 complete)
+last_updated: "2026-09-29T13:15:03.290Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 121 execution started
-state_head: fd914ff770221795d1be356e1c8d90bef67c5cff
+state_head: 9c9f0c8911261d856d9334406f8f0c6e2b93684b
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 74
-  completed_plans: 73
+  completed_plans: 74
   percent: 77
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 Phase: 121 (Java Interop Service Decomposition) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-29 — Phase 121 execution started
 
 Progress: [████████░░] 77% (10/13 phases)
@@ -191,6 +191,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P07 | 9min | 2 tasks | 3 files |
 | Phase 121 P08 | 20min | 2 tasks | 3 files |
 | Phase 121 P09 | 25min | 2 tasks | 3 files |
+| Phase 121 P10 | 42min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -325,6 +326,7 @@ decisions:
 - [Phase 121]: 121-07: the loader's implicit-import loading routes through call-time hooks (connect/resolveClass/registerResolvedClass/classpath/ensureClasspathDocument/addTopLevelPackage) bound to the front class; the top-level package tree stays a private front method (addTopLevelPackage) behind a hook since it is resolution/cache (D-06), not loading, and plan 08 carries it into the resolution module
 - [Phase Phase 121]: 121-08: the resolved-class cache and the package tree move into java-interop-cache.ts as JavaResolutionCache, built as a front field initializer so the overridable cache limit is still read eagerly; three fields stay public-in-this-plan only, read through private front getters so the byte-identical resolution pipeline (plan 09) keeps working unchanged; the #676 leaf-collision guard and clearCache's reset order are pinned by a new 7-test unit suite — REF-12 fifth responsibility, first half; plan 09 moves the resolution pipeline itself and makes the three fields private
 - [Phase 121]: 121-09: the class resolution pipeline (resolveClassByName/doResolveClassByName/createStubClass/resolveClass) moves into JavaResolutionCache behind six call-time hooks (classpath/ensureClasspathDocument/getDocumentation/getRawClass/resolveClass/resolveClassByName) routed back through the front's own (possibly overridden) methods, closing hazard 1 (a hermetic double's resolveClassByName/getRawClass override staying live); resolveClass is hooked even though nothing overrides it, per CONTEXT's discretion, at zero cost; storeJavaClass/getChildOf/createStubClass/doResolveClassByName stay module-internal since nothing overrides or spies on them (re-checked); the lock field moves above resolutionCache and is passed into its constructor; java-interop.ts is now a 467-line pure wiring/delegate front class — REF-12 fifth responsibility complete, plan 10 closes out and marks the requirement
+- [Phase 121]: 121-10: Task 2's live hand check (hover, completion, missing-USE quick fix, Refresh Java Classes) approved in VS Code and IntelliJ against a live BBjServices; REF-12 marked complete, phase 121 fully closed (10/10 plans, REF-09 and REF-12 both complete)
 
 ### Tech Debt
 
@@ -388,8 +390,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T12:55:15.730Z
-Stopped at: Completed 121-09-PLAN.md
+Last session: 2026-09-29T13:15:02.784Z
+Stopped at: Completed 121-10-PLAN.md (phase 121 closed, REF-12 complete)
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
