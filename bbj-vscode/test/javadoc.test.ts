@@ -3,10 +3,14 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { describe, expect, test, vi } from 'vitest';
 import { URI } from 'vscode-uri';
-import { EmptyFileSystemProvider, FileSystemNode } from 'langium';
+import { EmptyFileSystem, EmptyFileSystemProvider, FileSystemNode } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
+import { createBBjServices } from '../src/language/bbj-module.js';
 import { JavadocProvider, PackageDoc } from '../src/language/java-javadoc.js';
 import { logger, LogLevel } from '../src/language/logger.js';
+import { createBBjTestServices } from './bbj-test-module.js';
+import { createCountingInteropServices, rawMethod } from './counting-java-interop.js';
+import { createFakePeerServices } from './fake-interop-peer.js';
 
 class JavadocProviderUnderTest extends JavadocProvider {
     constructor(lazyLoad: boolean = true) {
@@ -154,6 +158,116 @@ describe('Javadoc tests', () => {
         } finally {
             vi.restoreAllMocks();
         }
+    })
+
+})
+
+/** A fake file system whose one root directory holds exactly one `<packageName>.json` file. */
+class PackageFileSystem extends EmptyFileSystemProvider {
+    public readFileCallCount = 0;
+
+    constructor(private readonly packageName: string) {
+        super();
+    }
+
+    override async readDirectory(): Promise<FileSystemNode[]> {
+        return [{ isFile: true, isDirectory: false, uri: URI.parse(`file:///javadoc/${this.packageName}.json`) }];
+    }
+
+    override async readFile(): Promise<string> {
+        this.readFileCallCount++;
+        return JSON.stringify({ name: this.packageName, classes: [] });
+    }
+}
+
+describe('Independent JavadocProvider instances (#624)', () => {
+
+    test('Two createBBjServices sets hand out distinct JavadocProvider objects', () => {
+        const first = createBBjServices(EmptyFileSystem).BBj;
+        const second = createBBjServices(EmptyFileSystem).BBj;
+        expect(first.java.JavadocProvider).not.toBe(second.java.JavadocProvider);
+    })
+
+    test('Initialising one services set leaves a second, independently built services set uninitialised', async () => {
+        const first = createBBjServices(EmptyFileSystem).BBj;
+        const second = createBBjServices(EmptyFileSystem).BBj;
+        await first.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], new PackageFileSystem('com.alpha'));
+
+        expect(second.java.JavadocProvider.isInitialized()).toBe(false);
+        await expect(second.java.JavadocProvider.getPackageDoc('com.alpha'))
+            .rejects
+            .toThrow('JavadocProvider not initialized. Call initialize() first.');
+    })
+
+    test('Two independently initialised providers answer only their own package and read only their own file system', async () => {
+        const first = createBBjServices(EmptyFileSystem).BBj;
+        const second = createBBjServices(EmptyFileSystem).BBj;
+        const alphaFs = new PackageFileSystem('com.alpha');
+        const betaFs = new PackageFileSystem('com.beta');
+        await first.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], alphaFs);
+        await second.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], betaFs);
+
+        expect((await first.java.JavadocProvider.getPackageDoc('com.alpha'))?.name).toBe('com.alpha');
+        expect(await first.java.JavadocProvider.getPackageDoc('com.beta')).toBeUndefined();
+        expect((await second.java.JavadocProvider.getPackageDoc('com.beta'))?.name).toBe('com.beta');
+        expect(await second.java.JavadocProvider.getPackageDoc('com.alpha')).toBeUndefined();
+
+        expect(alphaFs.readFileCallCount).toBe(1);
+        expect(betaFs.readFileCallCount).toBe(1);
+    })
+
+    test('A second initialize() on one provider rejects without touching the other', async () => {
+        const first = createBBjServices(EmptyFileSystem).BBj;
+        const second = createBBjServices(EmptyFileSystem).BBj;
+        const alphaFs = new PackageFileSystem('com.alpha');
+        const betaFs = new PackageFileSystem('com.beta');
+        await first.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], alphaFs);
+        await second.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], betaFs);
+
+        await expect(first.java.JavadocProvider.initialize([URI.parse('file:///javadoc')], alphaFs))
+            .rejects
+            .toThrow('JavadocProvider already initialized');
+        expect((await second.java.JavadocProvider.getPackageDoc('com.beta'))?.name).toBe('com.beta');
+    })
+
+    test('Resolving a scripted class through one services set consults only that set\'s provider', async () => {
+        const first = createCountingInteropServices();
+        const second = createCountingInteropServices();
+        first.interop.scripts.set('com.test.Documented', () => ({
+            simpleName: 'com.test.Documented',
+            packageName: 'com.test',
+            isDeprecated: false,
+            fields: [],
+            methods: [rawMethod('go', 'void')],
+            constructors: []
+        }));
+        const firstSpy = vi.spyOn(first.BBj.java.JavadocProvider, 'getDocumentation');
+        const secondSpy = vi.spyOn(second.BBj.java.JavadocProvider, 'getDocumentation');
+        try {
+            await first.interop.resolveClassByName('com.test.Documented');
+            expect(firstSpy).toHaveBeenCalled();
+            expect(secondSpy).not.toHaveBeenCalled();
+        } finally {
+            vi.restoreAllMocks();
+        }
+    })
+
+    test('createBBjTestServices, createCountingInteropServices and createFakePeerServices each hand out a synchronously-initialised provider', () => {
+        const testServices = createBBjTestServices(EmptyFileSystem);
+        expect(testServices.BBj.java.JavadocProvider.isInitialized()).toBe(true);
+
+        const counting = createCountingInteropServices();
+        expect(counting.BBj.java.JavadocProvider.isInitialized()).toBe(true);
+
+        const fakePeer = createFakePeerServices();
+        expect(fakePeer.BBj.java.JavadocProvider.isInitialized()).toBe(true);
+    })
+
+    test('A fresh provider initialises synchronously with no roots, before any await', () => {
+        const provider = new JavadocProvider();
+        expect(provider.isInitialized()).toBe(false);
+        void provider.initialize([], new EmptyFileSystemProvider());
+        expect(provider.isInitialized()).toBe(true);
     })
 
 })
