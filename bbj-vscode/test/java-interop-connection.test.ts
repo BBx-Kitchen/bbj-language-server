@@ -15,7 +15,7 @@ import { MessageConnection } from 'vscode-jsonrpc/node.js';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
     INTEROP_BREAKER_BACKOFF_FACTOR, INTEROP_BREAKER_INITIAL_COOLDOWN_MS, INTEROP_BREAKER_MAX_COOLDOWN_MS,
-    InteropTransportError, JavaInteropConnection
+    InteropTransportError, JavaInteropConnection, METHOD_NOT_FOUND, type ParseProgramParams
 } from '../src/language/java-interop-connection.js';
 
 /** Per-fake-connection bookkeeping: what `listen()`/`dispose()` were called and the registered listeners. */
@@ -24,16 +24,26 @@ interface FakeConnectionRecord {
     disposed: boolean;
     closeListeners: Array<() => void>;
     errorListeners: Array<() => void>;
+    /** Number of `sendRequest()` calls made on this connection. */
+    sendRequestCalls: number;
+    /** Scriptable outcome for every `sendRequest()` call on this connection (parse-lane tests). */
+    sendRequestOutcome: 'ok' | 'method-not-found';
 }
 
-/** A minimal fake `MessageConnection`: no real requests are ever sent over it in this suite. */
+/** A minimal fake `MessageConnection`: no real requests are ever sent over it in this suite, beyond the parse-lane tests' scripted outcome. */
 function createFakeMessageConnection(record: FakeConnectionRecord): MessageConnection {
     return {
         listen: () => { record.listened = true; },
         dispose: () => { record.disposed = true; },
         onClose: (listener: () => void) => { record.closeListeners.push(listener); },
         onError: (listener: () => void) => { record.errorListeners.push(listener); },
-        sendRequest: () => Promise.resolve(undefined)
+        sendRequest: () => {
+            record.sendRequestCalls++;
+            if (record.sendRequestOutcome === 'method-not-found') {
+                return Promise.reject({ code: METHOD_NOT_FOUND });
+            }
+            return Promise.resolve(undefined);
+        }
     } as unknown as MessageConnection;
 }
 
@@ -43,6 +53,8 @@ describe('JavaInteropConnection (#558)', () => {
     /** Controls the next `createSocket()` hook call: an immediate success/failure, or a deferred one released via `pendingSocketReject`. */
     let socketMode: 'ok' | 'fail' | 'pending';
     let pendingSocketReject: ((error: Error) => void) | undefined;
+    /** 1-based `socketAttempts` indices that fail regardless of `socketMode` (parse-lane open-failure test). */
+    let failingSocketAttempts: Set<number>;
     let lastRecord: FakeConnectionRecord | undefined;
     let connection: JavaInteropConnection;
 
@@ -51,11 +63,12 @@ describe('JavaInteropConnection (#558)', () => {
         hookConnectCalls = 0;
         socketMode = 'ok';
         pendingSocketReject = undefined;
+        failingSocketAttempts = new Set();
         lastRecord = undefined;
         connection = new JavaInteropConnection({
             createSocket: () => {
                 socketAttempts++;
-                if (socketMode === 'fail') {
+                if (failingSocketAttempts.has(socketAttempts) || socketMode === 'fail') {
                     return Promise.reject(new Error('connect ECONNREFUSED 127.0.0.1:5008'));
                 }
                 if (socketMode === 'pending') {
@@ -64,7 +77,10 @@ describe('JavaInteropConnection (#558)', () => {
                 return Promise.resolve({} as unknown as Socket);
             },
             wrapSocket: () => {
-                const record: FakeConnectionRecord = { listened: false, disposed: false, closeListeners: [], errorListeners: [] };
+                const record: FakeConnectionRecord = {
+                    listened: false, disposed: false, closeListeners: [], errorListeners: [],
+                    sendRequestCalls: 0, sendRequestOutcome: 'ok'
+                };
                 lastRecord = record;
                 return createFakeMessageConnection(record);
             },
@@ -219,5 +235,82 @@ describe('JavaInteropConnection (#558)', () => {
         expect(hookConnectCalls).toBe(1);
         // probeIfDue() never awaits the probe it starts — let it settle before the test ends.
         await vi.advanceTimersByTimeAsync(0);
+    });
+
+    test('the first parseProgram() opens a dedicated lane through the hooks and sends the request on it; a second parseProgram() in the same generation reuses the lane', async () => {
+        const params: ParseProgramParams = { text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] };
+
+        await connection.parseProgram(params);
+        expect(socketAttempts).toBe(1);
+        const laneRecord = lastRecord!;
+        expect(laneRecord.listened).toBe(true);
+        expect(laneRecord.sendRequestCalls).toBe(1);
+        expect(hookConnectCalls).toBe(0);
+
+        await connection.parseProgram(params);
+        expect(socketAttempts).toBe(1);
+        expect(lastRecord).toBe(laneRecord);
+        expect(laneRecord.sendRequestCalls).toBe(2);
+        expect(hookConnectCalls).toBe(0);
+    });
+
+    test("firing the lane's close listener bumps generation by 1, and the next parseProgram() opens a fresh lane", async () => {
+        const params: ParseProgramParams = { text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] };
+
+        await connection.parseProgram(params);
+        const firstRecord = lastRecord!;
+        expect(connection.generation).toBe(0);
+
+        firstRecord.closeListeners.forEach(listener => listener());
+        expect(connection.generation).toBe(1);
+
+        await connection.parseProgram(params);
+        expect(socketAttempts).toBe(2);
+        expect(lastRecord).not.toBe(firstRecord);
+    });
+
+    test('a MethodNotFound answer on the lane rejects the call, disposes the lane, and the next parseProgram() in the same generation goes through the connect hook', async () => {
+        const params: ParseProgramParams = { text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] };
+
+        await connection.parseProgram(params);
+        const laneRecord = lastRecord!;
+        laneRecord.sendRequestOutcome = 'method-not-found';
+
+        await expect(connection.parseProgram(params)).rejects.toMatchObject({ code: METHOD_NOT_FOUND });
+        expect(laneRecord.disposed).toBe(true);
+        expect(socketAttempts).toBe(1);
+
+        await connection.parseProgram(params);
+        expect(hookConnectCalls).toBe(1);
+        expect(socketAttempts).toBe(2);
+    });
+
+    test('a lane whose socket cannot be opened falls parseProgram() back to the connect hook without opening the breaker', async () => {
+        failingSocketAttempts.add(1);
+        const params: ParseProgramParams = { text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] };
+
+        await connection.parseProgram(params);
+        // Two socket attempts happened one after another with no throw in between: the lane's
+        // own failed open, then the shared connect's own successful one, immediately — proving
+        // the lane's own createSocket() failure never opened the breaker (a genuinely open
+        // breaker would have short-circuited the second attempt with a circuit-open rejection).
+        expect(socketAttempts).toBe(2);
+        expect(hookConnectCalls).toBe(1);
+    });
+
+    test('disconnect() disposes the dedicated parser lane too', async () => {
+        const params: ParseProgramParams = { text: 'x = 1', canonicalName: '/proj/a.bbj', version: '1', prefixes: [], workspaceRoots: [] };
+
+        await connection.parseProgram(params);
+        const laneRecord = lastRecord!;
+        expect(laneRecord.disposed).toBe(false);
+
+        connection.disconnect();
+        expect(laneRecord.disposed).toBe(true);
+
+        const attemptsBeforeNext = socketAttempts;
+        await connection.parseProgram(params);
+        expect(socketAttempts).toBe(attemptsBeforeNext + 1);
+        expect(lastRecord).not.toBe(laneRecord);
     });
 });
