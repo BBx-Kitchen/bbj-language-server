@@ -5,16 +5,16 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 122
 current_phase_name: Release & CI Pipeline Hardening
 status: executing
-stopped_at: Completed 122-01-PLAN.md
-last_updated: "2026-09-29T16:04:28.252Z"
+stopped_at: Completed 122-02-PLAN.md
+last_updated: "2026-09-29T16:20:06.791Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 122 execution started
-state_head: e992dccc368ccabe3dffcb0cd6da386abbbb8bbd
+state_head: 4c5da4b4464d56bdfbf608d19321a10be382f555
 progress:
   total_phases: 13
   completed_phases: 11
   total_plans: 80
-  completed_plans: 75
+  completed_plans: 76
   percent: 85
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 ## Current Position
 
 Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 122 execution started
 
@@ -193,6 +193,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 121 P09 | 25min | 2 tasks | 3 files |
 | Phase 121 P10 | 42min | 2 tasks | 2 files |
 | Phase 122 P01 | 18min | 2 tasks | 8 files |
+| Phase 122 P02 | 22min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -331,6 +332,8 @@ decisions:
 - [Phase 122]: 122-01: prepare = langium:generate only; vscode:prepublish = LICENSE copy + minified esbuild only (no tsc/lint/second bundler); esbuild.mjs sets keepNames: true; .vscodeignore excludes **/*.map, out/main.js, coverage/**
 - [Phase 122]: 122-01: activationEvents narrowed to onLanguage:bbj + onLanguage:bbx-config (all onCommand entries removed, incl. a third RESEARCH-found test site); langium-config.json's textMate block and its generated grammar/.gitignore line removed
 - [Phase 122]: 122-01: documented (not fixed) a pre-existing beforeAll race in installed-extension-e2e.test.ts's SETOPTS-in-code describe block ("No document found for URI"), proven identical at the phase base and out of this plan's file scope
+- [Phase 122]: 122-02: all five Gradle jobs set up Gradle through pinned gradle/actions/setup-gradle after inline wrapper-validation; the three verify-style jobs cache Gradle User Home via the user-approved Enhanced Caching provider with a four-line gradle-home-cache-excludes (IDE archive group, com.jetbrains.intellij.* group, both Gradle-9 and legacy transforms layouts); both publish-intellij jobs (preview, manual-release) run setup-gradle with cache-disabled: true and no restore/save step
+- [Phase 122]: 122-02 Task 1: pre-answered checkpoint recorded option-a (Enhanced Caching, gradle-home-cache-excludes) per the user's 2026-09-29 answer during /gsd-plan-phase 122, accepting the Gradle Technologies Terms of Use for this public repository; publish jobs stay caching-disabled so the proprietary component never loads there
 
 ### Tech Debt
 
@@ -394,8 +397,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T16:04:27.727Z
-Stopped at: Completed 122-01-PLAN.md
+Last session: 2026-09-29T16:20:06.263Z
+Stopped at: Completed 122-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
