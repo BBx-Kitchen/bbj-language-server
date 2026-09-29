@@ -28,7 +28,7 @@ updates:
         versions: ["4.4.x"]
       - dependency-name: "langium-cli"
         versions: ["4.4.x"]
-  # No `ignore:` block here (D-08, discretion resolved): letting Gradle wrapper
+  # No `ignore:` block here: letting Gradle wrapper
   # version bumps flow through is deliberate. workflow-hygiene.yml's
   # check-gradle-wrapper.mjs fails any Dependabot wrapper PR whose checksums
   # are not yet in GRADLE_CHECKSUMS — that red check is the intended control,
@@ -47,8 +47,12 @@ updates:
   # main publishes preview builds to both marketplaces, so these are grouped
   # into one weekly pull request rather than one per action. This entry also
   # keeps action versions current once they are pinned to commit SHAs.
+  # Composite actions under .github/actions are not scanned from the root
+  # directory, so each one is listed by its own directory below.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/node-setup"
     schedule:
       interval: "weekly"
     groups:

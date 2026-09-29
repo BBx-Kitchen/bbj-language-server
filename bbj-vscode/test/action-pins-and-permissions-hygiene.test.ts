@@ -483,4 +483,15 @@ describe('action pin and permission checker contract', () => {
         const resultPrintEmpty = runChecker(['--print', dirPrintEmpty]);
         expect(resultPrintEmpty.status).toBe(2);
     });
+
+    test('the real workflow tree and composite actions scan clean', () => {
+        const result = runChecker([]);
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/workflow\(s\), 0 findings\.\s*$/m);
+
+        const printResult = runChecker(['--print']);
+        expect(printResult.status).toBe(0);
+        const nodeSetupActionPath = path.join(REPO_ROOT, '.github', 'actions', 'node-setup', 'action.yml');
+        expect(printResult.stdout).toContain(nodeSetupActionPath);
+    });
 });
