@@ -1,11 +1,12 @@
 ---
 phase: 117-dependency-hygiene-dependabot-coverage
 verified: 2026-09-28T19:05:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Download the phase PR's pr-vsix workflow artifact, install the VSIX in VS Code, and open a .bbj file"
     expected: "The extension installs without error and activates (syntax highlighting / language features come up) on a .bbj file, proving the vsce-to-devDependencies move (DEP-01) did not change what the VSIX packages"
     why_human: "Requires a real VS Code editor and the CI-built artifact; not reproducible from a local static analysis of package.json/package-lock.json/the VSIX file list"
@@ -95,6 +96,7 @@ No orphaned requirements: `grep -n "Phase 117" .planning/REQUIREMENTS.md` return
 ### Anti-Patterns Found
 
 None blocking. The phase's own code-review report (`117-REVIEW.md`, standard depth, 7 files) found 0 critical, 2 warnings, 2 info, all judged non-blocking for this phase's goal:
+
 - WR-01: `SocketServiceApp.parsePort` has no automated (JUnit) test coverage — only the manual smoke test. Real but non-blocking: `java-interop` has no `src/test` tree at all yet, and D-06's live harness smoke is the plan's own designated proof mechanism. Worth a follow-up, not a phase-117 blocker.
 - WR-02: `java-interop/build.gradle` still has no Dependabot `gradle`/`/java-interop` entry, even though this same phase hand-bumped its Guava version. Per the phase's own stated scope (CONTEXT.md's canonical refs and ROADMAP.md's Code field list `bbj-vscode/package.json`, the formatter provenance dir, `java-interop/build.gradle`, `.github/dependabot.yml`), `java-interop`'s own Gradle tree was never declared as an ecosystem this phase would add to Dependabot — only `bbj-intellij`'s Gradle tree was in CI-04's scope. Legitimate gap for a future phase, not a phase-117 requirement miss.
 - IN-01/IN-02: README.md's dated OSV-check claim and the unnamed third-party (Snyk) finding are cosmetic/documentation-quality notes, not functional gaps.

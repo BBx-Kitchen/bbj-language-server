@@ -413,7 +413,7 @@ upgrading to langium 4.4. Evidence with file:line references is in
 - [x] **Phase 114: Lint, Type-Check & Test-Suite Gates** - typescript-eslint recommended rules on a clean tree with a CI gate, a working test type-check, explicit test discovery, no workspace-init hook timeouts, bbx configuration tests, and the phase 97 download and guard follow-ups (completed 2026-09-27)
 - [x] **Phase 115: Honest Interop Test Harness** - The harness reports real results, gates on its declared fields, runs from a pinned `tsx`, and is type-checked, linted and tested in CI (completed 2026-09-28)
 - [x] **Phase 116: Java-Interop Test Coverage** - Real connection code tested against a fake socket server, `main.ts` handlers executed, the disabled parser assertions and failing linking tests green, and a whole-suite baseline with no known failures (completed 2026-09-28)
-- [ ] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro
+- [x] **Phase 117: Dependency Hygiene & Dependabot Coverage** - vsce out of the production dependencies, formatter JAR provenance, a fixed Guava, Dependabot on every tree and holding langium at 4.3, and a langium 4.4 upstream repro (completed 2026-09-29)
 - [x] **Phase 118: Small Dedup & Drift Guards** - One `getFunctionReference`, one catalog closing shape, and tests that fail when the `.bbl` catalogs or the `package.json` compiler options drift (completed 2026-09-28)
 - [x] **Phase 119: Grammar — DECLARE File Paths & Shared Channel Opening** - Two library-path DECLAREs on one line parse correctly, and the channel/options opening is one rule with identical parses (completed 2026-09-29)
 - [x] **Phase 120: ClassValidator & activate() Splits** - Both god objects split by responsibility with identical diagnostics and extension behaviour, one exec-wrapping helper, and the dead branches removed (completed 2026-09-29)
@@ -729,7 +729,7 @@ may become shared test infrastructure. Keep the `bbj-notifications.ts` isolation
   4. `dependabot.yml` watches `github-actions` and the `/documentation` npm tree alongside `bbj-vscode` npm and `bbj-intellij` Gradle, and ignores langium and langium-cli 4.4.x.
   5. A minimal repro outside this repository shows, on langium 4.4 versus 4.3, the parse-recovery slowdown on an unclosed call and the lost DEF FN parameters in completion. It is ready to file upstream, and filing waits for the maintainer's approval.
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**

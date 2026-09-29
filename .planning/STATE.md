@@ -5,17 +5,17 @@ milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
 current_phase: 122
 current_phase_name: Release & CI Pipeline Hardening
 status: verifying
-stopped_at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
-last_updated: "2026-09-29T18:48:52.057Z"
+stopped_at: Phase 117 complete; Phase 122 UAT waiting on post-merge checks
+last_updated: "2026-09-29T20:31:57.071Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 122 execution started
-state_head: 8214e3880b84c39a95374ac9f11554178103d0c0
+last_activity_desc: Milestone PR #708 merged; Phase 117 complete
+state_head: 15b753ab3218a692e6c96c0830e3617faf045fcd
 progress:
   total_phases: 13
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 80
   completed_plans: 80
-  percent: 85
+  percent: 92
 ---
 
 # Project State: BBj Language Server
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 ## Current Position
 
-Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
+Phase: 122 (Release & CI Pipeline Hardening) — VERIFYING
 Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-29 — Phase 122 execution started
+Status: Verification human_needed; UAT 31/33 passed. Open: the Gradle cache restore on the first PR run after main wrote the cache (test 5), and the next manual-release.yml dispatch (test 7)
+Last activity: 2026-09-29 — Milestone PR #708 merged; first preview.yml run on main green; Phase 117 complete
 
-Progress: [█████████░] 85% (11/13 phases)
+Progress: [█████████░] 92% (12/13 phases)
 
 ### v4.7 milestone map
 
@@ -406,10 +406,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-29T18:48:51.476Z
-Stopped at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
+Stopped at: Phase 117 complete; Phase 122 UAT waiting on post-merge checks
 Resume file: None
 
-Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
+Next: finish `/gsd-verify-work 122` (tests 5 and 7), then `/gsd-audit-milestone` and `/gsd-complete-milestone` for v4.7.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
