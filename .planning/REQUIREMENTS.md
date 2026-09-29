@@ -88,7 +88,7 @@ Scope source: the 2026-08-20 audit issues, each re-verified against `main` (a1c0
 - [x] **REF-09**: `JavadocProvider` is an injected DI service instead of a `getInstance()` singleton (#624)
 - [x] **REF-10**: `ClassValidator` is split into modules along its four responsibilities, with unchanged diagnostics (#625)
 - [x] **REF-11**: `activate()` is split into single-purpose registration functions sharing one exec-wrapping helper, with unchanged behaviour (#564)
-- [ ] **REF-12**: `JavaInteropService` is split along its five responsibilities, with unchanged behaviour (#558)
+- [x] **REF-12**: `JavaInteropService` is split along its five responsibilities, with unchanged behaviour (#558)
 - [x] **REF-13**: The two grammar fragments with the channel/options/RPAREN opening share one rule, and parsing is unchanged (#602)
 
 ### Docs
@@ -173,7 +173,7 @@ None deferred. Every still-open audit issue is in scope.
 | REF-09 | Phase 121 | Complete |
 | REF-10 | Phase 120 | Complete |
 | REF-11 | Phase 120 | Complete |
-| REF-12 | Phase 121 | Pending |
+| REF-12 | Phase 121 | Complete |
 | REF-13 | Phase 119 | Complete |
 | DOC-01 | Phase 113 | Complete |
 

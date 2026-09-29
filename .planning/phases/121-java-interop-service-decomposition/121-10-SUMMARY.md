@@ -10,13 +10,13 @@ requires:
 provides:
   - "Task 1: phase-wide evidence that the whole of REF-09 and REF-12 matches the phase base in file set, public API, protected hooks, DI registrations, import graph, clearCache order, test assertions and test-double bodies, with each of the five modules independently testable and the whole suite, lint, typecheck and build clean"
   - "Task 1: both distributables (VSIX, IntelliJ zip) built from the final tree, proven fresh and byte-identical in their bundled language server"
-  - "Task 2 (pending): the roadmap's live hand check against a running BBjServices in VS Code and IntelliJ — not yet run; this SUMMARY records the evidence gathered for it, not its outcome"
+  - "Task 2: the roadmap's live hand check against a running BBjServices in VS Code and IntelliJ — approved 2026-09-29; REF-12 marked complete"
 affects: []
 
 actuals:
-  tokens: 9500
-  tasks: 1
-  commits: 1
+  tokens: 9800
+  tasks: 2
+  commits: 2
 
 tech-stack:
   added: []
@@ -28,10 +28,10 @@ key-files:
   modified: []
 
 key-decisions:
-  - "Task 1 completed and committed on its own; Task 2 (the live hand-check checkpoint) is intentionally left open. This SUMMARY documents Task 1's evidence only. A continuation executor appends the approval record and marks REF-12 complete after the checkpoint is answered, per the plan's 'After the checkpoint' section."
+  - "Task 1 completed and committed on its own; Task 2 (the live hand-check checkpoint) was left open pending human approval. This SUMMARY was completed by a continuation executor after the checkpoint was answered 'approved', per the plan's 'After the checkpoint' section."
   - "The IntelliJ gradle test task failed one test, ComposerRequestContractTest, a documented pre-existing failure (since 116-02 moved the bbj/refreshJavaClasses literal out of main.ts; tracked in STATE.md Blockers/Concerns). Per the executor shell rules, this was reported and not fixed; the plugin zip was built with 'gradlew buildPlugin -x test' as instructed."
 
-requirements-completed: []
+requirements-completed: [REF-12]
 
 coverage:
   - id: D1
@@ -53,9 +53,12 @@ coverage:
   - id: D3
     description: "Against a live BBjServices, hover, completion, the missing-USE quick fix and Refresh Java Classes behave as before in VS Code and IntelliJ (roadmap success criterion 4); REF-12 is marked complete only after this is approved"
     requirement: "REF-12"
-    verification: []
+    verification:
+      - kind: manual_procedural
+        ref: "Task 2 checkpoint:human-verify hand-check script (hover, completion, missing-USE quick fix, Refresh Java Classes) in VS Code and IntelliJ against live BBjServices :5008"
+        status: pass
     human_judgment: true
-    rationale: "This is exactly the Task 2 checkpoint:human-verify — a human must exercise both built IDEs against the live interop peer. Not yet run. The artifacts and warm-up/verification script are ready and recorded below."
+    rationale: "Task 2 checkpoint:human-verify — a human exercised both built IDEs against the live interop peer and responded 'approved' on 2026-09-29. See 'Task 2 — approval record' below."
   - id: D4
     description: "JavadocProvider is a DI service with no getInstance() singleton (REF-09)"
     requirement: "REF-09"
@@ -65,22 +68,22 @@ coverage:
         status: pass
     human_judgment: false
 
-duration: 42min
+duration: 42min (Task 1) + close-out
 completed: 2026-09-29
-status: halted
+status: complete
 ---
 
 # Phase 121 Plan 10: Java Interop Service Decomposition Close-out Summary
 
-**Task 1 complete: the whole phase (JavadocProvider DI plus the five-way JavaInteropService split into ResolutionLock/JavaInteropConnection/CompleteClassIndex/ClasspathLoader/JavaResolutionCache) measures byte-for-byte clean against the phase base across file set, API surface, import graph, clearCache order, test assertions/doubles, per-module isolation, the whole suite, gates and hygiene; both distributables are built fresh from the final tree. Task 2, the live hand check in VS Code and IntelliJ, is a blocking checkpoint awaiting human approval — REF-12 is not yet marked complete.**
+**The whole phase (JavadocProvider DI plus the five-way JavaInteropService split into ResolutionLock/JavaInteropConnection/CompleteClassIndex/ClasspathLoader/JavaResolutionCache) measures byte-for-byte clean against the phase base across file set, API surface, import graph, clearCache order, test assertions/doubles, per-module isolation, the whole suite, gates and hygiene; both distributables were built fresh from the final tree and approved by hand in VS Code and IntelliJ against a live BBjServices — REF-12 is complete.**
 
 ## Performance
 
-- **Duration:** 42 min (Task 1 only)
+- **Duration:** 42 min (Task 1) + Task 2 checkpoint (human hand-check, elapsed time not tracked)
 - **Started:** 2026-09-29T12:56:00Z (approx.)
-- **Completed:** 2026-09-29T13:38:00Z (approx., Task 1 only — Task 2 pending)
-- **Tasks:** 1 of 2 (Task 2 is the pending checkpoint)
-- **Files modified:** 1 (this SUMMARY)
+- **Completed:** 2026-09-29 (Task 2 approved; SUMMARY closed out by continuation executor)
+- **Tasks:** 2 of 2
+- **Files modified:** 2 (this SUMMARY, REQUIREMENTS.md)
 
 ## Accomplishments
 
@@ -88,20 +91,21 @@ status: halted
 - Built both distributables from the final tree (`/tmp/bbj-lang.vsix`, `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`), installed the VSIX into the "VS Code (ext test)" code-server, and proved the IntelliJ zip's bundled `main.cjs` is byte-identical to `bbj-vscode/out/language/main.cjs`.
 - Confirmed the `:5008` live interop peer is still up, matching `peer-state.txt`'s recorded `up`.
 - Documented the pre-existing IntelliJ `ComposerRequestContractTest` failure (tracked in STATE.md's Blockers/Concerns since Phase 120) rather than fixing it, per the executor shell rules; the plugin zip was built with `-x test` after confirming it was the only failing test (1 of 1160).
+- Task 2's live hand check was run against a live BBjServices on `127.0.0.1:5008` in both VS Code (from `/tmp/bbj-lang.vsix`, sha256 `a36bb7c3…`) and IntelliJ (from `bbj-intellij-0.1.0.zip`, sha256 `02dce861…`, built with `-x test`), covering hover, completion, the missing-USE quick fix and Refresh Java Classes; approved 2026-09-29. REF-12 marked complete in `REQUIREMENTS.md`.
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Whole phase measured against its base, each module tested on its own, both distributables built from the final tree** — SUMMARY committed as `docs(phase): record the java interop decomposition evidence` (this commit).
-
-Task 2 (`checkpoint:human-verify`, blocking) has not run. No further commits until the checkpoint is answered.
+1. **Task 1: Whole phase measured against its base, each module tested on its own, both distributables built from the final tree** — SUMMARY committed as `docs(phase): record the java interop decomposition evidence` (commit `08b51901`).
+2. **Task 2: Live hand check in VS Code and IntelliJ against a running BBjServices** — `checkpoint:human-verify`, blocking; approved by the human. Approval record and REF-12 completion committed as `docs(requirements): mark the java interop decomposition complete`.
 
 ## Files Created/Modified
 
-- `.planning/phases/121-java-interop-service-decomposition/121-10-SUMMARY.md` — this file (created by Task 1, to be completed after Task 2's checkpoint is answered)
+- `.planning/phases/121-java-interop-service-decomposition/121-10-SUMMARY.md` — created by Task 1, completed with the Task 2 approval record by the continuation executor
+- `.planning/REQUIREMENTS.md` — REF-12 checkbox and traceability row marked complete
 
-No source or test files were modified by this plan; Task 1 is a measurement-only close-out.
+No source or test files were modified by this plan; the whole plan is a measurement-and-approval close-out.
 
 ## Decisions Made
 
@@ -109,7 +113,7 @@ See `key-decisions` in the frontmatter.
 
 ## Deviations from Plan
 
-None — plan executed exactly as written through Task 1. Task 2 is a designed stop (blocking checkpoint), not a deviation.
+None — plan executed exactly as written. Task 2's stop for human approval was a designed checkpoint, not a deviation; it resumed on "approved" with no gap findings to plan.
 
 ## Issues Encountered
 
@@ -225,9 +229,16 @@ The IntelliJ zip's bundled `bbj-intellij/lib/language-server/main.cjs` is byte-i
 
 **`java-interop.ts` line count:** 467, against the phase base's 1,764 (a 73% reduction on the front class; the removed ~1,297 lines moved into the five sibling modules plus `java-javadoc.ts`'s DI wiring, with zero net loss — collaborator lines (73+578+141+183+900=1,875) plus the front's 467 plus `java-javadoc.ts`'s 212 = 2,554 total across the seven files that changed since the base, vs. the base's single 1,764-line file plus its then-separate `java-javadoc.ts`).
 
-## Task 2 — hand-check script (not yet run)
+## Task 2 — approval record
 
-The live hand check is the plan's Task 2, a `checkpoint:human-verify gate="blocking"` task. It is answered by a human, never auto-approved. The script, reproduced from the plan for the record:
+**Approved:** 2026-09-29
+**Response:** "approved"
+**IDEs checked:** VS Code (ext-test code-server, port 13338, from `/tmp/bbj-lang.vsix`, sha256 `a36bb7c3c4197275e1754842af006ebe95ae4aa071edc99b9dc02641d626c1ac`) and IntelliJ (from `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`, sha256 `02dce8619bba96f5d8471e45d3b18ace378b0c89cdbb9a28cd94f298296d43d7`, built with `-x test` per the documented pre-existing `ComposerRequestContractTest` failure).
+**Live peer:** BBjServices on `127.0.0.1:5008`.
+**Steps checked:** hover (HashMap and a BBjAPI method via `getGlobalNamespace()`), completion (`h!.` and `api!.`), the missing-USE quick fix for `ArrayList`, and Refresh Java Classes — all behaved as before in both IDEs, per the script below.
+**Outcome:** No differences reported. REF-12 marked complete in `.planning/REQUIREMENTS.md` (checkbox and traceability row).
+
+The live hand check was the plan's Task 2, a `checkpoint:human-verify gate="blocking"` task, answered by a human. The script, reproduced from the plan for the record:
 
 **Preconditions:** BBjServices running and answering on `127.0.0.1:5008` (confirmed `up` above). VSIX already installed into the "VS Code (ext test)" code-server (port 13338); reload that tab, or install `/tmp/bbj-lang.vsix` via "Extensions: Install from VSIX…" in any VS Code. In IntelliJ: Settings → Plugins → Install Plugin from Disk… with `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`, then restart.
 
@@ -255,18 +266,20 @@ None — no external service configuration required.
 
 ## Next Phase Readiness
 
-- Task 1's evidence is complete and committed. Task 2 (the live hand check) is a blocking checkpoint — a continuation executor must present it to a human, record the approval (date, IDEs, BBj version if shown) in this SUMMARY, mark REF-12 complete in `.planning/REQUIREMENTS.md` (checkbox and traceability row only) on approval, and commit both under `docs(requirements): mark the java interop decomposition complete`.
-- On a reported difference at the checkpoint, the continuation executor records the finding here instead, does not tick REF-12, and stops for gap planning — per the plan's "After the checkpoint" section.
+- Both tasks are complete. Task 2's checkpoint was approved 2026-09-29; REF-12 is marked complete in `.planning/REQUIREMENTS.md` (checkbox and traceability row).
 - REF-09 was already marked complete by plan 02 and is untouched by this plan.
-- Phase 121 is otherwise ready to close once REF-12 is ticked: all nine prior plans landed clean, this plan's Task 1 re-confirms the whole phase against its base with no drift.
+- Phase 121 is fully closed: all ten plans landed clean, both requirements (REF-09, REF-12) complete, the phase measures byte-for-byte clean against its base, and the live hand check in both IDEs confirmed unchanged behaviour against a real BBjServices peer.
+- Per the plan's note, both distributables must be rebuilt from the final tree again after any code-review fixes to this phase, before the milestone PR's own UAT.
+- Next: `.planning/ROADMAP.md` and `.planning/STATE.md` plan-progress bookkeeping (10/10 for Phase 121), then Phase 122 (Release & CI Pipeline Hardening).
 
 ## Self-Check: PASSED
 
 - `.planning/phases/121-java-interop-service-decomposition/121-10-SUMMARY.md` confirmed present on disk (this file).
 - All eight Task 1 verify commands re-run above and confirmed passing at write time.
 - `/tmp/bbj-lang.vsix` and `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip` confirmed present and non-empty on disk, sha256 recorded above.
-- REQUIREMENTS.md confirmed unchanged by this plan so far (`git diff --stat` empty for that path).
+- Task 2 approval recorded above (date, IDEs, builds used, outcome).
+- REQUIREMENTS.md confirmed to carry the REF-12 checkbox and traceability-row edit only (`git diff --stat` for that path shows a 2-line change).
 
 ---
 *Phase: 121-java-interop-service-decomposition*
-*Completed: Task 1 only, 2026-09-29 — Task 2 pending human checkpoint*
+*Completed: 2026-09-29*
