@@ -685,7 +685,7 @@
     "properties-file": "^5.0.7",
     "properties-reader": "^3.0.1",
     "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageclient": "^10.1.0",
+    "vscode-languageclient": "^10.1.2",
     "vscode-uri": "^3.1.0"
   },
   "devDependencies": {
@@ -700,7 +700,7 @@
     "shx": "^0.4.0",
     "tsx": "4.23.15",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.69.0",
+    "typescript-eslint": "^8.70.1",
     "vitest": "^4.1.10",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"

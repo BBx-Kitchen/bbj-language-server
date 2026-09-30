@@ -28,6 +28,17 @@ updates:
         versions: ["4.4.x"]
       - dependency-name: "langium-cli"
         versions: ["4.4.x"]
+      # vscode-uri follows the range langium itself declares (~3.1.0 on 4.3).
+      # A newer minor installs a second copy beside langium's, so the extension
+      # and langium would hand each other URI objects from different classes.
+      # Let a langium upgrade move it.
+      - dependency-name: "vscode-uri"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    groups:
+      # @vitest/coverage-v8 declares an exact peer on vitest, so the two must
+      # move in one pull request.
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
   # No `ignore:` block here: letting Gradle wrapper
   # version bumps flow through is deliberate. workflow-hygiene.yml's
   # check-gradle-wrapper.mjs fails any Dependabot wrapper PR whose checksums
