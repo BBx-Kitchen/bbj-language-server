@@ -499,6 +499,52 @@
 - Sessions: several over four days (2026-09-26 → 2026-09-29)
 - Notable: 506 commits and 272 files changed outside `.planning/` in four days
 
+## Milestone: v4.8 — Documentation Drift
+
+**Shipped:** 2026-09-30
+**Phases:** 1 | **Plans:** 8
+
+### What Was Built
+- Build instructions that build again: a "build bbj-vscode" pre-launch task for "Run Extension",
+  `npm run build` in Gitpod's `init`, and root and docs READMEs matching the real workflow.
+- QA checklists without the removed EM settings, with one row per v4.7 behaviour and the real run
+  menus in both IDEs.
+- Both user guides brought up to date (settings, EM login, commands, compiler settings, interop
+  fallback), plus a new Composers page in each.
+- CLAUDE.md and the browser-editor concepts page matching the architecture, test pattern and CI
+  gates.
+
+### What Worked
+- A drift scan with file:line on both sides stood in for research, so plans could re-read the
+  cited code and describe behaviour from source rather than from the scan.
+- One doc set per wave-1 plan kept five plans parallel with no file overlap; the Composers pages
+  waited a wave so they could link to the corrected command titles.
+- The docs build (`onBrokenLinks: 'throw'`) doubled as the link check, and a final cross-check plan
+  recorded evidence for every drift item.
+
+### What Was Inefficient
+- The first verification pass found a stale "complete settings example" (formatter defaults) that
+  the code review had also flagged; a per-key diff against `package.json` in the plan would have
+  caught it before verification.
+- The shared-ID requirement gate held COMP-01 open across two plans until the last plan, which
+  looked like a missing mark in the 06/07 summaries.
+
+### Patterns Established
+- For docs that restate code (settings, defaults, command titles), verify with a script that
+  diffs the doc against the source file in both directions, not with greps for keywords.
+- Docs-only milestones still get a milestone audit; the integration check becomes a cross-document
+  link and consistency check.
+
+### Key Lessons
+- Example blocks drift separately from the per-item reference above them; check both.
+- Docs reach users only when the PR lands on `main` and `deploy-docs.yml` runs; closing the
+  milestone does not publish anything.
+
+### Cost Observations
+- Model mix: opus orchestration; haiku integration checker; subagent executors and verifier
+- Sessions: a few, all on 2026-09-30
+- Notable: 45 commits, 20 files outside `.planning/`, one day
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -513,6 +559,7 @@
 | v4.5 | n/a | 8 | Corpus-measured conformance gates (A / A2 / B); the compiler's own parser in the loop via a cross-repo endpoint; a phase added mid-milestone; milestone audit run (no gaps) |
 | v4.6 | n/a | 4 | Lean user-facing bug burn-down; measure-first plans; crash detection redone on real-log evidence; milestone audit run (no gaps) |
 | v4.7 | n/a | 13 | Audit backlog burn-down in one milestone PR; permanent CI hygiene gates; Dependabot roll-up; milestone audit run (no gaps, `tech_debt`) |
+| v4.8 | n/a | 1 | Docs-only drift fix from a file:line drift scan; script-diffed settings against `package.json`; milestone audit run (no gaps, `tech_debt`) |
 
 ### Cumulative Quality
 
@@ -525,6 +572,7 @@
 | v4.5 | 2,507 vitest (63 skipped) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 | v4.6 | 2,854 vitest (whole suite at 109-08) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 | v4.7 | 3,715 vitest (0 failed) + 1,160 JUnit | not measured at close | 0 new runtime dependencies (Guava 33.7.1, vsce moved to dev) |
+| v4.8 | unchanged (docs only) | not measured at close | 0 new runtime dependencies |
 
 ### Top Lessons (Verified Across Milestones)
 

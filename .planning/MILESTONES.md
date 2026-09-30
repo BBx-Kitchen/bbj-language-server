@@ -1,5 +1,56 @@
 # Project Milestones: BBj Language Server
 
+## v4.8 Documentation Drift (Shipped: 2026-09-30)
+
+**Closed 2026-09-30** as an override closeout after a milestone audit with status `tech_debt`
+(`milestones/v4.8-MILESTONE-AUDIT.md`): 18/18 requirements satisfied, phase 123 verified
+`passed` (after one gap, the settings example in the VS Code configuration page, was fixed),
+cross-document links and 5/5 end-to-end flows clean. The close counts as an override only because
+three unrelated dependency-upgrade todos were acknowledged rather than resolved.
+
+**Where the code lives.** On branch `gsd/v4.8-documentation-drift`; one docs PR to `main` is still
+to open. Merging it triggers `deploy-docs.yml`, which rebuilds and publishes the docs site to
+GitHub Pages.
+
+**Delivered:** every document back in line with the code on `main` after v4.7 — build
+instructions, QA checklists, both user guides (new Composers pages) and the developer docs.
+
+**Phases completed:** 123 (1 phase, 8 plans, 22 tasks); 45 commits, 20 files outside
+`.planning/` (+755 / −161), 2026-09-30.
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 123 | Documentation Drift | BUILD-01..-03, QA-01..-03, VSC-01..-06, IJ-01, -02, COMP-01, DEV-01..-03 |
+
+**Key accomplishments:**
+
+- Build instructions work on a fresh checkout: a "build bbj-vscode" task runs before "Run
+  Extension", Gitpod's `init` builds the extension, and both READMEs describe the real npm/Gradle
+  and docs-deploy workflow.
+- QA checklists test today's behaviour: token-only EM login, one row per v4.7 behaviour, and the
+  real run menus in both IDEs.
+- VS Code guide: minimum version 1.101.0, every non-compiler setting with an accurate complete
+  example, `bbj.configPath` Workspace Trust rules, interop fallback, the v4.7 EM login flow and
+  real command titles including decompile.
+- IntelliJ guide: BBj Compiler settings section, automatic EM login with remembered username,
+  Host fallback, and Compile BBj File's real menu location.
+- New Composers page in both guides covering every composer command, action and intention and
+  assign-to validation.
+- CLAUDE.md and the browser-editor concepts page match the architecture, test pattern
+  (`createBBjTestServices`) and CI gates; a 45-item drift cross-check and old-string sweep came
+  back clean.
+
+**Known verification overrides:** 3 newly acknowledged, 39 carried forward from prior closes
+(see STATE.md Deferred Items):
+- three pending dependency todos: lsp4j 1.0 with bbj-ls, vitest 5 upgrade, vscode-jsonrpc 9
+  migration
+
+**Tech debt carried:** Gitpod `init` build duplicates the preLaunchTask build (IN-01); VS Code
+context-menu sections do not restate that decompile is Command-Palette-only (IN-02); no Nyquist
+VALIDATION.md for phase 123; generated settings reference deferred to a future milestone.
+
+---
+
 ## v4.7 Audit Hygiene Burn-down (Shipped: 2026-09-29)
 
 **Closed 2026-09-29** as an override closeout after a milestone audit with status `tech_debt`
@@ -65,6 +116,7 @@ dependency hygiene; four refactors with no behaviour change; and a hardened rele
 
 **Known verification overrides:** 6 newly acknowledged, 33 carried forward from prior closes
 (see STATE.md Deferred Items):
+
 - debug session g-110-1 — the vendored formatter jar crashes on block IFs with
   `--single-line-if` (diagnosed; the fix belongs in the jar, #507)
 - 114-UAT.md — seven hand checks deferred at the user's request

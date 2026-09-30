@@ -8,21 +8,19 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## Current Milestone: v4.8 Documentation Drift
-
-**Goal:** Bring every document back in line with the code after v4.7, in one short phase and one docs PR.
-
-**Target features:**
-- Build instructions that produce a build again: README, Gitpod and a pre-launch build for "Run Extension"
-- QA checklists without the removed EM settings, with rows for the v4.7 behaviour
-- VS Code guide: minimum version, `bbj.configPath` rules and Workspace Trust, settings scope, interop fallback, the six undocumented settings, the EM login flow, command titles
-- IntelliJ guide: EM auto re-prompt and remembered username, the BBj Compiler settings section, interop host fallback
-- A Composers page in both guides, including assign-to validation, plus the VS Code decompile commands
-- Developer docs: CLAUDE.md architecture, testing pattern and CI gates; documentation/README; the concepts page
-
-Input: `.planning/research/DOC-DRIFT-2026-09-30.md` (the drift scan stands in for research). Docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30).
-
 ## Current State
+
+**v4.8 Documentation Drift shipped 2026-09-30** (override closeout after a milestone audit with
+status `tech_debt`: 18/18 requirements, phase 123 verified, cross-document links and 5/5 flows
+clean, no gaps; three unrelated dependency todos acknowledged at close). Every document matches
+the code after v4.7: the build instructions produce a working build (a "build bbj-vscode"
+pre-launch task for "Run Extension", `npm run build` in Gitpod's `init`), the QA checklists test
+today's behaviour, both user guides describe the real settings, commands, EM login and composers
+(a new Composers page in each), and CLAUDE.md and the concepts page describe the real
+architecture, test pattern and CI gates. Docs only, apart from the build task, the
+`preLaunchTask` and the Gitpod line. It sits on branch `gsd/v4.8-documentation-drift` for one
+docs PR to `main`; merging it rebuilds and publishes the docs site through `deploy-docs.yml`.
+Phase artifacts are archived under `.planning/milestones/v4.8-phases/`.
 
 **v4.7 Audit Hygiene Burn-down shipped 2026-09-29** (override closeout after a milestone audit
 with status `tech_debt`: 63/63 requirements, 13/13 phases, integration and 5/5 flows clean, no
@@ -477,12 +475,18 @@ until publication).
 - ✓ **CI-07**: `vscode:prepublish` builds only the bundles that ship, and ships them minified; the dead `esbuild-base` step is gone (#515) — v4.7 Phase 122
 - ✓ **CI-08**: The `prepare` lifecycle hook no longer duplicates the generate, type-check and bundle pipeline that CI runs explicitly (#598) — v4.7 Phase 122
 - ✓ **CI-09**: The unreachable npm scripts, the unused TextMate generator directive and the self-contradictory `activationEvents` entries are removed from `package.json` (#600) — v4.7 Phase 122
+- ✓ **BUILD-01..03**: README/Gitpod build steps and "Run Extension" produce a built extension; the docs README describes the npm workflow and `deploy-docs.yml` — v4.8 Phase 123
+- ✓ **QA-01..03**: QA checklists use token-only EM login, have a row per v4.7 behaviour and name the real run menus — v4.8 Phase 123
+- ✓ **VSC-01..06**: VS Code guide states 1.101.0, documents every non-compiler setting with an accurate example, `bbj.configPath` trust rules, interop fallback, the v4.7 EM login and real command titles — v4.8 Phase 123
+- ✓ **IJ-01..02**: IntelliJ guide documents automatic EM login with remembered username, the BBj Compiler section and the Host fallback — v4.8 Phase 123
+- ✓ **COMP-01**: Both guides have a Composers page covering every composer command/action/intention and assign-to validation — v4.8 Phase 123
+- ✓ **DEV-01..03**: CLAUDE.md and the browser-editor concepts page match the architecture, test pattern and CI gates — v4.8 Phase 123
 
 ### Active
 
-v4.8 Documentation Drift: see the Current Milestone section above and `.planning/REQUIREMENTS.md`.
+No active milestone — next via `/gsd-new-milestone`.
 
-Candidates carried from v4.7: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos), the three pending todos acknowledged at the v4.7 close, and the formatter jar's `--single-line-if` crash (#507).
+Candidates: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos acknowledged at the v4.8 close), the three pending todos acknowledged at the v4.7 close, the formatter jar's `--single-line-if` crash (#507), and a settings reference generated from `package.json` so the docs cannot drift again (deferred from v4.8).
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -747,6 +751,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.7 Phases 119-121: two library-path DECLAREs on one line parse; the channel/options opening is one grammar rule with identical parses; ClassValidator and `activate()` split by responsibility with one exec-wrapping helper; `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged | #527/#602, #625/#564, #624/#558. The IntelliJ contract test that reads TS request literals missed a handler move in 116 until PR CI (`buildPlugin` depends on `test`) caught it | ✓ Good — whole-suite parity against each phase base |
 | v4.7 Phase 122: every workflow least-privilege (top-level `contents: read`, writes only on the pushing jobs), every action SHA-pinned with a version comment, npm/Gradle caching through one `node-setup` composite action (no cache in token-holding jobs), `pr-vsix.yml` folded into `build.yml`, VSIX built once and minified; a permanent `pin-hygiene` CI job enforces it | #547/#549/#550/#518/#573/#515/#598/#600. Verification found two fail-open shapes in the checker's job attribution (a comment under `jobs:`, a trailing comment on a job id); both fixed with regression tests, and the Gradle wrapper checker got the same fix | ✓ Good — first `preview.yml` run on `main` green (0.16.10 on both marketplaces, 220 MB Gradle cache); next manual release and a PR Gradle cache restore still to observe |
 | v4.7 closed as an override closeout after a `tech_debt` audit with six artifacts acknowledged; phase artifacts archived on-tree; no `v4.7` git tag | Close taken 2026-09-29: 63/63 requirements, 13/13 phases, no gaps. Acknowledged: the formatter-jar debug session (#507), 114's seven deferred hand checks, 122's post-release checks, three todos. Repository tags stay release versions. The release waits for a few days on the preview channel | — Pending (release not cut) |
+| v4.8: documentation drift fixed in the docs only, one phase and one docs PR; the only non-doc changes are a `.vscode/tasks.json` build task used as "Run Extension"'s `preLaunchTask` and `npm run build` in Gitpod's `init`; closed as an override closeout (three dependency todos acknowledged), no `v4.8` git tag | The 2026-09-30 drift scan found build steps that no longer built, removed EM settings still in QA, undocumented settings and composers, and a stale CLAUDE.md. Verification caught one remaining example-block mismatch (fixed in `c46a5d9f`) | — Pending (docs PR not yet merged) |
 
 ## Evolution
 
@@ -766,4 +771,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-30 at the start of v4.8*
+*Last updated: 2026-09-30 after v4.8 milestone*

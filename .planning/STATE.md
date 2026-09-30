@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v4.8
 milestone_name: Documentation Drift
-current_phase: 123
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 123 complete — all phases complete
-last_updated: "2026-09-30T15:16:20.575Z"
+last_updated: "2026-09-30T15:44:41.049Z"
 last_activity: 2026-09-30
-last_activity_desc: Phase 123 complete
-state_head: 7f839540426ba6216feb4ad4657059e67aeea7ee
+last_activity_desc: Milestone v4.8 completed and archived
+state_head: 2bf8ccc3d25f53a46a9fb15c815125de6af243c0
 progress:
   total_phases: 1
   completed_phases: 1
   total_plans: 8
   completed_plans: 8
   percent: 100
+current_phase: 123
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-30 (Phase 123 complete — 8/8 plans, verification passed 18/18; milestone v4.8 ready to complete)
+**Last Updated:** 2026-09-30 (v4.8 Documentation Drift shipped and archived; docs PR to `main` pending)
 
 ## Project Reference
 
@@ -27,27 +27,20 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.8 milestone close-out (audit, complete, docs PR)
+**Current Focus:** Open the v4.8 docs PR, then plan the next milestone
 
 ---
 
 ## Current Position
 
-Phase: 123
-Plan: 8 of 8 (all complete)
-Status: All phases complete
-Last activity: 2026-09-30 — Phase 123 complete
+Phase: Milestone v4.8 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-30 — Milestone v4.8 completed and archived
 
-Progress: [██████████] 100%
-
-### v4.8 milestone map
-
-| Phase | Name | Requirements |
-|-------|------|--------------|
-| 123 | Documentation Drift | BUILD-01..03, QA-01..03, VSC-01..06, IJ-01, IJ-02, COMP-01, DEV-01..03 |
-
-One phase, one docs PR. Input: `.planning/research/DOC-DRIFT-2026-09-30.md`. The v4.7 map is
-archived in `.planning/milestones/v4.7-ROADMAP.md`.
+The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`. The milestone sits on
+branch `gsd/v4.8-documentation-drift`; merging its docs PR to `main` rebuilds and publishes the
+docs site through `deploy-docs.yml`.
 
 ## Performance Metrics
 
@@ -415,7 +408,7 @@ Last session: 2026-09-30T14:45:20.704Z
 Stopped at: Phase 123 complete — all phases complete
 Resume file: None
 
-Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
+Next: open the v4.8 docs PR to `main`, then `/gsd-new-milestone`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -424,6 +417,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| todos | 2026-09-29-lsp4j-1-0-with-bbj-ls.md | (presence-only) | 2026-09-30 | v4.8 |
+| todos | 2026-09-29-vitest-5-upgrade.md | (presence-only) | 2026-09-30 | v4.8 |
+| todos | 2026-09-29-vscode-jsonrpc-9-migration.md | (presence-only) | 2026-09-30 | v4.8 |
 | debug_sessions | g-110-1-formatter-noop-path-java | diagnosed (fix is in the vendored formatter jar, #507) | 2026-09-29 | v4.7 |
 | uat_gaps | 114/114-UAT.md | partial (7 hand checks deferred) | 2026-09-29 | v4.7 |
 | verification_gaps | 122/122-VERIFICATION.md | human_needed (post-release: manual-release dispatch, PR Gradle cache restore) | 2026-09-29 | v4.7 |
@@ -518,6 +514,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v4.4 IntelliJ Focus | 93-97 | 36 | 2026-09-20 |
 | v4.5 Compiler Conformance | 98-105 | 44 | 2026-09-24 |
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | 2026-09-26 |
+| v4.7 Audit Hygiene Burn-down | 110-122 | 80 | 2026-09-29 |
+| v4.8 Documentation Drift | 123 | 8 | 2026-09-30 |
 
 See: `.planning/MILESTONES.md`
 
@@ -528,4 +526,5 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Plan Phase 123 with /gsd-plan-phase 123 (or /gsd-discuss-phase 123 first)
+- Open the v4.8 docs PR from `gsd/v4.8-documentation-drift` to `main`
+- Start the next milestone with /gsd-new-milestone
