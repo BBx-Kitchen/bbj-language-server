@@ -5,16 +5,16 @@ milestone_name: Documentation Drift
 current_phase: 123
 current_phase_name: Documentation Drift
 status: executing
-stopped_at: Completed 123-01-PLAN.md
-last_updated: "2026-09-30T09:26:01.471Z"
+stopped_at: Completed 123-02-PLAN.md
+last_updated: "2026-09-30T09:32:29.055Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 123 execution started
-state_head: e7f8b9f32fe223030005f0a563ae80b76186498d
+state_head: 46d19c7450176e0a78e7c6cf6b3e206dcda63f0c
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 123 (Documentation Drift) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 123 execution started
 
@@ -186,6 +186,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 122 P05 | 34min | 2 tasks | 2 files |
 | Phase 122 P06 | 11min | 2 tasks | 3 files |
 | Phase 123 P01 | 15min | 3 tasks | 5 files |
+| Phase 123 P02 | 20min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -331,6 +332,7 @@ decisions:
 - [Phase 122]: 122-04: a shared, pinned composite action (.github/actions/node-setup) is the one Node preamble every workflow uses; build.yml absorbs pr-vsix.yml as the single unconditional PR gate with its own build-<PR#> concurrency group, and pr-validation.yml/deploy-docs.yml adopt the action with least-privilege permissions and distinct concurrency naming so the two PR workflows never cancel each other
 - [Phase 122]: Phase 122 P05: preview.yml and manual-release.yml top-level permissions:contents:read; write only on bump-version, tag-release and create-release; both verify jobs use the shared node-setup action (cached) with lint/typecheck:test gates after Build; both publish-vscode jobs install cold (cache:'false'); every uses reference pinned
 - [Phase 122]: 122-06: pin-hygiene job wired into workflow-hygiene.yml permanently; every tree pin verified clean against GitHub (12/12, no re-pins needed, all already latest-in-major); Dependabot directories now cover the composite action; a fresh Node 22 scratch worktree proved the release-shaped packaging pipeline end to end; IntelliJ buildPlugin used the documented -x test workaround for the pre-existing ComposerRequestContractTest failure; Phase 122 complete, all eight requirements delivered
+- [Phase 123]: 123-02: web.bbj row uses plain lowercase placeholder tokens in one backtick code span instead of angle-bracket placeholders, and examples/msgbox.bbj replaces the nonexistent examples/hello.bbj as the run-command example file
 
 ### Tech Debt
 
@@ -395,8 +397,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:26:01.442Z
-Stopped at: Completed 123-01-PLAN.md
+Last session: 2026-09-30T09:32:29.020Z
+Stopped at: Completed 123-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
