@@ -5,13 +5,15 @@ This website is built using [Docusaurus](https://docusaurus.io/), a modern stati
 ## Installation
 
 ```bash
-yarn
+npm ci
 ```
+
+This installs dependencies from `package-lock.json`, using Node.js 22 (the version CI uses).
 
 ## Local Development
 
 ```bash
-yarn start
+npm start
 ```
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
@@ -19,23 +21,24 @@ This command starts a local development server and opens up a browser window. Mo
 ## Build
 
 ```bash
-yarn build
+npm run build
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+This command generates static content into the `build` directory. Because `onBrokenLinks` is
+set to `'throw'` in `docusaurus.config.ts`, a broken link fails the build — a clean build
+doubles as the link check.
+
+You can preview the built site locally with:
+
+```bash
+npm run serve
+```
 
 ## Deployment
 
-Using SSH:
+There is no manual deploy step. `.github/workflows/deploy-docs.yml` runs on every push to `main`
+that changes `documentation/**` (or the workflow file itself), and can also be started by hand
+via `workflow_dispatch`. It runs `npm ci` and `npm run build` in `documentation/`, then publishes
+`documentation/build` to GitHub Pages with `actions/deploy-pages`.
 
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The `deploy` script in `package.json` (Docusaurus's own `gh-pages` push) is not used.
