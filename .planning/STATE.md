@@ -4,17 +4,17 @@ milestone: v4.8
 milestone_name: Documentation Drift
 current_phase: 123
 current_phase_name: Documentation Drift
-status: executing
-stopped_at: Completed 123-07-PLAN.md
-last_updated: "2026-09-30T14:28:19.636Z"
+status: complete
+stopped_at: Completed 123-08-PLAN.md — Phase 123 fully complete
+last_updated: "2026-09-30T14:45:20.735Z"
 last_activity: 2026-09-30
-last_activity_desc: Phase 123 execution started
-state_head: b7d4b7c355556214a552ff8fe8d1d1f9e495fad9
+last_activity_desc: Phase 123 execution complete — all 8 plans done
+state_head: 513b7ca074f99c238ccfb5b21f6947ca7a835dee
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 ## Current Position
 
-Phase: 123 (Documentation Drift) — EXECUTING
+Phase: 123 (Documentation Drift) — COMPLETE
 Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-09-30 — Phase 123 execution started
+Status: All plans complete
+Last activity: 2026-09-30 — Phase 123 execution complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ### v4.8 milestone map
 
@@ -192,6 +192,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 123 P05 | 25min | 3 tasks | 2 files |
 | Phase 123 P06 | 40min | 2 tasks | 3 files |
 | Phase 123 P07 | 15min | 2 tasks | 3 files |
+| Phase 123 P08 | 15min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -345,6 +346,7 @@ decisions:
 - [Phase 123]: 123-05: verified the lsp service group's exact provider count (9) against bbj-module.ts before writing 'eight further', and described each validations/ and java-interop-*.ts module from its own header comment rather than the drift scan's summary
 - [Phase 123]: 123-06: composers.md documents all seven compose commands, five cue titles and every lightbulb label across MSGBOX/addWindow/addChildWindow/CVS()/SETOPTS, plus assign-to validation; COMP-01 held back (shared with 123-07) per requirements.ready-ids
 - [Phase 123]: 123-07: composers.md documents all seven compose actions (including the cue-only bbj.openComposerAt) and five Alt+Enter intentions, plus assign-to validation; COMP-01 stays blocked because 123-08 also declares it and has no SUMMARY yet
+- [Phase 123]: Phase 123: 123-08 confirmed all 45 drift-scan items and planning-time extras were already fixed by 123-01..07; no new doc edit needed, all five sweeps (old strings, VS Code channel wording, IntelliJ toolbar wording, planning ids, scope) came back clean
 
 ### Tech Debt
 
@@ -409,8 +411,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T14:28:19.603Z
-Stopped at: Completed 123-07-PLAN.md
+Last session: 2026-09-30T14:45:20.704Z
+Stopped at: Completed 123-08-PLAN.md — Phase 123 fully complete
 Resume file: None
 
 Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.

@@ -344,7 +344,7 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
   4. An IntelliJ user reading the guide finds the automatic EM login on BUI/DWC runs with the remembered username, a "BBj Compiler" settings section (compile output directory, compiler check) and the invalid-host fallback. Both guides have a Composers page that lists every composer command, action and intention and explains assign-to validation, and the docs site builds (`npm run build` in `documentation/`) with no broken links.
   5. A contributor reading CLAUDE.md finds the eight LSP providers, the current validation modules, the split java-interop modules with JavadocProvider via DI, `createBBjTestServices` as the default for new tests, and the `typecheck:test`, lint and workflow hygiene gates; `documentation/concepts/browser-editor.md` names `java-interop-connection.ts` for the socket transport. Every item in the drift scan is fixed or recorded as left on purpose.
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans executed
 
 Plans:
 **Wave 1**
@@ -362,7 +362,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 123-08-PLAN.md — Final cross-check: both builds end to end, drift-scan table, old-string / planning-id / scope sweeps (wave 3)
+- [x] 123-08-PLAN.md — Final cross-check: both builds end to end, drift-scan table, old-string / planning-id / scope sweeps (wave 3)
 
 *Planning notes:*
 
@@ -429,7 +429,7 @@ v4.7's artifacts (78-122) carry no advisory detail and are tracked normally.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 123. Documentation Drift | 7/8 | Planned |  |
+| 123. Documentation Drift | 8/8 | Planned |  |
 
 **Current milestone:** v4.8 Documentation Drift (Phase 123), started 2026-09-30. 18/18
 requirements mapped to one phase, no orphans and no duplicates. Scope is in
