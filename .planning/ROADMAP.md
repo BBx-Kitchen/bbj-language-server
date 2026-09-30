@@ -344,7 +344,17 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
   4. An IntelliJ user reading the guide finds the automatic EM login on BUI/DWC runs with the remembered username, a "BBj Compiler" settings section (compile output directory, compiler check) and the invalid-host fallback. Both guides have a Composers page that lists every composer command, action and intention and explains assign-to validation, and the docs site builds (`npm run build` in `documentation/`) with no broken links.
   5. A contributor reading CLAUDE.md finds the eight LSP providers, the current validation modules, the split java-interop modules with JavadocProvider via DI, `createBBjTestServices` as the default for new tests, and the `typecheck:test`, lint and workflow hygiene gates; `documentation/concepts/browser-editor.md` names `java-interop-connection.ts` for the socket transport. Every item in the drift scan is fixed or recorded as left on purpose.
 
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+- [ ] 123-01-PLAN.md — Build instructions: "build bbj-vscode" task as Run Extension's preLaunchTask, `npm run build` in Gitpod init, root README, docs README (wave 1)
+- [ ] 123-02-PLAN.md — QA checklists: token-only EM rows, one row per new behaviour, real run menus (wave 1)
+- [ ] 123-03-PLAN.md — VS Code guide: minimum version, settings reference and complete example, configPath trust, interop fallback, EM login, real command titles and decompile commands (wave 1)
+- [ ] 123-04-PLAN.md — IntelliJ guide: BBj Compiler section, automatic EM login with remembered username, Host fallback, Compile BBj File menus (wave 1)
+- [ ] 123-05-PLAN.md — Developer docs: CLAUDE.md architecture, testing pattern and CI gates; concepts page transport module (wave 1)
+- [ ] 123-06-PLAN.md — VS Code Composers page, linked from the commands page (wave 2)
+- [ ] 123-07-PLAN.md — IntelliJ Composers page, linked from the commands page (wave 2)
+- [ ] 123-08-PLAN.md — Final cross-check: both builds end to end, drift-scan table, old-string / planning-id / scope sweeps (wave 3)
 
 *Planning notes:*
 
@@ -396,7 +406,7 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
 | v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 | v4.7 Audit Hygiene Burn-down | 110-122 | 80 | Complete | 2026-09-29 |
-| v4.8 Documentation Drift | 123 | TBD | In progress | — |
+| v4.8 Documentation Drift | 123 | 8 | In progress | — |
 
 **Total:** 24 milestones shipped, 120 phases complete, 498 plans shipped.
 
@@ -411,7 +421,7 @@ v4.7's artifacts (78-122) carry no advisory detail and are tracked normally.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 123. Documentation Drift | 0/TBD | Not started | - |
+| 123. Documentation Drift | 0/8 | Planned | - |
 
 **Current milestone:** v4.8 Documentation Drift (Phase 123), started 2026-09-30. 18/18
 requirements mapped to one phase, no orphans and no duplicates. Scope is in
