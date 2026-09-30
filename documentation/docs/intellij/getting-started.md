@@ -30,7 +30,7 @@ Before installing the plugin, ensure you have:
 4. Click **Install** on "BBj Language Support"
 5. Restart the IDE when prompted
 
-Alternatively, install directly from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/24199-bbj-language-support).
+Alternatively, install directly from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30033-bbj-language-support).
 
 ### From .zip File
 
