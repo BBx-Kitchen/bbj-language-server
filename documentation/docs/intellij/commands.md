@@ -5,7 +5,7 @@ title: Commands
 
 # IntelliJ Commands
 
-The BBj Language Support plugin for IntelliJ IDEA provides commands for running, compiling, and managing BBj programs through keyboard shortcuts, context menus, the toolbar, and the Tools menu.
+The BBj Language Support plugin for IntelliJ IDEA provides commands for running, compiling, and managing BBj programs through keyboard shortcuts, context menus, and the Tools menu.
 
 ## Run Commands
 
@@ -64,21 +64,30 @@ for the full flow.
 
 ## Compile Command
 
-### Compile BBj File
+### Compile BBj File (Alt+C)
 
 Compiles the current BBj source file to bytecode.
 
 **Action ID:** `bbj.compile`
 
-**Access:** Toolbar button in the main toolbar (located before the Run Configuration dropdown area).
+**Keyboard Shortcut:** `Alt+C`
 
-**Note:** No keyboard shortcut is assigned by default. You can assign a custom shortcut in Settings → Keymap → search "BBj".
+**Access:**
+- Press `Alt+C` in the editor
+- Right-click in a BBj file editor → "Compile BBj File" (listed after the run actions)
+- `Tools > Compile BBj File`
 
-**Available when:** BBj source file is open and language server is ready.
+**Available when:** A `.bbj`, `.bbx`, or `.src` file is open and the language server is in the
+"Ready" state.
+
+**Requires:** A [Compile output directory](./configuration.md#compile-output-directory)
+configured in Settings — compiling without one reports that no compile output directory is
+configured.
 
 ## Tools Menu Commands
 
-The following commands are available in the Tools menu.
+The following commands are available in the Tools menu. `Tools > Compile BBj File` is also here —
+see [Compile Command](#compile-command) above for its full description.
 
 ### Restart BBj Language Server
 
@@ -145,7 +154,7 @@ logs the reason in the BBj Language Server tool window.
 | Run As BBj Program | `Alt+G` | Run as GUI (desktop) application |
 | Run As BUI Program | `Alt+B` | Run as BUI web application |
 | Run As DWC Program | `Alt+D` | Run as DWC web application |
-| Compile BBj File | (toolbar button) | Compile current BBj file |
+| Compile BBj File | `Alt+C` | Compile current BBj file |
 
 **Note:** Shortcuts use the default keymap. Custom keymaps may differ. You can customize shortcuts in `Settings > Keymap` → search "BBj".
 
@@ -153,10 +162,11 @@ logs the reason in the BBj Language Server tool window.
 
 ### Editor Context Menu
 
-Right-click in a BBj file editor to access run actions at the top of the menu:
+Right-click in a BBj file editor to access run actions at the top of the menu, followed by Compile:
 - Run As BBj Program
 - Run As BUI Program
 - Run As DWC Program
+- Compile BBj File
 
 ### Project View Context Menu
 
@@ -164,12 +174,6 @@ Right-click a BBj file in the Project tool window to see the "BBj Run" submenu c
 - Run As BBj Program
 - Run As BUI Program
 - Run As DWC Program
-
-## Toolbar Buttons
-
-The **Compile** button appears in the main toolbar when editing BBj files. It is located before the Run Configuration dropdown area.
-
-Run commands are accessed via keyboard shortcuts and context menus (not toolbar buttons).
 
 ## Auto-Save Option
 
@@ -219,7 +223,8 @@ If BUI or DWC run commands fail:
 
 ### Compile Command Not Working
 
-If the Compile button does not appear or does not work:
+If Compile BBj File does not appear or does not run:
 1. Verify BBj Home is configured
-2. Check that a BBj file is open in the editor
-3. Ensure the language server is running (check status bar widget)
+2. Check that a `.bbj`, `.bbx`, or `.src` file is open in the editor
+3. Ensure the language server is running (check status bar widget shows "Ready")
+4. Configure a [Compile output directory](./configuration.md#compile-output-directory) in Settings

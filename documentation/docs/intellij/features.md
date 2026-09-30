@@ -152,10 +152,10 @@ Quick reference:
 
 | Command | Shortcut | Description |
 |---------|----------|-------------|
-| Run as GUI | `Alt+G` | Run program in BBj GUI mode |
-| Run as BUI | `Alt+B` | Run program as BUI web application |
-| Run as DWC | `Alt+D` | Run program as DWC application |
-| Compile | - | Compile BBj program to bytecode |
+| Run As BBj Program | `Alt+G` | Run program in BBj GUI mode |
+| Run As BUI Program | `Alt+B` | Run program as BUI web application |
+| Run As DWC Program | `Alt+D` | Run program as DWC application |
+| Compile BBj File | `Alt+C` | Compile BBj program to bytecode |
 
 ## Java Interop
 
