@@ -26,7 +26,7 @@ Before installing the extension, ensure you have:
 1. Open VS Code
 2. Go to the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`)
 3. Search for "BBj"
-4. Click **Install** on "BBj Language Support"
+4. Click **Install** on "BBj Programming Language Support"
 
 Alternatively, install directly from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang).
 

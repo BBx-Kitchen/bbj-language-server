@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 Phase: Milestone v4.8 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-30 — Milestone v4.8 completed and archived
+Last activity: 2026-09-30 - Completed quick task 260930-m99: README as a customer landing page
 
 The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`. The milestone sits on
 branch `gsd/v4.8-documentation-drift`; merging its docs PR to `main` rebuilds and publishes the
@@ -388,6 +388,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 1 | Complete settings example in VS Code configuration.md uses shipped defaults (phase 123 VSC-04 gap) | 2026-09-30 | c46a5d9f | — | — |
+| 260930-m99 | Root README rewritten as a customer landing page: install and docs links up front, feature showcase, no build steps | 2026-09-30 | d17ea86d | — | [260930-m99-clean-up-the-readme-advertising-tone-no-](./quick/260930-m99-clean-up-the-readme-advertising-tone-no-/) |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
 
