@@ -57,6 +57,48 @@ for the full walkthrough.
 | Commands | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/commands) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/commands) |
 | Composers | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/composers) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/composers) |
 
+## Features
+
+Both IDEs run the same BBj language server, so the core features below behave the same in VS
+Code and IntelliJ IDEA.
+
+- **Code completion.** BBj verbs and keywords, built-in functions with documentation, variables,
+  and Java classes, methods, and fields from your BBj classpath; VS Code also offers snippets for
+  common code patterns.
+- **Errors as you type.** Syntax errors, undefined variables, labels, or classes, class-member
+  access violations, and type mismatches are flagged immediately.
+- **BBj's own compiler, live.** With BBj 26.03 or later, the BBj compiler's own parser checks the
+  open file as you type — the same errors the save-time compile reports, shown earlier. Choose
+  debounced, on-save, or off checking; an earlier BBj keeps the save-time compiler check.
+- **Hover and signature help.** Function signatures and documentation, variable types, Javadoc for
+  Java classes and methods, and parameter hints while typing arguments.
+- **Navigation.** Go to Definition across files, including the program file named in a `RUN` or
+  `CALL` statement; Find All References in VS Code; document symbols and the IntelliJ Structure
+  view for quick jumps within a file.
+- **Java integration.** Completion and Javadoc for Java classes, suggestions for a missing `use`
+  statement, and a Refresh Java Classes command in both IDEs.
+- **Run from the editor.** `Alt+G` runs a program as GUI, `Alt+B` as BUI, `Alt+D` as DWC, and
+  `Alt+C` compiles it.
+- **Visual composers.** MSGBOX, addWindow, addChildWindow, CVS(), and SETOPTS in code, plus the
+  SETOPTS line of the active config file, open from a cue above the call, the lightbulb in VS Code
+  or Alt+Enter in IntelliJ, or the context menu. See the
+  [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/composers) and
+  [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/composers)
+  composer guides.
+- **Enterprise Manager built in.** Log in to Enterprise Manager for BUI and DWC runs in both IDEs;
+  VS Code also opens Enterprise Manager, shows the active config file and BBj.properties, and
+  lists the available classpath entries.
+- **In VS Code:** code formatting (indent width, keyword case, line continuations, single-line
+  IF), Denumber (`Alt+N`), and decompiling tokenized programs.
+- **In IntelliJ IDEA:** status bar widgets for the language server and the Java interop
+  connection, editor banners that guide setup, a server log tool window, automatic Node.js
+  download, BBj-aware spell checking, and REM comment toggling.
+- **File types:** `.bbj`, `.bbjt`, `.src`, `.bbx`, and `config.bbx`.
+
+Take the full tour:
+[VS Code Features](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/features) ·
+[IntelliJ IDEA Features](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/features)
+
 ## Requirements
 
 - BBj 25.00 or higher, with BBjServices running locally
