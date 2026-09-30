@@ -1,19 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.7
-milestone_name: Audit Hygiene Burn-down (Phases 110-122) — SHIPPED 2026-09-29
-status: Awaiting next milestone
-stopped_at: Milestone v4.7 completed and archived
-last_updated: "2026-09-29T20:42:16.416Z"
-last_activity: 2026-09-29
-last_activity_desc: Milestone v4.7 completed and archived
-state_head: 0265af02a81bbf328fbc54bd3757a9f2760bed08
+milestone: v4.8
+milestone_name: Documentation Drift
+status: planning
+last_updated: "2026-09-30T08:16:56.975Z"
+last_activity: 2026-09-30
 progress:
-  total_phases: 13
-  completed_phases: 13
-  total_plans: 80
-  completed_plans: 80
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -32,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 ## Current Position
 
-Phase: Milestone v4.7 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-29 — Milestone v4.7 completed and archived
+Status: Defining requirements
+Last activity: 2026-09-30 — Milestone v4.8 started
 
 ### v4.7 milestone map
 

@@ -8,9 +8,19 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## Current Milestone
+## Current Milestone: v4.8 Documentation Drift
 
-None active. v4.7 is complete; the next milestone starts with `/gsd-new-milestone`.
+**Goal:** Bring every document back in line with the code after v4.7, in one short phase and one docs PR.
+
+**Target features:**
+- Build instructions that produce a build again: README, Gitpod and a pre-launch build for "Run Extension"
+- QA checklists without the removed EM settings, with rows for the v4.7 behaviour
+- VS Code guide: minimum version, `bbj.configPath` rules and Workspace Trust, settings scope, interop fallback, the six undocumented settings, the EM login flow, command titles
+- IntelliJ guide: EM auto re-prompt and remembered username, the BBj Compiler settings section, interop host fallback
+- A Composers page in both guides, including assign-to validation, plus the VS Code decompile commands
+- Developer docs: CLAUDE.md architecture, testing pattern and CI gates; documentation/README; the concepts page
+
+Input: `.planning/research/DOC-DRIFT-2026-09-30.md` (the drift scan stands in for research). Docs only; the one allowed non-doc change is a `preLaunchTask` in `.vscode/launch.json`.
 
 ## Current State
 
@@ -470,7 +480,9 @@ until publication).
 
 ### Active
 
-No milestone active. Candidates carried from v4.7: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos), the three pending todos acknowledged at the v4.7 close, and the formatter jar's `--single-line-if` crash (#507).
+v4.8 Documentation Drift: see the Current Milestone section above and `.planning/REQUIREMENTS.md`.
+
+Candidates carried from v4.7: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos), the three pending todos acknowledged at the v4.7 close, and the formatter jar's `--single-line-if` crash (#507).
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -754,4 +766,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-29 after the v4.7 milestone*
+*Last updated: 2026-09-30 at the start of v4.8*
