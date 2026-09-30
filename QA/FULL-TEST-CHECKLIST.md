@@ -111,9 +111,9 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 
 | # | Feature | Steps | Expected | Pass/Fail |
 |---|---------|-------|----------|-----------|
-| 1 | EM Connection Settings | 1. Open VS Code settings (or IntelliJ preferences)<br>2. Search for "BBj" or "Enterprise Manager"<br>3. Verify EM connection settings are accessible | Settings for EM host, port, username, password are present and editable | [ ] |
-| 2 | EM Authentication | 1. Configure EM connection settings<br>2. Trigger any EM-dependent operation (e.g., run command)<br>3. Check for connection success/failure feedback | Extension attempts EM connection; shows success or clear error message if credentials invalid | [ ] |
-| 3 | EM-dependent Features | 1. With valid EM credentials configured<br>2. Execute run commands or other EM-dependent features<br>3. Verify operations complete successfully | Features that require EM work correctly when EM is available | [ ] |
+| 1 | EM URL setting | 1. VS Code — open Settings and search for `bbj.em`<br>2. IntelliJ — open Settings/Preferences > Languages & Frameworks > BBj, "Enterprise Manager" section | The only Enterprise Manager setting is `bbj.em.url` (VS Code) / "EM URL" (IntelliJ); credentials are never a setting in either IDE | [ ] |
+| 2 | EM login | 1. VS Code — run "BBj: Login to Enterprise Manager" from the Command Palette, enter a username at the "EM Username" prompt and a password at the "EM Password" prompt<br>2. IntelliJ — run Tools > Login to Enterprise Manager, enter a username at the "Enter EM username:" prompt and a password at the "Enter EM password:" prompt<br>3. Repeat step 1 and step 2 with a wrong password | Each prompt appears as named above; on success both IDEs show "Successfully logged in to Enterprise Manager" and the token is stored in VS Code's SecretStorage / IntelliJ's PasswordSafe, with nothing written to settings; wrong credentials show a login-failed error naming the failure instead | [ ] |
+| 3 | BUI/DWC run with a stored token | 1. After row 2's successful login, run a program as BUI in each IDE<br>2. Run a program as DWC in each IDE | The program opens in the browser without another login prompt | [ ] |
 
 ---
 
