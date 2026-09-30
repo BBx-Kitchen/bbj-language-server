@@ -5,16 +5,16 @@ milestone_name: Documentation Drift
 current_phase: 123
 current_phase_name: Documentation Drift
 status: executing
-stopped_at: Completed 123-04-PLAN.md
-last_updated: "2026-09-30T09:45:36.858Z"
+stopped_at: Completed 123-05-PLAN.md
+last_updated: "2026-09-30T09:50:17.193Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 123 execution started
-state_head: 54a914ee877dc7670064bcde9d126616c92355cd
+state_head: 624d8b14ad474fdd8bbeba4582082c03e5d15f58
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 123 (Documentation Drift) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 123 execution started
 
@@ -189,6 +189,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 123 P02 | 20min | 3 tasks | 2 files |
 | Phase 123 P03 | 25min | 3 tasks | 5 files |
 | Phase 123 P04 | 20min | 3 tasks | 3 files |
+| Phase 123 P05 | 25min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -339,6 +340,7 @@ decisions:
 - [Phase 123]: 123-03: configuration.md Complete Settings Example verified programmatically against bbj-vscode/package.json (21 non-compiler.* keys plus bbj.compiler.trigger)
 - [Phase 123]: 123-04: Host fallback documented per the code (empty field substituted to localhost client-side, no warning shown), not the drift scan inaccurate server-side-validator-warning description
 - [Phase 123]: 123-04: Compile BBj File Tools-menu presence is a one-line cross-reference from Tools Menu Commands back to the Compile Command section, avoiding duplicate documentation
+- [Phase 123]: 123-05: verified the lsp service group's exact provider count (9) against bbj-module.ts before writing 'eight further', and described each validations/ and java-interop-*.ts module from its own header comment rather than the drift scan's summary
 
 ### Tech Debt
 
@@ -403,8 +405,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:45:36.825Z
-Stopped at: Completed 123-04-PLAN.md
+Last session: 2026-09-30T09:50:17.161Z
+Stopped at: Completed 123-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
