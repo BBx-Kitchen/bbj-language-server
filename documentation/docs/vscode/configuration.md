@@ -345,7 +345,7 @@ options, which the **Configure Compile Options** command sets (see the note belo
   "bbj.debug": false,
   "bbj.em.url": "http://localhost:8888",
   "bbj.web.apps": {},
-  "bbj.web.AutoSaveUponRun": true,
+  "bbj.web.AutoSaveUponRun": false,
   "bbj.decompile.promptOnOpen": true,
   "bbj.denumber.promptOnOpen": true,
   "bbj.configPath": null,
@@ -356,9 +356,9 @@ options, which the **Configure Compile Options** command sets (see the note belo
   "bbj.inlayHints.parameterNames.enabled": "literals",
   "bbj.interop.host": "localhost",
   "bbj.interop.port": 5008,
-  "bbj.formatter.indentWidth": 4,
+  "bbj.formatter.indentWidth": 2,
   "bbj.formatter.removeLineContinuation": false,
-  "bbj.formatter.keywordsToUppercase": true,
+  "bbj.formatter.keywordsToUppercase": false,
   "bbj.formatter.splitSingleLineIF": false,
   "bbj.formatter.javaPath": ""
 }
