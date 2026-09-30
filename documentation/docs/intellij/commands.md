@@ -37,7 +37,9 @@ Runs the current BBj file as a BUI (Browser User Interface) web application.
 - Right-click in a BBj file editor → "Run As BUI Program"
 - Right-click a BBj file in Project View → BBj Run → Run As BUI Program
 
-**Requires:** Enterprise Manager authentication. See [Configuration](./configuration.md#em-token-authentication) for authentication setup.
+**Requires:** Enterprise Manager authentication — the run asks for a login by itself when none is
+stored or the stored one is no longer valid. See [Configuration](./configuration.md#em-token-authentication)
+for the full flow.
 
 **Behavior:** Opens the program in your default browser via the configured EM URL.
 
@@ -54,7 +56,9 @@ Runs the current BBj file as a DWC (Dynamic Web Client) application.
 - Right-click in a BBj file editor → "Run As DWC Program"
 - Right-click a BBj file in Project View → BBj Run → Run As DWC Program
 
-**Requires:** Enterprise Manager authentication. See [Configuration](./configuration.md#em-token-authentication) for authentication setup.
+**Requires:** Enterprise Manager authentication — the run asks for a login by itself when none is
+stored or the stored one is no longer valid. See [Configuration](./configuration.md#em-token-authentication)
+for the full flow.
 
 **Behavior:** Opens the program in your default browser via the configured EM URL.
 
@@ -108,7 +112,9 @@ Reloads the Java classpath and clears cached class information.
 
 ### Login to Enterprise Manager
 
-Authenticates with BBj Enterprise Manager and stores the JWT token.
+Authenticates with BBj Enterprise Manager and stores the JWT token. This command lets you log in
+ahead of time, or as a different user — running a program as BUI or DWC prompts for this same
+login automatically when it is needed (see below).
 
 **Action ID:** `bbj.loginEM`
 
@@ -116,13 +122,19 @@ Authenticates with BBj Enterprise Manager and stores the JWT token.
 
 **Usage:**
 1. Select `Tools > Login to Enterprise Manager`
-2. Enter your Enterprise Manager username and password in the dialog
-3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe
+2. Enter your Enterprise Manager username and password in the dialog — the username field is
+   pre-filled with the last username that logged in successfully (`admin` the first time)
+3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe; the username is remembered
+   for next time only after a successful login, and the password is never remembered
 4. Token is used automatically for subsequent BUI/DWC run commands
 
 **Required for:** Running BUI and DWC programs. The stored token persists across IDE restarts.
 
-**Token expiration:** If the token expires, run this command again to re-authenticate.
+**Automatic re-prompt:** Running a program as BUI or DWC asks for this same login by itself when
+needed. With no stored token it asks "EM login required for BUI. Login now?" (or DWC). With a
+token that has expired locally, or one Enterprise Manager no longer accepts, it deletes the token
+and asks "EM token expired or invalid. Login again?". Answering No either time stops the run and
+logs the reason in the BBj Language Server tool window.
 
 **Configuration:** See [EM URL configuration](./configuration.md#em-url) to configure the Enterprise Manager URL.
 
@@ -198,9 +210,12 @@ If run commands do not execute or show errors:
 
 If BUI or DWC run commands fail:
 1. Verify Enterprise Manager is accessible at the configured EM URL
-2. Authenticate using `Tools > Login to Enterprise Manager`
+2. The run asks for a login by itself when no token is stored, or the stored one has expired or
+   is no longer accepted — answer Yes to log in. Answering No stops the run; the reason is logged
+   in the BBj Language Server tool window.
 3. Check the EM URL in `Settings > Languages & Frameworks > BBj > EM URL`
-4. Ensure the EM token has not expired (re-authenticate if needed)
+4. Log in ahead of time with `Tools > Login to Enterprise Manager` if you want to authenticate
+   before running, or to switch users
 
 ### Compile Command Not Working
 

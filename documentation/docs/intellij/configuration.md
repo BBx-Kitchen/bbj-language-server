@@ -128,7 +128,9 @@ Hostname for the Java interop service.
 
 **Default:** `localhost`
 
-**Note:** The host is never auto-detected — it is always a manually edited field.
+**Note:** The host is never auto-detected — it is always a manually edited field. Leave the field
+empty to use `localhost` — the plugin substitutes it before starting the language server. Any
+other value is used as typed, with surrounding spaces trimmed.
 
 ### Port
 
@@ -165,10 +167,19 @@ BUI and DWC run commands require authentication with Enterprise Manager.
 
 **Authentication Flow:**
 1. Go to `Tools > Login to Enterprise Manager`
-2. Enter your EM username and password in the dialog
-3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe (credential store)
+2. Enter your EM username and password in the dialog — the username field is pre-filled with the
+   last username that logged in successfully (`admin` the first time)
+3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe (credential store); the
+   username is remembered for next time, but only after a successful login, and the password is
+   never remembered
 4. Token is used automatically for subsequent BUI/DWC runs
-5. Re-authenticate if the token expires
+
+**Automatic re-prompt:** Running a program as BUI or DWC asks for a login by itself when needed —
+you do not have to log in ahead of time. With no stored token it asks "EM login required for BUI.
+Login now?" (or DWC). With a token that has expired locally, or one Enterprise Manager no longer
+accepts, it deletes the token and asks "EM token expired or invalid. Login again?". Answering No
+either time stops the run and logs the reason in the BBj Language Server tool window. A login
+that returns an unusable token fails immediately and stores nothing.
 
 The stored token is managed by IntelliJ's secure credential storage and persists across IDE restarts.
 
