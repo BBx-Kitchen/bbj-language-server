@@ -29,7 +29,7 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 
 ## Requirements
 
-- **VS Code** 1.67.0 or higher
+- **VS Code** 1.101.0 or higher
 - **BBj** 25.00 or higher
 - **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
   compiler check)
