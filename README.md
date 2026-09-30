@@ -1,47 +1,85 @@
-# BBj Language Server
+<p align="center"><img src="documentation/static/img/logo.png" width="96" alt="BBj logo"></p>
 
-This project provides a language server for the BBj language, powering a VS Code extension and
-an IntelliJ plugin.
+# BBj Language Support for VS Code and IntelliJ
+
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang)
+[![JetBrains Marketplace](https://img.shields.io/badge/JetBrains-Marketplace-000000?logo=jetbrains&logoColor=white)](https://plugins.jetbrains.com/plugin/30033-bbj-language-support)
+[![Documentation](https://img.shields.io/badge/docs-BBx--Kitchen.github.io-2E8555)](https://BBx-Kitchen.github.io/bbj-language-server/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+BBj Language Support brings modern IDE tooling to BBj development in Visual Studio Code and
+IntelliJ IDEA. One shared BBj language server powers both editors, so completion, diagnostics,
+and navigation behave the same wherever you write BBj. Code completion reaches beyond BBj
+keywords and functions into the Java classes, methods, and fields on your BBj classpath, and
+errors — including BBj's own compiler diagnostics — surface as you type. Run your programs as
+GUI, BUI, or DWC straight from the editor, and let the built-in visual composers write BBj calls
+like MSGBOX, addWindow, and SETOPTS for you.
+
+## Install
+
+**Visual Studio Code**
+
+- [Install from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang)
+- Or open the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`), search for "BBj", and install
+  **BBj Programming Language Support** by BASIS International Ltd.
+- Quick Open: `ext install basis-intl.bbj-lang`
+
+**IntelliJ IDEA**
+
+- [Install from the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30033-bbj-language-support)
+- Or go to **Settings > Plugins > Marketplace**, search for "BBj", install
+  **BBj Language Support**, and restart the IDE.
+
+**Offline install**
+
+The `.vsix` file and the IntelliJ `.zip` file are attached to every
+[GitHub release](https://github.com/BBx-Kitchen/bbj-language-server/releases). Install them with
+VS Code's "Install from VSIX..." or IntelliJ's "Install Plugin from Disk...".
+
+**After installing**
+
+On BBj 25.00 and later, enable the "BBj Language Service" in Enterprise Manager, then point the
+extension or plugin at your BBj installation. Follow the Getting Started guide for
+[VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/getting-started) or
+[IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/getting-started)
+for the full walkthrough.
 
 ## Documentation
 
-**Full documentation is available at: [BBx-Kitchen.github.io/bbj-language-server](https://BBx-Kitchen.github.io/bbj-language-server/)**
+**Full documentation lives at
+[BBx-Kitchen.github.io/bbj-language-server](https://BBx-Kitchen.github.io/bbj-language-server/).**
 
-- [VS Code Guide](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode)
-- [IntelliJ Guide](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij)
+| Topic | VS Code | IntelliJ IDEA |
+|-------|---------|----------------|
+| Getting Started | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/getting-started) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/getting-started) |
+| Features | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/features) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/features) |
+| Configuration | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/configuration) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/configuration) |
+| Commands | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/commands) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/commands) |
+| Composers | [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/composers) | [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/composers) |
 
-## Project Overview
+## Requirements
 
-The project consists of three main parts:
+- BBj 25.00 or higher, with BBjServices running locally
+- Java 17 or higher
+- BBj 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time compiler
+  check)
+- Visual Studio Code 1.101.0 or higher
+- IntelliJ IDEA 2024.2 or higher (Community or Ultimate), plus Node.js 22 or higher
+  (auto-detected from PATH, or auto-downloaded by the plugin)
 
- * `bbj-vscode` – VS Code extension with BBj language server based on [Langium](https://langium.org/)
- * `java-interop` – Java executable that provides information about the Java classpath (classes, fields, methods) via a [JSON-RPC](https://www.jsonrpc.org/) connection
- * `bbj-intellij` – IntelliJ plugin that runs the same language server through [LSP4IJ](https://github.com/redhat-developer/lsp4ij)
+See the Getting Started guides for
+[VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/getting-started) and
+[IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/getting-started)
+for full setup details.
 
-## How to Test
+## Help and feedback
 
-The easiest way is to open the project in [Gitpod](https://gitpod.io/).
+- [GitHub Issues](https://github.com/BBx-Kitchen/bbj-language-server/issues) — report bugs or
+  request features
+- [BBj Documentation](https://documentation.basis.cloud/BASISHelp/WebHelp/index.htm) — the
+  official BBj language reference
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/BBx-Kitchen/bbj-language-server)
+---
 
-This opens a VS Code instance in your browser that automatically builds the project code. Once the terminal processes are done:
-
- 1. Open a terminal and run `./gradlew run` in the `java-interop` folder – this starts a Java application that listens for connections from the language server.
- 2. Go to the "Run and Debug" view and start the _Run Extension_ launch configuration – this first runs the "build bbj-vscode" task, then starts a second instance of VS Code (in a new browser tab) that contains the BBj language extension and its language server.
-
-Once the new VS Code instance is started, open a bbj file and see how the editor behaves.
-
-### Building Locally
-
-If you want to test this project on your local machine, you need to install [Node.js](https://nodejs.org/) 22 or
-later and a JDK 17. Then execute the following commands, one folder at a time.
-
- * In the `bbj-vscode` subfolder: `npm install`, then `npm run build`. `npm install` only
-   regenerates the grammar and does not build; `npm run build` writes `out/extension.cjs` and
-   `out/language/main.cjs`. (The "Run Extension" launch configuration in `.vscode/launch.json`
-   also runs this build first, via its `preLaunchTask`.)
- * In the `java-interop` subfolder: `./gradlew build` (or `./gradlew run` to start the interop
-   service on port 5008).
- * In the `bbj-intellij` subfolder: `./gradlew buildPlugin`, after building `bbj-vscode` – it
-   stops early if `bbj-vscode/out/language/main.cjs` is missing.
-
+Contributing? Issues and pull requests are welcome; build and test notes for contributors are in
+[CLAUDE.md](CLAUDE.md). Licensed under the [MIT License](LICENSE).
