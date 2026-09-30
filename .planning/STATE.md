@@ -6,10 +6,10 @@ current_phase: 123
 current_phase_name: Documentation Drift
 status: complete
 stopped_at: Completed 123-08-PLAN.md — Phase 123 fully complete
-last_updated: "2026-09-30T14:45:20.735Z"
+last_updated: "2026-09-30T14:59:05.123Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 123 execution complete — all 8 plans done
-state_head: 513b7ca074f99c238ccfb5b21f6947ca7a835dee
+state_head: c46a5d9f931253b01d6b12633466463b70148619
 progress:
   total_phases: 1
   completed_phases: 0
@@ -395,6 +395,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 1 | Complete settings example in VS Code configuration.md uses shipped defaults (phase 123 VSC-04 gap) | 2026-09-30 | c46a5d9f | — | — |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
 
