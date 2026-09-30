@@ -5,16 +5,16 @@ milestone_name: Documentation Drift
 current_phase: 123
 current_phase_name: Documentation Drift
 status: executing
-stopped_at: Completed 123-02-PLAN.md
-last_updated: "2026-09-30T09:32:29.055Z"
+stopped_at: Completed 123-03-PLAN.md
+last_updated: "2026-09-30T09:40:12.367Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 123 execution started
-state_head: 46d19c7450176e0a78e7c6cf6b3e206dcda63f0c
+state_head: 8e75fe615be96a16c010db933945f27478357528
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 123 (Documentation Drift) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 123 execution started
 
@@ -187,6 +187,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 122 P06 | 11min | 2 tasks | 3 files |
 | Phase 123 P01 | 15min | 3 tasks | 5 files |
 | Phase 123 P02 | 20min | 3 tasks | 2 files |
+| Phase 123 P03 | 25min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -333,6 +334,8 @@ decisions:
 - [Phase 122]: Phase 122 P05: preview.yml and manual-release.yml top-level permissions:contents:read; write only on bump-version, tag-release and create-release; both verify jobs use the shared node-setup action (cached) with lint/typecheck:test gates after Build; both publish-vscode jobs install cold (cache:'false'); every uses reference pinned
 - [Phase 122]: 122-06: pin-hygiene job wired into workflow-hygiene.yml permanently; every tree pin verified clean against GitHub (12/12, no re-pins needed, all already latest-in-major); Dependabot directories now cover the composite action; a fresh Node 22 scratch worktree proved the release-shaped packaging pipeline end to end; IntelliJ buildPlugin used the documented -x test workaround for the pre-existing ComposerRequestContractTest failure; Phase 122 complete, all eight requirements delivered
 - [Phase 123]: 123-02: web.bbj row uses plain lowercase placeholder tokens in one backtick code span instead of angle-bracket placeholders, and examples/msgbox.bbj replaces the nonexistent examples/hello.bbj as the run-command example file
+- [Phase 123]: 123-03: commands.md MDX build failed on a bare <title> placeholder (Docusaurus parses it as unclosed JSX); reworded to avoid angle brackets instead of escaping them
+- [Phase 123]: 123-03: configuration.md Complete Settings Example verified programmatically against bbj-vscode/package.json (21 non-compiler.* keys plus bbj.compiler.trigger)
 
 ### Tech Debt
 
@@ -397,8 +400,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:32:29.020Z
-Stopped at: Completed 123-02-PLAN.md
+Last session: 2026-09-30T09:40:12.335Z
+Stopped at: Completed 123-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.

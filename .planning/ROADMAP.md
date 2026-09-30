@@ -344,14 +344,14 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
   4. An IntelliJ user reading the guide finds the automatic EM login on BUI/DWC runs with the remembered username, a "BBj Compiler" settings section (compile output directory, compiler check) and the invalid-host fallback. Both guides have a Composers page that lists every composer command, action and intention and explains assign-to validation, and the docs site builds (`npm run build` in `documentation/`) with no broken links.
   5. A contributor reading CLAUDE.md finds the eight LSP providers, the current validation modules, the split java-interop modules with JavadocProvider via DI, `createBBjTestServices` as the default for new tests, and the `typecheck:test`, lint and workflow hygiene gates; `documentation/concepts/browser-editor.md` names `java-interop-connection.ts` for the socket transport. Every item in the drift scan is fixed or recorded as left on purpose.
 
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 123-01-PLAN.md — Build instructions: "build bbj-vscode" task as Run Extension's preLaunchTask, `npm run build` in Gitpod init, root README, docs README (wave 1)
 - [x] 123-02-PLAN.md — QA checklists: token-only EM rows, one row per new behaviour, real run menus (wave 1)
-- [ ] 123-03-PLAN.md — VS Code guide: minimum version, settings reference and complete example, configPath trust, interop fallback, EM login, real command titles and decompile commands (wave 1)
+- [x] 123-03-PLAN.md — VS Code guide: minimum version, settings reference and complete example, configPath trust, interop fallback, EM login, real command titles and decompile commands (wave 1)
 - [ ] 123-04-PLAN.md — IntelliJ guide: BBj Compiler section, automatic EM login with remembered username, Host fallback, Compile BBj File menus (wave 1)
 - [ ] 123-05-PLAN.md — Developer docs: CLAUDE.md architecture, testing pattern and CI gates; concepts page transport module (wave 1)
 
@@ -429,7 +429,7 @@ v4.7's artifacts (78-122) carry no advisory detail and are tracked normally.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 123. Documentation Drift | 2/8 | Planned |  |
+| 123. Documentation Drift | 3/8 | Planned |  |
 
 **Current milestone:** v4.8 Documentation Drift (Phase 123), started 2026-09-30. 18/18
 requirements mapped to one phase, no orphans and no duplicates. Scope is in
