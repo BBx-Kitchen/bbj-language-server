@@ -42,6 +42,31 @@ Optional custom path to your `config.bbx` file.
 
 **When to configure:** Only needed if using a non-standard `config.bbx` location outside the BBj installation directory.
 
+**Validation:** The path must be absolute — a leading `~` is expanded first. A missing file is flagged in the dialog.
+
+## BBj Compiler
+
+### Compile output directory
+
+The directory `bbjcpl` writes tokenized output to when you run "Compile BBj File". Required for
+that command — the field's placeholder reads "Required for \"Compile BBj File\" to run", and
+compiling without one configured reports that no compile output directory is configured, with a
+way to open the settings from the error. The dialog does not validate the path itself; `bbjcpl`
+reports a bad one.
+
+### Compiler check
+
+Controls when the BBj compiler's own parser checks the currently open file. See
+[Live Compiler Diagnostics](./features.md#live-compiler-diagnostics) for the full description of
+what each choice does.
+
+**Options:**
+- **Debounced** — the default
+- **On save**
+- **Off**
+
+On save is recommended for large workspaces.
+
 ## Node.js Runtime
 
 ### Node.js Path
