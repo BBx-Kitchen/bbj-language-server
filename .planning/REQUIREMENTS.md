@@ -6,8 +6,8 @@
 ## v4.8 Requirements
 
 Documentation back in line with the code after v4.7. Input and evidence (file:line on both sides):
-`.planning/research/DOC-DRIFT-2026-09-30.md`. Docs only; the single allowed non-doc change is a
-`preLaunchTask` in `.vscode/launch.json`.
+`.planning/research/DOC-DRIFT-2026-09-30.md`. Docs only;
+the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30).
 
 ### Build instructions
 
@@ -53,7 +53,7 @@ Documentation back in line with the code after v4.7. Input and evidence (file:li
 
 | Feature | Reason |
 |---------|--------|
-| Code or behaviour changes | Docs-only milestone; drift is fixed in the docs, not by changing the product (the `preLaunchTask` is the one exception) |
+| Code or behaviour changes | Docs-only milestone; drift is fixed in the docs, not by changing the product (the build task, `preLaunchTask` and Gitpod `init` line are the only exceptions) |
 | Documenting the 18 `bbj.compiler.*` options individually | Covered on purpose by the "Configure Compile Options" note |
 | A CHANGELOG | None exists; release notes come from the release workflow |
 
@@ -61,12 +61,30 @@ Documentation back in line with the code after v4.7. Input and evidence (file:li
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| BUILD-01 | Phase 123 | Pending |
+| BUILD-02 | Phase 123 | Pending |
+| BUILD-03 | Phase 123 | Pending |
+| QA-01 | Phase 123 | Pending |
+| QA-02 | Phase 123 | Pending |
+| QA-03 | Phase 123 | Pending |
+| VSC-01 | Phase 123 | Pending |
+| VSC-02 | Phase 123 | Pending |
+| VSC-03 | Phase 123 | Pending |
+| VSC-04 | Phase 123 | Pending |
+| VSC-05 | Phase 123 | Pending |
+| VSC-06 | Phase 123 | Pending |
+| IJ-01 | Phase 123 | Pending |
+| IJ-02 | Phase 123 | Pending |
+| COMP-01 | Phase 123 | Pending |
+| DEV-01 | Phase 123 | Pending |
+| DEV-02 | Phase 123 | Pending |
+| DEV-03 | Phase 123 | Pending |
 
 **Coverage:**
-- v4.8 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- v4.8 requirements: 18 total
+- Mapped to phases: 18
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-30*
-*Last updated: 2026-09-30 after initial definition*
+*Last updated: 2026-09-30 after roadmap creation (all 18 mapped to Phase 123)*

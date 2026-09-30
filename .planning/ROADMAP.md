@@ -26,7 +26,7 @@
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
 - ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on `main` via PR #699, merged 2026-09-26 — see MILESTONES.md)
 - ✅ **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (shipped 2026-09-29; on `main` via PR #708, merged 2026-09-29, preview 0.16.10 — see MILESTONES.md)
-- 🔷 **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (in progress, started 2026-09-26)
+- 🚧 **v4.8 Documentation Drift** — Phase 123 (in progress)
 
 ## Phases
 
@@ -320,6 +320,54 @@ Full phase detail: `.planning/milestones/v4.7-ROADMAP.md`; requirements (63/63) 
 
 </details>
 
+### 🚧 v4.8 Documentation Drift (Phase 123) — IN PROGRESS
+
+Scope is the 18 requirements in `.planning/REQUIREMENTS.md`: bring every document back in line
+with the code on `main` after v4.7, in one short phase and one docs PR. Evidence with file:line
+on both sides is in `.planning/research/DOC-DRIFT-2026-09-30.md`. Docs only;
+the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30).
+
+- [ ] **Phase 123: Documentation Drift** - Build instructions, QA checklists, both user guides and the developer docs match the code after v4.7
+
+## Phase Details
+
+### Phase 123: Documentation Drift
+
+**Goal**: Anyone who follows a document in this repository gets what the code on `main` does after v4.7: the build instructions produce a working build, the QA checklists test today's behaviour, both user guides describe the real settings, commands, EM login and composers, and the developer docs describe the real architecture, test pattern and CI gates.
+**Depends on**: Nothing (first and only phase of v4.8)
+**Requirements**: BUILD-01, BUILD-02, BUILD-03, QA-01, QA-02, QA-03, VSC-01, VSC-02, VSC-03, VSC-04, VSC-05, VSC-06, IJ-01, IJ-02, COMP-01, DEV-01, DEV-02, DEV-03
+**Success Criteria** (what must be TRUE):
+
+  1. On a fresh checkout, following the root README's "Building Locally" steps, opening the repo in Gitpod, and starting "Run Extension" each leave a built `bbj-vscode/out/extension.cjs` and a working extension. The README names all three parts (bbj-vscode, java-interop, bbj-intellij), and `documentation/README.md` describes the real npm workflow and deployment through `deploy-docs.yml`.
+  2. A tester working through `QA/FULL-TEST-CHECKLIST.md` and `QA/SMOKE-TEST-CHECKLIST.md` meets no setting, menu or step that does not exist: the EM rows use `bbj.em.url` and the login prompt only, the run steps match the real editor and Project View menus in both IDEs, and each v4.7 behaviour listed in QA-02 has its own row.
+  3. A VS Code user reading the guide finds the real minimum version (1.101.0); every setting in `package.json` apart from the `bbj.compiler.*` options covered by the "Configure Compile Options" note, with an accurate complete example; the `bbj.configPath` value rules and Workspace Trust behaviour, with no claim that workspace settings always win; the invalid interop host/port fallback; the v4.7 EM login flow; and command titles that match the Command Palette, including the decompile commands.
+  4. An IntelliJ user reading the guide finds the automatic EM login on BUI/DWC runs with the remembered username, a "BBj Compiler" settings section (compile output directory, compiler check) and the invalid-host fallback. Both guides have a Composers page that lists every composer command, action and intention and explains assign-to validation, and the docs site builds (`npm run build` in `documentation/`) with no broken links.
+  5. A contributor reading CLAUDE.md finds the eight LSP providers, the current validation modules, the split java-interop modules with JavadocProvider via DI, `createBBjTestServices` as the default for new tests, and the `typecheck:test`, lint and workflow hygiene gates; `documentation/concepts/browser-editor.md` names `java-interop-connection.ts` for the socket transport. Every item in the drift scan is fixed or recorded as left on purpose.
+
+**Plans**: TBD
+
+*Planning notes:*
+
+- Suggested waves. Wave 1, in parallel, one plan per independent doc set: build (root README,
+  `.vscode/launch.json`, `documentation/README.md`, Gitpod), QA checklists, VS Code guide,
+  IntelliJ guide, developer docs (CLAUDE.md and the concepts page). Wave 2: the Composers page
+  in both guides, once the commands pages carry the real titles, because it links from them and
+  uses the same names. Final wave: check every item in the drift scan against the result, run
+  the docs build, and search for the old wrong strings (`1.67.0`, `yarn`, "seven further", the
+  EM host/port/username/password settings).
+- The scan cites file:line on both sides. Re-read the cited code before writing and describe
+  the behaviour from the code, not from the scan's summary.
+- Decided with the user (2026-09-30): add a small `.vscode/tasks.json` with an explicit
+  "build bbj-vscode" npm task (cwd `bbj-vscode`) and point "Run Extension"'s `preLaunchTask` at
+  it; add `npm run build` after `npm install` in `.gitpod.yml`'s `init`.
+- The README's Gitpod steps also name a "Run Interop Service" launch configuration that
+  `.vscode/launch.json` does not have; fix that sentence under BUILD-01.
+- The docs sidebar is autogenerated (`documentation/sidebars.ts`), so a new `composers.md` in
+  each guide folder appears without config; give it a `sidebar_position`. With
+  `onBrokenLinks: 'throw'`, the docs build is the link check.
+- Out of scope: the 18 `bbj.compiler.*` options one by one, a CHANGELOG, and any behaviour
+  change.
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -348,6 +396,7 @@ Full phase detail: `.planning/milestones/v4.7-ROADMAP.md`; requirements (63/63) 
 | v4.5 Compiler Conformance | 98-105 | 44 | Complete | 2026-09-24 |
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 | v4.7 Audit Hygiene Burn-down | 110-122 | 80 | Complete | 2026-09-29 |
+| v4.8 Documentation Drift | 123 | TBD | In progress | — |
 
 **Total:** 24 milestones shipped, 120 phases complete, 498 plans shipped.
 
@@ -358,8 +407,19 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's to
 v4.7's artifacts (78-122) carry no advisory detail and are tracked normally.
 
-**Current milestone:** none. Start the next one with `/gsd-new-milestone`.
+### v4.8 phase progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 123. Documentation Drift | 0/TBD | Not started | - |
+
+**Current milestone:** v4.8 Documentation Drift (Phase 123), started 2026-09-30. 18/18
+requirements mapped to one phase, no orphans and no duplicates. Scope is in
+`.planning/PROJECT.md` under "Current Milestone"; the requirement list and its traceability
+table are in `.planning/REQUIREMENTS.md`.
+Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
 
 ---
 
-*Roadmap last updated: 2026-09-29 — v4.7 Audit Hygiene Burn-down shipped and archived (Phases 110-122).*
+*Roadmap last updated: 2026-09-30 — v4.8 Documentation Drift roadmapped (Phase 123, 18/18
+requirements mapped, no orphans).*

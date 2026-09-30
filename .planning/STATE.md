@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.8
 milestone_name: Documentation Drift
 status: planning
-last_updated: "2026-09-30T08:16:56.975Z"
+last_updated: "2026-09-30T08:21:03.000Z"
 last_activity: 2026-09-30
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,46 +15,35 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-29 (v4.7 Audit Hygiene Burn-down shipped and archived — 13/13 phases, 63/63 requirements, override closeout with 6 acknowledged items)
+**Last Updated:** 2026-09-30 (v4.8 Documentation Drift roadmapped — one phase, 123, with 18/18 requirements mapped)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-29)
+See: .planning/PROJECT.md (updated 2026-09-30)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning the next milestone; v4.7 runs on the preview channel (0.16.10) before a release is cut
+**Current Focus:** Phase 123 — Documentation Drift (v4.8, docs only), ready to plan; v4.7 runs on the preview channel (0.16.10) before a release is cut
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 123 of 123 (Documentation Drift) — the only phase of v4.8
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-30 — Milestone v4.8 started
+Status: Ready to plan
+Last activity: 2026-09-30 — v4.8 roadmap created (Phase 123, 18/18 requirements mapped)
 
-### v4.7 milestone map
+Progress: [░░░░░░░░░░] 0%
 
-| Phase | Name | Requirements | Issues (Closes) |
-|-------|------|--------------|-----------------|
-| 110 | Workspace Settings & Filesystem Trust | SEC-01, SEC-02, SEC-06..09, REF-02 | #509 #510 #511 #526 #579 #585 #605 #581 |
-| 111 | Java Class Data from the Interop Peer | SEC-03..05, FIX-02, FIX-03 | #523 #524 #525 #676 (+ todo) |
-| 112 | EM Login & Web Launch Fail Closed | SEC-12..14, TEST-09 | #546 #548 #553 #565 |
-| 113 | Composer Webview Hardening & Consolidation | SEC-10, SEC-11, TEST-10, REF-03, REF-07, REF-08, DOC-01 | #604 #626 #628 #582 #533 #534 #595 |
-| 114 | Lint, Type-Check & Test-Suite Gates | TEST-01..03, TEST-07, TEST-11, FIX-04 | #574 #516 #519 #562 #629 (+ todo) |
-| 115 | Honest Interop Test Harness | HARN-01..06, DEP-03 | #514 #575 #596 #599 #601 #635 #520 |
-| 116 | Java-Interop Test Coverage | TEST-04..06, TEST-08 | #528 #559 #560 #563 |
-| 117 | Dependency Hygiene & Dependabot Coverage | DEP-01, DEP-02, DEP-04, DEP-05, CI-04 | #501 #507 #521 #551 |
-| 118 | Small Dedup & Drift Guards | REF-01, REF-04..06 | #580 #583 #603 #606 |
-| 119 | Grammar — DECLARE File Paths & Shared Channel Opening | FIX-01, REF-13 | #527 #602 |
-| 120 | ClassValidator & activate() Splits | REF-10, REF-11 | #625 #564 |
-| 121 | Java Interop Service Decomposition | REF-09, REF-12 | #624 #558 |
-| 122 | Release & CI Pipeline Hardening | CI-01..03, CI-05..09 | #547 #549 #550 #518 #573 #515 #598 #600 |
+### v4.8 milestone map
 
-Ordering: security first (110-113), then the test gates (114-116) before the large refactors
-(119-121, with the `JavaInteropService` split last among them), and the publish pipeline (122)
-last, because every push to `main` publishes previews to both marketplaces.
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 123 | Documentation Drift | BUILD-01..03, QA-01..03, VSC-01..06, IJ-01, IJ-02, COMP-01, DEV-01..03 |
+
+One phase, one docs PR. Input: `.planning/research/DOC-DRIFT-2026-09-30.md`. The v4.7 map is
+archived in `.planning/milestones/v4.7-ROADMAP.md`.
 
 ## Performance Metrics
 
@@ -196,6 +185,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 
 ### Active Constraints
 
+- **v4.8:** docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30). Nothing else outside the docs. The user wants a short milestone: one phase, one docs PR, no extra work folded in.
 - **v4.7:** the milestone PR carries one `Closes #N` line per issue (61 issues across Phases 110-122); an issue table does not close issues. Before the squash merge, scan the branch's commit bodies for closing keywords.
 - **v4.7:** Phase 122 changes `preview.yml`, `manual-release.yml` and `vscode:prepublish`, which publish to both marketplaces on every push to `main`. The publish workflows cannot be run from the branch without publishing: check them statically, run packaging only up to the publish step, and watch the first preview run after the merge.
 - **v4.7:** do not install or run langium 4.4 inside `bbj-vscode`; the DEP-05 upstream repro lives outside this repository.
@@ -390,6 +380,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ### Roadmap Evolution
 
+- v4.8 roadmap created 2026-09-30: one phase (123) for 18 requirements. The count was first given as 19; the requirement list has 18, and nothing in the drift scan is left without one.
 - v4.7 roadmap created 2026-09-26: Phases 110-122 for 63 requirements (61 GitHub issues plus three carried-over todos). REF-02 folded into 110, FIX-02/03 into 111, TEST-09 into 112, TEST-10/DOC-01 into 113, FIX-04 into 114, DEP-03 into 115, TEST-08 into 116, DEP-01/CI-04 into 117, FIX-01 into 119, REF-09 into 121.
 - v4.6 archived 2026-09-26 (Phases 106-109).
 - v4.6 roadmap created 2026-09-24: Phases 106-109 for 18 requirements (DIAG-01 and JINT-03 folded into 106, JINT-01/02 into 109).
@@ -398,11 +389,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T18:48:51.476Z
-Stopped at: Milestone v4.7 completed and archived
+Last session: 2026-09-30T08:21:03.000Z
+Stopped at: v4.8 roadmap created (Phase 123)
 Resume file: None
 
-Next: merge PR #719 (Dependabot roll-up), watch v4.7 on the preview channel, then `/gsd-new-milestone`.
+Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -515,4 +506,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 123 with /gsd-plan-phase 123 (or /gsd-discuss-phase 123 first)

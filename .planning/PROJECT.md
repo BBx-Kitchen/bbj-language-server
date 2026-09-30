@@ -20,7 +20,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - A Composers page in both guides, including assign-to validation, plus the VS Code decompile commands
 - Developer docs: CLAUDE.md architecture, testing pattern and CI gates; documentation/README; the concepts page
 
-Input: `.planning/research/DOC-DRIFT-2026-09-30.md` (the drift scan stands in for research). Docs only; the one allowed non-doc change is a `preLaunchTask` in `.vscode/launch.json`.
+Input: `.planning/research/DOC-DRIFT-2026-09-30.md` (the drift scan stands in for research). Docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30).
 
 ## Current State
 
