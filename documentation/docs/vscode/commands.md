@@ -5,13 +5,16 @@ title: Commands
 
 # VS Code Commands
 
-The BBj Language Server extension provides several commands accessible via keyboard shortcuts, the command palette, or context menus.
+The BBj Language Server extension provides several commands accessible via keyboard shortcuts, the
+Command Palette, or context menus. In the Command Palette, BBj-category commands show with a
+"BBj:" prefix in front of their title; **Denumber BBj Program** has no category and appears by its
+title alone.
 
 ## Run Commands
 
 These commands execute BBj programs in different modes.
 
-### Run as GUI (`Alt+G`)
+### Run As BBj Program (`Alt+G`)
 
 Runs the current BBj program in GUI (Graphical User Interface) mode.
 
@@ -19,9 +22,9 @@ Runs the current BBj program in GUI (Graphical User Interface) mode.
 
 **Usage:**
 - Open a `.bbj` file
-- Press `Alt+G` or right-click and select "Run as GUI"
+- Press `Alt+G` or right-click and select "Run As BBj Program"
 
-### Run as BUI (`Alt+B`)
+### Run As BUI Program (`Alt+B`)
 
 Runs the current BBj program as a BUI (Browser User Interface) web application.
 
@@ -29,11 +32,13 @@ Runs the current BBj program as a BUI (Browser User Interface) web application.
 
 **Usage:**
 - Open a `.bbj` file
-- Press `Alt+B` or right-click and select "Run as BUI"
+- Press `Alt+B` or right-click and select "Run As BUI Program"
 
-**Note:** Requires BUI configuration in BBj Enterprise Manager and authentication via `BBj: Login to Enterprise Manager`.
+**Note:** requires Enterprise Manager authentication. With no valid token stored, running this
+command prompts for login automatically — see
+[Login to Enterprise Manager](#login-to-enterprise-manager) below.
 
-### Run as DWC (`Alt+D`)
+### Run As DWC Program (`Alt+D`)
 
 Runs the current BBj program as a DWC (Dynamic Web Client) application.
 
@@ -41,25 +46,27 @@ Runs the current BBj program as a DWC (Dynamic Web Client) application.
 
 **Usage:**
 - Open a `.bbj` file
-- Press `Alt+D` or right-click and select "Run as DWC"
+- Press `Alt+D` or right-click and select "Run As DWC Program"
 
-**Note:** Requires Enterprise Manager authentication via `BBj: Login to Enterprise Manager`.
+**Note:** requires Enterprise Manager authentication, prompted automatically like
+Run As BUI Program above.
 
 ## Build Commands
 
-### Compile (`Alt+C`)
+### Compile BBj Program (`Alt+C`)
 
-Compiles the current BBj source file to bytecode.
+Compiles the current BBj source file by running `bbjcpl` from `{bbj.home}/bin`, with the options
+set through [Configure Compile Options](#configure-compile-options) below.
 
 **Command ID:** `bbj.compile`
 
 **Usage:**
 - Open a `.bbj` file
-- Press `Alt+C` or right-click and select "Compile"
+- Press `Alt+C` or right-click and select "Compile BBj Program"
 
 **Output:** Creates a compiled `.bbj` file (tokenized format).
 
-### Denumber (`Alt+N`)
+### Denumber BBj Program (`Alt+N`)
 
 Removes line numbers from a BBj program.
 
@@ -67,7 +74,7 @@ Removes line numbers from a BBj program.
 
 **Usage:**
 - Open a `.bbj` file with line numbers
-- Press `Alt+N` or right-click and select "Denumber"
+- Press `Alt+N` or right-click and select "Denumber BBj Program"
 
 **Before:**
 ```bbj
@@ -81,33 +88,62 @@ PRINT "Hello"
 PRINT "World"
 ```
 
+Opening a line-numbered program offers the same choice automatically (denumber and replace, or
+open read-only) unless `bbj.denumber.promptOnOpen` is off — see
+[Opening Programs](./configuration.md#opening-programs) in the Configuration guide.
+
+## Decompile Commands
+
+Tokenized (binary) BBj programs can be converted to editable source with `bbjlst`. Both commands
+are available from the Command Palette only — they have no keybinding and appear in no context
+menu.
+
+### Decompile Tokenized BBj Program (Replace)
+
+Runs `bbjlst` and replaces the tokenized file on disk with its decompiled source.
+
+**Command ID:** `bbj.decompile`
+
+### Decompile Tokenized BBj Program (Read-only)
+
+Runs `bbjlst` and opens a read-only decompiled copy, leaving the original binary file untouched.
+
+**Command ID:** `bbj.decompileReadonly`
+
+Opening a tokenized program offers the same two choices automatically, unless
+`bbj.decompile.promptOnOpen` is off — see
+[Opening Programs](./configuration.md#opening-programs) in the Configuration guide.
+
 ## Configuration Commands
 
-### Show config.bbx
+### Show the Active Config File
 
-Opens the BBj configuration file (`config.bbx`) in the editor.
+Opens the active BBj configuration file: the file `bbj.configPath` names (subject to Workspace
+Trust — see [`bbj.configPath`](./configuration.md#bbjconfigpath)), or `{bbj.home}/cfg/config.bbx`
+when that setting is not set. Shows an error when no config file is configured, or the resolved
+file does not exist.
 
 **Command ID:** `bbj.config`
 
-**Location:** `$BBJ_HOME/cfg/config.bbx`
-
-### Show BBj.properties
+### Show the BBj.properties file
 
 Opens the BBj properties file in the editor.
 
 **Command ID:** `bbj.properties`
 
-**Location:** `$BBJ_HOME/cfg/BBj.properties`
+**Location:**
+- Linux/Mac: `$BBJ_HOME/cfg/BBj.properties`
+- Windows: `%BBJ_HOME%\cfg\BBj.properties`
 
 ### Open Enterprise Manager
 
-Opens the BBj Enterprise Manager web interface in your default browser.
+Opens the BBj Enterprise Manager web interface in your default browser. The URL is built from
+`com.basis.jetty.host` and `com.basis.jetty.port` in `{bbj.home}/cfg/BBj.properties`
+(`http://<host>:<port>/bbjem/em`).
 
 **Command ID:** `bbj.em`
 
-**URL:** Typically `http://localhost:8888/bbjem/em`
-
-### Show Classpath Entries
+### Show Available Classpath Entries
 
 Displays available classpath entries configured in BBj Enterprise Manager.
 
@@ -117,7 +153,10 @@ Displays available classpath entries configured in BBj Enterprise Manager.
 
 ### Login to Enterprise Manager
 
-Authenticates with BBj Enterprise Manager and stores the JWT token for BUI/DWC run commands.
+Same login flow as the
+[configuration page](./configuration.md#enterprise-manager-authentication): the username prompt
+is pre-filled with the last username that logged in successfully, and a login that returns an
+unusable token is rejected with nothing stored.
 
 **Command ID:** `bbj.loginEM`
 
@@ -127,7 +166,9 @@ Authenticates with BBj Enterprise Manager and stores the JWT token for BUI/DWC r
 3. Enter your Enterprise Manager username and password
 4. Token is stored securely in VS Code's SecretStorage
 
-**Required for:** Running BUI and DWC programs. Token persists across VS Code restarts.
+**Required for:** Running BUI and DWC programs. Token persists across VS Code restarts. See
+[Enterprise Manager Authentication](./configuration.md#enterprise-manager-authentication) for the
+full flow, including the automatic re-prompt on a missing or expired token.
 
 ### Refresh Java Classes
 
@@ -135,11 +176,14 @@ Reloads the Java classpath and clears cached class information.
 
 **Command ID:** `bbj.refreshJavaClasses`
 
-**Usage:** Run from the Command Palette when Java classes are not appearing in code completion, or after classpath changes in Enterprise Manager.
+**Usage:** Run from the Command Palette when Java classes are not appearing in code completion, or
+after classpath changes in Enterprise Manager.
 
 ### Configure Compile Options
 
-Opens a settings dialog to configure BBj compiler options (type checking, line numbering, output settings, content protection, and diagnostics).
+Opens a QuickPick to select BBj compiler options (type checking, line numbering, output settings,
+content protection, and diagnostics), then asks whether to save them to workspace or user
+settings.
 
 **Command ID:** `bbj.configureCompileOptions`
 
@@ -149,11 +193,11 @@ Opens a settings dialog to configure BBj compiler options (type checking, line n
 
 | Command | Windows/Linux | macOS |
 |---------|---------------|-------|
-| Run as GUI | `Alt+G` | `Alt+G` |
-| Run as BUI | `Alt+B` | `Alt+B` |
-| Run as DWC | `Alt+D` | `Alt+D` |
-| Compile | `Alt+C` | `Alt+C` |
-| Denumber | `Alt+N` | `Alt+N` |
+| Run As BBj Program | `Alt+G` | `Alt+G` |
+| Run As BUI Program | `Alt+B` | `Alt+B` |
+| Run As DWC Program | `Alt+D` | `Alt+D` |
+| Compile BBj Program | `Alt+C` | `Alt+C` |
+| Denumber BBj Program | `Alt+N` | `Alt+N` |
 
 ## Command Palette
 
@@ -166,22 +210,20 @@ All commands are available via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+
 
 ### Editor Context Menu
 
-Right-click in a BBj file editor to access:
-- Run as GUI
-- Run as BUI
-- Run as DWC
-- Compile
-- Denumber
+Right-click in a BBj file editor (not for `.bbjt` files) to access:
+- Run As BBj Program
+- Run As BUI Program
+- Run As DWC Program
+- Compile BBj Program
+- Denumber BBj Program
 
 ### Explorer Context Menu
 
-Right-click on a `.bbj` file in the Explorer to access run and build commands.
+Right-click on a `.bbj` file in the Explorer to access the same five commands.
 
 ### Editor Title Bar
 
-Quick action buttons appear in the editor title bar when editing BBj files:
-- Run button (GUI mode)
-- Additional action buttons based on configuration
+Run, compile and denumber buttons appear in the editor title bar when editing BBj files.
 
 ## Auto-Save Option
 
@@ -201,16 +243,19 @@ For commands to work properly, ensure:
 
 1. **BBj Home** is configured (`bbj.home` setting)
 2. **BBjServices** is running
-3. **Java** is available in PATH
-4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands - use `BBj: Login to Enterprise Manager`)
+3. **Formatting** runs Java (`bbj.formatter.javaPath` when set, else `java` on PATH — an invalid
+   configured path cancels formatting, with no PATH fallback). Compiling and running programs do
+   not need Java: they run BBj's own `bbjcpl` and `bbj` executables from `{bbj.home}/bin`.
+4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands — see
+   [Login to Enterprise Manager](#login-to-enterprise-manager) above)
 
 ## Troubleshooting
 
 ### Commands Not Working
 
-1. Verify `bbj.home` setting points to valid BBj installation
+1. Verify `bbj.home` setting points to a valid BBj installation
 2. Check BBjServices is running
-3. Look for errors in Output panel (BBj Language Server)
+3. Look for errors in the Output panel (select the `BBj` channel)
 
 ### Run Commands Fail
 
@@ -222,11 +267,12 @@ For commands to work properly, ensure:
 
 If BUI or DWC run commands fail:
 1. Verify Enterprise Manager is accessible at the configured EM URL
-2. Authenticate using `BBj: Login to Enterprise Manager` from the Command Palette
-3. Check if the token has expired (re-authenticate if needed)
+2. The commands prompt for login automatically when no valid token is stored — see
+   [Enterprise Manager Authentication](./configuration.md#enterprise-manager-authentication)
 
 ### Compile Issues
 
-1. Verify Java is installed and in PATH
+Compiling runs `bbjcpl` from `{bbj.home}/bin`, not Java:
+1. Verify `bbj.home` points to a valid BBj installation with `bin/bbjcpl` present
 2. Check file permissions
-3. Ensure source file is saved
+3. Ensure the source file is saved

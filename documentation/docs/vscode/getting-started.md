@@ -115,7 +115,7 @@ You can also right-click in the editor and select the run option from the contex
 If features like completion aren't working:
 
 1. Check the Output panel (`View` > `Output`)
-2. Select "BBj Language Server" from the dropdown
+2. Select "BBj" from the dropdown
 3. Look for error messages
 
 ### Java Integration Not Working
