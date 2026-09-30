@@ -347,13 +347,21 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
 **Plans:** 8 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 123-01-PLAN.md — Build instructions: "build bbj-vscode" task as Run Extension's preLaunchTask, `npm run build` in Gitpod init, root README, docs README (wave 1)
 - [ ] 123-02-PLAN.md — QA checklists: token-only EM rows, one row per new behaviour, real run menus (wave 1)
 - [ ] 123-03-PLAN.md — VS Code guide: minimum version, settings reference and complete example, configPath trust, interop fallback, EM login, real command titles and decompile commands (wave 1)
 - [ ] 123-04-PLAN.md — IntelliJ guide: BBj Compiler section, automatic EM login with remembered username, Host fallback, Compile BBj File menus (wave 1)
 - [ ] 123-05-PLAN.md — Developer docs: CLAUDE.md architecture, testing pattern and CI gates; concepts page transport module (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 123-06-PLAN.md — VS Code Composers page, linked from the commands page (wave 2)
 - [ ] 123-07-PLAN.md — IntelliJ Composers page, linked from the commands page (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 123-08-PLAN.md — Final cross-check: both builds end to end, drift-scan table, old-string / planning-id / scope sweeps (wave 3)
 
 *Planning notes:*
