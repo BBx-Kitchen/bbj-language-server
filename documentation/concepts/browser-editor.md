@@ -28,7 +28,7 @@ Exactly four places bind the current server to Node.js:
 
 | Seam | File | Node dependency | Browser replacement |
 |---|---|---|---|
-| Java interop transport | `java-interop.ts` | raw TCP `net.Socket` to `localhost:5008` | WebSocket to the gateway |
+| Java interop transport | `java-interop-connection.ts` | raw TCP `net.Socket` to `localhost:5008` | WebSocket to the gateway |
 | Environment discovery | `bbj-ws-manager.ts` | reads `config.bbx` (PREFIX), `project.properties`, `os.homedir()`, `path.delimiter` | one `env/get` request answered server-side |
 | File access | Langium `FileSystemProvider` (`NodeFileSystem`) | local disk | remote FS provider over WebSocket |
 | Compiler diagnostics | `bbj-cpl-service.ts` | `spawn('bbjcpl')` | `compile/run` request to the gateway |
@@ -158,8 +158,9 @@ foundation.
 Pure refactoring for VS Code/IntelliJ (they wire the Node implementations; `main.ts`
 behavior unchanged). New interfaces, injected via the existing DI module:
 
-1. `InteropTransport` — extracted from `java-interop.ts` (produces a
-   `MessageConnection`; Node socket impl today, WebSocket impl later).
+1. `InteropTransport` — extracted from `java-interop-connection.ts` (the
+   `JavaInteropConnection` class that owns the socket; produces a `MessageConnection`,
+   Node socket impl today, WebSocket impl later).
 2. `BBjEnvironmentProvider` — extracted from `bbj-ws-manager.ts` config discovery
    (`getEnvironment(): Promise<{prefixes, classpath, bbjdir}>`); removes the
    long-standing direct `fs`/`os` usage.
