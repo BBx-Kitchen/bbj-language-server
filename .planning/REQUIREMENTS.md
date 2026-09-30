@@ -11,39 +11,39 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
 
 ### Build instructions
 
-- [ ] **BUILD-01**: A developer following the root README's "Building Locally" steps, or opening the repo in Gitpod, ends up with a built extension (`out/extension.cjs`), and the README names all three parts (bbj-vscode, java-interop, bbj-intellij)
-- [ ] **BUILD-02**: "Run Extension" in `.vscode/launch.json` builds the extension before launching, so it works on a fresh checkout
-- [ ] **BUILD-03**: `documentation/README.md` describes the real docs workflow (npm, `npm run build`/`start`, deployment through `deploy-docs.yml`)
+- [x] **BUILD-01**: A developer following the root README's "Building Locally" steps, or opening the repo in Gitpod, ends up with a built extension (`out/extension.cjs`), and the README names all three parts (bbj-vscode, java-interop, bbj-intellij)
+- [x] **BUILD-02**: "Run Extension" in `.vscode/launch.json` builds the extension before launching, so it works on a fresh checkout
+- [x] **BUILD-03**: `documentation/README.md` describes the real docs workflow (npm, `npm run build`/`start`, deployment through `deploy-docs.yml`)
 
 ### QA checklists
 
-- [ ] **QA-01**: The EM rows in `QA/FULL-TEST-CHECKLIST.md` describe token-only login (`bbj.em.url` plus the login prompt, no credential settings)
-- [ ] **QA-02**: The full checklist has rows for each v4.7 behaviour: remembered EM username, `web.bbj` username rule, expired/undecodable token re-prompt, assign-to validation in both IDEs, `bbj.formatter.javaPath` set and invalid, workspace `bbj.configPath` in an untrusted workspace, invalid interop host/port fallback, the Java hover Docs link
-- [ ] **QA-03**: The smoke checklist's run steps match the real menus in both IDEs
+- [x] **QA-01**: The EM rows in `QA/FULL-TEST-CHECKLIST.md` describe token-only login (`bbj.em.url` plus the login prompt, no credential settings)
+- [x] **QA-02**: The full checklist has rows for each v4.7 behaviour: remembered EM username, `web.bbj` username rule, expired/undecodable token re-prompt, assign-to validation in both IDEs, `bbj.formatter.javaPath` set and invalid, workspace `bbj.configPath` in an untrusted workspace, invalid interop host/port fallback, the Java hover Docs link
+- [x] **QA-03**: The smoke checklist's run steps match the real menus in both IDEs
 
 ### VS Code guide
 
-- [ ] **VSC-01**: The VS Code guide states the real minimum version (1.101.0)
-- [ ] **VSC-02**: The configuration page documents `bbj.configPath`'s value rules and its Workspace Trust behaviour, and no longer claims workspace settings always override user settings
-- [ ] **VSC-03**: The configuration page says what happens with an invalid interop host or port
-- [ ] **VSC-04**: The six undocumented settings (`bbj.decompile.promptOnOpen`, `bbj.denumber.promptOnOpen`, `bbj.diagnostics.suppressCascading`, `bbj.diagnostics.maxErrors`, `bbj.inlayHints.parameterNames.enabled`, `bbj.compiler.trigger`) are in the settings reference, and the "complete example" is accurate
-- [ ] **VSC-05**: The EM login description in the configuration and commands pages matches the v4.7 flow (remembered username, automatic re-prompt on a missing, expired or undecodable token, invalid tokens rejected)
-- [ ] **VSC-06**: The commands page uses the real command titles, describes "Show the Active Config File" correctly, gets the formatter's Java resolution and compile's `bbjcpl` right, and lists the decompile commands
+- [x] **VSC-01**: The VS Code guide states the real minimum version (1.101.0)
+- [x] **VSC-02**: The configuration page documents `bbj.configPath`'s value rules and its Workspace Trust behaviour, and no longer claims workspace settings always override user settings
+- [x] **VSC-03**: The configuration page says what happens with an invalid interop host or port
+- [x] **VSC-04**: The six undocumented settings (`bbj.decompile.promptOnOpen`, `bbj.denumber.promptOnOpen`, `bbj.diagnostics.suppressCascading`, `bbj.diagnostics.maxErrors`, `bbj.inlayHints.parameterNames.enabled`, `bbj.compiler.trigger`) are in the settings reference, and the "complete example" is accurate
+- [x] **VSC-05**: The EM login description in the configuration and commands pages matches the v4.7 flow (remembered username, automatic re-prompt on a missing, expired or undecodable token, invalid tokens rejected)
+- [x] **VSC-06**: The commands page uses the real command titles, describes "Show the Active Config File" correctly, gets the formatter's Java resolution and compile's `bbjcpl` right, and lists the decompile commands
 
 ### IntelliJ guide
 
-- [ ] **IJ-01**: The IntelliJ commands and configuration pages describe the automatic EM login on BUI/DWC runs and the remembered username
-- [ ] **IJ-02**: The IntelliJ configuration page has the "BBj Compiler" settings section (compile output directory, compiler check) and notes the invalid-host fallback
+- [x] **IJ-01**: The IntelliJ commands and configuration pages describe the automatic EM login on BUI/DWC runs and the remembered username
+- [x] **IJ-02**: The IntelliJ configuration page has the "BBj Compiler" settings section (compile output directory, compiler check) and notes the invalid-host fallback
 
 ### Composers
 
-- [ ] **COMP-01**: Both guides have a Composers page that lists every composer command/action and intention, and explains assign-to validation
+- [x] **COMP-01**: Both guides have a Composers page that lists every composer command/action and intention, and explains assign-to validation
 
 ### Developer docs
 
-- [ ] **DEV-01**: CLAUDE.md's architecture section matches the code: eight LSP providers, the current validation modules, the java-interop module split and JavadocProvider via DI
-- [ ] **DEV-02**: CLAUDE.md's testing pattern presents `createBBjTestServices` as the default for new tests, and its command list includes `typecheck:test`, the lint/type-check PR gates and the workflow hygiene checkers
-- [ ] **DEV-03**: `documentation/concepts/browser-editor.md` names the module that now holds the socket transport
+- [x] **DEV-01**: CLAUDE.md's architecture section matches the code: eight LSP providers, the current validation modules, the java-interop module split and JavadocProvider via DI
+- [x] **DEV-02**: CLAUDE.md's testing pattern presents `createBBjTestServices` as the default for new tests, and its command list includes `typecheck:test`, the lint/type-check PR gates and the workflow hygiene checkers
+- [x] **DEV-03**: `documentation/concepts/browser-editor.md` names the module that now holds the socket transport
 
 ## Future Requirements
 
@@ -61,24 +61,24 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | Phase 123 | Gaps Found |
-| BUILD-02 | Phase 123 | Gaps Found |
-| BUILD-03 | Phase 123 | Gaps Found |
-| QA-01 | Phase 123 | Gaps Found |
-| QA-02 | Phase 123 | Gaps Found |
-| QA-03 | Phase 123 | Gaps Found |
-| VSC-01 | Phase 123 | Gaps Found |
-| VSC-02 | Phase 123 | Gaps Found |
-| VSC-03 | Phase 123 | Gaps Found |
-| VSC-04 | Phase 123 | Gaps Found |
-| VSC-05 | Phase 123 | Gaps Found |
-| VSC-06 | Phase 123 | Gaps Found |
-| IJ-01 | Phase 123 | Gaps Found |
-| IJ-02 | Phase 123 | Gaps Found |
-| COMP-01 | Phase 123 | Gaps Found |
-| DEV-01 | Phase 123 | Gaps Found |
-| DEV-02 | Phase 123 | Gaps Found |
-| DEV-03 | Phase 123 | Gaps Found |
+| BUILD-01 | Phase 123 | Complete |
+| BUILD-02 | Phase 123 | Complete |
+| BUILD-03 | Phase 123 | Complete |
+| QA-01 | Phase 123 | Complete |
+| QA-02 | Phase 123 | Complete |
+| QA-03 | Phase 123 | Complete |
+| VSC-01 | Phase 123 | Complete |
+| VSC-02 | Phase 123 | Complete |
+| VSC-03 | Phase 123 | Complete |
+| VSC-04 | Phase 123 | Complete |
+| VSC-05 | Phase 123 | Complete |
+| VSC-06 | Phase 123 | Complete |
+| IJ-01 | Phase 123 | Complete |
+| IJ-02 | Phase 123 | Complete |
+| COMP-01 | Phase 123 | Complete |
+| DEV-01 | Phase 123 | Complete |
+| DEV-02 | Phase 123 | Complete |
+| DEV-03 | Phase 123 | Complete |
 
 **Coverage:**
 

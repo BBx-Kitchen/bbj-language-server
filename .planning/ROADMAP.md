@@ -327,7 +327,7 @@ with the code on `main` after v4.7, in one short phase and one docs PR. Evidence
 on both sides is in `.planning/research/DOC-DRIFT-2026-09-30.md`. Docs only;
 the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30).
 
-- [ ] **Phase 123: Documentation Drift** - Build instructions, QA checklists, both user guides and the developer docs match the code after v4.7
+- [x] **Phase 123: Documentation Drift** - Build instructions, QA checklists, both user guides and the developer docs match the code after v4.7 (completed 2026-09-30)
 
 ## Phase Details
 
@@ -344,7 +344,7 @@ the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunch
   4. An IntelliJ user reading the guide finds the automatic EM login on BUI/DWC runs with the remembered username, a "BBj Compiler" settings section (compile output directory, compiler check) and the invalid-host fallback. Both guides have a Composers page that lists every composer command, action and intention and explains assign-to validation, and the docs site builds (`npm run build` in `documentation/`) with no broken links.
   5. A contributor reading CLAUDE.md finds the eight LSP providers, the current validation modules, the split java-interop modules with JavadocProvider via DI, `createBBjTestServices` as the default for new tests, and the `typecheck:test`, lint and workflow hygiene gates; `documentation/concepts/browser-editor.md` names `java-interop-connection.ts` for the socket transport. Every item in the drift scan is fixed or recorded as left on purpose.
 
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
