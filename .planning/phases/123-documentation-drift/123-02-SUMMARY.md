@@ -121,3 +121,15 @@ None - no external service configuration required.
 ---
 *Phase: 123-documentation-drift*
 *Completed: 2026-09-30*
+
+## Self-Check: PASSED
+
+- FOUND: QA/FULL-TEST-CHECKLIST.md
+- FOUND: QA/SMOKE-TEST-CHECKLIST.md
+- FOUND: .planning/phases/123-documentation-drift/123-02-SUMMARY.md
+- FOUND commit bfdbd656 (task 1)
+- FOUND commit 389e76fc (task 2)
+- FOUND commit 84ec93f2 (task 3)
+- FOUND commit dbe986f5 (SUMMARY metadata commit)
+- Re-ran all automated `<verify>` and `<acceptance_criteria>` checks from Tasks 1-3: all pass
+- Plan-level verification: `git diff --name-only 8b53253d` lists only files inside this plan's `files_modified` plus `.planning/` and 123-01's already-committed files
