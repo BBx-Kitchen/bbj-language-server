@@ -99,9 +99,9 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 
 | # | Feature | Steps | Expected | Pass/Fail |
 |---|---------|-------|----------|-----------|
-| 1 | Run Program | 1. Open VS Code<br>2. Open any `.bbj` file (e.g., `examples/hello.bbj`)<br>3. Right-click in editor<br>4. Select "Run BBj" > "Run Program"<br>5. Check output terminal | Program executes and output appears in terminal | [ ] |
-| 2 | Run with Debug | 1. Open any `.bbj` file<br>2. Right-click in editor<br>3. Select "Run BBj" > "Run with Debug"<br>4. Check output terminal | Program executes with debug output/logging enabled | [ ] |
-| 3 | Run as BUI/DWC | 1. Open `.bbj` file with GUI components (if applicable)<br>2. Right-click in editor<br>3. Select "Run BBj" > "Run as BUI" or "Run as DWC"<br>4. Check for browser/window launch | Program launches in BUI or DWC mode | [ ] |
+| 1 | Run Program | 1. Open VS Code<br>2. Open `examples/msgbox.bbj`<br>3. Right-click in the editor and choose "Run As BBj Program" directly from the context menu (Alt+G or the editor title run button do the same)<br>4. Check the run output | The program starts in a BBj window and its output appears; failures appear as an error notification | [ ] |
+| 2 | Debug launch command logged | 1. Set `bbj.debug` to true<br>2. Run the file with "Run As BBj Program"<br>3. Check the "BBj" output channel | The output channel logs the GUI run's launch command | [ ] |
+| 3 | Run as BUI/DWC | 1. Open a `.bbj` file with GUI components<br>2. Right-click in the editor and choose "Run As BUI Program" (Alt+B) or "Run As DWC Program" (Alt+D) directly from the context menu<br>3. See the "Enterprise Manager Integration" section above for the login flow | The program opens in the browser in BUI or DWC mode | [ ] |
 
 ---
 
@@ -109,9 +109,9 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 
 | # | Feature | Steps | Expected | Pass/Fail |
 |---|---------|-------|----------|-----------|
-| 1 | Run Program | 1. Open IntelliJ IDEA<br>2. Open any `.bbj` file (e.g., `examples/hello.bbj`)<br>3. Right-click in editor<br>4. Select "Run BBj" > "Run Program"<br>5. Check run tool window | Program executes and output appears in run window | [ ] |
-| 2 | Run with Debug | 1. Open any `.bbj` file<br>2. Right-click in editor<br>3. Select "Run BBj" > "Run with Debug"<br>4. Check run tool window | Program executes with debug output/logging enabled | [ ] |
-| 3 | Run as BUI/DWC | 1. Open `.bbj` file with GUI components (if applicable)<br>2. Right-click in editor<br>3. Select "Run BBj" > "Run as BUI" or "Run as DWC"<br>4. Check for browser/window launch | Program launches in BUI or DWC mode | [ ] |
+| 1 | Run Program | 1. Open IntelliJ IDEA<br>2. Open `examples/msgbox.bbj`<br>3. Right-click in the editor and choose "Run As BBj Program" directly from the context menu<br>4. Check the run tool window | The program starts in a BBj window; IntelliJ logs "[GUI] Launched msgbox.bbj" in the "BBj Language Server" tool window; failures appear in that tool window | [ ] |
+| 2 | Run from the Project View "BBj Run" submenu | 1. In the Project View, right-click `examples/msgbox.bbj`<br>2. Choose "BBj Run" > "Run As BBj Program" | The program starts the same way as from the editor context menu; the "BBj Run" submenu also offers "Run As BUI Program" and "Run As DWC Program" | [ ] |
+| 3 | Run as BUI/DWC | 1. Open a `.bbj` file with GUI components<br>2. Right-click in the editor and choose "Run As BUI Program" (Alt+B) or "Run As DWC Program" (Alt+D) directly from the context menu<br>3. See the "Enterprise Manager Integration" section above for the login flow | The program opens in the browser in BUI or DWC mode | [ ] |
 
 ---
 
