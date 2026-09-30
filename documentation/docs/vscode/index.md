@@ -26,6 +26,7 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 | [Features](vscode/features) | Overview of all extension features |
 | [Configuration](vscode/configuration) | VS Code settings reference |
 | [Commands](vscode/commands) | Keyboard shortcuts and commands |
+| [Composers](vscode/composers) | Visual editors for MSGBOX, addWindow, CVS() and SETOPTS |
 
 ## Requirements
 
