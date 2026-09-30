@@ -30,6 +30,7 @@ npx vitest run <file>          # Run a single test file, e.g. npx vitest run tes
 npm run test:watch             # Watch mode
 npm run test:coverage          # Coverage report (V8)
 npm run lint                   # ESLint
+npm run typecheck:test         # tsc --noEmit over the test tree and the interop harness (tsconfig.test.json + tsconfig.harness.json)
 npm run interop-harness -- --host … --port …   # Java interop test harness against a live interop peer (writes tools/interop-test-harness/report.html)
 ```
 
@@ -44,6 +45,19 @@ IntelliJ plugin (from `bbj-intellij/`):
 ./gradlew build
 ```
 Build `bbj-vscode` first — `./gradlew build` (or `buildPlugin`) fails fast if `bbj-vscode/out/language/main.cjs` is missing; any host JDK works, since JDK 17 is provisioned automatically.
+
+### CI gates
+
+Every pull request to `main` runs `.github/workflows/build.yml`: build, `npm run lint`,
+`npm run typecheck:test`, then `npm test`, then packages a test VSIX — any failing step fails
+the PR. `.github/workflows/workflow-hygiene.yml` runs three dependency-free checkers from the
+repo root on every push and pull request to `main`; run them locally before pushing a workflow
+change:
+```bash
+node bbj-vscode/tools/check-workflow-secrets.mjs .github/workflows .github/actions/*        # no inline secrets in run: bodies
+node bbj-vscode/tools/check-gradle-wrapper.mjs                                              # wrapper checksum pinned and validated
+node bbj-vscode/tools/check-action-pins-and-permissions.mjs                                 # actions SHA-pinned, least-privilege permissions
+```
 
 ## Architecture
 
@@ -72,18 +86,23 @@ Services are wired in `bbj-module.ts` via `createBBjServices()`. Custom service 
 
 ### Testing Pattern
 
-Tests use Vitest with Langium's `EmptyFileSystem` and test utilities:
+Tests use Vitest with Langium's `EmptyFileSystem` and test utilities. `createBBjTestServices` from
+`test/bbj-test-module.ts` is the default entry point for new tests:
 
 ```typescript
 import { EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
 ```
 
-For tests needing Java interop, use `createBBjTestServices` from `test/bbj-test-module.ts`, which injects `JavaInteropTestService` with fake Java classes (BBjAPI, HashMap, String) and a `TestableBBjLexer`.
+It is hermetic — it injects `JavaInteropTestService` (fake Java classes such as BBjAPI, HashMap
+and String; see the file for the full set) and `TestableBBjLexer`, and accepts an optional
+`JavadocProvider`, so tests never reach the real java-interop socket or a shared javadoc
+singleton. `createBBjServices` from `../src/language/bbj-module.js` is the production entry
+point — reach for it only when a test deliberately needs the real services.
 
 Helper functions in `test/test-helper.ts`: `initializeWorkspace()`, `findFirst()`, `findByIndex()`.
 
