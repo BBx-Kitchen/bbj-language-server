@@ -84,6 +84,12 @@ Compiles the current BBj source file to bytecode.
 configured in Settings — compiling without one reports that no compile output directory is
 configured.
 
+## Composer Actions
+
+Visual dialogs for composing or editing `MSGBOX`, `addWindow`, `addChildWindow`, `CVS()`, and
+`SETOPTS` calls are available from the editor context menu, Alt+Enter intentions, and Code Vision
+cues — see [Composers](./composers.md) for the full list and how assign-to validation works.
+
 ## Tools Menu Commands
 
 The following commands are available in the Tools menu. `Tools > Compile BBj File` is also here —
@@ -162,11 +168,14 @@ logs the reason in the BBj Language Server tool window.
 
 ### Editor Context Menu
 
-Right-click in a BBj file editor to access run actions at the top of the menu, followed by Compile:
+Right-click in a BBj file editor to access run actions at the top of the menu, followed by Compile
+and the [composer actions](./composers.md):
 - Run As BBj Program
 - Run As BUI Program
 - Run As DWC Program
 - Compile BBj File
+- Compose MSGBOX…, Compose addWindow…, Compose addChildWindow…, Compose CVS()…, Configure SETOPTS
+  Options in Code…, Compose SETOPTS… — see [Composers](./composers.md)
 
 ### Project View Context Menu
 
