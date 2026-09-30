@@ -1,0 +1,72 @@
+# Requirements: BBj Language Server
+
+**Defined:** 2026-09-30
+**Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
+
+## v4.8 Requirements
+
+Documentation back in line with the code after v4.7. Input and evidence (file:line on both sides):
+`.planning/research/DOC-DRIFT-2026-09-30.md`. Docs only; the single allowed non-doc change is a
+`preLaunchTask` in `.vscode/launch.json`.
+
+### Build instructions
+
+- [ ] **BUILD-01**: A developer following the root README's "Building Locally" steps, or opening the repo in Gitpod, ends up with a built extension (`out/extension.cjs`), and the README names all three parts (bbj-vscode, java-interop, bbj-intellij)
+- [ ] **BUILD-02**: "Run Extension" in `.vscode/launch.json` builds the extension before launching, so it works on a fresh checkout
+- [ ] **BUILD-03**: `documentation/README.md` describes the real docs workflow (npm, `npm run build`/`start`, deployment through `deploy-docs.yml`)
+
+### QA checklists
+
+- [ ] **QA-01**: The EM rows in `QA/FULL-TEST-CHECKLIST.md` describe token-only login (`bbj.em.url` plus the login prompt, no credential settings)
+- [ ] **QA-02**: The full checklist has rows for each v4.7 behaviour: remembered EM username, `web.bbj` username rule, expired/undecodable token re-prompt, assign-to validation in both IDEs, `bbj.formatter.javaPath` set and invalid, workspace `bbj.configPath` in an untrusted workspace, invalid interop host/port fallback, the Java hover Docs link
+- [ ] **QA-03**: The smoke checklist's run steps match the real menus in both IDEs
+
+### VS Code guide
+
+- [ ] **VSC-01**: The VS Code guide states the real minimum version (1.101.0)
+- [ ] **VSC-02**: The configuration page documents `bbj.configPath`'s value rules and its Workspace Trust behaviour, and no longer claims workspace settings always override user settings
+- [ ] **VSC-03**: The configuration page says what happens with an invalid interop host or port
+- [ ] **VSC-04**: The six undocumented settings (`bbj.decompile.promptOnOpen`, `bbj.denumber.promptOnOpen`, `bbj.diagnostics.suppressCascading`, `bbj.diagnostics.maxErrors`, `bbj.inlayHints.parameterNames.enabled`, `bbj.compiler.trigger`) are in the settings reference, and the "complete example" is accurate
+- [ ] **VSC-05**: The EM login description in the configuration and commands pages matches the v4.7 flow (remembered username, automatic re-prompt on a missing, expired or undecodable token, invalid tokens rejected)
+- [ ] **VSC-06**: The commands page uses the real command titles, describes "Show the Active Config File" correctly, gets the formatter's Java resolution and compile's `bbjcpl` right, and lists the decompile commands
+
+### IntelliJ guide
+
+- [ ] **IJ-01**: The IntelliJ commands and configuration pages describe the automatic EM login on BUI/DWC runs and the remembered username
+- [ ] **IJ-02**: The IntelliJ configuration page has the "BBj Compiler" settings section (compile output directory, compiler check) and notes the invalid-host fallback
+
+### Composers
+
+- [ ] **COMP-01**: Both guides have a Composers page that lists every composer command/action and intention, and explains assign-to validation
+
+### Developer docs
+
+- [ ] **DEV-01**: CLAUDE.md's architecture section matches the code: eight LSP providers, the current validation modules, the java-interop module split and JavadocProvider via DI
+- [ ] **DEV-02**: CLAUDE.md's testing pattern presents `createBBjTestServices` as the default for new tests, and its command list includes `typecheck:test`, the lint/type-check PR gates and the workflow hygiene checkers
+- [ ] **DEV-03**: `documentation/concepts/browser-editor.md` names the module that now holds the socket transport
+
+## Future Requirements
+
+- Generated settings reference from `package.json` so the docs cannot drift again (deferred; not needed to fix today's drift)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Code or behaviour changes | Docs-only milestone; drift is fixed in the docs, not by changing the product (the `preLaunchTask` is the one exception) |
+| Documenting the 18 `bbj.compiler.*` options individually | Covered on purpose by the "Configure Compile Options" note |
+| A CHANGELOG | None exists; release notes come from the release workflow |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+
+**Coverage:**
+- v4.8 requirements: 19 total
+- Mapped to phases: 0
+- Unmapped: 19
+
+---
+*Requirements defined: 2026-09-30*
+*Last updated: 2026-09-30 after initial definition*
