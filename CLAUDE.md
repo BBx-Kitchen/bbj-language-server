@@ -30,6 +30,7 @@ npx vitest run <file>          # Run a single test file, e.g. npx vitest run tes
 npm run test:watch             # Watch mode
 npm run test:coverage          # Coverage report (V8)
 npm run lint                   # ESLint
+npm run typecheck:test         # tsc --noEmit over the test tree and the interop harness (tsconfig.test.json + tsconfig.harness.json)
 npm run interop-harness -- --host … --port …   # Java interop test harness against a live interop peer (writes tools/interop-test-harness/report.html)
 ```
 
@@ -45,6 +46,19 @@ IntelliJ plugin (from `bbj-intellij/`):
 ```
 Build `bbj-vscode` first — `./gradlew build` (or `buildPlugin`) fails fast if `bbj-vscode/out/language/main.cjs` is missing; any host JDK works, since JDK 17 is provisioned automatically.
 
+### CI gates
+
+Every pull request to `main` runs `.github/workflows/build.yml`: build, `npm run lint`,
+`npm run typecheck:test`, then `npm test`, then packages a test VSIX — any failing step fails
+the PR. `.github/workflows/workflow-hygiene.yml` runs three dependency-free checkers from the
+repo root on every push and pull request to `main`; run them locally before pushing a workflow
+change:
+```bash
+node bbj-vscode/tools/check-workflow-secrets.mjs .github/workflows .github/actions/*        # no inline secrets in run: bodies
+node bbj-vscode/tools/check-gradle-wrapper.mjs                                              # wrapper checksum pinned and validated
+node bbj-vscode/tools/check-action-pins-and-permissions.mjs                                 # actions SHA-pinned, least-privilege permissions
+```
+
 ## Architecture
 
 ### Langium Pipeline
@@ -53,35 +67,42 @@ The language server follows Langium's architecture with custom service overrides
 
 - **Grammar**: `src/language/bbj.langium` — complete BBj syntax definition. Changes here require `npm run langium:generate` to regenerate `src/language/generated/` (AST types in `ast.ts`, grammar in `grammar.ts`, DI module in `module.ts`). Never edit generated files directly.
 - **Scope/Linking**: `bbj-scope.ts` (name provider + scope provider), `bbj-scope-local.ts` (scope computation/LocalSymbols), `bbj-linker.ts` (cross-file reference linking)
-- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus `validations/check-classes.ts`, `validations/check-function-calls.ts`, `validations/check-variable-scoping.ts`, `validations/line-break-validation.ts`
-- **Completion**: `bbj-completion-provider.ts`. `bbj-module.ts`'s `lsp` service group registers seven further LSP feature providers alongside it: `DocumentSymbolProvider` (`bbj-document-symbol-provider.ts`), `DefinitionProvider` (`bbj-definition-provider.ts`), `HoverProvider` (`bbj-hover.ts`), `SemanticTokenProvider` (`bbj-semantic-token-provider.ts`), `SignatureHelp` (`bbj-signature-help-provider.ts`), `InlayHintProvider` (`bbj-inlay-hint-provider.ts`), and `CodeActionProvider` (`bbj-code-action-provider.ts`)
+- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus the modules in `validations/`: `check-classes.ts` (registers only the class checks below via `registerClassChecks`), `class-types.ts` (shared class-type helpers — `classFqn`, `bbjSupertypesReach` — used by the class checks and variable-scoping), `check-cyclic-inheritance.ts` (detects a cyclic BBj class inheritance chain), `check-class-reference.ts` (class reference resolution and PUBLIC/PROTECTED/PRIVATE visibility), `check-return-types.ts` (METHODRET and field-initializer type checks), `check-constructor.ts` (interface instantiability and constructor argument-count checks), `check-unknown-java-member.ts` (flags an unknown member access on a fully resolved Java class), `check-function-calls.ts`, `check-variable-scoping.ts`, `line-break-validation.ts`
+- **Completion**: `bbj-completion-provider.ts` (`CompletionProvider`). `bbj-module.ts`'s `lsp` service group registers eight further LSP feature providers alongside it: `DocumentSymbolProvider` (`bbj-document-symbol-provider.ts`), `DefinitionProvider` (`bbj-definition-provider.ts`), `HoverProvider` (`bbj-hover.ts`), `SemanticTokenProvider` (`bbj-semantic-token-provider.ts`), `SignatureHelp` (`bbj-signature-help-provider.ts`), `InlayHintProvider` (`bbj-inlay-hint-provider.ts`), `CodeActionProvider` (`bbj-code-action-provider.ts`), and `CodeLensProvider` (`BBjComposerCodeLensProvider` in `composer-codelens.ts` — the composer cues on `addWindow`, MSGBOX, `addChildWindow`, CVS() and in-code SETOPTS)
 - **Type inference**: `bbj-type-inferer.ts`
-- **Java interop**: `java-interop.ts` — connects to the java-interop socket service to resolve Java classes/methods/fields for completion and hover
+- **Java interop**: `java-interop.ts` (`JavaInteropService`) is a thin wiring/delegate front over several split-out modules: `java-interop-connection.ts` (the shared socket + JSON-RPC connection, its circuit breaker and the `parseProgram` lane), `java-interop-cache.ts` (the bounded cache of resolved Java classes, the package tree, and the class resolution pipeline), `java-interop-class-index.ts` (the simple-name index of every known class, used for missing-`use` suggestions), `java-interop-classpath.ts` (loads the configured classpath and implicit imports into the synthetic classpath document), and `java-interop-lock.ts` (the re-entrant FIFO lock serializing Java class resolution). `java-peer-guard.ts` bounds, escapes and validates Java class data arriving from the interop peer before it reaches the AST, hover, or completion. `java-javadoc.ts` (`JavadocProvider`) provides Javadoc information for internal binary classes.
 - **Lexer**: `bbj-lexer.ts` — custom lexer with line-continuation handling (`prepareLineSplitter`)
-- **CPL integration**: `bbj-cpl-service.ts`, `bbj-cpl-parser.ts` — integration with BBj's native compiler for diagnostics
+- **CPL integration**: `bbj-cpl-service.ts`, `bbj-cpl-parser.ts` — integration with BBj's native compiler for diagnostics; `bbj-parser-service.ts` (`BBjParserService`) — live compiler diagnostics from BBj's own parser via the `parseProgram` endpoint, probed and latched once per connection generation.
 
 ### DI Module Pattern
 
 Services are wired in `bbj-module.ts` via `createBBjServices()`. Custom service groups:
 - `services.java.JavaInteropService` — Java classpath integration
+- `services.java.JavadocProvider` — injected per services set; there is no static singleton
 - `services.types.Inferer` — type inference
 - `services.compiler.BBjCPLService` — BBj compiler integration
+- `services.compiler.BBjParserService` — live parser diagnostics
 - `services.validation.BBjValidator` — validation checks
 
 ### Testing Pattern
 
-Tests use Vitest with Langium's `EmptyFileSystem` and test utilities:
+Tests use Vitest with Langium's `EmptyFileSystem` and test utilities. `createBBjTestServices` from
+`test/bbj-test-module.ts` is the default entry point for new tests:
 
 ```typescript
 import { EmptyFileSystem } from 'langium';
 import { validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module.js';
+import { createBBjTestServices } from './bbj-test-module.js';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
 ```
 
-For tests needing Java interop, use `createBBjTestServices` from `test/bbj-test-module.ts`, which injects `JavaInteropTestService` with fake Java classes (BBjAPI, HashMap, String) and a `TestableBBjLexer`.
+It is hermetic — it injects `JavaInteropTestService` (fake Java classes such as BBjAPI, HashMap
+and String; see the file for the full set) and `TestableBBjLexer`, and accepts an optional
+`JavadocProvider`, so tests never reach the real java-interop socket or a shared javadoc
+singleton. `createBBjServices` from `../src/language/bbj-module.js` is the production entry
+point — reach for it only when a test deliberately needs the real services.
 
 Helper functions in `test/test-helper.ts`: `initializeWorkspace()`, `findFirst()`, `findByIndex()`.
 

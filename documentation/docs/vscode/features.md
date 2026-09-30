@@ -119,23 +119,23 @@ Format the document with `Shift+Alt+F` or configure format-on-save.
 
 | Command | Shortcut | Description |
 |---------|----------|-------------|
-| Run as GUI | `Alt+G` | Run program in BBj GUI mode |
-| Run as BUI | `Alt+B` | Run program as BUI web application |
-| Run as DWC | `Alt+D` | Run program as DWC application |
+| Run As BBj Program | `Alt+G` | Run program in BBj GUI mode |
+| Run As BUI Program | `Alt+B` | Run program as BUI web application |
+| Run As DWC Program | `Alt+D` | Run program as DWC application |
 
 ### Build Commands
 
 | Command | Shortcut | Description |
 |---------|----------|-------------|
-| Compile | `Alt+C` | Compile BBj program to bytecode |
-| Denumber | `Alt+N` | Remove line numbers from program |
+| Compile BBj Program | `Alt+C` | Compile BBj program to bytecode |
+| Denumber BBj Program | `Alt+N` | Remove line numbers from program |
 
 ### Configuration Commands
 
-- **Show config.bbx**: Open the BBj configuration file
-- **Show BBj.properties**: Open BBj properties file
+- **Show the Active Config File**: Open the active BBj configuration file
+- **Show the BBj.properties file**: Open BBj properties file
 - **Open Enterprise Manager**: Launch the EM web interface
-- **Show Classpath Entries**: Display available classpath entries
+- **Show Available Classpath Entries**: Display available classpath entries
 
 ## Java Integration
 

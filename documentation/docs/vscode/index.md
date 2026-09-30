@@ -26,10 +26,11 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 | [Features](vscode/features) | Overview of all extension features |
 | [Configuration](vscode/configuration) | VS Code settings reference |
 | [Commands](vscode/commands) | Keyboard shortcuts and commands |
+| [Composers](vscode/composers) | Visual editors for MSGBOX, addWindow, CVS() and SETOPTS |
 
 ## Requirements
 
-- **VS Code** 1.67.0 or higher
+- **VS Code** 1.101.0 or higher
 - **BBj** 25.00 or higher
 - **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
   compiler check)

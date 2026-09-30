@@ -26,6 +26,7 @@ The BBj Language Support plugin provides comprehensive IDE support for BBj devel
 | [Features](intellij/features) | Overview of all plugin features |
 | [Configuration](intellij/configuration) | IntelliJ settings reference |
 | [Commands](intellij/commands) | Keyboard shortcuts and run commands |
+| [Composers](intellij/composers) | Dialogs for MSGBOX, addWindow, addChildWindow, CVS() and SETOPTS |
 
 ## Requirements
 

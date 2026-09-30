@@ -2,6 +2,7 @@ tasks:
   - init: |
       cd $GITPOD_REPO_ROOT/bbj-vscode
       npm install
+      npm run build
       cd $GITPOD_REPO_ROOT/java-interop
       ./gradlew assemble
 

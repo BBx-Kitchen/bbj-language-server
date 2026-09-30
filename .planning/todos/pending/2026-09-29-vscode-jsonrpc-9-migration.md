@@ -5,11 +5,16 @@ area: dependencies
 source: Dependabot PR #712 (closed with "ignore this major version", 2026-09-29)
 trigger: next dependency or interop phase
 files:
+
   - bbj-vscode/src/language/java-interop-connection.ts
   - bbj-vscode/src/language/java-interop.ts
   - bbj-vscode/src/language/java-interop-cache.ts
   - bbj-vscode/src/language/java-interop-class-index.ts
   - bbj-vscode/src/language/java-interop-classpath.ts
+
+audit_acknowledged:
+  milestone: v4.8
+  at: 2026-09-30
 ---
 
 ## Problem

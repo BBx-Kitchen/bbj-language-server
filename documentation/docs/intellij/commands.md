@@ -5,7 +5,7 @@ title: Commands
 
 # IntelliJ Commands
 
-The BBj Language Support plugin for IntelliJ IDEA provides commands for running, compiling, and managing BBj programs through keyboard shortcuts, context menus, the toolbar, and the Tools menu.
+The BBj Language Support plugin for IntelliJ IDEA provides commands for running, compiling, and managing BBj programs through keyboard shortcuts, context menus, and the Tools menu.
 
 ## Run Commands
 
@@ -37,7 +37,9 @@ Runs the current BBj file as a BUI (Browser User Interface) web application.
 - Right-click in a BBj file editor → "Run As BUI Program"
 - Right-click a BBj file in Project View → BBj Run → Run As BUI Program
 
-**Requires:** Enterprise Manager authentication. See [Configuration](./configuration.md#em-token-authentication) for authentication setup.
+**Requires:** Enterprise Manager authentication — the run asks for a login by itself when none is
+stored or the stored one is no longer valid. See [Configuration](./configuration.md#em-token-authentication)
+for the full flow.
 
 **Behavior:** Opens the program in your default browser via the configured EM URL.
 
@@ -54,27 +56,44 @@ Runs the current BBj file as a DWC (Dynamic Web Client) application.
 - Right-click in a BBj file editor → "Run As DWC Program"
 - Right-click a BBj file in Project View → BBj Run → Run As DWC Program
 
-**Requires:** Enterprise Manager authentication. See [Configuration](./configuration.md#em-token-authentication) for authentication setup.
+**Requires:** Enterprise Manager authentication — the run asks for a login by itself when none is
+stored or the stored one is no longer valid. See [Configuration](./configuration.md#em-token-authentication)
+for the full flow.
 
 **Behavior:** Opens the program in your default browser via the configured EM URL.
 
 ## Compile Command
 
-### Compile BBj File
+### Compile BBj File (Alt+C)
 
 Compiles the current BBj source file to bytecode.
 
 **Action ID:** `bbj.compile`
 
-**Access:** Toolbar button in the main toolbar (located before the Run Configuration dropdown area).
+**Keyboard Shortcut:** `Alt+C`
 
-**Note:** No keyboard shortcut is assigned by default. You can assign a custom shortcut in Settings → Keymap → search "BBj".
+**Access:**
+- Press `Alt+C` in the editor
+- Right-click in a BBj file editor → "Compile BBj File" (listed after the run actions)
+- `Tools > Compile BBj File`
 
-**Available when:** BBj source file is open and language server is ready.
+**Available when:** A `.bbj`, `.bbx`, or `.src` file is open and the language server is in the
+"Ready" state.
+
+**Requires:** A [Compile output directory](./configuration.md#compile-output-directory)
+configured in Settings — compiling without one reports that no compile output directory is
+configured.
+
+## Composer Actions
+
+Visual dialogs for composing or editing `MSGBOX`, `addWindow`, `addChildWindow`, `CVS()`, and
+`SETOPTS` calls are available from the editor context menu, Alt+Enter intentions, and Code Vision
+cues — see [Composers](./composers.md) for the full list and how assign-to validation works.
 
 ## Tools Menu Commands
 
-The following commands are available in the Tools menu.
+The following commands are available in the Tools menu. `Tools > Compile BBj File` is also here —
+see [Compile Command](#compile-command) above for its full description.
 
 ### Restart BBj Language Server
 
@@ -108,7 +127,9 @@ Reloads the Java classpath and clears cached class information.
 
 ### Login to Enterprise Manager
 
-Authenticates with BBj Enterprise Manager and stores the JWT token.
+Authenticates with BBj Enterprise Manager and stores the JWT token. This command lets you log in
+ahead of time, or as a different user — running a program as BUI or DWC prompts for this same
+login automatically when it is needed (see below).
 
 **Action ID:** `bbj.loginEM`
 
@@ -116,13 +137,19 @@ Authenticates with BBj Enterprise Manager and stores the JWT token.
 
 **Usage:**
 1. Select `Tools > Login to Enterprise Manager`
-2. Enter your Enterprise Manager username and password in the dialog
-3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe
+2. Enter your Enterprise Manager username and password in the dialog — the username field is
+   pre-filled with the last username that logged in successfully (`admin` the first time)
+3. Plugin stores the JWT token securely in IntelliJ's PasswordSafe; the username is remembered
+   for next time only after a successful login, and the password is never remembered
 4. Token is used automatically for subsequent BUI/DWC run commands
 
 **Required for:** Running BUI and DWC programs. The stored token persists across IDE restarts.
 
-**Token expiration:** If the token expires, run this command again to re-authenticate.
+**Automatic re-prompt:** Running a program as BUI or DWC asks for this same login by itself when
+needed. With no stored token it asks "EM login required for BUI. Login now?" (or DWC). With a
+token that has expired locally, or one Enterprise Manager no longer accepts, it deletes the token
+and asks "EM token expired or invalid. Login again?". Answering No either time stops the run and
+logs the reason in the BBj Language Server tool window.
 
 **Configuration:** See [EM URL configuration](./configuration.md#em-url) to configure the Enterprise Manager URL.
 
@@ -133,7 +160,7 @@ Authenticates with BBj Enterprise Manager and stores the JWT token.
 | Run As BBj Program | `Alt+G` | Run as GUI (desktop) application |
 | Run As BUI Program | `Alt+B` | Run as BUI web application |
 | Run As DWC Program | `Alt+D` | Run as DWC web application |
-| Compile BBj File | (toolbar button) | Compile current BBj file |
+| Compile BBj File | `Alt+C` | Compile current BBj file |
 
 **Note:** Shortcuts use the default keymap. Custom keymaps may differ. You can customize shortcuts in `Settings > Keymap` → search "BBj".
 
@@ -141,10 +168,14 @@ Authenticates with BBj Enterprise Manager and stores the JWT token.
 
 ### Editor Context Menu
 
-Right-click in a BBj file editor to access run actions at the top of the menu:
+Right-click in a BBj file editor to access run actions at the top of the menu, followed by Compile
+and the [composer actions](./composers.md):
 - Run As BBj Program
 - Run As BUI Program
 - Run As DWC Program
+- Compile BBj File
+- Compose MSGBOX…, Compose addWindow…, Compose addChildWindow…, Compose CVS()…, Configure SETOPTS
+  Options in Code…, Compose SETOPTS… — see [Composers](./composers.md)
 
 ### Project View Context Menu
 
@@ -152,12 +183,6 @@ Right-click a BBj file in the Project tool window to see the "BBj Run" submenu c
 - Run As BBj Program
 - Run As BUI Program
 - Run As DWC Program
-
-## Toolbar Buttons
-
-The **Compile** button appears in the main toolbar when editing BBj files. It is located before the Run Configuration dropdown area.
-
-Run commands are accessed via keyboard shortcuts and context menus (not toolbar buttons).
 
 ## Auto-Save Option
 
@@ -198,13 +223,17 @@ If run commands do not execute or show errors:
 
 If BUI or DWC run commands fail:
 1. Verify Enterprise Manager is accessible at the configured EM URL
-2. Authenticate using `Tools > Login to Enterprise Manager`
+2. The run asks for a login by itself when no token is stored, or the stored one has expired or
+   is no longer accepted — answer Yes to log in. Answering No stops the run; the reason is logged
+   in the BBj Language Server tool window.
 3. Check the EM URL in `Settings > Languages & Frameworks > BBj > EM URL`
-4. Ensure the EM token has not expired (re-authenticate if needed)
+4. Log in ahead of time with `Tools > Login to Enterprise Manager` if you want to authenticate
+   before running, or to switch users
 
 ### Compile Command Not Working
 
-If the Compile button does not appear or does not work:
+If Compile BBj File does not appear or does not run:
 1. Verify BBj Home is configured
-2. Check that a BBj file is open in the editor
-3. Ensure the language server is running (check status bar widget)
+2. Check that a `.bbj`, `.bbx`, or `.src` file is open in the editor
+3. Ensure the language server is running (check status bar widget shows "Ready")
+4. Configure a [Compile output directory](./configuration.md#compile-output-directory) in Settings

@@ -5,8 +5,13 @@ area: dependencies
 source: Dependabot PR #710 (closed with "ignore this major version", 2026-09-29)
 trigger: when the grouped vitest 5 update arrives, or the next test-infrastructure phase
 files:
+
   - bbj-vscode/package.json
   - bbj-vscode/vitest.config.ts
+
+audit_acknowledged:
+  milestone: v4.8
+  at: 2026-09-30
 ---
 
 ## Problem

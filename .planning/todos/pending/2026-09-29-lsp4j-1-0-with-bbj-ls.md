@@ -5,7 +5,12 @@ area: dependencies
 source: Dependabot PR #711 (closed with "ignore this major version", 2026-09-29)
 trigger: next bbj-ls dependency update
 files:
+
   - java-interop/build.gradle
+
+audit_acknowledged:
+  milestone: v4.8
+  at: 2026-09-30
 ---
 
 ## Problem

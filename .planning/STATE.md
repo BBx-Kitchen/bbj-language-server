@@ -1,63 +1,46 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.7
-milestone_name: Audit Hygiene Burn-down (Phases 110-122) — SHIPPED 2026-09-29
+milestone: v4.8
+milestone_name: Documentation Drift
 status: Awaiting next milestone
-stopped_at: Milestone v4.7 completed and archived
-last_updated: "2026-09-29T20:42:16.416Z"
-last_activity: 2026-09-29
-last_activity_desc: Milestone v4.7 completed and archived
-state_head: 0265af02a81bbf328fbc54bd3757a9f2760bed08
+stopped_at: Phase 123 complete — all phases complete
+last_updated: "2026-09-30T15:44:41.049Z"
+last_activity: 2026-09-30
+last_activity_desc: Milestone v4.8 completed and archived
+state_head: 2bf8ccc3d25f53a46a9fb15c815125de6af243c0
 progress:
-  total_phases: 13
-  completed_phases: 13
-  total_plans: 80
-  completed_plans: 80
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 8
   percent: 100
+current_phase: 123
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-29 (v4.7 Audit Hygiene Burn-down shipped and archived — 13/13 phases, 63/63 requirements, override closeout with 6 acknowledged items)
+**Last Updated:** 2026-09-30 (v4.8 Documentation Drift shipped and archived; docs PR to `main` pending)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-29)
+See: .planning/PROJECT.md (updated 2026-09-30)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning the next milestone; v4.7 runs on the preview channel (0.16.10) before a release is cut
+**Current Focus:** Open the v4.8 docs PR, then plan the next milestone
 
 ---
 
 ## Current Position
 
-Phase: Milestone v4.7 complete
+Phase: Milestone v4.8 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-29 — Milestone v4.7 completed and archived
+Last activity: 2026-09-30 — Milestone v4.8 completed and archived
 
-### v4.7 milestone map
-
-| Phase | Name | Requirements | Issues (Closes) |
-|-------|------|--------------|-----------------|
-| 110 | Workspace Settings & Filesystem Trust | SEC-01, SEC-02, SEC-06..09, REF-02 | #509 #510 #511 #526 #579 #585 #605 #581 |
-| 111 | Java Class Data from the Interop Peer | SEC-03..05, FIX-02, FIX-03 | #523 #524 #525 #676 (+ todo) |
-| 112 | EM Login & Web Launch Fail Closed | SEC-12..14, TEST-09 | #546 #548 #553 #565 |
-| 113 | Composer Webview Hardening & Consolidation | SEC-10, SEC-11, TEST-10, REF-03, REF-07, REF-08, DOC-01 | #604 #626 #628 #582 #533 #534 #595 |
-| 114 | Lint, Type-Check & Test-Suite Gates | TEST-01..03, TEST-07, TEST-11, FIX-04 | #574 #516 #519 #562 #629 (+ todo) |
-| 115 | Honest Interop Test Harness | HARN-01..06, DEP-03 | #514 #575 #596 #599 #601 #635 #520 |
-| 116 | Java-Interop Test Coverage | TEST-04..06, TEST-08 | #528 #559 #560 #563 |
-| 117 | Dependency Hygiene & Dependabot Coverage | DEP-01, DEP-02, DEP-04, DEP-05, CI-04 | #501 #507 #521 #551 |
-| 118 | Small Dedup & Drift Guards | REF-01, REF-04..06 | #580 #583 #603 #606 |
-| 119 | Grammar — DECLARE File Paths & Shared Channel Opening | FIX-01, REF-13 | #527 #602 |
-| 120 | ClassValidator & activate() Splits | REF-10, REF-11 | #625 #564 |
-| 121 | Java Interop Service Decomposition | REF-09, REF-12 | #624 #558 |
-| 122 | Release & CI Pipeline Hardening | CI-01..03, CI-05..09 | #547 #549 #550 #518 #573 #515 #598 #600 |
-
-Ordering: security first (110-113), then the test gates (114-116) before the large refactors
-(119-121, with the `JavaInteropService` split last among them), and the publish pipeline (122)
-last, because every push to `main` publishes previews to both marketplaces.
+The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`. The milestone sits on
+branch `gsd/v4.8-documentation-drift`; merging its docs PR to `main` rebuilds and publishes the
+docs site through `deploy-docs.yml`.
 
 ## Performance Metrics
 
@@ -194,11 +177,20 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 122 P04 | 9min | 3 tasks | 6 files |
 | Phase 122 P05 | 34min | 2 tasks | 2 files |
 | Phase 122 P06 | 11min | 2 tasks | 3 files |
+| Phase 123 P01 | 15min | 3 tasks | 5 files |
+| Phase 123 P02 | 20min | 3 tasks | 2 files |
+| Phase 123 P03 | 25min | 3 tasks | 5 files |
+| Phase 123 P04 | 20min | 3 tasks | 3 files |
+| Phase 123 P05 | 25min | 3 tasks | 2 files |
+| Phase 123 P06 | 40min | 2 tasks | 3 files |
+| Phase 123 P07 | 15min | 2 tasks | 3 files |
+| Phase 123 P08 | 15min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Active Constraints
 
+- **v4.8:** docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30). Nothing else outside the docs. The user wants a short milestone: one phase, one docs PR, no extra work folded in.
 - **v4.7:** the milestone PR carries one `Closes #N` line per issue (61 issues across Phases 110-122); an issue table does not close issues. Before the squash merge, scan the branch's commit bodies for closing keywords.
 - **v4.7:** Phase 122 changes `preview.yml`, `manual-release.yml` and `vscode:prepublish`, which publish to both marketplaces on every push to `main`. The publish workflows cannot be run from the branch without publishing: check them statically, run packaging only up to the publish step, and watch the first preview run after the merge.
 - **v4.7:** do not install or run langium 4.4 inside `bbj-vscode`; the DEP-05 upstream repro lives outside this repository.
@@ -338,6 +330,15 @@ decisions:
 - [Phase 122]: 122-04: a shared, pinned composite action (.github/actions/node-setup) is the one Node preamble every workflow uses; build.yml absorbs pr-vsix.yml as the single unconditional PR gate with its own build-<PR#> concurrency group, and pr-validation.yml/deploy-docs.yml adopt the action with least-privilege permissions and distinct concurrency naming so the two PR workflows never cancel each other
 - [Phase 122]: Phase 122 P05: preview.yml and manual-release.yml top-level permissions:contents:read; write only on bump-version, tag-release and create-release; both verify jobs use the shared node-setup action (cached) with lint/typecheck:test gates after Build; both publish-vscode jobs install cold (cache:'false'); every uses reference pinned
 - [Phase 122]: 122-06: pin-hygiene job wired into workflow-hygiene.yml permanently; every tree pin verified clean against GitHub (12/12, no re-pins needed, all already latest-in-major); Dependabot directories now cover the composite action; a fresh Node 22 scratch worktree proved the release-shaped packaging pipeline end to end; IntelliJ buildPlugin used the documented -x test workaround for the pre-existing ComposerRequestContractTest failure; Phase 122 complete, all eight requirements delivered
+- [Phase 123]: 123-02: web.bbj row uses plain lowercase placeholder tokens in one backtick code span instead of angle-bracket placeholders, and examples/msgbox.bbj replaces the nonexistent examples/hello.bbj as the run-command example file
+- [Phase 123]: 123-03: commands.md MDX build failed on a bare <title> placeholder (Docusaurus parses it as unclosed JSX); reworded to avoid angle brackets instead of escaping them
+- [Phase 123]: 123-03: configuration.md Complete Settings Example verified programmatically against bbj-vscode/package.json (21 non-compiler.* keys plus bbj.compiler.trigger)
+- [Phase 123]: 123-04: Host fallback documented per the code (empty field substituted to localhost client-side, no warning shown), not the drift scan inaccurate server-side-validator-warning description
+- [Phase 123]: 123-04: Compile BBj File Tools-menu presence is a one-line cross-reference from Tools Menu Commands back to the Compile Command section, avoiding duplicate documentation
+- [Phase 123]: 123-05: verified the lsp service group's exact provider count (9) against bbj-module.ts before writing 'eight further', and described each validations/ and java-interop-*.ts module from its own header comment rather than the drift scan's summary
+- [Phase 123]: 123-06: composers.md documents all seven compose commands, five cue titles and every lightbulb label across MSGBOX/addWindow/addChildWindow/CVS()/SETOPTS, plus assign-to validation; COMP-01 held back (shared with 123-07) per requirements.ready-ids
+- [Phase 123]: 123-07: composers.md documents all seven compose actions (including the cue-only bbj.openComposerAt) and five Alt+Enter intentions, plus assign-to validation; COMP-01 stays blocked because 123-08 also declares it and has no SUMMARY yet
+- [Phase 123]: Phase 123: 123-08 confirmed all 45 drift-scan items and planning-time extras were already fixed by 123-01..07; no new doc edit needed, all five sweeps (old strings, VS Code channel wording, IntelliJ toolbar wording, planning ids, scope) came back clean
 
 ### Tech Debt
 
@@ -386,6 +387,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 1 | Complete settings example in VS Code configuration.md uses shipped defaults (phase 123 VSC-04 gap) | 2026-09-30 | c46a5d9f | — | — |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
 
@@ -393,6 +395,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ### Roadmap Evolution
 
+- v4.8 roadmap created 2026-09-30: one phase (123) for 18 requirements. The count was first given as 19; the requirement list has 18, and nothing in the drift scan is left without one.
 - v4.7 roadmap created 2026-09-26: Phases 110-122 for 63 requirements (61 GitHub issues plus three carried-over todos). REF-02 folded into 110, FIX-02/03 into 111, TEST-09 into 112, TEST-10/DOC-01 into 113, FIX-04 into 114, DEP-03 into 115, TEST-08 into 116, DEP-01/CI-04 into 117, FIX-01 into 119, REF-09 into 121.
 - v4.6 archived 2026-09-26 (Phases 106-109).
 - v4.6 roadmap created 2026-09-24: Phases 106-109 for 18 requirements (DIAG-01 and JINT-03 folded into 106, JINT-01/02 into 109).
@@ -401,11 +404,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-29T18:48:51.476Z
-Stopped at: Milestone v4.7 completed and archived
+Last session: 2026-09-30T14:45:20.704Z
+Stopped at: Phase 123 complete — all phases complete
 Resume file: None
 
-Next: merge PR #719 (Dependabot roll-up), watch v4.7 on the preview channel, then `/gsd-new-milestone`.
+Next: open the v4.8 docs PR to `main`, then `/gsd-new-milestone`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -414,6 +417,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| todos | 2026-09-29-lsp4j-1-0-with-bbj-ls.md | (presence-only) | 2026-09-30 | v4.8 |
+| todos | 2026-09-29-vitest-5-upgrade.md | (presence-only) | 2026-09-30 | v4.8 |
+| todos | 2026-09-29-vscode-jsonrpc-9-migration.md | (presence-only) | 2026-09-30 | v4.8 |
 | debug_sessions | g-110-1-formatter-noop-path-java | diagnosed (fix is in the vendored formatter jar, #507) | 2026-09-29 | v4.7 |
 | uat_gaps | 114/114-UAT.md | partial (7 hand checks deferred) | 2026-09-29 | v4.7 |
 | verification_gaps | 122/122-VERIFICATION.md | human_needed (post-release: manual-release dispatch, PR Gradle cache restore) | 2026-09-29 | v4.7 |
@@ -508,6 +514,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v4.4 IntelliJ Focus | 93-97 | 36 | 2026-09-20 |
 | v4.5 Compiler Conformance | 98-105 | 44 | 2026-09-24 |
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | 2026-09-26 |
+| v4.7 Audit Hygiene Burn-down | 110-122 | 80 | 2026-09-29 |
+| v4.8 Documentation Drift | 123 | 8 | 2026-09-30 |
 
 See: `.planning/MILESTONES.md`
 
@@ -518,4 +526,5 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
+- Open the v4.8 docs PR from `gsd/v4.8-documentation-drift` to `main`
 - Start the next milestone with /gsd-new-milestone

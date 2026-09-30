@@ -59,7 +59,7 @@ Enable verbose debug logging in the language server. When enabled, the Output pa
 To view debug output:
 1. Set `bbj.debug` to `true` in VS Code settings
 2. Open the Output panel (`View` > `Output`)
-3. Select "BBj Language Server" from the dropdown
+3. Select "BBj" from the dropdown
 4. Debug messages appear with ISO 8601 timestamps
 
 This setting takes effect immediately without restarting the language server.
@@ -109,7 +109,8 @@ Automatically save files before running.
 
 #### `bbj.configPath`
 
-Path to a custom `config.bbx` file. When not set, defaults to `{bbj.home}/cfg/config.bbx`.
+Path to a custom `config.bbx` file, used for PREFIX directory resolution. Set this when your
+`config.bbx` is in a non-standard location.
 
 ```json
 {
@@ -119,7 +120,18 @@ Path to a custom `config.bbx` file. When not set, defaults to `{bbj.home}/cfg/co
 
 **Default**: `null` (uses `{bbj.home}/cfg/config.bbx`)
 
-Set this when your `config.bbx` is in a non-standard location. Used for PREFIX directory resolution.
+**Value rules:**
+- The path must be absolute. A leading `~` is expanded to your home directory.
+- A relative path is rejected: no config file and no PREFIX directories are used, and the `BBj`
+  output channel shows one warning line naming the rejected value.
+- A path to a file that does not exist, or cannot be read, is reported the same way — a warning in
+  the `BBj` output channel, and no PREFIX directories loaded.
+- Leaving the setting unset uses `{bbj.home}/cfg/config.bbx`.
+
+**Workspace Trust:** the extension does not run in Restricted Mode — VS Code never gates it there.
+Instead, a `bbj.configPath` set in a workspace's `.vscode/settings.json` is never used while that
+workspace is untrusted; only the user-level (global) value is read. Trusting the workspace applies
+its `bbj.configPath` immediately, with no reload needed.
 
 #### `bbj.typeResolution.warnings`
 
@@ -132,6 +144,93 @@ Enable or disable type resolution warnings (CAST, USE, inheritance). Disable for
 ```
 
 **Default**: `true`
+
+### Opening Programs
+
+#### `bbj.decompile.promptOnOpen`
+
+When opening a tokenized (binary) BBj program, prompt to decompile it to editable source
+(replacing the file) or open a read-only decompiled copy. Detection is content-based (magic
+bytes), so it works regardless of the file's extension — tokenized programs are often named
+`.pub`, `.src`, or have no extension at all.
+
+```json
+{
+  "bbj.decompile.promptOnOpen": true
+}
+```
+
+**Default**: `true`
+
+#### `bbj.denumber.promptOnOpen`
+
+When opening a line-numbered BBj program, prompt to denumber it (replacing the file with editable
+source) or open it read-only.
+
+```json
+{
+  "bbj.denumber.promptOnOpen": true
+}
+```
+
+**Default**: `true`
+
+### Diagnostics Settings
+
+#### `bbj.diagnostics.suppressCascading`
+
+Suppress cascading linking and validation noise when parse errors exist. When enabled, a single
+syntax error shows only the actual error instead of 40+ downstream diagnostics.
+
+```json
+{
+  "bbj.diagnostics.suppressCascading": true
+}
+```
+
+**Default**: `true`
+
+#### `bbj.diagnostics.maxErrors`
+
+Maximum number of parse errors displayed at once (minimum `1`). Additional parse errors beyond
+this limit are hidden to reduce noise.
+
+```json
+{
+  "bbj.diagnostics.maxErrors": 20
+}
+```
+
+**Default**: `20`
+
+#### `bbj.compiler.trigger`
+
+Controls when the BBj compiler checks the open file for errors: `debounced` (default), `on-save`,
+or `off`. See [Live Compiler Diagnostics](./features.md#live-compiler-diagnostics) for what each
+value does.
+
+```json
+{
+  "bbj.compiler.trigger": "debounced"
+}
+```
+
+**Default**: `debounced`
+
+### Inlay Hints
+
+#### `bbj.inlayHints.parameterNames.enabled`
+
+Show parameter name inlay hints at call sites. `literals` (default) shows hints only for literal
+arguments like `msgbox("Hi")`, `all` shows them for every argument, `none` disables them.
+
+```json
+{
+  "bbj.inlayHints.parameterNames.enabled": "literals"
+}
+```
+
+**Default**: `literals`
 
 ### Java Interop Settings
 
@@ -160,6 +259,13 @@ Port number for the Java interop service.
 ```
 
 **Default**: `5008`
+
+**Invalid values:** the host must be a non-empty string (surrounding spaces are trimmed); the port
+must be a whole number from 1 to 65535 — a quoted value like `"5008"` is invalid. Each invalid
+value falls back on its own to the default (`localhost` / `5008`), and the language server writes
+one warning line per rejected value to the `BBj` output channel, of the form
+`Ignoring invalid bbj.interop.host value "..."; using default localhost`. Leaving a setting unset
+uses its default silently, with no warning.
 
 ### Formatter Settings
 
@@ -229,7 +335,8 @@ invalid value. This setting can only be set in user settings; it cannot be set f
 
 ## Complete Settings Example
 
-Here's a complete `settings.json` example with all BBj settings:
+Here's a complete `settings.json` example with every setting except the `bbj.compiler.*` compile
+options, which the **Configure Compile Options** command sets (see the note below):
 
 ```json
 {
@@ -237,15 +344,23 @@ Here's a complete `settings.json` example with all BBj settings:
   "bbj.classpath": "bbj_default",
   "bbj.debug": false,
   "bbj.em.url": "http://localhost:8888",
+  "bbj.web.apps": {},
+  "bbj.web.AutoSaveUponRun": false,
+  "bbj.decompile.promptOnOpen": true,
+  "bbj.denumber.promptOnOpen": true,
   "bbj.configPath": null,
   "bbj.typeResolution.warnings": true,
+  "bbj.diagnostics.suppressCascading": true,
+  "bbj.diagnostics.maxErrors": 20,
+  "bbj.compiler.trigger": "debounced",
+  "bbj.inlayHints.parameterNames.enabled": "literals",
   "bbj.interop.host": "localhost",
   "bbj.interop.port": 5008,
-  "bbj.web.AutoSaveUponRun": true,
-  "bbj.formatter.indentWidth": 4,
+  "bbj.formatter.indentWidth": 2,
   "bbj.formatter.removeLineContinuation": false,
-  "bbj.formatter.keywordsToUppercase": true,
-  "bbj.formatter.splitSingleLineIF": false
+  "bbj.formatter.keywordsToUppercase": false,
+  "bbj.formatter.splitSingleLineIF": false,
+  "bbj.formatter.javaPath": ""
 }
 ```
 
@@ -262,17 +377,20 @@ For project-specific settings, create a `.vscode/settings.json` file in your wor
 }
 ```
 
-Workspace settings override user settings for the specific project.
+Workspace settings override user settings, with two exceptions:
+[`bbj.formatter.javaPath`](#bbjformatterjavapath) is machine-scoped, so VS Code only reads it from
+user (or machine) settings, never from a workspace file; and a workspace-scoped
+[`bbj.configPath`](#bbjconfigpath) is ignored entirely while the workspace is untrusted (see
+Workspace Trust above).
 
 ## BBj Configuration Files
 
 ### config.bbx
 
-The BBj configuration file (`config.bbx`) is located at:
-- Linux/Mac: `$BBJ_HOME/cfg/config.bbx`
-- Windows: `%BBJ_HOME%\cfg\config.bbx`
+The active BBj configuration file is the file [`bbj.configPath`](#bbjconfigpath) names, subject to
+Workspace Trust, or `{bbj.home}/cfg/config.bbx` when that setting is not set.
 
-Access it quickly using the **BBj: Show config.bbx** command.
+Open it with the **BBj: Show the Active Config File** command.
 
 ### BBj.properties
 
@@ -280,7 +398,7 @@ The BBj properties file is located at:
 - Linux/Mac: `$BBJ_HOME/cfg/BBj.properties`
 - Windows: `%BBJ_HOME%\cfg\BBj.properties`
 
-Access it using the **BBj: Show BBj.properties** command.
+Access it using the **BBj: Show the BBj.properties file** command.
 
 ### project.properties
 
@@ -323,12 +441,19 @@ so the language server re-reads the classpath and PREFIX values.
 
 BUI and DWC run commands require authentication with Enterprise Manager.
 
-**Authentication Flow:**
-1. Run `BBj: Login to Enterprise Manager` from the Command Palette
-2. Enter your EM username and password in the dialog
-3. The extension stores the JWT token securely in VS Code's SecretStorage
-4. Token is used automatically for subsequent BUI/DWC runs
-5. Re-authenticate if the token expires
+**Login command:** Run **BBj: Login to Enterprise Manager** from the Command Palette. The username
+prompt is pre-filled with the last username that logged in successfully — `admin` the first time.
+Enter your EM password; on success the extension stores a JWT token in VS Code's SecretStorage and
+remembers the username for next time. No credential is ever read from settings.
+
+**Automatic re-prompt:** running a BUI or DWC program with no stored token shows "EM login
+required. Login now?" and opens the login prompt for you. If the stored token is missing, expired,
+revoked, or cannot be decoded, it is deleted and the prompt "EM token expired or invalid. Please
+log in again." opens the login form automatically — you never have to run the login command by
+hand first.
+
+**Unusable tokens are rejected:** if Enterprise Manager itself returns a token that cannot be
+decoded as an unexpired JWT, the login fails with an error and nothing is stored.
 
 The stored token persists across VS Code restarts. No plaintext passwords are stored in settings.
 
@@ -371,7 +496,7 @@ Check that the configured `bbj.home` path is correct:
 
 To see available classpath entries:
 
-1. Run command: **BBj: Show Classpath Entries**
+1. Run command: **BBj: Show Available Classpath Entries**
 2. Verify your configured classpath is listed
 
 ### Language Server Logs
@@ -380,7 +505,7 @@ To diagnose issues with the language server:
 
 1. Set `bbj.debug` to `true` in VS Code settings
 2. Open the Output panel (`View` > `Output`)
-3. Select "BBj Language Server" from the dropdown
+3. Select "BBj" from the dropdown
 4. Look for timestamped debug messages showing detailed diagnostics
 
 Common debug output includes Java class resolution, parser warnings, and validation details. Set `bbj.debug` back to `false` when done to reduce output noise.
