@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build bbj-vscode",
+            "type": "npm",
+            "script": "build",
+            "path": "bbj-vscode",
+            "group": "build",
+            "problemMatcher": ["$tsc"],
+            "detail": "npm run build in bbj-vscode (tsc + esbuild bundle)"
+        }
+    ]
+}

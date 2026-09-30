@@ -9,6 +9,7 @@
             "name": "Run Extension",
             "type": "extensionHost",
             "request": "launch",
+            "preLaunchTask": "build bbj-vscode",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}/bbj-vscode",
                 "${workspaceFolder}/examples"
