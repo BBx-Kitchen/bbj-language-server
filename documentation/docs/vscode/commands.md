@@ -189,6 +189,12 @@ settings.
 
 **Usage:** Run from the Command Palette to configure compiler flags before compiling.
 
+## Composer Commands
+
+Visual editors that write or edit a `MSGBOX`, `addWindow`, `addChildWindow`, `CVS()` or `SETOPTS`
+call for you — see the [Composers](./composers.md) page for every command, cue and lightbulb
+action.
+
 ## Keyboard Shortcuts Summary
 
 | Command | Windows/Linux | macOS |
@@ -216,6 +222,9 @@ Right-click in a BBj file editor (not for `.bbjt` files) to access:
 - Run As DWC Program
 - Compile BBj Program
 - Denumber BBj Program
+- The [composer commands](./composers.md) (Compose MSGBOX, Compose MSGBOX (visual), Compose
+  addWindow (visual), Compose addChildWindow (visual), Compose SETOPTS in code (visual), Compose
+  CVS() (visual))
 
 ### Explorer Context Menu
 
