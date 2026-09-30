@@ -1,26 +1,24 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.7
-milestone_name: Audit Hygiene Burn-down (Phases 110-122) — IN PROGRESS
-current_phase: 122
-current_phase_name: Release & CI Pipeline Hardening
-status: verifying
-stopped_at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
-last_updated: "2026-09-29T18:48:52.057Z"
+milestone_name: Audit Hygiene Burn-down (Phases 110-122) — SHIPPED 2026-09-29
+status: Awaiting next milestone
+stopped_at: Milestone v4.7 completed and archived
+last_updated: "2026-09-29T20:42:16.416Z"
 last_activity: 2026-09-29
-last_activity_desc: Phase 122 execution started
-state_head: 8214e3880b84c39a95374ac9f11554178103d0c0
+last_activity_desc: Milestone v4.7 completed and archived
+state_head: 0265af02a81bbf328fbc54bd3757a9f2760bed08
 progress:
   total_phases: 13
-  completed_phases: 11
+  completed_phases: 13
   total_plans: 80
   completed_plans: 80
-  percent: 85
+  percent: 100
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-29 (Phase 121 complete — UAT 24/24, security 0 open, Nyquist compliant, 2/2 requirements; remaining: Phase 117 (117-05 halted on DEP-05, UAT partial) and Phase 122)
+**Last Updated:** 2026-09-29 (v4.7 Audit Hygiene Burn-down shipped and archived — 13/13 phases, 63/63 requirements, override closeout with 6 acknowledged items)
 
 ## Project Reference
 
@@ -28,18 +26,16 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 122 — Release & CI Pipeline Hardening
+**Current Focus:** Planning the next milestone; v4.7 runs on the preview channel (0.16.10) before a release is cut
 
 ---
 
 ## Current Position
 
-Phase: 122 (Release & CI Pipeline Hardening) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-29 — Phase 122 execution started
-
-Progress: [█████████░] 85% (11/13 phases)
+Phase: Milestone v4.7 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-29 — Milestone v4.7 completed and archived
 
 ### v4.7 milestone map
 
@@ -406,10 +402,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-09-29T18:48:51.476Z
-Stopped at: Completed 122-06-PLAN.md — Phase 122 complete, ready for verification
+Stopped at: Milestone v4.7 completed and archived
 Resume file: None
 
-Next: `/gsd-verify-work 117` (3 pending UAT items), then `/gsd-discuss-phase 121`.
+Next: merge PR #719 (Dependabot roll-up), watch v4.7 on the preview channel, then `/gsd-new-milestone`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -418,6 +414,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_sessions | g-110-1-formatter-noop-path-java | diagnosed (fix is in the vendored formatter jar, #507) | 2026-09-29 | v4.7 |
+| uat_gaps | 114/114-UAT.md | partial (7 hand checks deferred) | 2026-09-29 | v4.7 |
+| verification_gaps | 122/122-VERIFICATION.md | human_needed (post-release: manual-release dispatch, PR Gradle cache restore) | 2026-09-29 | v4.7 |
+| todos | 2026-09-26-intellij-interop-initoptions-key-mismatch.md | (presence-only) | 2026-09-29 | v4.7 |
+| todos | 2026-09-26-signature-help-and-snippet-peer-name-escaping.md | (presence-only) | 2026-09-29 | v4.7 |
+| todos | 2026-09-27-windows-intellij-node-download-progress-check.md | (presence-only) | 2026-09-29 | v4.7 |
 | uat_gaps | 108/108-UAT-ARTIFACTS.md | unknown (raw idea.log evidence record, not a UAT script; 0 pending scenarios) | 2026-09-26 | v4.6 |
 | todos | 2026-09-24-unknown-java-member-linking-warning-extras.md | (presence-only) | 2026-09-26 | v4.6 |
 | todos | 2026-09-23-live-parse-waits-on-shared-connection-breaker.md | (presence-only) | 2026-09-24 | v4.5 |
@@ -516,4 +518,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Discuss Phase 115 with `/gsd-discuss-phase 115`, then plan it
+- Start the next milestone with /gsd-new-milestone

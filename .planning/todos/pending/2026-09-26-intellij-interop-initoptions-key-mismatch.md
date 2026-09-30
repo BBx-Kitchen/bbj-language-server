@@ -3,6 +3,9 @@ title: IntelliJ sends javaInteropHost/javaInteropPort but the language server re
 area: intellij
 created: 2026-09-26
 source: Phase 110 research (110-RESEARCH.md, Open Question 2)
+audit_acknowledged:
+  milestone: v4.7
+  at: 2026-09-29
 ---
 
 `BbjLanguageServerFactory.java` puts `javaInteropHost`/`javaInteropPort` into `initializationOptions`;

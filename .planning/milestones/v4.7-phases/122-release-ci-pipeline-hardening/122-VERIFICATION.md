@@ -20,12 +20,14 @@ re_verification:
   regressions: []
 gaps: []
 behavior_unverified_items:
+
   - truth: "Roadmap SC2 (cache-hit half): a rerun with an unchanged lockfile shows cache hits"
     test: "npm: push a second commit to PR #708 with bbj-vscode/package-lock.json unchanged and open the Build workflow's 'Set up Node' step. Gradle: after the first preview.yml run on main (the default branch writes the Gradle cache), rerun pr-validation on a PR and open the 'Set up Gradle' step."
     expected: "npm: 'Cache restored from key: ...' instead of this first run's 'npm cache is not found'. Gradle: 'Gradle User Home cache' restored instead of 'not found', and the setup-gradle job summary shows an entry of a few hundred MB, not several GB (the IDE downloads stay excluded)."
     why_human: "Cache hits exist only across two real GitHub Actions runs. The only CI run so far (19:39Z on ec9b991f) was cold. It also confirms that setup-gradle is read-only on pull requests ('Cache is read-only: will not save state'), so no PR rerun can show a Gradle hit until a main run has written the cache."
 coincidental_reliance_items: []
 human_verification:
+
   - test: "Cache-hit reruns (Roadmap SC2 dynamic half): see behavior_unverified_items"
     expected: "npm cache restored on a PR rerun; Gradle cache restored on the first PR run after a preview.yml run on main has written it"
     why_human: "Requires real GitHub Actions runs; setup-gradle writes the cache only on the default branch"
@@ -41,6 +43,10 @@ human_verification:
   - test: "#549 decision comment"
     expected: "#549 has a comment recording that build.yml stays the one unconditional PR gate and that pr-vsix.yml was folded into it (it has 0 comments today). The PR #708 body already has a Closes line for each of #547, #549, #550, #518, #573, #515, #598 and #600, verified with gh pr view"
     why_human: "An editorial step on GitHub, not a codebase check"
+audit_acknowledged:
+  milestone: v4.7
+  at: 2026-09-29
+  status: human_needed
 ---
 
 # Phase 122: Release & CI Pipeline Hardening Verification Report
@@ -148,6 +154,7 @@ PR #708's **PR Validation** run failed in the `validate-intellij` job. The step 
 ### Human Verification Required
 
 These items stay open after the gap is closed; see `human_verification` in the frontmatter.
+
 1. **Cache-hit reruns.** npm on a PR rerun. Gradle only after a `main` run writes the cache, because setup-gradle is read-only on PRs (confirmed live).
 2. **First `preview.yml` run after merge.** Verify job, bump push, both publishes and artifacts.
 3. **Next `manual-release.yml` dispatch.** `contents: write` works on tag-release and create-release.
@@ -161,12 +168,14 @@ The earlier live-IDE install item is closed by UAT tests 1-3, which a human pass
 Both gaps from the previous report are closed as written. CR-01, WR-01 and WR-02 are fixed, have regression coverage where applicable, and were independently reproduced as fixed.
 
 A continued attack on the same function found one residual in the same fail-open class. `JOB_ID_LINE` does not accept a trailing comment on a job id line (`pusher: # pushes the tag`), which is valid workflow YAML. Two things follow:
+
 - If that line is the first job, `attributeJobs()` still exits early with no indentation and returns no jobs.
 - If it is a later job, its steps are attributed to the previous job.
 
 Either way, an under-scoped pushing job passes the gate with exit 0. The plan 122-03 must-have ("an under-scoped release job fails CI instead of failing silently") is therefore not reliably met, and the mitigation 122-SECURITY.md marks closed for T-122-13 has a bypass. For consistency with the previous verdict, which treated CR-01 as a blocker on exactly this reasoning, this is recorded as a gap and not downgraded.
 
 The fix is small and mechanical:
+
 - Allow `(?:#.*)?` after the colon in `JOB_ID_LINE`.
 - Add two fixtures, one for the first job id and one for a later job id after a write-scoped job.
 - Ideally, fail closed when a workflow has `jobs:` but zero jobs are attributed.

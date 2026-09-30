@@ -8,21 +8,29 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## Current Milestone: v4.7 Audit Hygiene Burn-down
+## Current Milestone
 
-**Goal:** Close the 2026-08-20 audit backlog: fix what is still broken, close or trim what is already fixed, and tidy the loose ends carried over from v4.4 to v4.6.
-
-**Target features:**
-- Re-verify every open audit issue against `main`; close the fixed ones and trim the partly fixed ones (#551, #533, #676)
-- Input-validation and security hardening (#509-#511, #523-#526, #529, #546, #548, #553, #566, #579, #585, #586, #604, #605, #626)
-- CI and dependency hygiene (#501, #507, #518, #520, #521, #547, #549-#551, #572, #573, #598, #600), plus the langium 4.4 regression (reproduce, report upstream, pin)
-- Test coverage and the interop test harness (#514, #516, #519, #528, #555, #559, #560, #562, #563, #565, #574, #575, #596, #599, #601, #627-#629, #635)
-- Refactors with no user-visible change (#533, #534, #558, #564, #580-#583, #602, #603, #606, #624, #625)
-- Carry-overs: the #676 "has no container" log error, the linking interop warm-up todo, the phase 97 review follow-ups, and the unknown-Java-member warning extras
-
-Out of scope: IntelliJ parity features (#631, #634), bbj-ls repository issues (#693, #694), and feature requests.
+None active. v4.7 is complete; the next milestone starts with `/gsd-new-milestone`.
 
 ## Current State
+
+**v4.7 Audit Hygiene Burn-down shipped 2026-09-29** (override closeout after a milestone audit
+with status `tech_debt`: 63/63 requirements, 13/13 phases, integration and 5/5 flows clean, no
+gaps; six artifacts acknowledged at close). The 2026-08-20 audit backlog is closed. Workspace
+settings, file probes and the formatter's Java can no longer point somewhere the user did not
+choose. Java class data from the interop peer is bounded, escaped and validated before it
+reaches the AST, hover, completion and quick fixes. EM login and web launch fail closed, and the
+six composer webviews validate every message. Lint, the test-tree type-check and test discovery
+are CI gates, the interop harness reports real results, and the whole suite has no known
+failures. vsce is out of the production dependencies, the formatter JAR has recorded provenance,
+Guava is fixed, Dependabot watches every tree (langium 4.4 held, upstream
+eclipse-langium/langium#2236). ClassValidator, `activate()` and `JavaInteropService` are split by
+responsibility. Every workflow is least-privilege, SHA-pinned and cached through one composite
+action, and the VSIX ships only the two minified bundles. The milestone landed on `main` via PR
+#708 (merge dce2e301, 2026-09-29) and published preview 0.16.10 to both marketplaces; it runs on
+the preview channel for a few days before a release is cut. The pending Dependabot updates are
+rolled up in PR #719. v4.6 (PR #699) reached `main` before v4.7. Phase artifacts for 110-122 are
+archived under `.planning/milestones/v4.7-phases/`.
 
 **v4.6 User-Facing Bug Burn-down shipped 2026-09-26** (override closeout after a milestone
 audit with status `tech_debt`: 19/19 requirements, 4/4 phases, 5/5 integration seams and 2/2
@@ -437,9 +445,32 @@ until publication).
 - ✓ **REF-09**: `JavadocProvider` is an injected DI service instead of a `getInstance()` singleton (#624) — v4.7 Phase 121
 - ✓ **REF-12**: `JavaInteropService` is split along its five responsibilities (connection, resolution cache, request lock, classpath loading, complete class index), with unchanged behaviour (#558) — v4.7 Phase 121
 
+- ✓ **FIX-01**: `declare ::lib1::ClassA a; declare ::lib2::ClassB b` on one line parses both declarations, each with its own file-path token and without validation errors (#527) — v4.7 Phase 119
+- ✓ **DEP-01**: `@vscode/vsce` is a devDependency, so the production dependency set no longer contains it or its transitive packages (#501) — v4.7 Phase 117
+- ✓ **DEP-02**: The vendored formatter JAR carries recorded version, vendor and provenance metadata that an advisory database can be checked against (#507) — v4.7 Phase 117
+- ✓ **DEP-03**: The interop test harness runs through a pinned, declared `tsx` dependency instead of an unpinned `npx tsx` install (#520) — v4.7 Phase 115
+- ✓ **DEP-04**: java-interop uses a Guava release that is not affected by the two temporary-directory advisories (#521) — v4.7 Phase 117
+- ✓ **DEP-05**: Dependabot ignores langium and langium-cli 4.4.x, and a minimal upstream repro exists for the parse-recovery slowdown on an unclosed call and the lost DEF FN completion params. Filing it upstream needs maintainer approval. — v4.7 Phase 117
+- ✓ **HARN-01**: No harness test case hard-codes `status: 'pass'`; every case reports its real assertion result (#514) — v4.7 Phase 115
+- ✓ **HARN-02**: The interop test harness is type-checked, linted and tested in CI (#575) — v4.7 Phase 115
+- ✓ **HARN-03**: The harness JSON highlighter handles escaped quotes, so key and string colouring works (#596) — v4.7 Phase 115
+- ✓ **HARN-04**: The pass/fail gate checks exactly the declared `criticalFields` list (#599) — v4.7 Phase 115
+- ✓ **HARN-05**: The harness header comment describes the fields the gate really checks and documents `--timeout` (#601) — v4.7 Phase 115
+- ✓ **HARN-06**: The six duplicated test-case scaffolds use the harness's existing helper, and the two oversized functions are split (#635) — v4.7 Phase 115
+- ✓ **REF-13**: The two grammar fragments with the channel/options/RPAREN opening share one rule, and parsing is unchanged (#602) — v4.7 Phase 119
+- ✓ **CI-01**: Every workflow declares a least-privilege `permissions:` block (#547) — v4.7 Phase 122
+- ✓ **CI-02**: `build.yml` no longer duplicates the PR build and test, and has a concurrency group (#549) — v4.7 Phase 122
+- ✓ **CI-03**: Every GitHub Actions reference is pinned to a commit SHA, with the version in a comment (#550) — v4.7 Phase 122
+- ✓ **CI-04**: Dependabot also watches the `github-actions` ecosystem and the `/documentation` npm tree (#551) — v4.7 Phase 117
+- ✓ **CI-05**: Every workflow that installs npm or Gradle dependencies uses dependency caching (#518) — v4.7 Phase 122
+- ✓ **CI-06**: The checkout and Node-setup preamble is defined once, as a composite action or reusable workflow, and every workflow uses it (#573) — v4.7 Phase 122
+- ✓ **CI-07**: `vscode:prepublish` builds only the bundles that ship, and ships them minified; the dead `esbuild-base` step is gone (#515) — v4.7 Phase 122
+- ✓ **CI-08**: The `prepare` lifecycle hook no longer duplicates the generate, type-check and bundle pipeline that CI runs explicitly (#598) — v4.7 Phase 122
+- ✓ **CI-09**: The unreachable npm scripts, the unused TextMate generator directive and the self-contradictory `activationEvents` entries are removed from `package.json` (#600) — v4.7 Phase 122
+
 ### Active
 
-v4.7 Audit Hygiene Burn-down: see the Current Milestone section above and `.planning/REQUIREMENTS.md`.
+No milestone active. Candidates carried from v4.7: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos), the three pending todos acknowledged at the v4.7 close, and the formatter jar's `--single-line-if` crash (#507).
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -470,7 +501,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.6 User-Facing Bug Burn-down shipped 2026-09-26 (Phases 106-109, 25 plans, 19/19 requirements); 23 milestones shipped. v4.6 is on branch `gsd/v4.6-user-facing-bug-burndown` (PR #699, open); v4.5 is on `main` via PR #691; no release has been cut since 0.16.0. v4.6 changed 63 files outside `.planning/` (+9,247 / −374): `bbj-vscode/src` +1,774 / −144, `bbj-vscode/test` +5,459, `bbj-intellij` +1,983 / −181. The 109-08 whole suite ran 2,854 vitest tests with no new failures against the phase base. Compiler diagnostics from BBj's parser need BBj 26.03 or later with the `bbj-ls` `parseProgram` endpoint; without it, behaviour is 0.16.x. All nine known advisory fixes are merged and released, and publication is the maintainer's next step.
+**Current state:** v4.7 Audit Hygiene Burn-down shipped 2026-09-29 (Phases 110-122, 80 plans, 185 tasks, 63/63 requirements); 24 milestones shipped. v4.7 is on `main` via PR #708 and published as preview 0.16.10; no stable release since 0.16.0. v4.7 changed 272 files outside `.planning/` (+25,097 / −5,213) in 506 commits over four days (2026-09-26 → 2026-09-29). The whole vitest suite ran 3,715 tests with 0 failures at the close.
 
 **Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
@@ -700,6 +731,10 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.7 Phase 113: composer webviews hardened, then consolidated — `webview-message-guard.ts` gives each of the six panels an `is…PanelMessage` guard as the handler's first statement (silent drop, no toast/log); `validateAssignTo` in the shared msgbox/CVS preview is the single verdict both IDEs render (`assignToError`, shown only on a new insert); `webview-csp.ts`, `composer-call-scanner.ts` and `window-composer-ui.ts` each replace duplicated per-composer code; `composer-commands.ts` moved out of `src/language/` | #604, #626, #628, #582, #533, #534, #595. CVS keeps its stricter identifier/dot call boundary as an explicit scanner option; the LS bundle stays free of `require("vscode")`. Code review: 3 findings (SETOPTS checked-entry shape, addWindow/addChildWindow boundary pin, a misleading comment), all fixed | ✓ Good — UAT 2/2 (VS Code + IntelliJ assign-to validation), Nyquist-compliant, threats_open 0 (22/22 closed) |
 | v4.7 Phase 114: lint, the test-tree type check and test discovery became CI gates — `build.yml` runs "Lint" and "Type-check test tree" after Build, each gated only on Build's own outcome so one failure never hides the other, with Test still reporting; the recommended typescript-eslint preset at zero warnings plus a guard test against reason-less or file-wide `eslint-disable`; 399 test-tree type errors fixed for real, not suppressed; the workspace-init hook timeouts removed by moving 28 un-gated test files from the real interop wiring to the hermetic `createBBjTestServices` double | #574, #516, #519, #562, #629 and the phase 97 follow-ups. The timeouts came from each file opening a real java-interop socket during `initializeWorkspace()`; real-interop coverage stays in the gated functional suites. Only `build.yml` changed among the workflows, because every push to `main` publishes | ✓ Good — PR CI proven on a throwaway draft PR (#701: Lint and Type-check failed, Test still ran); three whole-suite runs at hookTimeoutSuites=0 with the baseline's 11 known linking failures; IntelliJ progress checked on Linux, Windows re-check left as an opportunistic todo; `installed-extension-e2e` stays a pre-existing stale-bundle failed suite (0 failed assertions); review WR-01/WR-02/IN-01 advisory |
 | v4.7 Phase 118: the hand-synced `.bbl` catalog mirrors are regenerated from the evaluated `.ts` exports and pinned by a byte-exact drift test (CRLF-tolerant, plus a completeness check over all four pairs); the `package.json` compiler settings are checked against `COMPILER_OPTIONS` in both directions, with `bbj.compiler.trigger` the single allow-listed non-bbjcpl key; `getFunctionReference` moved verbatim into `utils.ts` | #603 and #606: both pairs are copies no build step regenerates, so only a test can catch drift; comparing against the evaluated export rather than parsing the `.ts` source keeps the guard independent of formatting. #580/#583 are pure dedup with no behaviour change | ✓ Good — v4.7 Phase 118; negative probes on a `.bbl` line and a `package.json` default both failed the guard; whole suite 3635 tests with only the known timeout flake and the stale-bundle `installed-extension-e2e` suite; review 0 critical/0 warning |
+| v4.7 Phases 115-117: the interop harness reports real assertion results, gates exactly on its declared fields and runs from a pinned `tsx` under CI; java-interop's real connection code runs against a loopback JSON-RPC peer and the whole suite has no known failures; vsce is a devDependency, the formatter JAR has an SBOM, Guava is 33.7.1, Dependabot covers every tree and holds langium 4.4.x | #514/#575/#596/#599/#601/#635/#520, #528/#559/#560/#563, #501/#507/#521/#551. The langium 4.4 parse-recovery regression was reproduced top-down and filed upstream by the maintainer (eclipse-langium/langium#2236) | ✓ Good — UATs complete; 117 Dependabot listing confirmed on `main` after the merge |
+| v4.7 Phases 119-121: two library-path DECLAREs on one line parse; the channel/options opening is one grammar rule with identical parses; ClassValidator and `activate()` split by responsibility with one exec-wrapping helper; `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged | #527/#602, #625/#564, #624/#558. The IntelliJ contract test that reads TS request literals missed a handler move in 116 until PR CI (`buildPlugin` depends on `test`) caught it | ✓ Good — whole-suite parity against each phase base |
+| v4.7 Phase 122: every workflow least-privilege (top-level `contents: read`, writes only on the pushing jobs), every action SHA-pinned with a version comment, npm/Gradle caching through one `node-setup` composite action (no cache in token-holding jobs), `pr-vsix.yml` folded into `build.yml`, VSIX built once and minified; a permanent `pin-hygiene` CI job enforces it | #547/#549/#550/#518/#573/#515/#598/#600. Verification found two fail-open shapes in the checker's job attribution (a comment under `jobs:`, a trailing comment on a job id); both fixed with regression tests, and the Gradle wrapper checker got the same fix | ✓ Good — first `preview.yml` run on `main` green (0.16.10 on both marketplaces, 220 MB Gradle cache); next manual release and a PR Gradle cache restore still to observe |
+| v4.7 closed as an override closeout after a `tech_debt` audit with six artifacts acknowledged; phase artifacts archived on-tree; no `v4.7` git tag | Close taken 2026-09-29: 63/63 requirements, 13/13 phases, no gaps. Acknowledged: the formatter-jar debug session (#507), 114's seven deferred hand checks, 122's post-release checks, three todos. Repository tags stay release versions. The release waits for a few days on the preview channel | — Pending (release not cut) |
 
 ## Evolution
 
@@ -719,4 +754,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-29 after Phase 121*
+*Last updated: 2026-09-29 after the v4.7 milestone*

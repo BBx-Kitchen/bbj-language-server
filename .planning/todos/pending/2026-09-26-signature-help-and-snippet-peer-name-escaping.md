@@ -7,6 +7,10 @@ files:
 
   - bbj-vscode/src/language/bbj-signature-help-provider.ts (~l.110-115, Java signature inside a code fence)
   - bbj-vscode/src/language/bbj-completion-provider.ts (createReferenceCompletionItem snippet insertText `${N:name}`)
+
+audit_acknowledged:
+  milestone: v4.7
+  at: 2026-09-29
 ---
 
 ## Problem

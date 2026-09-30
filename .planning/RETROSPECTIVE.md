@@ -446,6 +446,59 @@
 - Notable: 25 plans in 3 days (~8 plans/day). Phase 108-01 spent almost 4 hours waiting at a
   human checkpoint for the macOS `idea.log`, which was worth it.
 
+## Milestone: v4.7 — Audit Hygiene Burn-down
+
+**Shipped:** 2026-09-29
+**Phases:** 13 | **Plans:** 80
+
+### What Was Built
+- Security hardening of every untrusted input the audit named: workspace settings and file
+  probes (110), Java class data from the interop peer (111), EM login and web launch (112) and
+  composer webview messages (113).
+- Lint, test-tree type-check and explicit test discovery as CI gates, hermetic test services,
+  an interop harness that reports real results, and interop connection code under test
+  (114-116).
+- Dependency hygiene with Dependabot on every tree and langium 4.4 held and reported upstream
+  (117); four no-behaviour-change refactors (118-121).
+- A least-privilege, SHA-pinned, cached release and CI pipeline with a permanent pin/permission
+  gate and a minified VSIX (122).
+
+### What Worked
+- One milestone PR (#708) for 13 phases kept `main` to a single preview publish; rolling the 13
+  pending Dependabot PRs into one PR (#719) did the same for dependencies.
+- Re-running the verifier after code-review fixes found a second fail-open shape in the new
+  checker (a trailing comment on a job id) that the review had missed.
+- PR CI caught what local phase gates did not: the IntelliJ contract test that reads TS paths
+  failed on #708 because `buildPlugin` depends on `test`.
+
+### What Was Inefficient
+- `phase.complete` again moved STATE.md to an already-done phase (118 after 117) and had to be
+  corrected by hand; the milestone-close archive left stale STATE fields too.
+- Phase gates ran vitest only, so a handler move in 116 broke the IntelliJ contract test and was
+  found only on the milestone PR.
+- Dependabot PR checks never build the docs site, so the Docusaurus 3.10 PR looked green while it
+  would have broken the docs deploy (`@docusaurus/faster` missing).
+
+### Patterns Established
+- Pre-push register scan per push: embargoed paths, planning identifiers in added source lines,
+  and closing keywords in commit bodies.
+- Checker hardening: every YAML-shape checker gets fixtures for comments in every position, and
+  fails closed when a structural key yields nothing.
+- Dependabot cleanup as one roll-up PR, closing unneeded majors with "@dependabot ignore this
+  major version" (no push to `main`) and recording the migrations as todos.
+
+### Key Lessons
+- When a phase moves a file another language reads by path, run that language's tests before
+  closing the phase.
+- Green checks on a dependency PR only cover what CI builds; build the affected tree locally
+  (docs, java-interop) before merging.
+- Every push to `main` publishes, so batch: milestone PR, dependency roll-up, closeout PR.
+
+### Cost Observations
+- Model mix: mostly opus orchestration with subagent verifier, integration checker and executors
+- Sessions: several over four days (2026-09-26 → 2026-09-29)
+- Notable: 506 commits and 272 files changed outside `.planning/` in four days
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -459,6 +512,7 @@
 | v4.4 | n/a | 5 | Fixes and consolidations grouped by subsystem; first tagged release through the verify-before-publish gate; a release-phase rework reverted after failing hand UAT; no milestone audit |
 | v4.5 | n/a | 8 | Corpus-measured conformance gates (A / A2 / B); the compiler's own parser in the loop via a cross-repo endpoint; a phase added mid-milestone; milestone audit run (no gaps) |
 | v4.6 | n/a | 4 | Lean user-facing bug burn-down; measure-first plans; crash detection redone on real-log evidence; milestone audit run (no gaps) |
+| v4.7 | n/a | 13 | Audit backlog burn-down in one milestone PR; permanent CI hygiene gates; Dependabot roll-up; milestone audit run (no gaps, `tech_debt`) |
 
 ### Cumulative Quality
 
@@ -470,6 +524,7 @@
 | v4.4 | 1,895 vitest + 1,101 JUnit | not measured at close | 0 new runtime dependencies (Gradle 9.7.1, IntelliJ Platform plugin 2.18.1, bundled Node.js v22.23.2) |
 | v4.5 | 2,507 vitest (63 skipped) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 | v4.6 | 2,854 vitest (whole suite at 109-08) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
+| v4.7 | 3,715 vitest (0 failed) + 1,160 JUnit | not measured at close | 0 new runtime dependencies (Guava 33.7.1, vsce moved to dev) |
 
 ### Top Lessons (Verified Across Milestones)
 

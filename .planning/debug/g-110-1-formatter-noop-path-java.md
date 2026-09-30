@@ -4,6 +4,10 @@ trigger: "G-110-1: With bbj.formatter.javaPath cleared, Format Document on a .bb
 created: 2026-09-26T14:00:00Z
 updated: 2026-09-26T15:05:00Z
 goal: find_root_cause_only
+audit_acknowledged:
+  milestone: v4.7
+  at: 2026-09-29
+  status: diagnosed
 ---
 
 ## Current Focus
@@ -156,6 +160,7 @@ fix: ""
 verification: ""
 files_changed: []
 secondary_findings:
+
   - "Pre-existing: the jar's -p/-i mode reads the SAVED file from disk (BBjCFCli.run -> readFile(input)); runFormatter's p.stdin.end(documentContent) is dead, so Format Document on a dirty buffer replaces it with the formatted saved content (unsaved edits lost), and format-on-save would format the previous save. Verified with the jar (stdin ignored); VS Code's save-participant ordering was not verified in this session."
   - "Pre-existing: if the -i path does not exist (e.g. an untitled buffer) the CLI prints 'Input file does not exsit' to stderr and exits 0 with empty stdout, which runFormatter would resolve as '' (a whole-document replacement with nothing). Exit 0 + 0-byte stdout verified with the jar; not run through VS Code."
   - "UAT note: the G-110-1 truth (javaPath empty -> java from PATH -> document reformatted) holds when splitSingleLineIF is false or the file has no block IF. Test 1 can be re-run with bbj.formatter.splitSingleLineIF=false."
