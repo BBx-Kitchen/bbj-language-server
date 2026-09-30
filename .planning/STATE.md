@@ -5,16 +5,16 @@ milestone_name: Documentation Drift
 current_phase: 123
 current_phase_name: Documentation Drift
 status: executing
-stopped_at: Completed 123-03-PLAN.md
-last_updated: "2026-09-30T09:40:12.367Z"
+stopped_at: Completed 123-04-PLAN.md
+last_updated: "2026-09-30T09:45:36.858Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 123 execution started
-state_head: 8e75fe615be96a16c010db933945f27478357528
+state_head: 54a914ee877dc7670064bcde9d126616c92355cd
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 123 (Documentation Drift) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 123 execution started
 
@@ -188,6 +188,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 123 P01 | 15min | 3 tasks | 5 files |
 | Phase 123 P02 | 20min | 3 tasks | 2 files |
 | Phase 123 P03 | 25min | 3 tasks | 5 files |
+| Phase 123 P04 | 20min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -336,6 +337,8 @@ decisions:
 - [Phase 123]: 123-02: web.bbj row uses plain lowercase placeholder tokens in one backtick code span instead of angle-bracket placeholders, and examples/msgbox.bbj replaces the nonexistent examples/hello.bbj as the run-command example file
 - [Phase 123]: 123-03: commands.md MDX build failed on a bare <title> placeholder (Docusaurus parses it as unclosed JSX); reworded to avoid angle brackets instead of escaping them
 - [Phase 123]: 123-03: configuration.md Complete Settings Example verified programmatically against bbj-vscode/package.json (21 non-compiler.* keys plus bbj.compiler.trigger)
+- [Phase 123]: 123-04: Host fallback documented per the code (empty field substituted to localhost client-side, no warning shown), not the drift scan inaccurate server-side-validator-warning description
+- [Phase 123]: 123-04: Compile BBj File Tools-menu presence is a one-line cross-reference from Tools Menu Commands back to the Compile Command section, avoiding duplicate documentation
 
 ### Tech Debt
 
@@ -400,8 +403,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:40:12.335Z
-Stopped at: Completed 123-03-PLAN.md
+Last session: 2026-09-30T09:45:36.825Z
+Stopped at: Completed 123-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 123` or `/gsd-plan-phase 123`.
