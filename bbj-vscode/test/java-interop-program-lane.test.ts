@@ -9,9 +9,17 @@
  * under fake timers: the route a request takes, the typed outcome it ends in and the lifecycle of
  * the connection. Never opens a real socket and never reaches port 5008.
  */
+import { URI, type LangiumDocument } from 'langium';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ResponseError } from 'vscode-jsonrpc/node.js';
+import type { Connection } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { BBjParserService } from '../src/language/bbj-parser-service.js';
+import { initNotifications } from '../src/language/bbj-notifications.js';
+import { clearAllVerdictStates, getVerdictState, setVerdictState } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { JavaClass } from '../src/language/generated/ast.js';
+import { PROGRAM_LANE_REOPEN_COOLDOWN_MS } from '../src/language/java-interop-program-lane.js';
+import { logger } from '../src/language/logger.js';
 import { createFakePeerServices } from './fake-interop-peer.js';
 
 /** Exposes the protected `getRawClass()` to the test via a structural cast. */
@@ -194,5 +202,137 @@ describe('format, range format and DENUM over one dedicated connection', () => {
         interop.dropConnection();
         await vi.advanceTimersByTimeAsync(10000);
         await pendingFormat;
+    });
+});
+
+describe('the dedicated connection lifecycle', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+        initNotifications(null as unknown as Connection);
+        clearAllVerdictStates();
+    });
+
+    test('a refused open answers not-reachable with no fallback, no dialog and no change to the generation, and class lookups keep working', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const showErrorMessage = vi.fn();
+        initNotifications({ window: { showErrorMessage } } as unknown as Connection);
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const rawClassAccess = interop as unknown as RawClassAccess;
+
+        await rawClassAccess.getRawClass('test.Warm'); // opens the shared connection (attempt 1)
+        const generationBefore = interop.connectionGeneration;
+        interop.refusedSocketAttempts.add(2); // the program connection's own attempt
+
+        const outcome = await interop.formatProgram({ text: 'REM secret marker QWERTY789\n', version: 'u1' });
+
+        expect(outcome).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(interop.socketAttempts).toBe(2);
+        expect(interop.sentRequests.some(r => r.method === 'formatProgram')).toBe(false);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        const warnLine = String(warnSpy.mock.calls[0][0]);
+        expect(warnLine).toContain('ECONNREFUSED');
+        expect(warnLine).not.toContain('QWERTY789');
+        expect(showErrorMessage).not.toHaveBeenCalled();
+        expect(interop.connectionGeneration).toBe(generationBefore);
+
+        // A class lookup afterwards reuses the shared connection: no new socket, no circuit-open error.
+        const attemptsBeforeLookup = interop.socketAttempts;
+        const lookup = await rawClassAccess.getRawClass('test.AfterRefusal');
+        expect(lookup.error).toBeUndefined();
+        expect(interop.socketAttempts).toBe(attemptsBeforeLookup);
+    });
+
+    test('inside the cool-down no socket is attempted; once it has passed the next request opens the connection again', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        interop.refusedSocketAttempts.add(1);
+
+        const first = await interop.formatProgram({ text: 'a\n', version: 'c1' });
+        expect(first).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(interop.socketAttempts).toBe(1);
+
+        const second = await interop.formatProgram({ text: 'a\n', version: 'c2' });
+        expect(second).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(interop.socketAttempts).toBe(1);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(PROGRAM_LANE_REOPEN_COOLDOWN_MS - 1);
+        const third = await interop.formatProgram({ text: 'a\n', version: 'c3' });
+        expect(third).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(interop.socketAttempts).toBe(1);
+
+        await vi.advanceTimersByTimeAsync(1);
+        const fourth = await interop.formatProgram({ text: 'a\n', version: 'c4' });
+        expect(fourth.kind).toBe('ok');
+        expect(interop.socketAttempts).toBe(2);
+    });
+
+    test('losing the connection moves only its own epoch: the generation and a stored live-parse verdict survive, and the next request reopens', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+
+        const parserService = new BBjParserService({
+            shared: { workspace: { WorkspaceManager: {} } },
+            java: { JavaInteropService: interop }
+        });
+        const uri = URI.file('/proj/lane-loss.bbj');
+        const document = {
+            uri,
+            textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
+        } as unknown as LangiumDocument;
+
+        const verdict = await parserService.requestLiveParse(document);
+        expect(verdict.kind).toBe('verdict');
+        setVerdictState(uri, { seen: new Set(['some-key']) });
+
+        expect((await interop.formatProgram({ text: 'a\n', version: 'l1' })).kind).toBe('ok');
+        const generationBefore = interop.connectionGeneration;
+        const firstConnection = interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId;
+
+        interop.dropConnection(firstConnection);
+        parserService.isEnabled();
+
+        expect(getVerdictState(uri)).toBeDefined();
+        expect(interop.connectionGeneration).toBe(generationBefore);
+
+        expect((await interop.formatProgram({ text: 'a\n', version: 'l2' })).kind).toBe('ok');
+        const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
+        expect(formatRequests).toHaveLength(2);
+        expect(formatRequests[1].connectionId).not.toBe(firstConnection);
+    });
+
+    test('clearCache disposes the connection, and lifts the cool-down after a refused open', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        vi.spyOn(logger, 'warn').mockImplementation(() => { });
+
+        await interop.formatProgram({ text: 'a\n', version: 'k1' });
+        const connectionId = interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId;
+        expect(interop.connectionRecords().find(r => r.id === connectionId)?.disposed).toBe(false);
+        interop.clearCache();
+        expect(interop.connectionRecords().find(r => r.id === connectionId)?.disposed).toBe(true);
+
+        // The next open is refused, which starts a cool-down...
+        interop.refusedSocketAttempts.add(interop.socketAttempts + 1);
+        expect(await interop.formatProgram({ text: 'a\n', version: 'k2' })).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+
+        // ...and a cache clear lets the very next request attempt a socket at once.
+        interop.clearCache();
+        const attemptsBefore = interop.socketAttempts;
+        const outcome = await interop.formatProgram({ text: 'a\n', version: 'k3' });
+        expect(outcome.kind).toBe('ok');
+        expect(interop.socketAttempts).toBe(attemptsBefore + 1);
     });
 });
