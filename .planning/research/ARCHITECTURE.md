@@ -1,419 +1,317 @@
-# Architecture Research — v4.3 Polish & Quality
+# Architecture Research — v4.9 bbj-ls DENUM & Format Migration
 
-**Domain:** Integration of 23 polish issues into an existing dual-IDE Langium language server
-**Researched:** 2026-09-06
-**Confidence:** HIGH (every claim below is grounded in a file read during this research; line numbers cited are current as of `origin/main` @ `c0b113c7`)
+**Domain:** Integrating `formatProgram` / `denumProgram` (bbj-ls, BBj 26.03) into an existing dual-IDE Langium language server
+**Researched:** 2026-10-01
+**Confidence:** HIGH for integration points (every claim is from a file read this session: bbj-vscode/src, bbj-intellij/src, bbj-ls README + `InteropService.java`, Langium 4.3.1 and LSP4IJ 0.21.0 sources). MEDIUM for the two items marked "verify" (LSP4IJ runtime behaviour; DENUM diagnostics surfacing).
 
-This is not new-system research — it is an integration map. No new subsystem is introduced;
-every issue attaches to one of four existing seams: the shared editor-agnostic composer modules
-(`bbj-vscode/src/*-composer.ts`), the `bbj/composer/*` / `bbj/*` custom-request layer
-(`composer-commands.ts` + `BbjComposerServer.java`), the Phase 79 `Scheduler`/`RestartGate`
-concurrency seam (`bbj-intellij/.../concurrency/`), and the Phase 82 `ComposerFlow`/
-`StaleEditGuard`/`ComposerNotices` composer-robustness seam.
+Scope: only what the NEW features need. Wire contract is `/home/coder/repos/bbj-ls/README.md` "JSON-RPC methods"; it is not restated here beyond what drives a decision.
 
-## System Overview (unchanged — where the 23 issues attach)
+## Headline Decisions
+
+| Question | Decision | Why (one line) |
+|----------|----------|----------------|
+| Where does the formatter plug into Langium DI? | `lsp.Formatter` slot in `BBjModule` (class `BBjFormatter implements Formatter`, NOT `AbstractFormatter`) plus a post-`startLanguageServer` bounded handler override in `main.ts` | The DI slot alone makes Langium advertise `documentFormattingProvider` + `documentRangeFormattingProvider`; Langium's default handler awaits `WorkspaceManager.ready`, which would starve VS Code's 750 ms format-on-save and IntelliJ on a cold server |
+| Which connection do `formatProgram`/`denumProgram` ride? | The dedicated parse lane (rename concept to "program lane"), falling back to the shared connection exactly as `parseProgram` does | `getClassInfo` & co. return `completedFuture` and run on the lsp4j reader thread; the lane exists to keep class traffic off program requests (#692). Format worker and parser worker are per TCP connection, so format on the lane never waits behind a parse |
+| Capability probing | Reuse the "first real call is the probe" latch from `BBjParserService`, keyed on `connectionGeneration`; `-32601` => "requires BBj 26.03" (once per generation), never touches the breaker | Breaker is connect-level only; an application/`MethodNotFound` answer proves the peer is alive |
+| Settings transport | One normalised `formatter` settings object fed from TWO channels: `initializationOptions.formatter` (IntelliJ's only reliable channel, VS Code initial) and `didChangeConfiguration` `bbj.formatter` (VS Code hot-reload). No per-request pull | LSP4IJ `workspace/configuration` pull returns null for this plugin (documented in `CompilerInitOptions.java`); VS Code already pushes the whole `bbj` section via `gatedBbjSettings()` |
+| DENUM as command vs request | Custom request `bbj/denum` (params `{uri}`, typed result incl. a single `TextEdit`), mirroring `bbj/compile`. The DENUM-needed prompt from formatting is server-driven (`window/showMessageRequest` then `workspace/applyEdit`) and calls the same `denumDocument()` core | Precedent + `ComposerRequestContractTest` protection + typed outcome for both IDEs; `workspace/executeCommand` has zero precedent in this repo and LSP4IJ has no menu-invokable path for it |
+| `canonicalName` / `version` | `canonicalName = document.uri.fsPath`, `version = String(textDocument.version)` — identical to `requestLiveParse` | Supersession is per method per connection, so format/denum/parse never cancel each other; a newer format of the same file cancels the older (-32800) |
+
+## System Overview
 
 ```
-┌───────────────────────────────── VS Code host ─────────────────────────────────┐
-│ extension.ts (activate: 16 undisposed regs #531, refreshJavaClasses :700-709)  │
-│  msgbox/addwindow/addchildwindow/setopts -composer-{ui,webview}.ts (#530 #623) │
-│  Commands/Commands.cjs (#512)   document-formatter.ts (#499)   decompile-io.ts │
-│  (#500)   package.json contributes.languages (#485 — static filenames array)  │
-└───────────────────────┬─────────────────────────────────────────┬─────────────┘
-                         │ LSP stdio                                 │ vscode.workspace
-                         ▼                                           ▼ FileSystemWatcher (NEW, #486)
-┌────────────────────────────────── Language Server (main.cjs) ──────────────────┐
-│ bbj-ws-manager.ts: onInitialize reads configPath from initializationOptions,   │
-│   initializeWorkspace() reads it ONCE at startup, no watcher (#485 #486)      │
-│ composer-commands.ts: bbj/composer/{msgbox,addwindow,addchildwindow}/* — NOT  │
-│   setopts (#633 gap) — thin pass-throughs to editor-agnostic *-composer.ts    │
-│ msgbox-composer.ts buildCallInfo(): literal-int-only regex (#648)             │
-│ bbj-scope.ts getBBjClassesFromFile() full index scan (#505)                   │
-│ bbj-scope-local.ts collectLocalSymbols() unpruned streamAllContents (#505)    │
-│ bbj-linker.ts link(): isExternalDocument + treeIter.prune() — the pattern to  │
-│   mirror for #505                                                             │
-│ java-interop.ts: acquireLock/lockQueue (#504), _resolvedClasses LruMap (#497) │
-│ bbj-completion-provider.ts: activeCancelToken singleton field (#498)          │
-│ main.ts: connection.onRequest('bbj/refreshJavaClasses', ...) — already exists │
-└───────────────────────┬──────────────────────────────────────────┬────────────┘
-                         │ LSP stdio                                 │ workspace/didChangeWatchedFiles
-                         ▼ (LS-agnostic to host)                     │ (candidate mechanism, see #486)
-┌───────────────────────────────── IntelliJ host (LSP4IJ) ───────────────────────┐
-│ BbjLanguageServerFactory.getServerInterface() -> BbjComposerServer.class       │
-│ BbjComposerServer.java: bbj/composer/* + bbj/compile (Phase 81 pattern) —      │
-│   #632 adds bbj/refreshJavaClasses here                                       │
-│ ComposerLauncher.java -> BbjComposerService.server() [no cache, #612] ->       │
-│   ComposerFlow (Phase 82) -> {Msgbox,AddWindow,AddChildWindow}ComposerDialog   │
-│   -> StaleEditGuard (Phase 82, pattern for #532)                              │
-│ Msgbox/AddWindow/AddChildWindowComposerDialog: SimpleDocumentListener calls    │
-│   refresh() synchronously, no Scheduler (#611)                                │
-│ ConfigureMsgbox/AddWindow/AddChildWindowIntention: Alt+Enter only, no gutter  │
-│   cue (#650)                                                                  │
-│ BbjServerService.java: RestartGate + requestRestart(long) (Phase 79 seam) —   │
-│   BbjRefreshJavaClassesAction calls requestRestart(0) today (#632)            │
-│ BbjSettings.java getState(): auto-detects bbjHomePath/nodeJsPath, NOT         │
-│   javaInteropPort (#608, only in BbjSettingsConfigurable.reset())             │
-│ BbjStatusBarWidget / BbjJavaInteropStatusBarWidget: messageBusConnection on   │
-│   status events only, no FileEditorManagerListener (#610)                    │
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ IDE clients                                                                  │
+│  VS Code (extension.ts)                    IntelliJ (LSP4IJ, BbjComposerServer)│
+│   package.json bbj.formatter.* (15)         BbjSettings.State + Configurable  │
+│   bbj.denumber -> client.sendRequest        BbjDenumAction -> @JsonRequest    │
+│   LanguageClient auto-registers formatting  LSPFormattingFeature (built in)   │
+├───────────────────┬───────────────────────────────────┬──────────────────────┤
+│        textDocument/formatting|rangeFormatting   bbj/denum   initializationOptions.formatter
+│                   │                                   │      didChangeConfiguration(bbj.formatter)
+├───────────────────┴───────────────────────────────────┴──────────────────────┤
+│ Language server (bbj-vscode/src/language, one process, stdio/IPC)            │
+│                                                                              │
+│  main.ts  ──registers──>  bounded formatting handler   denum-command.ts      │
+│                           (bbj-formatting-handler.ts)  (bbj/denum)           │
+│                                   │                         │                │
+│  bbj-module.ts lsp.Formatter ─> BBjFormatter  ──────┐       │                │
+│                                 (LSP adapter)       v       v                │
+│                                         BBjFormatService (compiler group)    │
+│                                         - params builder, settings snapshot  │
+│                                         - typed error classify + latch       │
+│                                         - format / denum outcome types       │
+│                                                   │                          │
+│  JavaInteropService (thin front) ── formatProgram / denumProgram / parseProgram
+│                                                   │                          │
+│  JavaInteropConnection  (generalised "program lane")                         │
+│     lane socket (per generation)  ──fallback──>  shared socket + breaker     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ bbj-ls inside BBjServices :5008  (one InteropService per TCP connection)     │
+│   parser worker: parseProgram, denumProgram, formatProgram's DENUM step      │
+│   format worker: formatProgram's format step                                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## New vs. Modified Components
+## Component Responsibilities
 
-| Component | Status | Issues | Notes |
-|---|---|---|---|
-| `bbj-vscode/src/cvs-composer.ts` + `cvs-composer-ui.ts` + `cvs-composer-webview.ts` | **NEW** | #649 | Clone of `msgbox-composer.ts`/`-ui.ts`/`-webview.ts`'s three-file shape |
-| `bbj/composer/cvs/*` handlers in `composer-commands.ts` | **NEW** | #649 | Same thin-pass-through shape as the msgbox/addwindow/addchildwindow sections |
-| `bbj/composer/setopts/*` handlers in `composer-commands.ts` | **NEW** | #633 | Today SETOPTS is the only composer NOT in this file — `grep -c setopts composer-commands.ts` = 0, confirmed |
-| `SetoptsComposerDialog.java`, `CvsComposerDialog.java` | **NEW** | #633, #649 | Follow `MsgboxComposerDialog.java`'s constructor/`ComposerFlow`/`StaleEditGuard` shape |
-| `ComposerModels.SetOpts*`, `ComposerModels.Cvs*` DTOs | **NEW** | #633, #649 | Added to the existing `ComposerModels.java` (24 existing nested classes) |
-| `BbjComposerServer.setopts*()`, `.cvs*()`, `.refreshJavaClasses()` methods | **NEW methods on existing interface** | #633, #649, #632 | `getServerInterface()` returns exactly one interface (comment at `BbjComposerServer.java:62-63`) — every new request family is added here, not a new interface |
-| `ConfigureCvsIntention.java`, `ConfigureSetoptsIntention.java` (or gutter LineMarkerProvider) | **NEW** | #649, #633, #650 | Mirrors `ConfigureMsgboxIntention.java` |
-| A VS Code "additive expression" evaluator inside `msgbox-composer.ts` | **NEW logic in existing file** | #648 | No numeric-expression parser or `BBjMsgBox.*` reverse-constant-lookup exists today |
-| An IntelliJ persistent visual cue (`LineMarkerProvider` or inlay hint) | **NEW mechanism** | #650 | IntelliJ has zero always-visible composer cue today — only `IntentionAction`s reachable via Alt+Enter |
-| VS Code `CodeLensProvider` for msgbox/addwindow/addchildwindow | **NEW** | #650 | Today only `setopts-composer-ui.ts` has a `CodeLensProvider` (`:82-96`); msgbox/addwindow/addchildwindow have only a `CodeActionProvider` (lightbulb) |
-| VS Code dynamic language-association listener | **NEW** | #485 | No `vscode.languages.setTextDocumentLanguage` call exists anywhere in `extension.ts` today |
-| Config-file watcher (VS Code `FileSystemWatcher`, IntelliJ VFS/`BulkFileListener`) | **NEW** | #486 | Neither host watches the config file today; `bbj-ws-manager.ts` reads it once in `initializeWorkspace()` |
-| A resolved-config-path query (new tiny LSP request, or duplicated fallback logic per host) | **NEW (design choice)** | #485, #486 | See "Config Path Data Flow" below |
-| `KeystrokeDebouncer`-style wrapper (or direct `Scheduler.schedule`) for composer `refresh()` | **NEW usage of existing seam** | #611 | Reuses Phase 79's `Scheduler`/`AlarmScheduler`, not `KeystrokeDebouncer<T>` verbatim (see caveat below) |
-| Server/catalogs cache in `ComposerLauncher`/`BbjComposerService` | **NEW cache, existing classes** | #612 | Invalidated by the same restart path `RestartGate.doRestart` already drives |
-| `addwindowPreview`/`addchildwindowPreview`'s `valid` field | **MODIFIED** | #623 | `msgboxPreview()` already returns `valid`; the other two previews don't yet |
-| `addwindow-composer-webview.ts`, `addchildwindow-composer-webview.ts` insert handlers | **MODIFIED** | #623, #530 | Add `r.valid` gate + `panel.onDidDispose` |
-| `msgbox-composer-webview.ts`, `setopts-composer-webview.ts` | **MODIFIED** | #530 | Add `panel.onDidDispose` only (already gate on `r.valid`) |
-| `msgbox-composer-ui.ts` `runComposer()` | **MODIFIED** | #532 | Add a re-decode/re-validate step before `editor.edit()`, mirroring `StaleEditGuard.java` |
-| `bbj-scope.ts`, `bbj-scope-local.ts` | **MODIFIED** | #505 | Add per-file cache + external-document pruning |
-| `java-interop.ts` | **MODIFIED** | #504, #497 | Add circuit breaker + LRU pinning; no new files |
-| `bbj-completion-provider.ts` | **MODIFIED** | #498 | Thread cancel token through `completionForCrossReference`'s own extension point instead of the shared field |
-| `decompile-io.ts`, `document-formatter.ts`, `Commands.cjs`, `extension.ts` | **MODIFIED** | #500, #499, #512, #531 | Single-file, localized fixes |
-| `BbjSettings.java`, `BbjSettingsConfigurable.java` | **MODIFIED** | #608 | Move port auto-detect into `getState()`; replace `== 5008` equality check with a real sentinel |
-| `BbjRefreshJavaClassesAction.java`, `BbjComposerServer.java` | **MODIFIED** | #632 | Swap `requestRestart(0)` for the `BbjCompileAction.java` pattern (background task + targeted request) |
-| `BbjStatusBarWidget.java`, `BbjJavaInteropStatusBarWidget.java` | **MODIFIED** | #610 | Add `FileEditorManagerListener` subscription |
+### NEW components (language server, `bbj-vscode/src/language/`)
 
-## Config Path Data Flow (#485, #486, #632, #608)
+| File | Responsibility | Pattern it copies |
+|------|----------------|-------------------|
+| `bbj-format-service.ts` — `BBjFormatService` | Builds `FormatProgramParams`/`DenumProgramParams` from a `LangiumDocument` + the current settings snapshot; calls `JavaInteropService.formatProgram/denumProgram`; classifies every outcome into a typed union (`edits`, `text`, `denum-needed`, `invalid-settings`, `mixed-numbering`, `unavailable`, `superseded`, `failed`); owns the per-generation `-32601` latch and the warn-once-per-kind cadence | `bbj-parser-service.ts` (latch, `classifyFailureKind`, `reportedFailureKinds`) |
+| `bbj-formatter.ts` — `BBjFormatter implements Formatter` | LSP adapter only: whole-document `text` -> minimal `TextEdit[]`; range `edits` pass-through; stale-version guard; maps outcomes to `[]` + user message; `formatOnTypeOptions` returns `undefined` | `bbj-code-action-provider.ts` style provider; no `AbstractFormatter` (that class is CST-driven, we never parse) |
+| `bbj-formatting-handler.ts` | `registerBoundedFormattingHandler(connection, shared)` — overrides `onDocumentFormatting`/`onDocumentRangeFormatting` AFTER `startLanguageServer`; resolves text from `shared.workspace.TextDocuments` (no AST, no `WorkspaceManager.ready` wait); refuses non-`bbj` language ids | `bbj-hover-handler.ts`, `bbj-code-action-handler.ts`, `composer-codelens-handler.ts` |
+| `bbj-format-settings.ts` | `normalizeFormatterSettings(raw)`: whitelist exactly the 15 `FormatOptions.fromMap` keys, drop `javaPath` and anything unknown (the server rejects unknown keys with -33007 naming all keys), accept legacy `splitSingleLineIF` as an alias for `splitSingleLineIf`; a module/service-held snapshot with `setFormatterSettings()` | `setMaxErrors`/`setCompilerTrigger` setters wired through `ConfigurationChangeDeps` |
+| `denum-command.ts` | `DENUM_REQUEST_METHOD = 'bbj/denum'`; `createDenumHandler(deps)` + `registerDenumRequest(connection, deps)`; result carries a closed `reason` vocabulary (client contract, like `CompileFailureReason`) | `compile-command.ts` (verbatim shape) |
+| Program wire types | `FormatProgramParams/Result`, `DenumProgramParams/Result`, `ProgramDiagnostic`, error-code constants (-33001..-33009, -32602, -32800, -32601). Put next to `ParseProgramParams` in `java-interop-connection.ts` or in a sibling `java-interop-program-types.ts` (preferred: that file is already 579 lines) | `ParseProgramParams` block in `java-interop-connection.ts` |
 
-**Today:** the resolved config path is computed in exactly one place —
-`bbj-ws-manager.ts` (`BBjWorkspaceManager`), and it is read exactly once:
+### MODIFIED components
 
-- `onInitialize` (`bbj-ws-manager.ts:46-121`) stores `this.configPath` from
-  `params.initializationOptions.configPath` (`:68`) — the VS Code `bbj.configPath` setting or
-  IntelliJ's `BbjSettings.State.configPath`, sent flat in `initializationOptions` by both hosts
-  (VS Code's `startLanguageClient`; IntelliJ's `BbjLanguageServerFactory.initializeParams`,
-  `:53-54`).
-- `initializeWorkspace()` (`bbj-ws-manager.ts:127-154`) resolves the PREFIX either from
-  `this.configPath` directly (custom path branch, `:133-141`) or by falling back to
-  `{bbjdir}/cfg/config.bbx` (`:142-154`) — **this fallback derivation logic exists only inside
-  the language server.** Neither host currently knows or computes the effective resolved path;
-  each only knows its own two raw settings (`configPath` and `bbjHome`/`bbjHomePath`).
-- This happens once, at `initializeWorkspace` time. There is no watcher, no re-read, no
-  `workspace/didChangeWatchedFiles` registration anywhere in `bbj-ws-manager.ts` or `main.ts`.
+| File | Change |
+|------|--------|
+| `java-interop-connection.ts` | Generalise `parseProgram()` into `sendProgramRequest(type, params, token, opts)` over the existing lane (`parseLaneConnection`, generation-scoped, silent fallback to `hooks.connect()`). Keep `parseProgram()` as a thin caller. **Retire-on-MethodNotFound must stay parse-only** (`opts.retireLaneOnMethodNotFound`), otherwise a missing `formatProgram` would kill the lane `parseProgram` depends on. Error text in `openParseLane`'s warn ("Live compiler diagnostics: ...") needs a neutral wording |
+| `java-interop.ts` | Add `formatProgram()` / `denumProgram()` delegates beside `parseProgram()`; re-export the new types (same `export type {...}` block) |
+| `bbj-module.ts` | `BBjAddedServices.compiler.BBjFormatService`; `lsp.Formatter: (s) => new BBjFormatter(s)` (the 10th provider in the `lsp` group) |
+| `main.ts` | `registerDenumRequest(connection, {...})` next to `registerCompileRequest`; `registerBoundedFormattingHandler(connection, shared)` after `startLanguageServer(shared)` beside the three existing overrides; add `setFormatterSettings` to `registerConfigurationChangeHandler` deps |
+| `bbj-ws-manager.ts` (`onInitialize`) | Read `params.initializationOptions.formatter` -> `normalizeFormatterSettings` -> store (same block as `compilerTrigger`/`inlayHintsParameterNames`) |
+| `configuration-change-handler.ts` | `BbjSettings.formatter?: Record<string, unknown>` + dep `setFormatterSettings`; applied with no startup gate and no reload (like `diagnostics.*`) |
+| `bbj-parser-service.ts` | Optional: import the shared `-33001..-33005` kind table instead of its private `APPLICATION_ERROR_KINDS` so the three services classify identically |
+| `test/bbj-test-module.ts` (`JavaInteropTestService`), `test/fake-interop-peer.ts`, `tools/interop-test-harness/cases.ts` | Script `formatProgram`/`denumProgram` answers (default = `MethodNotFound`, like `parseProgramScript`); add live harness cases |
 
-**#485 requires:** every consumer of the config path (PREFIX resolution, project-wide USE
-from #83/#484 — same `initializeWorkspace` code path — plus each host's own run commands, the
-VS Code SETOPTS CodeLens, and the language/file-type association) to honor a **custom name**,
-not just a custom location. The LS side already does (it reads whatever file is at
-`this.configPath` regardless of name). The gaps are host-side:
-- **VS Code:** `package.json`'s `contributes.languages` (`:44-60`) is a *static filename array*
-  (`config.bbx`, `Config.bbx`, `config.min`, `Config.min`). A file at a custom path with any
-  other name never gets the `bbx-config` language, so `setopts-composer-ui.ts`'s
-  `argForActiveEditor()` (`:57-60`) — gated on `editor.document.languageId !== 'bbx-config'` —
-  and the TextMate grammar never activate on it. Fix: a new `onDidOpenTextDocument` listener in
-  `extension.ts` that calls `vscode.languages.setTextDocumentLanguage(doc, 'bbx-config')` when
-  the opened file's path matches the resolved config path — no such dynamic call exists in
-  `extension.ts` today.
-- **IntelliJ:** same problem, but the TextMate-bundle association mechanism
-  (`bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json`) is filename-list-based
-  with no documented per-file runtime override — PROJECT.md's own tech-debt list already
-  records "IntelliJ TextMate bundle cannot exclude config.bbx by filename" as a platform
-  limitation. This needs the same kind of platform-capability check #632 already had to do for
-  its own custom-request question before a single edit can be named as buildable.
+### MODIFIED components (VS Code client)
 
-**#486 requires** watching the *resolved* file and debounce-restarting. This needs the
-resolved path to exist on the host side first — which is exactly what #485 has to establish
-(both the custom-location and custom-name cases). Two designs surfaced by reading the code:
+| File | Change |
+|------|--------|
+| `extension.ts` | Delete `import { DocumentFormatter }`, `registerDocumentFormatter()` and its call in `activate()`. Re-point `bbj.denumber` (currently `Commands.denumber`, line ~540) at a new function that `client.sendRequest('bbj/denum', {uri})` and applies the result. Add `formatter: <normalised object>` to `initializationOptions` (line ~751). Nothing to do for pushes: `gatedBbjSettings()` already copies the whole `bbj` section, so `bbj.formatter.*` already reaches `didChangeConfiguration` |
+| `open-file-prompts.ts` | `maybePromptLineNumbered` already calls `vscode.commands.executeCommand('bbj.denumber', doc.uri)`; only the doc comment ("runs bbjlst") and the "Replace" semantics change (see Pitfall 3) |
+| `Commands/Commands.cjs` | Remove `denumber` (line ~429) and the `decompile()` wrapper (line ~186). **Keep** `decompileInPlace`, `decompileReplace`, `decompileReadonly`, `buildDecompileArgv({denumber:true})`, `bbjlstBin`, `decompile-io.ts`, `tokenized-bbj.ts`, `BbjBinaryName 'bbjlst'` — tokenized-program decompile stays by milestone decision and still uses `bbjlst -l` |
+| `package.json` | Remove `bbj.formatter.javaPath`; rename `splitSingleLineIF` -> `splitSingleLineIf` (add `deprecationMessage` on the old key if kept for migration); add the 11 missing keys (`indentCharacter`, `splitInlineComments`, `splitInlineLabelComment`, `collapseMultiLine`, `eolCharacter`, `ifClosingKeyword`, `ifKeywordCase`, `parameterLayout`, `operatorSpacing`, `indentLabelBlocks`, `blankLineAfterReturn`) with `enum`/`minimum`/`maximum` mirroring `FormatOptions`. **Keep** the `bbj.denumber` command, icons, `alt+n`, 4 menu entries and `bbj.denumber.promptOnOpen`; the command id is public surface |
 
-1. **Duplicate the fallback logic per host** (simplest): both hosts already hold `bbj.home`/
-   `bbjHomePath` and `configPath`, so each can locally compute
-   `configPath || join(bbjHome, 'cfg', 'config.bbx')` and watch that. Risk: two independent
-   reimplementations of `bbj-ws-manager.ts:132-154`'s branch can drift (e.g. if the LS's
-   fallback logic changes, e.g. to also try `config.min`).
-2. **A new tiny read-only LSP query** (e.g. `bbj/resolvedConfigPath`), following the exact
-   precedent set by `composer-commands.ts`'s `bbj/composer/*` layer and `bbj/compile`: a small,
-   named custom request added to the existing custom-request surface, single source of truth.
-   Given this milestone already treats "duplicate logic across two hosts" as a defect class
-   (#623's whole justification, #648's shared-module fix), option 2 is the architecturally
-   consistent choice — it costs one new one-line LS handler and one new interface method on
-   `BbjComposerServer.java`/one new VS Code custom request, and removes drift risk entirely.
+### MODIFIED components (IntelliJ, `bbj-intellij/src/main/java/com/basis/bbj/intellij`)
 
-Once each host knows the resolved absolute path: VS Code watches it via
-`vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(dirname, basename))` (the
-file typically lives outside the workspace root, so a workspace-relative watcher pattern is
-insufficient — `RelativePattern` with an explicit base URI is required, exactly as #486's own
-issue text specifies). IntelliJ registers a `BulkFileListener`/`AsyncFileListener` on the VFS
-for that path. Both then call the **existing** Phase 79 restart machinery — IntelliJ already
-has it (`BbjServerService.requestRestart(long)` / `RestartGate`); VS Code has no equivalent
-today and would call `client.stop()`/`startLanguageClient()` again, optionally gated behind a
-"config.bbx changed — reload?" prompt as the issue itself suggests.
+| File | Change |
+|------|--------|
+| `composer/BbjComposerServer.java` | Add `@JsonRequest("bbj/denum") CompletableFuture<DenumResult> denum(DenumParams)` (all custom requests must live on this one interface — `getServerInterface()` returns exactly one) |
+| `test/.../composer/ComposerRequestContractTest.java` | **Breaks otherwise.** Add `"bbj/denum"` to `DECLARED_REQUESTS` (sixteen -> seventeen), a `Path` constant for `bbj-vscode/src/language/denum-command.ts`, and the quoted-literal assertion. Do not move or rename any existing TS handler file |
+| `lsp/BbjLanguageServerFactory.java` (`initializeParams`) | Add a nested `formatter` `JsonObject` built by a new plain-Java seam `lsp/FormatterInitOptions.java` (key constants, defaults, enum allow-lists, normalisers — copy of `CompilerInitOptions`), with its own JUnit test. Flat/nested `initializationOptions` is the ONLY reliable channel: `BbjLanguageClient.createSettings()` never reaches the server |
+| `BbjSettings.java`, `BbjSettingsComponent.java`, `BbjSettingsConfigurable.java` | Persist + edit 15 formatter values. Recommend a separate child `Configurable` ("BBj > Formatter", registered in `plugin.xml`) rather than growing `BbjSettingsComponent` (already ~550 lines). `apply()` already calls `scheduleRestart()`, so a changed formatter setting restarts the LS — acceptable, consistent with every other IntelliJ setting |
+| `actions/BbjDenumAction.java` + `plugin.xml` | Pattern: `BbjCompileAction` / `BbjRefreshJavaClassesAction` (background task, `BbjComposerService.server(project)`, presenter for outcomes). Applies the returned `TextEdit` under a write command (verify the LSP4IJ 0.21.0 edit-apply helper during the phase) |
+| `lsp/BbjLanguageServerFactory.createClientFeatures()` | Only if the evaluation decision is "disabled": `.setFormattingFeature(new LSPFormattingFeature(){ isSupported(file) -> false })`, same pattern as the existing `setDocumentLinkFeature` override. Nothing to add for "supported": LSP4IJ turns on Reformat Code from the server capability |
+| `bbj-intellij/build.gradle.kts` | **No change.** `copyWebRunner`/`prepareSandbox` copy only `web.bbj`, `em-login.bbj`, `em-validate-token.bbj` from `bbj-vscode/tools/`; `tools/formatter` was never bundled |
 
-**#608** (java-interop port auto-detection) and **#632** (targeted `bbj/refreshJavaClasses` on
-IntelliJ) sit in the same PROJECT.md theme bucket but have **no data-flow dependency** on #485/
-#486 — #608 is a pure `BbjSettings.java`/`BbjSettingsConfigurable.java` change, and #632 reuses
-the language server's *existing* `bbj/refreshJavaClasses` handler
-(`main.ts:33`, confirmed registered) which VS Code already calls today
-(`extension.ts:700-709`, `client.sendRequest('bbj/refreshJavaClasses')`). #632's own IntelliJ
-code has already moved past the issue's stale evidence: `BbjRefreshJavaClassesAction.java:30`
-now calls `BbjServerService.requestRestart(0)` (the Phase 79 `RestartGate` coalescing entry
-point), not a raw `restart()` — but it is still a full server restart under the hood
-(`requestRestart` → `RestartGate` → `doRestart` → `LanguageServerManager` stop/start), so the
-issue's complaint (every language feature goes offline) still holds. The fix is a direct port
-of the **Phase 81 `bbj/compile` pattern**: `BbjComposerServer.java` already demonstrates the
-exact shape needed — add
-`@JsonRequest("bbj/refreshJavaClasses") CompletableFuture<Void> refreshJavaClasses();`
-to that one interface (the same interface `bbj/compile` lives on, for the same reason: LSP4IJ's
-`getServerInterface()` returns exactly one class), then rewrite the action to mirror
-`BbjCompileAction.java`'s `Task.Backgroundable` + `BbjComposerService.server(project)` +
-bounded `.get(timeout, unit)` shape instead of calling `requestRestart`.
+### DELETED
 
-## Composer Command-Layer Data Flow (composer commands → both hosts)
+| Path | Referenced by (must be edited in the same change) |
+|------|---------------------------------------------------|
+| `bbj-vscode/src/document-formatter.ts` | `extension.ts`; `test/document-formatter.test.ts`; `test/no-shell-command-construction.test.ts` (importers list `['Commands/process-runner.ts','document-formatter.ts','language/bbj-cpl-service.ts']` + 7 formatter-specific assertions, lines ~94-155); `test/extension-activation.test.ts` (`registerDocumentFormattingEditProvider` assertions, ~224); `test/activation-command-coverage.test.ts` (`'formatter'` trace entry + `command:bbj.denumber` list, ~79/258/264) |
+| `bbj-vscode/src/formatter-java-resolver.ts`, `formatter-verifier.ts` | `test/formatter-java-resolver.test.ts`, `test/formatter-verifier-tamper.test.ts`, `test/formatter-pins-drift.test.ts` (all deleted) |
+| `bbj-vscode/tools/formatter/**` (`BBjCFCli.jar`, `lib/BBjCodeFomatter.jar`, `jcommander-1.71.jar`, `bom.json`, `README.md`) | Only the pins test and verifier. Not in `.vscodeignore` (it shipped in the VSIX) so nothing to edit there; the VSIX simply shrinks. `.github/workflows/pr-validation.yml` path filter `bbj-vscode/tools/**` stays valid. Closes the formatter-jar provenance/DEP work |
+| `Commands.denumber` mock entries | `denumber: vi.fn()` appears in ~10 test mocks (`extension-activation`, `activation-command-coverage`, `activation-prompts-and-status-bars`, `commands-cjs-harness`, ...). The prompt test (`activation-prompts-and-status-bars.test.ts` ~298-315) still expects `executeCommand('bbj.denumber', doc.uri)`, which stays valid |
+| Docs / QA | `documentation/docs/vscode/commands.md` (Denumber section ~69-92, "Formatting runs Java" step ~255), `configuration.md` (Formatter Settings ~270-330, defaults block ~359-363, machine-scope note ~381), `features.md` (~131), `README.md` (~92), `QA/FULL-TEST-CHECKLIST.md` row 25 ("Formatter Java path" -> replace with settings/-33007 row), plus a new IntelliJ formatter page |
 
-`composer-commands.ts` is the single source of truth for msgbox/addwindow/addchildwindow flag
-arithmetic, reached by both hosts over LSP custom requests (`bbj/composer/*`, doc comment at
-`composer-commands.ts:1-13` states this explicitly: "the language server and the VS Code UI stay
-a single source of truth"). VS Code's own webviews (`msgbox-composer-webview.ts` etc.) call the
-same pure functions **in-process** (they import `../msgbox-composer.js` directly, not over LSP —
-VS Code doesn't need the network hop since it's the same Node process), while IntelliJ reaches
-the identical logic through `BbjComposerServer`'s `@JsonRequest` methods. **This means a fix to
-the shared module benefits both hosts automatically, without touching either host's UI code** —
-this is the load-bearing fact behind several of this milestone's build-order decisions:
+## Question-by-Question Findings
 
-- **#648** (MSGBOX composer not offered for expression-valued options): the bug is entirely in
-  `msgbox-composer.ts`'s `buildCallInfo()` (`:507-515`) — its options-argument regex is
-  `/^(\s*)(\d+)\s*$/`, matching only a bare integer literal. `BBjMsgBox.X+BBjMsgBox.Y` and
-  `1+256` both fail this regex, so `exprRange`/`exprValue` stay `undefined`, and since
-  `argRanges.length > 1` the `optionInsertOffset` branch (`:516-519`) is also skipped — the
-  Code Action provider (`msgbox-composer-ui.ts:49,66`) then returns `[]`, exactly reproducing
-  the reported symptom. **Fixing this in `msgbox-composer.ts` alone (a numeric additive-sum
-  parser plus a reverse lookup from `BBjMsgBox.*` constant names back to the catalog values —
-  no such reverse map exists today, only the forward `msgboxConstantsExpr()` at `:170-179`)
-  ships to both VS Code (via `msgbox-composer-ui.ts`'s direct import) and IntelliJ (via
-  `composer-commands.ts`'s `bbj/composer/msgbox/decodeCall` handler, `:82-104`, which
-  `BbjComposerServer.msgboxDecodeCall` calls over LSP) with zero IDE-specific code.**
-- **#623** (VS Code addwindow/addchildwindow insert applied unconditionally): the missing
-  `valid` gate could be patched purely in the VS Code webviews, but `addwindowPreview()`/
-  `addchildwindowPreview()` in `composer-commands.ts` already compute a full preview payload the
-  same way `msgboxPreview()` does — `msgboxPreview()` already returns `valid` (`msgbox-composer.ts:415,420`);
-  the addwindow/addchildwindow preview functions do not yet. Adding a `valid` field to those two
-  preview functions (in the shared `addwindow-composer.ts`/`addchildwindow-composer.ts` modules)
-  and gating both the VS Code webview's insert handler AND `AddWindowComposerDialog.java`/
-  `AddChildWindowComposerDialog.java`'s OK button on the same field is the shape consistent with
-  how `MsgboxComposerDialog.java` already disables its OK button on `!p.valid` (`apply()`,
-  `:255`). The issue is scoped to VS Code only, but the architecturally consistent fix touches
-  the shared module and closes a latent IntelliJ gap for free.
-- **#633 / #649** (new SETOPTS / CVS composer layers): both are net-new additions to
-  `composer-commands.ts`, following the exact same three-part shape already established by the
-  msgbox/addwindow/addchildwindow sections (catalogs export, preview/compose/decodeCall
-  handlers, `registerComposerRequests` auto-registration via `Object.entries(composerHandlers)`
-  at `:204-208` — new handlers need no change to that registration loop, only new entries in the
-  `composerHandlers` object).
+### 1. Where the formatter plugs into Langium DI
 
-## IntelliJ Composer Seams to Reuse (Phase 79 / 81 / 82)
+- Langium 4.3.1 (`node_modules/langium/lib/lsp/language-server.js`): `buildInitializeResult` sets `documentFormattingProvider` / `documentRangeFormattingProvider` to `hasService(e => e.lsp?.Formatter)` and `documentOnTypeFormattingProvider` from `Formatter.formatOnTypeOptions`. So registering `lsp.Formatter` in `BBjModule` is the only thing needed to advertise both capabilities; VS Code's `LanguageClient` then registers the providers itself (documentSelector is already `file`+`bbj`), and LSP4IJ enables LSP formatting.
+- The `Formatter` interface is `formatDocument/formatDocumentRange/formatDocumentOnType(document: LangiumDocument, params, token)` + `formatOnTypeOptions`. Implement it directly; return `undefined` for on-type (bbj-ls has no on-type endpoint) and an empty array from `formatDocumentOnType`.
+- Default handler gating is the trap: `addFormattingHandler` -> `createRequestHandler` -> `waitUntilPhase` first awaits `WorkspaceManager.ready` (the whole cold workspace build), then `getOrCreateDocument`. The repo has already paid for this three times (code action, code lens, hover overrides in `main.ts`, each with a comment about IntelliJ EDT freezes / DoS-shaped hangs). VS Code format-on-save aborts after ~750 ms (the deleted `document-formatter.ts` even warned at 750 ms). `formatProgram` never parses, so the handler needs only text: register the bounded override after `startLanguageServer(shared)` exactly like `registerConfigAwareHoverHandler`, reading `shared.workspace.TextDocuments.get(uri)`. Keep the DI `Formatter` so capability advertisement and unit tests stay on the Langium path.
 
-| Seam | Defined in | Reused by (this milestone) |
-|---|---|---|
-| `Scheduler` interface + `AlarmScheduler` (Alarm-backed) | `concurrency/Scheduler.java`, `concurrency/AlarmScheduler.java` | #611 (composer debounce) — same underlying mechanism as `RestartGate`/`KeystrokeDebouncer` |
-| `RestartGate` (coalescing restart entry point `requestRestart(long)`) | `concurrency/RestartGate.java` | #486 (IntelliJ config-watch restart), #612 (cache-invalidation hook), #632 (contrast case — what NOT to keep using) |
-| `KeystrokeDebouncer<T>` (per-field debounce + staleness discard) | `concurrency/KeystrokeDebouncer.java` | #611 — **caveat:** its `lookup: Function<String,T>` is a *synchronous* off-EDT call (used for filesystem lookups in `BbjSettingsConfigurable`); composer `refresh()` is inherently async (`CompletableFuture` via `ComposerFlow.observe`), so #611 needs a thinner wrapper built directly on `Scheduler.schedule`/`cancel` — reusing the *scheduling primitive*, not the generic class as-is |
-| `BbjComposerServer` as the single `getServerInterface()` proxy, extended per-feature with `@JsonRequest` methods (the `bbj/compile` precedent) | `composer/BbjComposerServer.java` | #632 (`bbj/refreshJavaClasses`), #633 (`bbj/composer/setopts/*`), #649 (`bbj/composer/cvs/*`) |
-| `BbjCompileAction`'s background-task + bounded-future request shape | `actions/BbjCompileAction.java` | #632 — direct template for the rewritten `BbjRefreshJavaClassesAction` |
-| `ComposerFlow` (single terminal `handle()`, one balloon per chain, `launch`/`observe`/`once`) | `composer/ComposerFlow.java` | #633, #649 (new dialogs must compose through this, not a raw `thenAccept` chain) |
-| `StaleEditGuard` (re-decode + field-wise compare + modification-stamp check inside the write command) | `composer/StaleEditGuard.java` | **#532** — this is the exact IntelliJ-side fix for the VS Code-side problem #532 describes; the port is conceptual (TypeScript has no `WriteCommandAction`, but the "re-fetch document text, re-run the same decode/parse function, compare before applying, abort on mismatch" three-step shape ports directly to `msgbox-composer-ui.ts`'s `runComposer`) |
-| `ComposerNotices` / `ComposerNoticeRenderer` (reason-keyed balloon, one per session) | `composer/ComposerNotices.java` | #633, #649 (new dialogs need the same failure surfacing, not silent) |
+### 2. Which connection/lane
 
-## Build Order
+Evidence: `bbj-ls/.../InteropService.java` — `getClassInfo`, `getClassInfos`, `getAllClassNames`, `getTopLevelPackages` return `CompletableFuture.completedFuture(...)` computed inline (reader-thread work). `parseProgram` -> `parserWorker().submit`; `denumProgram` -> `denumWorker().submitDenum` (parser worker); `formatProgram` -> `formatWorker().submit` for the format step and `denumWorker()` for the `allowDenum` DENUM step. Workers are lazy and per `InteropService` = per TCP connection.
 
-```
-#485 (custom config name/location honored everywhere)
-   │  must resolve/expose the effective path before it can be watched correctly
-   ▼
-#486 (watch + debounced restart)
-   │  (independent of #608, #632 below)
+- Put format/denum on the existing parse lane. Pure format runs on that connection's FORMAT worker, so a blocked/slow live parse (parser worker) never delays it, and class-lookup storms on the shared socket never delay it either. This is the same isolation rationale as #692.
+- `allowDenum` is NOT used by the LSP path (DENUM-needed must be offered, not silently performed), so `formatProgram` never touches the parser worker from this client. `denumProgram` does queue behind an in-flight parse on the lane; worst case the 10 s parse timeout, normally milliseconds.
+- Fallback stays identical: lane cannot open -> `hooks.connect()` (shared, breaker-guarded). Lane open never touches the breaker, never notifies, never bumps `generation`; loss of an opened lane bumps `generation` once (existing `onParseLaneLost`).
+- Client-side deadline: server step timeouts are 10 s each; give the LS call an overall budget (suggest 15 s for format, 25 s for denum) via the same `Promise.race` idiom as `requestClassInfo`, so a wedged peer cannot hold an IDE request forever.
 
-#648 (msgbox-composer.ts: accept expression-valued options)
-   │  the discoverability cue can only fire on lines the parser recognizes
-   ▼
-#650 (visible composer cue, both IDEs) ── also needs a NEW CodeLens (VS Code)
-   │                                        and a NEW LineMarkerProvider/inlay
-   │                                        (IntelliJ) — neither exists today
-   ▼
-#649 (CVS() composer) — built as a #650-style-cue-from-day-one composer,
-                         so it doesn't need a discoverability follow-up
+### 3. Capability probing, `-32601`, and the circuit breaker
 
-#633 (shared bbj/composer/setopts/* LS layer)
-   │  the Java dialog is a pure consumer of these LS methods
-   ▼
-SetoptsComposerDialog.java + ComposerLauncher wiring
-   │
-   ▼
-#475 (SETOPTS-in-BBj-code hovers + tri-state composer)
-   — issue's own text: "narrower...a natural prerequisite subset of #475's
-     fuller scope" — #633 supplies the reusable byte/bit catalog and the
-     bbj/composer/setopts/* request pattern; #475 adds NEW decode-hover and
-     tri-state/IOR-AND-aware logic the config.bbx composer never needed
+- Precedent (`bbj-parser-service.ts`): no version string is ever read; the first real request is the probe; `MethodNotFound` latches `'off'` for the current `javaInteropService.connectionGeneration`; any other answer latches `'on'`; the latch resets when the generation moves (reconnect, `clearCache()`, lane loss).
+- Reuse that exact shape in `BBjFormatService`, with one latch per method (format, denum) because a build could carry `parseProgram` but not the later methods.
+- `-32601` is an answer, not a transport failure. It must not reach `isInteropTransportFailure`, must not open the breaker (`onConnectAttemptSettled` only ever runs from `connect()`), and must not trigger `notifyJavaConnectionError`. It maps to a single message per generation: "Formatting/DENUM requires BBj 26.03 or later" (subsequent hits log at debug). Capabilities are advertised statically at `initialize` (before any interop connection exists), so do not try to gate advertisement on the probe; answer gracefully instead.
+- Distinguish in messaging: `InteropTransportError`/circuit-open/`ConnectionError` => "Java interop (BBjServices) is not reachable" (no extra popup; the breaker already raised its one popup); `-33004` => "BBj parser/DENUM service unavailable"; `-33004` on `denumProgram` also covers "DENUM not available on this BBj".
+- Error table the service must classify (all application answers, none count against the breaker):
 
-#623, #532, #530 — independent of every other cluster; VS Code-only;
-   sensible to batch together (near-identical touch points across the
-   same four webview files)
+| Code | Outcome | User-visible behaviour |
+|------|---------|------------------------|
+| `-32601` | `unavailable` (latch) | "requires BBj 26.03", once per generation |
+| `-33006` | `denum-needed` | `window/showMessageRequest` offering "DENUM" (see 5); returns no edits |
+| `-33007` | `invalid-settings` (`data:[{setting,message}]`) | one error naming each key as `bbj.formatter.<key>`; once per settings revision |
+| `-33008` | `mixed-numbering` (`data.line`) | message with the 1-based offending line (optionally `window/showDocument` to reveal it) |
+| `-33001/-33005` | `failed` / `protected-program` | warn-once-per-kind-per-generation |
+| `-33002/-33003/-33009` | `timeout` / `too-large` / `engine-failed` | warn-once-per-kind-per-generation; format-on-save must not toast every save |
+| `-32602` | client bug | `logger.error`, no toast |
+| `-32800` | `superseded` | silent; LSP handler returns `[]` |
 
-#611, #612 — independent of every other cluster; IntelliJ-only;
-   sensible to batch together (same three dialog-launch call sites)
+### 4. How settings reach the LS today, and what to add
 
-#505, #504, #497, #498 — independent of each other and of every other
-   cluster (different files/mechanisms in java-interop.ts /
-   bbj-scope*.ts / bbj-completion-provider.ts); safe to parallelize
+Existing flow (verified):
+- **VS Code**: `initializationOptions` is an explicit list in `extension.ts` (~751); runtime changes go through `synchronize.configurationSection: 'bbj'` -> `createConfigPathTrustMiddleware` -> `gatedBbjSettings()` (full `bbj` section copy, `configPath` substituted) -> `workspace/didChangeConfiguration` -> `configuration-change-handler.ts` (`BbjSettings` shape, per-setting `deps.setX`). So `config.formatter` is already in every push; only the handler and `initializationOptions.formatter` are missing.
+- **IntelliJ**: `BbjLanguageServerFactory.initializeParams` is the sole reliable channel (comment in `CompilerInitOptions.java`: LSP4IJ 0.21.0's pull `workspace/configuration` for section `bbj` resolves against `createSettings()`'s flat JSON and returns null; `triggerChangeConfiguration` is never wired). A settings change restarts the LS (`BbjSettingsConfigurable.apply()` -> `scheduleRestart()`), which re-sends fresh options.
+- **LS**: `bbj-ws-manager.ts` `onInitialize` reads `initializationOptions.*`; `didChangeConfiguration` applies hot settings.
 
-#500, #499, #512, #531, #610, #608, #632 — each fully independent,
-   single-component fixes; no ordering constraints
+Design: both paths call the same `normalizeFormatterSettings` and `setFormatterSettings`. `BBjFormatService` snapshots the settings on each request (so VS Code edits apply to the next format with no restart, and no cache invalidation exists). LSP `FormattingOptions` (`tabSize`, `insertSpaces`) are deliberately ignored: `indentWidth`/`indentCharacter` are the formatter's own settings. Document this (and the IntelliJ Code Style indent options in `BbjLanguageCodeStyleSettingsProvider` will not drive LS formatting).
+
+Defaults: the formatter's own default `indentWidth` is `4`, the current extension default is `2`. Keep the VS Code and IntelliJ defaults at `2` so existing users see no behaviour change; the LS forwards only what the client holds. Defaults therefore live in two client copies (package.json, `FormatterInitOptions.java`) — pin both with a test that compares them to the bbj-ls README key table to catch drift.
+
+Key mapping: `splitSingleLineIF` -> `splitSingleLineIf`. `settings` values may be string, number or boolean (README: read as literal text); send native JSON types, never `4.0` for ints. Never send `javaPath`, null values, or unknown keys.
+
+### 5. DENUM: command vs custom request, and how each IDE invokes it
+
+Recommendation: custom request `bbj/denum`, params `{ uri: string }`, result:
+
+```ts
+interface DenumResult {
+  status: 'denumbered' | 'not-line-numbered' | 'failed';
+  edits?: TextEdit[];            // exactly one whole-document replace when status==='denumbered'
+  diagnostics?: ProgramDiagnosticDto[];   // see 6
+  reason?: DenumFailureReason;   // closed vocabulary: 'requires-bbj-26-03' | 'denum-unavailable' | 'mixed-numbering'
+                                 //  | 'protected-program' | 'too-large' | 'timeout' | 'interop-unavailable' | 'failed' | 'superseded'
+  message?: string;
+  line?: number;                 // 0-based, for mixed-numbering
+  version?: number;              // text-document version the edit was computed against
+}
 ```
 
-**Why #485 before #486:** watching the wrong file (stale default, or a
-custom-named file the watcher doesn't know to target) is worse than not
-watching at all — a debounced restart triggered by changes to a file the
-user *isn't* editing, while the file they *are* editing is silently ignored,
-actively erodes trust in the feature. #486 needs #485's "what is the
-resolved path, by name and location" answer as an input.
+Why not `workspace/executeCommand`: zero use in the repo (`grep` finds none); Langium's `ExecuteCommandHandler` would add a capability and command-name registry; VS Code's `LanguageClient` auto-registers advertised command ids (id collision with the existing `bbj.denumber` registration); LSP4IJ has no menu-invokable entry for arbitrary server commands, so IntelliJ would need a bespoke call anyway. `bbj/denum` follows `bbj/compile` and `bbj/refreshJavaClasses`: constant method name, plain-JSON DTOs, `createXHandler(deps)`/`registerXRequest`, read by name in `ComposerRequestContractTest`.
 
-**Why #648 before #650:** #650's own issue text is about making the
-*existing* composer affordance more visible — but for MSGBOX specifically,
-the affordance doesn't exist yet on expression-valued lines (that's exactly
-what #648 reports). Shipping a visible cue mechanism first and then fixing
-the underlying detection second would mean the new cue silently fails to
-appear on the very lines the issue calls out, reproducing the confusion in
-a new UI element instead of removing it.
+Invocation:
+- VS Code: `bbj.denumber` handler -> resolve target (`resolveRunTarget` already does argument-first/active-editor) -> `client.sendRequest('bbj/denum', {uri})` -> apply `edits` with `vscode.workspace.applyEdit` (via `client.protocol2CodeConverter.asTextEdits`). Not a `Commands.cjs` function any more (that file has no client handle; `registerSetOptsInCodeComposer(context, (m,p)=>client.sendRequest(m,p))` is the existing injection pattern to copy).
+- IntelliJ: `BbjDenumAction` -> `BbjComposerServer.denum` (background task + `CompileResultPresenter`-style presenter), apply the single `TextEdit` to the editor document.
+- DENUM-needed from formatting (server-driven, one implementation for both IDEs): on `-33006` the formatter handler returns `[]` and fires `window/showMessageRequest` "This is a line-numbered program. DENUM it first?" with actions `[DENUM]`; on selection the LS runs `BBjFormatService.denumDocument()` and applies the result with `workspace/applyEdit`. LSP4IJ 0.21.0 `LanguageClientImpl` implements `showMessageRequest`, `applyEdit` and `showDocument`, so no IntelliJ-only UI is needed. Throttle: at most one prompt per document per text version (format-on-save would otherwise re-prompt each save). Range requests are always refused by bbj-ls with `-33006`, so the same prompt covers them.
 
-**Why the shared `bbj/composer/setopts/*` layer before `SetoptsComposerDialog.java`:**
-this is the same "shared layer first, per-IDE dialog second" ordering
-`composer-commands.ts`'s existing history already establishes for msgbox/
-addwindow/addchildwindow (the LS-side catalog and handlers shipped, then
-each IDE UI followed) — `SetoptsComposerDialog.java` has nothing to call
-until the LS methods exist, and `BbjComposerServer.java`'s single-interface
-constraint means the interface method signatures need to be fixed before
-Java code can compile against them.
+### 6. Mapping DENUM diagnostics
 
-**Why #633 before #475:** #475's own issue body states the dependency
-directly ("depends on `setopts-catalog.ts` from #474") and #633's issue
-body characterizes itself as "a natural prerequisite subset of #475's fuller
-scope" — #633 ports the already-shipped absolute-vector composer to
-IntelliJ over a new shared layer; #475 extends that same catalog with the
-IOR/AND-aware, tri-state, BBj-code-scoped logic. Building #633's LS layer
-first gives #475 a proven `bbj/composer/setopts/*` request shape and an
-IntelliJ dialog skeleton to extend, rather than inventing both the shared
-layer and the tri-state logic in one larger, riskier phase.
+`ProgramDiagnostic { line (1-based, in the RESPONSE text, 0 = none), originalLineNumber (string, "" if unknown), severity "ERROR"|"WARNING"|"INFO", message }`.
+- Map `severity` -> LSP `1/2/3`; `line` -> `line-1` clamped to the denumbered text's line count, range = whole line using `END_OF_LINE_CHARACTER` (`lsp-position.ts`, the same JVM-client-safe sentinel `parseErrorToRange` uses); `line 0` -> line 0. Message prefix: `Line <originalLineNumber>: ` when present. Source `'BBj DENUM'`, distinct from `BBJ_PARSER_SOURCE` ('BBj Parser') and the bbjcpl source so Rule 0 reconciliation keys never match it.
+- They describe the text AFTER the DENUM edit, not the current buffer, and LSP `publishDiagnostics` replaces per URI, so a side-channel `sendDiagnostics` would be wiped by the next build the instant the edit lands (the edit triggers a `didChange`). Surfacing options, in order of cost:
+  1. (Recommended default, lean) One-shot: the result's `diagnostics` plus a `window/showMessage` summary ("DENUM finished with 2 errors; first at original line 0030") and an output-channel log. After the edit applies, the v4.5 live `parseProgram` path re-detects the same syntax errors on the denumbered text on BBj 26.03+, so the squiggles reappear through the normal pipeline.
+  2. Stored-and-merged: a per-URI `DenumDiagnosticsStore` composed in `BBjDocumentBuilder`'s publish step like `bbj-kept-check.ts` (line mapping through recorded change batches). Only worth it if UAT shows the live pipeline does not reproduce them. **Flag for the DENUM phase's own research.**
 
-## Anti-Patterns Already Fixed Once (don't reintroduce them here)
+### 7. Stale-result and edit-shape rules for the LSP adapter
 
-### Anti-Pattern: nested `thenAccept` pyramids in new composer code (IntelliJ)
+- Whole-document response is `text`, not edits. Convert with `wholeDocumentChangeAsRange(oldText, newText)` (exists in `bbj-kept-check.ts`; consider moving it to a neutral `text-diff.ts`): it trims common leading/trailing lines, so the IDE keeps cursor, folding state and undo granularity instead of a whole-file replace. Return `[]` when texts are equal. Clamp the end position to the document's real last line: the old client used `Range(0,0,lineCount,0)`, which is out of range and a JVM client's deserializer may reject.
+- Capture `document.textDocument.version` before sending; after the await, if it changed (or `result.version` echo mismatches), return `[]` (or `ResponseError(LSPErrorCodes.ContentModified)`), never apply stale edits.
+- Range response `edits` is already LSP-shaped (0-based, UTF-16): pass through. Empty list = unchanged range.
+- `eolCharacter: LF|CRLF` changes line endings; the diff helper compares lines including terminators, so this naturally yields a whole-file edit. Expected.
 
-**What happened before:** pre-Phase-82 `ComposerLauncher.launch()` ran a nested `thenAccept`
-chain where an inner future's exception was stored on a future nobody held a reference to —
-silently swallowed, no balloon, no log line (`ComposerFlow.java:17-23`'s own doc comment
-describes this exact failure mode).
-**Why it matters here:** #633's `SetoptsComposerDialog.java` and #649's `CvsComposerDialog.java`
-must compose their launch chains through `ComposerFlow.launch`/`.observe`, not a fresh ad hoc
-`CompletableFuture` chain — the seam exists precisely so every new composer inherits the fix for
-free.
+## Data Flow
 
-### Anti-Pattern: validating in the webview instead of the shared preview payload
+### Format (whole document or range)
 
-**What happened before:** `msgbox-composer-webview.ts` gates `insert` on `r.valid` computed by
-the shared `msgboxPreview()`; `addwindow`/`addchildwindow` never got the same field added to
-their own preview functions, so their webviews had nothing to gate on (#623). A per-webview
-patch (adding a validity check only inside `addwindow-composer-webview.ts`) would repeat this
-mistake in the opposite direction — VS Code fixed, IntelliJ's dialogs still ungated.
-**Do instead:** add the `valid` field to the shared preview function's return type first (as
-`msgboxPreview` already does), then gate both hosts on it.
+```
+IDE Format Document / format-on-save / Reformat Code
+  -> textDocument/formatting | rangeFormatting
+  -> bbj-formatting-handler.ts (TextDocuments lookup, language id check, no workspace wait)
+  -> BBjFormatter.formatDocument/formatDocumentRange
+  -> BBjFormatService.format(textDocument, range?, token)
+       params = { text, settings: snapshot, allowDenum:false, canonicalName: uri.fsPath,
+                  version: String(version), range? }
+  -> JavaInteropService.formatProgram -> JavaInteropConnection.sendProgramRequest
+       lane (per generation)  | fallback: shared connection (breaker)
+  -> bbj-ls format worker -> FormatProgramResult { text | edits }
+  -> typed outcome -> edits (minimal) | [] + one user message / prompt
+```
 
-### Anti-Pattern: per-host duplicated path-resolution logic
+### DENUM
 
-**What happened before:** IntelliJ's port auto-detection duplicated `bbjHomePath`/`nodeJsPath`'s
-pattern inconsistently — implemented only in `BbjSettingsConfigurable.reset()`, not
-`BbjSettings.getState()` (#608), guarded by an equality check standing in for a real
-"configured" sentinel.
-**Why it matters here:** the config-path resolution needed for #486's watcher (see "Config Path
-Data Flow" above) is exactly this shape of problem one level up — a fallback computation
-(`configPath || {bbjHome}/cfg/config.bbx`) that both hosts would otherwise reimplement
-independently. Prefer exposing it once from the LS (a small custom request) over reimplementing
-`bbj-ws-manager.ts:132-154`'s branch twice.
+```
+bbj.denumber (VS Code) / BbjDenumAction (IntelliJ)  ──> bbj/denum {uri}
+format -33006 ──> showMessageRequest [DENUM] ──────────┐
+                                                        v
+                         BBjFormatService.denumDocument(document, token)
+                         -> denumProgram on the lane (parser worker)
+                         -> DenumProgramResult { text, diagnostics, denumbered }
+bbj/denum path: result { status, edits, diagnostics } returned; client applies edit
+prompt path:    LS applies via workspace/applyEdit, then summarises diagnostics
+```
 
-## Integration Points (file:line, verified by reading the code)
+### Settings
 
-| Issue | File(s) | Lines | What's there today |
-|---|---|---|---|
-| #485 | `bbj-vscode/src/language/bbj-ws-manager.ts` | 32, 68, 132-154 | Sole owner of resolved config path; no exposure to host |
-| #485 | `bbj-vscode/package.json` | 44-60 | Static `filenames` array for `bbx-config` language |
-| #485 | `bbj-vscode/src/extension.ts` | (absent) | No dynamic `setTextDocumentLanguage` call exists |
-| #486 | `bbj-vscode/src/language/bbj-ws-manager.ts` | 127-154 | `initializeWorkspace()` reads config once, no watcher |
-| #486 | `bbj-intellij/.../ui/BbjServerService.java` | 32-33, 41, 53, 205, 224-225 | `RestartGate`/`requestRestart(long)`/`scheduleRestart()` already exist for settings changes |
-| #608 | `bbj-intellij/.../BbjSettings.java` | 44-60, 110-152 | `getState()` auto-detects home/node, not port; `detectJavaInteropPort()` exists but is only called from Configurable |
-| #608 | `bbj-intellij/.../BbjSettingsConfigurable.java` | 130-148 | Port auto-detect gated on `== 5008` literal equality |
-| #632 | `bbj-intellij/.../actions/BbjRefreshJavaClassesAction.java` | 22-32 | Calls `requestRestart(0)` (full LS restart via RestartGate) |
-| #632 | `bbj-intellij/.../composer/BbjComposerServer.java` | 29-67 | Single server-interface class; `bbj/compile` is the precedent to follow |
-| #632 | `bbj-intellij/.../actions/BbjCompileAction.java` | 56-113 | Background-task + bounded-future request pattern to port |
-| #632 | `bbj-vscode/src/language/main.ts` | 33 | `bbj/refreshJavaClasses` handler already registered LS-side |
-| #632 | `bbj-vscode/src/extension.ts` | 700-709 | VS Code's existing targeted-request call, the behavior to match |
-| #648 | `bbj-vscode/src/msgbox-composer.ts` | 500-522 (`buildCallInfo`), 170-179 (`msgboxConstantsExpr`, forward-only) | Options regex accepts only a bare integer literal |
-| #648 | `bbj-vscode/src/msgbox-composer-ui.ts` | 37-79 | `MsgboxCodeActionProvider` returns `[]` when neither `exprRange` nor `optionInsertOffset` is set |
-| #649 | `bbj-vscode/src/language/composer-commands.ts` | 1-208 (whole file) | Three-section shape to clone for `cvs` |
-| #650 | `bbj-vscode/src/setopts-composer-ui.ts` | 82-96 | Only existing `CodeLensProvider` in this codebase |
-| #650 | `bbj-vscode/src/msgbox-composer-ui.ts` | 25-35 | Only a `CodeActionProvider` (lightbulb), no CodeLens |
-| #650 | `bbj-intellij/.../composer/ConfigureMsgboxIntention.java` (+ AddWindow/AddChildWindow variants) | whole files | `IntentionAction` only, Alt+Enter/right-click, no persistent gutter cue |
-| #633 | `bbj-vscode/src/language/composer-commands.ts` | (absent) | Zero `setopts` matches — confirmed via grep |
-| #633 | `bbj-vscode/src/setopts-catalog.ts`, `setopts-composer-ui.ts`, `setopts-composer-webview.ts` | whole files | Existing VS Code-only implementation to expose through the LS layer |
-| #475 | `bbj-vscode/src/setopts-catalog.ts` | 1-52 | Byte/bit catalog `#475` explicitly depends on |
-| #623 | `bbj-vscode/src/addwindow-composer-webview.ts` | 108-135 (per issue; insert arm at ~121-131) | Unconditional `applyEdit`, no `r.valid` gate |
-| #623 | `bbj-vscode/src/addchildwindow-composer-webview.ts` | 113-140 (per issue; insert arm at ~126-137) | Same gap |
-| #623 | `bbj-vscode/src/msgbox-composer-webview.ts` | 97-101, 415, 420 | The `r.valid` pattern to mirror; `msgboxPreview`'s existing `valid` field |
-| #532 | `bbj-vscode/src/msgbox-composer-ui.ts` | 87-133 (`runComposer`), 136-160 (`runWizard`) | Applies captured coordinates with no re-validation after the QuickPick wizard |
-| #532 | `bbj-intellij/.../composer/StaleEditGuard.java` | 1-60+ | The re-decode/compare/write-guarded pattern to port conceptually |
-| #530 | `bbj-vscode/src/msgbox-composer-webview.ts` | 82, 112, 116, 119 | `onDidReceiveMessage(..., context.subscriptions)`, no `onDidDispose` |
-| #530 | `addwindow-composer-webview.ts`, `addchildwindow-composer-webview.ts`, `setopts-composer-webview.ts` | (identical pattern per issue) | Same gap, 4 files total |
-| #611 | `bbj-intellij/.../composer/MsgboxComposerDialog.java` | 145, 166-168, 298-302 | `SimpleDocumentListener` calls `refresh()` synchronously on every keystroke |
-| #611 | `bbj-intellij/.../concurrency/Scheduler.java`, `KeystrokeDebouncer.java` | whole files | The seam to reuse (with the sync-vs-async caveat noted above) |
-| #612 | `bbj-intellij/.../composer/ComposerLauncher.java` | 59-72 | `flow.launch` fetches `serverFuture` + calls `composerCatalogs()` on every invocation |
-| #612 | `bbj-intellij/.../composer/BbjComposerService.java` | 23-29 | `server(project)` re-resolves `LanguageServerManager` every call, no cache |
-| #505 | `bbj-vscode/src/language/bbj-scope.ts` | 308-331 | `getBBjClassesFromFile()` — full `indexManager.allElements(...)` scan, no cache |
-| #505 | `bbj-vscode/src/language/bbj-scope-local.ts` | 106-126 | `collectLocalSymbols()` — unpruned `AstUtils.streamAllContents` |
-| #505 | `bbj-vscode/src/language/bbj-linker.ts` | 41-62 | `isExternalDocument` + `treeIter.prune()` — the pattern to mirror (note: uses `streamAst(...).iterator()`, not `streamAllContents`) |
-| #504 | `bbj-vscode/src/language/java-interop.ts` | 42-46, 106-107, 545-611, 875, 914-943 | `acquireLock`/`lockQueue`, `_pendingResolutions`, `resolveClassByName`/`doResolveClassByName`, `clearCache()` |
-| #497 | `bbj-vscode/src/language/java-interop.ts` | 103, 550-559, 704-708 | `_resolvedClasses` `LruMap`; registration-before-recursion ordering that can be evicted mid-recursion |
-| #498 | `bbj-vscode/src/language/bbj-completion-provider.ts` | 59, 94-102, 242-291 | `activeCancelToken` shared singleton field |
-| #500 | `bbj-vscode/src/decompile-io.ts` | 74-96 | `mtimeMs >= callStartMs` with no coarse-filesystem slack |
-| #499 | `bbj-vscode/src/document-formatter.ts` | 54-67 | `inFlightFormats` shares the earlier request's captured `documentContent` |
-| #512 | `bbj-vscode/src/Commands/Commands.cjs` | 84, 137-142, 149, 254, 303, 356, 367 | `resolveTargetFileName()`'s guard exists but isn't applied to `run`/`runWeb`/`decompile`/`compile` |
-| #531 | `bbj-vscode/src/extension.ts` | 582-709 (activate), esp. 592-707 | 16 registrations not pushed to `context.subscriptions`; the correct pattern is already used at 584-587 for the composer commands |
-| #610 | `bbj-intellij/.../ui/BbjStatusBarWidget.java` | 35, 57-64, 67-101, 103, 163-164 | `messageBusConnection` subscribes to server-status only; no `FileEditorManagerListener` |
+```
+VS Code settings.json bbj.formatter.*  ──(start)──> initializationOptions.formatter ─┐
+                                       ──(change)─> didChangeConfiguration.bbj.formatter ─┤
+IntelliJ BbjSettings.State (15)        ──(start/restart)─> initializationOptions.formatter ─┤
+                                                           normalizeFormatterSettings ─> snapshot ─> next formatProgram
+```
+
+## Patterns to Follow
+
+1. **Request module trio** (`compile-command.ts`): constant method name, `createXHandler(deps)` with structural deps, `registerXRequest(connection, deps)`; plain JSON in and out; a closed `reason` vocabulary documented as a client contract.
+2. **Post-start bounded override** (`bbj-hover-handler.ts`): register after `startLanguageServer(shared)` with the same comment style; delegate to Langium helpers where possible.
+3. **Probe-and-latch per connection generation** (`BBjParserService`): `isEnabled()`/`resetIfGenerationChanged()`; first real call is the probe; log the mode line once per generation.
+4. **Hooked connection, thin front** (`java-interop.ts` over `java-interop-connection.ts`): new wire methods are delegates on the front; transport rules live only in the connection module so test doubles overriding `createSocket/wrapSocket/connect` keep working.
+5. **Plain-Java init-options seam** (`CompilerInitOptions`): zero IntelliJ-platform imports so plain JUnit 5 covers normalisation.
+6. **Cross-language request contract test**: every new `@JsonRequest` name must appear as a quoted literal in its TS handler file.
+
+## Anti-Patterns to Avoid
+
+| Anti-pattern | Why wrong here | Do instead |
+|--------------|----------------|------------|
+| Using Langium's default formatting handler | Awaits `WorkspaceManager.ready`; blows VS Code's ~750 ms format-on-save budget on a cold server and risks IntelliJ UI stalls | Bounded override reading `TextDocuments` |
+| Extending `AbstractFormatter` | CST/AST rule engine; we delegate to bbj-ls and never parse | Implement `Formatter` directly |
+| Sending format/denum on the shared connection only | Class-info traffic runs inline on the shared reader thread; it delays program requests (the #692 problem) | Program lane with the existing fallback |
+| Retiring the lane on any `-32601` | A missing `formatProgram` would kill `parseProgram`'s dedicated lane | Retire-on-MethodNotFound only for `parseProgram` |
+| Letting `-32601`/`-33xxx` count as breaker failures | Breaker is connect-level; an answer proves liveness | Classify as outcomes; breaker untouched |
+| `allowDenum: true` from format | Silently rewrites line numbers into labels on every format-on-save | `allowDenum:false`, offer DENUM explicitly |
+| Reading settings via `workspace/configuration` per request | Returns null under LSP4IJ for this plugin | `initializationOptions` + `didChangeConfiguration` into one snapshot |
+| Publishing DENUM diagnostics with a bare `sendDiagnostics` | Replaced by the next Langium publish, which the edit itself triggers | One-shot message, or store-and-merge in the builder |
+| `workspace/executeCommand` for DENUM | No precedent, no IntelliJ invocation path, command-id collision on VS Code | `bbj/denum` custom request |
+| Whole-file replace edit with `Range(0,0,lineCount,0)` | Loses cursor/folds; out-of-range for strict clients | `wholeDocumentChangeAsRange`, clamped |
+
+## Pitfalls Specific to This Integration
+
+1. **`ComposerRequestContractTest` fails** the moment `bbj/denum` is added to `BbjComposerServer` (or to the TS side alone). Both sides in the same change.
+2. **Two providers for one language.** If the extension's `registerDocumentFormattingEditProvider` is not removed in the same change that makes the LS advertise formatting, VS Code offers a chooser / picks nondeterministically. Cut over atomically (the milestone lands as one PR, but within the branch keep the old registration removed in the commit that enables the server one).
+3. **DENUM semantics change.** Old `bbj.denumber` rewrote the FILE on disk via `bbjlst` (`.lst` + rename). The new path edits the buffer (dirty, unsaved). The open-file prompt is labelled "Denumber & Replace": decide whether the prompt path saves after applying (preserving "replace"), and say so in docs/QA.
+4. **Prompt before BBj 26.03.** `open-file-prompts.ts` detects numbered source client-side (`line-numbering.ts`, no LS needed) and will offer DENUM on BBj < 26.03, where `bbj/denum` can only answer `requires-bbj-26-03`. Acceptable but surface a clear message; do not silently fall back to `bbjlst` (hard cut-over).
+5. **Setting migration.** `bbj.formatter.splitSingleLineIF` users lose the value silently on rename; carry it over via the alias in `normalizeFormatterSettings` (read old key when the new one is unset) and a `deprecationMessage`. IntelliJ never had formatter settings, so nothing to migrate there.
+6. **Default drift.** Formatter default indent is 4, extension default is 2 (see 4). A client that sends no `indentWidth` gets 4. Always send all keys the client owns.
+7. **Server-side strictness.** An unknown settings key (e.g. a stray `javaPath`, or a future key) fails the whole request with `-33007`; whitelist in the LS. `settings` with more than 64 entries gives `-33003`.
+8. **Test doubles default to `MethodNotFound`.** Existing hermetic tests (`createBBjTestServices`) must keep passing with no format script; default the new test-service methods exactly like `parseProgramScript`.
+9. **Local-only verification.** `npm test` skips BBj-dependent tests; format/denum E2E needs the live :5008 peer (BBj 26.03 build with the new endpoints; the devcontainer's fresh BBj ships its own bbj-ls.jar, root-owned) — plan a harness case run, not just vitest.
+10. **IntelliJ Reformat semantics (verify).** LSP4IJ 0.21.0 `LSPFormattingFeature` has `isSupported`, `isExistingFormatterOverrideable`, range and on-type hooks; BBj has no PSI formatting model, so LSP formatting should take over Reformat Code, but format-on-save, range, and the `-33006` prompt flow are exactly what the evaluation phase must exercise on a real IDE (the user decides "officially supported" or "disabled").
+
+## Suggested Build Order (phase numbers continue from 123)
+
+| # | Phase | Contents | Depends on | Why this position |
+|---|-------|----------|-----------|-------------------|
+| 124 | **Interop protocol layer** | Wire types + error-code constants; generalise lane into `sendProgramRequest` (parse-only retire rule); `formatProgram`/`denumProgram` on `JavaInteropService`; shared error classifier; `JavaInteropTestService` scripts, `fake-interop-peer` cases, harness cases | none | Pure foundation, hermetically testable, no user-visible change; both features need it; regression-guard `java-interop-parse-lane.test.ts` / `java-interop-connection.test.ts` |
+| 125 | **LS formatting** | `bbj-format-settings.ts`, `BBjFormatService.format`, `BBjFormatter` in `lsp.Formatter`, bounded handler in `main.ts`, `onInitialize` + `didChangeConfiguration` plumbing, minimal-edit + stale-version rules, typed-error messages (`-32601`, `-33007`, `-33008`, timeouts; `-33006` as a plain message for now), unit tests | 124 | The core value; fully testable with the scripted peer; settings transport established here is reused by IntelliJ |
+| 126 | **LS DENUM** | `denumDocument()`, `bbj/denum` (`denum-command.ts`), `showMessageRequest` + `applyEdit` DENUM-needed prompt wired into the formatter, diagnostics mapping + chosen surfacing, throttling | 124, 125 | Needs the format outcome union to hook the prompt; **research flag** (diagnostics surfacing) |
+| 127 | **VS Code cut-over** | `package.json` (15 keys, rename, drop `javaPath`), `extension.ts` (`initializationOptions.formatter`, `bbj.denumber` -> `bbj/denum`, remove `registerDocumentFormatter`), `Commands.cjs` trim, `open-file-prompts` wording/save decision, delete `document-formatter.ts`, resolver, verifier, `tools/formatter/**` and all dependent tests, "requires BBj 26.03" UX, E2E on live BBj | 125, 126 | Atomic switch; avoids two formatters; deletion list above is the checklist |
+| 128 | **IntelliJ build-out** | `FormatterInitOptions` + tests, `BbjSettings` state, settings UI (child Configurable), `initializeParams` `formatter` object, `BbjComposerServer.denum` + models + `BbjDenumAction` + presenter, **`ComposerRequestContractTest` update**, `./gradlew test` | 125, 126 | Independent of 127 once the LS side exists; can run in parallel with 127 on a second branch only if conflicts in `build.gradle.kts`/`plugin.xml` are managed |
+| 129 | **IntelliJ evaluation + decision** | Hands-on runs of LSP4IJ formatting: whole document, range, format-on-save, DENUM-needed prompt, settings round-trip (restart), cold start; write findings; user chooses supported vs disabled; if disabled apply the `LSPFormattingFeature` override | 128 | The milestone explicitly requires evaluation before a support decision; must precede docs so docs state the outcome. **Research flag** |
+| 130 | **Docs and QA** | `commands.md`, `configuration.md` (Formatter Settings, drop `javaPath`, defaults block), `features.md`, `README.md` line, new IntelliJ formatter page, `QA/FULL-TEST-CHECKLIST.md` row 25 -> settings / `-33007`, add rows for DENUM-needed, mixed numbering, requires-26.03; CLAUDE.md architecture bullets (new files) | 127-129 | Describes final behaviour, including the IntelliJ decision |
+
+**Ordering rationale:** 124 is the shared dependency of everything. 125 before 126 because the DENUM-needed prompt is an outcome of formatting. 127 and 128 both consume the LS contract and can proceed independently; 127 carries the deletions, so it should land before the final doc sweep. 129 gates 130.
+
+**Research flags:**
+- 126: how DENUM diagnostics should surface in both IDEs (one-shot vs stored-and-merged); confirm `showMessageRequest` action selection and `applyEdit` behave in LSP4IJ.
+- 129: LSP4IJ 0.21.0 formatting behaviour on a real IDE (format-on-save action, range, edit application, interaction with BBj code-style indent options); IntelliJ settings restart cost.
+- 125: measure cold-start and format round-trip against the ~750 ms VS Code format-on-save budget on a large file (decides whether the bounded handler alone suffices).
+- 124, 127, 128 (mechanics), 130: standard patterns, no further research expected.
+
+## Scaling Considerations
+
+| Concern | Typical | Large file (bbj-ls `maxBytes` 4 MiB) |
+|---------|---------|--------------------------------------|
+| Format latency | one lane round trip + engine | bbj-ls format timeout 10 s; set a client budget (15 s) and surface `-33002/-33003` once per kind |
+| Burst of format-on-save across "Save All" | each file its own `canonicalName`, no mutual cancel | per-file supersession only cancels older still-pending requests of the same file |
+| DENUM + live parse on the same lane | DENUM queues behind current parse | bounded by the 10 s parse timeout |
 
 ## Sources
 
-All findings above are grounded in direct reads of the following files (this session,
-2026-09-06), plus the 23 GitHub issue bodies supplied as required reading:
-
-- `bbj-vscode/src/language/{bbj-ws-manager,bbj-scope,bbj-scope-local,bbj-linker,java-interop,
-  bbj-completion-provider,composer-commands,main}.ts`
-- `bbj-vscode/src/{msgbox,addwindow,addchildwindow,setopts}-composer{,-ui,-webview}.ts`,
-  `setopts-catalog.ts`
-- `bbj-vscode/src/{extension,decompile-io,document-formatter}.ts`,
-  `bbj-vscode/src/Commands/Commands.cjs`, `bbj-vscode/package.json`
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/{BbjSettings,BbjSettingsConfigurable}.java`
-- `bbj-intellij/.../actions/{BbjRefreshJavaClassesAction,BbjCompileAction}.java`
-- `bbj-intellij/.../composer/{ComposerLauncher,BbjComposerService,BbjComposerServer,ComposerFlow,
-  StaleEditGuard,ComposerModels,MsgboxComposerDialog,Configure{Msgbox,AddWindow,AddChildWindow}
-  Intention}.java`
-- `bbj-intellij/.../concurrency/{Scheduler,AlarmScheduler,RestartGate,KeystrokeDebouncer}.java`
-- `bbj-intellij/.../ui/{BbjServerService,BbjStatusBarWidget}.java`
-- `bbj-intellij/.../lsp/BbjLanguageServerFactory.java`
-- `.planning/PROJECT.md` (Current Milestone, Context, Key Decisions)
-- `.planning/milestones/v4.2-phases/` directory listing (78-83; confirmed Phase 79/81/82 map to
-  EDT-responsiveness/feature-parity/composer-robustness as named in PROJECT.md's Validated list)
+- `/home/coder/repos/bbj-ls/README.md` (JSON-RPC methods, error codes, supersession, limits) and `/home/coder/repos/bbj-ls/bbj-ls/src/main/java/bbj/interop/InteropService.java` (per-connection workers, inline `completedFuture` class methods) — HIGH
+- `/home/coder/repos/bbj-language-server/bbj-vscode/src/language/` : `java-interop-connection.ts`, `java-interop.ts`, `bbj-parser-service.ts`, `bbj-module.ts`, `main.ts`, `compile-command.ts`, `configuration-change-handler.ts`, `bbj-ws-manager.ts`, `bbj-hover-handler.ts`, `bbj-kept-check.ts`, `lsp-position.ts` — HIGH
+- `/home/coder/repos/bbj-language-server/bbj-vscode/src/` : `extension.ts`, `config-path-trust.ts`, `document-formatter.ts`, `open-file-prompts.ts`, `line-numbering.ts`, `Commands/Commands.cjs`, `package.json`, `.vscodeignore` — HIGH
+- `/home/coder/repos/bbj-language-server/bbj-intellij/` : `BbjLanguageServerFactory.java`, `BbjLanguageClient.java`, `CompilerInitOptions.java`, `BbjComposerServer.java`, `ComposerRequestContractTest.java`, `BbjSettingsConfigurable.java`, `build.gradle.kts` — HIGH
+- Langium 4.3.1 `lib/lsp/language-server.js`, `lib/lsp/formatter.d.ts` (installed in `bbj-vscode/node_modules`) — HIGH
+- LSP4IJ 0.21.0 sources at `/home/coder/repos/lsp4ij` (`LSPFormattingFeature`, `LanguageClientImpl` showMessageRequest/applyEdit/showDocument) — HIGH for API existence, MEDIUM for runtime behaviour (to be verified in phase 129)
 
 ---
-*Architecture research for: BBj Language Server v4.3 Polish & Quality milestone*
-*Researched: 2026-09-06*
+*Architecture research for: v4.9 bbj-ls DENUM & Format Migration*
+*Researched: 2026-10-01*
