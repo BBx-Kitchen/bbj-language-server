@@ -15,7 +15,7 @@
  */
 import type { Socket } from 'net';
 import type { CancellationToken, MessageConnection, RequestType } from 'vscode-jsonrpc/node.js';
-import { classifyInteropError } from './java-interop-errors.js';
+import { classifyInteropError, FailureLogCadence } from './java-interop-errors.js';
 import type { ProgramOutcome } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH } from './java-peer-guard.js';
 import { sanitizePeerText, type ProgramGuardResult } from './java-program-guard.js';
@@ -109,6 +109,9 @@ export class ProgramLane {
     private connecting?: Promise<MessageConnection | undefined>;
     /** Bumped when the open connection is lost and on dispose; never related to the shared generation. */
     private laneEpoch = 0;
+    /** `Date.now()` time before which no open is attempted, set by a failed open and lifted by {@link dispose}. */
+    private reopenNotBefore = 0;
+    private readonly failureLog = new FailureLogCadence();
 
     constructor(private readonly hooks: ProgramLaneHooks) { }
 
@@ -152,6 +155,10 @@ export class ProgramLane {
         if (this.connecting) {
             return this.connecting;
         }
+        if (Date.now() < this.reopenNotBefore) {
+            // A burst of requests during an outage must not hammer the peer.
+            return undefined;
+        }
         const attempt = this.openLane(this.laneEpoch);
         this.connecting = attempt;
         try {
@@ -173,7 +180,18 @@ export class ProgramLane {
         let socket: Socket;
         try {
             socket = await this.hooks.createSocket();
-        } catch {
+        } catch (e) {
+            // The connection could not be opened: answer not-reachable, start the cool-down and log
+            // one line carrying only the socket error. Nothing latches for the generation — the
+            // next request after the cool-down tries again — and the breaker, the shared connection
+            // and the error dialog are never touched.
+            if (this.laneEpoch === epoch) {
+                // Not when a disposal overtook this open: it lifted the cool-down on purpose.
+                this.reopenNotBefore = Date.now() + PROGRAM_LANE_REOPEN_COOLDOWN_MS;
+            }
+            const detail = sanitizePeerText(e instanceof Error ? e.message : String(e), MAX_PEER_ERROR_LENGTH);
+            this.failureLog.syncGeneration(this.currentKey());
+            this.failureLog.report('not-reachable', `Format/DENUM interop: could not open a dedicated connection (${detail})`);
             return undefined;
         }
         // Small sequential requests wait for the peer's delayed acknowledgement on a default
@@ -193,6 +211,11 @@ export class ProgramLane {
         return lane;
     }
 
+    /** The shared generation and the lane epoch together: any change of either re-arms the failure log. */
+    private currentKey(): string {
+        return `${this.hooks.sharedGeneration()}.${this.laneEpoch}`;
+    }
+
     /**
      * Clears the connection once it is lost, guarded on identity so a stale listener from an
      * already-replaced connection cannot clear a newer one, and moves only the lane's own epoch.
@@ -206,12 +229,17 @@ export class ProgramLane {
         this.laneEpoch++;
     }
 
-    /** Disposes the connection, if any, clearing the field first so its own close listener is a no-op. */
+    /**
+     * Disposes the connection, if any, clearing the field first so its own close listener is a
+     * no-op. Also forgets any open cool-down, so a cache clear or a configuration change retries at
+     * once.
+     */
     public dispose(): void {
         const lane = this.lane;
         this.lane = undefined;
         this.connecting = undefined;
         this.laneEpoch++;
+        this.reopenNotBefore = 0;
         lane?.dispose();
     }
 }
