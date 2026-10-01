@@ -16,7 +16,7 @@
  * Kept free of Langium and editor imports so it is unit-testable with plain values.
  */
 import type {
-    DocumentFormatResult, FormatProgramParams, FormatProgramResult, ProgramDiagnostic, ProgramPosition,
+    DenumProgramParams, DenumProgramResult, DocumentFormatResult, FormatProgramParams, FormatProgramResult, ProgramDiagnostic, ProgramPosition,
     ProgramRange, ProgramSeverity, ProgramTextEdit, RangeFormatResult
 } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH, truncateText } from './java-peer-guard.js';
@@ -333,6 +333,37 @@ function validateRangeFormatResult(
             denumbered: denumbered.value,
             version: request.version
         }
+    };
+}
+
+/**
+ * Validates a `denumProgram` answer against the request that produced it. The answer must echo
+ * the version that was sent, carry a string `text` within the allowed length and a boolean
+ * `denumbered` (a DENUM answer always states it, so an absent flag is refused). The returned value
+ * is built fresh; the peer's object never leaves this function.
+ */
+export function validateDenumResult(request: DenumProgramParams, raw: unknown): ProgramGuardResult<DenumProgramResult> {
+    const envelope = checkEnvelope(request.version, raw);
+    if (!envelope.ok) {
+        return envelope;
+    }
+    const { text, denumbered } = envelope.value;
+    if (typeof text !== 'string') {
+        return { ok: false, reason: 'text-not-string' };
+    }
+    if (text.length > allowedProgramTextLength(request.text)) {
+        return { ok: false, reason: 'text-too-large' };
+    }
+    if (typeof denumbered !== 'boolean') {
+        return { ok: false, reason: 'denumbered-not-boolean' };
+    }
+    const diagnostics = sanitizeProgramDiagnostics(envelope.value.diagnostics, programLineLengths(text).length);
+    if (!diagnostics.ok) {
+        return diagnostics;
+    }
+    return {
+        ok: true,
+        value: { text, diagnostics: diagnostics.value, denumbered, version: request.version }
     };
 }
 
