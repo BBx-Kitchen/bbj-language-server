@@ -12,6 +12,7 @@ import com.redhat.devtools.lsp4ij.ServerStatus;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
+import com.redhat.devtools.lsp4ij.client.features.LSPFormattingFeature;
 import com.redhat.devtools.lsp4ij.server.StreamConnectionProvider;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -22,6 +23,15 @@ import org.jetbrains.annotations.NotNull;
  * Registered via plugin.xml extension point: com.redhat.devtools.lsp4ij.server
  */
 public final class BbjLanguageServerFactory implements LanguageServerFactory {
+
+    /**
+     * The one switch deciding whether IntelliJ offers LSP formatting for BBj files. It stays off
+     * until LSP4IJ formatting has been evaluated against the BBj formatter. While it is off,
+     * Reformat Code, Actions on Save and on-type formatting never send a formatting request to the
+     * language server, even once the server advertises formatting. Setting it to {@code true}
+     * restores LSP4IJ's own behaviour unchanged.
+     */
+    private static final boolean LSP_FORMATTING_ENABLED = false;
 
     @Override
     public @NotNull StreamConnectionProvider createConnectionProvider(@NotNull Project project) {
@@ -91,6 +101,31 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 return false;
             }
         })
-        .setCompletionFeature(new BbjCompletionFeature());
+        .setCompletionFeature(new BbjCompletionFeature())
+        // All four checks are overridden because the formatting services gate on isEnabled and
+        // then call the two supported checks directly; overriding isSupported alone, as on the
+        // document-link feature above, would leave Reformat Code live. The short-circuit keeps
+        // super from touching the capability registry or the file while the switch is off.
+        .setFormattingFeature(new LSPFormattingFeature() {
+            @Override
+            public boolean isEnabled(@NotNull PsiFile file) {
+                return LSP_FORMATTING_ENABLED && super.isEnabled(file);
+            }
+
+            @Override
+            public boolean isSupported(@NotNull PsiFile file) {
+                return LSP_FORMATTING_ENABLED && super.isSupported(file);
+            }
+
+            @Override
+            public boolean isFormattingSupported(@NotNull PsiFile file) {
+                return LSP_FORMATTING_ENABLED && super.isFormattingSupported(file);
+            }
+
+            @Override
+            public boolean isRangeFormattingSupported(@NotNull PsiFile file) {
+                return LSP_FORMATTING_ENABLED && super.isRangeFormattingSupported(file);
+            }
+        });
     }
 }
