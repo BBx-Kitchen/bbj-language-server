@@ -18,11 +18,11 @@ stays switched off until the evaluation verdict.
 
 ### Interop client (INT)
 
-- [ ] **INT-01**: The language server can call bbj-ls `formatProgram` (whole document and range) and `denumProgram` over the :5008 interop connection with typed request/response shapes
-- [ ] **INT-02**: Format and DENUM traffic never delays or resets live `parseProgram` diagnostics (routing decided and measured in the phase; a lost format/DENUM route never bumps the parse generation)
-- [ ] **INT-03**: Each method's availability is probed and latched per connection generation on its own (`-32601` on one method never disables another)
-- [ ] **INT-04**: Every bbj-ls error code (`-33001`..`-33009`, `-32602`, `-32800`) is classified into a typed outcome; none of them trips the interop circuit breaker
-- [ ] **INT-05**: Format/DENUM responses from the peer are validated (exactly one of `text`/`edits`, bounded sizes, sane ranges and lines) before they reach an editor
+- [x] **INT-01**: The language server can call bbj-ls `formatProgram` (whole document and range) and `denumProgram` over the :5008 interop connection with typed request/response shapes
+- [x] **INT-02**: Format and DENUM traffic never delays or resets live `parseProgram` diagnostics (routing decided and measured in the phase; a lost format/DENUM route never bumps the parse generation)
+- [x] **INT-03**: Each method's availability is probed and latched per connection generation on its own (`-32601` on one method never disables another)
+- [x] **INT-04**: Every bbj-ls error code (`-33001`..`-33009`, `-32602`, `-32800`) is classified into a typed outcome; none of them trips the interop circuit breaker
+- [x] **INT-05**: Format/DENUM responses from the peer are validated (exactly one of `text`/`edits`, bounded sizes, sane ranges and lines) before they reach an editor
 
 ### Formatting (FMT)
 
@@ -101,11 +101,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INT-01 | Phase 124 | Pending |
-| INT-02 | Phase 124 | Pending |
-| INT-03 | Phase 124 | Pending |
-| INT-04 | Phase 124 | Pending |
-| INT-05 | Phase 124 | Pending |
+| INT-01 | Phase 124 | Complete |
+| INT-02 | Phase 124 | Complete |
+| INT-03 | Phase 124 | Complete |
+| INT-04 | Phase 124 | Complete |
+| INT-05 | Phase 124 | Complete |
 | FMT-01 | Phase 125 | Pending |
 | FMT-02 | Phase 125 | Pending |
 | FMT-03 | Phase 125 | Pending |
@@ -142,6 +142,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MIG-03 | Phase 130 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 39 total
 - Mapped to phases: 39 (Phases 124-130)
 - Unmapped: 0 ✓
