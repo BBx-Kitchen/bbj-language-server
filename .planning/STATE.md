@@ -1,10 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.9
-milestone_name: bbj-ls DENUM & Format Migration
+milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
+current_phase: 124
+current_phase_name: the first of seven v4.9 phases
 status: planning
-last_updated: "2026-10-01T08:47:42.000Z"
+stopped_at: Phase 124 context gathered
+last_updated: "2026-10-01T11:23:43.587Z"
 last_activity: 2026-10-01
+last_activity_desc: v4.9 roadmap created (Phases 124-130, 39/39 requirements mapped)
+state_head: 4e51a49b84194b329794c8c7f99af5addf3e0d6f
 progress:
   total_phases: 7
   completed_phases: 0
@@ -422,9 +427,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T08:47:42.000Z
-Stopped at: v4.9 roadmap created (Phases 124-130)
-Resume file: None
+Last session: 2026-10-01T11:23:43.560Z
+Stopped at: Phase 124 context gathered
+Resume file: .planning/phases/124-interop-client/124-CONTEXT.md
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
