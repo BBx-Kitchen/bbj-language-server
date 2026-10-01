@@ -85,6 +85,8 @@ export class FakePeerInteropService extends JavaInteropService {
     public socketAttempts = 0;
     /** Every request sent over the fake connection, in order. */
     public readonly sentRequests: SentRequest[] = [];
+    /** Every request whose cancellation token was cancelled, in the order the cancellations arrived. */
+    public readonly cancelledRequests: SentRequest[] = [];
 
     private pendingRequests: PendingRequest[] = [];
     private readonly connections = new Map<number, ConnectionRecord>();
@@ -158,7 +160,9 @@ export class FakePeerInteropService extends JavaInteropService {
     }
 
     private handleSendRequest(connectionId: number, type: RequestType<unknown, unknown, unknown>, params: unknown, token?: CancellationToken): Promise<unknown> {
-        this.sentRequests.push({ method: type.method, params, connectionId });
+        const sent: SentRequest = { method: type.method, params, connectionId };
+        this.sentRequests.push(sent);
+        token?.onCancellationRequested(() => { this.cancelledRequests.push(sent); });
         if (!this.answerRequests || this.hungConnectionIds.has(connectionId)) {
             return new Promise((_resolve, reject) => {
                 const entry: PendingRequest = { connectionId, reject };

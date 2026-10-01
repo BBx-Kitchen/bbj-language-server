@@ -11,14 +11,14 @@
  */
 import { URI, type LangiumDocument } from 'langium';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { ResponseError } from 'vscode-jsonrpc/node.js';
+import { CancellationTokenSource, ResponseError } from 'vscode-jsonrpc/node.js';
 import type { Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { BBjParserService } from '../src/language/bbj-parser-service.js';
 import { initNotifications } from '../src/language/bbj-notifications.js';
 import { clearAllVerdictStates, getVerdictState, setVerdictState } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { PROGRAM_LANE_REOPEN_COOLDOWN_MS } from '../src/language/java-interop-program-lane.js';
+import { PROGRAM_LANE_REOPEN_COOLDOWN_MS, PROGRAM_REQUEST_TIMEOUT_MS } from '../src/language/java-interop-program-lane.js';
 import { logger } from '../src/language/logger.js';
 import { createFakePeerServices, type FakePeerInteropService } from './fake-interop-peer.js';
 
@@ -681,5 +681,134 @@ describe('failure logging', () => {
         expect(await interop.formatProgram({ text: 'x', version: 'c1' })).toEqual({ kind: 'cancelled' });
 
         expect(spies.lines()).toEqual([]);
+    });
+});
+
+describe('the request deadline and cancellation', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+    });
+
+    const params = (version: string) => ({ text: 'x = 1\n', version });
+
+    /** A fake peer with the dedicated connection already open (one answered request) and every logger level spied. */
+    async function openLane() {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const spies = spyOnLogger();
+        expect((await interop.formatProgram(params('ready'))).kind).toBe('ok');
+        const connectionId = interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId;
+        return { interop, spies, connectionId };
+    }
+
+    test('a request still pending at the deadline is cancelled on the wire and settles as a client timeout, never as transport', async () => {
+        const { interop, spies, connectionId } = await openLane();
+        expect(vi.getTimerCount()).toBe(0);
+        interop.hungConnectionIds.add(connectionId);
+
+        let settled = false;
+        const pending = interop.formatProgram(params('slow')).then(outcome => {
+            settled = true;
+            return outcome;
+        });
+        await vi.advanceTimersByTimeAsync(PROGRAM_REQUEST_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(settled).toBe(true);
+
+        expect(await pending).toEqual({ kind: 'timeout', origin: 'client' });
+        expect(interop.cancelledRequests).toHaveLength(1);
+        expect(interop.cancelledRequests[0].params).toMatchObject({ version: 'slow' });
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        for (const line of spies.lines()) {
+            expect(line).not.toContain('transport');
+        }
+        expect(vi.getTimerCount()).toBe(0);
+
+        // The same connection serves the next request once the peer answers again.
+        interop.hungConnectionIds.delete(connectionId);
+        expect((await interop.formatProgram(params('after'))).kind).toBe('ok');
+        const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
+        expect(formatRequests[formatRequests.length - 1].connectionId).toBe(connectionId);
+    });
+
+    test('a caller cancellation settles at once as cancelled, is sent to the peer, and is neither logged nor leaves a timer', async () => {
+        const { interop, spies, connectionId } = await openLane();
+        interop.hungConnectionIds.add(connectionId);
+        const source = new CancellationTokenSource();
+
+        let settled = false;
+        const pending = interop.formatProgram(params('c1'), source.token).then(outcome => {
+            settled = true;
+            return outcome;
+        });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+
+        source.cancel();
+
+        expect(await pending).toEqual({ kind: 'cancelled' });
+        expect(interop.cancelledRequests).toHaveLength(1);
+        expect(spies.lines()).toEqual([]);
+        expect(vi.getTimerCount()).toBe(0);
+        source.dispose();
+    });
+
+    test('a token that is already cancelled settles as cancelled with no socket and no request', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const source = new CancellationTokenSource();
+        source.cancel();
+
+        const outcome = await interop.formatProgram(params('p1'), source.token);
+
+        expect(outcome).toEqual({ kind: 'cancelled' });
+        expect(interop.sentRequests).toEqual([]);
+        expect(interop.socketAttempts).toBe(0);
+        source.dispose();
+    });
+
+    test('a -33002 answer is a plain peer timeout: the connection is kept and serves the next request', async () => {
+        const { interop, connectionId } = await openLane();
+        interop.answerWith('formatProgram', () => { throw new ResponseError(-33002, 'overran'); });
+
+        expect(await interop.formatProgram(params('t1'))).toEqual({ kind: 'timeout', origin: 'peer' });
+        interop.answerWith('formatProgram', request => {
+            const { text, version } = request as { text: string; version: string };
+            return { text, diagnostics: [], denumbered: false, version };
+        });
+        expect((await interop.formatProgram(params('t2'))).kind).toBe('ok');
+
+        const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
+        expect(new Set(formatRequests.map(r => r.connectionId))).toEqual(new Set([connectionId]));
+        expect(interop.connectionRecords().find(r => r.id === connectionId)?.disposed).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    test('the peer rejecting a cancelled request after the outcome has settled is not an unhandled rejection', async () => {
+        const { interop, connectionId } = await openLane();
+        interop.hungConnectionIds.add(connectionId);
+        const unhandled = vi.fn();
+        process.on('unhandledRejection', unhandled);
+        try {
+            const source = new CancellationTokenSource();
+            const pending = interop.formatProgram(params('u1'), source.token);
+            await vi.advanceTimersByTimeAsync(0);
+            source.cancel();
+            expect(await pending).toEqual({ kind: 'cancelled' });
+            source.dispose();
+
+            vi.useRealTimers();
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(unhandled).not.toHaveBeenCalled();
+        } finally {
+            process.off('unhandledRejection', unhandled);
+        }
     });
 });
