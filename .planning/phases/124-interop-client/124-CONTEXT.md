@@ -103,13 +103,25 @@ and live harness cases. No user-visible change: no `lsp.Formatter`, no formattin
 - **D-14:** **Text size cap, relative and absolute:** returned `text` ≤ 4× request text + 64 KiB,
   and never above 16 MiB. Named constants in the guard module.
 - **D-15:** **Diagnostics sanitised `java-peer-guard.ts`-style:** count capped (~500), messages
-  truncated and control characters stripped, treated as plain text; lines coerced to integers ≥ 1;
-  out-of-range entries dropped individually without failing the whole result.
+  truncated and control characters stripped, treated as plain text; lines must be integers; `0`
+  is kept as "no location" (the bbj-ls contract's meaning — never coerced to 1); negative,
+  non-integer or out-of-range entries are dropped individually without failing the whole result.
+  (Refined after research, 2026-10-01.)
 - **D-16:** A malformed answer is a typed `malformed-result` outcome, logged at warn **once per kind
   per connection generation**, then at debug (the `BBjParserService` cadence). User messages are
   Phase 125/126's job.
 
+### Live test vehicle (decided after research, 2026-10-01)
+- **D-17:** The live checks (SC1 format whole/range + DENUM, SC2 DENUM-latency measurement on the
+  parse lane vs the dedicated lane, the `$/cancelRequest` check) live in a vitest live file
+  (`bbj-vscode/test/functional/program-live.test.ts`) that runs through the real
+  `JavaInteropService` client behind `RUN_BBJ_TESTS`, probes first and skips on `-32601`, and
+  records the measured numbers. The 17-case interop harness CLI is not extended; SC1's "interop
+  harness" is read as "the live interop test path".
+
 ### Claude's Discretion
+- `socket.setNoDelay(true)` on the new lane's socket only (research measured ~82 ms → ~42 ms for
+  small sequential requests).
 - Module split and names (e.g. a program wire-types file, an error-classifier module, a program
   peer guard alongside `java-peer-guard.ts`), the exact outcome union shape, and the lane's
   bookkeeping fields, within D-01..D-16.
