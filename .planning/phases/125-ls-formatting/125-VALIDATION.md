@@ -51,6 +51,26 @@ Filled by the planner per task; requirement → test map from 125-RESEARCH.md §
 | CUT-01 | unit | `npx vitest run test/extension-activation.test.ts test/activation-command-coverage.test.ts` | ✅ edit | ⬜ pending |
 | IJF-01 | JUnit source guard | `cd /home/coder/repos/bbj-language-server/bbj-intellij && ./gradlew test` | ✅ edit | ⬜ pending |
 
+Per task (all vitest commands run with cwd `bbj-vscode`):
+
+| Plan-Task | Requirement | Automated Command | Status |
+|-----------|-------------|-------------------|--------|
+| 125-01-1 | SET-02 | `npx vitest run test/bbj-format-settings.test.ts && npm run typecheck:test` | ⬜ pending |
+| 125-01-2 | FMT-04, FMT-05 | `npx vitest run test/bbj-format-edit.test.ts test/bbj-format-settings.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-02-1 | IJF-01 | `./gradlew cleanTest test --tests 'com.basis.bbj.intellij.lsp.*'` (cwd `bbj-intellij`) | ⬜ pending |
+| 125-02-2 | IJF-01 | `./gradlew cleanTest test` (cwd `bbj-intellij`) | ⬜ pending |
+| 125-03-1 | FMT-01, FMT-04, FMT-05, SET-02 | `npx vitest run test/bbj-format-service.test.ts test/java-interop-program-test-double.test.ts && npm run typecheck:test` | ⬜ pending |
+| 125-03-2 | FMT-02, FMT-03, FMT-12 | `npx vitest run test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-03-3 | FMT-03 | `npx vitest run test/bbj-formatter.test.ts test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts test/java-interop-program-test-double.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-04-1 | FMT-11 | `npx vitest run test/bbj-format-notices.test.ts test/bbj-format-service.test.ts && npm run typecheck:test` | ⬜ pending |
+| 125-04-2 | FMT-10 | `npx vitest run test/bbj-format-notices.test.ts test/bbj-format-service.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-04-3 | FMT-08, FMT-09 | `npx vitest run test/bbj-format-notices.test.ts test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts test/bbj-formatter.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-05-1 | SET-02 | `npx vitest run test/configuration-change-handler.test.ts test/bbj-format-settings-intake.test.ts test/config-hot-reload-wiring.test.ts test/config-path-resolution.test.ts test/interop-config.test.ts && npm run typecheck:test` | ⬜ pending |
+| 125-05-2 | SET-02 | `npx vitest run test/bbj-format-settings-intake.test.ts test/extension-config-trust.test.ts test/configuration-change-handler.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-06-1 | CUT-01, FMT-01, FMT-02, FMT-03 | `npx vitest run test/bbj-formatter-capability.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts test/bbj-formatting-handler.test.ts test/bbj-formatter.test.ts test/setopts-in-code-request.test.ts test/config-hot-reload-wiring.test.ts && npm run typecheck:test && npm run lint && npm run build` | ⬜ pending |
+| 125-06-2 | FMT-08 (client half) | `npx vitest run test/extension-activation.test.ts test/activation-command-coverage.test.ts test/activation-prompts-and-status-bars.test.ts test/config-reload-host.test.ts test/extension-config-trust.test.ts && npm run typecheck:test && npm run lint` | ⬜ pending |
+| 125-06-3 | FMT-01, FMT-04, SET-02 (live); phase gates | `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts --disable-console-intercept`; `RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2 && npm run lint && npm run typecheck:test && npm run build`; `./gradlew cleanTest test` (cwd `bbj-intellij`) | ⬜ pending |
+
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ---

@@ -474,7 +474,26 @@ Plans:
   4. Against a BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, worded differently from "interop not connected", and a save is never blocked. Config (`.bbx`) and non-BBj documents are never sent to the formatter.
   5. VS Code lists exactly one BBj formatter, and only the 15 known keys reach bbj-ls, each with an explicit value and `indentWidth` 2 by default. IntelliJ offers no LSP formatting, and one switch controls that.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 125-01-PLAN.md — The 15-key settings normalizer (indentWidth 2, legacy key mapped, javaPath dropped) and the minimal whole-line edit helper (wave 1)
+- [ ] 125-02-PLAN.md — IntelliJ's single LSP formatting switch (all four LSP4IJ gates off behind one constant) and the fence tests (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 125-03-PLAN.md — The language-server format path: bounded handler, BBjFormatService, Formatter adapter; range, cancel, stale and document-kind guards; not yet advertised (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 125-04-PLAN.md — One deduplicated Warning per failure kind, requires-26.03 once per connection, Open Settings and Go to Line, fire-and-forget (wave 3)
+- [ ] 125-05-PLAN.md — Formatter settings intake from didChangeConfiguration and initializationOptions (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 125-06-PLAN.md — Switch-on in one change: lsp.Formatter, handler after startLanguageServer, VS Code jar provider removed; Open Settings client handler; live check, first-format latency record and all gates (wave 4)
 
 ### Phase 126: LS DENUM
 
