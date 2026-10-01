@@ -65,6 +65,10 @@ and live harness cases. No user-visible change: no `lsp.Formatter`, no formattin
   format/parse timeouts are 10 s). On expiry the client **always cancels** (`$/cancelRequest` via
   the token passed to `sendRequest`) — never abandons like `requestClassInfo`'s `Promise.race` —
   and returns a typed `timeout` outcome. Never classified as a transport failure.
+  **Refined 2026-10-01 after code review:** the deadline is per request kind — 15 s for
+  whole-document format, range format and DENUM; 25 s for a `formatProgram` with
+  `allowDenum: true` (bbj-ls runs a DENUM step of up to 10 s plus a format step of up to 10 s).
+  Same cancel-always behaviour.
 - **D-08:** The caller's `CancellationToken` is forwarded to `sendRequest`; a caller cancellation
   and a peer `-32800` both yield a typed `cancelled` outcome, never logged as a failure, never fed
   to any latch or breaker. The live harness checks whether bbj-ls honours `$/cancelRequest` and
