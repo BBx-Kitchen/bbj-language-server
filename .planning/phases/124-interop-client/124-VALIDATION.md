@@ -42,16 +42,19 @@ created: "2026-10-01"
 
 Filled by the planner/executor; requirement → test mapping:
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
-|-------------|----------|-----------|-------------------|-------------|--------|
-| INT-01 | typed whole/range format + DENUM through the client (fake peer) | unit | `npx vitest run test/java-interop-program-lane.test.ts` | ❌ W0 | ⬜ pending |
-| INT-01 | wire framing, optional fields omitted, `data` intact | loopback | `npx vitest run test/java-interop-program-wire.test.ts` | ❌ W0 | ⬜ pending |
-| INT-01/02 | live format/DENUM + latency measurement + `$/cancelRequest` | live (gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts` | ❌ W0 | ⬜ pending |
-| INT-02 | separate connection; lane loss keeps `connectionGeneration` and parse verdicts | unit | program-lane file | ❌ W0 | ⬜ pending |
-| INT-03 | per-method `-32601` latches, reset on generation bump / clearCache / lane loss | unit | program-lane file | ❌ W0 | ⬜ pending |
-| INT-04 | classifier table, typed `-33007`/`-33008` data, breaker untouched by error burst, backstop/cancel | unit + loopback | `npx vitest run test/java-interop-errors.test.ts` + program-lane + program-wire | ❌ W0 | ⬜ pending |
-| INT-04 | parser-service classifier migration behaviour-identical | regression | `npx vitest run test/bbj-parser-service.test.ts test/java-interop-parse-lane.test.ts test/live-parse-interleaving.test.ts` | ✅ | ⬜ pending |
-| INT-05 | malformed shapes → `malformed-result`; diagnostics sanitising | unit | `npx vitest run test/java-program-guard.test.ts` | ❌ W0 | ⬜ pending |
+| Task | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
+|------|-------------|----------|-----------|-------------------|-------------|--------|
+| 124-01-T1 | INT-04 | parser-service classifier migration behaviour-identical | regression | `npx vitest run test/bbj-parser-service.test.ts test/java-interop-parse-lane.test.ts test/live-parse-interleaving.test.ts` | ✅ | ⬜ pending |
+| 124-01-T2 | INT-04 | classifier table, typed `-33007`/`-33008` data, cadence | unit | `npx vitest run test/java-interop-errors.test.ts` | ❌ W0 (created in task) | ⬜ pending |
+| 124-02-T1..T3 | INT-01, INT-05 | wire types; malformed shapes → refusal tokens; range geometry; size caps; diagnostics sanitising | unit | `npx vitest run test/java-program-guard.test.ts` | ❌ W0 (created in T1) | ⬜ pending |
+| 124-03-T1..T2 | INT-01, INT-02 | typed whole/range format + DENUM through the client on a separate connection; hung lane never delays parse | unit | `npx vitest run test/java-interop-program-lane.test.ts` | ❌ W0 (created in T1) | ⬜ pending |
+| 124-03-T3 | INT-02 | no fallback, cool-down, lane loss keeps `connectionGeneration` and parse verdicts, clearCache disposes | unit | program-lane file | ❌ W0 | ⬜ pending |
+| 124-04-T1 | INT-03 | per-method `-32601` latches, reset on generation bump / clearCache / lane loss, stale answer ignored | unit | program-lane file | ❌ W0 | ⬜ pending |
+| 124-04-T2 | INT-04 | every code → its outcome; error burst leaves breaker/generation/live parse untouched; warn-once cadence; no request text | unit | program-lane file | ❌ W0 | ⬜ pending |
+| 124-04-T3 | INT-04 | 15 s backstop cancels and settles `timeout`; caller cancel / `-32800` → `cancelled`; `-33002` → peer timeout | unit | program-lane file | ❌ W0 | ⬜ pending |
+| 124-05-T1..T2 | INT-01, INT-03, INT-04 | wire framing, optional fields omitted, `data` intact, per-method availability, real `$/cancelRequest` | loopback | `npx vitest run test/java-interop-program-wire.test.ts` | ❌ W0 (created in T1) | ⬜ pending |
+| 124-05-T3 | INT-05 | scriptable test double through the real guard/classifier; phase gates | unit + gates | `npx vitest run test/java-interop-program-test-double.test.ts`; lint, typecheck:test, build, `RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2` | ❌ W0 (created in T3) | ⬜ pending |
+| 124-06-T1..T2 | INT-01, INT-02 | live format/DENUM + latency measurement + `$/cancelRequest` finding | live (gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts --disable-console-intercept` | ❌ W0 (created in T1) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

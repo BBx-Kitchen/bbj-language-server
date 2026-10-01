@@ -437,7 +437,15 @@ a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumP
   3. Against a peer that answers `-32601` for `formatProgram` or `denumProgram`, live parse diagnostics and the other method keep working, and each method is probed again on the next connection.
   4. Every bbj-ls error code (`-33001`..`-33009`, `-32602`, `-32800`) yields its own typed outcome. After a burst of such errors, Java class completion and hover still work, because the circuit breaker never opens.
   5. A peer answer with both or neither of `text`/`edits`, an oversized payload, or an out-of-range range or line is rejected as a typed failure and never reaches an editor.
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 124-01-PLAN.md — Shared bbj-ls error classifier with typed -33007/-33008 data; BBjParserService migrated behaviour-identically (wave 1)
+- [ ] 124-02-PLAN.md — Program wire types and the response guard: contract-exact shapes, size caps, range geometry, sanitised diagnostics (wave 1)
+- [ ] 124-03-PLAN.md — Dedicated program lane: whole/range format and DENUM through JavaInteropService; no fallback, cool-down, own epoch (wave 2)
+- [ ] 124-04-PLAN.md — Per-method availability latches, the typed failure table with warn-once logging, and the cancel-always 15 s backstop (wave 3)
+- [ ] 124-05-PLAN.md — Real-wire proof over a loopback socket, the scriptable test double for later phases, and the phase gates (wave 4)
+- [ ] 124-06-PLAN.md — Live confirmation against bbj-ls on :5008, the route measurement and the $/cancelRequest finding (wave 4)
 
 ### Phase 125: LS Formatting
 **Goal**: A BBj developer in VS Code formats a whole file or a selection, on demand or on save, with bbj-ls's formatter served by the shared language server. Every failure produces one clear message and leaves the buffer untouched. In the same change VS Code is left with exactly one BBj formatter, and IntelliJ does not offer formatting until the evaluation verdict.
@@ -552,7 +560,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 124. Interop Client | 0/TBD | Not started | - |
+| 124. Interop Client | 0/6 | Planned | - |
 | 125. LS Formatting | 0/TBD | Not started | - |
 | 126. LS DENUM | 0/TBD | Not started | - |
 | 127. VS Code Cut-Over | 0/TBD | Not started | - |
