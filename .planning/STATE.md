@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 124
 current_phase_name: Interop Client
 status: executing
-stopped_at: Completed 124-04-PLAN.md
-last_updated: "2026-10-01T12:49:30.324Z"
+stopped_at: Completed 124-05-PLAN.md
+last_updated: "2026-10-01T12:56:28.722Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 124 execution started
-state_head: 82ab842c1904b468089dee7505515275aa863f10
+state_head: 459773851ab3e799ea1318ca75b9cd4d2cdd39c2
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 124 (Interop Client) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 124 execution started
 
@@ -206,6 +206,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 124 P02 | 5min | 3 tasks | 3 files |
 | Phase 124 P03 | 10min | 3 tasks | 5 files |
 | Phase 124 P04 | 8min | 3 tasks | 3 files |
+| Phase 124 P05 | 7min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -367,6 +368,7 @@ decisions:
 - [Phase 124]: 124-02: java-program-guard.ts validates every format/DENUM answer against the request that was sent (strict version echo, exact shape, in-document overlapping range edit, 4x+64KiB/16MiB size cap) and returns a fresh object or a fixed reason token; diagnostics capped at 500 with line 0 kept as no location
 - [Phase 124]: 124-03: format and DENUM travel over a third dedicated connection (ProgramLane) handed only createSocket/wrapSocket and a read-only shared generation; a failed open answers not-reachable with a 5 s cool-down lifted by dispose, and lane loss moves only the lane's own epoch
 - [Phase 124]: 124-04: each format/DENUM method has its own availability latch keyed on shared generation and lane epoch (only -32601 latches off; -33004, -32602, cancel, client timeout and transport never do), written only under the key captured before sending; a request settles through a 15 s cancel-always backstop or the caller's token without awaiting the peer
+- [Phase 124]: 124-05: the loopback wire suite proves omitted optional fields, -33007/-33008 data framing, per-method availability and real $/cancelRequest at the backstop and on caller cancellation; JavaInteropTestService scripts formatProgram/denumProgram with a success default, routes scripted wire answers through the production guard and classifier, and rejects createSocket so it can never open a socket
 
 ### Tech Debt
 
@@ -434,8 +436,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T12:49:30.294Z
-Stopped at: Completed 124-04-PLAN.md
+Last session: 2026-10-01T12:56:28.690Z
+Stopped at: Completed 124-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
