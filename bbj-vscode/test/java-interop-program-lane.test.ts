@@ -336,3 +336,146 @@ describe('the dedicated connection lifecycle', () => {
         expect(interop.socketAttempts).toBe(attemptsBefore + 1);
     });
 });
+
+describe('per-method availability', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+        clearAllVerdictStates();
+    });
+
+    const liveParse = async (interop: ReturnType<typeof createFakePeerServices>['interop'], name: string) => {
+        const parserService = new BBjParserService({
+            shared: { workspace: { WorkspaceManager: {} } },
+            java: { JavaInteropService: interop }
+        });
+        const uri = URI.file(`/proj/${name}.bbj`);
+        const document = {
+            uri,
+            textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
+        } as unknown as LangiumDocument;
+        const verdict = await parserService.requestLiveParse(document);
+        return { verdict, enabled: parserService.isEnabled() };
+    };
+
+    test('a peer without formatProgram latches only that method: DENUM and live parse keep working and the lane stays open', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        interop.formatProgramMethodMissing = true;
+
+        const first = await interop.formatProgram({ text: 'a\n', version: 'm1' });
+        expect(first).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        const generationBefore = interop.connectionGeneration;
+        const attemptsBefore = interop.socketAttempts;
+
+        const second = await interop.formatProgram({ text: 'a\n', version: 'm2' });
+        expect(second).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        expect(interop.sentRequests.filter(r => r.method === 'formatProgram')).toHaveLength(1);
+        expect(interop.socketAttempts).toBe(attemptsBefore);
+
+        const denum = await interop.denumProgram({ text: 'a\n', version: 'm3' });
+        expect(denum.kind).toBe('ok');
+        const programConnection = interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId;
+        expect(interop.sentRequests.find(r => r.method === 'denumProgram')!.connectionId).toBe(programConnection);
+        expect(interop.connectionRecords().find(r => r.id === programConnection)?.disposed).toBe(false);
+
+        const parse = await liveParse(interop, 'format-missing');
+        expect(parse.verdict.kind).toBe('verdict');
+        expect(parse.enabled).toBe(true);
+        expect(interop.connectionGeneration).toBe(generationBefore);
+    });
+
+    test('a peer without denumProgram latches only that method: format and live parse keep working and the lane stays open', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        interop.denumProgramMethodMissing = true;
+
+        const first = await interop.denumProgram({ text: 'a\n', version: 'n1' });
+        expect(first).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        const generationBefore = interop.connectionGeneration;
+        const attemptsBefore = interop.socketAttempts;
+
+        const second = await interop.denumProgram({ text: 'a\n', version: 'n2' });
+        expect(second).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        expect(interop.sentRequests.filter(r => r.method === 'denumProgram')).toHaveLength(1);
+        expect(interop.socketAttempts).toBe(attemptsBefore);
+
+        const format = await interop.formatProgram({ text: 'a\n', version: 'n3' });
+        expect(format.kind).toBe('ok');
+        const programConnection = interop.sentRequests.find(r => r.method === 'denumProgram')!.connectionId;
+        expect(interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId).toBe(programConnection);
+        expect(interop.connectionRecords().find(r => r.id === programConnection)?.disposed).toBe(false);
+
+        const parse = await liveParse(interop, 'denum-missing');
+        expect(parse.verdict.kind).toBe('verdict');
+        expect(parse.enabled).toBe(true);
+        expect(interop.connectionGeneration).toBe(generationBefore);
+    });
+
+    test.each([
+        'a cache clear',
+        'a lost program connection',
+        'a fresh shared connection'
+    ])('a latched method is probed again after %s', async (cause) => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const rawClassAccess = interop as unknown as RawClassAccess;
+        await rawClassAccess.getRawClass('test.Warm');
+
+        interop.formatProgramMethodMissing = true;
+        expect(await interop.formatProgram({ text: 'a\n', version: 'p1' })).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        expect(await interop.formatProgram({ text: 'a\n', version: 'p2' })).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+        expect(interop.sentRequests.filter(r => r.method === 'formatProgram')).toHaveLength(1);
+
+        interop.formatProgramMethodMissing = false;
+        const generationBefore = interop.connectionGeneration;
+        if (cause === 'a cache clear') {
+            interop.clearCache();
+        } else if (cause === 'a lost program connection') {
+            interop.dropConnection(interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId);
+        } else {
+            interop.dropConnection(interop.sentRequests.find(r => r.method === 'getClassInfo')!.connectionId);
+            await rawClassAccess.getRawClass('test.Again');
+            expect(interop.connectionGeneration).toBeGreaterThan(generationBefore);
+        }
+
+        const outcome = await interop.formatProgram({ text: 'a\n', version: 'p3' });
+        expect(outcome.kind).toBe('ok');
+        expect(interop.sentRequests.filter(r => r.method === 'formatProgram')).toHaveLength(2);
+    });
+
+    test('a method-not-found answer from a replaced connection does not latch the new one', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        let rejectLater: (reason: unknown) => void = () => { };
+        interop.answerWith('formatProgram', () => new Promise((_resolve, reject) => { rejectLater = reject; }));
+
+        const stale = interop.formatProgram({ text: 'a\n', version: 's1' });
+        await vi.advanceTimersByTimeAsync(0);
+        const staleConnection = interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId;
+        interop.dropConnection(staleConnection);
+        rejectLater({ code: -32601 });
+
+        expect(await stale).toEqual({ kind: 'unavailable', reason: 'method-not-found' });
+
+        interop.answerWith('formatProgram', params => {
+            const request = params as { text: string; version: string };
+            return { text: request.text, diagnostics: [], denumbered: false, version: request.version };
+        });
+        const next = await interop.formatProgram({ text: 'a\n', version: 's2' });
+
+        expect(next.kind).toBe('ok');
+        const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
+        expect(formatRequests).toHaveLength(2);
+        expect(formatRequests[1].connectionId).not.toBe(staleConnection);
+    });
+});

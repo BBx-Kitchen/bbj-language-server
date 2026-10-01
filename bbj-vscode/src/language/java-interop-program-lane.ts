@@ -16,9 +16,10 @@
 import type { Socket } from 'net';
 import type { CancellationToken, MessageConnection, RequestType } from 'vscode-jsonrpc/node.js';
 import { classifyInteropError, FailureLogCadence } from './java-interop-errors.js';
-import type { ProgramOutcome } from './java-interop-program-types.js';
+import type { ProgramMethod, ProgramOutcome } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH } from './java-peer-guard.js';
 import { sanitizePeerText, type ProgramGuardResult } from './java-program-guard.js';
+import { logger } from './logger.js';
 
 /**
  * How long (ms) after a failed open of the dedicated connection no further open is attempted.
@@ -98,6 +99,33 @@ export function programOutcomeForResult<R>(raw: unknown, validate: (raw: unknown
         : { kind: 'malformed-result', reason: validated.reason };
 }
 
+/** What is known about one method on the current connection. */
+type MethodAvailability = 'unknown' | 'available' | 'unavailable';
+
+/**
+ * What an outcome proves about the method that produced it. An answer that shows the method exists
+ * (a result, a malformed result, any peer application error, a peer timeout) makes it available.
+ * Only an unsupported-method answer makes it unavailable. A cancellation, a client deadline, a
+ * transport failure and an unreachable connection prove nothing and leave the state alone.
+ */
+function availabilityProvedBy(outcome: ProgramOutcome<unknown>): 'available' | 'unavailable' | undefined {
+    switch (outcome.kind) {
+        case 'ok':
+        case 'malformed-result':
+        case 'invalid-settings':
+        case 'mixed-numbering':
+            return 'available';
+        case 'timeout':
+            return outcome.origin === 'peer' ? 'available' : undefined;
+        case 'failed':
+            return outcome.failure === 'transport' ? undefined : 'available';
+        case 'unavailable':
+            return outcome.reason === 'method-not-found' ? 'unavailable' : undefined;
+        case 'cancelled':
+            return undefined;
+    }
+}
+
 /**
  * The third connection to the interop peer, used only by format and DENUM requests. Opened lazily
  * on the first request; same-tick callers share one open. Losing or disposing it moves only its own
@@ -112,13 +140,17 @@ export class ProgramLane {
     /** `Date.now()` time before which no open is attempted, set by a failed open and lifted by {@link dispose}. */
     private reopenNotBefore = 0;
     private readonly failureLog = new FailureLogCadence();
+    /** What each method's answers have shown so far, valid only for the key it was recorded under. */
+    private readonly latches = new Map<ProgramMethod, { key: string; state: 'available' | 'unavailable' }>();
 
     constructor(private readonly hooks: ProgramLaneHooks) { }
 
     /**
      * Sends one request over the dedicated connection and resolves with its typed outcome. Never
      * rejects. With no connection to send on the outcome is `unavailable` / `not-reachable`: there
-     * is no fallback to any other connection.
+     * is no fallback to any other connection. A method the peer has answered as unsupported on the
+     * current connection answers `unavailable` / `method-not-found` at once, with no socket and no
+     * request.
      * @param type the request type (its result is unknown until `validate` has run)
      * @param params the request parameters
      * @param validate checks the raw answer against the request that was sent
@@ -130,17 +162,52 @@ export class ProgramLane {
         validate: (raw: unknown) => ProgramGuardResult<R>,
         token?: CancellationToken
     ): Promise<ProgramOutcome<R>> {
+        const method = type.method as ProgramMethod;
+        if (this.availability(method) === 'unavailable') {
+            return { kind: 'unavailable', reason: 'method-not-found' };
+        }
+        let key: string | undefined;
+        let outcome: ProgramOutcome<R>;
         try {
             const lane = await this.laneConnection();
             if (!lane) {
                 return { kind: 'unavailable', reason: 'not-reachable' };
             }
+            // The key the request goes out under: an answer from a connection that has since been
+            // replaced must not decide anything about the new one.
+            key = this.currentKey();
             // An unsupported-method answer deliberately leaves the lane open: the other method
             // may still be served on it.
             const raw = await lane.sendRequest(type, params, token);
-            return programOutcomeForResult(raw, validate);
+            outcome = programOutcomeForResult(raw, validate);
         } catch (e) {
-            return programOutcomeForError(e);
+            outcome = programOutcomeForError(e);
+        }
+        if (key !== undefined) {
+            this.recordAvailability(method, key, outcome);
+        }
+        return outcome;
+    }
+
+    /** What is known about `method` for the current shared generation and lane epoch. */
+    private availability(method: ProgramMethod): MethodAvailability {
+        const latch = this.latches.get(method);
+        return latch !== undefined && latch.key === this.currentKey() ? latch.state : 'unknown';
+    }
+
+    /**
+     * Records what `outcome` proves about `method`, but only while `key` — the key the request was
+     * sent under — is still the current one.
+     */
+    private recordAvailability(method: ProgramMethod, key: string, outcome: ProgramOutcome<unknown>): void {
+        const proved = availabilityProvedBy(outcome);
+        if (proved === undefined || key !== this.currentKey()) {
+            return;
+        }
+        const wasUnavailable = this.latches.get(method)?.key === key && this.latches.get(method)?.state === 'unavailable';
+        this.latches.set(method, { key, state: proved });
+        if (proved === 'unavailable' && !wasUnavailable) {
+            logger.info(`Format/DENUM interop: ${method} is not available on this connection`);
         }
     }
 

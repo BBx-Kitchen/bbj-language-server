@@ -76,6 +76,10 @@ export class FakePeerInteropService extends JavaInteropService {
     public readonly hungConnectionIds = new Set<number>();
     /** When true, a `parseProgram` request answers with a `MethodNotFound` error (an older server). */
     public parseProgramMethodMissing = false;
+    /** When true, a `formatProgram` request answers with a `MethodNotFound` error. */
+    public formatProgramMethodMissing = false;
+    /** When true, a `denumProgram` request answers with a `MethodNotFound` error. */
+    public denumProgramMethodMissing = false;
 
     /** Number of times `createSocket()` was invoked. */
     public socketAttempts = 0;
@@ -168,6 +172,10 @@ export class FakePeerInteropService extends JavaInteropService {
         const handler = this.answerHandlers.get(type.method);
         if (handler) {
             return Promise.resolve().then(() => handler(params, connectionId));
+        }
+        if ((type.method === 'formatProgram' && this.formatProgramMethodMissing)
+            || (type.method === 'denumProgram' && this.denumProgramMethodMissing)) {
+            return Promise.reject({ code: -32601 });
         }
         switch (type.method) {
             case 'getClassInfo':
