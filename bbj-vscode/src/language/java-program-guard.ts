@@ -66,19 +66,31 @@ function isSpaceLike(code: number): boolean {
     return code === 0x0D || code === 0x0A || code === 0x09 || code === 0x85 || code === 0x2028 || code === 0x2029;
 }
 
-/** Whether `code` is a control or bidi-control character that must not survive in plain text. */
+/**
+ * Whether `code` is a control, bidi-control or invisible format character that must not survive
+ * in plain text: C0 and C1 controls and DEL, the Arabic letter mark, the zero-width characters
+ * and the left-to-right and right-to-left marks (U+200B to U+200F), the bidi embeddings and
+ * overrides, the word joiner and the invisible operators (U+2060 to U+2064), the bidi isolates,
+ * the deprecated format controls (U+206A to U+206F) and the byte order mark.
+ */
 function isStrippedControl(code: number): boolean {
     return code <= 0x1F
         || code === 0x7F
         || (code >= 0x80 && code <= 0x9F)
+        || code === 0x061C
+        || (code >= 0x200B && code <= 0x200F)
         || (code >= 0x202A && code <= 0x202E)
-        || (code >= 0x2066 && code <= 0x2069);
+        || (code >= 0x2060 && code <= 0x2064)
+        || (code >= 0x2066 && code <= 0x2069)
+        || (code >= 0x206A && code <= 0x206F)
+        || code === 0xFEFF;
 }
 
 /**
  * Makes peer text safe to show on one line as plain text. Line breaks, tab and the Unicode line
- * and paragraph separators become a space; every other C0 and C1 control, DEL and the bidi
- * controls are removed. The result is then bounded to `limit` characters.
+ * and paragraph separators become a space; every other C0 and C1 control, DEL, the bidi controls
+ * and the invisible format characters (see {@link isStrippedControl}) are removed. The result is
+ * then bounded to `limit` characters.
  */
 export function sanitizePeerText(text: string, limit: number): string {
     let cleaned = '';

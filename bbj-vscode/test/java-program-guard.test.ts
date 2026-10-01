@@ -479,6 +479,28 @@ describe('diagnostics sanitising', () => {
         expect(outcome.ok && outcome.value[0].message).toBe('abc def g h i j');
     });
 
+    test.each([
+        ['the zero-width and joiner characters', [0x200B, 0x200C, 0x200D]],
+        ['the left-to-right and right-to-left marks', [0x200E, 0x200F]],
+        ['the Arabic letter mark', [0x061C]],
+        ['the word joiner and the invisible operators', [0x2060, 0x2061, 0x2062, 0x2063, 0x2064]],
+        ['the deprecated format controls', [0x206A, 0x206B, 0x206C, 0x206D, 0x206E, 0x206F]],
+        ['the byte order mark', [0xFEFF]],
+        ['the bidi embeddings, overrides and isolates', [0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069]]
+    ])('%s are removed from a message and leave the visible text intact', (_name, codes) => {
+        const message = codes.map(code => 'a' + String.fromCharCode(code)).join('') + 'z';
+        const expected = 'a'.repeat(codes.length) + 'z';
+        expect(sanitizePeerText(message, MAX_PROGRAM_DIAGNOSTIC_MESSAGE_LENGTH)).toBe(expected);
+        const outcome = sanitizeProgramDiagnostics([diagnostic({ message })], 3);
+        expect(outcome.ok && outcome.value[0].message).toBe(expected);
+    });
+
+    test('the characters next to the stripped ranges survive', () => {
+        const kept = [0x00A0, 0x061B, 0x061D, 0x200A, 0x2010, 0x2049, 0x205F, 0x2070, 0xFEFE, 0xFF00, 0x4E2D];
+        const text = kept.map(code => String.fromCharCode(code)).join('');
+        expect(sanitizePeerText(text, MAX_PROGRAM_DIAGNOSTIC_MESSAGE_LENGTH)).toBe(text);
+    });
+
     test('a 5000-character message is cut to 1024 ending with the marker', () => {
         const outcome = sanitizeProgramDiagnostics([diagnostic({ message: 'm'.repeat(5000) })], 3);
         expect(outcome.ok).toBe(true);
