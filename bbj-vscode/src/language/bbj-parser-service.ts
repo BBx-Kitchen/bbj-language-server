@@ -147,8 +147,9 @@ type ParserMode = 'unknown' | 'on' | 'off';
  *
  * The first real parse on a connection IS the probe: no capability request, no empty-text probe,
  * no BBj version string is ever read, parsed or compared. A `MethodNotFound` error latches
- * the mode `'off'` for the current connection generation; any other outcome (a result, or an
- * application error, which proves the method exists) latches `'on'`. The latch resets whenever
+ * the mode `'off'` for the current connection generation, and a result carrying an `errors` array
+ * latches it `'on'`. Every other outcome (an application error, a transport failure, a result
+ * without an `errors` array) leaves the latch as it was. The latch resets whenever
  * `javaInteropService.connectionGeneration` changes — a post-outage reconnect or a Java-class
  * cache clear both bump it — so the next parse re-probes.
  */
@@ -185,11 +186,11 @@ export class BBjParserService {
     }
 
     /**
-     * Resets {@link mode} to `'unknown'` and {@link reportedFailureKinds} when the interop
-     * connection has moved on since either was last touched. A connection change while the latch
-     * was already decided (a reconnect, or a Java-class cache clear, after `'on'` or `'off'` had
-     * been latched) also clears every document's verdict state, once — the server behind the
-     * socket may not be the same one those verdicts were decided against. Undecided-latch calls
+     * Resets {@link mode} to `'unknown'` and re-arms the warn level of {@link failureLogCadence}
+     * when the interop connection has moved on since either was last touched. A connection change
+     * while the latch was already decided (a reconnect, or a Java-class cache clear, after `'on'`
+     * or `'off'` had been latched) also clears every document's verdict state, once — the server
+     * behind the socket may not be the same one those verdicts were decided against. Undecided-latch calls
      * (repeated probes before the first real parse) never repeat that clear: {@link mode} stays
      * `'unknown'` between them, so the guard below only fires on an actual decided-to-undecided
      * transition.
