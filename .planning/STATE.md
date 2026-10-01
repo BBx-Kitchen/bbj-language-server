@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration
 status: planning
-last_updated: "2026-10-01T05:36:20.668Z"
+last_updated: "2026-10-01T08:47:42.000Z"
 last_activity: 2026-10-01
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,24 +15,44 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-30 (v4.8 Documentation Drift shipped and archived; docs PR to `main` pending)
+**Last Updated:** 2026-10-01 (v4.9 bbj-ls DENUM & Format Migration roadmapped — Phases 124-130, 39/39 requirements mapped)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-30)
+See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Open the v4.8 docs PR, then plan the next milestone
+**Current Focus:** Phase 124 — Interop Client (v4.9 bbj-ls DENUM & Format Migration), ready to plan
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 124 of 130 (Interop Client) — the first of seven v4.9 phases (124-130)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-01 — Milestone v4.9 started
+Status: Ready to plan
+Last activity: 2026-10-01 — v4.9 roadmap created (Phases 124-130, 39/39 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
+
+### v4.9 milestone map
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 124 | Interop Client | INT-01..05 |
+| 125 | LS Formatting | FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01 |
+| 126 | LS DENUM | DEN-01, DEN-03, DEN-04, FMT-06, FMT-07 |
+| 127 | VS Code Cut-Over | SET-01, SET-03, SET-04, DEN-02, DEN-05, DEN-06, CUT-02, CUT-03 |
+| 128 | IntelliJ DENUM | IJF-05, IJF-06 |
+| 129 | IntelliJ Verdict | IJF-02, IJF-03, IJF-04 (IJF-04 only on a "supported" verdict) |
+| 130 | Docs & Migration | MIG-01..03 |
+
+The interop client comes first. The server formatter lands together with the removal of VS Code's
+jar provider and IntelliJ's switch set to off. DENUM (`bbj/denum`) follows formatting, and the VS
+Code cut-over ends with an end-to-end check from the built VSIX against live BBj 26.03. The
+IntelliJ DENUM action and banner come before the evaluation and the user's verdict. Docs come last.
+The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`.
 
 ## Performance Metrics
 
@@ -182,6 +202,10 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 
 ### Active Constraints
 
+- **v4.9:** hard cut-over with no fallback to `BBjCFCli.jar` or bbjlst denumbering. A BBj older than 26.03 gets a "requires BBj 26.03 or later" message. Decompiling tokenized programs through bbjlst stays.
+- **v4.9:** every push to `main` publishes previews. The server formatter capability, the removal of VS Code's client-side jar provider (CUT-01) and IntelliJ's formatting switch set to off (IJF-01) therefore land in one change (Phase 125). IntelliJ formatting stays off until the Phase 129 verdict, which is a user decision checkpoint.
+- **v4.9:** DENUM is a custom `bbj/denum` request, like `bbj/compile`. It edits the open buffer (undoable, left unsaved), never the file on disk, and never runs automatically on format or save. IntelliJ formatter settings travel in `initializationOptions` with a server restart on change. `indentWidth` stays 2 by default in both IDEs.
+- **v4.9:** bbj-ls is not changed in this milestone; anything it should change is drafted as a bbj-ls issue. Adding a `bbj/*` request means updating `ComposerRequestContractTest` and running `bbj-intellij ./gradlew test`, which the vitest gates do not cover.
 - **v4.8:** docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30). Nothing else outside the docs. The user wants a short milestone: one phase, one docs PR, no extra work folded in.
 - **v4.7:** the milestone PR carries one `Closes #N` line per issue (61 issues across Phases 110-122); an issue table does not close issues. Before the squash merge, scan the branch's commit bodies for closing keywords.
 - **v4.7:** Phase 122 changes `preview.yml`, `manual-release.yml` and `vscode:prepublish`, which publish to both marketplaces on every push to `main`. The publish workflows cannot be run from the branch without publishing: check them statically, run packaging only up to the publish step, and watch the first preview run after the merge.
@@ -388,6 +412,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ### Roadmap Evolution
 
+- v4.9 roadmap created 2026-10-01: Phases 124-130 for 39 requirements. CUT-01 and IJF-01 land with the server formatter in 125. SET-02 (the server-side 15-key whitelist) sits in 125 rather than with the other settings in 127, because without it unknown keys such as `bbj.formatter.javaPath` would reach bbj-ls and every format would fail with `-33007`. FMT-06/07 and DEN-03/04 sit with `bbj/denum` in 126. IJF-04 depends on the 129 verdict and moves to Out of Scope on "disabled".
 - v4.8 roadmap created 2026-09-30: one phase (123) for 18 requirements. The count was first given as 19; the requirement list has 18, and nothing in the drift scan is left without one.
 - v4.7 roadmap created 2026-09-26: Phases 110-122 for 63 requirements (61 GitHub issues plus three carried-over todos). REF-02 folded into 110, FIX-02/03 into 111, TEST-09 into 112, TEST-10/DOC-01 into 113, FIX-04 into 114, DEP-03 into 115, TEST-08 into 116, DEP-01/CI-04 into 117, FIX-01 into 119, REF-09 into 121.
 - v4.6 archived 2026-09-26 (Phases 106-109).
@@ -397,11 +422,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-09-30T14:45:20.704Z
-Stopped at: Phase 123 complete — all phases complete
+Last session: 2026-10-01T08:47:42.000Z
+Stopped at: v4.9 roadmap created (Phases 124-130)
 Resume file: None
 
-Next: open the v4.8 docs PR to `main`, then `/gsd-new-milestone`.
+Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -519,5 +544,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Open the v4.8 docs PR from `gsd/v4.8-documentation-drift` to `main`
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 124 with /gsd-plan-phase 124 (or /gsd-discuss-phase 124 first)

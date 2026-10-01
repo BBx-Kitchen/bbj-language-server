@@ -41,8 +41,8 @@ pre-launch task for "Run Extension", `npm run build` in Gitpod's `init`), the QA
 today's behaviour, both user guides describe the real settings, commands, EM login and composers
 (a new Composers page in each), and CLAUDE.md and the concepts page describe the real
 architecture, test pattern and CI gates. Docs only, apart from the build task, the
-`preLaunchTask` and the Gitpod line. It sits on branch `gsd/v4.8-documentation-drift` for one
-docs PR to `main`; merging it rebuilds and publishes the docs site through `deploy-docs.yml`.
+`preLaunchTask` and the Gitpod line. It landed on `main` via PR #726, which rebuilt and published the
+docs site through `deploy-docs.yml`.
 Phase artifacts are archived under `.planning/milestones/v4.8-phases/`.
 
 **v4.7 Audit Hygiene Burn-down shipped 2026-09-29** (override closeout after a milestone audit
@@ -774,7 +774,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.7 Phases 119-121: two library-path DECLAREs on one line parse; the channel/options opening is one grammar rule with identical parses; ClassValidator and `activate()` split by responsibility with one exec-wrapping helper; `JavadocProvider` injected through DI and `JavaInteropService` split along its five responsibilities, behaviour unchanged | #527/#602, #625/#564, #624/#558. The IntelliJ contract test that reads TS request literals missed a handler move in 116 until PR CI (`buildPlugin` depends on `test`) caught it | ✓ Good — whole-suite parity against each phase base |
 | v4.7 Phase 122: every workflow least-privilege (top-level `contents: read`, writes only on the pushing jobs), every action SHA-pinned with a version comment, npm/Gradle caching through one `node-setup` composite action (no cache in token-holding jobs), `pr-vsix.yml` folded into `build.yml`, VSIX built once and minified; a permanent `pin-hygiene` CI job enforces it | #547/#549/#550/#518/#573/#515/#598/#600. Verification found two fail-open shapes in the checker's job attribution (a comment under `jobs:`, a trailing comment on a job id); both fixed with regression tests, and the Gradle wrapper checker got the same fix | ✓ Good — first `preview.yml` run on `main` green (0.16.10 on both marketplaces, 220 MB Gradle cache); next manual release and a PR Gradle cache restore still to observe |
 | v4.7 closed as an override closeout after a `tech_debt` audit with six artifacts acknowledged; phase artifacts archived on-tree; no `v4.7` git tag | Close taken 2026-09-29: 63/63 requirements, 13/13 phases, no gaps. Acknowledged: the formatter-jar debug session (#507), 114's seven deferred hand checks, 122's post-release checks, three todos. Repository tags stay release versions. The release waits for a few days on the preview channel | — Pending (release not cut) |
-| v4.8: documentation drift fixed in the docs only, one phase and one docs PR; the only non-doc changes are a `.vscode/tasks.json` build task used as "Run Extension"'s `preLaunchTask` and `npm run build` in Gitpod's `init`; closed as an override closeout (three dependency todos acknowledged), no `v4.8` git tag | The 2026-09-30 drift scan found build steps that no longer built, removed EM settings still in QA, undocumented settings and composers, and a stale CLAUDE.md. Verification caught one remaining example-block mismatch (fixed in `c46a5d9f`) | — Pending (docs PR not yet merged) |
+| v4.8: documentation drift fixed in the docs only, one phase and one docs PR; the only non-doc changes are a `.vscode/tasks.json` build task used as "Run Extension"'s `preLaunchTask` and `npm run build` in Gitpod's `init`; closed as an override closeout (three dependency todos acknowledged), no `v4.8` git tag | The 2026-09-30 drift scan found build steps that no longer built, removed EM settings still in QA, undocumented settings and composers, and a stale CLAUDE.md. Verification caught one remaining example-block mismatch (fixed in `c46a5d9f`) | ✓ Good (merged via PR #726) |
 
 ## Evolution
 

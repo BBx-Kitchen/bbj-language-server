@@ -26,7 +26,8 @@
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
 - ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on `main` via PR #699, merged 2026-09-26 — see MILESTONES.md)
 - ✅ **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (shipped 2026-09-29; on `main` via PR #708, merged 2026-09-29, preview 0.16.10 — see MILESTONES.md)
-- ✅ **v4.8 Documentation Drift** — Phase 123 (shipped 2026-09-30; docs PR to `main` pending — see MILESTONES.md)
+- ✅ **v4.8 Documentation Drift** — Phase 123 (shipped 2026-09-30; on `main` via PR #726 — see MILESTONES.md)
+- 🔷 **v4.9 bbj-ls DENUM & Format Migration** — Phases 124-130 (in progress, started 2026-10-01)
 
 ## Phases
 
@@ -332,6 +333,179 @@ Full phase detail: `.planning/milestones/v4.8-ROADMAP.md`; requirements (18/18) 
 
 </details>
 
+### 🔷 v4.9 bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
+
+Scope is the 39 requirements in `.planning/REQUIREMENTS.md`: replace the vendored 2021 formatter
+jar (`BBjCFCli.jar`) and the `bbjlst` denumber path with bbj-ls's `formatProgram` and
+`denumProgram` JSON-RPC methods (BBj 26.03), served from the shared language server so VS Code and
+IntelliJ use one implementation. Hard cut-over: no legacy fallback, and BBj older than 26.03 gets a
+clear "requires BBj 26.03" message. The contract is `/home/coder/repos/bbj-ls/README.md` ("JSON-RPC
+methods") and `/home/coder/repos/bbj-ls/bbj-ls-formatter/README.md` ("Settings reference"). Research
+is in `.planning/research/SUMMARY.md`, `ARCHITECTURE.md` and `PITFALLS.md`. bbj-ls itself is not
+changed in this milestone; anything it should change is drafted as a bbj-ls issue.
+
+**Where each phase works.**
+
+- Phase 124 changes the interop client in `bbj-vscode/src/language/`: `java-interop-connection.ts`
+  (the format/DENUM route and its generation handling), `java-interop.ts` (two new delegates beside
+  `parseProgram`), new program wire types and error-code constants, one shared error classifier and
+  peer-response validation. Its test doubles are `test/bbj-test-module.ts`
+  (`JavaInteropTestService`), `test/fake-interop-peer.ts` and the interop harness cases. Users see no
+  change yet.
+- Phase 125 adds `bbj-format-service.ts`, `bbj-formatter.ts` (`lsp.Formatter`),
+  `bbj-formatting-handler.ts` (a bounded handler registered after `startLanguageServer`, like the
+  hover, code-action and code-lens overrides) and `bbj-format-settings.ts` (the 15-key normalizer).
+  It wires them through `bbj-module.ts`, `main.ts`, `bbj-ws-manager.ts` and
+  `configuration-change-handler.ts`. In the same change it removes the client-side provider
+  registration from `bbj-vscode/src/extension.ts` and adds the IntelliJ formatting switch in
+  `BbjLanguageServerFactory.createClientFeatures()`; the LSP4IJ fence tests change with it.
+- Phase 126 adds `denum-command.ts` (`bbj/denum`, shaped like `compile-command.ts`), the
+  DENUM-needed offer (`showMessageRequest` plus `workspace/applyEdit`) wired into the formatter, and
+  the DENUM diagnostics output.
+- Phase 127 changes `bbj-vscode/package.json` (15 keys, the `splitSingleLineIF` rename, no
+  `javaPath`), `extension.ts` (`bbj.denumber` on `bbj/denum`), `open-file-prompts.ts` and
+  `Commands/Commands.cjs` (the denumber path goes, tokenized decompile stays). It deletes
+  `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts`,
+  `tools/formatter/**` and every test, guard and packaging reference to them.
+- Phase 128 changes `bbj-intellij/` only: `BbjComposerServer` (`@JsonRequest("bbj/denum")`), a
+  Denumber action and its presenter, `plugin.xml`, an editor notification provider on the shared
+  base, and `ComposerRequestContractTest`.
+- Phase 129 evaluates the built plugin zip by hand and sets the Phase 125 switch. Only on a
+  "supported" verdict does it add a `FormatterInitOptions` seam, `BbjSettings` state and the
+  settings page.
+- Phase 130 changes `documentation/docs/vscode/`, `documentation/docs/intellij/` and the `QA/`
+  checklists, and adds the migration note.
+
+**Grouping.**
+
+- CUT-01 and IJF-01 sit in Phase 125 with the server formatter. The language server advertises
+  formatting as soon as `lsp.Formatter` is registered, and every push to `main` publishes previews
+  to both marketplaces. VS Code must never have two BBj formatters, and IntelliJ must never pick up
+  formatting that has not been evaluated, so the three land in one change.
+- SET-02 sits in Phase 125, not with the other settings in Phase 127. The 15-key whitelist is
+  language-server code. Without it, the existing `bbj.formatter.javaPath` key would reach bbj-ls,
+  which rejects unknown keys with `-33007`, so no format would succeed. Phase 125 formats with the
+  existing keys that are among the 15. Phase 127 adds the other keys to VS Code, the
+  `splitSingleLineIF` alias and the removal of `javaPath`.
+- FMT-06 and FMT-07 sit in Phase 126 because both offer or perform a DENUM and so need
+  `bbj/denum`. Until then, a DENUM-needed answer from formatting leaves the buffer untouched.
+- DEN-03 and DEN-04 sit in Phase 126 with the request itself. The DENUM outcomes and the
+  diagnostics output are defined once, next to `bbj/denum`, and the VS Code command (127) and the
+  IntelliJ action (128) call the same request. Anything both IDEs need stays a host-neutral
+  language-server request. How each IDE presents the output list is Phase 126's research flag.
+- IJF-05 and IJF-06 (Phase 128) do not depend on the formatting verdict. IJF-04 (Phase 129) is
+  built only after a "supported" verdict; on "disabled" it moves to Out of Scope.
+
+**Ordering.** Phase 124 comes first because both features need the wire contract and the route
+decision. Phase 125 comes before 126 because the numbered-file offer hooks a format outcome. Phase
+127 follows 126: it moves the Denumber command onto `bbj/denum`, then deletes the old paths and runs
+the end-to-end check from the built VSIX. Phase 128 needs only 126 and touches only `bbj-intellij/`,
+so it does not conflict with 127. Phase 129 runs on the final IntelliJ tree after 128 and ends in a
+user decision checkpoint. Phase 130 comes last because it describes the shipped behaviour and the
+verdict.
+
+**Research flags.** 124: the format/DENUM route (shared connection, parse lane or a dedicated lane),
+decided by measuring DENUM latency behind a pending parse. 125: cold start and round trip against
+VS Code's ~750 ms format-on-save budget. 126: how DENUM diagnostics surface in each IDE. 129:
+LSP4IJ 0.21.0 runtime behaviour (Actions on Save, range formatting, edit application).
+
+**Verification.** Every phase that changes what a user sees ends with a hand check in a running IDE
+against a live BBj 26.03 BBjServices. Build both distributables first, and again from the final tree
+after code-review fixes. A runtime sequence used as evidence (LSP4IJ formatting, Actions on Save)
+comes from a real `idea.log`, not a hand-derived trace (v4.4 standing decision).
+`ComposerRequestContractTest` runs only under `bbj-intellij ./gradlew test`, so any phase that adds
+a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumProgram` answers in
+`createBBjTestServices`; live-peer checks go through the interop harness.
+
+- [ ] **Phase 124: Interop Client** - The language server calls bbj-ls `formatProgram` and `denumProgram` with typed results, per-method availability and validated responses, without disturbing live parse diagnostics or the circuit breaker
+- [ ] **Phase 125: LS Formatting** - Format Document, Format Selection and format-on-save come from the language server with typed messages; VS Code drops its jar provider and IntelliJ stays switched off in the same change
+- [ ] **Phase 126: LS DENUM** - A `bbj/denum` request for both IDEs, the "Denumber" / "Denumber and Format" offer when formatting a line-numbered file, and DENUM's messages and diagnostics
+- [ ] **Phase 127: VS Code Cut-Over** - All 15 formatter settings in VS Code, the Denumber command and open-file prompt on `bbj/denum`, the old jar and the bbjlst denumber path deleted, verified end to end from the built VSIX
+- [ ] **Phase 128: IntelliJ DENUM** - A Denumber action and a line-numbered-file banner in IntelliJ, backed by `bbj/denum`
+- [ ] **Phase 129: IntelliJ Verdict** - A hands-on evaluation of LSP4IJ formatting, the user's supported-or-disabled decision, and the formatter settings page only if supported
+- [ ] **Phase 130: Docs & Migration** - Both user guides, a migration note from the old formatter, and QA checklists for formatting and DENUM in both IDEs
+
+## Phase Details
+
+### Phase 124: Interop Client
+**Goal**: The language server can ask bbj-ls to format or denumber a program over the :5008 interop connection and gets a typed, validated answer. Format and DENUM traffic never slows or clears live compiler diagnostics, never disables another method and never trips the circuit breaker.
+**Depends on**: Nothing (first phase of v4.9)
+**Requirements**: INT-01, INT-02, INT-03, INT-04, INT-05
+**Success Criteria** (what must be TRUE):
+  1. Against a live BBj 26.03 BBjServices, the interop harness formats a program through the language server's client, as a whole document and as a range, and denumbers a line-numbered program, each with a typed result.
+  2. While format and DENUM requests run, live `BBj Parser` diagnostics keep arriving without added delay. The DENUM latency behind a pending parse is measured and the chosen route is recorded in the phase. Losing the format/DENUM route never clears the live diagnostics or bumps the parse generation.
+  3. Against a peer that answers `-32601` for `formatProgram` or `denumProgram`, live parse diagnostics and the other method keep working, and each method is probed again on the next connection.
+  4. Every bbj-ls error code (`-33001`..`-33009`, `-32602`, `-32800`) yields its own typed outcome. After a burst of such errors, Java class completion and hover still work, because the circuit breaker never opens.
+  5. A peer answer with both or neither of `text`/`edits`, an oversized payload, or an out-of-range range or line is rejected as a typed failure and never reaches an editor.
+**Plans**: TBD
+
+### Phase 125: LS Formatting
+**Goal**: A BBj developer in VS Code formats a whole file or a selection, on demand or on save, with bbj-ls's formatter served by the shared language server. Every failure produces one clear message and leaves the buffer untouched. In the same change VS Code is left with exactly one BBj formatter, and IntelliJ does not offer formatting until the evaluation verdict.
+**Depends on**: Phase 124
+**Requirements**: FMT-01, FMT-02, FMT-03, FMT-04, FMT-05, FMT-08, FMT-09, FMT-10, FMT-11, FMT-12, SET-02, CUT-01, IJF-01
+**Success Criteria** (what must be TRUE):
+  1. In VS Code against BBj 26.03, Format Document returns bbj-ls's output and Format Selection formats the selection snapped to whole logical statements. Both arrive as minimal line edits that keep the cursor, folding and undo, and formatting an already-formatted file leaves the buffer unmodified.
+  2. Format-on-save never delays the save. It does not wait for the workspace to load, a cancelled or superseded (`-32800`) format returns no edits silently, and an edit computed for an older version of the document is never applied.
+  3. Invalid settings, mixed numbering, timeout, too large, protected program, engine failure and service unavailable each produce one deduplicated message and leave the buffer untouched. The invalid-settings message names each bad `bbj.formatter.*` key and offers to open the settings, and the mixed-numbering message names the offending line and jumps to it.
+  4. Against a BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, worded differently from "interop not connected", and a save is never blocked. Config (`.bbx`) and non-BBj documents are never sent to the formatter.
+  5. VS Code lists exactly one BBj formatter, and only the 15 known keys reach bbj-ls, each with an explicit value and `indentWidth` 2 by default. IntelliJ offers no LSP formatting, and one switch controls that.
+**Plans**: TBD
+
+### Phase 126: LS DENUM
+**Goal**: The language server can denumber a BBj program for both IDEs through a `bbj/denum` request. When a user formats a line-numbered file, the server offers DENUM instead of doing it silently, and every DENUM run ends in a clear message with its diagnostics available.
+**Depends on**: Phase 125
+**Requirements**: DEN-01, DEN-03, DEN-04, FMT-06, FMT-07
+**Success Criteria** (what must be TRUE):
+  1. Formatting a line-numbered file in VS Code never denumbers it automatically. Format Document shows one deduplicated message offering "Denumber" and "Denumber and Format", and Format Selection explains that selection formatting needs an unnumbered file.
+  2. "Denumber" replaces the open buffer, unsaved changes included, with the denumbered text as one edit served by `bbj/denum`, and the result carries DENUM's diagnostics. "Denumber and Format" denumbers and formats in one undoable step.
+  3. Every DENUM run ends in one matching message: "nothing to do" for an unnumbered file, a short confirmation on success, a pointer to Decompile for tokenized input, and a statement that the program is protected for a protected one.
+  4. DENUM's diagnostics appear in an output list (line, original line number, severity, message), and a notification shows their counts with a "Show" action that opens the list.
+**Plans**: TBD
+
+### Phase 127: VS Code Cut-Over
+**Goal**: VS Code formats and denumbers only through the language server. All 15 formatter settings can be configured, the Denumber command and the open-file prompt run on `bbj/denum`, and the formatter jar and the bbjlst denumber path are gone. The result is proven from the built VSIX against a live BBj 26.03.
+**Depends on**: Phase 126
+**Requirements**: SET-01, SET-03, SET-04, DEN-02, DEN-05, DEN-06, CUT-02, CUT-03
+**Success Criteria** (what must be TRUE):
+  1. All 15 formatter settings appear in VS Code's settings with typed controls (a bounded integer, booleans, and enums with descriptions) and apply to the next format without a restart. `bbj.formatter.javaPath` no longer exists, and a user who set `bbj.formatter.splitSingleLineIF` keeps that behaviour through `splitSingleLineIf`, with the old key marked deprecated.
+  2. "Denumber BBj Program" keeps its command id, menus and keybinding and denumbers the live buffer, unsaved changes included, as one undoable edit. The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" through the same path and still offers read-only opening.
+  3. Decompiling a tokenized program through bbjlst still works, while nothing denumbers through bbjlst any more.
+  4. The built VSIX contains no `BBjCFCli.jar` or `tools/formatter`. `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are gone, and every CI gate passes.
+  5. Installed from the built VSIX against a live BBj 26.03 BBjServices, Format Document, Format Selection, format-on-save, the numbered-file offer, Denumber and Denumber-and-Format all work end to end.
+**Plans**: TBD
+
+### Phase 128: IntelliJ DENUM
+**Goal**: An IntelliJ user can denumber a line-numbered BBj program through the shared language server, from a menu action or from a banner on the file. This does not depend on the formatting verdict.
+**Depends on**: Phase 126 (independent of Phase 127; touches `bbj-intellij/` only)
+**Requirements**: IJF-05, IJF-06
+**Success Criteria** (what must be TRUE):
+  1. "Denumber BBj Program" appears in IntelliJ's Tools menu and editor context menu for BBj files and denumbers the open buffer through `bbj/denum` as one undoable edit.
+  2. Opening a line-numbered BBj program shows an editor banner offering Denumber. Choosing it denumbers the buffer and the banner goes away, and an unnumbered file shows no banner.
+  3. `ComposerRequestContractTest` lists `bbj/denum`, and the IntelliJ suite passes under `./gradlew test`.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 129: IntelliJ Verdict
+**Goal**: The user decides, from a recorded hands-on evaluation, whether IntelliJ formatting is officially supported or disabled, and the plugin ships accordingly. On "supported", IntelliJ users get the 15 formatter settings.
+**Depends on**: Phase 128
+**Requirements**: IJF-02, IJF-03, IJF-04
+**Success Criteria** (what must be TRUE):
+  1. An evaluation record exists for the built plugin zip against a live BBjServices. It covers Reformat Code, selection, Actions on Save, the numbered-file message, settings, CRLF files and edit application, each backed by evidence from a real `idea.log`.
+  2. The user's verdict (supported or disabled) is recorded at a decision checkpoint, and the single formatting switch matches it. IntelliJ offers Reformat Code for BBj files only when the verdict is "supported".
+  3. Only if "supported": all 15 formatter settings are on the IntelliJ BBj settings page, they reach the server through `initializationOptions`, and changing one restarts the language server so the next format reflects it. If "disabled": no formatter settings UI ships, and IJF-04 moves to Out of Scope in `.planning/REQUIREMENTS.md`.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 130: Docs & Migration
+**Goal**: Users can learn from the published docs how formatting and DENUM work in both IDEs, including the IntelliJ verdict and what changes compared with the old formatter. Testers can check all of it from the QA checklists.
+**Depends on**: Phase 127, Phase 129
+**Requirements**: MIG-01, MIG-02, MIG-03
+**Success Criteria** (what must be TRUE):
+  1. Both user guides describe formatting, Format Selection, DENUM, the 15 settings, the BBj 26.03 requirement and the IntelliJ verdict, and no guide still describes the formatter jar, `bbj.formatter.javaPath` or bbjlst denumbering.
+  2. A migration note lists the output differences from the old formatter (labels, blank lines, IF closers, line endings, the fixed `--single-line-if` crash #507) and warns about the large diff on the first format.
+  3. The QA smoke and full checklists cover format, Format Selection, format-on-save, DENUM and the error messages in both IDEs, with the IntelliJ rows matching the verdict.
+**Plans**: TBD
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -361,6 +535,7 @@ Full phase detail: `.planning/milestones/v4.8-ROADMAP.md`; requirements (18/18) 
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 | v4.7 Audit Hygiene Burn-down | 110-122 | 80 | Complete | 2026-09-29 |
 | v4.8 Documentation Drift | 123 | 8 | Complete | 2026-09-30 |
+| v4.9 bbj-ls DENUM & Format Migration | 124-130 | TBD | In progress | — |
 
 **Total:** 25 milestones shipped, 121 phases complete, 506 plans shipped.
 
@@ -371,8 +546,28 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's to
 v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 
-**Current milestone:** none — v4.8 shipped 2026-09-30. Next: `/gsd-new-milestone`.
+### v4.9 phase progress
+
+**Execution order:** 124 → 125 → 126 → 127 → 128 → 129 → 130 (128 needs only 126 and may run alongside 127).
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 124. Interop Client | 0/TBD | Not started | - |
+| 125. LS Formatting | 0/TBD | Not started | - |
+| 126. LS DENUM | 0/TBD | Not started | - |
+| 127. VS Code Cut-Over | 0/TBD | Not started | - |
+| 128. IntelliJ DENUM | 0/TBD | Not started | - |
+| 129. IntelliJ Verdict | 0/TBD | Not started | - |
+| 130. Docs & Migration | 0/TBD | Not started | - |
+
+**Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
+39/39 requirements mapped to 7 phases, with no orphans and no duplicates. IJF-04 depends on the
+Phase 129 verdict: on "disabled" it moves to Out of Scope. The scope is in `.planning/PROJECT.md`
+under "Current Milestone", and the requirement list and its traceability table are in
+`.planning/REQUIREMENTS.md`.
+Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 
 ---
 
-*Roadmap last updated: 2026-09-30 — v4.8 Documentation Drift shipped and archived.*
+*Roadmap last updated: 2026-10-01 — v4.9 bbj-ls DENUM & Format Migration roadmapped (Phases
+124-130, 39/39 requirements mapped, no orphans).*

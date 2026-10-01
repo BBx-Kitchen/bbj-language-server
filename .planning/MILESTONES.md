@@ -8,9 +8,8 @@
 cross-document links and 5/5 end-to-end flows clean. The close counts as an override only because
 three unrelated dependency-upgrade todos were acknowledged rather than resolved.
 
-**Where the code lives.** On branch `gsd/v4.8-documentation-drift`; one docs PR to `main` is still
-to open. Merging it triggers `deploy-docs.yml`, which rebuilds and publishes the docs site to
-GitHub Pages.
+**Where the code lives.** On `main` via PR #726 (from branch `gsd/v4.8-documentation-drift`); the
+merge triggered `deploy-docs.yml`, which rebuilt and published the docs site to GitHub Pages.
 
 **Delivered:** every document back in line with the code on `main` after v4.7 — build
 instructions, QA checklists, both user guides (new Composers pages) and the developer docs.

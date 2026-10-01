@@ -101,12 +101,52 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| INT-01 | Phase 124 | Pending |
+| INT-02 | Phase 124 | Pending |
+| INT-03 | Phase 124 | Pending |
+| INT-04 | Phase 124 | Pending |
+| INT-05 | Phase 124 | Pending |
+| FMT-01 | Phase 125 | Pending |
+| FMT-02 | Phase 125 | Pending |
+| FMT-03 | Phase 125 | Pending |
+| FMT-04 | Phase 125 | Pending |
+| FMT-05 | Phase 125 | Pending |
+| FMT-06 | Phase 126 | Pending |
+| FMT-07 | Phase 126 | Pending |
+| FMT-08 | Phase 125 | Pending |
+| FMT-09 | Phase 125 | Pending |
+| FMT-10 | Phase 125 | Pending |
+| FMT-11 | Phase 125 | Pending |
+| FMT-12 | Phase 125 | Pending |
+| DEN-01 | Phase 126 | Pending |
+| DEN-02 | Phase 127 | Pending |
+| DEN-03 | Phase 126 | Pending |
+| DEN-04 | Phase 126 | Pending |
+| DEN-05 | Phase 127 | Pending |
+| DEN-06 | Phase 127 | Pending |
+| SET-01 | Phase 127 | Pending |
+| SET-02 | Phase 125 | Pending |
+| SET-03 | Phase 127 | Pending |
+| SET-04 | Phase 127 | Pending |
+| CUT-01 | Phase 125 | Pending |
+| CUT-02 | Phase 127 | Pending |
+| CUT-03 | Phase 127 | Pending |
+| IJF-01 | Phase 125 | Pending |
+| IJF-02 | Phase 129 | Pending |
+| IJF-03 | Phase 129 | Pending |
+| IJF-04 | Phase 129 | Pending (only on a "supported" verdict in Phase 129; Out of Scope on "disabled") |
+| IJF-05 | Phase 128 | Pending |
+| IJF-06 | Phase 128 | Pending |
+| MIG-01 | Phase 130 | Pending |
+| MIG-02 | Phase 130 | Pending |
+| MIG-03 | Phase 130 | Pending |
 
 **Coverage:**
 - v1 requirements: 39 total
-- Mapped to phases: 0
-- Unmapped: 39 ⚠️
+- Mapped to phases: 39 (Phases 124-130)
+- Unmapped: 0 ✓
+- Per phase: 124: 5, 125: 13, 126: 5, 127: 8, 128: 2, 129: 3, 130: 3
 
 ---
 *Requirements defined: 2026-10-01*
-*Last updated: 2026-10-01 after initial definition*
+*Last updated: 2026-10-01 after roadmap creation (traceability filled, Phases 124-130)*
