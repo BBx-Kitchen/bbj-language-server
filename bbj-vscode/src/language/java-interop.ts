@@ -19,7 +19,9 @@ import { JavaResolutionCache } from './java-interop-cache.js';
 import { CompleteClassIndex } from './java-interop-class-index.js';
 import { ClasspathLoader } from './java-interop-classpath.js';
 import { ResolutionLock } from './java-interop-lock.js';
-import type { FormatProgramParams, FormatProgramResult, ProgramOutcome } from './java-interop-program-types.js';
+import type {
+    DenumProgramParams, DenumProgramResult, FormatProgramParams, FormatProgramResult, ProgramOutcome
+} from './java-interop-program-types.js';
 import { logger } from './logger.js';
 
 export {
@@ -247,6 +249,18 @@ export class JavaInteropService {
      */
     public formatProgram(params: FormatProgramParams, token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
         return this.interopConnection.formatProgram(params, token);
+    }
+
+    /**
+     * Removes line numbers from `params.text` through the interop service's `denumProgram`
+     * endpoint, over the same dedicated connection as {@link formatProgram}. Never throws; the
+     * answer is a typed outcome built from a validated peer answer. The caller passes the live
+     * editor text — the client never reads a file.
+     * @param params the DENUM request
+     * @param token cancellation token forwarded to the request
+     */
+    public denumProgram(params: DenumProgramParams, token?: CancellationToken): Promise<ProgramOutcome<DenumProgramResult>> {
+        return this.interopConnection.denumProgram(params, token);
     }
 
     /**

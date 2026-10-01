@@ -22,9 +22,11 @@ import { JavaClass } from './generated/ast.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
 import { ProgramLane } from './java-interop-program-lane.js';
 import {
-    formatProgramRequest, type FormatProgramParams, type FormatProgramResult, type ProgramOutcome
+    denumProgramRequest, formatProgramRequest,
+    type DenumProgramParams, type DenumProgramResult, type FormatProgramParams, type FormatProgramResult,
+    type ProgramOutcome
 } from './java-interop-program-types.js';
-import { validateFormatResult } from './java-program-guard.js';
+import { validateDenumResult, validateFormatResult } from './java-program-guard.js';
 import { logger } from './logger.js';
 
 /**
@@ -471,6 +473,18 @@ export class JavaInteropConnection {
      */
     public formatProgram(params: FormatProgramParams, token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
         return this.programLane.request(formatProgramRequest, params, (raw) => validateFormatResult(params, raw), token);
+    }
+
+    /**
+     * Removes line numbers from `params.text` through the peer's `denumProgram` endpoint. Travels
+     * over the same dedicated connection as {@link formatProgram}, and like it never throws and
+     * never touches the circuit breaker. The caller passes the live editor text — the client never
+     * reads a file.
+     * @param params the DENUM request
+     * @param token cancellation token forwarded to the request
+     */
+    public denumProgram(params: DenumProgramParams, token?: CancellationToken): Promise<ProgramOutcome<DenumProgramResult>> {
+        return this.programLane.request(denumProgramRequest, params, (raw) => validateDenumResult(params, raw), token);
     }
 
     /**
