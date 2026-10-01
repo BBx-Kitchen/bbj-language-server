@@ -835,6 +835,39 @@ describe('the request deadline and cancellation', () => {
         source.dispose();
     });
 
+    test('a cancellation while the connection is still opening settles at once as cancelled, and the open is kept for the next request', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 8000;
+        vi.useFakeTimers();
+        const spies = spyOnLogger();
+        const source = new CancellationTokenSource();
+
+        let settled = false;
+        const pending = interop.formatProgram(params('o1'), source.token).then(outcome => {
+            settled = true;
+            return outcome;
+        });
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(settled).toBe(false);
+        expect(interop.socketAttempts).toBe(1);
+
+        // No timer is advanced: the cancellation alone settles the call, long before the open does.
+        source.cancel();
+        expect(await pending).toEqual({ kind: 'cancelled' });
+        expect(interop.sentRequests).toEqual([]);
+        source.dispose();
+
+        // The open carries on and its connection serves the next request: no second socket.
+        await vi.advanceTimersByTimeAsync(7000);
+        const next = await interop.formatProgram(params('o2'));
+        expect(next.kind).toBe('ok');
+        expect(interop.socketAttempts).toBe(1);
+        expect(interop.sentRequests.filter(r => r.method === 'formatProgram')).toHaveLength(1);
+        expect(spies.lines()).toEqual([]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     test('a token that is already cancelled settles as cancelled with no socket and no request', async () => {
         const { interop } = createFakePeerServices();
         interop.peerUp = true;

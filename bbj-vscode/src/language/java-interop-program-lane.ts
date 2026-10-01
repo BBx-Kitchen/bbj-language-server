@@ -49,6 +49,9 @@ export function formatRequestTimeoutMs(params: FormatProgramParams): number {
     return params.allowDenum === true ? PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS : PROGRAM_REQUEST_TIMEOUT_MS;
 }
 
+/** The marker {@link ProgramLane.raceCancellation} resolves with when the caller cancelled first. */
+const CANCELLED = Symbol('cancelled');
+
 /** How one request ended before its answer is judged. */
 type Exchange =
     | { kind: 'answer'; raw: unknown }
@@ -209,7 +212,13 @@ export class ProgramLane {
         // answer, or the bounded peer message for a classified error. Never the request.
         let detail = '';
         try {
-            const lane = await this.laneConnection();
+            // A cancellation during a slow open settles at once. The open itself carries on and,
+            // when it succeeds, the connection is kept for later requests: other callers may be
+            // sharing the same open.
+            const lane = await this.raceCancellation(this.laneConnection(), token);
+            if (lane === CANCELLED) {
+                return { kind: 'cancelled' };
+            }
             if (!lane) {
                 return { kind: 'unavailable', reason: 'not-reachable' };
             }
@@ -252,6 +261,28 @@ export class ProgramLane {
             this.logFailure(method, key, outcome, detail);
         }
         return outcome;
+    }
+
+    /**
+     * Resolves with the result of `work`, or with {@link CANCELLED} as soon as `token` is
+     * cancelled, whichever comes first. `work` is never aborted: it keeps running, and its late
+     * result or failure is simply dropped.
+     */
+    private async raceCancellation<T>(work: Promise<T>, token?: CancellationToken): Promise<T | typeof CANCELLED> {
+        if (!token) {
+            return work;
+        }
+        // If the caller wins, a later failure of the abandoned open must not be unhandled.
+        work.catch(() => { /* the open's own failure is handled by whoever still awaits it */ });
+        let listener: Disposable | undefined;
+        try {
+            const cancelled = new Promise<typeof CANCELLED>(resolve => {
+                listener = token.onCancellationRequested(() => resolve(CANCELLED));
+            });
+            return await Promise.race([work, cancelled]);
+        } finally {
+            listener?.dispose();
+        }
     }
 
     /**
