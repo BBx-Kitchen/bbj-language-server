@@ -21,6 +21,7 @@
 import { ErrorCodes } from 'vscode-jsonrpc/node.js';
 import { LSPErrorCodes } from 'vscode-languageserver';
 import { logger } from './logger.js';
+import { MAX_PEER_ERROR_LENGTH, truncateText } from './java-peer-guard.js';
 
 /** The program could not be parsed. */
 export const ERROR_PARSE_FAILED = -33001;
@@ -92,6 +93,54 @@ const KIND_BY_CODE: ReadonlyMap<number, InteropErrorKind> = new Map<number, Inte
     [ErrorCodes.InvalidParams, 'invalid-params'],
 ]);
 
+/** A plain object, as opposed to `null`, an array, or a primitive. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Builds the typed payload of a `-33007` answer from the peer's raw `data`. Only an array is
+ * walked; an entry is kept only when it is a plain object whose `setting` and `message` are both
+ * strings, and each kept entry is a fresh object holding just those two strings, each bounded to
+ * {@link MAX_PEER_ERROR_LENGTH}. At most {@link MAX_INVALID_SETTINGS_PROBLEMS} entries are kept.
+ * Anything that is not an array gives no problems.
+ */
+function invalidSettingsData(raw: unknown): InteropErrorData {
+    const problems: InvalidSettingsProblem[] = [];
+    if (Array.isArray(raw)) {
+        for (const entry of raw) {
+            if (problems.length >= MAX_INVALID_SETTINGS_PROBLEMS) {
+                break;
+            }
+            if (!isPlainObject(entry)) {
+                continue;
+            }
+            const setting = entry.setting;
+            const message = entry.message;
+            if (typeof setting === 'string' && typeof message === 'string') {
+                problems.push({
+                    setting: truncateText(setting, MAX_PEER_ERROR_LENGTH),
+                    message: truncateText(message, MAX_PEER_ERROR_LENGTH)
+                });
+            }
+        }
+    }
+    return { kind: 'invalid-settings', problems };
+}
+
+/**
+ * Builds the typed payload of a `-33008` answer from the peer's raw `data`: the offending line
+ * when the payload is a plain object whose `line` is a safe integer of at least 1, otherwise
+ * `undefined`.
+ */
+function mixedNumberingData(raw: unknown): InteropErrorData {
+    const line = isPlainObject(raw) ? raw.line : undefined;
+    return {
+        kind: 'mixed-numbering',
+        line: typeof line === 'number' && Number.isSafeInteger(line) && line >= 1 ? line : undefined
+    };
+}
+
 /**
  * Classifies one failure from a bbj-ls request into a kind token. The code is read duck-typed from
  * the error's own `code` property, and only when that property is a number: a plain object
@@ -100,6 +149,14 @@ const KIND_BY_CODE: ReadonlyMap<number, InteropErrorKind> = new Map<number, Inte
  * (`-32800`) is checked first; an unsupported method (`-32601`) is `method-not-found`; anything
  * without a known code (a plain `Error`, a connection error, a dropped in-flight request, the
  * breaker's short circuit, an unknown number, a non-error value) is `transport`. Never throws.
+ *
+ * The two application errors whose `data` carries information also return it typed. `-33007` gives
+ * the list of rejected settings and `-33008` the offending line. The peer's `data` is never trusted
+ * for shape or size, so each payload is built fresh from individually checked fields: an entry that
+ * is not well formed is dropped, at most {@link MAX_INVALID_SETTINGS_PROBLEMS} entries are kept,
+ * each string is bounded to {@link MAX_PEER_ERROR_LENGTH}, and nothing is ever spread or returned
+ * from the peer's own object. Malformed `data` still yields the kind, with an empty payload. Control
+ * characters are stripped later, where a payload becomes user-facing text.
  * @param error the value a request rejected with
  */
 export function classifyInteropError(error: unknown): ClassifiedInteropError {
@@ -114,7 +171,14 @@ export function classifyInteropError(error: unknown): ClassifiedInteropError {
     } else {
         kind = (code !== undefined ? KIND_BY_CODE.get(code) : undefined) ?? 'transport';
     }
-    return { kind, code, message };
+    const classified: ClassifiedInteropError = { kind, code, message };
+    const rawData = (error as { data?: unknown } | null | undefined)?.data;
+    if (code === ERROR_INVALID_SETTINGS) {
+        classified.data = invalidSettingsData(rawData);
+    } else if (code === ERROR_MIXED_NUMBERING) {
+        classified.data = mixedNumberingData(rawData);
+    }
+    return classified;
 }
 
 /**
