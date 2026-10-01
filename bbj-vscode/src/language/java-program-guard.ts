@@ -16,7 +16,8 @@
  * Kept free of Langium and editor imports so it is unit-testable with plain values.
  */
 import type {
-    DocumentFormatResult, FormatProgramParams, FormatProgramResult, ProgramDiagnostic, ProgramSeverity
+    DocumentFormatResult, FormatProgramParams, FormatProgramResult, ProgramDiagnostic, ProgramPosition,
+    ProgramRange, ProgramSeverity, ProgramTextEdit, RangeFormatResult
 } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH, truncateText } from './java-peer-guard.js';
 
@@ -220,10 +221,127 @@ function validateDocumentFormatResult(
     };
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function comparePositions(a: ProgramPosition, b: ProgramPosition): number {
+    return a.line !== b.line ? a.line - b.line : a.character - b.character;
+}
+
+/** Whether `position` lies inside a document whose lines have the given lengths. */
+function isInsideDocument(position: ProgramPosition, lineLengths: number[]): boolean {
+    return position.line < lineLengths.length && position.character <= lineLengths[position.line];
+}
+
+/**
+ * The inclusive span of lines a range covers. A range that ends at character 0 of a later line
+ * does not cover that line, as the peer reads it.
+ */
+function coveredLines(range: ProgramRange): { first: number; last: number } {
+    const endsBeforeLine = range.end.character === 0 && range.end.line > range.start.line;
+    return { first: range.start.line, last: endsBeforeLine ? range.end.line - 1 : range.end.line };
+}
+
+/** Whether the edit's lines touch the requested lines. The peer widens a request to whole logical
+ * statements, so the edit may be larger than the request; containment is never required. */
+function overlapsRequestedLines(requested: ProgramRange, edited: ProgramRange): boolean {
+    const wanted = coveredLines(requested);
+    const changed = coveredLines(edited);
+    return changed.first <= wanted.last && wanted.first <= changed.last;
+}
+
+/** Builds a fresh position from a raw one whose line and character are non-negative integers. */
+function readPosition(raw: Record<string, unknown>): ProgramPosition | undefined {
+    const { line, character } = raw;
+    if (!isNonNegativeInteger(line) || !isNonNegativeInteger(character)) {
+        return undefined;
+    }
+    return { line, character };
+}
+
+/** Validates the single edit of a range answer against the document that was sent. */
+function validateRangeEdit(request: FormatProgramParams, requested: ProgramRange, rawEdit: unknown): ProgramGuardResult<ProgramTextEdit> {
+    if (!isPlainObject(rawEdit) || !isPlainObject(rawEdit.range)) {
+        return { ok: false, reason: 'edit-malformed' };
+    }
+    const { start: rawStart, end: rawEnd } = rawEdit.range;
+    if (!isPlainObject(rawStart) || !isPlainObject(rawEnd)) {
+        return { ok: false, reason: 'edit-malformed' };
+    }
+    const start = readPosition(rawStart);
+    const end = readPosition(rawEnd);
+    if (start === undefined || end === undefined) {
+        return { ok: false, reason: 'edit-position-invalid' };
+    }
+    if (comparePositions(start, end) > 0) {
+        return { ok: false, reason: 'edit-inverted' };
+    }
+    const lineLengths = programLineLengths(request.text);
+    if (!isInsideDocument(start, lineLengths) || !isInsideDocument(end, lineLengths)) {
+        return { ok: false, reason: 'edit-outside-document' };
+    }
+    const newText = rawEdit.newText;
+    if (typeof newText !== 'string') {
+        return { ok: false, reason: 'new-text-not-string' };
+    }
+    if (newText.length > allowedProgramTextLength(request.text)) {
+        return { ok: false, reason: 'new-text-too-large' };
+    }
+    const range: ProgramRange = { start, end };
+    if (!overlapsRequestedLines(requested, range)) {
+        return { ok: false, reason: 'edit-not-overlapping' };
+    }
+    return { ok: true, value: { range, newText } };
+}
+
+function validateRangeFormatResult(
+    request: FormatProgramParams, requested: ProgramRange, raw: Record<string, unknown>
+): ProgramGuardResult<RangeFormatResult> {
+    if (raw.text !== undefined && raw.text !== null) {
+        return { ok: false, reason: 'text-on-range-request' };
+    }
+    const rawEdits = raw.edits;
+    if (!Array.isArray(rawEdits)) {
+        return { ok: false, reason: 'edits-not-array' };
+    }
+    if (rawEdits.length > 1) {
+        return { ok: false, reason: 'too-many-edits' };
+    }
+    const edits: ProgramTextEdit[] = [];
+    for (const rawEdit of rawEdits) {
+        const checked = validateRangeEdit(request, requested, rawEdit);
+        if (!checked.ok) {
+            return checked;
+        }
+        edits.push(checked.value);
+    }
+    const denumbered = readOptionalDenumbered(raw);
+    if (!denumbered.ok) {
+        return denumbered;
+    }
+    const diagnostics = sanitizeProgramDiagnostics(raw.diagnostics, programLineLengths(request.text).length);
+    if (!diagnostics.ok) {
+        return diagnostics;
+    }
+    return {
+        ok: true,
+        value: {
+            scope: 'range',
+            edits,
+            diagnostics: diagnostics.value,
+            denumbered: denumbered.value,
+            version: request.version
+        }
+    };
+}
+
 /**
  * Validates a `formatProgram` answer against the request that produced it. The answer must echo
- * the version that was sent. A whole-document request needs a string `text` and no `edits`. The
- * returned value is built fresh; the peer's object never leaves this function.
+ * the version that was sent. A whole-document request needs a string `text` and no `edits`; a
+ * range request needs no `text` and an `edits` array of at most one edit that lies inside the
+ * document that was sent and overlaps the requested lines. The returned value is built fresh; the
+ * peer's object never leaves this function.
  */
 export function validateFormatResult(request: FormatProgramParams, raw: unknown): ProgramGuardResult<FormatProgramResult> {
     const envelope = checkEnvelope(request.version, raw);
@@ -233,5 +351,5 @@ export function validateFormatResult(request: FormatProgramParams, raw: unknown)
     if (request.range === undefined) {
         return validateDocumentFormatResult(request, envelope.value);
     }
-    return { ok: false, reason: 'range-unsupported' };
+    return validateRangeFormatResult(request, request.range, envelope.value);
 }
