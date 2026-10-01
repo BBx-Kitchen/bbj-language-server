@@ -8,6 +8,29 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
+## Current Milestone: v4.9 bbj-ls DENUM & Format Migration
+
+**Goal:** Replace the vendored 2021 formatter jar and the `bbjlst` denumber path with bbj-ls's
+`formatProgram` and `denumProgram` JSON-RPC methods (BBj 26.03), served from the language server
+so VS Code and IntelliJ share one implementation.
+
+**Target features:**
+- LSP `textDocument/formatting` and `textDocument/rangeFormatting` in the language server, backed
+  by `formatProgram` over the existing :5008 interop connection
+- A language-server DENUM command backed by `denumProgram`; VS Code's `bbj.denumber` command and
+  open-file denumber prompt rewired to it
+- Typed error handling: DENUM-needed (-33006) offers DENUM first, invalid settings (-33007) per
+  key, mixed numbering (-33008) with the offending line, timeout/too-large/engine failure,
+  silent supersession (-32800), DENUM diagnostics surfaced
+- Hard cut-over: `BBjCFCli.jar`/`tools/formatter`, the formatter java resolver/verifier,
+  `bbj.formatter.javaPath` and the bbjlst denumber path removed (tokenized-program decompile
+  stays); BBj older than 26.03 gets a clear "requires BBj 26.03" message
+- All 15 formatter settings exposed in both IDEs, the existing four `bbj.formatter.*` keys
+  carried over (`splitSingleLineIF` -> `splitSingleLineIf`)
+- IntelliJ evaluation of LSP4IJ formatting against our formatter (whole document, range,
+  format-on-save, DENUM-needed, settings), then a user decision: officially supported or disabled
+- User guides and QA checklists updated
+
 ## Current State
 
 **v4.8 Documentation Drift shipped 2026-09-30** (override closeout after a milestone audit with
@@ -484,9 +507,9 @@ until publication).
 
 ### Active
 
-No active milestone — next via `/gsd-new-milestone`.
+v4.9 bbj-ls DENUM & Format Migration — requirements in `.planning/REQUIREMENTS.md`.
 
-Candidates: the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos acknowledged at the v4.8 close), the three pending todos acknowledged at the v4.7 close, the formatter jar's `--single-line-if` crash (#507), and a settings reference generated from `package.json` so the docs cannot drift again (deferred from v4.8).
+Other candidates (not in v4.9): the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos acknowledged at the v4.8 close), the three pending todos acknowledged at the v4.7 close, and a settings reference generated from `package.json` (deferred from v4.8). The formatter jar's `--single-line-if` crash (#507) is resolved by v4.9's move off the jar.
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -771,4 +794,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-30 after v4.8 milestone*
+*Last updated: 2026-10-01 after starting milestone v4.9*

@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.8
-milestone_name: Documentation Drift
-status: Awaiting next milestone
-stopped_at: Phase 123 complete — all phases complete
-last_updated: "2026-09-30T15:44:41.049Z"
-last_activity: 2026-09-30
-last_activity_desc: Milestone v4.8 completed and archived
-state_head: 2bf8ccc3d25f53a46a9fb15c815125de6af243c0
+milestone: v4.9
+milestone_name: bbj-ls DENUM & Format Migration
+status: planning
+last_updated: "2026-10-01T05:36:20.668Z"
+last_activity: 2026-10-01
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
-current_phase: 123
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -33,14 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 ## Current Position
 
-Phase: Milestone v4.8 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-30 - Completed quick task 260930-m99: README as a customer landing page
-
-The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`. The milestone sits on
-branch `gsd/v4.8-documentation-drift`; merging its docs PR to `main` rebuilds and publishes the
-docs site through `deploy-docs.yml`.
+Status: Defining requirements
+Last activity: 2026-10-01 — Milestone v4.9 started
 
 ## Performance Metrics
 
