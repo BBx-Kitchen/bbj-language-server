@@ -16,7 +16,7 @@
 import type { Socket } from 'net';
 import { CancellationTokenSource, type CancellationToken, type Disposable, type MessageConnection, type RequestType } from 'vscode-jsonrpc/node.js';
 import { classifyInteropError, FailureLogCadence, type ClassifiedInteropError } from './java-interop-errors.js';
-import type { ProgramMethod, ProgramOutcome } from './java-interop-program-types.js';
+import type { FormatProgramParams, ProgramMethod, ProgramOutcome } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH } from './java-peer-guard.js';
 import { sanitizePeerText, type ProgramGuardResult } from './java-program-guard.js';
 import { logger } from './logger.js';
@@ -29,12 +29,25 @@ import { logger } from './logger.js';
 export const PROGRAM_LANE_REOPEN_COOLDOWN_MS = 5_000;
 
 /**
- * The client's own deadline for one format or DENUM request, in milliseconds. It sits above the
- * peer's own 10 s format and parse timeouts, so it only ever fires for a peer that has stopped
- * answering at all. On expiry the request is cancelled on the wire and the call settles as a
- * client timeout.
+ * The client's own deadline for one whole-document format, range format or DENUM request, in
+ * milliseconds. It sits above the peer's own 10 s format and parse timeouts, so it only ever fires
+ * for a peer that has stopped answering at all. On expiry the request is cancelled on the wire and
+ * the call settles as a client timeout.
  */
 export const PROGRAM_REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * The client's deadline for a format request that may denumber the program first, in milliseconds.
+ * The peer runs a DENUM step and then a format step for such a request, each bounded by its own
+ * 10 s timeout, so a slow but healthy answer can legitimately take about 20 s. This leaves slack
+ * above that and still fires only for a peer that has stopped answering.
+ */
+export const PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS = 25_000;
+
+/** The deadline for one format request: the longer one when it allows denumbering, else the default. */
+export function formatRequestTimeoutMs(params: FormatProgramParams): number {
+    return params.allowDenum === true ? PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS : PROGRAM_REQUEST_TIMEOUT_MS;
+}
 
 /** How one request ended before its answer is judged. */
 type Exchange =
@@ -174,12 +187,14 @@ export class ProgramLane {
      * @param params the request parameters
      * @param validate checks the raw answer against the request that was sent
      * @param token forwarded to the request so a cancellation reaches the peer
+     * @param timeoutMs the client deadline for this request; defaults to {@link PROGRAM_REQUEST_TIMEOUT_MS}
      */
     public async request<P, R>(
         type: RequestType<P, unknown, null>,
         params: P,
         validate: (raw: unknown) => ProgramGuardResult<R>,
-        token?: CancellationToken
+        token?: CancellationToken,
+        timeoutMs: number = PROGRAM_REQUEST_TIMEOUT_MS
     ): Promise<ProgramOutcome<R>> {
         const method = type.method as ProgramMethod;
         if (token?.isCancellationRequested) {
@@ -206,13 +221,13 @@ export class ProgramLane {
             key = this.currentKey();
             // An unsupported-method answer deliberately leaves the lane open: the other method
             // may still be served on it.
-            const exchange = await this.exchange(lane, type, params, token);
+            const exchange = await this.exchange(lane, type, params, token, timeoutMs);
             switch (exchange.kind) {
                 case 'cancelled':
                     return { kind: 'cancelled' };
                 case 'timeout':
                     outcome = { kind: 'timeout', origin: 'client' };
-                    detail = `no answer within ${PROGRAM_REQUEST_TIMEOUT_MS / 1000} s`;
+                    detail = `no answer within ${timeoutMs / 1000} s`;
                     break;
                 case 'answer':
                     outcome = programOutcomeForResult(exchange.raw, validate);
@@ -251,7 +266,8 @@ export class ProgramLane {
         lane: MessageConnection,
         type: RequestType<P, unknown, null>,
         params: P,
-        caller?: CancellationToken
+        caller: CancellationToken | undefined,
+        timeoutMs: number
     ): Promise<Exchange> {
         const source = new CancellationTokenSource();
         let timedOut = false;
@@ -264,7 +280,7 @@ export class ProgramLane {
                     timedOut = true;
                     source.cancel();
                     resolve('timeout');
-                }, PROGRAM_REQUEST_TIMEOUT_MS);
+                }, timeoutMs);
                 callerListener = caller?.onCancellationRequested(() => {
                     callerCancelled = true;
                     source.cancel();

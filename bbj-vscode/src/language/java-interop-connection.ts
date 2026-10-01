@@ -20,7 +20,7 @@ import {
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { JavaClass } from './generated/ast.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
-import { ProgramLane } from './java-interop-program-lane.js';
+import { formatRequestTimeoutMs, ProgramLane } from './java-interop-program-lane.js';
 import {
     denumProgramRequest, formatProgramRequest,
     type DenumProgramParams, type DenumProgramResult, type FormatProgramParams, type FormatProgramResult,
@@ -472,7 +472,7 @@ export class JavaInteropConnection {
      * @param token cancellation token forwarded to the request
      */
     public formatProgram(params: FormatProgramParams, token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
-        return this.programLane.request(formatProgramRequest, params, (raw) => validateFormatResult(params, raw), token);
+        return this.programLane.request(formatProgramRequest, params, (raw) => validateFormatResult(params, raw), token, formatRequestTimeoutMs(params));
     }
 
     /**

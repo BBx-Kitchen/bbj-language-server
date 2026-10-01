@@ -19,7 +19,7 @@ import { BBjParserService } from '../src/language/bbj-parser-service.js';
 import { initNotifications } from '../src/language/bbj-notifications.js';
 import { clearAllVerdictStates, getVerdictState, setVerdictState } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { JavaClass } from '../src/language/generated/ast.js';
-import { PROGRAM_LANE_REOPEN_COOLDOWN_MS, PROGRAM_REQUEST_TIMEOUT_MS } from '../src/language/java-interop-program-lane.js';
+import { PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS, PROGRAM_LANE_REOPEN_COOLDOWN_MS, PROGRAM_REQUEST_TIMEOUT_MS } from '../src/language/java-interop-program-lane.js';
 import { logger } from '../src/language/logger.js';
 import { createFakePeerServices, type FakePeerInteropService } from './fake-interop-peer.js';
 
@@ -759,6 +759,58 @@ describe('the request deadline and cancellation', () => {
         expect((await interop.formatProgram(params('after'))).kind).toBe('ok');
         const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
         expect(formatRequests[formatRequests.length - 1].connectionId).toBe(connectionId);
+    });
+
+    const programRange = { start: { line: 0, character: 0 }, end: { line: 1, character: 0 } };
+
+    test.each([
+        ['a whole-document format', (interop: FakePeerInteropService) => interop.formatProgram(params('d1'))],
+        ['a whole-document format that explicitly forbids denumbering', (interop: FakePeerInteropService) => interop.formatProgram({ ...params('d2'), allowDenum: false })],
+        ['a range format', (interop: FakePeerInteropService) => interop.formatProgram({ ...params('d3'), range: programRange })],
+        ['a DENUM request', (interop: FakePeerInteropService) => interop.denumProgram(params('d4'))]
+    ])('%s is cancelled at the default deadline', async (_name, send) => {
+        const { interop, connectionId } = await openLane();
+        interop.hungConnectionIds.add(connectionId);
+
+        let settled = false;
+        const pending = send(interop).then(outcome => {
+            settled = true;
+            return outcome;
+        });
+        await vi.advanceTimersByTimeAsync(PROGRAM_REQUEST_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(settled).toBe(true);
+        expect(await pending).toEqual({ kind: 'timeout', origin: 'client' });
+        expect(interop.cancelledRequests).toHaveLength(1);
+    });
+
+    test('a format request that allows denumbering gets the longer deadline, then is cancelled on the wire like any other', async () => {
+        const { interop, spies, connectionId } = await openLane();
+        interop.hungConnectionIds.add(connectionId);
+
+        let settled = false;
+        const pending = interop.formatProgram({ ...params('long'), allowDenum: true }).then(outcome => {
+            settled = true;
+            return outcome;
+        });
+        // Past the default deadline the request is still waiting, and nothing was cancelled.
+        await vi.advanceTimersByTimeAsync(PROGRAM_REQUEST_TIMEOUT_MS);
+        expect(settled).toBe(false);
+        expect(interop.cancelledRequests).toHaveLength(0);
+
+        await vi.advanceTimersByTimeAsync(PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS - PROGRAM_REQUEST_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(settled).toBe(true);
+        expect(await pending).toEqual({ kind: 'timeout', origin: 'client' });
+        expect(interop.cancelledRequests).toHaveLength(1);
+        expect(interop.cancelledRequests[0].params).toMatchObject({ version: 'long', allowDenum: true });
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(String(spies.warn.mock.calls[0][0])).toContain('no answer within 25 s');
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     test('a caller cancellation settles at once as cancelled, is sent to the peer, and is neither logged nor leaves a timer', async () => {
