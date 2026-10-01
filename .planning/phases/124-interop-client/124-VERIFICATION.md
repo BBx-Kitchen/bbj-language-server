@@ -143,3 +143,21 @@ No gaps. The phase goal is achieved: the client calls `formatProgram` (document 
 
 _Verified: 2026-10-01_
 _Verifier: Claude (gsd-verifier)_
+
+## Re-verification after code-review fixes (2026-10-01)
+
+User chose to fix WR-01, WR-02 (deadline per request kind — refined D-07 in CONTEXT), WR-03, WR-04,
+IN-01 and IN-06 before closing the phase (commits 7155054b, d5c808d6, d5f3f05f, 4e979432,
+3b70444e, 63f43621). Re-checked on the final tree:
+
+- Whole suite (`npx vitest run --maxWorkers=2`): 3986 tests, 0 failed. Only failing suite is the
+  known `test/functional/installed-extension-e2e.test.ts` (spawns the separately installed
+  `~/.ext-test` bundle built before this phase).
+- `npm run build`, `npm run typecheck:test`, `npm run lint`: clean.
+- Live `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts` against :5008: 6/6 passed.
+- Planning/review-id scan of added src/test lines: clean.
+- WR-01 now has a loopback test where the peer destroys the socket mid-request; the request settles
+  as `failed/transport` without waiting for the backstop.
+
+Status unchanged: **passed**. Remaining review items IN-02, IN-03, IN-04, IN-05, IN-07 are
+informational and left by decision.
