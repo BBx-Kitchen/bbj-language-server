@@ -6,11 +6,12 @@
 
 /**
  * A scriptable fake java-interop peer sitting behind the real `connect()` path, for the
- * circuit-breaker regression tests in java-interop-breaker.test.ts (#504) and the dedicated
- * parser connection tests in java-interop-parse-lane.test.ts. Overrides only `createSocket()`
+ * circuit-breaker regression tests in java-interop-breaker.test.ts (#504), the dedicated
+ * parser connection tests in java-interop-parse-lane.test.ts and the format and DENUM
+ * connection tests in java-interop-program-lane.test.ts. Overrides only `createSocket()`
  * and `wrapSocket()` on `JavaInteropService`, so every other code path — the breaker state
- * machine, the resolution lock, the LRU, the dedicated `parseProgram` connection — runs
- * unmodified under test. Every wrapped socket gets its own numeric connection id (assigned in
+ * machine, the resolution lock, the LRU, the dedicated `parseProgram` connection and the
+ * dedicated format and DENUM connection — runs unmodified under test. Every wrapped socket gets its own numeric connection id (assigned in
  * creation order) so a test can tell which connection a given request or drop belongs to.
  *
  * Never opens a real socket and never reaches port 5008.
@@ -84,9 +85,20 @@ export class FakePeerInteropService extends JavaInteropService {
     private pendingRequests: PendingRequest[] = [];
     private readonly connections = new Map<number, ConnectionRecord>();
     private connectionIdCounter = 0;
+    private readonly answerHandlers = new Map<string, (params: unknown, connectionId: number) => unknown>();
 
     constructor(services: BBjServices) {
         super(services);
+    }
+
+    /**
+     * Overrides the answer to every request for `method`. The handler's return value answers the
+     * request; a thrown error or a rejected promise becomes the request's rejection, so a test can
+     * hand back a wire result of any shape or reject with a `ResponseError`. Takes precedence over
+     * the built-in answers, but not over a hung connection.
+     */
+    answerWith(method: string, handler: (params: unknown, connectionId: number) => unknown): void {
+        this.answerHandlers.set(method, handler);
     }
 
     /** A fresh minimal `JavaClass` DTO for `className`, as the real backend would answer. */
@@ -153,6 +165,10 @@ export class FakePeerInteropService extends JavaInteropService {
                 });
             });
         }
+        const handler = this.answerHandlers.get(type.method);
+        if (handler) {
+            return Promise.resolve().then(() => handler(params, connectionId));
+        }
         switch (type.method) {
             case 'getClassInfo':
                 return Promise.resolve(this.classInfo((params as { className: string }).className));
@@ -171,6 +187,16 @@ export class FakePeerInteropService extends JavaInteropService {
                     return Promise.reject({ code: -32601 });
                 }
                 return Promise.resolve({ version: (params as { version: string }).version, errors: [] });
+            case 'formatProgram': {
+                const request = params as { text: string; version: string; range?: unknown };
+                return Promise.resolve(request.range === undefined
+                    ? { text: request.text, diagnostics: [], denumbered: false, version: request.version }
+                    : { edits: [], diagnostics: [], denumbered: false, version: request.version });
+            }
+            case 'denumProgram': {
+                const request = params as { text: string; version: string };
+                return Promise.resolve({ text: request.text, diagnostics: [], denumbered: false, version: request.version });
+            }
             default:
                 return Promise.reject(new Error(`FakePeerInteropService: unhandled request '${type.method}'`));
         }

@@ -19,6 +19,7 @@ import { JavaResolutionCache } from './java-interop-cache.js';
 import { CompleteClassIndex } from './java-interop-class-index.js';
 import { ClasspathLoader } from './java-interop-classpath.js';
 import { ResolutionLock } from './java-interop-lock.js';
+import type { FormatProgramParams, FormatProgramResult, ProgramOutcome } from './java-interop-program-types.js';
 import { logger } from './logger.js';
 
 export {
@@ -27,6 +28,11 @@ export {
 } from './java-interop-connection.js';
 export { canonicalJavaClassName, isLocalJavaTypeName, JAVA_PRIMITIVE_TYPE_NAMES } from './java-interop-cache.js';
 export type { ParseProgramParams, ParseError, ParseProgramResult } from './java-interop-connection.js';
+export type {
+    DenumProgramParams, DenumProgramResult, DocumentFormatResult, FormatProgramParams, FormatProgramResult,
+    FormatSettingValue, ProgramDiagnostic, ProgramFailureKind, ProgramOutcome, ProgramPosition, ProgramRange,
+    ProgramSettingProblem, ProgramTextEdit, RangeFormatResult
+} from './java-interop-program-types.js';
 
 /**
  * Packages probed (as `pkg.SimpleName`) when suggesting a `use` statement for an unresolved
@@ -228,6 +234,19 @@ export class JavaInteropService {
      */
     public parseProgram(params: ParseProgramParams, token?: CancellationToken): Promise<ParseProgramResult> {
         return this.interopConnection.parseProgram(params, token);
+    }
+
+    /**
+     * Formats `params.text` (the whole document, or `params.range`) through the interop service's
+     * `formatProgram` endpoint. Delegates to {@link JavaInteropConnection.formatProgram}: the request
+     * travels over its own dedicated connection, never the shared connection or the parse lane, and
+     * never delays a parse or a class lookup. Never throws; the answer is a typed outcome built from
+     * a validated peer answer. The caller passes the live editor text — the client never reads a file.
+     * @param params the format request
+     * @param token cancellation token forwarded to the request
+     */
+    public formatProgram(params: FormatProgramParams, token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
+        return this.interopConnection.formatProgram(params, token);
     }
 
     /**
