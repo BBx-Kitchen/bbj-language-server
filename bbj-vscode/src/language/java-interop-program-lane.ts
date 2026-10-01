@@ -14,7 +14,7 @@
  * generation, and it never imports the notifications or connection modules.
  */
 import type { Socket } from 'net';
-import type { CancellationToken, MessageConnection, RequestType } from 'vscode-jsonrpc/node.js';
+import { CancellationTokenSource, type CancellationToken, type Disposable, type MessageConnection, type RequestType } from 'vscode-jsonrpc/node.js';
 import { classifyInteropError, FailureLogCadence, type ClassifiedInteropError } from './java-interop-errors.js';
 import type { ProgramMethod, ProgramOutcome } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH } from './java-peer-guard.js';
@@ -27,6 +27,21 @@ import { logger } from './logger.js';
  * during an outage never hammers the peer.
  */
 export const PROGRAM_LANE_REOPEN_COOLDOWN_MS = 5_000;
+
+/**
+ * The client's own deadline for one format or DENUM request, in milliseconds. It sits above the
+ * peer's own 10 s format and parse timeouts, so it only ever fires for a peer that has stopped
+ * answering at all. On expiry the request is cancelled on the wire and the call settles as a
+ * client timeout.
+ */
+export const PROGRAM_REQUEST_TIMEOUT_MS = 15_000;
+
+/** How one request ended before its answer is judged. */
+type Exchange =
+    | { kind: 'answer'; raw: unknown }
+    | { kind: 'rejected'; error: unknown }
+    | { kind: 'timeout' }
+    | { kind: 'cancelled' };
 
 /**
  * The only things the lane may call back into: opening and wrapping a socket (bound by the owning
@@ -167,6 +182,9 @@ export class ProgramLane {
         token?: CancellationToken
     ): Promise<ProgramOutcome<R>> {
         const method = type.method as ProgramMethod;
+        if (token?.isCancellationRequested) {
+            return { kind: 'cancelled' };
+        }
         if (this.availability(method) === 'unavailable') {
             return { kind: 'unavailable', reason: 'method-not-found' };
         }
@@ -180,15 +198,34 @@ export class ProgramLane {
             if (!lane) {
                 return { kind: 'unavailable', reason: 'not-reachable' };
             }
+            if (token?.isCancellationRequested) {
+                return { kind: 'cancelled' };
+            }
             // The key the request goes out under: an answer from a connection that has since been
             // replaced must not decide anything about the new one.
             key = this.currentKey();
             // An unsupported-method answer deliberately leaves the lane open: the other method
             // may still be served on it.
-            const raw = await lane.sendRequest(type, params, token);
-            outcome = programOutcomeForResult(raw, validate);
-            if (outcome.kind === 'malformed-result') {
-                detail = outcome.reason;
+            const exchange = await this.exchange(lane, type, params, token);
+            switch (exchange.kind) {
+                case 'cancelled':
+                    return { kind: 'cancelled' };
+                case 'timeout':
+                    outcome = { kind: 'timeout', origin: 'client' };
+                    detail = `no answer within ${PROGRAM_REQUEST_TIMEOUT_MS / 1000} s`;
+                    break;
+                case 'answer':
+                    outcome = programOutcomeForResult(exchange.raw, validate);
+                    if (outcome.kind === 'malformed-result') {
+                        detail = outcome.reason;
+                    }
+                    break;
+                case 'rejected': {
+                    const classified = classifyInteropError(exchange.error);
+                    outcome = outcomeForClassifiedError(classified);
+                    detail = sanitizePeerText(classified.message, MAX_PEER_ERROR_LENGTH);
+                    break;
+                }
             }
         } catch (e) {
             const classified = classifyInteropError(e);
@@ -200,6 +237,67 @@ export class ProgramLane {
             this.logFailure(method, key, outcome, detail);
         }
         return outcome;
+    }
+
+    /**
+     * One request on `lane`, settled without waiting for the peer. The request goes out under a
+     * source of its own, linked to the caller's token, so a cancellation — the caller's or the
+     * deadline's — always reaches the peer as a cancel notification. In vscode-jsonrpc a cancelled
+     * request's promise stays pending until the peer answers, so the outcome is decided here by a
+     * race against the deadline and the caller instead of by awaiting the peer, and the abandoned
+     * promise gets a no-op handler so a late rejection is never unhandled.
+     */
+    private async exchange<P>(
+        lane: MessageConnection,
+        type: RequestType<P, unknown, null>,
+        params: P,
+        caller?: CancellationToken
+    ): Promise<Exchange> {
+        const source = new CancellationTokenSource();
+        let timedOut = false;
+        let callerCancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let callerListener: Disposable | undefined;
+        try {
+            const gate = new Promise<'timeout' | 'caller'>(resolve => {
+                timer = setTimeout(() => {
+                    timedOut = true;
+                    source.cancel();
+                    resolve('timeout');
+                }, PROGRAM_REQUEST_TIMEOUT_MS);
+                callerListener = caller?.onCancellationRequested(() => {
+                    callerCancelled = true;
+                    source.cancel();
+                    resolve('caller');
+                });
+            });
+            const wire = lane.sendRequest(type, params, source.token);
+            wire.catch(() => { /* a late cancellation or dropped-connection rejection after the outcome settled */ });
+            const winner = await Promise.race([wire.then(raw => ({ raw })), gate]);
+            if (winner === 'timeout') {
+                return { kind: 'timeout' };
+            }
+            if (winner === 'caller') {
+                return { kind: 'cancelled' };
+            }
+            return { kind: 'answer', raw: winner.raw };
+        } catch (error) {
+            // Our own cancellation can come back as the peer's cancelled answer: it must not read
+            // as anything but what caused it.
+            if (timedOut) {
+                return { kind: 'timeout' };
+            }
+            if (callerCancelled) {
+                return { kind: 'cancelled' };
+            }
+            return { kind: 'rejected', error };
+        } finally {
+            if (timer !== undefined) {
+                clearTimeout(timer);
+            }
+            callerListener?.dispose();
+            source.dispose();
+        }
     }
 
     /**
