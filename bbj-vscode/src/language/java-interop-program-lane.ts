@@ -15,7 +15,7 @@
  */
 import type { Socket } from 'net';
 import type { CancellationToken, MessageConnection, RequestType } from 'vscode-jsonrpc/node.js';
-import { classifyInteropError, FailureLogCadence } from './java-interop-errors.js';
+import { classifyInteropError, FailureLogCadence, type ClassifiedInteropError } from './java-interop-errors.js';
 import type { ProgramMethod, ProgramOutcome } from './java-interop-program-types.js';
 import { MAX_PEER_ERROR_LENGTH } from './java-peer-guard.js';
 import { sanitizePeerText, type ProgramGuardResult } from './java-program-guard.js';
@@ -46,7 +46,11 @@ export interface ProgramLaneHooks {
  * bounded before it leaves the client.
  */
 export function programOutcomeForError(error: unknown): ProgramOutcome<never> {
-    const classified = classifyInteropError(error);
+    return outcomeForClassifiedError(classifyInteropError(error));
+}
+
+/** The outcome for an error that has already been classified, so one classification serves the outcome and the log line. */
+function outcomeForClassifiedError(classified: ClassifiedInteropError): ProgramOutcome<never> {
     const kind = classified.kind;
     switch (kind) {
         case 'cancelled':
@@ -168,6 +172,9 @@ export class ProgramLane {
         }
         let key: string | undefined;
         let outcome: ProgramOutcome<R>;
+        // What a log line says about a failure: the guard's fixed refusal token for a malformed
+        // answer, or the bounded peer message for a classified error. Never the request.
+        let detail = '';
         try {
             const lane = await this.laneConnection();
             if (!lane) {
@@ -180,13 +187,41 @@ export class ProgramLane {
             // may still be served on it.
             const raw = await lane.sendRequest(type, params, token);
             outcome = programOutcomeForResult(raw, validate);
+            if (outcome.kind === 'malformed-result') {
+                detail = outcome.reason;
+            }
         } catch (e) {
-            outcome = programOutcomeForError(e);
+            const classified = classifyInteropError(e);
+            outcome = outcomeForClassifiedError(classified);
+            detail = sanitizePeerText(classified.message, MAX_PEER_ERROR_LENGTH);
         }
         if (key !== undefined) {
             this.recordAvailability(method, key, outcome);
+            this.logFailure(method, key, outcome, detail);
         }
         return outcome;
+    }
+
+    /**
+     * Logs a failed request through the lane's cadence: the first failure of a kind on a connection
+     * is a warning, repeats are debug lines. A cancellation is not a failure, and an unsupported
+     * method is logged once when it is latched, so neither goes through here.
+     */
+    private logFailure(method: ProgramMethod, key: string, outcome: ProgramOutcome<unknown>, detail: string): void {
+        let kind: string;
+        switch (outcome.kind) {
+            case 'ok':
+            case 'cancelled':
+            case 'unavailable':
+                return;
+            case 'failed':
+                kind = outcome.failure;
+                break;
+            default:
+                kind = outcome.kind;
+        }
+        this.failureLog.syncGeneration(key);
+        this.failureLog.report(kind, `Format/DENUM interop: ${method} failed (${kind}): ${detail}`);
     }
 
     /** What is known about `method` for the current shared generation and lane epoch. */
