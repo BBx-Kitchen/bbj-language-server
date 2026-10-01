@@ -381,34 +381,54 @@ export class ProgramLane {
         try {
             socket = await this.hooks.createSocket();
         } catch (e) {
-            // The connection could not be opened: answer not-reachable, start the cool-down and log
-            // one line carrying only the socket error. Nothing latches for the generation — the
-            // next request after the cool-down tries again — and the breaker, the shared connection
-            // and the error dialog are never touched.
-            if (this.laneEpoch === epoch) {
-                // Not when a disposal overtook this open: it lifted the cool-down on purpose.
-                this.reopenNotBefore = Date.now() + PROGRAM_LANE_REOPEN_COOLDOWN_MS;
-            }
-            const detail = sanitizePeerText(e instanceof Error ? e.message : String(e), MAX_PEER_ERROR_LENGTH);
-            this.failureLog.syncGeneration(this.currentKey());
-            this.failureLog.report('not-reachable', `Format/DENUM interop: could not open a dedicated connection (${detail})`);
+            this.failOpen(epoch, e);
             return undefined;
         }
-        // Small sequential requests wait for the peer's delayed acknowledgement on a default
-        // socket; a test double's socket is a bare object with no such method.
-        if (typeof socket.setNoDelay === 'function') {
-            socket.setNoDelay(true);
+        let lane: MessageConnection | undefined;
+        try {
+            // Small sequential requests wait for the peer's delayed acknowledgement on a default
+            // socket; a test double's socket is a bare object with no such method.
+            if (typeof socket.setNoDelay === 'function') {
+                socket.setNoDelay(true);
+            }
+            const wrapped = this.hooks.wrapSocket(socket);
+            lane = wrapped;
+            wrapped.onClose(() => this.onLaneLost(wrapped));
+            wrapped.onError(() => this.onLaneLost(wrapped));
+            wrapped.listen();
+        } catch (e) {
+            // The socket exists but could not be put to use: release it so it is not left open and
+            // unreferenced, then treat the open like any other failed one.
+            try {
+                lane?.dispose();
+            } catch {
+                // Disposing is best effort; the socket is destroyed next regardless.
+            }
+            socket.destroy?.();
+            this.failOpen(epoch, e);
+            return undefined;
         }
-        const lane = this.hooks.wrapSocket(socket);
-        lane.onClose(() => this.onLaneLost(lane));
-        lane.onError(() => this.onLaneLost(lane));
-        lane.listen();
         if (this.laneEpoch !== epoch) {
             lane.dispose();
             return undefined;
         }
         this.lane = lane;
         return lane;
+    }
+
+    /**
+     * The connection could not be opened: starts the cool-down and logs one line carrying only the
+     * socket error. Nothing latches for the generation — the next request after the cool-down tries
+     * again — and the breaker, the shared connection and the error dialog are never touched.
+     */
+    private failOpen(epoch: number, e: unknown): void {
+        if (this.laneEpoch === epoch) {
+            // Not when a disposal overtook this open: it lifted the cool-down on purpose.
+            this.reopenNotBefore = Date.now() + PROGRAM_LANE_REOPEN_COOLDOWN_MS;
+        }
+        const detail = sanitizePeerText(e instanceof Error ? e.message : String(e), MAX_PEER_ERROR_LENGTH);
+        this.failureLog.syncGeneration(this.currentKey());
+        this.failureLog.report('not-reachable', `Format/DENUM interop: could not open a dedicated connection (${detail})`);
     }
 
     /** The shared generation and the lane epoch together: any change of either re-arms the failure log. */

@@ -11,7 +11,8 @@
  */
 import { URI, type LangiumDocument } from 'langium';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { CancellationTokenSource, ResponseError } from 'vscode-jsonrpc/node.js';
+import type { Socket } from 'net';
+import { CancellationTokenSource, ResponseError, type MessageConnection } from 'vscode-jsonrpc/node.js';
 import type { Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { BBjParserService } from '../src/language/bbj-parser-service.js';
@@ -245,6 +246,30 @@ describe('the dedicated connection lifecycle', () => {
         const lookup = await rawClassAccess.getRawClass('test.AfterRefusal');
         expect(lookup.error).toBeUndefined();
         expect(interop.socketAttempts).toBe(attemptsBeforeLookup);
+    });
+
+    test('a socket that cannot be wrapped is destroyed, the request answers not-reachable and the cool-down starts', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => { });
+        const destroy = vi.fn();
+        const patched = interop as unknown as { createSocket(): Promise<Socket>; wrapSocket(socket: Socket): MessageConnection };
+        patched.createSocket = async () => ({ destroy }) as unknown as Socket;
+        patched.wrapSocket = () => { throw new Error('wrap failed'); };
+
+        const outcome = await interop.formatProgram({ text: 'a\n', version: 'w1' });
+
+        expect(outcome).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(destroy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(String(warnSpy.mock.calls[0][0])).toContain('wrap failed');
+        expect(interop.sentRequests).toEqual([]);
+
+        // The cool-down is running: the next request attempts no new socket.
+        expect(await interop.formatProgram({ text: 'a\n', version: 'w2' })).toEqual({ kind: 'unavailable', reason: 'not-reachable' });
+        expect(destroy).toHaveBeenCalledTimes(1);
     });
 
     test('inside the cool-down no socket is attempted; once it has passed the next request opens the connection again', async () => {
