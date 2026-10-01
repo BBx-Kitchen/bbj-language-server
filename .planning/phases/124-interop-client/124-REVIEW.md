@@ -26,6 +26,19 @@ findings:
   info: 7
   total: 11
 status: issues_found
+fixed_in_review_fix:
+  - WR-01
+  - WR-02
+  - WR-03
+  - WR-04
+  - IN-01
+  - IN-06
+not_fixed_by_decision:
+  - IN-02
+  - IN-03
+  - IN-04
+  - IN-05
+  - IN-07
 ---
 
 # Phase 124: Code Review Report
