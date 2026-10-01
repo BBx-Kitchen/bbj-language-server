@@ -20,7 +20,7 @@ import { clearAllVerdictStates, getVerdictState, setVerdictState } from '../src/
 import { JavaClass } from '../src/language/generated/ast.js';
 import { PROGRAM_LANE_REOPEN_COOLDOWN_MS } from '../src/language/java-interop-program-lane.js';
 import { logger } from '../src/language/logger.js';
-import { createFakePeerServices } from './fake-interop-peer.js';
+import { createFakePeerServices, type FakePeerInteropService } from './fake-interop-peer.js';
 
 /** Exposes the protected `getRawClass()` to the test via a structural cast. */
 type RawClassAccess = { getRawClass(className: string): Promise<JavaClass> };
@@ -337,6 +337,40 @@ describe('the dedicated connection lifecycle', () => {
     });
 });
 
+/** Runs one live parse through a real parser service over the same fake peer. */
+async function liveParse(interop: FakePeerInteropService, name: string) {
+    const parserService = new BBjParserService({
+        shared: { workspace: { WorkspaceManager: {} } },
+        java: { JavaInteropService: interop }
+    });
+    const uri = URI.file(`/proj/${name}.bbj`);
+    const document = {
+        uri,
+        textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
+    } as unknown as LangiumDocument;
+    const verdict = await parserService.requestLiveParse(document);
+    return { verdict, enabled: parserService.isEnabled() };
+}
+
+/** Sends one whole-document request to the named method. */
+function callProgram(interop: FakePeerInteropService, method: 'formatProgram' | 'denumProgram', version: string, text = 'a\n') {
+    return method === 'formatProgram'
+        ? interop.formatProgram({ text, version })
+        : interop.denumProgram({ text, version });
+}
+
+/** Silences every logger level and keeps the calls, so no line can slip past an assertion. */
+function spyOnLogger() {
+    const spies = {
+        warn: vi.spyOn(logger, 'warn').mockImplementation(() => { }),
+        info: vi.spyOn(logger, 'info').mockImplementation(() => { }),
+        debug: vi.spyOn(logger, 'debug').mockImplementation(() => { }),
+        error: vi.spyOn(logger, 'error').mockImplementation(() => { })
+    };
+    const lines = () => Object.values(spies).flatMap(spy => spy.mock.calls.map(call => String(call[0])));
+    return { ...spies, lines };
+}
+
 describe('per-method availability', () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -344,20 +378,6 @@ describe('per-method availability', () => {
         vi.useRealTimers();
         clearAllVerdictStates();
     });
-
-    const liveParse = async (interop: ReturnType<typeof createFakePeerServices>['interop'], name: string) => {
-        const parserService = new BBjParserService({
-            shared: { workspace: { WorkspaceManager: {} } },
-            java: { JavaInteropService: interop }
-        });
-        const uri = URI.file(`/proj/${name}.bbj`);
-        const document = {
-            uri,
-            textDocument: TextDocument.create(uri.toString(), 'bbj', 1, 'rem line 1\n')
-        } as unknown as LangiumDocument;
-        const verdict = await parserService.requestLiveParse(document);
-        return { verdict, enabled: parserService.isEnabled() };
-    };
 
     test('a peer without formatProgram latches only that method: DENUM and live parse keep working and the lane stays open', async () => {
         const { interop } = createFakePeerServices();
@@ -477,5 +497,189 @@ describe('per-method availability', () => {
         const formatRequests = interop.sentRequests.filter(r => r.method === 'formatProgram');
         expect(formatRequests).toHaveLength(2);
         expect(formatRequests[1].connectionId).not.toBe(staleConnection);
+    });
+});
+
+describe('the outcome of every peer answer', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+    });
+
+    const failed = (failure: string, code: number) => ({ kind: 'failed', failure, code });
+
+    test.each([
+        ['-33001', () => new ResponseError(-33001, 'parse failed'), failed('parser-exception', -33001)],
+        ['-33002', () => new ResponseError(-33002, 'overran'), { kind: 'timeout', origin: 'peer' }],
+        ['-33003', () => new ResponseError(-33003, 'too large'), failed('size-cap', -33003)],
+        ['-33004', () => new ResponseError(-33004, 'closing'), failed('service-unavailable', -33004)],
+        ['-33005', () => new ResponseError(-33005, 'protected'), failed('protected-program', -33005)],
+        ['-33006', () => new ResponseError(-33006, 'line numbers'), failed('denum-needed', -33006)],
+        ['-33007', () => new ResponseError(-33007, 'bad settings', [{ setting: 'indentWidth', message: 'not an integer' }]),
+            { kind: 'invalid-settings', problems: [{ setting: 'indentWidth', message: 'not an integer' }] }],
+        ['-33008', () => new ResponseError(-33008, 'mixed', { line: 2 }), { kind: 'mixed-numbering', line: 2 }],
+        ['-33008 with garbage data', () => new ResponseError(-33008, 'mixed', 'garbage'), { kind: 'mixed-numbering', line: undefined }],
+        ['-33009', () => new ResponseError(-33009, 'engine failed'), failed('format-failed', -33009)],
+        ['-32602', () => new ResponseError(-32602, 'bad params'), failed('invalid-params', -32602)],
+        ['-32800', () => new ResponseError(-32800, 'superseded'), { kind: 'cancelled' }],
+        ['a plain error', () => new Error('connection reset'), { kind: 'failed', failure: 'transport' }]
+    ])('a %s answer is its own typed outcome on both methods', async (_name, makeError, expected) => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        spyOnLogger();
+        const handler = () => { throw makeError(); };
+        interop.answerWith('formatProgram', handler);
+        interop.answerWith('denumProgram', handler);
+
+        for (const method of ['formatProgram', 'denumProgram'] as const) {
+            const outcome = await callProgram(interop, method, `o-${method}`);
+            expect(outcome).toMatchObject(expected);
+        }
+    });
+
+    test('a -33004 answer never latches the method off: the next call still sends a request', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        spyOnLogger();
+        interop.answerWith('formatProgram', () => { throw new ResponseError(-33004, 'closing'); });
+
+        expect(await interop.formatProgram({ text: 'a\n', version: 'u1' })).toMatchObject({ kind: 'failed', failure: 'service-unavailable' });
+        interop.answerWith('formatProgram', params => {
+            const request = params as { text: string; version: string };
+            return { text: request.text, diagnostics: [], denumbered: false, version: request.version };
+        });
+
+        expect((await interop.formatProgram({ text: 'a\n', version: 'u2' })).kind).toBe('ok');
+        expect(interop.sentRequests.filter(r => r.method === 'formatProgram')).toHaveLength(2);
+    });
+});
+
+describe('an error burst', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+        initNotifications(null as unknown as Connection);
+        clearAllVerdictStates();
+    });
+
+    test('twenty application errors leave the generation, class lookups and live parse untouched', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const showErrorMessage = vi.fn();
+        initNotifications({ window: { showErrorMessage } } as unknown as Connection);
+        spyOnLogger();
+        const rawClassAccess = interop as unknown as RawClassAccess;
+
+        await rawClassAccess.getRawClass('test.Warm');
+        const generationBefore = interop.connectionGeneration;
+
+        const codes = [-33001, -33002, -33003, -33004, -33005, -33006, -33007, -33008, -33009, -32602, -32800];
+        let next = 0;
+        const burst = () => {
+            const code = codes[next++ % codes.length];
+            const data = code === -33007 ? [{ setting: 'indentWidth', message: 'bad' }] : code === -33008 ? { line: 2 } : undefined;
+            throw new ResponseError(code, `burst ${code}`, data);
+        };
+        interop.answerWith('formatProgram', burst);
+        interop.answerWith('denumProgram', burst);
+
+        const outcomes = await Promise.all(Array.from({ length: 20 }, (_, index) =>
+            callProgram(interop, index % 2 === 0 ? 'formatProgram' : 'denumProgram', `burst-${index}`)));
+
+        const tokens = new Set(outcomes.map(outcome => outcome.kind === 'failed' ? outcome.failure : outcome.kind));
+        expect(tokens.size).toBe(codes.length);
+        expect(interop.connectionGeneration).toBe(generationBefore);
+
+        // The shared connection still answers: no new socket, no circuit-open error, no dialog.
+        const attemptsAfterBurst = interop.socketAttempts;
+        const lookup = await rawClassAccess.getRawClass('test.AfterBurst');
+        expect(lookup.error ?? '').not.toContain('circuit open');
+        expect(lookup.error).toBeUndefined();
+        expect(interop.socketAttempts).toBe(attemptsAfterBurst);
+        expect(showErrorMessage).not.toHaveBeenCalled();
+
+        const parse = await liveParse(interop, 'after-burst');
+        expect(parse.verdict.kind).toBe('verdict');
+        expect(parse.enabled).toBe(true);
+        expect(interop.connectionGeneration).toBe(generationBefore);
+    });
+});
+
+describe('failure logging', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+        vi.useRealTimers();
+    });
+
+    const staleAnswer = () => ({ text: 'x', diagnostics: [], denumbered: false, version: 'stale' });
+
+    test('a malformed answer warns once per connection, then logs at debug, and warns again on a new connection', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const spies = spyOnLogger();
+        interop.answerWith('formatProgram', staleAnswer);
+
+        expect(await interop.formatProgram({ text: 'x', version: 'w1' })).toMatchObject({ kind: 'malformed-result' });
+        expect(await interop.formatProgram({ text: 'x', version: 'w2' })).toMatchObject({ kind: 'malformed-result' });
+
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        for (const spy of [spies.warn, spies.debug]) {
+            const line = String(spy.mock.calls[0][0]);
+            expect(line).toContain('formatProgram');
+            expect(line).toContain('malformed-result');
+        }
+
+        interop.dropConnection(interop.sentRequests.find(r => r.method === 'formatProgram')!.connectionId);
+        expect(await interop.formatProgram({ text: 'x', version: 'w3' })).toMatchObject({ kind: 'malformed-result' });
+
+        expect(spies.warn).toHaveBeenCalledTimes(2);
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+    });
+
+    test('no log line at any level contains the request text', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const spies = spyOnLogger();
+        const marker = 'QWERTY789-SECRET';
+        const text = `REM ${marker}\n`;
+
+        interop.answerWith('formatProgram', staleAnswer);
+        await interop.formatProgram({ text, version: 'x1' });
+        interop.answerWith('formatProgram', () => { throw new ResponseError(-33009, 'format engine failed'); });
+        await interop.formatProgram({ text, version: 'x2' });
+        interop.answerWith('formatProgram', () => { throw new Error('connection reset'); });
+        await interop.formatProgram({ text, version: 'x3' });
+
+        expect(spies.warn).toHaveBeenCalledTimes(3);
+        for (const line of spies.lines()) {
+            expect(line).not.toContain(marker);
+        }
+    });
+
+    test('a peer cancellation answer is not a failure and is not logged at any level', async () => {
+        const { interop } = createFakePeerServices();
+        interop.peerUp = true;
+        interop.connectDelayMs = 0;
+        vi.useFakeTimers();
+        const spies = spyOnLogger();
+        interop.answerWith('formatProgram', () => { throw new ResponseError(-32800, 'superseded'); });
+
+        expect(await interop.formatProgram({ text: 'x', version: 'c1' })).toEqual({ kind: 'cancelled' });
+
+        expect(spies.lines()).toEqual([]);
     });
 });
