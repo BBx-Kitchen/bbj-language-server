@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 125
-current_phase_name: ls-formatting
+current_phase_name: LS Formatting
 status: executing
-stopped_at: Phase 125 context gathered
-last_updated: "2026-10-01T17:46:39.396Z"
+stopped_at: Completed 125-01-PLAN.md
+last_updated: "2026-10-01T17:58:44.000Z"
 last_activity: 2026-10-01
-last_activity_desc: Phase 124 complete, transitioned to Phase 125
-state_head: 02b8e2acf41ab03a4a2aa7fdde62bcc160d9eb36
+last_activity_desc: Phase 125 execution started
+state_head: 353933acf11ac55fcb1fa895eca962d457690dea
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 12
-  completed_plans: 6
+  completed_plans: 7
   percent: 14
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 ## Current Position
 
-Phase: 125 (ls-formatting) — READY TO EXECUTE
-Plan: Not started
+Phase: 125 (LS Formatting) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-10-01 — Phase 124 complete, transitioned to Phase 125
+Last activity: 2026-10-01 — Phase 125 execution started
 
 Progress: [█░░░░░░░░░] 14% (v4.9: 1/7 phases)
 
@@ -208,6 +208,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 124 P04 | 8min | 3 tasks | 3 files |
 | Phase 124 P05 | 7min | 3 tasks | 4 files |
 | Phase 124 P06 | 5min | 2 tasks | 1 files |
+| Phase 125 P01 | 7 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -371,6 +372,7 @@ decisions:
 - [Phase 124]: 124-04: each format/DENUM method has its own availability latch keyed on shared generation and lane epoch (only -32601 latches off; -33004, -32602, cancel, client timeout and transport never do), written only under the key captured before sending; a request settles through a 15 s cancel-always backstop or the caller's token without awaiting the peer
 - [Phase 124]: 124-05: the loopback wire suite proves omitted optional fields, -33007/-33008 data framing, per-method availability and real $/cancelRequest at the backstop and on caller cancellation; JavaInteropTestService scripts formatProgram/denumProgram with a success default, routes scripted wire answers through the production guard and classifier, and rejects createSocket so it can never open a socket
 - [Phase 124]: 124-06: dedicated program lane kept (measured live): small DENUM behind a pending large parse 3-4 ms on the lane vs ~175 ms on a shared connection, parse latency not above idle while a large DENUM runs; bbj-ls honours $/cancelRequest (-32800 in 1-2 ms) — Route confirmed by measurement through the real client; no route change
+- [Phase 125]: Non-JSON formatter setting values are forwarded as JSON text (String fallback) so bbj-ls rejects the key by name — A silent fallback to a default would hide a misconfiguration
 
 ### Tech Debt
 
@@ -438,9 +440,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T16:51:45.721Z
-Stopped at: Phase 125 context gathered
-Resume file: .planning/phases/125-ls-formatting/125-CONTEXT.md
+Last session: 2026-10-01T17:58:43.926Z
+Stopped at: Completed 125-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
