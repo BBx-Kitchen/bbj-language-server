@@ -440,7 +440,7 @@ a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumP
   4. Every bbj-ls error code (`-33001`..`-33009`, `-32602`, `-32800`) yields its own typed outcome. After a burst of such errors, Java class completion and hover still work, because the circuit breaker never opens.
   5. A peer answer with both or neither of `text`/`edits`, an oversized payload, or an out-of-range range or line is rejected as a typed failure and never reaches an editor.
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -454,7 +454,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 124-04-PLAN.md — Per-method availability latches, the typed failure table with warn-once logging, and the cancel-always 15 s backstop (wave 3)
+- [x] 124-04-PLAN.md — Per-method availability latches, the typed failure table with warn-once logging, and the cancel-always 15 s backstop (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -592,7 +592,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 124. Interop Client | 3/6 | Planned |  |
+| 124. Interop Client | 4/6 | Planned |  |
 | 125. LS Formatting | 0/TBD | Not started | - |
 | 126. LS DENUM | 0/TBD | Not started | - |
 | 127. VS Code Cut-Over | 0/TBD | Not started | - |
