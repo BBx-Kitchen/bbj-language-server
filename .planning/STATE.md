@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 125
 current_phase_name: LS Formatting
 status: planning
-stopped_at: Phase 124 complete, ready to plan Phase 125
-last_updated: "2026-10-01T16:25:43.643Z"
+stopped_at: Phase 125 context gathered
+last_updated: "2026-10-01T16:51:45.796Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 124 complete, transitioned to Phase 125
-state_head: 12af6a523aa4f6d29d1e08a5819e9205dacf7d79
+state_head: cc746fa034e3ca62c244af4da3fad1fbc38072c3
 progress:
   total_phases: 7
   completed_phases: 1
@@ -438,9 +438,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T13:00:35.677Z
-Stopped at: Phase 124 complete, ready to plan Phase 125
-Resume file: None
+Last session: 2026-10-01T16:51:45.721Z
+Stopped at: Phase 125 context gathered
+Resume file: .planning/phases/125-ls-formatting/125-CONTEXT.md
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
