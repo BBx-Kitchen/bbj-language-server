@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 124
-current_phase_name: Interop Client
-status: verifying
-stopped_at: Completed 124-06-PLAN.md
-last_updated: "2026-10-01T13:00:35.713Z"
+current_phase: 125
+current_phase_name: LS Formatting
+status: planning
+stopped_at: Phase 124 complete, ready to plan Phase 125
+last_updated: "2026-10-01T16:25:43.643Z"
 last_activity: 2026-10-01
-last_activity_desc: Phase 124 execution started
-state_head: 3d1080986b633923c8e461970c12ea540c0c84cf
+last_activity_desc: Phase 124 complete, transitioned to Phase 125
+state_head: 12af6a523aa4f6d29d1e08a5819e9205dacf7d79
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
   completed_plans: 6
-  percent: 0
+  percent: 14
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-01 (v4.9 bbj-ls DENUM & Format Migration roadmapped — Phases 124-130, 39/39 requirements mapped)
+**Last Updated:** 2026-10-01 (Phase 124 Interop Client complete — 6/6 plans, verified, code-review fixes applied)
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 124 — Interop Client
+**Current Focus:** Phase 125 — LS Formatting
 
 ---
 
 ## Current Position
 
-Phase: 124 (Interop Client) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-10-01 — Phase 124 execution started
+Phase: 125 — LS Formatting
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-01 — Phase 124 complete, transitioned to Phase 125
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 14% (v4.9: 1/7 phases)
 
 ### v4.9 milestone map
 
@@ -439,7 +439,7 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-10-01T13:00:35.677Z
-Stopped at: Completed 124-06-PLAN.md
+Stopped at: Phase 124 complete, ready to plan Phase 125
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
