@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 124
 current_phase_name: Interop Client
 status: executing
-stopped_at: Completed 124-01-PLAN.md
-last_updated: "2026-10-01T12:21:30.210Z"
+stopped_at: Completed 124-02-PLAN.md
+last_updated: "2026-10-01T12:26:04.332Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 124 execution started
-state_head: 122ba81a5789d2b1933f1c95c19313e3ead4f173
+state_head: da219fa9f62cc613021de49b206775daf492cb69
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 124 (Interop Client) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 124 execution started
 
@@ -203,6 +203,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 123 P07 | 15min | 2 tasks | 3 files |
 | Phase 123 P08 | 15min | 3 tasks | 1 files |
 | Phase 124 P01 | 12min | 2 tasks | 4 files |
+| Phase 124 P02 | 5min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -361,6 +362,7 @@ decisions:
 - [Phase 123]: 123-06: composers.md documents all seven compose commands, five cue titles and every lightbulb label across MSGBOX/addWindow/addChildWindow/CVS()/SETOPTS, plus assign-to validation; COMP-01 held back (shared with 123-07) per requirements.ready-ids
 - [Phase 123]: 123-07: composers.md documents all seven compose actions (including the cue-only bbj.openComposerAt) and five Alt+Enter intentions, plus assign-to validation; COMP-01 stays blocked because 123-08 also declares it and has no SUMMARY yet
 - [Phase 123]: Phase 123: 123-08 confirmed all 45 drift-scan items and planning-time extras were already fixed by 123-01..07; no new doc edit needed, all five sweeps (old strings, VS Code channel wording, IntelliJ toolbar wording, planning ids, scope) came back clean
+- [Phase 124]: 124-02: java-program-guard.ts validates every format/DENUM answer against the request that was sent (strict version echo, exact shape, in-document overlapping range edit, 4x+64KiB/16MiB size cap) and returns a fresh object or a fixed reason token; diagnostics capped at 500 with line 0 kept as no location
 
 ### Tech Debt
 
@@ -428,8 +430,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T12:21:30.181Z
-Stopped at: Completed 124-01-PLAN.md
+Last session: 2026-10-01T12:26:04.302Z
+Stopped at: Completed 124-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
