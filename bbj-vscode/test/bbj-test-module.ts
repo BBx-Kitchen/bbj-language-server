@@ -3,11 +3,18 @@ import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule,
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
-import { JavaInteropService, ParseError, ParseProgramParams, ParseProgramResult, isLocalJavaTypeName } from "../src/language/java-interop.js";
+import {
+    DenumProgramParams, DenumProgramResult, FormatProgramParams, FormatProgramResult, JavaInteropService, ParseError, ParseProgramParams,
+    ParseProgramResult, ProgramOutcome, isLocalJavaTypeName
+} from "../src/language/java-interop.js";
+import { programOutcomeForError, programOutcomeForResult } from "../src/language/java-interop-program-lane.js";
+import type { ProgramMethod } from "../src/language/java-interop-program-types.js";
+import { validateDenumResult, validateFormatResult, type ProgramGuardResult } from "../src/language/java-program-guard.js";
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from "../src/language/generated/ast.js";
 import { CancellationToken, ErrorCodes, MessageConnection, ResponseError } from "vscode-jsonrpc/node.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
+import type { Socket } from "net";
 
 export function createBBjTestServices(context: DefaultSharedModuleContext, javadocProvider?: JavadocProvider): {
     shared: LangiumSharedServices,
@@ -78,6 +85,22 @@ export type JavaInteropTestServiceParseProgramScript =
     | 'malformed-result'
     | { errors: ParseError[] }
     | { code: number; message: string };
+
+/**
+ * The scripted answers {@link JavaInteropTestService.formatProgram} and
+ * {@link JavaInteropTestService.denumProgram} can be set to give: a valid success echo of the
+ * request (the default, so suites exercise the success path); the older-server `MethodNotFound`; a
+ * plain rejected `Error` standing in for a transport failure; a raw wire result or a wire error
+ * (code, message, optional data), both of which run through the production validator and error
+ * classifier exactly as a real peer's answer would; or a ready-made outcome, as an escape hatch.
+ */
+export type JavaInteropTestServiceProgramScript =
+    | 'success'
+    | 'method-not-found'
+    | 'transport-error'
+    | { result: unknown }
+    | { error: { code: number; message: string; data?: unknown } }
+    | { outcome: ProgramOutcome<unknown> };
 
 export class JavaInteropTestService extends JavaInteropService {
     constructor(services: BBjServices) {
@@ -162,6 +185,39 @@ export class JavaInteropTestService extends JavaInteropService {
         throw new ResponseError(script.code, script.message);
     }
 
+    // --- formatProgram / denumProgram scripting: default answers with a valid success echo. ---
+    private formatProgramScript: JavaInteropTestServiceProgramScript = 'success';
+    private denumProgramScript: JavaInteropTestServiceProgramScript = 'success';
+
+    /** Test seam: script the next/every {@link formatProgram} answer. */
+    public scriptFormatProgram(script: JavaInteropTestServiceProgramScript): void {
+        this.formatProgramScript = script;
+    }
+
+    /** Test seam: script the next/every {@link denumProgram} answer. */
+    public scriptDenumProgram(script: JavaInteropTestServiceProgramScript): void {
+        this.denumProgramScript = script;
+    }
+
+    /**
+     * Never touches {@link connect} or a socket. A scripted wire answer goes through the same
+     * validator and classifier production uses, so a suite built on this double is never handed an
+     * outcome the real guard would refuse. Availability latches are not emulated here; they are
+     * covered against the fake peer and the loopback peer.
+     */
+    public override async formatProgram(params: FormatProgramParams): Promise<ProgramOutcome<FormatProgramResult>> {
+        const echo = params.range === undefined
+            ? { text: params.text, diagnostics: [], denumbered: false, version: params.version }
+            : { edits: [], diagnostics: [], denumbered: false, version: params.version };
+        return scriptedProgramOutcome('formatProgram', this.formatProgramScript, echo, raw => validateFormatResult(params, raw));
+    }
+
+    /** See {@link formatProgram}. */
+    public override async denumProgram(params: DenumProgramParams): Promise<ProgramOutcome<DenumProgramResult>> {
+        const echo = { text: params.text, diagnostics: [], denumbered: false, version: params.version };
+        return scriptedProgramOutcome('denumProgram', this.denumProgramScript, echo, raw => validateDenumResult(params, raw));
+    }
+
     /** Test seam: simulate a post-outage reconnect or cache-clear-forced reconnect. */
     public simulateReconnect(): void {
         this._connectionGeneration++;
@@ -178,6 +234,9 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 
     // --- Hermetic: the test double must never open a real socket to the interop service. ---
+    // Format and DENUM travel over a dedicated connection that is opened through createSocket()
+    // alone, so rejecting it below (besides overriding formatProgram/denumProgram above) means no
+    // path through this class can ever reach a real peer.
     // On CI there is no service on :5008, so real connection attempts reject asynchronously and
     // log via console.*. A late log arriving while a vitest worker closes its RPC channel throws
     // "EnvironmentTeardownError: Closing rpc while onUserConsoleLog was pending" and fails the whole
@@ -185,6 +244,10 @@ export class JavaInteropTestService extends JavaInteropService {
     // network path below is a silent no-op instead.
 
     protected override connect(): Promise<MessageConnection> {
+        return Promise.reject(new Error('Java interop is disabled in the test double'));
+    }
+
+    protected override createSocket(): Promise<Socket> {
         return Promise.reject(new Error('Java interop is disabled in the test double'));
     }
 
@@ -222,6 +285,35 @@ export class JavaInteropTestService extends JavaInteropService {
             error: 'not resolved (test double)'
         } as unknown as JavaClass;
     }
+}
+
+/**
+ * Turns one scripted answer into the typed outcome the real client would produce. A success, or a
+ * scripted wire result, is validated by `validate`; a rejection goes through the production error
+ * classifier; only the `outcome` escape hatch is returned as given.
+ */
+function scriptedProgramOutcome<R>(
+    method: ProgramMethod,
+    script: JavaInteropTestServiceProgramScript,
+    echo: unknown,
+    validate: (raw: unknown) => ProgramGuardResult<R>
+): ProgramOutcome<R> {
+    if (script === 'success') {
+        return programOutcomeForResult(echo, validate);
+    }
+    if (script === 'method-not-found') {
+        return programOutcomeForError(new ResponseError(ErrorCodes.MethodNotFound, `Unsupported request method: ${method}`));
+    }
+    if (script === 'transport-error') {
+        return programOutcomeForError(new Error('connection reset'));
+    }
+    if ('result' in script) {
+        return programOutcomeForResult(script.result, validate);
+    }
+    if ('error' in script) {
+        return programOutcomeForError(new ResponseError(script.error.code, script.error.message, script.error.data));
+    }
+    return script.outcome as ProgramOutcome<R>;
 }
 
 // --- Small, fully-typed factories for fake AST nodes. Every fake Java class/method/field/
