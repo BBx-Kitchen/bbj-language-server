@@ -211,6 +211,42 @@ function hangingFormatPeer(): { handlers: LoopbackPeerHandlers; arrived: Promise
     return { handlers, arrived, cancelled };
 }
 
+describe('a connection that drops while a request is in flight', () => {
+    const fixture = new WireFixture();
+    afterEach(() => fixture.stop());
+
+    /** Answers `warm` and `after` requests at once; on `drop` it destroys the socket and never answers. */
+    const droppingPeer: LoopbackPeerHandlers = {
+        formatProgram: (params, ctx) => {
+            const { text, version } = params as { text: string; version: string };
+            if (version === 'drop') {
+                ctx.drop();
+                return neverAnswer();
+            }
+            return { text, diagnostics: [], denumbered: false, version };
+        },
+    };
+
+    test('the pending request settles at once as a transport failure, far before the deadline, and the next request opens a second socket', async () => {
+        const { service, peer } = await fixture.start(droppingPeer);
+        expect((await service.formatProgram({ text: 'rem a\n', version: 'warm' })).kind).toBe('ok');
+        // From here a timer that is not advanced never fires: only the loss itself can settle the request.
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        const startedAt = performance.now();
+        const outcome = await service.formatProgram({ text: 'rem a\n', version: 'drop' });
+        const elapsed = performance.now() - startedAt;
+
+        expect(outcome).toMatchObject({ kind: 'failed', failure: 'transport' });
+        expect(elapsed).toBeLessThan(PROGRAM_REQUEST_TIMEOUT_MS / 3);
+        expect(peer.connectionCount).toBe(1);
+
+        const after = await service.formatProgram({ text: 'rem b\n', version: 'after' });
+        expect(after.kind).toBe('ok');
+        expect(peer.connectionCount).toBe(2);
+    });
+});
+
 describe('cancellation reaches the peer as a real $/cancelRequest', () => {
     const fixture = new WireFixture();
     afterEach(() => fixture.stop());

@@ -215,10 +215,12 @@ export class FakePeerInteropService extends JavaInteropService {
     }
 
     /**
-     * Rejects every pending request on the named connection as if it was disposed, then fires
-     * that connection's close listeners — mirrors what a real socket close does to in-flight
-     * requests. With no `connectionId`, does this for every connection (today's single-connection
-     * behaviour, unchanged for the breaker suite).
+     * Rejects every pending request on the named connection itself, as a disposal would, then
+     * fires that connection's close listeners. This is a shortcut and not a model of the real
+     * library: a real close event does not reject pending requests (only disposing the connection
+     * does), so a test of what happens to a request in flight when the socket drops belongs on the
+     * loopback peer, where the real connection runs. With no `connectionId`, does this for every
+     * connection (today's single-connection behaviour, unchanged for the breaker suite).
      */
     dropConnection(connectionId?: number): void {
         const targets = connectionId === undefined

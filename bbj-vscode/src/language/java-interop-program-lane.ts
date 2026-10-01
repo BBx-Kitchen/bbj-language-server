@@ -420,6 +420,11 @@ export class ProgramLane {
      * Clears the connection once it is lost, guarded on identity so a stale listener from an
      * already-replaced connection cannot clear a newer one, and moves only the lane's own epoch.
      * The shared connection generation is deliberately not touched.
+     *
+     * The lost connection is then disposed. A close event alone does not reject the requests still
+     * pending on it, and a reader error does not even close the socket; disposing rejects them at
+     * once (they settle as a transport failure) and releases the socket and the peer's workers. The
+     * field is already cleared, so any close event the disposal raises is a no-op.
      */
     private onLaneLost(lane: MessageConnection): void {
         if (this.lane !== lane) {
@@ -427,6 +432,7 @@ export class ProgramLane {
         }
         this.lane = undefined;
         this.laneEpoch++;
+        lane.dispose();
     }
 
     /**
