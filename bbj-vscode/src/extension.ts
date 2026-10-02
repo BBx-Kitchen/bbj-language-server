@@ -636,7 +636,11 @@ function registerDenumDiagnosticsOutput(
             // Raw appendLine, not the log-level methods: those add a timestamp and the Output
             // panel's level filter could hide an ERROR entry.
             for (const line of formatDenumDiagnosticsBlock(params)) {
-                appendOutputLine(line);
+                try {
+                    outputChannel.appendLine(line);
+                } catch {
+                    // A broken write must not stop the rest of the list.
+                }
             }
         }),
         client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
