@@ -4,17 +4,17 @@ milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 125
 current_phase_name: LS Formatting
-status: executing
-stopped_at: Completed 125-05-PLAN.md
-last_updated: "2026-10-02T05:48:52.037Z"
+status: verifying
+stopped_at: Completed 125-06-PLAN.md
+last_updated: "2026-10-02T06:03:08.477Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 125 execution started
-state_head: bd9d752806fd697614a7f29cd914cebd322ad4b7
+state_head: b1d56bbd9adaee4cf0d50b02945bd3094805b83d
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 14
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 Phase: 125 (LS Formatting) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-01 — Phase 125 execution started
 
 Progress: [█░░░░░░░░░] 14% (v4.9: 1/7 phases)
@@ -213,6 +213,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 125 P03 | 14 min | 3 tasks | 8 files |
 | Phase 125 P04 | 11min | 3 tasks | 5 files |
 | Phase 125 P05 | 6 min | 2 tasks | 7 files |
+| Phase 125 P06 | 5 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -382,6 +383,7 @@ decisions:
 - [Phase 125]: Formatting notices log fixed tokens and numeric codes only, never peer text (bbj-ls messages can quote source)
 - [Phase 125]: Notice ledger holds exactly 256 entries, evicting the oldest when a new one arrives while full
 - [Phase 125]: 125-05: formatter settings intake is raw-object handoff to BBjFormatService (normalizes to 15 keys); push applies before startup gate, initializationOptions.formatter applies on initialize; no trust gating for formatter values
+- [Phase 125]: Formatting switched on in one commit: lsp.Formatter slot, bounded handler after startLanguageServer, client-side jar formatter removed; first format on a fresh program connection measures 8 ms (stay lazy, no warm-up)
 
 ### Tech Debt
 
@@ -449,8 +451,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-02T05:48:51.957Z
-Stopped at: Completed 125-05-PLAN.md
+Last session: 2026-10-02T06:03:08.402Z
+Stopped at: Completed 125-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
