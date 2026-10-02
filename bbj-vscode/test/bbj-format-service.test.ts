@@ -310,6 +310,24 @@ describe('format selection', () => {
     });
 });
 
+describe('an unexpected failure', () => {
+
+    test('gives no edit and reaches the log at warn once per connection', async () => {
+        const { double, client, formatDocument } = createHarness();
+        const spies = spyOnLogger();
+        vi.spyOn(double, 'formatProgram').mockRejectedValue(new TypeError('boom'));
+        client.open(URI_TEXT, 1, ORIGINAL);
+        const warn = spies.find(entry => entry.level === 'warn')!.spy;
+
+        expect(await formatDocument(documentParams(), CancellationToken.None)).toEqual([]);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0][0]).toContain('unexpected-error (TypeError)');
+
+        expect(await formatDocument(documentParams(), CancellationToken.None)).toEqual([]);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('cancellation', () => {
 
     test('a cancelled outcome gives no edit and logs nothing above debug', async () => {
