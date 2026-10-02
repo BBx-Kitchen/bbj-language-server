@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 125
 current_phase_name: LS Formatting
 status: executing
-stopped_at: Completed 125-02-PLAN.md
-last_updated: "2026-10-01T18:01:31.687Z"
+stopped_at: Completed 125-03-PLAN.md
+last_updated: "2026-10-02T05:12:33.081Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 125 execution started
-state_head: 1ba48c925ce4dae0b2d33d3d8c9a59b60b602e51
+state_head: 02d8ce7ef698da107be33d08c26f87881f7d2d88
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 14
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 125 (LS Formatting) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 125 execution started
 
@@ -210,6 +210,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 124 P06 | 5min | 2 tasks | 1 files |
 | Phase 125 P01 | 7 min | 2 tasks | 5 files |
 | Phase 125 P02 | 10 min | 2 tasks | 5 files |
+| Phase 125 P03 | 14 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -375,6 +376,7 @@ decisions:
 - [Phase 124]: 124-06: dedicated program lane kept (measured live): small DENUM behind a pending large parse 3-4 ms on the lane vs ~175 ms on a shared connection, parse latency not above idle while a large DENUM runs; bbj-ls honours $/cancelRequest (-32800 in 1-2 ms) — Route confirmed by measurement through the real client; no route change
 - [Phase 125]: Non-JSON formatter setting values are forwarded as JSON text (String fallback) so bbj-ls rejects the key by name — A silent fallback to a default would hide a misconfiguration
 - [Phase 125]: IntelliJ LSP formatting is gated by one false constant overriding all four LSP4IJ formatting checks; no handler added for bbj/openFormatterSettings (LSP4J 1.0.0 logs a WARNING and returns) — Formatting services gate on isEnabled then call the supported checks directly; the notification cannot be produced while the switch is off
+- [Phase 125]: 125-03: tokenized-program check lives in the format service so handlers and the Langium adapter share it; one private handler body takes an optional range so document and range gates cannot drift
 
 ### Tech Debt
 
@@ -442,8 +444,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-01T18:01:31.616Z
-Stopped at: Completed 125-02-PLAN.md
+Last session: 2026-10-02T05:12:33.007Z
+Stopped at: Completed 125-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
