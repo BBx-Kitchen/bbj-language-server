@@ -307,7 +307,6 @@ describe('every way Denumber and Format can fail', () => {
     test('invalid settings name the keys and offer Open Settings, which sends the full key names', async () => {
         const harness = createOfferHarness();
         const expected = harness.BBj.compiler.BBjFormatService.describeInvalidSettings(invalidProblems).text;
-        harness.window.showWarningMessage.mockReturnValueOnce(Promise.resolve(undefined));
         const answer = await raiseOffer(harness);
         harness.double.scriptFormatProgram({ error: { code: -33007, message: 'invalid', data: invalidProblems } });
         harness.window.showWarningMessage.mockReturnValueOnce(Promise.resolve({ title: OPEN_SETTINGS_ACTION }));

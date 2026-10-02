@@ -13,13 +13,19 @@
 
 import { CancellationToken, type TextEdit } from 'vscode-languageserver';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
-import type { DenumProgramResult, ProgramFailureKind, ProgramOutcome } from './java-interop-program-types.js';
+import type {
+    DenumProgramResult, FormatSettingValue, ProgramFailureKind, ProgramOutcome, ProgramSettingProblem
+} from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
 import type { DenumDiagnosticDto, DenumDiagnosticsParams } from './denum-notifications.js';
 import { minimalLineEdit } from './bbj-format-edit.js';
-import { GO_TO_LINE_ACTION, TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage } from './bbj-format-service.js';
+import type { OpenFormatterSettingsParams } from './format-settings-notification.js';
 import {
-    applyDocumentEdit, notifyDenumDiagnostics, notifyShowDenumDiagnostics, showFormatterDocument,
+    FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE, FORMAT_TOO_LARGE_MESSAGE,
+    GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage
+} from './bbj-format-service.js';
+import {
+    applyDocumentEdit, notifyDenumDiagnostics, notifyOpenFormatterSettings, notifyShowDenumDiagnostics, showFormatterDocument,
     showFormatterWarning, showFormatterWarningWithAction, showInformation, showInformationWithAction,
     showWarningWithActions
 } from './bbj-notifications.js';
@@ -78,8 +84,14 @@ export const DENUM_PARSER_FAILED_MESSAGE =
 export const DENUM_SERVICE_UNAVAILABLE_MESSAGE =
     'The BBj denumbering service is not available right now. The file was not changed; try again later.';
 
+/** Shown after a successful Denumber and Format run. */
+export const DENUM_AND_FORMAT_SUCCESS_MESSAGE = 'Denumbered and formatted.';
+
 /** The label of the edit in the editor's undo history. */
 export const DENUMBER_EDIT_LABEL = 'Denumber';
+
+/** The label of the Denumber and Format edit in the editor's undo history. */
+export const DENUMBER_AND_FORMAT_EDIT_LABEL = 'Denumber and Format';
 
 /** The button that denumbers the file. */
 export const DENUMBER_ACTION = 'Denumber';
@@ -137,6 +149,8 @@ export interface DenumMessenger {
     warnWithActions(text: string, actionTitles: readonly string[], onPick: (title: string) => void): void;
     /** Asks the client to show the open document `uri` with the cursor at the zero-based `line`. */
     showDocument(uri: string, line: number): void;
+    /** Asks the client to open its formatter settings. */
+    openFormatterSettings(params: OpenFormatterSettingsParams): void;
     /** Sends the list of diagnostics of a finished run to the client. */
     denumDiagnostics(params: DenumDiagnosticsParams): void;
     /** Asks the client to reveal the list it already holds. */
@@ -179,6 +193,7 @@ const DEFAULT_MESSENGER: DenumMessenger = {
         }, () => { /* a failed prompt is harmless */ });
     },
     showDocument: showFormatterDocument,
+    openFormatterSettings: notifyOpenFormatterSettings,
     denumDiagnostics: notifyDenumDiagnostics,
     showDenumDiagnostics: notifyShowDenumDiagnostics,
     applyEdit: (uri, version, edits, label) => applyDocumentEdit({ uri, version, edits, label })
@@ -192,7 +207,17 @@ export interface BBjDenumServiceContext {
     java: {
         JavaInteropService: JavaInteropService;
     };
+    /** Read when a Denumber and Format run starts or fails, never in the constructor: the two services must not depend on each other's creation order. */
+    compiler: {
+        BBjFormatService: {
+            settingsSnapshot(): Record<string, FormatSettingValue>;
+            describeInvalidSettings(problems: readonly ProgramSettingProblem[]): { text: string; keys: string[] };
+        };
+    };
 }
+
+/** What a run does: denumber only, or denumber and format in one call. */
+type DenumOperation = 'denum' | 'denum-and-format';
 
 /**
  * A fresh copy of the validated diagnostics built field by field, so the result carries exactly
@@ -214,7 +239,10 @@ export class BBjDenumService {
     /** The uris of the documents with a run in flight: one run applies to one version of one document at a time. */
     private readonly running = new Set<string>();
 
+    private readonly context: BBjDenumServiceContext;
+
     constructor(services: BBjDenumServiceContext) {
+        this.context = services;
         this.javaInterop = services.java.JavaInteropService;
     }
 
@@ -239,6 +267,8 @@ export class BBjDenumService {
             this.messenger.warnWithActions(DENUM_OFFER_MESSAGE, [DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION], picked => {
                 if (picked === DENUMBER_ACTION) {
                     denumber();
+                } else if (picked === DENUMBER_AND_FORMAT_ACTION) {
+                    void this.runDenumAndFormat(request, CancellationToken.None).catch(() => { /* never rejects */ });
                 }
             });
         } catch (error) {
@@ -250,7 +280,21 @@ export class BBjDenumService {
      * Denumbers the request's open document. Resolves to the outcome and never rejects; every
      * ending, a failure included, has shown exactly one message unless the caller cancelled.
      */
-    public async run(request: BBjDenumRequest, token: CancellationToken): Promise<DenumResult> {
+    public run(request: BBjDenumRequest, token: CancellationToken): Promise<DenumResult> {
+        return this.execute('denum', request, token);
+    }
+
+    /**
+     * Denumbers and formats the request's open document with one `formatProgram` call that carries
+     * the denumber permission, and applies the answer as one edit. Resolves to the outcome and never
+     * rejects; every ending has shown exactly one message unless the caller cancelled.
+     */
+    public runDenumAndFormat(request: BBjDenumRequest, token: CancellationToken): Promise<DenumResult> {
+        return this.execute('denum-and-format', request, token);
+    }
+
+    /** The one core both runs go through: every guard, the call, the re-check, the edit and the messages exist once. */
+    private async execute(operation: DenumOperation, request: BBjDenumRequest, token: CancellationToken): Promise<DenumResult> {
         let claimed: string | undefined;
         try {
             if (request.uri === undefined) {
@@ -275,38 +319,47 @@ export class BBjDenumService {
             claimed = document.uri;
             this.running.add(claimed);
 
-            // No canonicalName: bbj-ls supersedes a pending request that carries the same name, and
-            // two runs must never cancel each other.
-            const outcome = await this.javaInterop.denumProgram({ text: sent, version: String(version) }, token);
+            const outcome = await this.callPeer(operation, sent, version, token);
 
             if (token.isCancellationRequested || outcome.kind === 'cancelled') {
                 logger.debug('Denumber run was cancelled');
                 return { status: 'failed', reason: 'cancelled' };
             }
             if (outcome.kind !== 'ok') {
-                return this.presentFailure(outcome, request, uri, lineCount);
+                return this.presentFailure(outcome, request, uri, lineCount, operation);
             }
 
             const live = request.current();
             if (live === undefined || live.version !== version) {
                 return this.fail('stale', DENUM_STALE_MESSAGE);
             }
+            const base = operation === 'denum' ? DENUM_SUCCESS_MESSAGE : DENUM_AND_FORMAT_SUCCESS_MESSAGE;
+            const label = operation === 'denum' ? DENUMBER_EDIT_LABEL : DENUMBER_AND_FORMAT_EDIT_LABEL;
+            const edits = minimalLineEdit(live, 0, sent.length, outcome.result.text);
+
             if (!outcome.result.denumbered) {
+                // A plain DENUM has nothing to change; a combined run still carries the formatted text.
+                if (operation === 'denum' || edits.length === 0) {
+                    this.messenger.info(DENUM_NOTHING_TO_DO_MESSAGE);
+                    return { status: 'not-line-numbered', message: DENUM_NOTHING_TO_DO_MESSAGE, version };
+                }
+                if (!await this.messenger.applyEdit(live.uri, version, edits, label)) {
+                    return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
+                }
                 this.messenger.info(DENUM_NOTHING_TO_DO_MESSAGE);
-                return { status: 'not-line-numbered', message: DENUM_NOTHING_TO_DO_MESSAGE, version };
+                return { status: 'not-line-numbered', message: DENUM_NOTHING_TO_DO_MESSAGE, version, edits, applied: true };
             }
 
             const diagnostics = copyDiagnostics(outcome.result);
-            const edits = minimalLineEdit(live, 0, sent.length, outcome.result.text);
             if (edits.length === 0) {
-                this.messenger.info(DENUM_SUCCESS_MESSAGE);
-                return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, diagnostics, applied: false };
+                this.messenger.info(base);
+                return { status: 'denumbered', message: base, version, edits, diagnostics, applied: false };
             }
-            const applied = await this.messenger.applyEdit(live.uri, version, edits, DENUMBER_EDIT_LABEL);
+            const applied = await this.messenger.applyEdit(live.uri, version, edits, label);
             if (!applied) {
                 return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
             }
-            const message = this.presentSuccess(live.uri, diagnostics);
+            const message = this.presentSuccess(live.uri, diagnostics, base);
             return { status: 'denumbered', message, version, edits, diagnostics, applied: true };
         } catch (error) {
             // Log lines carry fixed tokens only, never document or peer text.
@@ -324,13 +377,13 @@ export class BBjDenumService {
      * one message with the counts and a Show button: a Warning when any entry is an error, an
      * Information message otherwise. A clean run shows the plain confirmation.
      */
-    private presentSuccess(uri: string, diagnostics: DenumDiagnosticDto[]): string {
+    private presentSuccess(uri: string, diagnostics: DenumDiagnosticDto[], base: string): string {
         if (diagnostics.length === 0) {
-            this.messenger.info(DENUM_SUCCESS_MESSAGE);
-            return DENUM_SUCCESS_MESSAGE;
+            this.messenger.info(base);
+            return base;
         }
         this.messenger.denumDiagnostics({ uri, diagnostics });
-        const text = denumSuccessMessage(DENUM_SUCCESS_MESSAGE, diagnostics);
+        const text = denumSuccessMessage(base, diagnostics);
         const reveal = () => this.messenger.showDenumDiagnostics();
         if (diagnostics.some(diagnostic => diagnostic.severity === 'ERROR')) {
             this.messenger.warnWithAction(text, SHOW_DENUM_DIAGNOSTICS_ACTION, reveal);
@@ -341,15 +394,53 @@ export class BBjDenumService {
     }
 
     /**
+     * Asks bbj-ls to do the work and returns its answer in the shape of a DENUM answer. A combined
+     * run is one whole-document `formatProgram` call with the denumber permission and the format
+     * settings; a range answer to it is unusable.
+     *
+     * No canonicalName in either call: bbj-ls supersedes a pending request that carries the same
+     * name, and two runs must never cancel each other.
+     */
+    private async callPeer(
+        operation: DenumOperation, text: string, version: number, token: CancellationToken
+    ): Promise<ProgramOutcome<DenumProgramResult>> {
+        if (operation === 'denum') {
+            return this.javaInterop.denumProgram({ text, version: String(version) }, token);
+        }
+        const outcome = await this.javaInterop.formatProgram({
+            text,
+            version: String(version),
+            settings: this.context.compiler.BBjFormatService.settingsSnapshot(),
+            allowDenum: true
+        }, token);
+        if (outcome.kind !== 'ok') {
+            return outcome;
+        }
+        if (outcome.result.scope !== 'document') {
+            return { kind: 'malformed-result', reason: 'range answer to a whole-document request' };
+        }
+        const { text: answer, diagnostics, denumbered, version: echoed } = outcome.result;
+        return { kind: 'ok', result: { text: answer, diagnostics, denumbered, version: echoed } };
+    }
+
+    /**
      * Maps an outcome that is neither a result nor a cancellation to its one Warning and reason.
      * Every text is fixed: nothing the peer wrote and nothing from the document reaches the user.
+     * A combined run answers the failures that come from formatting with the formatting texts.
      */
     private presentFailure(
         outcome: Exclude<ProgramOutcome<DenumProgramResult>, { kind: 'ok' | 'cancelled' }>,
         request: BBjDenumRequest,
         uri: string,
-        lineCountAtStart: number
+        lineCountAtStart: number,
+        operation: DenumOperation
     ): DenumResult {
+        if (operation === 'denum-and-format') {
+            const formatting = this.presentFormattingFailure(outcome);
+            if (formatting !== undefined) {
+                return formatting;
+            }
+        }
         switch (outcome.kind) {
             case 'unavailable':
                 return outcome.reason === 'method-not-found'
@@ -365,6 +456,42 @@ export class BBjDenumService {
                 return this.fail('denum-failed', DENUM_FAILED_MESSAGE, 'malformed-result');
             case 'invalid-settings':
                 return this.fail('denum-failed', DENUM_FAILED_MESSAGE, 'invalid-settings');
+        }
+    }
+
+    /**
+     * The failures of a combined run that come from formatting, with the formatting texts; any
+     * other outcome is `undefined` and goes through the DENUM texts. Invalid settings are the one
+     * text built from the peer's per-setting reasons, bounded and capped by the shared builder.
+     */
+    private presentFormattingFailure(
+        outcome: Exclude<ProgramOutcome<DenumProgramResult>, { kind: 'ok' | 'cancelled' }>
+    ): DenumResult | undefined {
+        switch (outcome.kind) {
+            case 'invalid-settings': {
+                const { text, keys } = this.context.compiler.BBjFormatService.describeInvalidSettings(outcome.problems);
+                return this.fail('invalid-settings', text, `invalid-settings, ${outcome.problems.length} problems`, () =>
+                    this.messenger.warnWithAction(text, OPEN_SETTINGS_ACTION, () => this.messenger.openFormatterSettings({ keys })));
+            }
+            case 'timeout':
+                return this.fail('timeout', FORMAT_TIMEOUT_MESSAGE, `timeout, ${outcome.origin}`);
+            case 'malformed-result':
+                return this.fail('denum-failed', FORMAT_ENGINE_FAILED_MESSAGE, 'malformed-result');
+            case 'failed': {
+                const detail = `${outcome.failure}${outcome.code === undefined ? '' : `, code ${outcome.code}`}`;
+                switch (outcome.failure) {
+                    case 'size-cap':
+                        return this.fail('too-large', FORMAT_TOO_LARGE_MESSAGE, detail);
+                    case 'format-failed':
+                        return this.fail('denum-failed', FORMAT_ENGINE_FAILED_MESSAGE, detail);
+                    case 'service-unavailable':
+                        return this.fail('service-unavailable', FORMAT_SERVICE_UNAVAILABLE_MESSAGE, detail);
+                    default:
+                        return undefined;
+                }
+            }
+            default:
+                return undefined;
         }
     }
 

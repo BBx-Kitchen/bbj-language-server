@@ -60,6 +60,7 @@ export function installRecordingMessenger(harness: DenumHarness) {
         warnWithAction: vi.fn(),
         warnWithActions: vi.fn(),
         showDocument: vi.fn(),
+        openFormatterSettings: vi.fn(),
         denumDiagnostics: vi.fn(),
         showDenumDiagnostics: vi.fn(),
         applyEdit: vi.fn(async () => true)
