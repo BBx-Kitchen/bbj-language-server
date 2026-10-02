@@ -265,7 +265,9 @@ export class BBjFormatService {
      *
      * A message about the content of one version of one document is scoped to that document and
      * version, so an edit re-arms it and saving an unchanged file never repeats it. A message about
-     * the environment is scoped to the connection, so a reconnect re-arms it.
+     * the environment is scoped to the connection, so a reconnect re-arms it. Formatter engine
+     * failures and timeouts count as the environment: they are shown once per connection, and a
+     * later one is logged only.
      */
     private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>, request: BBjFormatRequest, version: number): void {
         const generation = `generation:${this.javaInterop.connectionGeneration}`;
@@ -284,7 +286,7 @@ export class BBjFormatService {
                 this.environmentNotice('timeout', generation, `timeout (${outcome.origin})`, FORMAT_TIMEOUT_MESSAGE);
                 return;
             case 'malformed-result':
-                this.environmentNotice('engine-failed', generation, 'malformed-result', FORMAT_ENGINE_FAILED_MESSAGE);
+                this.environmentNotice('malformed-result', generation, 'malformed-result', FORMAT_ENGINE_FAILED_MESSAGE);
                 return;
             case 'invalid-settings':
                 this.reportInvalidSettings(outcome.problems);

@@ -356,6 +356,20 @@ describe('a message repeats only when its own scope changes', () => {
         expect(messenger.warn).toHaveBeenCalledTimes(1);
     });
 
+    test('an engine failure and a malformed answer are separate notices on one connection', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        harness.double.scriptFormatProgram(wireError(-33009));
+        await harness.format();
+        harness.double.scriptFormatProgram({ outcome: { kind: 'malformed-result', reason: 'no text' } });
+        await harness.format();
+        await harness.format();
+
+        expect(messenger.warn.mock.calls.map(args => args[0])).toEqual([FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_ENGINE_FAILED_MESSAGE]);
+    });
+
     test('two different kinds on the same document and version each show once', async () => {
         const harness = createHarness();
         const messenger = installRecordingMessenger(harness);
