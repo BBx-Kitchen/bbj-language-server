@@ -128,6 +128,22 @@ describe('formatDenumDiagnosticsBlock', () => {
         ]);
     });
 
+    test('other control characters and the Unicode line and paragraph separators become a space too', () => {
+        const lines = formatDenumDiagnosticsBlock({
+            uri: 'untitled:a\u2028b',
+            diagnostics: [
+                entry({ message: 'a\u2028b\u2029c\u0085d\u000be\u0000f\u007fg\u009fh' }),
+                entry({ originalLineNumber: '00\u2029\u001b10' }),
+            ],
+        });
+
+        expect(lines).toEqual([
+            'Denumber diagnostics for untitled:a b:',
+            '  line 1 (original 0010) ERROR: a b c d e f g h',
+            '  line 1 (original 00  10) ERROR: syntax error',
+        ]);
+    });
+
     test('a message with astral characters and a very long message are written whole', () => {
         const long = 'x'.repeat(2000);
         const lines = formatDenumDiagnosticsBlock({

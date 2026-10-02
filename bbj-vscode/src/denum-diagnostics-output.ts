@@ -17,8 +17,8 @@ const SEVERITIES: readonly unknown[] = ['ERROR', 'WARNING', 'INFO'];
  *
  * This is a trust boundary: the payload comes from the language server process, so every field is
  * validated here and the function never throws, whatever it is given. An entry that is not
- * well-formed is skipped, a CR or LF inside a field becomes a space so one entry is always one
- * output line, and no message is cut. A block always starts with its own header, so two runs on the
+ * well-formed is skipped, a control character or a line or paragraph separator inside a field
+ * becomes a space so one entry is always one output line, and no message is cut. A block always starts with its own header, so two runs on the
  * same file never merge.
  *
  * This module imports nothing from `vscode`, so the rendering is tested without any host mock.
@@ -73,6 +73,7 @@ function displayPath(uri: string): string {
     }
 }
 
+/** Every control character (C0, DEL, C1) and the Unicode line and paragraph separators, one space each. */
 function flatten(text: string): string {
-    return text.replace(/[\r\n]/g, ' ');
+    return text.replace(/[\p{Cc}\u2028\u2029]/gu, ' ');
 }
