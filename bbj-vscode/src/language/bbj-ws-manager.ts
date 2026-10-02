@@ -4,6 +4,7 @@ import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module.js";
+import type { BBjFormatService } from "./bbj-format-service.js";
 import { JavaInteropService } from "./java-interop.js";
 import { JavadocProvider } from "./java-javadoc.js";
 import { logger } from "./logger.js";
@@ -29,6 +30,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
     private javadocProvider: JavadocProvider;
+    private formatService: () => BBjFormatService;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
@@ -128,12 +130,21 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
                 // Set parameter name inlay hint mode (invalid/missing values keep the default)
                 setParameterHintMode(params.initializationOptions.inlayHintsParameterNames);
+
+                // Startup channel for the formatter settings: the service keeps only the keys
+                // bbj-ls accepts, so the raw object is handed over as the client holds it.
+                const formatter = params.initializationOptions.formatter;
+                if (formatter !== undefined) {
+                    this.formatService().setSettings(formatter);
+                }
             }
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
         this.javadocProvider = bbjServices.java.JavadocProvider;
+        // Resolved on first use so the format service is never built while this manager is.
+        this.formatService = () => bbjServices.compiler.BBjFormatService;
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
