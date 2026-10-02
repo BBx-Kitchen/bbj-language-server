@@ -15,6 +15,7 @@ import {
     createDenumHarness, deferred, denumAnswer, installRecordingMessenger, loggedLines, resetDenumHarness,
     type DenumHarness
 } from './denum-test-harness.js';
+import { APPLY_EDIT_TIMEOUT_MS } from '../src/language/bbj-notifications.js';
 import type { JavaInteropTestServiceProgramScript } from './bbj-test-module.js';
 
 const URI_TEXT = 'file:///ws/numbered.bbj';
@@ -115,6 +116,30 @@ describe('an editor that refuses the edit', () => {
         expect(result.reason).toBe('not-applied');
         expect(warned(harness)).toEqual([DENUM_NOT_APPLIED_MESSAGE]);
         expect(informed(harness)).toEqual([]);
+    });
+
+    test('never answering ends as not applied after the deadline and frees the document', async () => {
+        vi.useFakeTimers();
+        try {
+            const harness = createDenumHarness();
+            harness.workspace.applyEdit.mockReturnValue(new Promise(() => { /* never settles */ }));
+            harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1));
+            harness.client.open(URI_TEXT, 1, NUMBERED);
+
+            const running = harness.run(URI_TEXT);
+            await vi.advanceTimersByTimeAsync(APPLY_EDIT_TIMEOUT_MS);
+            const result = await running;
+
+            expect(result).toMatchObject({ status: 'failed', reason: 'not-applied', message: DENUM_NOT_APPLIED_MESSAGE });
+            expect(warned(harness)).toEqual([DENUM_NOT_APPLIED_MESSAGE]);
+
+            harness.workspace.applyEdit.mockResolvedValue({ applied: true });
+            const next = await harness.run(URI_TEXT);
+            expect(next.reason).not.toBe('in-progress');
+            expect(next.status).toBe('denumbered');
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
 

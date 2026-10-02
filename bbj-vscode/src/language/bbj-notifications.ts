@@ -97,12 +97,29 @@ export function showInformation(text: string): void {
     }
 }
 
+/** How long a client gets to answer a `workspace/applyEdit` request before the edit counts as not applied. */
+export const APPLY_EDIT_TIMEOUT_MS = 30_000;
+
+/**
+ * Resolves to `promise`'s value, or to `false` once `ms` have passed or `promise` rejects. Never
+ * rejects, and leaves no timer behind once `promise` has settled.
+ */
+function withDeadline(promise: Promise<boolean>, ms: number): Promise<boolean> {
+    return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), ms);
+        promise.then(
+            value => { clearTimeout(timer); resolve(value); },
+            () => { clearTimeout(timer); resolve(false); }
+        );
+    });
+}
+
 /**
  * Ask the client to apply `edits` to the open document `uri` as one undoable change, and resolve to
  * whether it did. The edit names the document `version` it was computed for in `documentChanges`,
  * which is where a client checks it: a client that sees another version refuses it. Resolves to
- * `false` when the connection is not initialized, the client refuses, or the request fails. Never
- * rejects.
+ * `false` when the connection is not initialized, the client refuses, the request fails, or the
+ * client does not answer within {@link APPLY_EDIT_TIMEOUT_MS}. Never rejects.
  */
 export function applyDocumentEdit(
     params: { uri: string; version: number; edits: TextEdit[]; label: string }
@@ -127,7 +144,7 @@ export function applyDocumentEdit(
             return false;
         }
     };
-    return apply();
+    return withDeadline(apply(), APPLY_EDIT_TIMEOUT_MS);
 }
 
 /**
