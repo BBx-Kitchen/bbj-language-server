@@ -507,7 +507,7 @@ Plans:
   3. Every DENUM run ends in one matching message: "nothing to do" for an unnumbered file, a short confirmation on success, a pointer to Decompile for tokenized input, and a statement that the program is protected for a protected one.
   4. DENUM's diagnostics appear in an output list (line, original line number, severity, message), and a notification shows their counts with a "Show" action that opens the list.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -525,7 +525,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 126-05-PLAN.md — Live check against BBj 26.03, every phase gate including the IntelliJ suite, IntelliJ notes and the hand check (wave 4)
+- [x] 126-05-PLAN.md — Live check against BBj 26.03, every phase gate including the IntelliJ suite, IntelliJ notes and the hand check (wave 4)
 
 ### Phase 127: VS Code Cut-Over
 
@@ -631,7 +631,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 |-------|----------------|--------|-----------|
 | 124. Interop Client | 6/6 | Complete | 2026-10-01 |
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
-| 126. LS DENUM | 4/5 | Not started |  |
+| 126. LS DENUM | 5/5 | Not started |  |
 | 127. VS Code Cut-Over | 0/TBD | Not started | - |
 | 128. IntelliJ DENUM | 0/TBD | Not started | - |
 | 129. IntelliJ Verdict | 0/TBD | Not started | - |
