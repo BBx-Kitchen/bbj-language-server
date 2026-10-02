@@ -13,11 +13,11 @@
 
 import type { CancellationToken, TextEdit } from 'vscode-languageserver';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
-import type { DenumProgramResult, ProgramOutcome } from './java-interop-program-types.js';
+import type { DenumProgramResult, ProgramFailureKind, ProgramOutcome } from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
 import type { DenumDiagnosticDto, DenumDiagnosticsParams } from './denum-notifications.js';
 import { minimalLineEdit } from './bbj-format-edit.js';
-import { TOKENIZED_PROGRAM_PREFIX } from './bbj-format-service.js';
+import { GO_TO_LINE_ACTION, TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage } from './bbj-format-service.js';
 import {
     applyDocumentEdit, notifyDenumDiagnostics, notifyShowDenumDiagnostics, showFormatterDocument,
     showFormatterWarning, showFormatterWarningWithAction, showInformation, showInformationWithAction
@@ -52,6 +52,30 @@ export const DENUM_NOT_APPLIED_MESSAGE =
 
 /** Shown when a run for the same document is still going. */
 export const DENUM_IN_PROGRESS_MESSAGE = 'Denumbering is already running for this file.';
+
+/** Shown when the connected BBjServices does not offer DENUM. */
+export const DENUM_REQUIRES_BBJ_26_03_MESSAGE =
+    'Denumbering requires BBj 26.03 or later. The connected BBjServices does not provide it.';
+
+/** Shown when BBjServices could not be reached. */
+export const DENUM_NOT_REACHABLE_MESSAGE = 'BBjServices is not reachable. The file was not changed.';
+
+/** Shown when DENUM ran into a deadline. */
+export const DENUM_TIMEOUT_MESSAGE = 'Denumbering timed out. The file was not changed; try again.';
+
+/** Shown when the file is over the size the service accepts. */
+export const DENUM_TOO_LARGE_MESSAGE = 'This file is too large to denumber. The file was not changed.';
+
+/** Shown when the program is protected. */
+export const DENUM_PROTECTED_MESSAGE = 'This BBj program is protected and cannot be denumbered.';
+
+/** Shown when BBj's parser could not read the text; the usual cause is a character BBj cannot represent. */
+export const DENUM_PARSER_FAILED_MESSAGE =
+    'Denumbering failed. The file was not changed. If it contains characters BBj cannot represent, remove them and try again.';
+
+/** Shown when the denumbering service answered that it cannot serve right now. */
+export const DENUM_SERVICE_UNAVAILABLE_MESSAGE =
+    'The BBj denumbering service is not available right now. The file was not changed; try again later.';
 
 /** The label of the edit in the editor's undo history. */
 export const DENUMBER_EDIT_LABEL = 'Denumber';
@@ -187,6 +211,8 @@ export class BBjDenumService {
             }
             // The store updates documents in place: keep primitives, never the document as a snapshot.
             const version = document.version;
+            const uri = document.uri;
+            const lineCount = document.lineCount;
             const sent = document.getText();
             if (sent.startsWith(TOKENIZED_PROGRAM_PREFIX)) {
                 return this.fail('tokenized', DENUM_TOKENIZED_MESSAGE);
@@ -207,7 +233,7 @@ export class BBjDenumService {
                 return { status: 'failed', reason: 'cancelled' };
             }
             if (outcome.kind !== 'ok') {
-                return this.presentFailure(outcome);
+                return this.presentFailure(outcome, request, uri, lineCount);
             }
 
             const live = request.current();
@@ -263,16 +289,85 @@ export class BBjDenumService {
         return text;
     }
 
-    /** Maps an outcome that is neither a result nor a cancellation to its one Warning and reason. */
-    private presentFailure(outcome: Exclude<ProgramOutcome<DenumProgramResult>, { kind: 'ok' | 'cancelled' }>): DenumResult {
-        logger.debug(`Denumber run ended without a result (${outcome.kind})`);
-        return this.fail('denum-failed', DENUM_FAILED_MESSAGE);
+    /**
+     * Maps an outcome that is neither a result nor a cancellation to its one Warning and reason.
+     * Every text is fixed: nothing the peer wrote and nothing from the document reaches the user.
+     */
+    private presentFailure(
+        outcome: Exclude<ProgramOutcome<DenumProgramResult>, { kind: 'ok' | 'cancelled' }>,
+        request: BBjDenumRequest,
+        uri: string,
+        lineCountAtStart: number
+    ): DenumResult {
+        switch (outcome.kind) {
+            case 'unavailable':
+                return outcome.reason === 'method-not-found'
+                    ? this.fail('requires-bbj-26-03', DENUM_REQUIRES_BBJ_26_03_MESSAGE, 'method-not-found')
+                    : this.fail('not-reachable', DENUM_NOT_REACHABLE_MESSAGE, 'unavailable');
+            case 'timeout':
+                return this.fail('timeout', DENUM_TIMEOUT_MESSAGE, `timeout, ${outcome.origin}`);
+            case 'mixed-numbering':
+                return this.presentMixedNumbering(outcome.line, request, uri, lineCountAtStart);
+            case 'failed':
+                return this.presentFailed(outcome.failure, outcome.code);
+            case 'malformed-result':
+                return this.fail('denum-failed', DENUM_FAILED_MESSAGE, 'malformed-result');
+            case 'invalid-settings':
+                return this.fail('denum-failed', DENUM_FAILED_MESSAGE, 'invalid-settings');
+        }
     }
 
-    /** Shows the one Warning of a failed run and builds its result. */
-    private fail(reason: DenumFailureReason, text: string): DenumResult {
-        logger.debug(`Denumber run ended: ${reason}`);
-        this.messenger.warn(text);
+    private presentFailed(failure: ProgramFailureKind, code: number | undefined): DenumResult {
+        const detail = `${failure}${code === undefined ? '' : `, code ${code}`}`;
+        switch (failure) {
+            case 'transport':
+                return this.fail('not-reachable', DENUM_NOT_REACHABLE_MESSAGE, detail);
+            case 'size-cap':
+                return this.fail('too-large', DENUM_TOO_LARGE_MESSAGE, detail);
+            case 'protected-program':
+                return this.fail('protected-program', DENUM_PROTECTED_MESSAGE, detail);
+            case 'parser-exception':
+                return this.fail('denum-failed', DENUM_PARSER_FAILED_MESSAGE, detail);
+            case 'service-unavailable':
+                return this.fail('service-unavailable', DENUM_SERVICE_UNAVAILABLE_MESSAGE, detail);
+            case 'denum-needed':
+            case 'format-failed':
+            case 'invalid-params':
+                return this.fail('denum-failed', DENUM_FAILED_MESSAGE, detail);
+        }
+    }
+
+    /**
+     * The Warning for a file that mixes numbered and unnumbered lines. With a known line it offers
+     * to jump there, in the document the run started with and never anywhere the peer names; the
+     * line is clamped to the document as it is when the user clicks. `line` is one-based.
+     */
+    private presentMixedNumbering(line: number | undefined, request: BBjDenumRequest, uri: string, lineCountAtStart: number): DenumResult {
+        if (line === undefined || !Number.isFinite(line)) {
+            return this.fail('mixed-numbering', mixedNumberingMessage(undefined), 'no line');
+        }
+        const clampTo = (lineCount: number): number => Math.max(0, Math.min(line - 1, lineCount - 1));
+        const text = mixedNumberingMessage(line);
+        const result = this.fail('mixed-numbering', text, 'line known', () => {
+            this.messenger.warnWithAction(text, GO_TO_LINE_ACTION, () => {
+                this.messenger.showDocument(uri, clampTo(request.current()?.lineCount ?? lineCountAtStart));
+            });
+        });
+        return { ...result, line: clampTo(request.current()?.lineCount ?? lineCountAtStart) };
+    }
+
+    /**
+     * Shows the one Warning of a failed run and builds its result. `show` replaces the plain
+     * Warning when the message carries a button. The log line holds the reason and fixed tokens
+     * only, never document text or the peer's own wording.
+     */
+    private fail(reason: DenumFailureReason, text: string, detail?: string, show?: () => void): DenumResult {
+        logger.warn(`Denumber run failed: ${reason}${detail === undefined ? '' : ` (${detail})`}`);
+        if (show === undefined) {
+            this.messenger.warn(text);
+        } else {
+            show();
+        }
         return { status: 'failed', reason, message: text };
     }
 }
