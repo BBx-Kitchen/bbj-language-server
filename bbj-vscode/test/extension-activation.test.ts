@@ -65,6 +65,7 @@ vi.mock('vscode', () => {
                 formatter: {},
             })),
             textDocuments: [],
+            openTextDocument: vi.fn(),
             onDidOpenTextDocument: vi.fn(() => disposable()),
             onDidChangeTextDocument: vi.fn(() => disposable()),
             onDidCloseTextDocument: vi.fn(() => disposable()),
@@ -353,6 +354,84 @@ describe('denumber diagnostics output', () => {
         }
         expect(executeCommand).not.toHaveBeenCalled();
         expect(vscode.window.createOutputChannel).toHaveBeenCalledTimes(1);
+
+        disposeSubscriptions(context);
+    });
+
+    test('two runs append two blocks, each starting with its own header', () => {
+        const { context, channel, list } = activateAndFindHandlers();
+
+        list(payload);
+        list(payload);
+
+        const lines = channel.appendLine.mock.calls.map(call => call[0]);
+        expect(lines).toEqual([
+            'Denumber diagnostics for /ws/a.bbj:',
+            '  line 1 (original 0010) ERROR: syntax error',
+            'Denumber diagnostics for /ws/a.bbj:',
+            '  line 1 (original 0010) ERROR: syntax error',
+        ]);
+
+        disposeSubscriptions(context);
+    });
+
+    test('a hostile list payload only appends text and never opens, runs or jumps anywhere', () => {
+        const { context, channel, list } = activateAndFindHandlers();
+        const spies = [
+            vscode.commands.executeCommand,
+            vscode.window.showTextDocument,
+            vscode.workspace.openTextDocument,
+        ] as Array<ReturnType<typeof vi.fn>>;
+        spies.forEach(spy => spy.mockClear());
+
+        list({
+            uri: 'command:workbench.action.reloadWindow',
+            diagnostics: [{ line: 1, originalLineNumber: '', severity: 'ERROR', message: 'command:workbench.action.quit' }],
+        });
+
+        expect(channel.appendLine.mock.calls).toEqual([
+            ['Denumber diagnostics for command:workbench.action.reloadWindow:'],
+            ['  line 1 ERROR: command:workbench.action.quit'],
+        ]);
+        spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+
+        disposeSubscriptions(context);
+    });
+
+    test.each([
+        ['null', null],
+        ['a number', 42],
+        ['a string', 'text'],
+        ['an object without diagnostics', { uri: 7 }],
+    ])('a malformed list payload (%s) does not throw and still writes a header', (_name, payload) => {
+        const { context, channel, list } = activateAndFindHandlers();
+
+        expect(() => list(payload)).not.toThrow();
+
+        expect(channel.appendLine).toHaveBeenCalledTimes(1);
+        expect(channel.appendLine.mock.calls[0][0]).toBe('Denumber diagnostics for an unknown file:');
+
+        disposeSubscriptions(context);
+    });
+
+    test.each([
+        ['a file uri payload', { uri: 'file:///etc/passwd' }],
+        ['no payload', undefined],
+        ['a string payload', 'x'],
+    ])('the reveal notification with %s only shows the channel', (_name, payload) => {
+        const { context, channel, reveal } = activateAndFindHandlers();
+        const spies = [
+            vscode.commands.executeCommand,
+            vscode.window.showTextDocument,
+            vscode.workspace.openTextDocument,
+        ] as Array<ReturnType<typeof vi.fn>>;
+        spies.forEach(spy => spy.mockClear());
+
+        reveal(payload);
+
+        expect(channel.show.mock.calls).toEqual([[true]]);
+        expect(channel.appendLine).not.toHaveBeenCalled();
+        spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
 
         disposeSubscriptions(context);
     });
