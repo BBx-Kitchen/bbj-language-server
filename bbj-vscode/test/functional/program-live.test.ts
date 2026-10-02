@@ -4,9 +4,14 @@ import * as path from 'node:path';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node.js';
 import { CancellationToken, LSPErrorCodes } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { afterAll, beforeAll, describe, expect, test, type TestContext } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi, type TestContext } from 'vitest';
 import { createBBjServices } from '../../src/language/bbj-module.js';
-import type { FormatMessenger } from '../../src/language/bbj-format-service.js';
+import {
+    DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION, DENUMBER_AND_FORMAT_EDIT_LABEL, DENUMBER_EDIT_LABEL,
+    DENUM_AND_FORMAT_SUCCESS_MESSAGE, DENUM_NOTHING_TO_DO_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_SUCCESS_MESSAGE,
+    SHOW_DENUM_DIAGNOSTICS_ACTION, type DenumMessenger
+} from '../../src/language/bbj-denum-service.js';
+import { GO_TO_LINE_ACTION, type FormatMessenger } from '../../src/language/bbj-format-service.js';
 import type { ProgramOutcome } from '../../src/language/java-interop-program-types.js';
 import { connect } from '../../tools/interop-test-harness/scaffold.js';
 import { shouldRunBBjTests } from '../test-helper.js';
@@ -55,6 +60,44 @@ function recordingMessenger(shown: string[]): FormatMessenger {
         showDocument: () => undefined,
         openFormatterSettings: () => undefined
     };
+}
+
+/** One recorded call of a {@link DenumMessenger}: the method name and its arguments. */
+interface DenumCall {
+    method: string;
+    args: unknown[];
+}
+
+/**
+ * A denum messenger that records every call. Its `applyEdit` records the edit like the others and
+ * resolves true, as a client that accepted it would.
+ */
+function recordingDenumMessenger(log: DenumCall[]): DenumMessenger {
+    const record = (method: string) => (...args: unknown[]): void => { log.push({ method, args }); };
+    return {
+        info: record('info'),
+        warn: record('warn'),
+        infoWithAction: record('infoWithAction'),
+        warnWithAction: record('warnWithAction'),
+        warnWithActions: record('warnWithActions'),
+        showDocument: record('showDocument'),
+        openFormatterSettings: record('openFormatterSettings'),
+        denumDiagnostics: record('denumDiagnostics'),
+        showDenumDiagnostics: record('showDenumDiagnostics'),
+        applyEdit: (...args) => {
+            log.push({ method: 'applyEdit', args });
+            return Promise.resolve(true);
+        }
+    };
+}
+
+function callsOf(log: DenumCall[], method: string): DenumCall[] {
+    return log.filter(call => call.method === method);
+}
+
+/** True when a line of `text` starts with a four-digit line number and a space. */
+function hasNumberedLine(text: string): boolean {
+    return text.split('\n').some(line => /^\d{4} /.test(line));
 }
 
 /** 20,000 lines alternating a comment and an assignment. */
@@ -422,4 +465,167 @@ describe('formatProgram and denumProgram - the live endpoint through the languag
         }
         console.log(`program-live: first format on a fresh program connection median=${Math.round(median(runs))}ms runs=[${rounded(runs)}]`);
     }, 120000);
+
+    test.runIf(run)('the production denumber service denumbers a numbered buffer into one applied edit', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const document = TextDocument.create('file:///tmp/program-live-denum-numbered.bbj', 'bbj', 1, SMALL_NUMBERED_TEXT);
+
+        const result = await denum.run({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+        console.log(`program-live: denumber numbered status=${result.status} reason=${result.reason ?? 'none'}`);
+        expect(result.status).toBe('denumbered');
+        expect(result.applied).toBe(true);
+        const applied = callsOf(log, 'applyEdit');
+        expect(applied).toHaveLength(1);
+        expect(applied[0].args[1]).toBe(1);
+        expect(applied[0].args[3]).toBe(DENUMBER_EDIT_LABEL);
+        const after = TextDocument.applyEdits(document, applied[0].args[2] as Parameters<typeof TextDocument.applyEdits>[1]);
+        expect(after).toContain('L10');
+        expect(hasNumberedLine(after)).toBe(false);
+        expect(callsOf(log, 'info').map(call => call.args[0])).toEqual([DENUM_SUCCESS_MESSAGE]);
+    }, 60000);
+
+    test.runIf(run)('the production denumber service leaves an unnumbered buffer alone', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const document = TextDocument.create('file:///tmp/program-live-denum-plain.bbj', 'bbj', 1, 'print 1\n');
+
+        const result = await denum.run({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+        console.log(`program-live: denumber unnumbered status=${result.status} reason=${result.reason ?? 'none'}`);
+        expect(result.status).toBe('not-line-numbered');
+        expect(callsOf(log, 'applyEdit')).toEqual([]);
+        expect(callsOf(log, 'info').map(call => call.args[0])).toEqual([DENUM_NOTHING_TO_DO_MESSAGE]);
+    }, 60000);
+
+    test.runIf(run)('the production denumber service names the first offending line of a mixed-numbered buffer', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const document = TextDocument.create('file:///tmp/program-live-denum-mixed.bbj', 'bbj', 1, MIXED_NUMBERING_TEXT);
+
+        const result = await denum.run({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+        console.log(`program-live: denumber mixed status=${result.status} reason=${result.reason ?? 'none'} line=${result.line ?? 'none'}`);
+        expect(result.status).toBe('failed');
+        expect(result.reason).toBe('mixed-numbering');
+        expect(result.line).toBe(1);
+        expect(callsOf(log, 'applyEdit')).toEqual([]);
+        const warned = callsOf(log, 'warnWithAction');
+        expect(warned).toHaveLength(1);
+        expect(warned[0].args[0]).toBe('Mixed line numbering at line 2. The file was not changed.');
+        expect(warned[0].args[1]).toBe(GO_TO_LINE_ACTION);
+    }, 60000);
+
+    test.runIf(run)('a tokenized buffer is refused before anything is sent to bbj-ls', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const denumSpy = vi.spyOn(interop, 'denumProgram');
+        const formatSpy = vi.spyOn(interop, 'formatProgram');
+        try {
+            const document = TextDocument.create('file:///tmp/program-live-denum-tokenized.bbj', 'bbj', 1, '<<bbj>>abc');
+
+            const result = await denum.run({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+            console.log(`program-live: denumber tokenized status=${result.status} reason=${result.reason ?? 'none'}`);
+            expect(result.status).toBe('failed');
+            expect(result.reason).toBe('tokenized');
+            expect(denumSpy).not.toHaveBeenCalled();
+            expect(formatSpy).not.toHaveBeenCalled();
+            expect(callsOf(log, 'warn')).toHaveLength(1);
+        } finally {
+            denumSpy.mockRestore();
+            formatSpy.mockRestore();
+        }
+    }, 60000);
+
+    test.runIf(run)('a numbered buffer with a syntax error is denumbered and ends with the diagnostics list and a counts warning', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const document = TextDocument.create('file:///tmp/program-live-denum-syntax-error.bbj', 'bbj', 1, '0010 if then\n0020 print 1\n');
+
+        const result = await denum.run({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+        console.log(`program-live: denumber syntax error status=${result.status} diagnostics=${JSON.stringify(result.diagnostics ?? [])}`);
+        expect(result.status).toBe('denumbered');
+        expect(result.diagnostics?.some(diagnostic => diagnostic.severity === 'ERROR')).toBe(true);
+        const listed = callsOf(log, 'denumDiagnostics');
+        expect(listed).toHaveLength(1);
+        expect((listed[0].args[0] as { uri: string }).uri).toBe(document.uri);
+        const warned = callsOf(log, 'warnWithAction');
+        expect(warned).toHaveLength(1);
+        expect(String(warned[0].args[0]).startsWith('Denumbered. ')).toBe(true);
+        expect(warned[0].args[1]).toBe(SHOW_DENUM_DIAGNOSTICS_ACTION);
+    }, 60000);
+
+    test.runIf(run)('Denumber and Format is one formatProgram call with the denumber permission and one applied edit', async ctx => {
+        requireLivePeer(ctx);
+
+        const denum = services.BBj.compiler.BBjDenumService;
+        const log: DenumCall[] = [];
+        denum.setMessenger(recordingDenumMessenger(log));
+        const formatSpy = vi.spyOn(interop, 'formatProgram');
+        const denumSpy = vi.spyOn(interop, 'denumProgram');
+        try {
+            const document = TextDocument.create('file:///tmp/program-live-denum-and-format.bbj', 'bbj', 1, SMALL_NUMBERED_TEXT);
+
+            const result = await denum.runDenumAndFormat({ uri: document.uri, current: () => document }, CancellationToken.None);
+
+            console.log(`program-live: denumber and format status=${result.status} reason=${result.reason ?? 'none'} calls=${formatSpy.mock.calls.length}`);
+            expect(result.status).toBe('denumbered');
+            expect(formatSpy).toHaveBeenCalledTimes(1);
+            expect(denumSpy).not.toHaveBeenCalled();
+            const sent = formatSpy.mock.calls[0][0];
+            expect(sent.allowDenum).toBe(true);
+            expect(sent).not.toHaveProperty('canonicalName');
+            const applied = callsOf(log, 'applyEdit');
+            expect(applied).toHaveLength(1);
+            expect(applied[0].args[3]).toBe(DENUMBER_AND_FORMAT_EDIT_LABEL);
+            const after = TextDocument.applyEdits(document, applied[0].args[2] as Parameters<typeof TextDocument.applyEdits>[1]);
+            expect(after).toContain('L10');
+            expect(hasNumberedLine(after)).toBe(false);
+            expect(callsOf(log, 'info').map(call => call.args[0])).toEqual([DENUM_AND_FORMAT_SUCCESS_MESSAGE]);
+        } finally {
+            formatSpy.mockRestore();
+            denumSpy.mockRestore();
+        }
+    }, 60000);
+
+    test.runIf(run)('Format Document on a numbered buffer returns no edits and raises the offer with both actions', async ctx => {
+        requireLivePeer(ctx);
+
+        const formatService = services.BBj.compiler.BBjFormatService;
+        const denum = services.BBj.compiler.BBjDenumService;
+        const shown: string[] = [];
+        const log: DenumCall[] = [];
+        formatService.setMessenger(recordingMessenger(shown));
+        denum.setMessenger(recordingDenumMessenger(log));
+        const document = TextDocument.create('file:///tmp/program-live-denum-offer.bbj', 'bbj', 1, SMALL_NUMBERED_TEXT);
+
+        const edits = await formatService.format({ document, current: () => document }, CancellationToken.None);
+
+        console.log(`program-live: offer edits=${edits.length} offers=${callsOf(log, 'warnWithActions').length}`);
+        expect(edits).toEqual([]);
+        expect(shown).toEqual([]);
+        const offers = callsOf(log, 'warnWithActions');
+        expect(offers).toHaveLength(1);
+        expect(offers[0].args[0]).toBe(DENUM_OFFER_MESSAGE);
+        expect(offers[0].args[1]).toEqual([DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION]);
+        expect(callsOf(log, 'applyEdit')).toEqual([]);
+    }, 60000);
 });
