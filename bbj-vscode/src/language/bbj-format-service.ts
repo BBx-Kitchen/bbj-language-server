@@ -210,7 +210,10 @@ export class BBjFormatService {
             }
             return this.editsFor(request, version, sent, outcome);
         } catch (error) {
-            logger.debug(`Format request failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
+            // No message for the user, but the first occurrence per connection reaches the log at warn.
+            const name = error instanceof Error ? error.name : 'unknown';
+            this.notice('unexpected-error', `generation:${this.javaInterop.connectionGeneration}`,
+                `Format notice: unexpected-error (${name})`);
             return [];
         }
     }

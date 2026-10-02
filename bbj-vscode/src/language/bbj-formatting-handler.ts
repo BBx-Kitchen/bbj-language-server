@@ -21,6 +21,7 @@ import { URI } from 'vscode-uri';
 import type { BBjServices } from './bbj-module.js';
 import type { BBjFormatRequest } from './bbj-format-service.js';
 import { BBjLanguageMetaData } from './generated/module.js';
+import { logger } from './logger.js';
 
 /**
  * Structural dependencies of the handlers, so they can be tested with plain stubs: no connection,
@@ -57,7 +58,8 @@ async function formatOpenDocument(
             current: () => deps.getTextDocument(uri)
         };
         return await deps.format(request, token);
-    } catch {
+    } catch (error) {
+        logger.debug(`Format request failed in the handler (${error instanceof Error ? error.name : 'unknown'})`);
         return [];
     }
 }
