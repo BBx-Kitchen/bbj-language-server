@@ -252,9 +252,9 @@ For commands to work properly, ensure:
 
 1. **BBj Home** is configured (`bbj.home` setting)
 2. **BBjServices** is running
-3. **Formatting** runs Java (`bbj.formatter.javaPath` when set, else `java` on PATH — an invalid
-   configured path cancels formatting, with no PATH fallback). Compiling and running programs do
-   not need Java: they run BBj's own `bbjcpl` and `bbj` executables from `{bbj.home}/bin`.
+3. **Formatting** runs through the BBj language server and BBjServices (BBj 26.03 or later); it
+   does not use `bbj.formatter.javaPath`. Compiling and running programs do not need Java: they run
+   BBj's own `bbjcpl` and `bbj` executables from `{bbj.home}/bin`.
 4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands — see
    [Login to Enterprise Manager](#login-to-enterprise-manager) above)
 

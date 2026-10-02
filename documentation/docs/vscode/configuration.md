@@ -319,11 +319,10 @@ Split single-line IF statements into multiple lines.
 
 #### `bbj.formatter.javaPath`
 
-Absolute path to the `java` executable the formatter runs. When empty, the formatter looks up
-`java` on PATH. A configured value must exist and be executable, or formatting is cancelled with
-an error naming the configured path and the problem — PATH is never used as a fallback for an
-invalid value. This setting can only be set in user settings; it cannot be set from a workspace
-`.vscode/settings.json` file.
+**Deprecated and no longer used.** Formatting now runs through the BBj language server and
+BBjServices (BBj 26.03 or later), not through a local `java` executable, so this setting has no
+effect. It was an absolute path to the `java` executable the formatter ran. This setting can only
+be set in user settings; it cannot be set from a workspace `.vscode/settings.json` file.
 
 ```json
 {
