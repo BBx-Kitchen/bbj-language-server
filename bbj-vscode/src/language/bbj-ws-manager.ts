@@ -61,7 +61,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const version = params.initializationOptions?.version || 'unknown';
             console.log(`BBj Language Server v${version}`);
 
-            logger.debug(() => `Initialization options received: ${JSON.stringify(params.initializationOptions)}`);
+            // The formatter values stay out of the log; only the other options are shown.
+            logger.debug(() => {
+                const options = params.initializationOptions;
+                const shown = options !== null && typeof options === 'object' && 'formatter' in options
+                    ? { ...options, formatter: '[omitted]' }
+                    : options;
+                return `Initialization options received: ${JSON.stringify(shown)}`;
+            });
             if (typeof params.initializationOptions === 'string') {
                 // Legacy: just the home directory
                 this.bbjdir = params.initializationOptions;
