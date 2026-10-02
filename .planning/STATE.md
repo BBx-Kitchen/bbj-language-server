@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 125
 current_phase_name: LS Formatting
 status: executing
-stopped_at: Completed 125-04-PLAN.md
-last_updated: "2026-10-02T05:45:28.685Z"
+stopped_at: Completed 125-05-PLAN.md
+last_updated: "2026-10-02T05:48:52.037Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 125 execution started
-state_head: 444ebc3e2661e0d88c3347356633c4054860b5ef
+state_head: bd9d752806fd697614a7f29cd914cebd322ad4b7
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 14
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 125 (LS Formatting) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 125 execution started
 
@@ -212,6 +212,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 125 P02 | 10 min | 2 tasks | 5 files |
 | Phase 125 P03 | 14 min | 3 tasks | 8 files |
 | Phase 125 P04 | 11min | 3 tasks | 5 files |
+| Phase 125 P05 | 6 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -380,6 +381,7 @@ decisions:
 - [Phase 125]: 125-03: tokenized-program check lives in the format service so handlers and the Langium adapter share it; one private handler body takes an optional range so document and range gates cannot drift
 - [Phase 125]: Formatting notices log fixed tokens and numeric codes only, never peer text (bbj-ls messages can quote source)
 - [Phase 125]: Notice ledger holds exactly 256 entries, evicting the oldest when a new one arrives while full
+- [Phase 125]: 125-05: formatter settings intake is raw-object handoff to BBjFormatService (normalizes to 15 keys); push applies before startup gate, initializationOptions.formatter applies on initialize; no trust gating for formatter values
 
 ### Tech Debt
 
@@ -447,8 +449,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-02T05:45:28.616Z
-Stopped at: Completed 125-04-PLAN.md
+Last session: 2026-10-02T05:48:51.957Z
+Stopped at: Completed 125-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
