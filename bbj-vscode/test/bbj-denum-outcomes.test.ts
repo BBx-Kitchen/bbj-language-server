@@ -7,11 +7,13 @@
 import { CancellationTokenSource } from 'vscode-jsonrpc';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-    DENUM_SUCCESS_MESSAGE, SHOW_DENUM_DIAGNOSTICS_ACTION, denumSuccessMessage
+    DENUM_FAILED_MESSAGE, DENUM_IN_PROGRESS_MESSAGE, DENUM_SUCCESS_MESSAGE, DENUM_TOKENIZED_MESSAGE,
+    SHOW_DENUM_DIAGNOSTICS_ACTION, denumSuccessMessage
 } from '../src/language/bbj-denum-service.js';
+import { TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage } from '../src/language/bbj-format-service.js';
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD, type DenumDiagnosticDto } from '../src/language/denum-notifications.js';
 import {
-    createDenumHarness, deferred, denumAnswer, resetDenumHarness, type DenumHarness
+    createDenumHarness, deferred, denumAnswer, loggedLines, resetDenumHarness, type DenumHarness
 } from './denum-test-harness.js';
 import type { JavaInteropTestServiceProgramScript } from './bbj-test-module.js';
 
@@ -217,5 +219,277 @@ describe('a DENUM run that sends no list', () => {
 
         expect(result.reason).toBe('cancelled');
         expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([]);
+    });
+});
+
+/** A wire error as bbj-ls would answer it. */
+function wireError(code: number, message = 'peer message', data?: unknown): JavaInteropTestServiceProgramScript {
+    return { error: { code, message, data } };
+}
+
+const REQUIRES_26_03 = 'Denumbering requires BBj 26.03 or later. The connected BBjServices does not provide it.';
+const NOT_REACHABLE = 'BBjServices is not reachable. The file was not changed.';
+const TIMEOUT = 'Denumbering timed out. The file was not changed; try again.';
+const TOO_LARGE = 'This file is too large to denumber. The file was not changed.';
+const PROTECTED = 'This BBj program is protected and cannot be denumbered.';
+const PARSER_FAILED =
+    'Denumbering failed. The file was not changed. If it contains characters BBj cannot represent, remove them and try again.';
+const UNAVAILABLE = 'The BBj denumbering service is not available right now. The file was not changed; try again later.';
+
+/** name, scripted answer, reason, text, the tokens the warn log line has to carry */
+const FAILURE_ROWS: ReadonlyArray<[string, JavaInteropTestServiceProgramScript, string, string, string[]]> = [
+    ['an older BBjServices', 'method-not-found', 'requires-bbj-26-03', REQUIRES_26_03, ['requires-bbj-26-03', 'method-not-found']],
+    ['an unreachable service', { outcome: { kind: 'unavailable', reason: 'not-reachable' } }, 'not-reachable', NOT_REACHABLE, ['not-reachable']],
+    ['a transport failure', 'transport-error', 'not-reachable', NOT_REACHABLE, ['not-reachable', 'transport']],
+    ['a client timeout', { outcome: { kind: 'timeout', origin: 'client' } }, 'timeout', TIMEOUT, ['timeout', 'client']],
+    ['a peer timeout', wireError(-33002), 'timeout', TIMEOUT, ['timeout']],
+    ['a file that is too large', wireError(-33003), 'too-large', TOO_LARGE, ['too-large', 'size-cap', '-33003']],
+    ['a protected program', wireError(-33005), 'protected-program', PROTECTED, ['protected-program', '-33005']],
+    ['a parser exception', wireError(-33001), 'denum-failed', PARSER_FAILED, ['denum-failed', 'parser-exception', '-33001']],
+    ['a DENUM failure', wireError(-33009), 'denum-failed', DENUM_FAILED_MESSAGE, ['denum-failed', 'format-failed', '-33009']],
+    ['an invalid-params answer', wireError(-32602), 'denum-failed', DENUM_FAILED_MESSAGE, ['denum-failed', 'invalid-params']],
+    ['a line-numbers answer', wireError(-33006), 'denum-failed', DENUM_FAILED_MESSAGE, ['denum-failed', 'denum-needed', '-33006']],
+    ['a malformed answer', { outcome: { kind: 'malformed-result', reason: 'no text' } }, 'denum-failed', DENUM_FAILED_MESSAGE, ['denum-failed', 'malformed-result']],
+    ['an unavailable service', wireError(-33004), 'service-unavailable', UNAVAILABLE, ['service-unavailable', '-33004']]
+];
+
+function windowMessages(harness: DenumHarness): number {
+    return harness.window.showWarningMessage.mock.calls.length
+        + harness.window.showInformationMessage.mock.calls.length
+        + harness.window.showErrorMessage.mock.calls.length;
+}
+
+describe('every failure outcome ends in exactly one Warning of its own', () => {
+
+    test.each(FAILURE_ROWS)('%s', async (_name, script, reason, text) => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(script);
+        openNumbered(harness);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result).toMatchObject({ status: 'failed', reason, message: text });
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(text);
+        expect(windowMessages(harness)).toBe(1);
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([]);
+    });
+
+    test('an unreachable service raises no error popup of its own', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram('transport-error');
+        openNumbered(harness);
+
+        await harness.run(URI_TEXT);
+
+        expect(harness.window.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    test.each(FAILURE_ROWS)('%s logs one warn line naming what happened', async (_name, script, reason, _text, tokens) => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(script);
+        openNumbered(harness);
+
+        await harness.run(URI_TEXT);
+
+        const lines = loggedLines(harness.loggers, 'warn');
+        expect(lines).toHaveLength(1);
+        for (const token of [reason, ...tokens]) {
+            expect(lines[0]).toContain(token);
+        }
+    });
+
+    test('a tokenized buffer shows the Decompile pointer and reaches nobody', async () => {
+        const harness = createDenumHarness();
+        harness.client.open(URI_TEXT, 1, `${TOKENIZED_PROGRAM_PREFIX}binary`);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result.reason).toBe('tokenized');
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(DENUM_TOKENIZED_MESSAGE);
+        expect(windowMessages(harness)).toBe(1);
+        expect(harness.double.denumProgramCalls).toEqual([]);
+    });
+});
+
+describe('mixed numbering', () => {
+
+    const FIVE_LINES = 'a\nb\nc\nd\ne';
+
+    test('names the line and offers Go to Line in the request\'s own document', async () => {
+        const harness = createDenumHarness();
+        harness.window.showWarningMessage.mockResolvedValue({ title: 'Go to Line' });
+        harness.double.scriptDenumProgram(wireError(-33008, 'mixed', { line: 3 }));
+        harness.client.open(URI_TEXT, 1, FIVE_LINES);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result).toMatchObject({ status: 'failed', reason: 'mixed-numbering', line: 2 });
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(
+            'Mixed line numbering at line 3. The file was not changed.', { title: 'Go to Line' });
+        await vi.waitFor(() => expect(harness.window.showDocument).toHaveBeenCalledTimes(1));
+        expect(harness.window.showDocument).toHaveBeenCalledWith({
+            uri: URI_TEXT, takeFocus: true, selection: { start: { line: 2, character: 0 }, end: { line: 2, character: 0 } }
+        });
+    });
+
+    test('an oversized line is clamped to the live document at click time', async () => {
+        const harness = createDenumHarness();
+        const answer = deferred<{ title: string } | undefined>();
+        harness.window.showWarningMessage.mockReturnValue(answer.promise);
+        harness.double.scriptDenumProgram(wireError(-33008, 'mixed', { line: 99 }));
+        harness.client.open(URI_TEXT, 1, FIVE_LINES);
+
+        const result = await harness.run(URI_TEXT);
+        expect(result.line).toBe(4);
+
+        harness.client.change(URI_TEXT, 2, [{ text: 'a\nb\nc' }]);
+        answer.resolve({ title: 'Go to Line' });
+        await vi.waitFor(() => expect(harness.window.showDocument).toHaveBeenCalledTimes(1));
+        expect(harness.window.showDocument).toHaveBeenCalledWith(expect.objectContaining({
+            uri: URI_TEXT, selection: { start: { line: 2, character: 0 }, end: { line: 2, character: 0 } }
+        }));
+    });
+
+    test('a document closed before the click falls back to its line count at run time', async () => {
+        const harness = createDenumHarness();
+        const answer = deferred<{ title: string } | undefined>();
+        harness.window.showWarningMessage.mockReturnValue(answer.promise);
+        harness.double.scriptDenumProgram(wireError(-33008, 'mixed', { line: 99 }));
+        harness.client.open(URI_TEXT, 1, FIVE_LINES);
+
+        await harness.run(URI_TEXT);
+        harness.client.close(URI_TEXT);
+        answer.resolve({ title: 'Go to Line' });
+
+        await vi.waitFor(() => expect(harness.window.showDocument).toHaveBeenCalledTimes(1));
+        expect(harness.window.showDocument).toHaveBeenCalledWith(expect.objectContaining({
+            uri: URI_TEXT, selection: { start: { line: 4, character: 0 }, end: { line: 4, character: 0 } }
+        }));
+    });
+
+    test('an answer without a line shows the plain text and no action', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(wireError(-33008, 'mixed'));
+        harness.client.open(URI_TEXT, 1, FIVE_LINES);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result).toMatchObject({ status: 'failed', reason: 'mixed-numbering' });
+        expect(result.line).toBeUndefined();
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(mixedNumberingMessage(undefined));
+    });
+
+    test('never opens anything but the request\'s document', async () => {
+        const harness = createDenumHarness();
+        harness.window.showWarningMessage.mockResolvedValue({ title: 'Go to Line' });
+        harness.double.scriptDenumProgram(wireError(-33008, 'file:///etc/passwd', { line: 2, uri: 'file:///etc/passwd' }));
+        harness.client.open(URI_TEXT, 1, FIVE_LINES);
+
+        await harness.run(URI_TEXT);
+
+        await vi.waitFor(() => expect(harness.window.showDocument).toHaveBeenCalledTimes(1));
+        expect(harness.window.showDocument).toHaveBeenCalledWith(expect.objectContaining({ uri: URI_TEXT }));
+    });
+});
+
+describe('nothing is deduplicated', () => {
+
+    test('an older BBjServices shows its message on every run of one connection', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram('method-not-found');
+        openNumbered(harness);
+
+        for (let run = 0; run < 3; run++) {
+            await harness.run(URI_TEXT);
+        }
+
+        expect(harness.window.showWarningMessage.mock.calls).toEqual(Array(3).fill([REQUIRES_26_03]));
+    });
+
+    test.each(FAILURE_ROWS)('%s run twice on an unchanged document shows two Warnings', async (_name, script, _reason, text) => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(script);
+        openNumbered(harness);
+
+        await harness.run(URI_TEXT);
+        await harness.run(URI_TEXT);
+
+        expect(harness.window.showWarningMessage.mock.calls).toEqual([[text], [text]]);
+    });
+});
+
+describe('runs that overlap or are cancelled', () => {
+
+    test('two runs started together end in exactly two messages', async () => {
+        const harness = createDenumHarness();
+        openNumbered(harness);
+        const gate = deferred<JavaInteropTestServiceProgramScript>();
+        harness.double.scriptDenumProgram({ pending: gate.promise });
+
+        const first = harness.run(URI_TEXT);
+        const second = await harness.run(URI_TEXT);
+        gate.resolve(denumAnswer(DENUMBERED, 1));
+        await first;
+
+        expect(second.reason).toBe('in-progress');
+        expect(windowMessages(harness)).toBe(2);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(DENUM_IN_PROGRESS_MESSAGE);
+        expect(harness.window.showInformationMessage).toHaveBeenCalledWith('Denumbered.');
+    });
+
+    test('a cancelled run shows nothing', async () => {
+        const harness = createDenumHarness();
+        openNumbered(harness);
+        const source = new CancellationTokenSource();
+        source.cancel();
+
+        const result = await harness.run(URI_TEXT, source.token);
+
+        expect(result.reason).toBe('cancelled');
+        expect(windowMessages(harness)).toBe(0);
+    });
+});
+
+describe('what the user and the log are never shown', () => {
+
+    test('no message and no log line at any level carries the document text or a peer echo', async () => {
+        const secret = 'SECRET_MARKER_DENUM';
+        const peerEcho = 'PEER_ECHO_MARKER';
+        const harness = createDenumHarness();
+        harness.window.showWarningMessage.mockResolvedValue({ title: 'Go to Line' });
+        harness.client.open(URI_TEXT, 1, `0010 rem ${secret}\n0020 x=1\n`);
+
+        const scripts = [
+            ...FAILURE_ROWS.map(([, script]) => script),
+            wireError(-33008, 'mixed', { line: 2 })
+        ];
+        for (const script of scripts) {
+            const echoing = typeof script === 'object' && 'error' in script
+                ? wireError(script.error.code, `parser says ${peerEcho}`, script.error.data)
+                : script;
+            harness.double.scriptDenumProgram(echoing);
+            await harness.run(URI_TEXT);
+        }
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, [error(1)]));
+        await harness.run(URI_TEXT);
+
+        expect(harness.window.showWarningMessage).toHaveBeenCalled();
+        const shown = JSON.stringify([
+            harness.window.showWarningMessage.mock.calls,
+            harness.window.showInformationMessage.mock.calls,
+            harness.window.showErrorMessage.mock.calls,
+            harness.window.showDocument.mock.calls
+        ]);
+        expect(shown).not.toContain(secret);
+        expect(shown).not.toContain(peerEcho);
+        for (const { level, spy } of harness.loggers.spies) {
+            const logged = JSON.stringify(spy.mock.calls.map(args => args.map(arg => typeof arg === 'function' ? arg() : arg)));
+            expect(logged, `logger.${level}`).not.toContain(secret);
+            expect(logged, `logger.${level}`).not.toContain(peerEcho);
+        }
     });
 });
