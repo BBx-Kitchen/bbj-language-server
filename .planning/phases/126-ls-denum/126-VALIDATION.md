@@ -20,7 +20,7 @@ created: "2026-10-02"
 |----------|-------|
 | **Framework** | vitest ^4.1.10 (bbj-vscode), ESLint, `tsc --noEmit` via `npm run typecheck:test`; Gradle `test` for bbj-intellij |
 | **Config file** | `bbj-vscode/vitest.config.ts` |
-| **Quick run command** | `cd /home/coder/repos/bbj-language-server/bbj-vscode && npx vitest run test/denum-command.test.ts test/bbj-denum-service.test.ts test/denum-diagnostics-output.test.ts test/bbj-format-notices.test.ts test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts test/notifications.test.ts && npm run typecheck:test` |
+| **Quick run command** | `cd /home/coder/repos/bbj-language-server/bbj-vscode && npx vitest run test/denum-command.test.ts test/bbj-denum-service.test.ts test/bbj-denum-outcomes.test.ts test/bbj-denum-offer.test.ts test/denum-diagnostics-output.test.ts test/bbj-format-notices.test.ts test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts test/notifications.test.ts && npm run typecheck:test` |
 | **Full suite command** | `cd /home/coder/repos/bbj-language-server/bbj-vscode && npx vitest run --maxWorkers=2 && npm run lint && npm run typecheck:test && npm run build` (judge on `numFailedTests`); live: `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts --disable-console-intercept`; IntelliJ: `cd /home/coder/repos/bbj-language-server/bbj-intellij && ./gradlew test` |
 | **Estimated runtime** | ~60 s quick, ~6 min full |
 
@@ -39,16 +39,22 @@ created: "2026-10-02"
 
 Filled by the planner per task; requirement → test mapping from RESEARCH.md:
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
-|-------------|----------|-----------|-------------------|-------------|--------|
-| DEN-01 | `bbj/denum` handler: params, open BBj doc only, status/edit/diagnostics, never throws | unit | `npx vitest run test/denum-command.test.ts` | ❌ W0 | ⬜ pending |
-| DEN-01 | Versioned `applyEdit`, no edit when unnumbered, stale version never applied | unit | `npx vitest run test/bbj-denum-service.test.ts` | ❌ W0 | ⬜ pending |
-| DEN-01 | Live numbered/unnumbered/mixed/tokenized through :5008 | live (gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts` | extend | ⬜ pending |
-| DEN-03 | One message per outcome, severities, never deduplicated, tokenized never sent | unit | `npx vitest run test/bbj-denum-service.test.ts` | ❌ W0 | ⬜ pending |
-| DEN-04 | List notification only after success with diagnostics > 0; Show → reveal notification | unit | `npx vitest run test/bbj-denum-service.test.ts test/denum-diagnostics-output.test.ts` | ❌ W0 | ⬜ pending |
-| DEN-04 | Extension handlers registered/disposed, Show reveals 'BBj' channel | unit | `npx vitest run test/extension-activation.test.ts test/activation-command-coverage.test.ts` | update | ⬜ pending |
-| FMT-06 | `-33006` → `[]` + one deduped offer (2 actions doc, 1 action range) | unit | `npx vitest run test/bbj-format-notices.test.ts test/bbj-format-service.test.ts` | update | ⬜ pending |
-| FMT-07 | "Denumber and Format" = one `formatProgram` with `allowDenum: true`, one edit | unit | `npx vitest run test/bbj-denum-service.test.ts` | ❌ W0 | ⬜ pending |
+All commands run with cwd `/home/coder/repos/bbj-language-server/bbj-vscode` (the IntelliJ one from `bbj-intellij`).
+
+| Task | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
+|------|-------------|----------|-----------|-------------------|-------------|--------|
+| 126-01-T1 | DEN-01 | `bbj/denum` end to end: open numbered buffer -> denumProgram -> one versioned `applyEdit` -> "Denumbered."; DI slot; `main.ts` order | unit (e2e, hermetic) | `npx vitest run test/denum-command.test.ts test/setopts-in-code-request.test.ts && npm run typecheck:test` | ❌ W0 (created by the task) | ⬜ pending |
+| 126-01-T2 | DEN-01 | bad params, not open, non-BBj refused before bbj-ls; result carries diagnostics; handler never rejects | unit | `npx vitest run test/denum-command.test.ts && npm run typecheck:test && npm run lint` | ❌ W0 | ⬜ pending |
+| 126-01-T3 | DEN-01 | stale, refused, in-flight, cancelled, tokenized, empty, CRLF/astral, no canonicalName, never deduplicated | unit | `npx vitest run test/bbj-denum-service.test.ts test/denum-command.test.ts test/java-interop-program-test-double.test.ts && npm run typecheck:test && npm run lint` | ❌ W0 | ⬜ pending |
+| 126-02-T1 | DEN-04 | list notification -> 'BBj' channel block; Show reveals; activation pins (34) | unit | `npx vitest run test/denum-diagnostics-output.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts && npm run typecheck:test` | ❌ W0 / update | ⬜ pending |
+| 126-02-T2 | DEN-04 | malformed, hostile, CR/LF, astral, order, separate blocks | unit | `npx vitest run test/denum-diagnostics-output.test.ts test/extension-activation.test.ts test/activation-command-coverage.test.ts test/activation-prompts-and-status-bars.test.ts test/config-reload-host.test.ts test/extension-config-trust.test.ts && npm run typecheck:test && npm run lint` | update | ⬜ pending |
+| 126-03-T1 | DEN-04 | list sent only after an applied success with diagnostics; counts message with Show at the right severity; Show -> reveal notification | unit | `npx vitest run test/bbj-denum-outcomes.test.ts test/bbj-denum-service.test.ts test/denum-command.test.ts && npm run typecheck:test` | ❌ W0 | ⬜ pending |
+| 126-03-T2 | DEN-03 | one message per outcome, exact older-BBj and not-reachable texts, Go to Line, never deduplicated, privacy | unit | `npx vitest run test/bbj-denum-outcomes.test.ts test/bbj-denum-service.test.ts test/denum-command.test.ts && npm run typecheck:test && npm run lint` | update | ⬜ pending |
+| 126-04-T1 | FMT-06 | `-33006` -> `[]` + one offer with two actions; click acts on the buffer at click time; interim message gone | unit | `npx vitest run test/bbj-denum-offer.test.ts test/bbj-format-notices.test.ts test/bbj-format-service.test.ts && npm run typecheck:test` | ❌ W0 / update | ⬜ pending |
+| 126-04-T2 | FMT-07 | "Denumber and Format" = one `formatProgram` with the denumber permission, one edit; failure texts | unit | `npx vitest run test/bbj-denum-offer.test.ts test/bbj-format-notices.test.ts test/bbj-denum-outcomes.test.ts test/bbj-denum-service.test.ts && npm run typecheck:test && npm run lint` | update | ⬜ pending |
+| 126-04-T3 | FMT-06 | selection explanation with one action; dedup per document and version; order, concurrency, empty | unit | `npx vitest run test/bbj-denum-offer.test.ts test/bbj-format-notices.test.ts test/bbj-format-service.test.ts test/bbj-formatting-handler.test.ts test/bbj-formatter.test.ts test/bbj-denum-service.test.ts test/bbj-denum-outcomes.test.ts test/denum-command.test.ts && npm run typecheck:test && npm run lint` | update | ⬜ pending |
+| 126-05-T1 | all | live DENUM, Denumber and Format and offer through the production services on :5008 | live (gated) | `RUN_BBJ_TESTS=1 npx vitest run test/functional/program-live.test.ts --disable-console-intercept` | extend | ⬜ pending |
+| 126-05-T2 | all | whole suite, lint, typecheck, build, IntelliJ suite, register check; hand check from VSIX and plugin zip | gate | `RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2`; `npm run lint && npm run typecheck:test && npm run build`; `./gradlew cleanTest test` | existing | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -56,7 +62,8 @@ Filled by the planner per task; requirement → test mapping from RESEARCH.md:
 
 ## Wave 0 Requirements
 
-- [ ] `test/denum-command.test.ts`, `test/bbj-denum-service.test.ts`, `test/denum-diagnostics-output.test.ts` (new)
+- [ ] `test/denum-command.test.ts`, `test/bbj-denum-service.test.ts`, `test/bbj-denum-outcomes.test.ts`, `test/bbj-denum-offer.test.ts`, `test/denum-diagnostics-output.test.ts` (new; each created by the first task that needs it)
+- [ ] `test/fake-server-connection.ts` and `test/denum-test-harness.ts` (new shared helpers)
 - [ ] `JavaInteropTestService.denumProgram` records calls (`denumProgramCalls`) and accepts the token
 - [ ] Shared fake server connection (`workspace.applyEdit`, window messages, `sendNotification`) extracted from `bbj-format-notices.test.ts`
 - [ ] Activation test pins updated for two new notification handlers
