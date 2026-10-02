@@ -2,9 +2,11 @@ import { NodeFileSystem } from 'langium/node';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node.js';
-import { LSPErrorCodes } from 'vscode-languageserver';
+import { CancellationToken, LSPErrorCodes } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterAll, beforeAll, describe, expect, test, type TestContext } from 'vitest';
 import { createBBjServices } from '../../src/language/bbj-module.js';
+import type { FormatMessenger } from '../../src/language/bbj-format-service.js';
 import type { ProgramOutcome } from '../../src/language/java-interop-program-types.js';
 import { connect } from '../../tools/interop-test-harness/scaffold.js';
 import { shouldRunBBjTests } from '../test-helper.js';
@@ -33,6 +35,27 @@ const RAW_GUARD_MS = 15000;
 
 const SMALL_FORMAT_TEXT = 'if a then print 1\n  x=1\nrem y\n';
 const SMALL_NUMBERED_TEXT = '0010 print 1\n0020 goto 0010\n';
+/** Numbered and unnumbered lines together, which a format without the denumber permission refuses. */
+const MIXED_NUMBERING_TEXT = '0010 print 1\nprint 2\n';
+
+/** 1,000 lines of the small program's statements repeated, which the formatter rewrites. */
+function thousandLineProgramText(): string {
+    const lines: string[] = [];
+    while (lines.length < 1000) {
+        lines.push(...SMALL_FORMAT_TEXT.trimEnd().split('\n'));
+    }
+    return lines.slice(0, 1000).join('\n') + '\n';
+}
+
+/** A messenger that keeps what the format service would have shown, so a test can assert silence. */
+function recordingMessenger(shown: string[]): FormatMessenger {
+    return {
+        warn: text => { shown.push(text); },
+        warnWithAction: text => { shown.push(text); },
+        showDocument: () => undefined,
+        openFormatterSettings: () => undefined
+    };
+}
 
 /** 20,000 lines alternating a comment and an assignment. */
 function largeProgramText(): string {
@@ -318,4 +341,85 @@ describe('formatProgram and denumProgram - the live endpoint through the languag
             source.dispose();
         }
     }, 60000);
+
+    test.runIf(run)('the production format service returns edits, and formatting its own output again returns none', async ctx => {
+        requireLivePeer(ctx);
+
+        const formatService = services.BBj.compiler.BBjFormatService;
+        const shown: string[] = [];
+        formatService.setMessenger(recordingMessenger(shown));
+        const uri = 'file:///tmp/program-live-format-service.bbj';
+
+        const first = TextDocument.create(uri, 'bbj', 1, SMALL_FORMAT_TEXT);
+        const edits = await formatService.format({ document: first, current: () => first }, CancellationToken.None);
+        expect(Array.isArray(edits)).toBe(true);
+
+        const formattedText = TextDocument.applyEdits(first, edits);
+        const second = TextDocument.create(uri, 'bbj', 2, formattedText);
+        const again = await formatService.format({ document: second, current: () => second }, CancellationToken.None);
+
+        console.log(`program-live: format service first edits=${edits.length} second edits=${again.length}`);
+        expect(again).toEqual([]);
+        expect(shown).toEqual([]);
+    }, 60000);
+
+    test.runIf(run)('the 15 default settings and the settings made from a legacy key and a javaPath are accepted', async ctx => {
+        requireLivePeer(ctx);
+
+        const formatService = services.BBj.compiler.BBjFormatService;
+        try {
+            const defaults = formatService.settingsSnapshot();
+            expect(Object.keys(defaults)).toHaveLength(15);
+            const withDefaults = await interop.formatProgram({
+                text: SMALL_FORMAT_TEXT, version: nextVersion('settings-default'), settings: defaults
+            });
+            expect(withDefaults.kind).toBe('ok');
+
+            formatService.setSettings({ splitSingleLineIF: true, javaPath: '/usr/bin/java', indentWidth: 2 });
+            const converted = formatService.settingsSnapshot();
+            expect(Object.keys(converted)).toHaveLength(15);
+            const withConverted = await interop.formatProgram({
+                text: SMALL_FORMAT_TEXT, version: nextVersion('settings-converted'), settings: converted
+            });
+            expect(withConverted.kind).toBe('ok');
+        } finally {
+            formatService.setSettings({});
+        }
+        expect(Object.keys(formatService.settingsSnapshot())).toHaveLength(15);
+    }, 60000);
+
+    test.runIf(run)('a mixed-numbered file sent without the denumber permission is answered denum-needed', async ctx => {
+        requireLivePeer(ctx);
+
+        const outcome = await interop.formatProgram({ text: MIXED_NUMBERING_TEXT, version: nextVersion('mixed') });
+
+        console.log(`program-live: mixed-numbered file without denumber permission kind=${outcome.kind}${outcome.kind === 'failed' ? ` failure=${outcome.failure}` : ''}`);
+        expect(outcome.kind).toBe('failed');
+        if (outcome.kind !== 'failed') return;
+        expect(outcome.failure).toBe('denum-needed');
+    }, 60000);
+
+    test.runIf(run)('the first format on a fresh program connection, timed through the production format service', async ctx => {
+        requireLivePeer(ctx);
+
+        const text = thousandLineProgramText();
+        const runs: number[] = [];
+        for (let i = 0; i < RUNS; i++) {
+            const fresh = createBBjServices(NodeFileSystem);
+            const freshInterop = fresh.BBj.java.JavaInteropService;
+            freshInterop.setConnectionConfig(HOST, PORT);
+            const document = TextDocument.create(`file:///tmp/program-live-first-format-${i}.bbj`, 'bbj', 1, text);
+            try {
+                const { ms, value } = await timed(() => fresh.BBj.compiler.BBjFormatService.format(
+                    { document, current: () => document }, CancellationToken.None
+                ));
+                // A text the formatter leaves alone would answer no edits and prove nothing about a real format.
+                expect(value.length).toBeGreaterThan(0);
+                runs.push(ms);
+            } finally {
+                freshInterop.clearCache();
+            }
+        }
+        console.log(`program-live: first format on a fresh program connection median=${Math.round(median(runs))}ms runs=[${rounded(runs)}]`);
+    }, 120000);
 });
