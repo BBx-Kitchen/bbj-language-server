@@ -27,9 +27,11 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
     /**
      * The one switch deciding whether IntelliJ offers LSP formatting for BBj files. It stays off
      * until LSP4IJ formatting has been evaluated against the BBj formatter. While it is off,
-     * Reformat Code, Actions on Save and on-type formatting never send a formatting request to the
-     * language server, even once the server advertises formatting. Setting it to {@code true}
-     * restores LSP4IJ's own behaviour unchanged.
+     * Reformat Code, Actions on Save and the client-side typed-character triggers never send a
+     * formatting request to the language server, even once the server advertises formatting.
+     * Server-driven on-type formatting is not gated here: it is never offered because the
+     * language server does not advertise it. Setting the switch to {@code true} restores
+     * LSP4IJ's own behaviour unchanged.
      */
     private static final boolean LSP_FORMATTING_ENABLED = false;
 
