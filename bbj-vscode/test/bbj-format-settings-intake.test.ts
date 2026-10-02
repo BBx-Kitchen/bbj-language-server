@@ -107,3 +107,56 @@ describe('formatter settings pushed through workspace/didChangeConfiguration', (
         expect(second.settings?.indentWidth).toBe(4);
     });
 });
+
+describe('formatter settings sent in initializationOptions', () => {
+
+    function initialize(harness: ReturnType<typeof createHarness>, initializationOptions: unknown) {
+        return harness.shared.lsp.LanguageServer.initialize({
+            processId: null,
+            rootUri: null,
+            capabilities: {},
+            workspaceFolders: null,
+            initializationOptions,
+        });
+    }
+
+    test('the formatter object is applied when the server initializes and only the 15 keys survive', async () => {
+        const harness = createHarness();
+
+        await initialize(harness, { formatter: { indentWidth: 3, ifClosingKeyword: 'ENDIF', javaPath: '/j' } });
+
+        const snapshot = harness.BBj.compiler.BBjFormatService.settingsSnapshot();
+        expect(Object.keys(snapshot)).toHaveLength(15);
+        expect(snapshot.indentWidth).toBe(3);
+        expect(snapshot.ifClosingKeyword).toBe('ENDIF');
+        expect('javaPath' in snapshot).toBe(false);
+    });
+
+    test('the first format after initialize already uses the startup values', async () => {
+        const harness = createHarness();
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await initialize(harness, { formatter: { indentWidth: 3 } });
+        const call = await formatOnce(harness);
+
+        expect(call.settings?.indentWidth).toBe(3);
+    });
+
+    test('initialization options without a formatter key leave the 15 defaults with indentWidth 2', async () => {
+        const harness = createHarness();
+
+        await initialize(harness, { home: '/opt/bbj' });
+
+        const snapshot = harness.BBj.compiler.BBjFormatService.settingsSnapshot();
+        expect(Object.keys(snapshot)).toHaveLength(15);
+        expect(snapshot.indentWidth).toBe(2);
+    });
+
+    test('a client that sends no initialization options at all gets the defaults', async () => {
+        const harness = createHarness();
+
+        await initialize(harness, undefined);
+
+        expect(harness.BBj.compiler.BBjFormatService.settingsSnapshot().indentWidth).toBe(2);
+    });
+});

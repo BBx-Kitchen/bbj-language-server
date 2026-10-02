@@ -707,3 +707,31 @@ describe('config-path-cache honours Workspace Trust before any server push (issu
         expect(getActiveConfigPath()).toBe('/ws/evil/config.bbx');
     });
 });
+
+describe('initializationOptions carry the raw formatter section', () => {
+    beforeEach(() => {
+        resetState();
+    });
+
+    test('initializationOptions.formatter is the section the user holds, untouched', () => {
+        h.state.isTrusted = true;
+        h.state.bbjSection = { formatter: { indentWidth: 4, indentCharacter: 'TAB' } };
+
+        const context = fakeContext();
+        activate(context);
+
+        expect(h.capturedClientOptions?.initializationOptions?.formatter).toEqual({ indentWidth: 4, indentCharacter: 'TAB' });
+        disposeSubscriptions(context);
+    });
+
+    test('initializationOptions.formatter is undefined when the section holds no formatter', () => {
+        h.state.isTrusted = true;
+        h.state.bbjSection = {};
+
+        const context = fakeContext();
+        activate(context);
+
+        expect(h.capturedClientOptions?.initializationOptions?.formatter).toBeUndefined();
+        disposeSubscriptions(context);
+    });
+});
