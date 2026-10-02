@@ -153,6 +153,28 @@ export function showFormatterWarningWithAction(text: string, actionTitle: string
 }
 
 /**
+ * Show a Warning message with one button per entry of `actionTitles` and resolve to the title of the
+ * picked action, or `undefined` when the user dismissed it, the connection is not initialized or the
+ * prompt failed. Never rejects. Callers start it without awaiting it inside a request, so a format
+ * response never waits for a click.
+ */
+export function showWarningWithActions(text: string, actionTitles: readonly string[]): Promise<string | undefined> {
+    const connection = _connection;
+    if (!connection) {
+        return Promise.resolve(undefined);
+    }
+    const prompt = async (): Promise<string | undefined> => {
+        try {
+            const picked = await connection.window.showWarningMessage(text, ...actionTitles.map(title => ({ title })));
+            return picked?.title;
+        } catch {
+            return undefined;
+        }
+    };
+    return prompt();
+}
+
+/**
  * Show an Information message with one action button and resolve to the title of the picked action,
  * or `undefined` when the user dismissed it, the connection is not initialized or the prompt failed.
  * Never rejects. Callers start it without awaiting it, so a request never waits for a click.

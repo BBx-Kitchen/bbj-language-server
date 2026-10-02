@@ -12,7 +12,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
 import {
-    FORMAT_DENUM_NEEDED_MESSAGE, FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_NOTICE_LEDGER_LIMIT, FORMAT_PROTECTED_MESSAGE,
+    FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_NOTICE_LEDGER_LIMIT, FORMAT_PROTECTED_MESSAGE,
     FORMAT_REQUIRES_BBJ_26_03_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE,
     FORMAT_TOO_LARGE_MESSAGE, GO_TO_LINE_ACTION, MAX_LISTED_SETTING_PROBLEMS, OPEN_SETTINGS_ACTION,
     invalidSettingsMessage, mixedNumberingMessage, type FormatMessenger
@@ -25,6 +25,7 @@ import { logger } from '../src/language/logger.js';
 import {
     createBBjTestServices, type JavaInteropTestService, type JavaInteropTestServiceProgramScript
 } from './bbj-test-module.js';
+import { createFakeServerConnection } from './fake-server-connection.js';
 import { listenOnFakeConnection } from './fake-text-document-connection.js';
 
 const URI_TEXT = 'file:///ws/demo.bbj';
@@ -32,19 +33,6 @@ const SOURCE = 'if a then print 1\n  x=1\nrem y\n';
 const DEFAULT_OPTIONS = { tabSize: 4, insertSpaces: true };
 
 type DocumentHandler = (params: DocumentFormattingParams, token: CancellationToken) => Promise<TextEdit[]>;
-
-/** The slice of the language-client connection the notifications module talks to. */
-function createFakeConnection() {
-    const window = {
-        showWarningMessage: vi.fn(),
-        showErrorMessage: vi.fn(),
-        showInformationMessage: vi.fn(),
-        showDocument: vi.fn()
-    };
-    const sendNotification = vi.fn();
-    const connection = { window, sendNotification } as unknown as Connection;
-    return { connection, window, sendNotification };
-}
 
 function createHarness() {
     const { shared, BBj } = createBBjTestServices(EmptyFileSystem);
@@ -54,7 +42,7 @@ function createHarness() {
     const handlerConnection = { onDocumentFormatting: vi.fn(), onDocumentRangeFormatting: vi.fn() };
     registerBoundedFormattingHandler(handlerConnection, shared, BBj);
     const formatDocument = handlerConnection.onDocumentFormatting.mock.calls[0][0] as DocumentHandler;
-    const fake = createFakeConnection();
+    const fake = createFakeServerConnection();
     initNotifications(fake.connection);
     const loggers = spyOnLogger();
     const format = (uri = URI_TEXT) => formatDocument({ textDocument: { uri }, options: DEFAULT_OPTIONS }, CancellationToken.None);
@@ -153,7 +141,7 @@ describe('an older BBj without a formatter', () => {
     });
 
     test('has a text of its own, apart from the not-connected message', () => {
-        const { connection, window } = createFakeConnection();
+        const { connection, window } = createFakeServerConnection();
         initNotifications(connection);
         notifyJavaConnectionError('x');
 
@@ -199,7 +187,7 @@ describe('the notifications module without a usable connection', () => {
     });
 
     test('resolves to undefined when the prompt rejects', async () => {
-        const { connection, window } = createFakeConnection();
+        const { connection, window } = createFakeServerConnection();
         window.showWarningMessage.mockRejectedValue(new Error('client went away'));
         initNotifications(connection);
 
@@ -207,7 +195,7 @@ describe('the notifications module without a usable connection', () => {
     });
 
     test('resolves to the picked title', async () => {
-        const { connection, window } = createFakeConnection();
+        const { connection, window } = createFakeServerConnection();
         const answer = deferred<{ title: string } | undefined>();
         window.showWarningMessage.mockReturnValue(answer.promise);
         initNotifications(connection);
@@ -233,8 +221,7 @@ const FAILURE_ROWS: ReadonlyArray<[string, JavaInteropTestServiceProgramScript, 
     ['a format failure', wireError(-33009), FORMAT_ENGINE_FAILED_MESSAGE],
     ['a parser exception', wireError(-33001), FORMAT_ENGINE_FAILED_MESSAGE],
     ['a malformed answer', { outcome: { kind: 'malformed-result', reason: 'no text' } }, FORMAT_ENGINE_FAILED_MESSAGE],
-    ['an unavailable service', wireError(-33004), FORMAT_SERVICE_UNAVAILABLE_MESSAGE],
-    ['a file with line numbers', wireError(-33006), FORMAT_DENUM_NEEDED_MESSAGE]
+    ['an unavailable service', wireError(-33004), FORMAT_SERVICE_UNAVAILABLE_MESSAGE]
 ];
 
 describe('every failure kind has its own short Warning', () => {
@@ -255,7 +242,6 @@ describe('every failure kind has its own short Warning', () => {
     });
 
     test('the texts are the ones the user is meant to read', () => {
-        expect(FORMAT_DENUM_NEEDED_MESSAGE).toBe('This file has line numbers. Run Denumber BBj Program first, then format.');
         expect(FORMAT_TIMEOUT_MESSAGE).toBe('BBj formatting timed out. The file was not changed; try again.');
         expect(FORMAT_TOO_LARGE_MESSAGE).toBe('This file is too large for BBj formatting. The file was not changed.');
         expect(FORMAT_PROTECTED_MESSAGE).toBe('This BBj program is protected and cannot be formatted.');
@@ -300,8 +286,7 @@ describe('a message repeats only when its own scope changes', () => {
 
     test.each([
         ['too large', wireError(-33003), FORMAT_TOO_LARGE_MESSAGE],
-        ['protected', wireError(-33005), FORMAT_PROTECTED_MESSAGE],
-        ['line numbers', wireError(-33006), FORMAT_DENUM_NEEDED_MESSAGE]
+        ['protected', wireError(-33005), FORMAT_PROTECTED_MESSAGE]
     ] as Array<[string, JavaInteropTestServiceProgramScript, string]>)(
         'a %s answer shows once per document and version, and an edit re-arms it', async (_name, script, text) => {
             const harness = createHarness();

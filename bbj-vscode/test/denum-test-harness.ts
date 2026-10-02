@@ -41,7 +41,7 @@ export function createDenumHarness() {
     const service = BBj.compiler.BBjDenumService;
     const run = (uri: string, token: CancellationToken = CancellationToken.None) =>
         service.run({ uri, current: () => textDocuments.get(uri) }, token);
-    return { BBj, double, client, service, run, loggers, ...fake };
+    return { shared, BBj, double, client, service, run, loggers, ...fake };
 }
 
 export type DenumHarness = ReturnType<typeof createDenumHarness>;
@@ -58,6 +58,7 @@ export function installRecordingMessenger(harness: DenumHarness) {
         warn: vi.fn(),
         infoWithAction: vi.fn(),
         warnWithAction: vi.fn(),
+        warnWithActions: vi.fn(),
         showDocument: vi.fn(),
         denumDiagnostics: vi.fn(),
         showDenumDiagnostics: vi.fn(),

@@ -47,10 +47,6 @@ export const FORMAT_ENGINE_FAILED_MESSAGE =
 export const FORMAT_SERVICE_UNAVAILABLE_MESSAGE =
     'The BBj formatting service is not available right now. The file was not changed; try again later.';
 
-/** Shown when the file has line numbers: formatting never removes them. */
-export const FORMAT_DENUM_NEEDED_MESSAGE =
-    'This file has line numbers. Run Denumber BBj Program first, then format.';
-
 /** The settings namespace the user sets formatter keys under. */
 const FORMATTER_KEY_PREFIX = 'bbj.formatter.';
 
@@ -143,17 +139,32 @@ export interface BBjFormatServiceContext {
     java: {
         JavaInteropService: JavaInteropService;
     };
+    /** Read only when an offer is shown, never in the constructor: the two services must not depend on each other's creation order. */
+    compiler?: {
+        BBjDenumService?: DenumOffer;
+    };
+}
+
+/**
+ * Where a file with line numbers goes after a format request found it: the user is offered to
+ * denumber it. The format request never waits for it and never runs it.
+ */
+export interface DenumOffer {
+    /** Shows the offer for the document `request` names; fire and forget. */
+    offer(request: { readonly uri: string; current(): TextDocument | undefined }, scope: 'document' | 'selection'): void;
 }
 
 export class BBjFormatService {
 
     private readonly javaInterop: JavaInteropService;
+    private readonly context: BBjFormatServiceContext;
     private readonly settings = new FormatterSettingsHolder();
     private messenger: FormatMessenger = DEFAULT_MESSENGER;
     /** `${kind}|${scope}` of every notice shown, oldest first, bounded by {@link FORMAT_NOTICE_LEDGER_LIMIT}. */
     private readonly shownNotices = new Set<string>();
 
     constructor(services: BBjFormatServiceContext) {
+        this.context = services;
         this.javaInterop = services.java.JavaInteropService;
     }
 
@@ -296,16 +307,40 @@ export class BBjFormatService {
                 this.reportMixedNumbering(outcome.line, request, documentScope);
                 return;
             case 'failed':
+                if (outcome.failure === 'denum-needed') {
+                    this.offerDenum(outcome.code, request, documentScope);
+                    return;
+                }
                 this.reportFailure(outcome.failure, outcome.code, generation, documentScope);
                 return;
         }
     }
 
     /**
-     * One warning naming every rejected key, scoped to the settings revision: a change of the
-     * settings re-arms it. The button sends the key names to the client, nothing else.
+     * A file with line numbers: one offer to denumber it, never anything that changes the buffer.
+     * A whole-document request gets the offer, a selection gets an explanation; each is scoped to
+     * the document and version like every message about content, so they never suppress each other
+     * and an unchanged save never repeats them. The offer is started inside the ledger's callback
+     * and never awaited, so the format response does not wait for the user.
      */
-    private reportInvalidSettings(problems: readonly ProgramSettingProblem[]): void {
+    private offerDenum(code: number | undefined, request: BBjFormatRequest, documentScope: string): void {
+        const selection = request.range !== undefined;
+        const kind = selection ? 'denum-needed-selection' : 'denum-needed';
+        this.notice(kind, documentScope, `Format notice: ${kind} (denum-needed${code === undefined ? '' : `, code ${code}`})`, () => {
+            const denum = this.context.compiler?.BBjDenumService;
+            if (denum === undefined) {
+                logger.debug(`Format notice: ${kind} not offered (no denumber service)`);
+                return;
+            }
+            denum.offer({ uri: request.document.uri, current: () => request.current() }, selection ? 'selection' : 'document');
+        });
+    }
+
+    /**
+     * The text of the invalid-settings warning and the unique full key names it names, each spelled
+     * the way the user set it. Shared with every other path that reports rejected formatter settings.
+     */
+    public describeInvalidSettings(problems: readonly ProgramSettingProblem[]): { text: string; keys: string[] } {
         const text = invalidSettingsMessage(problems, setting => this.settings.userKeyFor(setting));
         const keys: string[] = [];
         for (const problem of problems) {
@@ -314,6 +349,15 @@ export class BBjFormatService {
                 keys.push(key);
             }
         }
+        return { text, keys };
+    }
+
+    /**
+     * One warning naming every rejected key, scoped to the settings revision: a change of the
+     * settings re-arms it. The button sends the key names to the client, nothing else.
+     */
+    private reportInvalidSettings(problems: readonly ProgramSettingProblem[]): void {
+        const { text, keys } = this.describeInvalidSettings(problems);
         this.notice('invalid-settings', `settings:${this.settings.revision}`,
             `Format notice: invalid-settings (${problems.length} problems)`,
             () => this.messenger.warnWithAction(text, OPEN_SETTINGS_ACTION, () => this.messenger.openFormatterSettings({ keys })));
@@ -352,7 +396,8 @@ export class BBjFormatService {
                 this.contentNotice('protected', documentScope, described, FORMAT_PROTECTED_MESSAGE);
                 return;
             case 'denum-needed':
-                this.contentNotice('denum-needed', documentScope, described, FORMAT_DENUM_NEEDED_MESSAGE);
+                // Raised as an offer by report(); nothing to say here.
+                logger.debug('Format not applied: failed (denum-needed)');
                 return;
             case 'format-failed':
             case 'parser-exception':

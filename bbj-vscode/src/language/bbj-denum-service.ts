@@ -11,7 +11,7 @@
  * explicit user action and always gets its answer.
  */
 
-import type { CancellationToken, TextEdit } from 'vscode-languageserver';
+import { CancellationToken, type TextEdit } from 'vscode-languageserver';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
 import type { DenumProgramResult, ProgramFailureKind, ProgramOutcome } from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
@@ -20,7 +20,8 @@ import { minimalLineEdit } from './bbj-format-edit.js';
 import { GO_TO_LINE_ACTION, TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage } from './bbj-format-service.js';
 import {
     applyDocumentEdit, notifyDenumDiagnostics, notifyShowDenumDiagnostics, showFormatterDocument,
-    showFormatterWarning, showFormatterWarningWithAction, showInformation, showInformationWithAction
+    showFormatterWarning, showFormatterWarningWithAction, showInformation, showInformationWithAction,
+    showWarningWithActions
 } from './bbj-notifications.js';
 import { BBjLanguageMetaData } from './generated/module.js';
 import { logger } from './logger.js';
@@ -80,6 +81,20 @@ export const DENUM_SERVICE_UNAVAILABLE_MESSAGE =
 /** The label of the edit in the editor's undo history. */
 export const DENUMBER_EDIT_LABEL = 'Denumber';
 
+/** The button that denumbers the file. */
+export const DENUMBER_ACTION = 'Denumber';
+
+/** The button that denumbers and formats the file in one step. */
+export const DENUMBER_AND_FORMAT_ACTION = 'Denumber and Format';
+
+/** Shown when Format Document finds line numbers. */
+export const DENUM_OFFER_MESSAGE =
+    'This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in one step.';
+
+/** Shown when Format Selection finds line numbers. */
+export const DENUM_SELECTION_MESSAGE =
+    'Formatting a selection needs a file without line numbers. Denumber the file first.';
+
 /** The button on the confirmation of a run that reported diagnostics. */
 export const SHOW_DENUM_DIAGNOSTICS_ACTION = 'Show';
 
@@ -118,6 +133,8 @@ export interface DenumMessenger {
     infoWithAction(text: string, actionTitle: string, onAction: () => void): void;
     /** Shows a Warning with one button; `onAction` runs only if the user picks it. Never awaited. */
     warnWithAction(text: string, actionTitle: string, onAction: () => void): void;
+    /** Shows a Warning with several buttons; `onPick` runs with the title of the one the user picks, if any. Never awaited. */
+    warnWithActions(text: string, actionTitles: readonly string[], onPick: (title: string) => void): void;
     /** Asks the client to show the open document `uri` with the cursor at the zero-based `line`. */
     showDocument(uri: string, line: number): void;
     /** Sends the list of diagnostics of a finished run to the client. */
@@ -150,6 +167,17 @@ const DEFAULT_MESSENGER: DenumMessenger = {
     warn: showFormatterWarning,
     infoWithAction: (text, actionTitle, onAction) => runOnPick(showInformationWithAction(text, actionTitle), actionTitle, onAction),
     warnWithAction: (text, actionTitle, onAction) => runOnPick(showFormatterWarningWithAction(text, actionTitle), actionTitle, onAction),
+    warnWithActions: (text, actionTitles, onPick) => {
+        void showWarningWithActions(text, actionTitles).then(picked => {
+            if (picked !== undefined && actionTitles.includes(picked)) {
+                try {
+                    onPick(picked);
+                } catch {
+                    // An action that cannot run must never break anything.
+                }
+            }
+        }, () => { /* a failed prompt is harmless */ });
+    },
     showDocument: showFormatterDocument,
     denumDiagnostics: notifyDenumDiagnostics,
     showDenumDiagnostics: notifyShowDenumDiagnostics,
@@ -193,6 +221,29 @@ export class BBjDenumService {
     /** Replaces where user messages go and how the edit is applied; the default uses the language client. */
     public setMessenger(messenger: DenumMessenger): void {
         this.messenger = messenger;
+    }
+
+    /**
+     * Offers to denumber the document `request` names, after a format request found line numbers.
+     * A whole-document offer has two buttons, a selection explanation only Denumber. Fire and forget:
+     * nothing waits for the user, and a click reads the buffer as it is then, so it works however
+     * late it comes.
+     */
+    public offer(request: BBjDenumRequest, scope: 'document' | 'selection'): void {
+        try {
+            const denumber = () => { void this.run(request, CancellationToken.None).catch(() => { /* run never rejects */ }); };
+            if (scope === 'selection') {
+                this.messenger.warnWithAction(DENUM_SELECTION_MESSAGE, DENUMBER_ACTION, denumber);
+                return;
+            }
+            this.messenger.warnWithActions(DENUM_OFFER_MESSAGE, [DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION], picked => {
+                if (picked === DENUMBER_ACTION) {
+                    denumber();
+                }
+            });
+        } catch (error) {
+            logger.debug(`Denumber offer failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
+        }
     }
 
     /**
