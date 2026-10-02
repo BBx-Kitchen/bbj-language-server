@@ -11,7 +11,9 @@
 import type { CancellationToken, Range, TextEdit } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
-import type { FormatProgramParams, FormatSettingValue, ProgramOutcome, FormatProgramResult } from './java-interop-program-types.js';
+import type {
+    FormatProgramParams, FormatSettingValue, ProgramFailureKind, ProgramOutcome, FormatProgramResult
+} from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
 import { minimalLineEdit, rangeFormatEdits } from './bbj-format-edit.js';
 import { FormatterSettingsHolder } from './bbj-format-settings.js';
@@ -27,6 +29,27 @@ export const TOKENIZED_PROGRAM_PREFIX = '<<bbj>>';
 /** The text shown once per connection when the connected BBjServices has no formatter. */
 export const FORMAT_REQUIRES_BBJ_26_03_MESSAGE =
     'BBj formatting requires BBj 26.03 or later. The connected BBjServices does not provide it.';
+
+/** Shown when a format ran past its deadline. */
+export const FORMAT_TIMEOUT_MESSAGE = 'BBj formatting timed out. The file was not changed; try again.';
+
+/** Shown when the file is over the formatter's size limit. */
+export const FORMAT_TOO_LARGE_MESSAGE = 'This file is too large for BBj formatting. The file was not changed.';
+
+/** Shown when the program is protected. */
+export const FORMAT_PROTECTED_MESSAGE = 'This BBj program is protected and cannot be formatted.';
+
+/** Shown when the formatter engine failed or answered with something unusable. */
+export const FORMAT_ENGINE_FAILED_MESSAGE =
+    'The BBj formatter could not process this file. The file was not changed. See the BBj output for details.';
+
+/** Shown when the formatting service reports itself unavailable. */
+export const FORMAT_SERVICE_UNAVAILABLE_MESSAGE =
+    'The BBj formatting service is not available right now. The file was not changed; try again later.';
+
+/** Shown when the file has line numbers: formatting never removes them. */
+export const FORMAT_DENUM_NEEDED_MESSAGE =
+    'This file has line numbers. Run Denumber BBj Program first, then format.';
 
 /** How many distinct notices the service remembers; the oldest is forgotten first. */
 export const FORMAT_NOTICE_LEDGER_LIMIT = 256;
@@ -199,36 +222,75 @@ export class BBjFormatService {
     /**
      * Turns an outcome that left the buffer as it was into at most one message for the user. Log
      * lines carry the notice kind and fixed tokens only, never document text or peer text.
+     *
+     * A message about the content of one version of one document is scoped to that document and
+     * version, so an edit re-arms it and saving an unchanged file never repeats it. A message about
+     * the environment is scoped to the connection, so a reconnect re-arms it.
      */
-    private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>, _request: BBjFormatRequest, _version: number): void {
+    private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>, request: BBjFormatRequest, version: number): void {
         const generation = `generation:${this.javaInterop.connectionGeneration}`;
+        const documentScope = `${request.document.uri}@${version}`;
         switch (outcome.kind) {
             case 'unavailable':
                 if (outcome.reason === 'method-not-found') {
-                    this.notice('requires-bbj-26-03', generation, 'Format not applied: the connected BBjServices has no formatter',
-                        () => this.messenger.warn(FORMAT_REQUIRES_BBJ_26_03_MESSAGE));
+                    this.environmentNotice('requires-bbj-26-03', generation, 'the connected BBjServices has no formatter',
+                        FORMAT_REQUIRES_BBJ_26_03_MESSAGE);
                 } else {
                     // The interop client has already reported that the service is not reachable.
                     logger.debug(`Format not applied: unavailable (${outcome.reason})`);
                 }
                 return;
+            case 'timeout':
+                this.environmentNotice('timeout', generation, `timeout (${outcome.origin})`, FORMAT_TIMEOUT_MESSAGE);
+                return;
+            case 'malformed-result':
+                this.environmentNotice('engine-failed', generation, 'malformed-result', FORMAT_ENGINE_FAILED_MESSAGE);
+                return;
             case 'failed':
-                if (outcome.failure === 'transport') {
-                    logger.debug('Format not applied: failed (transport)');
-                    return;
-                }
-                break;
+                this.reportFailure(outcome.failure, outcome.code, generation, documentScope);
+                return;
             default:
-                break;
+                logger.debug(`Format not applied: ${outcome.kind}`);
+                return;
         }
-        let detail: string;
-        switch (outcome.kind) {
-            case 'timeout': detail = outcome.origin; break;
-            case 'failed': detail = outcome.failure; break;
-            case 'malformed-result': detail = outcome.reason; break;
-            default: detail = '-'; break;
+    }
+
+    private reportFailure(failure: ProgramFailureKind, code: number | undefined, generation: string, documentScope: string): void {
+        const described = `${failure}${code === undefined ? '' : `, code ${code}`}`;
+        switch (failure) {
+            case 'transport':
+                // The interop client has already reported that the service is not reachable.
+                logger.debug('Format not applied: failed (transport)');
+                return;
+            case 'size-cap':
+                this.contentNotice('too-large', documentScope, described, FORMAT_TOO_LARGE_MESSAGE);
+                return;
+            case 'protected-program':
+                this.contentNotice('protected', documentScope, described, FORMAT_PROTECTED_MESSAGE);
+                return;
+            case 'denum-needed':
+                this.contentNotice('denum-needed', documentScope, described, FORMAT_DENUM_NEEDED_MESSAGE);
+                return;
+            case 'format-failed':
+            case 'parser-exception':
+                this.environmentNotice('engine-failed', generation, described, FORMAT_ENGINE_FAILED_MESSAGE);
+                return;
+            case 'service-unavailable':
+                this.environmentNotice('service-unavailable', generation, described, FORMAT_SERVICE_UNAVAILABLE_MESSAGE);
+                return;
+            case 'invalid-params':
+                // Not something the user can act on; the log is the only place it shows.
+                this.notice('invalid-params', generation, `Format notice: invalid-params (${described})`);
+                return;
         }
-        logger.debug(`Format not applied: ${outcome.kind} (${detail})`);
+    }
+
+    private environmentNotice(kind: string, generation: string, described: string, text: string): void {
+        this.notice(kind, generation, `Format notice: ${kind} (${described})`, () => this.messenger.warn(text));
+    }
+
+    private contentNotice(kind: string, documentScope: string, described: string, text: string): void {
+        this.notice(kind, documentScope, `Format notice: ${kind} (${described})`, () => this.messenger.warn(text));
     }
 
     /**
