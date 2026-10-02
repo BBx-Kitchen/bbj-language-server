@@ -21,7 +21,8 @@ import {
 } from '../src/language/bbj-diagnostic-reconciliation.js';
 import { logger } from '../src/language/logger.js';
 
-vi.mock('../src/language/bbj-notifications.js', () => ({
+vi.mock('../src/language/bbj-notifications.js', async importOriginal => ({
+    ...await importOriginal<typeof import('../src/language/bbj-notifications.js')>(),
     notifyBbjcplAvailability: vi.fn(),
 }));
 import { notifyBbjcplAvailability } from '../src/language/bbj-notifications.js';
