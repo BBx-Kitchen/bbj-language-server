@@ -16,6 +16,7 @@ import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
 import { initNotifications, notifyResolvedConfigPath, notifyConfigReloadRequired } from './bbj-notifications.js';
 import { registerComposerRequests } from '../composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
+import { registerDenumRequest } from './denum-command.js';
 import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
 import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
 import { createConfigWatcher } from './config-watcher.js';
@@ -73,6 +74,13 @@ registerRefreshJavaClassesRequest(connection, { reloadJavaClassesAndRevalidate }
 registerCompileRequest(connection, {
     cplService: BBj.compiler.BBjCPLService,
     wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+});
+
+// Denumbers the open buffer of a BBj document for both IDEs. The server applies the edit and
+// shows the outcome itself, so a client only sends the request.
+registerDenumRequest(connection, {
+    getTextDocument: (uri) => shared.workspace.TextDocuments?.get(uri),
+    denum: BBj.compiler.BBjDenumService,
 });
 
 // The one shared answer to "which file is the BBj config file" (#485), exposed on-demand

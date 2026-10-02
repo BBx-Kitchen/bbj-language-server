@@ -10,7 +10,7 @@
  * connection. Before that call, notifyBbjcplAvailability() is a no-op.
  */
 
-import type { Connection } from 'vscode-languageserver';
+import type { Connection, TextEdit } from 'vscode-languageserver';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './config-reload-notification.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD, type OpenFormatterSettingsParams } from './format-settings-notification.js';
@@ -80,6 +80,51 @@ export function showFormatterWarning(text: string): void {
     } catch {
         // A notification that cannot be sent must never break a format request.
     }
+}
+
+/**
+ * Show a plain Information message. Fire and forget: nothing waits for the user. No-op if the
+ * connection has not been initialized yet.
+ */
+export function showInformation(text: string): void {
+    try {
+        _connection?.window.showInformationMessage(text);
+    } catch {
+        // A notification that cannot be sent must never break a request.
+    }
+}
+
+/**
+ * Ask the client to apply `edits` to the open document `uri` as one undoable change, and resolve to
+ * whether it did. The edit names the document `version` it was computed for in `documentChanges`,
+ * which is where a client checks it: a client that sees another version refuses it. Resolves to
+ * `false` when the connection is not initialized, the client refuses, or the request fails. Never
+ * rejects.
+ */
+export function applyDocumentEdit(
+    params: { uri: string; version: number; edits: TextEdit[]; label: string }
+): Promise<boolean> {
+    const connection = _connection;
+    if (!connection) {
+        return Promise.resolve(false);
+    }
+    const apply = async (): Promise<boolean> => {
+        try {
+            const response = await connection.workspace.applyEdit({
+                label: params.label,
+                edit: {
+                    documentChanges: [{
+                        textDocument: { uri: params.uri, version: params.version },
+                        edits: params.edits
+                    }]
+                }
+            });
+            return response?.applied === true;
+        } catch {
+            return false;
+        }
+    };
+    return apply();
 }
 
 /**

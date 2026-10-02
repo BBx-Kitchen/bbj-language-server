@@ -45,6 +45,7 @@ import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 import { BBjCPLService } from './bbj-cpl-service.js';
 import { BBjParserService } from './bbj-parser-service.js';
 import { BBjFormatService } from './bbj-format-service.js';
+import { BBjDenumService } from './bbj-denum-service.js';
 import { BBjFormatter } from './bbj-formatter.js';
 import { BBjComposerCodeLensProvider } from './composer-codelens.js';
 import { createChangeRecordingTextDocumentsConfiguration } from './bbj-kept-check.js';
@@ -68,7 +69,8 @@ export type BBjAddedServices = {
     compiler: {
         BBjCPLService: BBjCPLService,
         BBjParserService: BBjParserService,
-        BBjFormatService: BBjFormatService
+        BBjFormatService: BBjFormatService,
+        BBjDenumService: BBjDenumService
     }
 }
 
@@ -105,6 +107,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         BBjCPLService: (services) => new BBjCPLService(services),
         BBjParserService: (services) => new BBjParserService(services),
         BBjFormatService: (services) => new BBjFormatService(services),
+        BBjDenumService: (services) => new BBjDenumService(services),
     },
     documentation: {
         CommentProvider: () => new BBjCommentProvider()
