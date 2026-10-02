@@ -31,6 +31,7 @@ import { createConfigPathTrustMiddleware, effectiveConfigPath, registerTrustGran
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
@@ -489,6 +490,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerRunCommands(context, { outputChannel });
     registerCompileCommands(context);
     registerJavaClasspathCommands(context, { client });
+    registerFormatterSettingsLink(context, { client });
     registerOpenFilePrompts(context);
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
@@ -597,6 +599,21 @@ function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: {
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
         }
     }));
+}
+
+/**
+ * Registers the handler for the server's open-settings notification. The server has already decided
+ * the formatter settings are invalid and the user chose Open Settings; this handler only opens the
+ * Settings UI filtered to the formatter settings. It never reads the payload, so a setting name
+ * supplied by the peer can never become a command argument.
+ */
+function registerFormatterSettingsLink(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
+    context.subscriptions.push(
+        client.onNotification(OPEN_FORMATTER_SETTINGS_METHOD, () => {
+            void vscode.commands.executeCommand('workbench.action.openSettings', FORMATTER_SETTINGS_QUERY);
+        })
+    );
 }
 
 /** Registers the config-reload status bar (#486) and the notification handler that drives it through the restart gate. */
