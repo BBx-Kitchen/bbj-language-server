@@ -121,6 +121,7 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
 
 import * as vscode from 'vscode';
 import { activate } from '../src/extension.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
 
 /** Fresh mock ExtensionContext — every activate() call must get its own, since disposal
  *  and re-registration are tracked through each context's own `subscriptions` array. */
@@ -231,6 +232,44 @@ describe('extension re-activation (#531)', () => {
         for (const result of onNotificationMock.mock.results.map(r => r.value)) {
             expect(context.subscriptions).toContain(result);
         }
+
+        disposeSubscriptions(context);
+    });
+});
+
+describe('formatter settings link', () => {
+    function activateAndFindHandler(): { context: Parameters<typeof activate>[0]; handler: (params?: unknown) => void; registrations: number } {
+        onNotificationMock.mockClear();
+        const context = makeContext();
+        activate(context);
+
+        const matching = onNotificationMock.mock.calls
+            .map((call, index) => ({ method: call[0], handler: call[1], result: onNotificationMock.mock.results[index].value }))
+            .filter(entry => entry.method === OPEN_FORMATTER_SETTINGS_METHOD);
+        expect(context.subscriptions).toContain(matching[0]?.result);
+        return { context, handler: matching[0]?.handler as (params?: unknown) => void, registrations: matching.length };
+    }
+
+    test('exactly one handler is registered for the open-settings notification, and it is disposed with the activation', () => {
+        const { context, registrations } = activateAndFindHandler();
+
+        expect(registrations).toBe(1);
+
+        disposeSubscriptions(context);
+    });
+
+    test.each([
+        ['a normal payload', { keys: ['bbj.formatter.indentWidth'] }],
+        ['a hostile payload', { keys: ['"; rm -rf /', 'workbench.action.reloadWindow'] }],
+        ['no payload', undefined],
+    ])('%s opens the settings view filtered to the formatter settings and nothing else', (_name, payload) => {
+        const { context, handler } = activateAndFindHandler();
+        const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
+        executeCommand.mockClear();
+
+        handler(payload);
+
+        expect(executeCommand.mock.calls).toEqual([['workbench.action.openSettings', 'bbj.formatter']]);
 
         disposeSubscriptions(context);
     });
