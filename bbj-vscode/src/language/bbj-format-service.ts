@@ -12,7 +12,7 @@ import type { CancellationToken, Range, TextEdit } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import type {
-    FormatProgramParams, FormatSettingValue, ProgramFailureKind, ProgramOutcome, FormatProgramResult
+    FormatProgramParams, FormatSettingValue, ProgramFailureKind, ProgramOutcome, FormatProgramResult, ProgramSettingProblem
 } from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
 import { minimalLineEdit, rangeFormatEdits } from './bbj-format-edit.js';
@@ -50,6 +50,43 @@ export const FORMAT_SERVICE_UNAVAILABLE_MESSAGE =
 /** Shown when the file has line numbers: formatting never removes them. */
 export const FORMAT_DENUM_NEEDED_MESSAGE =
     'This file has line numbers. Run Denumber BBj Program first, then format.';
+
+/** How many problems an invalid-settings warning lists before it counts the rest. */
+export const MAX_LISTED_SETTING_PROBLEMS = 5;
+
+/** The button on the invalid-settings warning. */
+export const OPEN_SETTINGS_ACTION = 'Open Settings';
+
+/** The button on the mixed-numbering warning when the line is known. */
+export const GO_TO_LINE_ACTION = 'Go to Line';
+
+/**
+ * The warning for rejected formatter settings: each problem as `bbj.formatter.<key>: <message>`,
+ * with the key spelled the way the user set it. At most {@link MAX_LISTED_SETTING_PROBLEMS} are
+ * listed; the rest are counted. Built from the problems list only, and capped by count, never by
+ * cutting a string.
+ */
+export function invalidSettingsMessage(problems: readonly ProgramSettingProblem[], userKeyFor: (setting: string) => string): string {
+    if (problems.length === 0) {
+        return 'Invalid BBj formatter settings. The file was not changed.';
+    }
+    const parts = problems.slice(0, MAX_LISTED_SETTING_PROBLEMS)
+        .map(problem => `${FORMATTER_KEY_PREFIX}${userKeyFor(problem.setting)}: ${problem.message}`);
+    const unlisted = problems.length - parts.length;
+    if (unlisted > 0) {
+        parts.push(`and ${unlisted} more`);
+    }
+    return `Invalid BBj formatter settings: ${parts.join('; ')}. The file was not changed.`;
+}
+
+/** The warning for a file that mixes numbered and unnumbered lines; names the line when it is known. */
+export function mixedNumberingMessage(line: number | undefined): string {
+    return line === undefined
+        ? 'Mixed line numbering in this file. The file was not changed.'
+        : `Mixed line numbering at line ${line}. The file was not changed.`;
+}
+
+const FORMATTER_KEY_PREFIX = 'bbj.formatter.';
 
 /** How many distinct notices the service remembers; the oldest is forgotten first. */
 export const FORMAT_NOTICE_LEDGER_LIMIT = 256;
@@ -246,13 +283,53 @@ export class BBjFormatService {
             case 'malformed-result':
                 this.environmentNotice('engine-failed', generation, 'malformed-result', FORMAT_ENGINE_FAILED_MESSAGE);
                 return;
+            case 'invalid-settings':
+                this.reportInvalidSettings(outcome.problems);
+                return;
+            case 'mixed-numbering':
+                this.reportMixedNumbering(outcome.line, request, documentScope);
+                return;
             case 'failed':
                 this.reportFailure(outcome.failure, outcome.code, generation, documentScope);
                 return;
-            default:
-                logger.debug(`Format not applied: ${outcome.kind}`);
-                return;
         }
+    }
+
+    /**
+     * One warning naming every rejected key, scoped to the settings revision: a change of the
+     * settings re-arms it. The button sends the key names to the client, nothing else.
+     */
+    private reportInvalidSettings(problems: readonly ProgramSettingProblem[]): void {
+        const text = invalidSettingsMessage(problems, setting => this.settings.userKeyFor(setting));
+        const keys: string[] = [];
+        for (const problem of problems) {
+            const key = `${FORMATTER_KEY_PREFIX}${this.settings.userKeyFor(problem.setting)}`;
+            if (!keys.includes(key)) {
+                keys.push(key);
+            }
+        }
+        this.notice('invalid-settings', `settings:${this.settings.revision}`,
+            `Format notice: invalid-settings (${problems.length} problems)`,
+            () => this.messenger.warnWithAction(text, OPEN_SETTINGS_ACTION, () => this.messenger.openFormatterSettings({ keys })));
+    }
+
+    /**
+     * One warning for a file that mixes numbered and unnumbered lines. With a known line it offers
+     * to jump there, in the document the request was about and never anywhere the peer names.
+     */
+    private reportMixedNumbering(line: number | undefined, request: BBjFormatRequest, documentScope: string): void {
+        const text = mixedNumberingMessage(line);
+        this.notice('mixed-numbering', documentScope, `Format notice: mixed-numbering (${line === undefined ? 'no line' : 'line known'})`, () => {
+            if (line === undefined) {
+                this.messenger.warn(text);
+                return;
+            }
+            this.messenger.warnWithAction(text, GO_TO_LINE_ACTION, () => {
+                const lineCount = (request.current() ?? request.document).lineCount;
+                const clamped = Math.max(0, Math.min(line - 1, lineCount - 1));
+                this.messenger.showDocument(request.document.uri, clamped);
+            });
+        });
     }
 
     private reportFailure(failure: ProgramFailureKind, code: number | undefined, generation: string, documentScope: string): void {
