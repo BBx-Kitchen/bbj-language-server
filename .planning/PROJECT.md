@@ -504,6 +504,7 @@ until publication).
 - ✓ **IJ-01..02**: IntelliJ guide documents automatic EM login with remembered username, the BBj Compiler section and the Host fallback — v4.8 Phase 123
 - ✓ **COMP-01**: Both guides have a Composers page covering every composer command/action/intention and assign-to validation — v4.8 Phase 123
 - ✓ **DEV-01..03**: CLAUDE.md and the browser-editor concepts page match the architecture, test pattern and CI gates — v4.8 Phase 123
+- ✓ **FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01**: Format Document, Format Selection and format-on-save run through the language server on bbj-ls `formatProgram` with minimal, version-checked edits and one deduplicated message per failure; only the 15 known formatter keys reach bbj-ls; VS Code's jar provider is no longer registered; IntelliJ LSP formatting is held off by one switch until the Phase 129 verdict — v4.9 Phase 125
 
 ### Active
 
@@ -775,6 +776,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.7 Phase 122: every workflow least-privilege (top-level `contents: read`, writes only on the pushing jobs), every action SHA-pinned with a version comment, npm/Gradle caching through one `node-setup` composite action (no cache in token-holding jobs), `pr-vsix.yml` folded into `build.yml`, VSIX built once and minified; a permanent `pin-hygiene` CI job enforces it | #547/#549/#550/#518/#573/#515/#598/#600. Verification found two fail-open shapes in the checker's job attribution (a comment under `jobs:`, a trailing comment on a job id); both fixed with regression tests, and the Gradle wrapper checker got the same fix | ✓ Good — first `preview.yml` run on `main` green (0.16.10 on both marketplaces, 220 MB Gradle cache); next manual release and a PR Gradle cache restore still to observe |
 | v4.7 closed as an override closeout after a `tech_debt` audit with six artifacts acknowledged; phase artifacts archived on-tree; no `v4.7` git tag | Close taken 2026-09-29: 63/63 requirements, 13/13 phases, no gaps. Acknowledged: the formatter-jar debug session (#507), 114's seven deferred hand checks, 122's post-release checks, three todos. Repository tags stay release versions. The release waits for a few days on the preview channel | — Pending (release not cut) |
 | v4.8: documentation drift fixed in the docs only, one phase and one docs PR; the only non-doc changes are a `.vscode/tasks.json` build task used as "Run Extension"'s `preLaunchTask` and `npm run build` in Gitpod's `init`; closed as an override closeout (three dependency todos acknowledged), no `v4.8` git tag | The 2026-09-30 drift scan found build steps that no longer built, removed EM settings still in QA, undocumented settings and composers, and a stale CLAUDE.md. Verification caught one remaining example-block mismatch (fixed in `c46a5d9f`) | ✓ Good (merged via PR #726) |
+| v4.9 Phase 125: the server formatter lands in the same change that removes VS Code's client-side jar provider (exactly one BBj formatter); IntelliJ gets a single `LSP_FORMATTING_ENABLED = false` switch over all four LSP4IJ formatting gates instead of formatting by default | Two formatters racing on one buffer, and IntelliJ formatting through BBj before LSP4IJ formatting is evaluated, were the two risks the phase had to rule out | ✓ Good — UAT 5/5 in both IDEs against live BBj 26.03; 28/28 threats closed; review WR-01..03 left open |
 
 ## Evolution
 
@@ -794,4 +796,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-01 after starting milestone v4.9*
+*Last updated: 2026-10-02 after Phase 125*

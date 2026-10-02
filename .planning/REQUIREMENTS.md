@@ -26,18 +26,18 @@ stays switched off until the evaluation verdict.
 
 ### Formatting (FMT)
 
-- [ ] **FMT-01**: User can run Format Document on a BBj file and get bbj-ls's formatted output
-- [ ] **FMT-02**: User can run Format Selection; the server snaps it to whole logical statements
-- [ ] **FMT-03**: Format-on-save works without delaying the save: no wait for the workspace to load, cancellation and supersession (`-32800`) return no edits silently
-- [ ] **FMT-04**: Formatting an already-formatted file returns no edits, so the buffer is not dirtied
-- [ ] **FMT-05**: Formatting returns minimal line-level edits (cursor, folding and undo survive) and never applies an edit computed for an older document version
+- [x] **FMT-01**: User can run Format Document on a BBj file and get bbj-ls's formatted output
+- [x] **FMT-02**: User can run Format Selection; the server snaps it to whole logical statements
+- [x] **FMT-03**: Format-on-save works without delaying the save: no wait for the workspace to load, cancellation and supersession (`-32800`) return no edits silently
+- [x] **FMT-04**: Formatting an already-formatted file returns no edits, so the buffer is not dirtied
+- [x] **FMT-05**: Formatting returns minimal line-level edits (cursor, folding and undo survive) and never applies an edit computed for an older document version
 - [ ] **FMT-06**: Formatting a line-numbered file never DENUMs automatically; instead one deduplicated message offers "Denumber" and "Denumber and Format" (whole-document) or explains that selection formatting needs an unnumbered file (range)
 - [ ] **FMT-07**: "Denumber and Format" DENUMs and formats in one undoable step (`allowDenum`)
 - [x] **FMT-08**: Invalid settings (`-33007`) are reported as one message naming each bad `bbj.formatter.*` key, with a way to open the settings
 - [x] **FMT-09**: Mixed numbering (`-33008`) is reported with the offending line, and the user can jump to that line
 - [x] **FMT-10**: Timeout, too large, protected program, engine failure and service-unavailable each produce one clear, deduplicated message and leave the buffer untouched
 - [x] **FMT-11**: On BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, distinct from "interop not connected"; a save is never blocked
-- [ ] **FMT-12**: Config documents (`.bbx` config) and non-BBj documents are not sent to the formatter
+- [x] **FMT-12**: Config documents (`.bbx` config) and non-BBj documents are not sent to the formatter
 
 ### DENUM (DEN)
 
@@ -51,19 +51,19 @@ stays switched off until the evaluation verdict.
 ### Settings (SET)
 
 - [ ] **SET-01**: All 15 formatter settings are available in VS Code with a typed schema (bounded integer, booleans, enums with descriptions), applied without restart
-- [ ] **SET-02**: Only the 15 known keys reach bbj-ls, each with an explicit value; `indentWidth` defaults to 2 in both IDEs
+- [x] **SET-02**: Only the 15 known keys reach bbj-ls, each with an explicit value; `indentWidth` defaults to 2 in both IDEs
 - [ ] **SET-03**: A user who set `bbj.formatter.splitSingleLineIF` keeps that behaviour through `splitSingleLineIf` (deprecated alias for one release)
 - [ ] **SET-04**: `bbj.formatter.javaPath` is removed
 
 ### VS Code cut-over (CUT)
 
-- [ ] **CUT-01**: VS Code has exactly one BBj formatter: the client-side jar provider is removed in the same change that enables the server formatter
+- [x] **CUT-01**: VS Code has exactly one BBj formatter: the client-side jar provider is removed in the same change that enables the server formatter
 - [ ] **CUT-02**: `BBjCFCli.jar`/`tools/formatter`, `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are removed
 - [ ] **CUT-03**: Format and DENUM are verified end-to-end in VS Code against a live BBj 26.03 BBjServices from the built VSIX
 
 ### IntelliJ (IJF)
 
-- [ ] **IJF-01**: IntelliJ does not offer LSP formatting until the evaluation verdict; the on/off decision is a single switch
+- [x] **IJF-01**: IntelliJ does not offer LSP formatting until the evaluation verdict; the on/off decision is a single switch
 - [ ] **IJF-02**: IntelliJ formatting is evaluated on the built plugin zip against a live BBjServices (Reformat Code, selection, Actions on Save, numbered-file message, settings, CRLF, edit application), recorded from a real `idea.log`
 - [ ] **IJF-03**: The user decides from the evaluation whether IntelliJ formatting is officially supported or disabled, and the switch is set accordingly
 - [ ] **IJF-04**: If supported: all 15 formatter settings are on the IntelliJ BBj settings page and reach the server via `initializationOptions` (restart on change)
@@ -106,18 +106,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INT-03 | Phase 124 | Complete |
 | INT-04 | Phase 124 | Complete |
 | INT-05 | Phase 124 | Complete |
-| FMT-01 | Phase 125 | Pending |
-| FMT-02 | Phase 125 | Pending |
-| FMT-03 | Phase 125 | Pending |
-| FMT-04 | Phase 125 | Pending |
-| FMT-05 | Phase 125 | Pending |
+| FMT-01 | Phase 125 | Complete |
+| FMT-02 | Phase 125 | Complete |
+| FMT-03 | Phase 125 | Complete |
+| FMT-04 | Phase 125 | Complete |
+| FMT-05 | Phase 125 | Complete |
 | FMT-06 | Phase 126 | Pending |
 | FMT-07 | Phase 126 | Pending |
 | FMT-08 | Phase 125 | Complete |
 | FMT-09 | Phase 125 | Complete |
 | FMT-10 | Phase 125 | Complete |
 | FMT-11 | Phase 125 | Complete |
-| FMT-12 | Phase 125 | Pending |
+| FMT-12 | Phase 125 | Complete |
 | DEN-01 | Phase 126 | Pending |
 | DEN-02 | Phase 127 | Pending |
 | DEN-03 | Phase 126 | Pending |
@@ -125,13 +125,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEN-05 | Phase 127 | Pending |
 | DEN-06 | Phase 127 | Pending |
 | SET-01 | Phase 127 | Pending |
-| SET-02 | Phase 125 | Pending |
+| SET-02 | Phase 125 | Complete |
 | SET-03 | Phase 127 | Pending |
 | SET-04 | Phase 127 | Pending |
-| CUT-01 | Phase 125 | Pending |
+| CUT-01 | Phase 125 | Complete |
 | CUT-02 | Phase 127 | Pending |
 | CUT-03 | Phase 127 | Pending |
-| IJF-01 | Phase 125 | Pending |
+| IJF-01 | Phase 125 | Complete |
 | IJF-02 | Phase 129 | Pending |
 | IJF-03 | Phase 129 | Pending |
 | IJF-04 | Phase 129 | Pending (only on a "supported" verdict in Phase 129; Out of Scope on "disabled") |

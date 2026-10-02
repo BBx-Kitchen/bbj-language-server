@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 125
-current_phase_name: LS Formatting
-status: verifying
-stopped_at: Completed 125-06-PLAN.md
-last_updated: "2026-10-02T06:03:08.477Z"
-last_activity: 2026-10-01
-last_activity_desc: Phase 125 execution started
-state_head: b1d56bbd9adaee4cf0d50b02945bd3094805b83d
+current_phase: 126
+current_phase_name: LS DENUM
+status: planning
+stopped_at: Phase 125 complete, ready to plan Phase 126
+last_updated: "2026-10-02T08:00:05.911Z"
+last_activity: 2026-10-02
+last_activity_desc: Phase 125 complete, transitioned to Phase 126
+state_head: d3b71d149a4b6120d48a93cf83e60af859c65603
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
   completed_plans: 12
-  percent: 14
+  percent: 29
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-01 (Phase 124 Interop Client complete — 6/6 plans, verified, code-review fixes applied)
+**Last Updated:** 2026-10-02 (Phase 125 LS Formatting complete — 6/6 plans, UAT 5/5, validated, secured)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-01)
+See: .planning/PROJECT.md (updated 2026-10-02)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 125 — LS Formatting
+**Current Focus:** Phase 126 — LS DENUM
 
 ---
 
 ## Current Position
 
-Phase: 125 (LS Formatting) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-10-01 — Phase 125 execution started
+Phase: 126 — LS DENUM
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-02 — Phase 125 complete, transitioned to Phase 126
 
-Progress: [█░░░░░░░░░] 14% (v4.9: 1/7 phases)
+Progress: [███░░░░░░░] 29% (v4.9: 2/7 phases)
 
 ### v4.9 milestone map
 
@@ -451,11 +451,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-02T06:03:08.402Z
-Stopped at: Completed 125-06-PLAN.md
+Last session: 2026-10-02T08:05:00Z
+Stopped at: Phase 125 complete, ready to plan Phase 126
 Resume file: None
 
-Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
+Next: `/gsd-discuss-phase 126` or `/gsd-plan-phase 126`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
