@@ -51,6 +51,9 @@ export const FORMAT_SERVICE_UNAVAILABLE_MESSAGE =
 export const FORMAT_DENUM_NEEDED_MESSAGE =
     'This file has line numbers. Run Denumber BBj Program first, then format.';
 
+/** The settings namespace the user sets formatter keys under. */
+const FORMATTER_KEY_PREFIX = 'bbj.formatter.';
+
 /** How many problems an invalid-settings warning lists before it counts the rest. */
 export const MAX_LISTED_SETTING_PROBLEMS = 5;
 
@@ -85,8 +88,6 @@ export function mixedNumberingMessage(line: number | undefined): string {
         ? 'Mixed line numbering in this file. The file was not changed.'
         : `Mixed line numbering at line ${line}. The file was not changed.`;
 }
-
-const FORMATTER_KEY_PREFIX = 'bbj.formatter.';
 
 /** How many distinct notices the service remembers; the oldest is forgotten first. */
 export const FORMAT_NOTICE_LEDGER_LIMIT = 256;
