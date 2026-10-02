@@ -100,6 +100,8 @@ export class BBjDenumService {
 
     private readonly javaInterop: JavaInteropService;
     private messenger: DenumMessenger = DEFAULT_MESSENGER;
+    /** The uris of the documents with a run in flight: one run applies to one version of one document at a time. */
+    private readonly running = new Set<string>();
 
     constructor(services: BBjDenumServiceContext) {
         this.javaInterop = services.java.JavaInteropService;
@@ -115,6 +117,7 @@ export class BBjDenumService {
      * ending, a failure included, has shown exactly one message unless the caller cancelled.
      */
     public async run(request: BBjDenumRequest, token: CancellationToken): Promise<DenumResult> {
+        let claimed: string | undefined;
         try {
             if (request.uri === undefined) {
                 return this.fail('invalid-params', DENUM_NOT_OPEN_MESSAGE);
@@ -129,6 +132,12 @@ export class BBjDenumService {
             if (sent.startsWith(TOKENIZED_PROGRAM_PREFIX)) {
                 return this.fail('tokenized', DENUM_TOKENIZED_MESSAGE);
             }
+
+            if (this.running.has(document.uri)) {
+                return this.fail('in-progress', DENUM_IN_PROGRESS_MESSAGE);
+            }
+            claimed = document.uri;
+            this.running.add(claimed);
 
             // No canonicalName: bbj-ls supersedes a pending request that carries the same name, and
             // two runs must never cancel each other.
@@ -167,6 +176,10 @@ export class BBjDenumService {
             // Log lines carry fixed tokens only, never document or peer text.
             logger.debug(`Denumber run failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
             return this.fail('denum-failed', DENUM_FAILED_MESSAGE);
+        } finally {
+            if (claimed !== undefined) {
+                this.running.delete(claimed);
+            }
         }
     }
 
