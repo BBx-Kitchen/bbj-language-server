@@ -11,7 +11,6 @@ import {
     DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
-import { DocumentFormatter } from './document-formatter.js';
 import { registerOpenFilePrompts } from './open-file-prompts.js';
 import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
@@ -490,7 +489,6 @@ export function activate(context: vscode.ExtensionContext): void {
     registerRunCommands(context, { outputChannel });
     registerCompileCommands(context);
     registerJavaClasspathCommands(context, { client });
-    registerDocumentFormatter(context);
     registerOpenFilePrompts(context);
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
@@ -599,16 +597,6 @@ function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: {
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
         }
     }));
-}
-
-/** Registers the BBj document formatter. */
-function registerDocumentFormatter(context: vscode.ExtensionContext): void {
-    context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider(
-            "bbj",
-            DocumentFormatter
-        )
-    );
 }
 
 /** Registers the config-reload status bar (#486) and the notification handler that drives it through the restart gate. */

@@ -23,6 +23,7 @@ import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
 import { registerConfigAwareHoverHandler } from './bbj-hover-handler.js';
+import { registerBoundedFormattingHandler } from './bbj-formatting-handler.js';
 import { JavaClassReloadServices, reloadClasspathAndRecheckDocuments } from './java-class-reload.js';
 import { createInlayHintRefresher, createReloadJavaClassesAndRevalidate, registerRefreshJavaClassesRequest } from './java-class-refresh.js';
 import { registerConfigurationChangeHandler } from './configuration-change-handler.js';
@@ -124,6 +125,12 @@ registerComposerCodeLensHandler(connection, shared, BBj);
 // codeAction/codeLens overrides above already close. This handler answers a config document's
 // hover instantly and delegates every other document unchanged. See bbj-hover-handler.ts.
 registerConfigAwareHoverHandler(connection, shared);
+
+// Register AFTER startLanguageServer to override Langium's default formatting handlers
+// deliberately: those hold a request until the whole workspace has loaded and can read a
+// client-supplied uri from disk, which would make format-on-save wait for a cold start. This
+// handler formats the open buffer only. See bbj-formatting-handler.ts.
+registerBoundedFormattingHandler(connection, shared, BBj);
 
 // Ask the client to re-request code lenses once the first build completes, so a composer-cue
 // request answered null during a cold start is re-issued by clients that support refresh.

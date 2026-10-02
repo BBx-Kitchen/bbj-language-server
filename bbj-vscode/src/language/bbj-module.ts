@@ -45,6 +45,7 @@ import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 import { BBjCPLService } from './bbj-cpl-service.js';
 import { BBjParserService } from './bbj-parser-service.js';
 import { BBjFormatService } from './bbj-format-service.js';
+import { BBjFormatter } from './bbj-formatter.js';
 import { BBjComposerCodeLensProvider } from './composer-codelens.js';
 import { createChangeRecordingTextDocumentsConfiguration } from './bbj-kept-check.js';
 import { logger } from './logger.js';
@@ -118,6 +119,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         InlayHintProvider: (services) => new BBjInlayHintProvider(services),
         CodeActionProvider: (services) => new BBjCodeActionProvider(services),
         CodeLensProvider: () => new BBjComposerCodeLensProvider(),
+        Formatter: (services) => new BBjFormatter(services),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),

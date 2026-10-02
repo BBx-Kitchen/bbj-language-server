@@ -261,7 +261,6 @@ const EXPECTED_SEQUENCE = [
     'command:bbj.configureCompileOptions',
     'command:bbj.refreshJavaClasses',
     'command:bbj.showClasspathEntries',
-    'formatter',
     'onDidChangeTabs',
     'onDidChangeActiveTextEditor',
     'statusBar:100',
@@ -275,7 +274,7 @@ const EXPECTED_SEQUENCE = [
     'onDidOpenTextDocument',
     'onDidChangeConfiguration',
 ];
-const EXPECTED_SUBSCRIPTIONS_LENGTH = 32;
+const EXPECTED_SUBSCRIPTIONS_LENGTH = 31;
 
 let context: Parameters<typeof activate>[0];
 

@@ -207,7 +207,7 @@ describe('extension re-activation (#531)', () => {
         expect(registeredCommandIds.size).toBe(0);
     });
 
-    test('the formatting provider and every notification handler are disposed with the activation, alongside every command', () => {
+    test('no client-side formatting provider is registered, and every notification handler is disposed with the activation, alongside every command', () => {
         (vscode.commands.registerCommand as ReturnType<typeof vi.fn>).mockClear();
         (vscode.languages.registerDocumentFormattingEditProvider as ReturnType<typeof vi.fn>).mockClear();
         onNotificationMock.mockClear();
@@ -221,11 +221,9 @@ describe('extension re-activation (#531)', () => {
             expect(context.subscriptions).toContain(result);
         }
 
-        const formatterMock = vscode.languages.registerDocumentFormattingEditProvider as ReturnType<typeof vi.fn>;
-        expect(formatterMock).toHaveBeenCalledTimes(1);
-        for (const result of formatterMock.mock.results.map(r => r.value)) {
-            expect(context.subscriptions).toContain(result);
-        }
+        // The language server's formatting capability is the only BBj formatter; the extension
+        // never registers a second one.
+        expect(vscode.languages.registerDocumentFormattingEditProvider).not.toHaveBeenCalled();
 
         expect(onNotificationMock.mock.calls.length).toBeGreaterThanOrEqual(3);
         const notificationNames = onNotificationMock.mock.calls.map(c => c[0]);
