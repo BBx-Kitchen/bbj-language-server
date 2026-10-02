@@ -1,11 +1,12 @@
 ---
 phase: 125-ls-formatting
 verified: 2026-10-02T06:20:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "VS Code, built VSIX from the final tree, live BBj 26.03: open a .bbj file and run Format Document With..."
     expected: "Exactly one BBj formatter is listed (the language-server one); no 'BBj' jar provider alongside it"
     why_human: "Registration of the language client's provider from the server capability happens in the VS Code host; unit tests prove only that activate() registers no client-side provider and that the server advertises the capability"
