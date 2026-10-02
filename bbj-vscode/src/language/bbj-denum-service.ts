@@ -163,14 +163,14 @@ export interface DenumMessenger {
 }
 
 /**
- * Starts a prompt without waiting for it and runs `onAction` only if the user picked `actionTitle`.
- * Nothing that goes wrong here may reach the run that started the prompt.
+ * Starts a prompt without waiting for it and runs `onPick` with the title the user picked, only if
+ * it is one of `actionTitles`. Nothing that goes wrong here may reach the run that started the prompt.
  */
-function runOnPick(prompt: Promise<string | undefined>, actionTitle: string, onAction: () => void): void {
+function runOnPick(prompt: Promise<string | undefined>, actionTitles: readonly string[], onPick: (title: string) => void): void {
     void prompt.then(picked => {
-        if (picked === actionTitle) {
+        if (picked !== undefined && actionTitles.includes(picked)) {
             try {
-                onAction();
+                onPick(picked);
             } catch {
                 // An action that cannot run must never break anything.
             }
@@ -182,19 +182,9 @@ function runOnPick(prompt: Promise<string | undefined>, actionTitle: string, onA
 const DEFAULT_MESSENGER: DenumMessenger = {
     info: showInformation,
     warn: showFormatterWarning,
-    infoWithAction: (text, actionTitle, onAction) => runOnPick(showInformationWithAction(text, actionTitle), actionTitle, onAction),
-    warnWithAction: (text, actionTitle, onAction) => runOnPick(showFormatterWarningWithAction(text, actionTitle), actionTitle, onAction),
-    warnWithActions: (text, actionTitles, onPick) => {
-        void showWarningWithActions(text, actionTitles).then(picked => {
-            if (picked !== undefined && actionTitles.includes(picked)) {
-                try {
-                    onPick(picked);
-                } catch {
-                    // An action that cannot run must never break anything.
-                }
-            }
-        }, () => { /* a failed prompt is harmless */ });
-    },
+    infoWithAction: (text, actionTitle, onAction) => runOnPick(showInformationWithAction(text, actionTitle), [actionTitle], onAction),
+    warnWithAction: (text, actionTitle, onAction) => runOnPick(showFormatterWarningWithAction(text, actionTitle), [actionTitle], onAction),
+    warnWithActions: (text, actionTitles, onPick) => runOnPick(showWarningWithActions(text, actionTitles), actionTitles, onPick),
     showDocument: showFormatterDocument,
     openFormatterSettings: notifyOpenFormatterSettings,
     denumDiagnostics: notifyDenumDiagnostics,
