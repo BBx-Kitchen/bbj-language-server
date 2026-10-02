@@ -14,8 +14,10 @@ import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting
 import {
     FORMAT_DENUM_NEEDED_MESSAGE, FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_NOTICE_LEDGER_LIMIT, FORMAT_PROTECTED_MESSAGE,
     FORMAT_REQUIRES_BBJ_26_03_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE,
-    FORMAT_TOO_LARGE_MESSAGE, type FormatMessenger
+    FORMAT_TOO_LARGE_MESSAGE, GO_TO_LINE_ACTION, MAX_LISTED_SETTING_PROBLEMS, OPEN_SETTINGS_ACTION,
+    invalidSettingsMessage, mixedNumberingMessage, type FormatMessenger
 } from '../src/language/bbj-format-service.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
 import {
     initNotifications, notifyJavaConnectionError, showFormatterWarningWithAction
 } from '../src/language/bbj-notifications.js';
@@ -429,5 +431,308 @@ describe('what the user and the log are never shown', () => {
             expect(logged, `logger.${level}`).not.toContain(secret);
             expect(logged, `logger.${level}`).not.toContain(peerEcho);
         }
+    });
+});
+
+/** A `-33007` answer naming the given settings. */
+function invalidSettingsAnswer(...problems: Array<{ setting: string; message: string }>): JavaInteropTestServiceProgramScript {
+    return { error: { code: -33007, message: 'invalid formatter settings', data: problems } };
+}
+
+/** A `-33008` answer for the given line (or none). */
+function mixedNumberingAnswer(line?: number, extra: Record<string, unknown> = {}): JavaInteropTestServiceProgramScript {
+    return { error: { code: -33008, message: 'mixed numbering', data: line === undefined ? extra : { line, ...extra } } };
+}
+
+function numberedLines(count: number): string {
+    return Array.from({ length: count }, (_, index) => `x${index}=1`).join('\n');
+}
+
+describe('the invalid-settings text', () => {
+
+    test('names one bad key with its message', () => {
+        expect(invalidSettingsMessage([{ setting: 'indentWidth', message: 'must be between 0 and 16' }], key => key)).toBe(
+            'Invalid BBj formatter settings: bbj.formatter.indentWidth: must be between 0 and 16. The file was not changed.');
+    });
+
+    test('lists the first five problems and counts the rest', () => {
+        const problems = Array.from({ length: 7 }, (_, index) => ({ setting: `key${index + 1}`, message: `bad ${index + 1}` }));
+
+        const text = invalidSettingsMessage(problems, key => key);
+
+        expect(MAX_LISTED_SETTING_PROBLEMS).toBe(5);
+        expect(text).toBe('Invalid BBj formatter settings: '
+            + 'bbj.formatter.key1: bad 1; bbj.formatter.key2: bad 2; bbj.formatter.key3: bad 3; '
+            + 'bbj.formatter.key4: bad 4; bbj.formatter.key5: bad 5; and 2 more. The file was not changed.');
+    });
+
+    test('has a text of its own for an answer without problems', () => {
+        expect(invalidSettingsMessage([], key => key)).toBe('Invalid BBj formatter settings. The file was not changed.');
+    });
+
+    test('counts problems, so a long message or key with astral characters is shown whole', () => {
+        const astral = '\u{1F600}'.repeat(300);
+
+        const text = invalidSettingsMessage([{ setting: astral, message: astral }], key => key);
+
+        expect(text).toContain(`bbj.formatter.${astral}: ${astral}`);
+    });
+
+    test('names the spelling of the key the user set', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.BBj.compiler.BBjFormatService.setSettings({ splitSingleLineIF: 'yes' });
+        harness.double.scriptFormatProgram(invalidSettingsAnswer({ setting: 'splitSingleLineIf', message: 'must be true or false' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+
+        expect(String(messenger.warnWithAction.mock.calls[0][0])).toContain('bbj.formatter.splitSingleLineIF: must be true or false');
+    });
+});
+
+describe('invalid settings through the format request', () => {
+
+    test('answer at once with a warning that offers Open Settings, and send the full key names on a click', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(invalidSettingsAnswer(
+            { setting: 'indentWidth', message: 'must be between 0 and 16' },
+            { setting: 'indentCharacter', message: 'must be SPACE or TAB' },
+            { setting: 'indentWidth', message: 'a second complaint' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        expect(await harness.format()).toEqual([]);
+
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(1);
+        const [text, title, onAction] = messenger.warnWithAction.mock.calls[0];
+        expect(title).toBe(OPEN_SETTINGS_ACTION);
+        expect(text).toBe('Invalid BBj formatter settings: bbj.formatter.indentWidth: must be between 0 and 16; '
+            + 'bbj.formatter.indentCharacter: must be SPACE or TAB; bbj.formatter.indentWidth: a second complaint. '
+            + 'The file was not changed.');
+        expect(messenger.openFormatterSettings).not.toHaveBeenCalled();
+
+        onAction();
+
+        expect(messenger.openFormatterSettings).toHaveBeenCalledTimes(1);
+        expect(messenger.openFormatterSettings).toHaveBeenCalledWith({
+            keys: ['bbj.formatter.indentWidth', 'bbj.formatter.indentCharacter']
+        });
+        expect(messenger.warn).not.toHaveBeenCalled();
+    });
+
+    test('an answer without problems still shows one warning with Open Settings', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(invalidSettingsAnswer());
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+
+        expect(messenger.warnWithAction).toHaveBeenCalledWith(
+            'Invalid BBj formatter settings. The file was not changed.', OPEN_SETTINGS_ACTION, expect.any(Function));
+        messenger.warnWithAction.mock.calls[0][2]();
+        expect(messenger.openFormatterSettings).toHaveBeenCalledWith({ keys: [] });
+    });
+
+    test('shows once per settings revision across documents, and a change of the settings re-arms it', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(invalidSettingsAnswer({ setting: 'indentWidth', message: 'bad' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+        harness.client.open('file:///ws/other.bbj', 1, SOURCE);
+
+        await harness.format(URI_TEXT);
+        await harness.format('file:///ws/other.bbj');
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(1);
+
+        harness.BBj.compiler.BBjFormatService.setSettings({ indentWidth: 99 });
+        await harness.format(URI_TEXT);
+
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(2);
+    });
+
+    test('a setting name shaped like a uri or a command only ever reaches the key list', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(invalidSettingsAnswer(
+            { setting: 'file:///etc/passwd', message: 'bad' }, { setting: 'workbench.action.quit', message: 'bad' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+        messenger.warnWithAction.mock.calls[0][2]();
+
+        expect(messenger.showDocument).not.toHaveBeenCalled();
+        expect(messenger.openFormatterSettings).toHaveBeenCalledWith({
+            keys: ['bbj.formatter.file:///etc/passwd', 'bbj.formatter.workbench.action.quit']
+        });
+    });
+});
+
+describe('the mixed-numbering text', () => {
+
+    test('names the line when it is known and says so when it is not', () => {
+        expect(mixedNumberingMessage(3)).toBe('Mixed line numbering at line 3. The file was not changed.');
+        expect(mixedNumberingMessage(undefined)).toBe('Mixed line numbering in this file. The file was not changed.');
+    });
+});
+
+describe('mixed numbering through the format request', () => {
+
+    test('offers Go to Line and jumps to the zero-based line of the request\'s own document', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(3));
+        harness.client.open(URI_TEXT, 1, numberedLines(10));
+
+        expect(await harness.format()).toEqual([]);
+
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(1);
+        const [text, title, onAction] = messenger.warnWithAction.mock.calls[0];
+        expect(text).toBe('Mixed line numbering at line 3. The file was not changed.');
+        expect(title).toBe(GO_TO_LINE_ACTION);
+        expect(messenger.showDocument).not.toHaveBeenCalled();
+
+        onAction();
+
+        expect(messenger.showDocument).toHaveBeenCalledTimes(1);
+        expect(messenger.showDocument).toHaveBeenCalledWith(URI_TEXT, 2);
+    });
+
+    test('clamps a line past the end to the last line of the document', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(99));
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+        messenger.warnWithAction.mock.calls[0][2]();
+
+        expect(messenger.showDocument).toHaveBeenCalledWith(URI_TEXT, 3);
+    });
+
+    test('clamps against the document as it is when the button is clicked', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(99));
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+        harness.client.change(URI_TEXT, 2, [{ text: numberedLines(120) }]);
+        messenger.warnWithAction.mock.calls[0][2]();
+
+        expect(messenger.showDocument).toHaveBeenCalledWith(URI_TEXT, 98);
+    });
+
+    test('still jumps harmlessly when the document was closed in the meantime', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(99));
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+        harness.client.close(URI_TEXT);
+        messenger.warnWithAction.mock.calls[0][2]();
+
+        expect(messenger.showDocument).toHaveBeenCalledWith(URI_TEXT, 3);
+    });
+
+    test('without a line shows a plain warning and offers no action', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer());
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+
+        expect(messenger.warn).toHaveBeenCalledWith('Mixed line numbering in this file. The file was not changed.');
+        expect(messenger.warnWithAction).not.toHaveBeenCalled();
+    });
+
+    test('never takes the uri from the peer', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(2, { uri: 'file:///etc/passwd', path: '/etc/passwd' }));
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+        messenger.warnWithAction.mock.calls[0][2]();
+
+        expect(messenger.showDocument).toHaveBeenCalledWith(URI_TEXT, 1);
+    });
+
+    test('shows once per document and version', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(2));
+        harness.client.open(URI_TEXT, 1, numberedLines(4));
+
+        await harness.format();
+        await harness.format();
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(1);
+
+        harness.client.change(URI_TEXT, 2, [{ text: numberedLines(5) }]);
+        await harness.format();
+        expect(messenger.warnWithAction).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('a prompt never holds up the format response', () => {
+
+    test('a prompt that never settles leaves the response immediate', async () => {
+        const harness = createHarness();
+        harness.window.showWarningMessage.mockReturnValue(new Promise(() => { /* never answered */ }));
+        harness.double.scriptFormatProgram(invalidSettingsAnswer({ setting: 'indentWidth', message: 'bad' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        expect(await harness.format()).toEqual([]);
+
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.sendNotification).not.toHaveBeenCalled();
+    });
+
+    test('a late click on Open Settings sends the notification with the key names', async () => {
+        const harness = createHarness();
+        const answer = deferred<{ title: string } | undefined>();
+        harness.window.showWarningMessage.mockReturnValue(answer.promise);
+        harness.double.scriptFormatProgram(invalidSettingsAnswer({ setting: 'indentWidth', message: 'bad' }));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+        answer.resolve({ title: 'Open Settings' });
+
+        await vi.waitFor(() => expect(harness.sendNotification).toHaveBeenCalledTimes(1));
+        expect(harness.sendNotification).toHaveBeenCalledWith(OPEN_FORMATTER_SETTINGS_METHOD, { keys: ['bbj.formatter.indentWidth'] });
+    });
+
+    test('a late click on Go to Line asks the client to show the line', async () => {
+        const harness = createHarness();
+        const answer = deferred<{ title: string } | undefined>();
+        harness.window.showWarningMessage.mockReturnValue(answer.promise);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(3));
+        harness.client.open(URI_TEXT, 1, numberedLines(10));
+
+        await harness.format();
+        answer.resolve({ title: 'Go to Line' });
+
+        await vi.waitFor(() => expect(harness.window.showDocument).toHaveBeenCalledTimes(1));
+        expect(harness.window.showDocument).toHaveBeenCalledWith({
+            uri: URI_TEXT,
+            takeFocus: true,
+            selection: { start: { line: 2, character: 0 }, end: { line: 2, character: 0 } }
+        });
+    });
+
+    test('dismissing the prompt does nothing', async () => {
+        const harness = createHarness();
+        harness.window.showWarningMessage.mockResolvedValue(undefined);
+        harness.double.scriptFormatProgram(mixedNumberingAnswer(3));
+        harness.client.open(URI_TEXT, 1, numberedLines(10));
+
+        await harness.format();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(harness.window.showDocument).not.toHaveBeenCalled();
+        expect(harness.sendNotification).not.toHaveBeenCalled();
     });
 });
