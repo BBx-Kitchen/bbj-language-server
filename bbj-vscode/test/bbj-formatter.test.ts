@@ -82,7 +82,9 @@ describe('BBjFormatter', () => {
 
     test('a config document gives no edit from either method and sends nothing', async () => {
         const { double, client, formatter, langiumDocumentFor } = createHarness();
-        const configUri = 'file:///ws/config.bbx';
+        // The uri carries an extension the service registry knows; only the language id marks the
+        // buffer as a config document.
+        const configUri = 'file:///ws/settings.bbj';
         client.open(configUri, 1, 'key=value\n', CONFIG_DOCUMENT_LANGUAGE_ID);
         const document = langiumDocumentFor(configUri);
 
