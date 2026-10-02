@@ -15,6 +15,7 @@ import type { CancellationToken, TextEdit } from 'vscode-languageserver';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
 import type { DenumProgramResult, ProgramOutcome } from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
+import type { DenumDiagnosticDto } from './denum-notifications.js';
 import { minimalLineEdit } from './bbj-format-edit.js';
 import { TOKENIZED_PROGRAM_PREFIX } from './bbj-format-service.js';
 import { applyDocumentEdit, showFormatterWarning, showInformation } from './bbj-notifications.js';
@@ -82,6 +83,19 @@ export interface BBjDenumServiceContext {
     };
 }
 
+/**
+ * A fresh copy of the validated diagnostics built field by field, so the result carries exactly
+ * the four host-neutral keys, in the order bbj-ls reported them, and nothing else the peer sent.
+ */
+function copyDiagnostics(result: DenumProgramResult): DenumDiagnosticDto[] {
+    return result.diagnostics.map(diagnostic => ({
+        line: diagnostic.line,
+        originalLineNumber: diagnostic.originalLineNumber,
+        severity: diagnostic.severity,
+        message: diagnostic.message
+    }));
+}
+
 export class BBjDenumService {
 
     private readonly javaInterop: JavaInteropService;
@@ -137,17 +151,18 @@ export class BBjDenumService {
                 return { status: 'not-line-numbered', message: DENUM_NOTHING_TO_DO_MESSAGE, version };
             }
 
+            const diagnostics = copyDiagnostics(outcome.result);
             const edits = minimalLineEdit(live, 0, sent.length, outcome.result.text);
             if (edits.length === 0) {
                 this.messenger.info(DENUM_SUCCESS_MESSAGE);
-                return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, applied: false };
+                return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, diagnostics, applied: false };
             }
             const applied = await this.messenger.applyEdit(live.uri, version, edits, DENUMBER_EDIT_LABEL);
             if (!applied) {
                 return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
             }
             this.messenger.info(DENUM_SUCCESS_MESSAGE);
-            return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, applied: true };
+            return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, diagnostics, applied: true };
         } catch (error) {
             // Log lines carry fixed tokens only, never document or peer text.
             logger.debug(`Denumber run failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);

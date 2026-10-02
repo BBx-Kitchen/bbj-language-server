@@ -20,6 +20,7 @@
 import type { CancellationToken, Connection, TextEdit } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
+import type { DenumDiagnosticDto } from './denum-notifications.js';
 import { logger } from './logger.js';
 
 /** The LSP custom-request method name for denumbering the open buffer of a document. */
@@ -79,6 +80,8 @@ export interface DenumResult {
     version?: number;
     /** The edit the server applied: one minimal whole-line replacement. */
     edits?: TextEdit[];
+    /** DENUM's diagnostics for a successful run, in the order bbj-ls reported them. */
+    diagnostics?: DenumDiagnosticDto[];
     /** Whether the client applied the edit. */
     applied?: boolean;
 }
