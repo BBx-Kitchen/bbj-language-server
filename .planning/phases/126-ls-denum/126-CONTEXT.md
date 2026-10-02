@@ -26,7 +26,8 @@ diagnostics into the Problems view (DEN-07, future).
 ### Carried forward (not re-asked)
 - Phase 124 D-01..D-17 stand: dedicated program lane, typed `ProgramOutcome`s, per-method
   availability latch (`denumProgram` has its own; `-32601` → unavailable once per connection),
-  25 s client deadline for DENUM with cancel-always, validated `-33008` `data: {line}`.
+  client deadlines with cancel-always (15 s for `denumProgram`, 25 s for `formatProgram` with
+  `allowDenum` — research correction, `java-interop-connection.ts:487`), validated `-33008` `data: {line}`.
 - Phase 125 D-01..D-07 stand for the **formatting** path: toast-first-then-log, dedup re-arm by kind
   (DENUM-needed re-arms per document + version), not-connected never raises a formatting popup,
   fire-and-forget `showMessageRequest` with a host-neutral notification on click
@@ -102,8 +103,8 @@ diagnostics into the Problems view (DEN-07, future).
   returns the edit plus status for information, which satisfies DEN-01's "returns the denumbered
   text as one edit". LSP4IJ 0.21.0 implements `applyEdit`. — **Reversibility:** costly — 127/128
   are built on "server applies".
-- **D-15:** Edit shape: a **minimal line diff** via `wholeDocumentChangeAsRange` (as formatting
-  uses), one `TextEdit`, end clamped to the real last line. No edit when `denumbered: false`.
+- **D-15:** Edit shape: a **minimal line diff** via `minimalLineEdit` (`bbj-format-edit.ts`, as formatting
+  uses; research correction — `wholeDocumentChangeAsRange` is the kept-check helper), one `TextEdit`, end clamped to the real last line. No edit when `denumbered: false`.
 
 ### Claude's Discretion
 - Exact message wording other than D-11's fixed texts (short, plain, each naming what to do), and
