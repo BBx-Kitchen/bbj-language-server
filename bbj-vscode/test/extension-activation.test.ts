@@ -32,7 +32,10 @@ vi.mock('vscode', () => {
             showTextDocument: vi.fn(),
             createQuickPick: vi.fn(),
             createStatusBarItem: vi.fn(() => ({ text: '', tooltip: '', show: vi.fn(), hide: vi.fn(), dispose: vi.fn() })),
-            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn(), dispose: vi.fn() })),
+            createOutputChannel: vi.fn(() => ({
+                appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn(),
+                info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn(),
+            })),
             tabGroups: { all: [], onDidChangeTabs: vi.fn(() => disposable()) },
             onDidChangeActiveTextEditor: vi.fn(() => disposable()),
             activeTextEditor: undefined,
@@ -122,6 +125,7 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
 import * as vscode from 'vscode';
 import { activate } from '../src/extension.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
+import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from '../src/language/denum-notifications.js';
 
 /** Fresh mock ExtensionContext — every activate() call must get its own, since disposal
  *  and re-registration are tracked through each context's own `subscriptions` array. */
@@ -229,6 +233,8 @@ describe('extension re-activation (#531)', () => {
         expect(onNotificationMock.mock.calls.length).toBeGreaterThanOrEqual(3);
         const notificationNames = onNotificationMock.mock.calls.map(c => c[0]);
         expect(notificationNames).toContain('bbj/bbjcplAvailability');
+        expect(notificationNames).toContain(DENUM_DIAGNOSTICS_METHOD);
+        expect(notificationNames).toContain(SHOW_DENUM_DIAGNOSTICS_METHOD);
         for (const result of onNotificationMock.mock.results.map(r => r.value)) {
             expect(context.subscriptions).toContain(result);
         }
@@ -270,6 +276,94 @@ describe('formatter settings link', () => {
         handler(payload);
 
         expect(executeCommand.mock.calls).toEqual([['workbench.action.openSettings', 'bbj.formatter']]);
+
+        disposeSubscriptions(context);
+    });
+});
+
+describe('denumber diagnostics output', () => {
+    interface ChannelMock {
+        appendLine: ReturnType<typeof vi.fn>;
+        show: ReturnType<typeof vi.fn>;
+        info: ReturnType<typeof vi.fn>;
+        warn: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+        debug: ReturnType<typeof vi.fn>;
+        trace: ReturnType<typeof vi.fn>;
+    }
+
+    function activateAndFindHandlers(): {
+        context: Parameters<typeof activate>[0];
+        channel: ChannelMock;
+        list: (params?: unknown) => void;
+        reveal: (params?: unknown) => void;
+        listRegistrations: number;
+        revealRegistrations: number;
+    } {
+        onNotificationMock.mockClear();
+        const createOutputChannel = vscode.window.createOutputChannel as ReturnType<typeof vi.fn>;
+        createOutputChannel.mockClear();
+        const context = makeContext();
+        activate(context);
+
+        const find = (method: string) => onNotificationMock.mock.calls
+            .map((call, index) => ({ method: call[0], handler: call[1], result: onNotificationMock.mock.results[index].value }))
+            .filter(entry => entry.method === method);
+        const lists = find(DENUM_DIAGNOSTICS_METHOD);
+        const reveals = find(SHOW_DENUM_DIAGNOSTICS_METHOD);
+        expect(context.subscriptions).toContain(lists[0]?.result);
+        expect(context.subscriptions).toContain(reveals[0]?.result);
+        return {
+            context,
+            channel: createOutputChannel.mock.results[0].value as ChannelMock,
+            list: lists[0]?.handler as (params?: unknown) => void,
+            reveal: reveals[0]?.handler as (params?: unknown) => void,
+            listRegistrations: lists.length,
+            revealRegistrations: reveals.length,
+        };
+    }
+
+    const payload = {
+        uri: 'file:///ws/a.bbj',
+        diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'syntax error' }],
+    };
+
+    test('each notification has exactly one handler, disposed with the activation', () => {
+        const { context, listRegistrations, revealRegistrations } = activateAndFindHandlers();
+
+        expect(listRegistrations).toBe(1);
+        expect(revealRegistrations).toBe(1);
+
+        disposeSubscriptions(context);
+    });
+
+    test('the list notification appends the block to the BBj channel as raw lines and does nothing else', () => {
+        const { context, channel, list } = activateAndFindHandlers();
+        const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
+        executeCommand.mockClear();
+
+        list(payload);
+
+        expect(channel.appendLine.mock.calls).toEqual([
+            ['Denumber diagnostics for /ws/a.bbj:'],
+            ['  line 1 (original 0010) ERROR: syntax error'],
+        ]);
+        for (const method of [channel.info, channel.warn, channel.error, channel.debug, channel.trace, channel.show]) {
+            expect(method).not.toHaveBeenCalled();
+        }
+        expect(executeCommand).not.toHaveBeenCalled();
+        expect(vscode.window.createOutputChannel).toHaveBeenCalledTimes(1);
+
+        disposeSubscriptions(context);
+    });
+
+    test('the reveal notification shows the BBj channel without taking focus and appends nothing', () => {
+        const { context, channel, reveal } = activateAndFindHandlers();
+
+        reveal();
+
+        expect(channel.show.mock.calls).toEqual([[true]]);
+        expect(channel.appendLine).not.toHaveBeenCalled();
 
         disposeSubscriptions(context);
     });

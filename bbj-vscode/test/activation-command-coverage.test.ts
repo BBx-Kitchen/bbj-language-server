@@ -47,7 +47,7 @@ vi.mock('vscode', () => {
             }),
             createOutputChannel: vi.fn(() => {
                 trace.push('outputChannel');
-                return { appendLine: vi.fn(), dispose: vi.fn() };
+                return { appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() };
             }),
             tabGroups: {
                 all: [],
@@ -194,6 +194,7 @@ import { registerCvsComposer } from '../src/cvs-composer-ui.js';
 import { CONFIG_RELOAD_METHOD } from '../src/language/config-reload-notification.js';
 import { RESOLVED_CONFIG_PATH_METHOD } from '../src/language/resolved-config-path-request.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
+import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from '../src/language/denum-notifications.js';
 
 // setopts-in-code-ui.js is deliberately NOT mocked: its real registerSetOptsInCodeComposer runs
 // during activate() and registers 'bbj.composeSetoptsInCode' plus a Code Action provider, exactly
@@ -263,6 +264,8 @@ const EXPECTED_SEQUENCE = [
     'command:bbj.refreshJavaClasses',
     'command:bbj.showClasspathEntries',
     `notification:${OPEN_FORMATTER_SETTINGS_METHOD}`,
+    `notification:${DENUM_DIAGNOSTICS_METHOD}`,
+    `notification:${SHOW_DENUM_DIAGNOSTICS_METHOD}`,
     'onDidChangeTabs',
     'onDidChangeActiveTextEditor',
     'statusBar:100',
@@ -276,7 +279,7 @@ const EXPECTED_SEQUENCE = [
     'onDidOpenTextDocument',
     'onDidChangeConfiguration',
 ];
-const EXPECTED_SUBSCRIPTIONS_LENGTH = 32;
+const EXPECTED_SUBSCRIPTIONS_LENGTH = 34;
 
 let context: Parameters<typeof activate>[0];
 

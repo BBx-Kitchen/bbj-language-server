@@ -32,6 +32,8 @@ import { canonicalizeConfigPath, samePath } from './language/config-path-resolve
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
+import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
+import { formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
@@ -491,6 +493,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerCompileCommands(context);
     registerJavaClasspathCommands(context, { client });
     registerFormatterSettingsLink(context, { client });
+    registerDenumDiagnosticsOutput(context, { client, outputChannel });
     registerOpenFilePrompts(context);
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
@@ -612,6 +615,33 @@ function registerFormatterSettingsLink(context: vscode.ExtensionContext, deps: {
     context.subscriptions.push(
         client.onNotification(OPEN_FORMATTER_SETTINGS_METHOD, () => {
             void vscode.commands.executeCommand('workbench.action.openSettings', FORMATTER_SETTINGS_QUERY);
+        })
+    );
+}
+
+/**
+ * Registers the handlers for the server's two denumber notifications. The server sends the list of
+ * DENUM's diagnostics after a successful run that reported any, and the reveal request when the
+ * user picks Show. The list is written into the existing 'BBj' channel as plain lines, one block per
+ * run; the reveal request only brings that channel into view. Neither handler turns anything in a
+ * payload into a command, a path to open or a location to jump to.
+ */
+function registerDenumDiagnosticsOutput(
+    context: vscode.ExtensionContext,
+    deps: { client: LanguageClient, outputChannel: vscode.LogOutputChannel }
+): void {
+    const { client, outputChannel } = deps;
+    context.subscriptions.push(
+        client.onNotification(DENUM_DIAGNOSTICS_METHOD, (params: unknown) => {
+            // Raw appendLine, not the log-level methods: those add a timestamp and the Output
+            // panel's level filter could hide an ERROR entry.
+            for (const line of formatDenumDiagnosticsBlock(params)) {
+                appendOutputLine(line);
+            }
+        }),
+        client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
+            // Preserve focus: the list is revealed, the editor keeps the caret.
+            outputChannel.show(true);
         })
     );
 }
