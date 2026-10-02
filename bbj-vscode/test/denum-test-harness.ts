@@ -56,6 +56,11 @@ export function installRecordingMessenger(harness: DenumHarness) {
     const messenger = {
         info: vi.fn(),
         warn: vi.fn(),
+        infoWithAction: vi.fn(),
+        warnWithAction: vi.fn(),
+        showDocument: vi.fn(),
+        denumDiagnostics: vi.fn(),
+        showDenumDiagnostics: vi.fn(),
         applyEdit: vi.fn(async () => true)
     } satisfies DenumMessenger;
     harness.service.setMessenger(messenger);

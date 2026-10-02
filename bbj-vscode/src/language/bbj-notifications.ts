@@ -14,6 +14,9 @@ import type { Connection, TextEdit } from 'vscode-languageserver';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './config-reload-notification.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD, type OpenFormatterSettingsParams } from './format-settings-notification.js';
+import {
+    DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD, type DenumDiagnosticsParams
+} from './denum-notifications.js';
 
 /** The LSP connection — set by main.ts via initNotifications(). */
 let _connection: Connection | null = null;
@@ -150,6 +153,27 @@ export function showFormatterWarningWithAction(text: string, actionTitle: string
 }
 
 /**
+ * Show an Information message with one action button and resolve to the title of the picked action,
+ * or `undefined` when the user dismissed it, the connection is not initialized or the prompt failed.
+ * Never rejects. Callers start it without awaiting it, so a request never waits for a click.
+ */
+export function showInformationWithAction(text: string, actionTitle: string): Promise<string | undefined> {
+    const connection = _connection;
+    if (!connection) {
+        return Promise.resolve(undefined);
+    }
+    const prompt = async (): Promise<string | undefined> => {
+        try {
+            const picked = await connection.window.showInformationMessage(text, { title: actionTitle });
+            return picked?.title;
+        } catch {
+            return undefined;
+        }
+    };
+    return prompt();
+}
+
+/**
  * Ask the client to show `uri` with the cursor at the start of the zero-based `line`. The caller
  * passes a document it already owns and a line inside it; nothing here validates either. Fire and
  * forget: a failed request is ignored. No-op if the connection has not been initialized yet.
@@ -175,6 +199,33 @@ export function showFormatterDocument(uri: string, line: number): void {
 export function notifyOpenFormatterSettings(params: OpenFormatterSettingsParams): void {
     try {
         const pending = _connection?.sendNotification(OPEN_FORMATTER_SETTINGS_METHOD, params);
+        void Promise.resolve(pending).catch(() => { /* the client may not handle it */ });
+    } catch {
+        // A notification that cannot be sent must never break anything.
+    }
+}
+
+/**
+ * Send a `bbj/denumDiagnostics` notification: the list of diagnostics a successful DENUM run
+ * reported for one document. Not deduplicated: every call is one finished run. No-op if the
+ * connection has not been initialized yet.
+ */
+export function notifyDenumDiagnostics(params: DenumDiagnosticsParams): void {
+    try {
+        const pending = _connection?.sendNotification(DENUM_DIAGNOSTICS_METHOD, params);
+        void Promise.resolve(pending).catch(() => { /* the client may not handle it */ });
+    } catch {
+        // A notification that cannot be sent must never break a DENUM run.
+    }
+}
+
+/**
+ * Send a `bbj/showDenumDiagnostics` notification, asking the client to reveal the list it already
+ * holds. It carries no payload. No-op if the connection has not been initialized yet.
+ */
+export function notifyShowDenumDiagnostics(): void {
+    try {
+        const pending = _connection?.sendNotification(SHOW_DENUM_DIAGNOSTICS_METHOD);
         void Promise.resolve(pending).catch(() => { /* the client may not handle it */ });
     } catch {
         // A notification that cannot be sent must never break anything.

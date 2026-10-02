@@ -15,10 +15,13 @@ import type { CancellationToken, TextEdit } from 'vscode-languageserver';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
 import type { DenumProgramResult, ProgramOutcome } from './java-interop-program-types.js';
 import type { JavaInteropService } from './java-interop.js';
-import type { DenumDiagnosticDto } from './denum-notifications.js';
+import type { DenumDiagnosticDto, DenumDiagnosticsParams } from './denum-notifications.js';
 import { minimalLineEdit } from './bbj-format-edit.js';
 import { TOKENIZED_PROGRAM_PREFIX } from './bbj-format-service.js';
-import { applyDocumentEdit, showFormatterWarning, showInformation } from './bbj-notifications.js';
+import {
+    applyDocumentEdit, notifyDenumDiagnostics, notifyShowDenumDiagnostics, showFormatterDocument,
+    showFormatterWarning, showFormatterWarningWithAction, showInformation, showInformationWithAction
+} from './bbj-notifications.js';
 import { BBjLanguageMetaData } from './generated/module.js';
 import { logger } from './logger.js';
 
@@ -53,6 +56,31 @@ export const DENUM_IN_PROGRESS_MESSAGE = 'Denumbering is already running for thi
 /** The label of the edit in the editor's undo history. */
 export const DENUMBER_EDIT_LABEL = 'Denumber';
 
+/** The button on the confirmation of a run that reported diagnostics. */
+export const SHOW_DENUM_DIAGNOSTICS_ACTION = 'Show';
+
+/**
+ * The confirmation with the tally of the diagnostics: `base` alone for an empty list, otherwise
+ * `base` followed by the counts of errors, warnings and notes in that order, a kind with a zero
+ * count left out ('Denumbered. 2 errors, 1 warning.'). The counts are exact tallies of `diagnostics`.
+ */
+export function denumSuccessMessage(base: string, diagnostics: readonly DenumDiagnosticDto[]): string {
+    const tally = { ERROR: 0, WARNING: 0, INFO: 0 };
+    for (const diagnostic of diagnostics) {
+        tally[diagnostic.severity]++;
+    }
+    const parts: string[] = [];
+    const count = (n: number, singular: string) => {
+        if (n > 0) {
+            parts.push(`${n} ${singular}${n === 1 ? '' : 's'}`);
+        }
+    };
+    count(tally.ERROR, 'error');
+    count(tally.WARNING, 'warning');
+    count(tally.INFO, 'note');
+    return parts.length === 0 ? base : `${base} ${parts.join(', ')}.`;
+}
+
 /**
  * Where the service sends what the user should see and how the edit reaches the editor. Every
  * method is fire and forget or never rejects: a run never fails because a message could not be sent.
@@ -62,14 +90,45 @@ export interface DenumMessenger {
     info(text: string): void;
     /** Shows a plain Warning. */
     warn(text: string): void;
+    /** Shows an Information message with one button; `onAction` runs only if the user picks it. Never awaited. */
+    infoWithAction(text: string, actionTitle: string, onAction: () => void): void;
+    /** Shows a Warning with one button; `onAction` runs only if the user picks it. Never awaited. */
+    warnWithAction(text: string, actionTitle: string, onAction: () => void): void;
+    /** Asks the client to show the open document `uri` with the cursor at the zero-based `line`. */
+    showDocument(uri: string, line: number): void;
+    /** Sends the list of diagnostics of a finished run to the client. */
+    denumDiagnostics(params: DenumDiagnosticsParams): void;
+    /** Asks the client to reveal the list it already holds. */
+    showDenumDiagnostics(): void;
     /** Applies `edits` to the open document `uri` at `version` as one undoable change; resolves to whether the client did. */
     applyEdit(uri: string, version: number, edits: TextEdit[], label: string): Promise<boolean>;
+}
+
+/**
+ * Starts a prompt without waiting for it and runs `onAction` only if the user picked `actionTitle`.
+ * Nothing that goes wrong here may reach the run that started the prompt.
+ */
+function runOnPick(prompt: Promise<string | undefined>, actionTitle: string, onAction: () => void): void {
+    void prompt.then(picked => {
+        if (picked === actionTitle) {
+            try {
+                onAction();
+            } catch {
+                // An action that cannot run must never break anything.
+            }
+        }
+    }, () => { /* a failed prompt is harmless */ });
 }
 
 /** The messenger the server uses: the connection-free senders of the notifications module. */
 const DEFAULT_MESSENGER: DenumMessenger = {
     info: showInformation,
     warn: showFormatterWarning,
+    infoWithAction: (text, actionTitle, onAction) => runOnPick(showInformationWithAction(text, actionTitle), actionTitle, onAction),
+    warnWithAction: (text, actionTitle, onAction) => runOnPick(showFormatterWarningWithAction(text, actionTitle), actionTitle, onAction),
+    showDocument: showFormatterDocument,
+    denumDiagnostics: notifyDenumDiagnostics,
+    showDenumDiagnostics: notifyShowDenumDiagnostics,
     applyEdit: (uri, version, edits, label) => applyDocumentEdit({ uri, version, edits, label })
 };
 
@@ -170,8 +229,8 @@ export class BBjDenumService {
             if (!applied) {
                 return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
             }
-            this.messenger.info(DENUM_SUCCESS_MESSAGE);
-            return { status: 'denumbered', message: DENUM_SUCCESS_MESSAGE, version, edits, diagnostics, applied: true };
+            const message = this.presentSuccess(live.uri, diagnostics);
+            return { status: 'denumbered', message, version, edits, diagnostics, applied: true };
         } catch (error) {
             // Log lines carry fixed tokens only, never document or peer text.
             logger.debug(`Denumber run failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
@@ -181,6 +240,27 @@ export class BBjDenumService {
                 this.running.delete(claimed);
             }
         }
+    }
+
+    /**
+     * The end of an applied run. A run that reported diagnostics sends the list first, then shows
+     * one message with the counts and a Show button: a Warning when any entry is an error, an
+     * Information message otherwise. A clean run shows the plain confirmation.
+     */
+    private presentSuccess(uri: string, diagnostics: DenumDiagnosticDto[]): string {
+        if (diagnostics.length === 0) {
+            this.messenger.info(DENUM_SUCCESS_MESSAGE);
+            return DENUM_SUCCESS_MESSAGE;
+        }
+        this.messenger.denumDiagnostics({ uri, diagnostics });
+        const text = denumSuccessMessage(DENUM_SUCCESS_MESSAGE, diagnostics);
+        const reveal = () => this.messenger.showDenumDiagnostics();
+        if (diagnostics.some(diagnostic => diagnostic.severity === 'ERROR')) {
+            this.messenger.warnWithAction(text, SHOW_DENUM_DIAGNOSTICS_ACTION, reveal);
+        } else {
+            this.messenger.infoWithAction(text, SHOW_DENUM_DIAGNOSTICS_ACTION, reveal);
+        }
+        return text;
     }
 
     /** Maps an outcome that is neither a result nor a cancellation to its one Warning and reason. */
