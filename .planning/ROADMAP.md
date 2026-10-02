@@ -474,7 +474,7 @@ Plans:
   4. Against a BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, worded differently from "interop not connected", and a save is never blocked. Config (`.bbx`) and non-BBj documents are never sent to the formatter.
   5. VS Code lists exactly one BBj formatter, and only the 15 known keys reach bbj-ls, each with an explicit value and `indentWidth` 2 by default. IntelliJ offers no LSP formatting, and one switch controls that.
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -488,7 +488,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 125-04-PLAN.md — One deduplicated Warning per failure kind, requires-26.03 once per connection, Open Settings and Go to Line, fire-and-forget (wave 3)
+- [x] 125-04-PLAN.md — One deduplicated Warning per failure kind, requires-26.03 once per connection, Open Settings and Go to Line, fire-and-forget (wave 3)
 - [ ] 125-05-PLAN.md — Formatter settings intake from didChangeConfiguration and initializationOptions (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -612,7 +612,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 124. Interop Client | 6/6 | Planned |  |
-| 125. LS Formatting | 3/6 | Not started |  |
+| 125. LS Formatting | 4/6 | Not started |  |
 | 126. LS DENUM | 0/TBD | Not started | - |
 | 127. VS Code Cut-Over | 0/TBD | Not started | - |
 | 128. IntelliJ DENUM | 0/TBD | Not started | - |

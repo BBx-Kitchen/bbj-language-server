@@ -33,10 +33,10 @@ stays switched off until the evaluation verdict.
 - [ ] **FMT-05**: Formatting returns minimal line-level edits (cursor, folding and undo survive) and never applies an edit computed for an older document version
 - [ ] **FMT-06**: Formatting a line-numbered file never DENUMs automatically; instead one deduplicated message offers "Denumber" and "Denumber and Format" (whole-document) or explains that selection formatting needs an unnumbered file (range)
 - [ ] **FMT-07**: "Denumber and Format" DENUMs and formats in one undoable step (`allowDenum`)
-- [ ] **FMT-08**: Invalid settings (`-33007`) are reported as one message naming each bad `bbj.formatter.*` key, with a way to open the settings
-- [ ] **FMT-09**: Mixed numbering (`-33008`) is reported with the offending line, and the user can jump to that line
-- [ ] **FMT-10**: Timeout, too large, protected program, engine failure and service-unavailable each produce one clear, deduplicated message and leave the buffer untouched
-- [ ] **FMT-11**: On BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, distinct from "interop not connected"; a save is never blocked
+- [x] **FMT-08**: Invalid settings (`-33007`) are reported as one message naming each bad `bbj.formatter.*` key, with a way to open the settings
+- [x] **FMT-09**: Mixed numbering (`-33008`) is reported with the offending line, and the user can jump to that line
+- [x] **FMT-10**: Timeout, too large, protected program, engine failure and service-unavailable each produce one clear, deduplicated message and leave the buffer untouched
+- [x] **FMT-11**: On BBj older than 26.03 the user sees "requires BBj 26.03 or later" once per connection, distinct from "interop not connected"; a save is never blocked
 - [ ] **FMT-12**: Config documents (`.bbx` config) and non-BBj documents are not sent to the formatter
 
 ### DENUM (DEN)
@@ -113,10 +113,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FMT-05 | Phase 125 | Pending |
 | FMT-06 | Phase 126 | Pending |
 | FMT-07 | Phase 126 | Pending |
-| FMT-08 | Phase 125 | Pending |
-| FMT-09 | Phase 125 | Pending |
-| FMT-10 | Phase 125 | Pending |
-| FMT-11 | Phase 125 | Pending |
+| FMT-08 | Phase 125 | Complete |
+| FMT-09 | Phase 125 | Complete |
+| FMT-10 | Phase 125 | Complete |
+| FMT-11 | Phase 125 | Complete |
 | FMT-12 | Phase 125 | Pending |
 | DEN-01 | Phase 126 | Pending |
 | DEN-02 | Phase 127 | Pending |
