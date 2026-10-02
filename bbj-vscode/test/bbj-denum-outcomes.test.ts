@@ -134,6 +134,36 @@ describe('a DENUM run that reported diagnostics', () => {
         expect(harness.window.showWarningMessage).not.toHaveBeenCalled();
     });
 
+    test('an answer that needs no edit still sends the list and shows the counts with Show', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(NUMBERED, 1, THREE));
+        openNumbered(harness);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result).toMatchObject({ status: 'denumbered', message: 'Denumbered. 2 errors, 1 warning.', applied: false });
+        expect(result.diagnostics).toEqual(THREE);
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([[{ uri: URI_TEXT, diagnostics: THREE }]]);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith('Denumbered. 2 errors, 1 warning.', { title: 'Show' });
+        expect(harness.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('an answer that needs no edit and has no diagnostics shows the plain confirmation', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(NUMBERED, 1));
+        openNumbered(harness);
+
+        const result = await harness.run(URI_TEXT);
+
+        expect(result).toMatchObject({ status: 'denumbered', message: 'Denumbered.', applied: false });
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([]);
+        expect(harness.window.showInformationMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showInformationMessage).toHaveBeenCalledWith('Denumbered.');
+    });
+
     test('a list longer than the interop guard keeps arrives cut to 500, in the list and in the counts', async () => {
         const harness = createDenumHarness();
         harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, Array.from({ length: 600 }, (_, index) => error(0, `e${index}`))));

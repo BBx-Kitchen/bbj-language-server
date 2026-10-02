@@ -352,8 +352,9 @@ export class BBjDenumService {
 
             const diagnostics = copyDiagnostics(outcome.result);
             if (edits.length === 0) {
-                this.messenger.info(base);
-                return { status: 'denumbered', message: base, version, edits, diagnostics, applied: false };
+                // Nothing to apply, but the diagnostics are still the answer the user asked for.
+                const message = this.presentSuccess(live.uri, diagnostics, base);
+                return { status: 'denumbered', message, version, edits, diagnostics, applied: false };
             }
             const applied = await this.messenger.applyEdit(live.uri, version, edits, label);
             if (!applied) {
