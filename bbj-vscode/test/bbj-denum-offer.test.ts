@@ -8,20 +8,20 @@ import { CancellationToken } from 'vscode-jsonrpc';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-    FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE, FORMAT_TOO_LARGE_MESSAGE,
-    GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, invalidSettingsMessage
+    BBjFormatService, FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE,
+    FORMAT_TOO_LARGE_MESSAGE, GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, invalidSettingsMessage
 } from '../src/language/bbj-format-service.js';
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
 import {
     DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION, DENUM_AND_FORMAT_SUCCESS_MESSAGE, DENUM_NOT_OPEN_MESSAGE,
     DENUM_NOT_REACHABLE_MESSAGE, DENUM_NOTHING_TO_DO_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_PROTECTED_MESSAGE,
-    DENUM_REQUIRES_BBJ_26_03_MESSAGE, DENUM_STALE_MESSAGE, DENUM_SUCCESS_MESSAGE, DENUM_TOKENIZED_MESSAGE,
-    SHOW_DENUM_DIAGNOSTICS_ACTION
+    DENUM_REQUIRES_BBJ_26_03_MESSAGE, DENUM_SELECTION_MESSAGE, DENUM_STALE_MESSAGE, DENUM_SUCCESS_MESSAGE,
+    DENUM_TOKENIZED_MESSAGE, SHOW_DENUM_DIAGNOSTICS_ACTION
 } from '../src/language/bbj-denum-service.js';
 import { DENUM_DIAGNOSTICS_METHOD } from '../src/language/denum-notifications.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
 import type { JavaInteropTestServiceProgramScript } from './bbj-test-module.js';
-import { createDenumHarness, deferred, denumAnswer, resetDenumHarness } from './denum-test-harness.js';
+import { createDenumHarness, deferred, denumAnswer, loggedLines, resetDenumHarness } from './denum-test-harness.js';
 
 const URI_TEXT = 'file:///ws/numbered.bbj';
 const NUMBERED = '0010 print 1\n0020 goto 0010\n';
@@ -372,5 +372,161 @@ describe('the invalid-settings text shared by formatting and Denumber and Format
 
         expect(described.text).toBe(invalidSettingsMessage(problems, key => key));
         expect(described.keys).toEqual(['bbj.formatter.indentWidth']);
+    });
+});
+
+/** Formatting on its own never denumbers: no DENUM call and no format call carrying the denumber permission. */
+function expectNoDenumberingYet(harness: OfferHarness): void {
+    expect(harness.double.denumProgramCalls).toEqual([]);
+    for (const call of harness.double.formatProgramCalls) {
+        expect(call).not.toHaveProperty('allowDenum');
+    }
+}
+
+describe('Format Selection on a file with line numbers', () => {
+
+    test('answers at once with no edits and explains, offering Denumber only', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        expect(await harness.formatRange()).toEqual([]);
+
+        expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith(DENUM_SELECTION_MESSAGE, { title: 'Denumber' });
+        expect(DENUM_SELECTION_MESSAGE).toBe('Formatting a selection needs a file without line numbers. Denumber the file first.');
+        expectNoDenumberingYet(harness);
+    });
+
+    test('picking Denumber runs a plain DENUM and never a combined run', async () => {
+        const harness = createOfferHarness();
+        const answer = holdPrompt(harness);
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1));
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        await harness.formatRange();
+        answer.resolve({ title: DENUMBER_ACTION });
+
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_SUCCESS_MESSAGE]));
+        expect(harness.double.denumProgramCalls).toEqual([{ text: NUMBERED, version: '1' }]);
+        expect(harness.double.formatProgramCalls).toHaveLength(1);
+        expect(harness.double.formatProgramCalls[0]).not.toHaveProperty('allowDenum');
+    });
+
+    test('a repeated Format Selection shows one explanation', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        await harness.formatRange();
+        await harness.formatRange();
+
+        expect(warned(harness)).toEqual([DENUM_SELECTION_MESSAGE]);
+    });
+});
+
+describe('each offer shows once per document and version', () => {
+
+    test('a repeated Format Document shows one offer, and an edit re-arms it', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        await harness.formatDocument();
+        await harness.formatDocument();
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+
+        harness.client.change(URI_TEXT, 2, [{ text: NUMBERED_LATER }]);
+        await harness.formatDocument();
+
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expectNoDenumberingYet(harness);
+    });
+
+    test('an unchanged save does not repeat the offer: it is the same request as Format Document', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        await harness.formatDocument();
+        harness.client.change(URI_TEXT, 1, [{ text: NUMBERED }]);
+        await harness.formatDocument();
+
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+    });
+
+    test.each([
+        ['the selection first', ['range', 'document'], [DENUM_SELECTION_MESSAGE, DENUM_OFFER_MESSAGE]],
+        ['the document first', ['document', 'range'], [DENUM_OFFER_MESSAGE, DENUM_SELECTION_MESSAGE]]
+    ] as Array<[string, Array<'range' | 'document'>, string[]]>)(
+        'the explanation and the offer never suppress each other, with %s', async (_name, order, expected) => {
+            const harness = createOfferHarness();
+            harness.client.open(URI_TEXT, 1, NUMBERED);
+
+            for (const kind of order) {
+                await (kind === 'range' ? harness.formatRange() : harness.formatDocument());
+            }
+            await harness.formatRange();
+            await harness.formatDocument();
+
+            expect(warned(harness)).toEqual(expected);
+            expectNoDenumberingYet(harness);
+        });
+
+    test('two format requests started together show one offer', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        const results = await Promise.all([harness.formatDocument(), harness.formatDocument()]);
+
+        expect(results).toEqual([[], []]);
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+    });
+});
+
+describe('a file the offer must never be raised for', () => {
+
+    test.each([['an unnumbered buffer', 'print 1\n'], ['an empty buffer', '']])(
+        '%s that bbj-ls formats raises no offer', async (_name, text) => {
+            const harness = createOfferHarness();
+            harness.double.scriptFormatProgram('success');
+            const offer = vi.spyOn(harness.service, 'offer');
+            harness.client.open(URI_TEXT, 1, text);
+
+            await harness.formatDocument();
+            await harness.formatRange();
+
+            expect(offer).not.toHaveBeenCalled();
+            expect(harness.window.showWarningMessage).not.toHaveBeenCalled();
+            expectNoDenumberingYet(harness);
+        });
+
+    test('a format service without a denumber service answers [] and shows nothing', async () => {
+        const harness = createOfferHarness();
+        const service = new BBjFormatService({ java: { JavaInteropService: harness.double } });
+        const document = TextDocument.create(URI_TEXT, 'bbj', 1, NUMBERED);
+
+        const edits = await service.format({ document, current: () => document }, CancellationToken.None);
+
+        expect(edits).toEqual([]);
+        expect(harness.window.showWarningMessage).not.toHaveBeenCalled();
+        expect(harness.double.denumProgramCalls).toEqual([]);
+    });
+});
+
+describe('what the offer is made of', () => {
+
+    test('the offer and the explanation are fixed texts that no character of the buffer can change', async () => {
+        const secret = 'SECRET_MARKER_OFFER';
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, `0010 rem ${secret}\n0020 print 1\n`);
+
+        await harness.formatDocument();
+        await harness.formatRange();
+
+        expect(harness.window.showWarningMessage.mock.calls).toEqual([
+            [DENUM_OFFER_MESSAGE, { title: 'Denumber' }, { title: 'Denumber and Format' }],
+            [DENUM_SELECTION_MESSAGE, { title: 'Denumber' }]
+        ]);
+        expect(JSON.stringify(harness.window.showWarningMessage.mock.calls)).not.toContain(secret);
+        for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+            expect(loggedLines(harness.loggers, level).join('\n'), `logger.${level}`).not.toContain(secret);
+        }
     });
 });
