@@ -44,6 +44,7 @@ import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 import { BBjCPLService } from './bbj-cpl-service.js';
 import { BBjParserService } from './bbj-parser-service.js';
+import { BBjFormatService } from './bbj-format-service.js';
 import { BBjComposerCodeLensProvider } from './composer-codelens.js';
 import { createChangeRecordingTextDocumentsConfiguration } from './bbj-kept-check.js';
 import { logger } from './logger.js';
@@ -65,7 +66,8 @@ export type BBjAddedServices = {
     },
     compiler: {
         BBjCPLService: BBjCPLService,
-        BBjParserService: BBjParserService
+        BBjParserService: BBjParserService,
+        BBjFormatService: BBjFormatService
     }
 }
 
@@ -101,6 +103,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     compiler: {
         BBjCPLService: (services) => new BBjCPLService(services),
         BBjParserService: (services) => new BBjParserService(services),
+        BBjFormatService: (services) => new BBjFormatService(services),
     },
     documentation: {
         CommentProvider: () => new BBjCommentProvider()

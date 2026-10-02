@@ -94,13 +94,22 @@ export type JavaInteropTestServiceParseProgramScript =
  * (code, message, optional data), both of which run through the production validator and error
  * classifier exactly as a real peer's answer would; or a ready-made outcome, as an escape hatch.
  */
-export type JavaInteropTestServiceProgramScript =
+export type JavaInteropTestServiceResolvedProgramScript =
     | 'success'
     | 'method-not-found'
     | 'transport-error'
     | { result: unknown }
     | { error: { code: number; message: string; data?: unknown } }
     | { outcome: ProgramOutcome<unknown> };
+
+/**
+ * A scripted answer, or a promise of one: with `pending` the call holds until the promise settles
+ * and is then answered like the script it resolves to, so a test decides when the peer "answers"
+ * and can edit or close the document, or cancel the caller, in between.
+ */
+export type JavaInteropTestServiceProgramScript =
+    | JavaInteropTestServiceResolvedProgramScript
+    | { pending: Promise<JavaInteropTestServiceProgramScript> };
 
 export class JavaInteropTestService extends JavaInteropService {
     constructor(services: BBjServices) {
@@ -187,6 +196,9 @@ export class JavaInteropTestService extends JavaInteropService {
 
     // --- formatProgram / denumProgram scripting: default answers with a valid success echo. ---
     private formatProgramScript: JavaInteropTestServiceProgramScript = 'success';
+
+    /** A copy of every {@link formatProgram} request received, in order. */
+    public readonly formatProgramCalls: FormatProgramParams[] = [];
     private denumProgramScript: JavaInteropTestServiceProgramScript = 'success';
 
     /** Test seam: script the next/every {@link formatProgram} answer. */
@@ -205,17 +217,20 @@ export class JavaInteropTestService extends JavaInteropService {
      * outcome the real guard would refuse. Availability latches are not emulated here; they are
      * covered against the fake peer and the loopback peer.
      */
-    public override async formatProgram(params: FormatProgramParams): Promise<ProgramOutcome<FormatProgramResult>> {
+    public override async formatProgram(params: FormatProgramParams, _token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
+        this.formatProgramCalls.push(structuredClone(params));
         const echo = params.range === undefined
             ? { text: params.text, diagnostics: [], denumbered: false, version: params.version }
             : { edits: [], diagnostics: [], denumbered: false, version: params.version };
-        return scriptedProgramOutcome('formatProgram', this.formatProgramScript, echo, raw => validateFormatResult(params, raw));
+        const script = await settleProgramScript(this.formatProgramScript);
+        return scriptedProgramOutcome('formatProgram', script, echo, raw => validateFormatResult(params, raw));
     }
 
     /** See {@link formatProgram}. */
     public override async denumProgram(params: DenumProgramParams): Promise<ProgramOutcome<DenumProgramResult>> {
         const echo = { text: params.text, diagnostics: [], denumbered: false, version: params.version };
-        return scriptedProgramOutcome('denumProgram', this.denumProgramScript, echo, raw => validateDenumResult(params, raw));
+        const script = await settleProgramScript(this.denumProgramScript);
+        return scriptedProgramOutcome('denumProgram', script, echo, raw => validateDenumResult(params, raw));
     }
 
     /** Test seam: simulate a post-outage reconnect or cache-clear-forced reconnect. */
@@ -287,6 +302,15 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 }
 
+/** Waits out any `pending` layers of a script and returns the script it finally resolves to. */
+async function settleProgramScript(script: JavaInteropTestServiceProgramScript): Promise<JavaInteropTestServiceResolvedProgramScript> {
+    let current = script;
+    while (typeof current === 'object' && 'pending' in current) {
+        current = await current.pending;
+    }
+    return current;
+}
+
 /**
  * Turns one scripted answer into the typed outcome the real client would produce. A success, or a
  * scripted wire result, is validated by `validate`; a rejection goes through the production error
@@ -294,7 +318,7 @@ export class JavaInteropTestService extends JavaInteropService {
  */
 function scriptedProgramOutcome<R>(
     method: ProgramMethod,
-    script: JavaInteropTestServiceProgramScript,
+    script: JavaInteropTestServiceResolvedProgramScript,
     echo: unknown,
     validate: (raw: unknown) => ProgramGuardResult<R>
 ): ProgramOutcome<R> {
