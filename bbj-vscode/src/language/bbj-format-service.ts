@@ -17,6 +17,9 @@ import { minimalLineEdit, rangeFormatEdits } from './bbj-format-edit.js';
 import { FormatterSettingsHolder } from './bbj-format-settings.js';
 import { logger } from './logger.js';
 
+/** A buffer starting with this text is a tokenized program, not source; bbj-ls cannot format it. */
+export const TOKENIZED_PROGRAM_PREFIX = '<<bbj>>';
+
 /** One format request: the open buffer as it was when the request arrived, plus a way to look again. */
 export interface BBjFormatRequest {
     /** The open buffer at request time. */
@@ -76,12 +79,11 @@ export class BBjFormatService {
         try {
             const version = request.document.version;
             const sent = request.document.getText();
-            const params: FormatProgramParams = {
-                text: sent,
-                version: String(version),
-                canonicalName: URI.parse(request.document.uri).fsPath,
-                settings: this.settings.snapshot()
-            };
+            if (sent.startsWith(TOKENIZED_PROGRAM_PREFIX)) {
+                logger.debug('Format skipped: the buffer is a tokenized program');
+                return [];
+            }
+            const params = this.paramsFor(request, version, sent);
 
             const outcome = await this.javaInterop.formatProgram(params, token);
 
@@ -99,6 +101,32 @@ export class BBjFormatService {
             logger.debug(`Format request failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
             return [];
         }
+    }
+
+    /**
+     * The request parameters. A selection is sent as `range` under a name with a range suffix:
+     * bbj-ls lets a newer request supersede a pending one with the same name, so a selection must
+     * never share the whole-document name or it would cancel a format-on-save in flight. The
+     * formatting options of the editor are ignored; only the normalized settings are sent, and the
+     * denumber permission is never set.
+     */
+    private paramsFor(request: BBjFormatRequest, version: number, sent: string): FormatProgramParams {
+        const path = URI.parse(request.document.uri).fsPath;
+        const params: FormatProgramParams = {
+            text: sent,
+            version: String(version),
+            canonicalName: path,
+            settings: this.settings.snapshot()
+        };
+        if (request.range !== undefined) {
+            const { start, end } = request.range;
+            params.range = {
+                start: { line: start.line, character: start.character },
+                end: { line: end.line, character: end.character }
+            };
+            params.canonicalName = `${path}#range:${start.line}-${end.line}`;
+        }
+        return params;
     }
 
     private editsFor(document: TextDocument, sent: string, outcome: ProgramOutcome<FormatProgramResult>): TextEdit[] {

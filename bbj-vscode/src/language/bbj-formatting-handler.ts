@@ -13,7 +13,7 @@
  * `startLanguageServer(shared)`, so it replaces Langium's own registration.
  */
 import type {
-    CancellationToken, Connection, DocumentFormattingParams, Range, TextEdit
+    CancellationToken, Connection, DocumentFormattingParams, DocumentRangeFormattingParams, Range, TextEdit
 } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LangiumSharedServices } from 'langium/lsp';
@@ -70,11 +70,21 @@ export function createBoundedDocumentFormattingHandler(
 }
 
 /**
- * Registers the bounded `textDocument/formatting` handler on the connection, overriding Langium's
- * own registration. Call this AFTER `startLanguageServer(shared)`.
+ * The bounded `textDocument/rangeFormatting` handler, with the same gates as the whole-document
+ * one. The selection travels with the request; which statements it snaps to is decided by bbj-ls.
+ */
+export function createBoundedRangeFormattingHandler(
+    deps: FormattingHandlerDeps
+): (params: DocumentRangeFormattingParams, token: CancellationToken) => Promise<TextEdit[]> {
+    return (params, token) => formatOpenDocument(deps, params.textDocument.uri, params.range, token);
+}
+
+/**
+ * Registers the bounded formatting handlers on the connection, overriding Langium's own
+ * registrations. Call this AFTER `startLanguageServer(shared)`.
  */
 export function registerBoundedFormattingHandler(
-    connection: Pick<Connection, 'onDocumentFormatting'>,
+    connection: Pick<Connection, 'onDocumentFormatting' | 'onDocumentRangeFormatting'>,
     shared: LangiumSharedServices,
     bbj: BBjServices
 ): void {
@@ -83,4 +93,5 @@ export function registerBoundedFormattingHandler(
         format: (request, token) => bbj.compiler.BBjFormatService.format(request, token)
     };
     connection.onDocumentFormatting(createBoundedDocumentFormattingHandler(deps));
+    connection.onDocumentRangeFormatting(createBoundedRangeFormattingHandler(deps));
 }
