@@ -47,6 +47,7 @@ function createDeps(orderLog: string[], overrides: Partial<ConfigurationChangeDe
         setMaxErrors: vi.fn(),
         setCompilerTrigger: vi.fn(),
         setParameterHintMode: vi.fn(),
+        setFormatterSettings: vi.fn(),
         ...overrides,
     };
 }
@@ -131,6 +132,39 @@ describe('workspace/didChangeConfiguration (#563)', () => {
         expect(deps.setLogLevel).not.toHaveBeenCalled();
         expect(deps.wsManager.setConfigPath).not.toHaveBeenCalled();
         expect(deps.reloadJavaClassesAndRevalidate).not.toHaveBeenCalled();
+    });
+
+    describe('formatter settings', () => {
+        test('a push with a formatter section hands that object over once, even before the workspace is initialized', async () => {
+            const deps = createDeps([], { isWorkspaceInitialized: vi.fn(() => false) });
+            const handler = registerAndCapture(deps);
+            const formatter = { indentWidth: 4 };
+
+            await handler(pushChange({ formatter }));
+
+            expect(deps.setFormatterSettings).toHaveBeenCalledTimes(1);
+            expect(deps.setFormatterSettings).toHaveBeenCalledWith(formatter);
+        });
+
+        test('a push without a formatter section never calls setFormatterSettings', async () => {
+            const deps = createDeps([]);
+            const handler = registerAndCapture(deps);
+
+            await handler(pushChange({ debug: true }));
+
+            expect(deps.setFormatterSettings).not.toHaveBeenCalled();
+        });
+
+        test('a pull hands over the formatter section of the pulled configuration', async () => {
+            const formatter = { keywordsToUppercase: true };
+            const getConfiguration = vi.fn().mockResolvedValue({ formatter } satisfies BbjSettings);
+            const deps = createDeps([], { getConfiguration });
+            const handler = registerAndCapture(deps);
+
+            await handler(pullChange());
+
+            expect(deps.setFormatterSettings).toHaveBeenCalledWith(formatter);
+        });
     });
 
     describe('setters', () => {

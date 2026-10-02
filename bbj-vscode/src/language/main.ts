@@ -189,4 +189,5 @@ registerConfigurationChangeHandler(connection, {
     setMaxErrors,
     setCompilerTrigger,
     setParameterHintMode,
+    setFormatterSettings: settings => BBj.compiler.BBjFormatService.setSettings(settings),
 });

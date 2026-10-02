@@ -37,6 +37,7 @@ export interface BbjSettings {
         };
     };
     configPath?: string;
+    formatter?: unknown;
     interop?: {
         host?: unknown;
         port?: unknown;
@@ -63,6 +64,7 @@ export interface ConfigurationChangeDeps {
     setMaxErrors(max: number): void;
     setCompilerTrigger(trigger: 'debounced' | 'on-save' | 'off'): void;
     setParameterHintMode(mode: unknown): void;
+    setFormatterSettings(raw: unknown): void;
 }
 
 /**
@@ -108,6 +110,12 @@ export function createConfigurationChangeHandler(deps: ConfigurationChangeDeps):
             if (trigger === 'debounced' || trigger === 'on-save' || trigger === 'off') {
                 deps.setCompilerTrigger(trigger);
             }
+        }
+
+        // Formatter settings apply immediately with no startup gate; the format service
+        // normalizes them to the keys bbj-ls accepts.
+        if (config.formatter !== undefined) {
+            deps.setFormatterSettings(config.formatter);
         }
 
         // Forward VS Code's full bbj.compiler.* option set to bbj/compile's config source. Merged
