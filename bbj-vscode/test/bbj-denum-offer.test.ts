@@ -5,11 +5,21 @@
  */
 import type { DocumentFormattingParams, DocumentRangeFormattingParams, Range, TextEdit } from 'vscode-languageserver';
 import { CancellationToken } from 'vscode-jsonrpc';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import {
+    FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE, FORMAT_TOO_LARGE_MESSAGE,
+    GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, invalidSettingsMessage
+} from '../src/language/bbj-format-service.js';
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
 import {
-    DENUMBER_ACTION, DENUM_NOT_OPEN_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_SUCCESS_MESSAGE
+    DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION, DENUM_AND_FORMAT_SUCCESS_MESSAGE, DENUM_NOT_OPEN_MESSAGE,
+    DENUM_NOT_REACHABLE_MESSAGE, DENUM_NOTHING_TO_DO_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_PROTECTED_MESSAGE,
+    DENUM_REQUIRES_BBJ_26_03_MESSAGE, DENUM_STALE_MESSAGE, DENUM_SUCCESS_MESSAGE, DENUM_TOKENIZED_MESSAGE,
+    SHOW_DENUM_DIAGNOSTICS_ACTION
 } from '../src/language/bbj-denum-service.js';
+import { DENUM_DIAGNOSTICS_METHOD } from '../src/language/denum-notifications.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD } from '../src/language/format-settings-notification.js';
 import type { JavaInteropTestServiceProgramScript } from './bbj-test-module.js';
 import { createDenumHarness, deferred, denumAnswer, resetDenumHarness } from './denum-test-harness.js';
 
@@ -170,5 +180,198 @@ describe('the formatting path on its own', () => {
         for (const call of harness.double.formatProgramCalls) {
             expect(call).not.toHaveProperty('allowDenum');
         }
+    });
+});
+
+const FORMATTED = 'L10: print 1\n\ngoto L10\n';
+
+/** Raises the offer on a fresh buffer and returns the held prompt, so a test decides when and what the user picks. */
+async function raiseOffer(harness: OfferHarness, text = NUMBERED) {
+    const answer = holdPrompt(harness);
+    harness.client.open(URI_TEXT, 1, text);
+    await harness.formatDocument();
+    return answer;
+}
+
+/** Raises the offer, scripts what bbj-ls answers to the next format call and clicks Denumber and Format. */
+async function clickDenumberAndFormat(harness: OfferHarness, script: JavaInteropTestServiceProgramScript, text = NUMBERED) {
+    const answer = await raiseOffer(harness, text);
+    harness.double.scriptFormatProgram(script);
+    answer.resolve({ title: DENUMBER_AND_FORMAT_ACTION });
+}
+
+function formattedAnswer(text = FORMATTED, version = 1, diagnostics: Parameters<typeof denumAnswer>[2] = []) {
+    return denumAnswer(text, version, diagnostics);
+}
+
+type AppliedEdit = { label: string; edit: { documentChanges: Array<{ textDocument: { uri: string; version: number }; edits: TextEdit[] }> } };
+
+describe('clicking Denumber and Format on the offer', () => {
+
+    test('sends one format call with the denumber permission and the 15 settings, and no DENUM call', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness, formattedAnswer());
+
+        await vi.waitFor(() => expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1));
+        expect(harness.double.formatProgramCalls).toHaveLength(2);
+        const call = harness.double.formatProgramCalls[1];
+        const settings = harness.BBj.compiler.BBjFormatService.settingsSnapshot();
+        expect(Object.keys(settings)).toHaveLength(15);
+        expect(call).toEqual({ text: NUMBERED, version: '1', settings, allowDenum: true });
+        expect(call).not.toHaveProperty('canonicalName');
+        expect(call).not.toHaveProperty('range');
+        expect(harness.double.denumProgramCalls).toEqual([]);
+    });
+
+    test('applies the answer as one edit labelled Denumber and Format and confirms', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness, formattedAnswer());
+
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_AND_FORMAT_SUCCESS_MESSAGE]));
+        expect(DENUM_AND_FORMAT_SUCCESS_MESSAGE).toBe('Denumbered and formatted.');
+        expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1);
+        const applied = harness.workspace.applyEdit.mock.calls[0][0] as AppliedEdit;
+        expect(applied.label).toBe('Denumber and Format');
+        expect(applied.edit.documentChanges).toHaveLength(1);
+        expect(applied.edit.documentChanges[0].edits).toHaveLength(1);
+        expect(applied.edit.documentChanges[0].textDocument).toEqual({ uri: URI_TEXT, version: 1 });
+        expect(TextDocument.applyEdits(TextDocument.create(URI_TEXT, 'bbj', 1, NUMBERED), applied.edit.documentChanges[0].edits))
+            .toBe(FORMATTED);
+    });
+
+    test('sends the diagnostics list after the apply and shows the counts with Show', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness, formattedAnswer(FORMATTED, 1,
+            [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'bad statement' }]));
+
+        await vi.waitFor(() => expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, 'Denumbered and formatted. 1 error.']));
+        expect(harness.window.showWarningMessage).toHaveBeenLastCalledWith(
+            'Denumbered and formatted. 1 error.', { title: SHOW_DENUM_DIAGNOSTICS_ACTION });
+        expect(harness.sendNotification).toHaveBeenCalledTimes(1);
+        expect(harness.sendNotification.mock.calls[0][0]).toBe(DENUM_DIAGNOSTICS_METHOD);
+        expect(harness.workspace.applyEdit.mock.invocationCallOrder[0])
+            .toBeLessThan(harness.sendNotification.mock.invocationCallOrder[0]);
+    });
+
+    test('a file that turns out to have no line numbers gets the format edit and the nothing-to-denumber message', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness,
+            { result: { text: 'print 1\n', diagnostics: [], denumbered: false, version: '1' } });
+
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_NOTHING_TO_DO_MESSAGE]));
+        expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1);
+        expect(harness.sendNotification).not.toHaveBeenCalled();
+    });
+
+    test('a file that turns out to have no line numbers and needs no format edit applies nothing', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness,
+            { result: { text: NUMBERED, diagnostics: [], denumbered: false, version: '1' } });
+
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_NOTHING_TO_DO_MESSAGE]));
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+        expect(harness.sendNotification).not.toHaveBeenCalled();
+    });
+});
+
+describe('every way Denumber and Format can fail', () => {
+
+    const invalidProblems = [
+        { setting: 'indentWidth', message: 'must be between 0 and 16' },
+        { setting: 'indentCharacter', message: 'must be SPACE or TAB' }
+    ];
+
+    test.each<[string, JavaInteropTestServiceProgramScript, string]>([
+        ['a file that is too large', wireError(-33003), FORMAT_TOO_LARGE_MESSAGE],
+        ['a format failure', wireError(-33009), FORMAT_ENGINE_FAILED_MESSAGE],
+        ['a malformed answer', { outcome: { kind: 'malformed-result', reason: 'no text' } }, FORMAT_ENGINE_FAILED_MESSAGE],
+        ['a range answer', {
+            outcome: { kind: 'ok', result: { scope: 'range', edits: [], diagnostics: [], denumbered: false, version: '1' } }
+        }, FORMAT_ENGINE_FAILED_MESSAGE],
+        ['a client timeout', { outcome: { kind: 'timeout', origin: 'client' } }, FORMAT_TIMEOUT_MESSAGE],
+        ['an unavailable service', wireError(-33004), FORMAT_SERVICE_UNAVAILABLE_MESSAGE],
+        ['a protected program', wireError(-33005), DENUM_PROTECTED_MESSAGE],
+        ['an older BBjServices', 'method-not-found', DENUM_REQUIRES_BBJ_26_03_MESSAGE],
+        ['a transport failure', 'transport-error', DENUM_NOT_REACHABLE_MESSAGE]
+    ])('%s ends in exactly one Warning and changes nothing', async (_name, script, text) => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness, script);
+
+        await vi.waitFor(() => expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, text]));
+        expect(harness.window.showWarningMessage).toHaveBeenLastCalledWith(text);
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+        expect(harness.sendNotification).not.toHaveBeenCalled();
+        expect(informed(harness)).toEqual([]);
+    });
+
+    test('invalid settings name the keys and offer Open Settings, which sends the full key names', async () => {
+        const harness = createOfferHarness();
+        const expected = harness.BBj.compiler.BBjFormatService.describeInvalidSettings(invalidProblems).text;
+        harness.window.showWarningMessage.mockReturnValueOnce(Promise.resolve(undefined));
+        const answer = await raiseOffer(harness);
+        harness.double.scriptFormatProgram({ error: { code: -33007, message: 'invalid', data: invalidProblems } });
+        harness.window.showWarningMessage.mockReturnValueOnce(Promise.resolve({ title: OPEN_SETTINGS_ACTION }));
+        answer.resolve({ title: DENUMBER_AND_FORMAT_ACTION });
+
+        await vi.waitFor(() => expect(harness.sendNotification).toHaveBeenCalledTimes(1));
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, expected]);
+        expect(harness.window.showWarningMessage).toHaveBeenLastCalledWith(expected, { title: OPEN_SETTINGS_ACTION });
+        expect(harness.sendNotification).toHaveBeenCalledWith(OPEN_FORMATTER_SETTINGS_METHOD, {
+            keys: ['bbj.formatter.indentWidth', 'bbj.formatter.indentCharacter']
+        });
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+    });
+
+    test('mixed numbering names the line and offers Go to Line', async () => {
+        const harness = createOfferHarness();
+        await clickDenumberAndFormat(harness, { error: { code: -33008, message: 'mixed', data: { line: 2 } } });
+
+        await vi.waitFor(() => expect(warned(harness)).toHaveLength(2));
+        expect(harness.window.showWarningMessage).toHaveBeenLastCalledWith(
+            'Mixed line numbering at line 2. The file was not changed.', { title: GO_TO_LINE_ACTION });
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+    });
+
+    test('a tokenized buffer is never sent', async () => {
+        const harness = createOfferHarness();
+        harness.client.open(URI_TEXT, 1, '<<bbj>>abc');
+
+        const result = await harness.service.runDenumAndFormat(
+            { uri: URI_TEXT, current: () => harness.textDocuments.get(URI_TEXT) }, CancellationToken.None);
+
+        expect(result.status).toBe('failed');
+        expect(warned(harness)).toEqual([DENUM_TOKENIZED_MESSAGE]);
+        expect(harness.double.formatProgramCalls).toEqual([]);
+    });
+
+    test('a buffer that changes during the call drops the answer', async () => {
+        const harness = createOfferHarness();
+        const gate = deferred<JavaInteropTestServiceProgramScript>();
+        harness.double.scriptFormatProgram({ pending: gate.promise });
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        const running = harness.service.runDenumAndFormat(
+            { uri: URI_TEXT, current: () => harness.textDocuments.get(URI_TEXT) }, CancellationToken.None);
+        await vi.waitFor(() => expect(harness.double.formatProgramCalls).toHaveLength(1));
+        harness.client.change(URI_TEXT, 2, [{ text: NUMBERED_LATER }]);
+        gate.resolve(formattedAnswer());
+        const result = await running;
+
+        expect(result).toMatchObject({ status: 'failed', reason: 'stale' });
+        expect(warned(harness)).toEqual([DENUM_STALE_MESSAGE]);
+        expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
+    });
+});
+
+describe('the invalid-settings text shared by formatting and Denumber and Format', () => {
+
+    test('describeInvalidSettings gives the text and the full key names the format notice uses', () => {
+        const harness = createOfferHarness();
+        const problems = [{ setting: 'indentWidth', message: 'bad' }, { setting: 'indentWidth', message: 'worse' }];
+
+        const described = harness.BBj.compiler.BBjFormatService.describeInvalidSettings(problems);
+
+        expect(described.text).toBe(invalidSettingsMessage(problems, key => key));
+        expect(described.keys).toEqual(['bbj.formatter.indentWidth']);
     });
 });

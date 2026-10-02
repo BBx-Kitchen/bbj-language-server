@@ -41,7 +41,7 @@ export function createDenumHarness() {
     const service = BBj.compiler.BBjDenumService;
     const run = (uri: string, token: CancellationToken = CancellationToken.None) =>
         service.run({ uri, current: () => textDocuments.get(uri) }, token);
-    return { shared, BBj, double, client, service, run, loggers, ...fake };
+    return { shared, BBj, double, client, textDocuments, service, run, loggers, ...fake };
 }
 
 export type DenumHarness = ReturnType<typeof createDenumHarness>;
