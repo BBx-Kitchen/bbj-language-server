@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 126
 current_phase_name: LS DENUM
 status: executing
-stopped_at: Completed 126-03-PLAN.md
-last_updated: "2026-10-02T15:32:15.929Z"
+stopped_at: Completed 126-04-PLAN.md
+last_updated: "2026-10-02T15:42:23.802Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 126 execution started
-state_head: 755d534ec2af8fba64b6fb273ccf16c673ddc2c7
+state_head: ace54bd300c14917ba21c28f6def1e705ff36430
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 29
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 126 (LS DENUM) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 126 execution started
 
@@ -217,6 +217,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 126 P01 | 8min | 3 tasks | 11 files |
 | Phase 126 P02 | 3 min | 2 tasks | 5 files |
 | Phase 126 P03 | 12 min | 2 tasks | 4 files |
+| Phase 126 P04 | 10 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -388,6 +389,8 @@ decisions:
 - [Phase 125]: 125-05: formatter settings intake is raw-object handoff to BBjFormatService (normalizes to 15 keys); push applies before startup gate, initializationOptions.formatter applies on initialize; no trust gating for formatter values
 - [Phase 125]: Formatting switched on in one commit: lsp.Formatter slot, bounded handler after startLanguageServer, client-side jar formatter removed; first format on a fresh program connection measures 8 ms (stay lazy, no warm-up)
 - [Phase 126]: bbj/denum: server applies a versioned TextDocumentEdit after re-checking the live version; no canonicalName on DENUM requests; per-document in-flight guard answers in-progress — Never apply text computed for another version; overlapping runs must not cancel each other
+- [Phase 126]: Denumber offer: selection explanation and document offer are separate ledger kinds on the same uri@version scope, so neither suppresses the other and an edit re-arms both — Reuses the bounded format notice ledger; no second ledger
+- [Phase 126]: Denumber and Format is one whole-document formatProgram call with the denumber permission; formatting failures use the formatting texts, all others the DENUM texts — One undoable edit, one orchestration core shared with plain DENUM
 
 ### Tech Debt
 
@@ -455,8 +458,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-02T15:32:15.804Z
-Stopped at: Completed 126-03-PLAN.md
+Last session: 2026-10-02T15:42:23.683Z
+Stopped at: Completed 126-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 126` or `/gsd-plan-phase 126`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open.
