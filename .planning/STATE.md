@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 126
 current_phase_name: LS DENUM
 status: executing
-stopped_at: Phase 126 context gathered
-last_updated: "2026-10-02T15:18:42.906Z"
+stopped_at: Completed 126-01-PLAN.md
+last_updated: "2026-10-02T15:24:51.916Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 125 complete, transitioned to Phase 126
-state_head: a5d0439711e856020a85992f154c2a8a4aefc6f2
+last_activity_desc: Phase 126 execution started
+state_head: 21a82b3e25d200ff5e25dd2ce1913f20a574dd91
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 17
-  completed_plans: 12
+  completed_plans: 13
   percent: 29
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 
 ## Current Position
 
-Phase: 126 (LS DENUM) — READY TO EXECUTE
-Plan: Not started
+Phase: 126 (LS DENUM) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-02 — Phase 125 complete, transitioned to Phase 126
+Last activity: 2026-10-02 — Phase 126 execution started
 
 Progress: [███░░░░░░░] 29% (v4.9: 2/7 phases)
 
@@ -214,6 +214,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 125 P04 | 11min | 3 tasks | 5 files |
 | Phase 125 P05 | 6 min | 2 tasks | 7 files |
 | Phase 125 P06 | 5 min | 3 tasks | 7 files |
+| Phase 126 P01 | 8min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -384,6 +385,7 @@ decisions:
 - [Phase 125]: Notice ledger holds exactly 256 entries, evicting the oldest when a new one arrives while full
 - [Phase 125]: 125-05: formatter settings intake is raw-object handoff to BBjFormatService (normalizes to 15 keys); push applies before startup gate, initializationOptions.formatter applies on initialize; no trust gating for formatter values
 - [Phase 125]: Formatting switched on in one commit: lsp.Formatter slot, bounded handler after startLanguageServer, client-side jar formatter removed; first format on a fresh program connection measures 8 ms (stay lazy, no warm-up)
+- [Phase 126]: bbj/denum: server applies a versioned TextDocumentEdit after re-checking the live version; no canonicalName on DENUM requests; per-document in-flight guard answers in-progress — Never apply text computed for another version; overlapping runs must not cancel each other
 
 ### Tech Debt
 
@@ -451,9 +453,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-02T14:33:59.796Z
-Stopped at: Phase 126 context gathered
-Resume file: .planning/phases/126-ls-denum/126-CONTEXT.md
+Last session: 2026-10-02T15:24:51.794Z
+Stopped at: Completed 126-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 126` or `/gsd-plan-phase 126`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
