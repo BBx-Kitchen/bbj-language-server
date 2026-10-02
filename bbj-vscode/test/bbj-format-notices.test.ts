@@ -11,7 +11,11 @@ import { CancellationToken } from 'vscode-jsonrpc';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
-import { FORMAT_REQUIRES_BBJ_26_03_MESSAGE } from '../src/language/bbj-format-service.js';
+import {
+    FORMAT_DENUM_NEEDED_MESSAGE, FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_NOTICE_LEDGER_LIMIT, FORMAT_PROTECTED_MESSAGE,
+    FORMAT_REQUIRES_BBJ_26_03_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE,
+    FORMAT_TOO_LARGE_MESSAGE, type FormatMessenger
+} from '../src/language/bbj-format-service.js';
 import {
     initNotifications, notifyJavaConnectionError, showFormatterWarningWithAction
 } from '../src/language/bbj-notifications.js';
@@ -53,6 +57,18 @@ function createHarness() {
     const loggers = spyOnLogger();
     const format = (uri = URI_TEXT) => formatDocument({ textDocument: { uri }, options: DEFAULT_OPTIONS }, CancellationToken.None);
     return { BBj, double, client, format, loggers, ...fake };
+}
+
+/** A recording stand-in for the messenger, installed on the harness's format service. */
+function installRecordingMessenger(harness: Harness) {
+    const messenger = {
+        warn: vi.fn(),
+        warnWithAction: vi.fn(),
+        showDocument: vi.fn(),
+        openFormatterSettings: vi.fn()
+    } satisfies FormatMessenger;
+    harness.BBj.compiler.BBjFormatService.setMessenger(messenger);
+    return messenger;
 }
 
 type Harness = ReturnType<typeof createHarness>;
@@ -199,5 +215,219 @@ describe('the notifications module without a usable connection', () => {
 
         await expect(picked).resolves.toBe('Action');
         expect(window.showWarningMessage).toHaveBeenCalledWith('text', { title: 'Action' });
+    });
+});
+
+/** A wire error as bbj-ls would answer it. */
+function wireError(code: number, message = 'peer message'): JavaInteropTestServiceProgramScript {
+    return { error: { code, message } };
+}
+
+const FAILURE_ROWS: ReadonlyArray<[string, JavaInteropTestServiceProgramScript, string]> = [
+    ['a client timeout', { outcome: { kind: 'timeout', origin: 'client' } }, FORMAT_TIMEOUT_MESSAGE],
+    ['a peer timeout', wireError(-33002), FORMAT_TIMEOUT_MESSAGE],
+    ['a file that is too large', wireError(-33003), FORMAT_TOO_LARGE_MESSAGE],
+    ['a protected program', wireError(-33005), FORMAT_PROTECTED_MESSAGE],
+    ['a format failure', wireError(-33009), FORMAT_ENGINE_FAILED_MESSAGE],
+    ['a parser exception', wireError(-33001), FORMAT_ENGINE_FAILED_MESSAGE],
+    ['a malformed answer', { outcome: { kind: 'malformed-result', reason: 'no text' } }, FORMAT_ENGINE_FAILED_MESSAGE],
+    ['an unavailable service', wireError(-33004), FORMAT_SERVICE_UNAVAILABLE_MESSAGE],
+    ['a file with line numbers', wireError(-33006), FORMAT_DENUM_NEEDED_MESSAGE]
+];
+
+describe('every failure kind has its own short Warning', () => {
+
+    test.each(FAILURE_ROWS)('%s shows its text once and leaves the buffer alone', async (_name, script, text) => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(script);
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        expect(await harness.format()).toEqual([]);
+
+        expect(messenger.warn).toHaveBeenCalledTimes(1);
+        expect(messenger.warn).toHaveBeenCalledWith(text);
+        expect(messenger.warnWithAction).not.toHaveBeenCalled();
+        expect(messenger.showDocument).not.toHaveBeenCalled();
+        expect(messenger.openFormatterSettings).not.toHaveBeenCalled();
+    });
+
+    test('the texts are the ones the user is meant to read', () => {
+        expect(FORMAT_DENUM_NEEDED_MESSAGE).toBe('This file has line numbers. Run Denumber BBj Program first, then format.');
+        expect(FORMAT_TIMEOUT_MESSAGE).toBe('BBj formatting timed out. The file was not changed; try again.');
+        expect(FORMAT_TOO_LARGE_MESSAGE).toBe('This file is too large for BBj formatting. The file was not changed.');
+        expect(FORMAT_PROTECTED_MESSAGE).toBe('This BBj program is protected and cannot be formatted.');
+        expect(FORMAT_ENGINE_FAILED_MESSAGE).toBe(
+            'The BBj formatter could not process this file. The file was not changed. See the BBj output for details.');
+        expect(FORMAT_SERVICE_UNAVAILABLE_MESSAGE).toBe(
+            'The BBj formatting service is not available right now. The file was not changed; try again later.');
+    });
+
+    test('a failed outcome with an empty peer message still shows the fixed text', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(wireError(-33009, ''));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+
+        expect(messenger.warn).toHaveBeenCalledWith(FORMAT_ENGINE_FAILED_MESSAGE);
+    });
+
+    test('every message goes through the real messenger as a Warning and nothing else', async () => {
+        const harness = createHarness();
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        let version = 1;
+        for (const [, script] of FAILURE_ROWS) {
+            harness.double.scriptFormatProgram(script);
+            await harness.format();
+            harness.double.simulateReconnect();
+            harness.client.change(URI_TEXT, ++version, [{ text: SOURCE }]);
+        }
+
+        expect(harness.window.showWarningMessage).toHaveBeenCalled();
+        expect(harness.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(harness.window.showInformationMessage).not.toHaveBeenCalled();
+        expect(harness.window.showDocument).not.toHaveBeenCalled();
+        expect(harness.sendNotification).not.toHaveBeenCalled();
+    });
+});
+
+describe('a message repeats only when its own scope changes', () => {
+
+    test.each([
+        ['too large', wireError(-33003), FORMAT_TOO_LARGE_MESSAGE],
+        ['protected', wireError(-33005), FORMAT_PROTECTED_MESSAGE],
+        ['line numbers', wireError(-33006), FORMAT_DENUM_NEEDED_MESSAGE]
+    ] as Array<[string, JavaInteropTestServiceProgramScript, string]>)(
+        'a %s answer shows once per document and version, and an edit re-arms it', async (_name, script, text) => {
+            const harness = createHarness();
+            const messenger = installRecordingMessenger(harness);
+            harness.double.scriptFormatProgram(script);
+            harness.client.open(URI_TEXT, 1, SOURCE);
+
+            await harness.format();
+            await harness.format();
+            expect(messenger.warn).toHaveBeenCalledTimes(1);
+
+            harness.client.change(URI_TEXT, 2, [{ text: 'print 2\n' }]);
+            await harness.format();
+
+            expect(messenger.warn).toHaveBeenCalledTimes(2);
+            expect(messenger.warn).toHaveBeenLastCalledWith(text);
+        });
+
+    test.each([
+        ['a timeout', { outcome: { kind: 'timeout', origin: 'peer' } }, FORMAT_TIMEOUT_MESSAGE],
+        ['an engine failure', wireError(-33009), FORMAT_ENGINE_FAILED_MESSAGE],
+        ['an unavailable service', wireError(-33004), FORMAT_SERVICE_UNAVAILABLE_MESSAGE]
+    ] as Array<[string, JavaInteropTestServiceProgramScript, string]>)(
+        '%s shows once per connection however many documents hit it, and a reconnect re-arms it', async (_name, script, text) => {
+            const harness = createHarness();
+            const messenger = installRecordingMessenger(harness);
+            harness.double.scriptFormatProgram(script);
+            harness.client.open(URI_TEXT, 1, SOURCE);
+            harness.client.open('file:///ws/other.bbj', 1, SOURCE);
+
+            await harness.format(URI_TEXT);
+            await harness.format('file:///ws/other.bbj');
+            expect(messenger.warn).toHaveBeenCalledTimes(1);
+
+            harness.double.simulateReconnect();
+            await harness.format(URI_TEXT);
+
+            expect(messenger.warn).toHaveBeenCalledTimes(2);
+            expect(messenger.warn).toHaveBeenLastCalledWith(text);
+        });
+
+    test('a reconnect does not repeat a message about the content of an unchanged document', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(wireError(-33003));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+        harness.double.simulateReconnect();
+        await harness.format();
+
+        expect(messenger.warn).toHaveBeenCalledTimes(1);
+    });
+
+    test('two different kinds on the same document and version each show once', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        harness.double.scriptFormatProgram(wireError(-33003));
+        await harness.format();
+        harness.double.scriptFormatProgram(wireError(-33005));
+        await harness.format();
+        await harness.format();
+
+        expect(messenger.warn.mock.calls.map(args => args[0])).toEqual([FORMAT_TOO_LARGE_MESSAGE, FORMAT_PROTECTED_MESSAGE]);
+    });
+
+    test('an invalid-params answer shows nothing, warns in the log once and then logs at debug', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(wireError(-32602));
+        harness.client.open(URI_TEXT, 1, SOURCE);
+
+        await harness.format();
+        expect(harness.loggers.spyFor('warn')).toHaveBeenCalledTimes(1);
+        await harness.format();
+
+        expect(harness.loggers.spyFor('warn')).toHaveBeenCalledTimes(1);
+        expect(messenger.warn).not.toHaveBeenCalled();
+        expect(messenger.warnWithAction).not.toHaveBeenCalled();
+    });
+
+    test('a full ledger forgets its oldest notice first', async () => {
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.double.scriptFormatProgram(wireError(-33003));
+        const uris = Array.from({ length: FORMAT_NOTICE_LEDGER_LIMIT + 1 }, (_, index) => `file:///ws/doc${index}.bbj`);
+        for (const uri of uris) {
+            harness.client.open(uri, 1, SOURCE);
+            await harness.format(uri);
+        }
+        expect(messenger.warn).toHaveBeenCalledTimes(uris.length);
+
+        await harness.format(uris[uris.length - 1]);
+        expect(messenger.warn).toHaveBeenCalledTimes(uris.length);
+
+        await harness.format(uris[0]);
+        expect(messenger.warn).toHaveBeenCalledTimes(uris.length + 1);
+    });
+});
+
+describe('what the user and the log are never shown', () => {
+
+    test('no message and no log line at any level carries the document text or a peer echo', async () => {
+        const secret = 'SECRET_MARKER_NOTICE';
+        const peerEcho = 'PEER_ECHO_MARKER';
+        const harness = createHarness();
+        const messenger = installRecordingMessenger(harness);
+        harness.client.open(URI_TEXT, 1, `rem ${secret}\nx=1\n`);
+
+        for (const [, script] of FAILURE_ROWS) {
+            const echoing = typeof script === 'object' && 'error' in script
+                ? wireError(script.error.code, `parser says ${peerEcho}`)
+                : script;
+            harness.double.scriptFormatProgram(echoing);
+            await harness.format();
+            harness.double.simulateReconnect();
+        }
+
+        expect(messenger.warn).toHaveBeenCalled();
+        const shown = JSON.stringify(messenger.warn.mock.calls);
+        expect(shown).not.toContain(secret);
+        expect(shown).not.toContain(peerEcho);
+        for (const { level, spy } of harness.loggers.spies) {
+            const logged = JSON.stringify(spy.mock.calls.map(args => args.map(arg => typeof arg === 'function' ? arg() : arg)));
+            expect(logged, `logger.${level}`).not.toContain(secret);
+            expect(logged, `logger.${level}`).not.toContain(peerEcho);
+        }
     });
 });
