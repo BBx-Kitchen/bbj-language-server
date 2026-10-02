@@ -38,6 +38,9 @@ export const DENUM_SUCCESS_MESSAGE = 'Denumbered.';
 /** Shown when the file has no line numbers. */
 export const DENUM_NOTHING_TO_DO_MESSAGE = 'This file has no line numbers. Nothing to denumber.';
 
+/** Shown when a Denumber and Format run finds no line numbers but still formatted the file. */
+export const DENUM_NOT_NUMBERED_FORMATTED_MESSAGE = 'This file has no line numbers. It was formatted.';
+
 /** Shown when DENUM failed or answered with something unusable. */
 export const DENUM_FAILED_MESSAGE = 'Denumbering failed. The file was not changed. See the BBj output for details.';
 
@@ -346,8 +349,8 @@ export class BBjDenumService {
                 if (!await this.messenger.applyEdit(live.uri, version, edits, label)) {
                     return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
                 }
-                this.messenger.info(DENUM_NOTHING_TO_DO_MESSAGE);
-                return { status: 'not-line-numbered', message: DENUM_NOTHING_TO_DO_MESSAGE, version, edits, applied: true };
+                this.messenger.info(DENUM_NOT_NUMBERED_FORMATTED_MESSAGE);
+                return { status: 'not-line-numbered', message: DENUM_NOT_NUMBERED_FORMATTED_MESSAGE, version, edits, applied: true };
             }
 
             const diagnostics = copyDiagnostics(outcome.result);

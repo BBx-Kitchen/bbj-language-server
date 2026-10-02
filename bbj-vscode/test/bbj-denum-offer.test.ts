@@ -14,7 +14,7 @@ import {
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
 import {
     DENUMBER_ACTION, DENUMBER_AND_FORMAT_ACTION, DENUM_AND_FORMAT_SUCCESS_MESSAGE, DENUM_NOT_OPEN_MESSAGE,
-    DENUM_NOT_REACHABLE_MESSAGE, DENUM_NOTHING_TO_DO_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_PROTECTED_MESSAGE,
+    DENUM_NOT_NUMBERED_FORMATTED_MESSAGE, DENUM_NOT_REACHABLE_MESSAGE, DENUM_NOTHING_TO_DO_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_PROTECTED_MESSAGE,
     DENUM_REQUIRES_BBJ_26_03_MESSAGE, DENUM_SELECTION_MESSAGE, DENUM_STALE_MESSAGE, DENUM_SUCCESS_MESSAGE,
     DENUM_TOKENIZED_MESSAGE, SHOW_DENUM_DIAGNOSTICS_ACTION
 } from '../src/language/bbj-denum-service.js';
@@ -253,12 +253,12 @@ describe('clicking Denumber and Format on the offer', () => {
             .toBeLessThan(harness.sendNotification.mock.invocationCallOrder[0]);
     });
 
-    test('a file that turns out to have no line numbers gets the format edit and the nothing-to-denumber message', async () => {
+    test('a file that turns out to have no line numbers gets the format edit and a message that says it was formatted', async () => {
         const harness = createOfferHarness();
         await clickDenumberAndFormat(harness,
             { result: { text: 'print 1\n', diagnostics: [], denumbered: false, version: '1' } });
 
-        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_NOTHING_TO_DO_MESSAGE]));
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_NOT_NUMBERED_FORMATTED_MESSAGE]));
         expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1);
         expect(harness.sendNotification).not.toHaveBeenCalled();
     });
