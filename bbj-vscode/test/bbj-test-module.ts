@@ -201,6 +201,9 @@ export class JavaInteropTestService extends JavaInteropService {
     public readonly formatProgramCalls: FormatProgramParams[] = [];
     private denumProgramScript: JavaInteropTestServiceProgramScript = 'success';
 
+    /** A copy of every {@link denumProgram} request received, in order. */
+    public readonly denumProgramCalls: DenumProgramParams[] = [];
+
     /** Test seam: script the next/every {@link formatProgram} answer. */
     public scriptFormatProgram(script: JavaInteropTestServiceProgramScript): void {
         this.formatProgramScript = script;
@@ -227,7 +230,8 @@ export class JavaInteropTestService extends JavaInteropService {
     }
 
     /** See {@link formatProgram}. */
-    public override async denumProgram(params: DenumProgramParams): Promise<ProgramOutcome<DenumProgramResult>> {
+    public override async denumProgram(params: DenumProgramParams, _token?: CancellationToken): Promise<ProgramOutcome<DenumProgramResult>> {
+        this.denumProgramCalls.push(structuredClone(params));
         const echo = { text: params.text, diagnostics: [], denumbered: false, version: params.version };
         const script = await settleProgramScript(this.denumProgramScript);
         return scriptedProgramOutcome('denumProgram', script, echo, raw => validateDenumResult(params, raw));
