@@ -15,10 +15,54 @@ import type { FormatProgramParams, FormatSettingValue, ProgramOutcome, FormatPro
 import type { JavaInteropService } from './java-interop.js';
 import { minimalLineEdit, rangeFormatEdits } from './bbj-format-edit.js';
 import { FormatterSettingsHolder } from './bbj-format-settings.js';
+import type { OpenFormatterSettingsParams } from './format-settings-notification.js';
+import {
+    notifyOpenFormatterSettings, showFormatterDocument, showFormatterWarning, showFormatterWarningWithAction
+} from './bbj-notifications.js';
 import { logger } from './logger.js';
 
 /** A buffer starting with this text is a tokenized program, not source; bbj-ls cannot format it. */
 export const TOKENIZED_PROGRAM_PREFIX = '<<bbj>>';
+
+/** The text shown once per connection when the connected BBjServices has no formatter. */
+export const FORMAT_REQUIRES_BBJ_26_03_MESSAGE =
+    'BBj formatting requires BBj 26.03 or later. The connected BBjServices does not provide it.';
+
+/** How many distinct notices the service remembers; the oldest is forgotten first. */
+export const FORMAT_NOTICE_LEDGER_LIMIT = 256;
+
+/**
+ * Where the service sends what the user should see. Every method is fire and forget: a format
+ * response never waits for one of them, and the default implementation never lets a failure escape.
+ */
+export interface FormatMessenger {
+    /** Shows a plain Warning. */
+    warn(text: string): void;
+    /** Shows a Warning with one action; `onAction` runs only if the user picks it, possibly much later. */
+    warnWithAction(text: string, actionTitle: string, onAction: () => void): void;
+    /** Asks the client to show `uri` with the cursor on the zero-based `line`. */
+    showDocument(uri: string, line: number): void;
+    /** Asks the client to open its formatter settings. */
+    openFormatterSettings(params: OpenFormatterSettingsParams): void;
+}
+
+/** The messenger the server uses: the connection-free senders of the notifications module. */
+const DEFAULT_MESSENGER: FormatMessenger = {
+    warn: showFormatterWarning,
+    warnWithAction(text, actionTitle, onAction) {
+        void showFormatterWarningWithAction(text, actionTitle).then(picked => {
+            if (picked === actionTitle) {
+                try {
+                    onAction();
+                } catch {
+                    // The action of a late click must never surface as an unhandled rejection.
+                }
+            }
+        });
+    },
+    showDocument: showFormatterDocument,
+    openFormatterSettings: notifyOpenFormatterSettings
+};
 
 /** One format request: the open buffer as it was when the request arrived, plus a way to look again. */
 export interface BBjFormatRequest {
@@ -44,6 +88,9 @@ export class BBjFormatService {
 
     private readonly javaInterop: JavaInteropService;
     private readonly settings = new FormatterSettingsHolder();
+    private messenger: FormatMessenger = DEFAULT_MESSENGER;
+    /** `${kind}|${scope}` of every notice shown, oldest first, bounded by {@link FORMAT_NOTICE_LEDGER_LIMIT}. */
+    private readonly shownNotices = new Set<string>();
 
     constructor(services: BBjFormatServiceContext) {
         this.javaInterop = services.java.JavaInteropService;
@@ -59,6 +106,11 @@ export class BBjFormatService {
         if (this.settings.revision !== before) {
             logger.debug(`Formatter settings changed (revision ${this.settings.revision})`);
         }
+    }
+
+    /** Replaces where user messages go; the default sends them through the language client. */
+    public setMessenger(messenger: FormatMessenger): void {
+        this.messenger = messenger;
     }
 
     /** The 15 normalized settings every request carries. */
@@ -96,7 +148,7 @@ export class BBjFormatService {
                 logger.debug('Format answer dropped: the document changed or closed while formatting');
                 return [];
             }
-            return this.editsFor(request.document, sent, outcome);
+            return this.editsFor(request, version, sent, outcome);
         } catch (error) {
             logger.debug(`Format request failed unexpectedly (${error instanceof Error ? error.name : 'unknown'})`);
             return [];
@@ -129,31 +181,79 @@ export class BBjFormatService {
         return params;
     }
 
-    private editsFor(document: TextDocument, sent: string, outcome: ProgramOutcome<FormatProgramResult>): TextEdit[] {
+    private editsFor(request: BBjFormatRequest, version: number, sent: string, outcome: ProgramOutcome<FormatProgramResult>): TextEdit[] {
         switch (outcome.kind) {
             case 'ok':
                 return outcome.result.scope === 'document'
-                    ? minimalLineEdit(document, 0, sent.length, outcome.result.text)
-                    : rangeFormatEdits(document, outcome.result.edits);
+                    ? minimalLineEdit(request.document, 0, sent.length, outcome.result.text)
+                    : rangeFormatEdits(request.document, outcome.result.edits);
             case 'cancelled':
                 logger.debug('Format request was cancelled');
                 return [];
             default:
-                this.report(outcome);
+                this.report(outcome, request, version);
                 return [];
         }
     }
 
-    /** One debug line naming the outcome kind and its fixed token; never peer text or document text. */
-    private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>): void {
+    /**
+     * Turns an outcome that left the buffer as it was into at most one message for the user. Log
+     * lines carry the notice kind and fixed tokens only, never document text or peer text.
+     */
+    private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>, _request: BBjFormatRequest, _version: number): void {
+        const generation = `generation:${this.javaInterop.connectionGeneration}`;
+        switch (outcome.kind) {
+            case 'unavailable':
+                if (outcome.reason === 'method-not-found') {
+                    this.notice('requires-bbj-26-03', generation, 'Format not applied: the connected BBjServices has no formatter',
+                        () => this.messenger.warn(FORMAT_REQUIRES_BBJ_26_03_MESSAGE));
+                } else {
+                    // The interop client has already reported that the service is not reachable.
+                    logger.debug(`Format not applied: unavailable (${outcome.reason})`);
+                }
+                return;
+            case 'failed':
+                if (outcome.failure === 'transport') {
+                    logger.debug('Format not applied: failed (transport)');
+                    return;
+                }
+                break;
+            default:
+                break;
+        }
         let detail: string;
         switch (outcome.kind) {
             case 'timeout': detail = outcome.origin; break;
-            case 'unavailable': detail = outcome.reason; break;
             case 'failed': detail = outcome.failure; break;
             case 'malformed-result': detail = outcome.reason; break;
             default: detail = '-'; break;
         }
         logger.debug(`Format not applied: ${outcome.kind} (${detail})`);
+    }
+
+    /**
+     * Records a notice and shows it the first time only. The first occurrence of `kind` within
+     * `scope` logs at warn and calls `show`; every repeat logs at debug. The ledger forgets its
+     * oldest entry when it is full, so only a notice not seen for a long time can show again.
+     */
+    private notice(kind: string, scope: string, logLine: string, show?: () => void): void {
+        const key = `${kind}|${scope}`;
+        if (this.shownNotices.has(key)) {
+            logger.debug(logLine);
+            return;
+        }
+        if (this.shownNotices.size >= FORMAT_NOTICE_LEDGER_LIMIT) {
+            const oldest = this.shownNotices.values().next().value;
+            if (oldest !== undefined) {
+                this.shownNotices.delete(oldest);
+            }
+        }
+        this.shownNotices.add(key);
+        logger.warn(logLine);
+        try {
+            show?.();
+        } catch {
+            // A message that cannot be shown must never break a format request.
+        }
     }
 }

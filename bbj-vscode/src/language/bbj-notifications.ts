@@ -13,6 +13,7 @@
 import type { Connection } from 'vscode-languageserver';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './config-reload-notification.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD, type OpenFormatterSettingsParams } from './format-settings-notification.js';
 
 /** The LSP connection — set by main.ts via initNotifications(). */
 let _connection: Connection | null = null;
@@ -67,6 +68,72 @@ export function notifyResolvedConfigPath(result: ResolvedConfigPathResult): void
  */
 export function notifyConfigReloadRequired(params: ConfigReloadNotification): void {
     _connection?.sendNotification(CONFIG_RELOAD_METHOD, params);
+}
+
+/**
+ * Show a plain Warning message for a formatting problem. Fire and forget: nothing waits for the
+ * user. No-op if the connection has not been initialized yet.
+ */
+export function showFormatterWarning(text: string): void {
+    try {
+        _connection?.window.showWarningMessage(text);
+    } catch {
+        // A notification that cannot be sent must never break a format request.
+    }
+}
+
+/**
+ * Show a Warning message with one action button and resolve to the title of the picked action, or
+ * `undefined` when the user dismissed it, the connection is not initialized or the prompt failed.
+ * Never rejects. Callers start it without awaiting it inside a request, so a format response never
+ * waits for a click.
+ */
+export function showFormatterWarningWithAction(text: string, actionTitle: string): Promise<string | undefined> {
+    const connection = _connection;
+    if (!connection) {
+        return Promise.resolve(undefined);
+    }
+    const prompt = async (): Promise<string | undefined> => {
+        try {
+            const picked = await connection.window.showWarningMessage(text, { title: actionTitle });
+            return picked?.title;
+        } catch {
+            return undefined;
+        }
+    };
+    return prompt();
+}
+
+/**
+ * Ask the client to show `uri` with the cursor at the start of the zero-based `line`. The caller
+ * passes a document it already owns and a line inside it; nothing here validates either. Fire and
+ * forget: a failed request is ignored. No-op if the connection has not been initialized yet.
+ */
+export function showFormatterDocument(uri: string, line: number): void {
+    try {
+        const position = { line, character: 0 };
+        const pending = _connection?.window.showDocument({
+            uri,
+            takeFocus: true,
+            selection: { start: position, end: position }
+        });
+        void Promise.resolve(pending).catch(() => { /* a refused or failed jump is harmless */ });
+    } catch {
+        // A request that cannot be sent must never break anything.
+    }
+}
+
+/**
+ * Send a `bbj/openFormatterSettings` notification to the client, asking it to open its formatter
+ * settings. The payload holds setting names only. No-op if the connection has not been initialized.
+ */
+export function notifyOpenFormatterSettings(params: OpenFormatterSettingsParams): void {
+    try {
+        const pending = _connection?.sendNotification(OPEN_FORMATTER_SETTINGS_METHOD, params);
+        void Promise.resolve(pending).catch(() => { /* the client may not handle it */ });
+    } catch {
+        // A notification that cannot be sent must never break anything.
+    }
 }
 
 /**
