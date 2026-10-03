@@ -2,6 +2,8 @@ package com.basis.bbj.intellij.denum;
 
 import com.google.gson.JsonElement;
 
+import java.util.List;
+
 /**
  * Gson-serializable data objects carrying the language server's {@code bbj/denum} request params
  * and result. {@code bbj-vscode/src/language/denum-command.ts} is the single source of truth for
@@ -39,5 +41,29 @@ public final class DenumModels {
         public JsonElement edits;
 
         public Boolean applied;
+    }
+
+    /**
+     * Payload of the {@code bbj/denumDiagnostics} notification. {@code
+     * bbj-vscode/src/language/denum-notifications.ts} is the single source of truth; field names
+     * here must match its JSON keys exactly. The payload crosses a process boundary, so a reader
+     * must treat every member, including the list and its entries, as possibly absent.
+     */
+    public static final class DenumDiagnosticsParams {
+        public String uri;
+        public List<DenumDiagnostic> diagnostics;
+    }
+
+    /**
+     * One diagnostic of a {@link DenumDiagnosticsParams} list. {@code line} is boxed and 64-bit:
+     * a missing value stays distinguishable from {@code 0} (which means "no location"), and no
+     * number a JavaScript peer can send is out of range, so one odd entry never rejects the whole
+     * notification.
+     */
+    public static final class DenumDiagnostic {
+        public Long line;
+        public String originalLineNumber;
+        public String severity;
+        public String message;
     }
 }
