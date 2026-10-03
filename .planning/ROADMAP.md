@@ -507,7 +507,7 @@ Plans:
   3. Every DENUM run ends in one matching message: "nothing to do" for an unnumbered file, a short confirmation on success, a pointer to Decompile for tokenized input, and a statement that the program is protected for a protected one.
   4. DENUM's diagnostics appear in an output list (line, original line number, severity, message), and a notification shows their counts with a "Show" action that opens the list.
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -526,6 +526,11 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 126-05-PLAN.md — Live check against BBj 26.03, every phase gate including the IntelliJ suite, IntelliJ notes and the hand check (wave 4)
+
+**Wave 5** *(UAT gap closure; blocked on Wave 4 completion)*
+
+- [ ] 126-06-PLAN.md — The numbered-file offer and the selection explanation on every format request, with no per-version dedupe; format-on-save included, because no robust save signal exists (gap G-126-1, wave 5)
+- [ ] 126-07-PLAN.md — Show opens the Problems view with the DENUM entries from a 'bbj-denum' collection, cleared on edit or close; the 'BBj' channel keeps a log copy (gap G-126-2, wave 5)
 
 ### Phase 127: VS Code Cut-Over
 
