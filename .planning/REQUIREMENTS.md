@@ -31,7 +31,7 @@ stays switched off until the evaluation verdict.
 - [x] **FMT-03**: Format-on-save works without delaying the save: no wait for the workspace to load, cancellation and supersession (`-32800`) return no edits silently
 - [x] **FMT-04**: Formatting an already-formatted file returns no edits, so the buffer is not dirtied
 - [x] **FMT-05**: Formatting returns minimal line-level edits (cursor, folding and undo survive) and never applies an edit computed for an older document version
-- [ ] **FMT-06**: Formatting a line-numbered file never DENUMs automatically; instead one deduplicated message offers "Denumber" and "Denumber and Format" (whole-document) or explains that selection formatting needs an unnumbered file (range)
+- [x] **FMT-06**: Formatting a line-numbered file never DENUMs automatically; instead one deduplicated message offers "Denumber" and "Denumber and Format" (whole-document) or explains that selection formatting needs an unnumbered file (range)
 - [ ] **FMT-07**: "Denumber and Format" DENUMs and formats in one undoable step (`allowDenum`)
 - [x] **FMT-08**: Invalid settings (`-33007`) are reported as one message naming each bad `bbj.formatter.*` key, with a way to open the settings
 - [x] **FMT-09**: Mixed numbering (`-33008`) is reported with the offending line, and the user can jump to that line
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FMT-03 | Phase 125 | Complete |
 | FMT-04 | Phase 125 | Complete |
 | FMT-05 | Phase 125 | Complete |
-| FMT-06 | Phase 126 | Pending |
+| FMT-06 | Phase 126 | Complete |
 | FMT-07 | Phase 126 | Pending |
 | FMT-08 | Phase 125 | Complete |
 | FMT-09 | Phase 125 | Complete |

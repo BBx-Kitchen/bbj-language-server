@@ -507,7 +507,7 @@ Plans:
   3. Every DENUM run ends in one matching message: "nothing to do" for an unnumbered file, a short confirmation on success, a pointer to Decompile for tokenized input, and a statement that the program is protected for a protected one.
   4. DENUM's diagnostics appear in an output list (line, original line number, severity, message), and a notification shows their counts with a "Show" action that opens the list.
 
-**Plans**: 5/7 plans executed
+**Plans**: 6/7 plans executed
 
 Plans:
 **Wave 1**
@@ -529,7 +529,7 @@ Plans:
 
 **Wave 5** *(UAT gap closure; blocked on Wave 4 completion)*
 
-- [ ] 126-06-PLAN.md — The numbered-file offer and the selection explanation on every format request, with no per-version dedupe; format-on-save included, because no robust save signal exists (gap G-126-1, wave 5)
+- [x] 126-06-PLAN.md — The numbered-file offer and the selection explanation on every format request, with no per-version dedupe; format-on-save included, because no robust save signal exists (gap G-126-1, wave 5)
 - [ ] 126-07-PLAN.md — Show opens the Problems view with the DENUM entries from a 'bbj-denum' collection, cleared on edit or close; the 'BBj' channel keeps a log copy (gap G-126-2, wave 5)
 
 ### Phase 127: VS Code Cut-Over
@@ -636,7 +636,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 |-------|----------------|--------|-----------|
 | 124. Interop Client | 6/6 | Complete | 2026-10-01 |
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
-| 126. LS DENUM | 5/5 | Not started |  |
+| 126. LS DENUM | 6/7 | Not started |  |
 | 127. VS Code Cut-Over | 0/TBD | Not started | - |
 | 128. IntelliJ DENUM | 0/TBD | Not started | - |
 | 129. IntelliJ Verdict | 0/TBD | Not started | - |
