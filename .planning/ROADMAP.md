@@ -574,7 +574,7 @@ Plans:
   2. Opening a line-numbered BBj program shows an editor banner offering Denumber. Choosing it denumbers the buffer and the banner goes away, and an unnumbered file shows no banner.
   3. `ComposerRequestContractTest` lists `bbj/denum`, and the IntelliJ suite passes under `./gradlew test`.
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -584,7 +584,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 128-02-PLAN.md — `bbj/denumDiagnostics` as one plain-text block in the BBj console (created even if never opened), `bbj/showDenumDiagnostics` reveals it at the end without focus (wave 2)
-- [ ] 128-03-PLAN.md — Line-numbered banner with a single Denumber link on the shared base, refreshed (debounced) after edits so it goes after the edit and returns on Undo (wave 2)
+- [x] 128-03-PLAN.md — Line-numbered banner with a single Denumber link on the shared base, refreshed (debounced) after edits so it goes after the edit and returns on Undo (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -669,7 +669,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
 | 127. VS Code Cut-Over | 6/6 | Planned |  |
-| 128. IntelliJ DENUM | 2/4 | In Progress |  |
+| 128. IntelliJ DENUM | 3/4 | In Progress |  |
 | 129. IntelliJ Verdict | 0/TBD | Not started | - |
 | 130. Docs & Migration | 0/TBD | Not started | - |
 
