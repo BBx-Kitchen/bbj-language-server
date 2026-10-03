@@ -6,9 +6,11 @@ import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
 import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
 import org.eclipse.lsp4j.jsonrpc.messages.Message;
 import org.eclipse.lsp4j.jsonrpc.messages.NotificationMessage;
+import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.ServiceEndpoints;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -28,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BbjLanguageClientDenumNotificationTest {
 
     private static final String DIAGNOSTICS = "bbj/denumDiagnostics";
+    private static final String SHOW = "bbj/showDenumDiagnostics";
 
     private static Map<String, JsonRpcMethod> supported() {
         return ServiceEndpoints.getSupportedMethods(BbjLanguageClient.class);
@@ -75,5 +79,30 @@ class BbjLanguageClientDenumNotificationTest {
         DenumDiagnosticsParams params = assertInstanceOf(DenumDiagnosticsParams.class, notification.getParams());
 
         assertEquals(9007199254740991L, params.diagnostics.get(0).line);
+    }
+
+    @Test
+    void theRevealNotificationIsRegisteredWithOneObjectParameterAndCarriesItsName() throws Exception {
+        JsonRpcMethod registered = supported().get(SHOW);
+
+        assertNotNull(registered, SHOW + " must be a supported method of the client");
+        assertTrue(registered.isNotification(), SHOW + " must be a notification, not a request");
+        assertArrayEquals(new Type[] {Object.class}, registered.getParameterTypes(),
+            "the reveal takes exactly one Object parameter, which it never reads");
+
+        Method handler = BbjLanguageClient.class.getMethod("showDenumDiagnostics", Object.class);
+        JsonNotification annotation = handler.getAnnotation(JsonNotification.class);
+        assertNotNull(annotation, "the reveal handler must be annotated with @JsonNotification");
+        assertEquals(SHOW, annotation.value());
+    }
+
+    @Test
+    void aRevealWithoutAParamsMemberParsesWithNullParams() {
+        String json = "{\"jsonrpc\":\"2.0\",\"method\":\"bbj/showDenumDiagnostics\"}";
+
+        NotificationMessage notification = assertInstanceOf(NotificationMessage.class, parse(json));
+
+        assertEquals(SHOW, notification.getMethod());
+        assertNull(notification.getParams());
     }
 }
