@@ -32,7 +32,7 @@ stays switched off until the evaluation verdict.
 - [x] **FMT-04**: Formatting an already-formatted file returns no edits, so the buffer is not dirtied
 - [x] **FMT-05**: Formatting returns minimal line-level edits (cursor, folding and undo survive) and never applies an edit computed for an older document version
 - [x] **FMT-06**: Formatting a line-numbered file never DENUMs automatically; instead one deduplicated message offers "Denumber" and "Denumber and Format" (whole-document) or explains that selection formatting needs an unnumbered file (range)
-- [ ] **FMT-07**: "Denumber and Format" DENUMs and formats in one undoable step (`allowDenum`)
+- [x] **FMT-07**: "Denumber and Format" DENUMs and formats in one undoable step (`allowDenum`)
 - [x] **FMT-08**: Invalid settings (`-33007`) are reported as one message naming each bad `bbj.formatter.*` key, with a way to open the settings
 - [x] **FMT-09**: Mixed numbering (`-33008`) is reported with the offending line, and the user can jump to that line
 - [x] **FMT-10**: Timeout, too large, protected program, engine failure and service-unavailable each produce one clear, deduplicated message and leave the buffer untouched
@@ -41,10 +41,10 @@ stays switched off until the evaluation verdict.
 
 ### DENUM (DEN)
 
-- [ ] **DEN-01**: The language server serves a `bbj/denum` request that returns the denumbered text as one edit for the open document, plus DENUM's diagnostics
+- [x] **DEN-01**: The language server serves a `bbj/denum` request that returns the denumbered text as one edit for the open document, plus DENUM's diagnostics
 - [ ] **DEN-02**: VS Code's "Denumber BBj Program" command (same id, menus and keybinding) denumbers the live buffer through `bbj/denum` as one undoable edit, including unsaved changes
-- [ ] **DEN-03**: Denumbering an unnumbered file says "nothing to do"; success shows a short confirmation; failures use the typed messages (tokenized input points to Decompile, protected programs say so)
-- [ ] **DEN-04**: DENUM diagnostics appear in an output list (line, original line number, severity, message) with a notification showing the counts and a "Show" action
+- [x] **DEN-03**: Denumbering an unnumbered file says "nothing to do"; success shows a short confirmation; failures use the typed messages (tokenized input points to Decompile, protected programs say so)
+- [x] **DEN-04**: DENUM diagnostics appear in an output list (line, original line number, severity, message) with a notification showing the counts and a "Show" action
 - [ ] **DEN-05**: The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" via the new path and still offers read-only opening
 - [ ] **DEN-06**: The bbjlst denumber path is removed, while decompiling tokenized programs through bbjlst keeps working
 
@@ -112,16 +112,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FMT-04 | Phase 125 | Complete |
 | FMT-05 | Phase 125 | Complete |
 | FMT-06 | Phase 126 | Complete |
-| FMT-07 | Phase 126 | Pending |
+| FMT-07 | Phase 126 | Complete |
 | FMT-08 | Phase 125 | Complete |
 | FMT-09 | Phase 125 | Complete |
 | FMT-10 | Phase 125 | Complete |
 | FMT-11 | Phase 125 | Complete |
 | FMT-12 | Phase 125 | Complete |
-| DEN-01 | Phase 126 | Pending |
+| DEN-01 | Phase 126 | Complete |
 | DEN-02 | Phase 127 | Pending |
-| DEN-03 | Phase 126 | Pending |
-| DEN-04 | Phase 126 | Pending |
+| DEN-03 | Phase 126 | Complete |
+| DEN-04 | Phase 126 | Complete |
 | DEN-05 | Phase 127 | Pending |
 | DEN-06 | Phase 127 | Pending |
 | SET-01 | Phase 127 | Pending |

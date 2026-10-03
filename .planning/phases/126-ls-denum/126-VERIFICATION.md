@@ -1,7 +1,7 @@
 ---
 phase: 126-ls-denum
 verified: 2026-10-03T08:00:00Z
-status: human_needed
+status: passed
 score: 8/9 must-haves verified
 behavior_unverified: 1
 overrides_applied: 0
@@ -14,20 +14,24 @@ re_verification:
   gaps_remaining: []
   regressions: []
 behavior_unverified_items:
+
   - truth: "Denumber and Format is one undoable step (SC2); a plain Denumber is also one undo step and leaves the buffer dirty"
     test: "In VS Code, open a line-numbered file, type an unsaved edit, run Format Document, click 'Denumber and Format', then press Ctrl+Z once. Repeat with 'Denumber'."
     expected: "One Ctrl+Z restores the numbered text including the unsaved edit; the tab stays dirty after the run; nothing is written to disk."
     why_human: "The server sends exactly one workspace/applyEdit with one TextDocumentEdit holding one TextEdit (tests prove this). Whether the editor groups that into a single undo entry is client behavior no hermetic test can exercise."
 coincidental_reliance_items:
+
   - truth: "Problems placed from bbj/denumDiagnostics survive the denumber edit's own content-change event (G-126-2)"
     reason: incidental-ordering
     harden: "The client clears on any content change and the server sends the list after applyEdit resolves, but nothing in the payload binds the list to the text version it describes (review WR-02). Carry the document version in bbj/denumDiagnostics and drop placement when document.version differs."
 unverified_prohibitions:
+
   - statement: "DENUM must never write or save the file on disk, never touch a document other than the open buffer the request names, and never apply text computed for another version of it"
     verification: judgment
     verdict: "NON-AUTHORITATIVE LLM-judge verdict: holds. unverified-prohibition - human review recommended"
     evidence: "Unchanged by the gap closures. bbj-denum-service.ts and denum-command.ts import no fs. The new client code only reads vscode.workspace.textDocuments and writes a DiagnosticCollection keyed by the open document's own Uri; the payload uri is compared as a string and never parsed, opened or turned into a command (tests: command uri, numeric uri, non-BBj document, unknown uri all place nothing)."
 human_verification:
+
   - test: "VS Code from a VSIX built from the final tree, live BBj 26.03: line-numbered file, run Format Document twice with no edit in between, then once after an edit, then Format Selection twice"
     expected: "Every Format Document shows the Warning with 'Denumber' and 'Denumber and Format' (a repeat replaces the showing one rather than stacking); every Format Selection shows the explanation with 'Denumber' only; Format Document still returns at once and never changes the buffer. Format-on-save on a numbered file also shows the offer on every save and never blocks the save."
     why_human: "Closes UAT test 1 (G-126-1). Notification rendering, the replace-identical-notification behavior and save timing are editor behavior."
@@ -131,6 +135,7 @@ SKIPPED: no probes declared by the phase.
 All five IDs appear in plan frontmatter (06 claims FMT-06, 07 claims DEN-04) and map to Phase 126 in `REQUIREMENTS.md`. No orphans. DEN-02/05/06 belong to Phase 127; DEN-07 is future and not claimed (the new collection is separate from the live parse diagnostics and is cleared on edit, as the plan says).
 
 **Requirements wording and tracking drift (reported, not edited):**
+
 - FMT-06 (`REQUIREMENTS.md` line 34) still says "one deduplicated message". The UAT decision behind 126-06 superseded it: the offer is raised on every format request and is deliberately outside the notice ledger. ROADMAP Phase 126 success criterion 1 (line 505) carries the same "one deduplicated message" wording.
 - DEN-04 (line 47) and ROADMAP success criterion 4 (line 508) say "output list ... a 'Show' action that opens the list". Show now opens the Problems view; the 'BBj' channel keeps a log copy. The intent holds, the literal "output list" wording is stale.
 - Tracking: FMT-06 is ticked Complete (line 34, traceability line 114) while FMT-07, DEN-01, DEN-03 and DEN-04 are still `[ ]` / Pending (lines 35, 44, 46, 47; 115, 121, 123, 124). The ROADMAP Phase 126 box (line ~398) is unticked. Close these when the phase completes.
