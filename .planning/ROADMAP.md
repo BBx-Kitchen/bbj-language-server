@@ -574,7 +574,21 @@ Plans:
   2. Opening a line-numbered BBj program shows an editor banner offering Denumber. Choosing it denumbers the buffer and the banner goes away, and an unnumbered file shows no banner.
   3. `ComposerRequestContractTest` lists `bbj/denum`, and the IntelliJ suite passes under `./gradlew test`.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 128-01-PLAN.md — "Denumber BBj Program" after Compile in the Tools and editor menus on `bbj/denum`, enabled only on line-numbered BBj programs (Java `LineNumbering` port), never saves; `ComposerRequestContractTest` lists `bbj/denum` (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 128-02-PLAN.md — `bbj/denumDiagnostics` as one plain-text block in the BBj console (created even if never opened), `bbj/showDenumDiagnostics` reveals it at the end without focus (wave 2)
+- [ ] 128-03-PLAN.md — Line-numbered banner with a single Denumber link on the shared base, refreshed (debounced) after edits so it goes after the edit and returns on Undo (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 128-04-PLAN.md — Both distributables from the final tree, zip content check, whole IntelliJ suite, register and scope checks, then the hand check against live BBj 26.03 with idea.log evidence (wave 3)
 **UI hint**: yes
 
 ### Phase 129: IntelliJ Verdict
