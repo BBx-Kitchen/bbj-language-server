@@ -635,7 +635,8 @@ function denumSeverity(severity: 'ERROR' | 'WARNING' | 'INFO'): vscode.Diagnosti
  * The list is placed twice. It becomes problems on the denumbered document, in a collection of its
  * own that is created when the first list names a BBj document the editor has open, and it is
  * written into the 'BBj' channel as plain lines, one block per run, as a log copy that outlives the
- * problems. The reveal request opens the Problems view and ignores its payload.
+ * problems. The reveal request opens the Problems view while any problem is placed, and the
+ * channel holding the log copy once none is; it ignores its payload.
  *
  * Nothing in a payload becomes a command, a link or a path to open: the uri only selects an open
  * document by comparing strings, and the problems are keyed by that document's own uri.
@@ -646,6 +647,14 @@ function registerDenumDiagnosticsOutput(
 ): void {
     const { client, outputChannel } = deps;
     let collection: vscode.DiagnosticCollection | undefined;
+    // The documents that hold problems right now, by uri string. Show reads it to know whether the
+    // Problems view has anything to show.
+    const placed = new Set<string>();
+
+    function clearProblems(document: vscode.TextDocument): void {
+        collection?.delete(document.uri);
+        placed.delete(document.uri.toString());
+    }
 
     function placeProblems(params: unknown): void {
         const uri = denumPayloadUri(params);
@@ -664,9 +673,10 @@ function registerDenumDiagnosticsOutput(
             context.subscriptions.push(collection);
         }
         if (problems.length === 0) {
-            collection.delete(document.uri);
+            clearProblems(document);
             return;
         }
+        placed.add(document.uri.toString());
         collection.set(document.uri, problems.map(problem => {
             const diagnostic = new vscode.Diagnostic(
                 new vscode.Range(problem.line, 0, problem.line, document.lineAt(problem.line).text.length),
@@ -696,6 +706,12 @@ function registerDenumDiagnosticsOutput(
             }
         }),
         client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
+            if (placed.size === 0) {
+                // The problems are gone (the user edited or closed the document), so the Problems
+                // view would be empty; the channel still holds the log copy of the list.
+                outputChannel.show(true);
+                return;
+            }
             // preserveFocus opens the view without taking focus from the editor, and never
             // toggles an already focused Problems view closed.
             void vscode.commands.executeCommand('workbench.actions.view.problems', { preserveFocus: true });
@@ -710,11 +726,11 @@ function registerDenumDiagnosticsOutput(
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument(event => {
             if (event.contentChanges.length > 0) {
-                collection?.delete(event.document.uri);
+                clearProblems(event.document);
             }
         }),
         vscode.workspace.onDidCloseTextDocument(document => {
-            collection?.delete(document.uri);
+            clearProblems(document);
         })
     );
 }

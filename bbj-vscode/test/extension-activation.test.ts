@@ -431,7 +431,7 @@ describe('denumber diagnostics output', () => {
         ['a file uri payload', { uri: 'file:///etc/passwd' }],
         ['no payload', undefined],
         ['a string payload', 'x'],
-    ])('the reveal notification with %s opens the Problems view and nothing else', (_name, payload) => {
+    ])('the reveal notification with %s and no problem placed shows the BBj channel and nothing else', (_name, payload) => {
         const { context, channel, reveal } = activateAndFindHandlers();
         const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
         const spies = [
@@ -443,8 +443,8 @@ describe('denumber diagnostics output', () => {
 
         reveal(payload);
 
-        expect(executeCommand.mock.calls).toEqual([['workbench.actions.view.problems', { preserveFocus: true }]]);
-        expect(channel.show).not.toHaveBeenCalled();
+        expect(channel.show.mock.calls).toEqual([[true]]);
+        expect(executeCommand).not.toHaveBeenCalled();
         expect(channel.appendLine).not.toHaveBeenCalled();
         spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
 
@@ -637,6 +637,33 @@ describe('denumber diagnostics output', () => {
             disposeSubscriptions(context);
         });
 
+        test.each([
+            ['a file uri payload', { uri: 'file:///etc/passwd' }],
+            ['no payload', undefined],
+            ['a string payload', 'x'],
+        ])('the reveal notification with %s opens the Problems view and nothing else while problems are placed', (_name, revealPayload) => {
+            const { context, channel, list, reveal } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+            list(payload);
+            const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
+            const spies = [
+                vscode.window.showTextDocument,
+                vscode.workspace.openTextDocument,
+            ] as Array<ReturnType<typeof vi.fn>>;
+            executeCommand.mockClear();
+            spies.forEach(spy => spy.mockClear());
+            channel.appendLine.mockClear();
+
+            reveal(revealPayload);
+
+            expect(executeCommand.mock.calls).toEqual([['workbench.actions.view.problems', { preserveFocus: true }]]);
+            expect(channel.show).not.toHaveBeenCalled();
+            expect(channel.appendLine).not.toHaveBeenCalled();
+            spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+
+            disposeSubscriptions(context);
+        });
+
         describe('clearing', () => {
             const changeListener = vscode.workspace.onDidChangeTextDocument as ReturnType<typeof vi.fn>;
             const closeListener = vscode.workspace.onDidCloseTextDocument as ReturnType<typeof vi.fn>;
@@ -698,6 +725,45 @@ describe('denumber diagnostics output', () => {
                 close(document);
 
                 expect(collection.delete.mock.calls).toEqual([[document.uri]]);
+
+                disposeSubscriptions(context);
+            });
+
+            test.each([
+                ['a content change', (change: (e: unknown) => void, _close: (d: unknown) => void, document: unknown) =>
+                    change({ document, contentChanges: [{ text: 'x' }] })],
+                ['closing the document', (_change: (e: unknown) => void, close: (d: unknown) => void, document: unknown) =>
+                    close(document)],
+            ])('Show after %s reveals the BBj channel that still holds the list', (_name, clear) => {
+                const { context, channel, list, reveal, change, close } = activateWithListeners();
+                const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+                list(payload);
+                clear(change, close, document);
+                const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
+                executeCommand.mockClear();
+
+                reveal();
+
+                expect(channel.show.mock.calls).toEqual([[true]]);
+                expect(executeCommand).not.toHaveBeenCalled();
+
+                disposeSubscriptions(context);
+            });
+
+            test('Show still opens the Problems view while another document keeps its problems', () => {
+                const { context, channel, list, reveal, change } = activateWithListeners();
+                const first = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+                open('file:///ws/b.bbj', ['one', 'two', 'three']);
+                list(payload);
+                list({ ...payload, uri: 'file:///ws/b.bbj' });
+                change({ document: first, contentChanges: [{ text: 'x' }] });
+                const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
+                executeCommand.mockClear();
+
+                reveal();
+
+                expect(executeCommand.mock.calls).toEqual([['workbench.actions.view.problems', { preserveFocus: true }]]);
+                expect(channel.show).not.toHaveBeenCalled();
 
                 disposeSubscriptions(context);
             });
