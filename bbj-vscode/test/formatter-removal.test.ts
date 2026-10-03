@@ -80,4 +80,46 @@ describe('the client-side formatter is removed', () => {
             expect(Object.keys(configuration.properties)).not.toContain('bbj.formatter.javaPath');
         }
     });
+
+    test('the jar verifier module and its two tests do not exist', () => {
+        expect(exists('src/formatter-verifier.ts')).toBe(false);
+        expect(exists('test/formatter-verifier-tamper.test.ts')).toBe(false);
+        expect(exists('test/formatter-pins-drift.test.ts')).toBe(false);
+    });
+
+    test('the vendored formatter directory does not exist', () => {
+        expect(exists('tools/formatter')).toBe(false);
+    });
+
+    test('no jar file is left anywhere under tools/', () => {
+        const jars = walk(path.join(REPO_ROOT, 'tools')).filter((file) => file.endsWith('.jar'));
+        expect(jars).toEqual([]);
+    });
+
+    test('no file under src/ names a removed formatter module or its vendored files', () => {
+        const removedNames = ['document-formatter', 'formatter-java-resolver', 'formatter-verifier', 'BBjCFCli', 'tools/formatter'];
+        const offenders = sourceFiles().flatMap((file) => {
+            const text = fs.readFileSync(file, 'utf-8');
+            return removedNames
+                .filter((name) => text.includes(name))
+                .map((name) => `${path.relative(SRC_DIR, file)}: ${name}`);
+        });
+        expect(offenders).toEqual([]);
+    });
+
+    test('package.json mentions no vendored formatter path', () => {
+        const manifest = fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8');
+        expect(manifest).not.toContain('tools/formatter');
+    });
+
+    test('the BBj run tools still ship from tools/', () => {
+        for (const tool of ['web.bbj', 'em-login.bbj', 'em-validate-token.bbj']) {
+            expect(exists(`tools/${tool}`)).toBe(true);
+        }
+    });
+
+    test('the IntelliJ build copies no vendored formatter file', () => {
+        const gradle = fs.readFileSync(path.join(REPO_ROOT, '..', 'bbj-intellij', 'build.gradle.kts'), 'utf-8');
+        expect(gradle).not.toContain('tools/formatter');
+    });
 });
