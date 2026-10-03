@@ -58,8 +58,8 @@ stays switched off until the evaluation verdict.
 ### VS Code cut-over (CUT)
 
 - [x] **CUT-01**: VS Code has exactly one BBj formatter: the client-side jar provider is removed in the same change that enables the server formatter
-- [ ] **CUT-02**: `BBjCFCli.jar`/`tools/formatter`, `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are removed
-- [ ] **CUT-03**: Format and DENUM are verified end-to-end in VS Code against a live BBj 26.03 BBjServices from the built VSIX
+- [x] **CUT-02**: `BBjCFCli.jar`/`tools/formatter`, `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are removed
+- [x] **CUT-03**: Format and DENUM are verified end-to-end in VS Code against a live BBj 26.03 BBjServices from the built VSIX
 
 ### IntelliJ (IJF)
 
@@ -129,8 +129,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SET-03 | Phase 127 | Complete |
 | SET-04 | Phase 127 | Complete |
 | CUT-01 | Phase 125 | Complete |
-| CUT-02 | Phase 127 | Pending |
-| CUT-03 | Phase 127 | Pending |
+| CUT-02 | Phase 127 | Complete |
+| CUT-03 | Phase 127 | Complete |
 | IJF-01 | Phase 125 | Complete |
 | IJF-02 | Phase 129 | Pending |
 | IJF-03 | Phase 129 | Pending |

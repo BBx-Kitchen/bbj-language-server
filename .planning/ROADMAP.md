@@ -545,7 +545,7 @@ Plans:
   4. The built VSIX contains no `BBjCFCli.jar` or `tools/formatter`. `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are gone, and every CI gate passes.
   5. Installed from the built VSIX against a live BBj 26.03 BBjServices, Format Document, Format Selection, format-on-save, the numbered-file offer, Denumber and Denumber-and-Format all work end to end.
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -561,7 +561,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 127-06-PLAN.md — VSIX built, installed and content-checked, live companion, IntelliJ zip, every CI gate and the register check, then the hand check from the VSIX against live BBj 26.03 (wave 3)
+- [x] 127-06-PLAN.md — VSIX built, installed and content-checked, live companion, IntelliJ zip, every CI gate and the register check, then the hand check from the VSIX against live BBj 26.03 (wave 3)
 
 ### Phase 128: IntelliJ DENUM
 
@@ -653,7 +653,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 124. Interop Client | 6/6 | Complete | 2026-10-01 |
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
-| 127. VS Code Cut-Over | 5/6 | Planned |  |
+| 127. VS Code Cut-Over | 6/6 | Planned |  |
 | 128. IntelliJ DENUM | 0/TBD | Not started | - |
 | 129. IntelliJ Verdict | 0/TBD | Not started | - |
 | 130. Docs & Migration | 0/TBD | Not started | - |

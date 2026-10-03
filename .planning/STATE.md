@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 127
 current_phase_name: VS Code Cut-Over
 status: executing
-stopped_at: Completed 127-05-PLAN.md
-last_updated: "2026-10-03T09:50:18.243Z"
+stopped_at: Completed 127-06-PLAN.md
+last_updated: "2026-10-03T11:32:42.000Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 127 execution started
-state_head: 8ff893678c4f7dd056484aeb4e8ccd3e0808b719
+state_head: fc0ca2d6133b66871fff6f68874572ad3dd9d46e
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 25
-  completed_plans: 24
+  completed_plans: 25
   percent: 43
 ---
 
@@ -35,9 +35,9 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 ## Current Position
 
 Phase: 127 (VS Code Cut-Over) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-10-03 — Phase 127 execution started
+Plan: 6 of 6 (all executed)
+Status: All plans executed — phase gates next
+Last activity: 2026-10-03 — 127-06 hand check: 16 of 17 passed, binary decompile routed to backlog 999.1
 
 Progress: [████░░░░░░] 43% (v4.9: 3/7 phases)
 
