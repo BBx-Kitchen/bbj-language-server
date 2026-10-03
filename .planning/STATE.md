@@ -4,17 +4,17 @@ milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 126
 current_phase_name: LS DENUM
-status: executing
-stopped_at: Completed 126-06-PLAN.md
-last_updated: "2026-10-03T07:32:34.699Z"
+status: verifying
+stopped_at: Completed 126-07-PLAN.md
+last_updated: "2026-10-03T07:39:00.179Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 126 execution started
-state_head: 720ebe4e7e3b5f592bfcf23e9e5777ba5e855aad
+state_head: dc8e36bc82905dd83de66180667b852d64d3aaa0
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
   percent: 29
 ---
 
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 126 (LS DENUM) — EXECUTING
-Plan: 7 of 7 (126-06 complete; 126-07 next)
-Status: Ready to execute
+Plan: 7 of 7 (126-07 complete; all plans of phase 126 done)
+Status: Phase complete — ready for verification
 Last activity: 2026-10-03 — Phase 126 execution started
 
 Progress: [███░░░░░░░] 29% (v4.9: 2/7 phases)
@@ -220,6 +220,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 126 P04 | 10 min | 3 tasks | 6 files |
 | Phase 126 P05 | 10 min | 2 tasks | 1 files |
 | Phase 126 P06 | 9 min | 2 tasks | 2 files |
+| Phase 126 P07 | 5 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -394,6 +395,7 @@ decisions:
 - [Phase 126]: Denumber offer: selection explanation and document offer are separate ledger kinds on the same uri@version scope, so neither suppresses the other and an edit re-arms both — Reuses the bounded format notice ledger; no second ledger
 - [Phase 126]: Denumber and Format is one whole-document formatProgram call with the denumber permission; formatting failures use the formatting texts, all others the DENUM texts — One undoable edit, one orchestration core shared with plain DENUM
 - [Phase 126]: Format-on-save and Format Document offer denumbering on every request (no save signal exists); offer kept out of the notice ledger — LSP formatting carries no trigger and VS Code's save participant races format-on-save
+- [Phase 126]: 126-07: Show opens the Problems view (preserveFocus) and a bbj-denum collection holds the entries, cleared on content change or close; the BBj channel keeps the log copy
 
 ### Tech Debt
 
@@ -461,8 +463,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T07:32:34.560Z
-Stopped at: Completed 126-06-PLAN.md
+Last session: 2026-10-03T07:39:00.013Z
+Stopped at: Completed 126-07-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 126` or `/gsd-plan-phase 126`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open.
