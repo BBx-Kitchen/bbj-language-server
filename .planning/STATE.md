@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 127
 current_phase_name: VS Code Cut-Over
 status: executing
-stopped_at: Phase 127 context gathered
-last_updated: "2026-10-03T09:23:29.426Z"
+stopped_at: Completed 127-01-PLAN.md
+last_updated: "2026-10-03T09:31:00.257Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 126 complete, transitioned to Phase 127
-state_head: 1845981c5dced542eca836c24719d507cde54532
+last_activity_desc: Phase 127 execution started
+state_head: 2254cd7b6e0d18ceb68a29a79298e127d787f1b7
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 25
-  completed_plans: 19
+  completed_plans: 20
   percent: 43
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 ## Current Position
 
-Phase: 127 (VS Code Cut-Over) — READY TO EXECUTE
-Plan: Not started
+Phase: 127 (VS Code Cut-Over) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-10-03 — Phase 126 complete, transitioned to Phase 127
+Last activity: 2026-10-03 — Phase 127 execution started
 
 Progress: [████░░░░░░] 43% (v4.9: 3/7 phases)
 
@@ -221,6 +221,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 126 P05 | 10 min | 2 tasks | 1 files |
 | Phase 126 P06 | 9 min | 2 tasks | 2 files |
 | Phase 126 P07 | 5 min | 2 tasks | 6 files |
+| Phase 127 P01 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -396,6 +397,7 @@ decisions:
 - [Phase 126]: Denumber and Format is one whole-document formatProgram call with the denumber permission; formatting failures use the formatting texts, all others the DENUM texts — One undoable edit, one orchestration core shared with plain DENUM
 - [Phase 126]: Format-on-save and Format Document offer denumbering on every request (no save signal exists); offer kept out of the notice ledger — LSP formatting carries no trigger and VS Code's save participant races format-on-save
 - [Phase 126]: 126-07: Show opens the Problems view (preserveFocus) and a bbj-denum collection holds the entries, cleared on content change or close; the BBj channel keeps the log copy
+- [Phase 127]: Denumber command sends bbj/denum through createDenumberCommand, client words no outcome, no retry; Explorer path marks the document so the numbered-file prompt stays quiet — Server presents every outcome and applies the edit; the document is opened first so the server already has it
 
 ### Tech Debt
 
@@ -463,9 +465,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T08:30:13.471Z
-Stopped at: Phase 127 context gathered
-Resume file: .planning/phases/127-vs-code-cut-over/127-CONTEXT.md
+Last session: 2026-10-03T09:31:00.067Z
+Stopped at: Completed 127-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 127` or `/gsd-plan-phase 127`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open. Recheck tokenized and protected DENUM (126 UAT test 7) in Phase 127.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
