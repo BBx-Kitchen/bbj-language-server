@@ -308,7 +308,7 @@ export class BBjFormatService {
                 return;
             case 'failed':
                 if (outcome.failure === 'denum-needed') {
-                    this.offerDenum(outcome.code, request, documentScope);
+                    this.offerDenum(outcome.code, request);
                     return;
                 }
                 this.reportFailure(outcome.failure, outcome.code, generation, documentScope);
@@ -317,23 +317,29 @@ export class BBjFormatService {
     }
 
     /**
-     * A file with line numbers: one offer to denumber it, never anything that changes the buffer.
-     * A whole-document request gets the offer, a selection gets an explanation; each is scoped to
-     * the document and version like every message about content, so they never suppress each other
-     * and an unchanged save never repeats them. The offer is started inside the ledger's callback
-     * and never awaited, so the format response does not wait for the user.
+     * A file with line numbers: an offer to denumber it, never anything that changes the buffer.
+     * A whole-document request gets the offer, a selection gets an explanation, and both are raised
+     * on every request. They stay out of the notice ledger because someone who asks for formatting
+     * must always get an answer, however often they ask on the same version. A formatting request
+     * carries no trigger, so a save cannot be told apart from Format Document and gets the offer
+     * too; VS Code replaces a showing notification that has the same text and buttons, so repeated
+     * offers do not pile up. The offer is started and never awaited, so the format response does
+     * not wait for the user, and nothing it throws can break the format request.
      */
-    private offerDenum(code: number | undefined, request: BBjFormatRequest, documentScope: string): void {
+    private offerDenum(code: number | undefined, request: BBjFormatRequest): void {
         const selection = request.range !== undefined;
         const kind = selection ? 'denum-needed-selection' : 'denum-needed';
-        this.notice(kind, documentScope, `Format notice: ${kind} (denum-needed${code === undefined ? '' : `, code ${code}`})`, () => {
+        logger.debug(`Format notice: ${kind} (denum-needed${code === undefined ? '' : `, code ${code}`})`);
+        try {
             const denum = this.context.compiler?.BBjDenumService;
             if (denum === undefined) {
                 logger.debug(`Format notice: ${kind} not offered (no denumber service)`);
                 return;
             }
             denum.offer({ uri: request.document.uri, current: () => request.current() }, selection ? 'selection' : 'document');
-        });
+        } catch {
+            // An offer that cannot be shown must never break a format request.
+        }
     }
 
     /**

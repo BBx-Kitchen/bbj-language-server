@@ -412,35 +412,61 @@ describe('Format Selection on a file with line numbers', () => {
         expect(harness.double.formatProgramCalls[0]).not.toHaveProperty('allowDenum');
     });
 
-    test('a repeated Format Selection shows one explanation', async () => {
+    test('Format Selection shows the explanation on every request', async () => {
         const harness = createOfferHarness();
         harness.client.open(URI_TEXT, 1, NUMBERED);
 
         await harness.formatRange();
         await harness.formatRange();
 
-        expect(warned(harness)).toEqual([DENUM_SELECTION_MESSAGE]);
+        expect(warned(harness)).toEqual([DENUM_SELECTION_MESSAGE, DENUM_SELECTION_MESSAGE]);
+        for (const call of harness.window.showWarningMessage.mock.calls) {
+            expect(call.slice(1)).toEqual([{ title: 'Denumber' }]);
+        }
+        expectNoDenumberingYet(harness);
     });
 });
 
-describe('each offer shows once per document and version', () => {
+describe('every request on a file with line numbers raises its own message', () => {
 
-    test('a repeated Format Document shows one offer, and an edit re-arms it', async () => {
+    test('Format Document shows the offer on every request, edited or not', async () => {
         const harness = createOfferHarness();
         harness.client.open(URI_TEXT, 1, NUMBERED);
 
-        await harness.formatDocument();
-        await harness.formatDocument();
-        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+        expect(await harness.formatDocument()).toEqual([]);
+        expectNoDenumberingYet(harness);
+        expect(await harness.formatDocument()).toEqual([]);
+        expectNoDenumberingYet(harness);
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
 
         harness.client.change(URI_TEXT, 2, [{ text: NUMBERED_LATER }]);
-        await harness.formatDocument();
-
-        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expect(await harness.formatDocument()).toEqual([]);
         expectNoDenumberingYet(harness);
+
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        for (const call of harness.window.showWarningMessage.mock.calls) {
+            expect(call.slice(1)).toEqual([{ title: 'Denumber' }, { title: 'Denumber and Format' }]);
+        }
     });
 
-    test('an unchanged save does not repeat the offer: it is the same request as Format Document', async () => {
+    test('picking Denumber on the second of two offers runs one DENUM on the buffer, so an earlier offer did nothing', async () => {
+        const harness = createOfferHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1));
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        await harness.formatDocument();
+        expectNoDenumberingYet(harness);
+        const second = holdPrompt(harness);
+        await harness.formatDocument();
+        expectNoDenumberingYet(harness);
+        second.resolve({ title: DENUMBER_ACTION });
+
+        await vi.waitFor(() => expect(informed(harness)).toEqual([DENUM_SUCCESS_MESSAGE]));
+        expect(harness.double.denumProgramCalls).toEqual([{ text: NUMBERED, version: '1' }]);
+        expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1);
+    });
+
+    test('a save is the same request as Format Document and gets the offer again', async () => {
         const harness = createOfferHarness();
         harness.client.open(URI_TEXT, 1, NUMBERED);
 
@@ -448,12 +474,13 @@ describe('each offer shows once per document and version', () => {
         harness.client.change(URI_TEXT, 1, [{ text: NUMBERED }]);
         await harness.formatDocument();
 
-        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expectNoDenumberingYet(harness);
     });
 
     test.each([
-        ['the selection first', ['range', 'document'], [DENUM_SELECTION_MESSAGE, DENUM_OFFER_MESSAGE]],
-        ['the document first', ['document', 'range'], [DENUM_OFFER_MESSAGE, DENUM_SELECTION_MESSAGE]]
+        ['the selection first', ['range', 'document', 'range', 'document'], [DENUM_SELECTION_MESSAGE, DENUM_OFFER_MESSAGE, DENUM_SELECTION_MESSAGE, DENUM_OFFER_MESSAGE]],
+        ['the document first', ['document', 'range', 'range', 'document'], [DENUM_OFFER_MESSAGE, DENUM_SELECTION_MESSAGE, DENUM_SELECTION_MESSAGE, DENUM_OFFER_MESSAGE]]
     ] as Array<[string, Array<'range' | 'document'>, string[]]>)(
         'the explanation and the offer never suppress each other, with %s', async (_name, order, expected) => {
             const harness = createOfferHarness();
@@ -461,22 +488,21 @@ describe('each offer shows once per document and version', () => {
 
             for (const kind of order) {
                 await (kind === 'range' ? harness.formatRange() : harness.formatDocument());
+                expectNoDenumberingYet(harness);
             }
-            await harness.formatRange();
-            await harness.formatDocument();
 
             expect(warned(harness)).toEqual(expected);
-            expectNoDenumberingYet(harness);
         });
 
-    test('two format requests started together show one offer', async () => {
+    test('two format requests started together each answer at once and each raise the offer', async () => {
         const harness = createOfferHarness();
         harness.client.open(URI_TEXT, 1, NUMBERED);
 
         const results = await Promise.all([harness.formatDocument(), harness.formatDocument()]);
 
         expect(results).toEqual([[], []]);
-        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE]);
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expectNoDenumberingYet(harness);
     });
 });
 
