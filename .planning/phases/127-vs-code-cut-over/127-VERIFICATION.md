@@ -1,10 +1,19 @@
 ---
 phase: 127-vs-code-cut-over
 verified: 2026-10-03T12:00:00Z
-status: gaps_found
-score: 4/5 must-haves verified
+status: passed
+score: 5/5 must-haves verified (SC3 via 2 overrides)
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 2
+overrides:
+  - must_have: "Decompiling a tokenized program through bbjlst still works, while nothing denumbers through bbjlst any more (in-place decompile of a tokenized program from the open prompt, hand check step 15)"
+    reason: "Behaviour unchanged from phase base fbe7e07d (same bbjlst argv and rename); defect tracked as ROADMAP backlog 999.1 for separate planning. Denumber removal verified."
+    accepted_by: "Stephan Wald"
+    accepted_at: "2026-10-03T11:41:47Z"
+  - must_have: "Decompile of a tokenized program reached through a symlink (review WR-01: the prompt offers Decompile, the isTokenizedFile guard refuses it; I/O errors reported as 'not tokenized')"
+    reason: "Phase-introduced regression accepted for now; folded into backlog 999.1, which revisits the whole open-binary flow."
+    accepted_by: "Stephan Wald"
+    accepted_at: "2026-10-03T11:41:47Z"
 gaps:
   - truth: "SC3: Decompiling a tokenized program through bbjlst still works, while nothing denumbers through bbjlst any more."
     status: partial
@@ -27,7 +36,7 @@ human_verification:
 
 **Phase Goal:** VS Code formats and denumbers only through the language server. All 15 formatter settings can be configured, the Denumber command and the open-file prompt run on `bbj/denum`, and the formatter jar and the bbjlst denumber path are gone. The result is proven from the built VSIX against a live BBj 26.03.
 **Verified:** 2026-10-03
-**Status:** gaps_found (one partial must-have, SC3 / DEN-06)
+**Status:** passed with overrides (SC3 / DEN-06: step 15 and WR-01 accepted by the user on 2026-10-03, tracked in backlog 999.1). Originally gaps_found.
 **Re-verification:** No, initial verification
 
 ## Goal Achievement

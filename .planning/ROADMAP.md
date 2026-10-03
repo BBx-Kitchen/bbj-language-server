@@ -677,6 +677,9 @@ in place as text. Found in the phase 127 hand check (127-06, step 15) from the V
 plain-text refusal. Revisit the whole open-binary flow (prompt, bbjlst invocation, in-place
 detection in `decompile-io.ts`, rename/replace, read-only copy) with proper planning, possibly
 moving decompile to bbj-ls the way DENUM moved.
+Also covers review WR-01 from phase 127 (accepted override): the open prompt detects tokenized
+content with a symlink-following read while the decompile guard `isTokenizedFile` refuses symlinks
+and reports any I/O error as "not a tokenized BBj program"; use one detection rule for both.
 **Requirements:** TBD
 **Plans:** 0 plans
 
