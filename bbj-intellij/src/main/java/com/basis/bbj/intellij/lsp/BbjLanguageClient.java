@@ -161,6 +161,35 @@ public final class BbjLanguageClient extends LanguageClientImpl {
     }
 
     /**
+     * Receives the pushed request to reveal the DENUM diagnostics list (see
+     * {@code bbj-vscode/src/language/denum-notifications.ts}). LSP4IJ hands this client instance to
+     * LSP4J's launcher as the local service, and LSP4J reflects over the concrete class to find
+     * supported methods, so declaring the method directly on this class is what makes the
+     * notification reachable -- no extra registration exists or is needed. It reveals the list the
+     * previous {@code bbj/denumDiagnostics} notification printed; the server sends that list before
+     * it shows the Show button. The server sends no params, so the argument is null and is never
+     * read. The window is shown without taking keyboard focus, so the editor keeps it.
+     */
+    @JsonNotification("bbj/showDenumDiagnostics")
+    public void showDenumDiagnostics(Object ignoredPayload) {
+        Project project = getProject();
+        if (project.isDisposed()) {
+            return;
+        }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            ToolWindow toolWindow = ensureLogConsole(project);
+            if (toolWindow == null) {
+                return;
+            }
+            toolWindow.show();
+            BbjServerService.getInstance(project).scrollConsoleToEnd();
+        });
+    }
+
+    /**
      * Makes sure the "BBj Language Server" console exists and returns its tool window, or null
      * when the window is not registered. The console is created lazily, the first time the tool
      * window's content is asked for, and {@link BbjServerService#logToConsole} drops text until it
