@@ -400,6 +400,44 @@ describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
         });
     }
 
+    test('decompileReplace on a tokenized program runs bbjlst once with -l and the resolved path, and the file then holds the listing', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'tok-replace.bbj');
+        fs.writeFileSync(inputPath, '<<bbj>>tokenized payload');
+        const lstContent = 'unnumbered listing\n';
+        fakeBbjlstWrites(lstContent);
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeProcessRunner.runProcess).toHaveBeenCalledTimes(1);
+        expect(fakeProcessRunner.runProcess.mock.calls[0][0].args).toEqual(['-l', path.resolve(inputPath)]);
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
+    });
+
+    test('decompileReadonly on a tokenized program runs bbjlst once with -l and the temporary copy, leaving the original untouched', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'tok-readonly.bbj');
+        const original = '<<bbj>>tokenized payload';
+        fs.writeFileSync(inputPath, original);
+        fakeBbjlstWrites('unnumbered listing\n');
+
+        Commands.decompileReadonly({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeProcessRunner.runProcess).toHaveBeenCalledTimes(1);
+        const args = fakeProcessRunner.runProcess.mock.calls[0][0].args as string[];
+        expect(args[0]).toBe('-l');
+        expect(args).toHaveLength(2);
+        expect(args[1]).toMatch(/bbj-decompiled-[^/\\]*[/\\]tok-readonly\.bbj$/);
+        expect(args[1]).not.toBe(inputPath);
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(original);
+
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        const openedPath = (uri as { fsPath?: string } | undefined)?.fsPath ?? '';
+        fs.rmSync(path.dirname(openedPath), { recursive: true, force: true });
+    });
+
     test('denumber rewrites the input file in place with the .lst content, then opens and shows it', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'a.bbj');

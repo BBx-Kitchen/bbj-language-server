@@ -212,22 +212,17 @@ export interface BuildDecompileArgvOptions {
     home: string;
     platform?: NodeJS.Platform;
     fileName: string;
-    denumber?: boolean;
 }
 
 /**
- * Reproduces today's bbjlst flags: none when not denumbering; `['-l']` when
- * denumbering a non-`.lst` input; `['-l', '-xlst']` when denumbering a `.lst` input.
- * The file name is always the final element.
+ * bbjlst's argv for decompiling a tokenized program: always `-l` (a listing without line
+ * numbers), with `-xlst` added for a `.lst` input. The file name is always the final element.
  */
 export function buildDecompileArgv(opts: BuildDecompileArgvOptions): Argv {
-    const { home, platform = process.platform, fileName, denumber } = opts;
-    const args: string[] = [];
-    if (denumber) {
-        args.push('-l');
-        if (fileName.endsWith('.lst')) {
-            args.push('-xlst');
-        }
+    const { home, platform = process.platform, fileName } = opts;
+    const args: string[] = ['-l'];
+    if (fileName.endsWith('.lst')) {
+        args.push('-xlst');
     }
     args.push(fileName);
     return { file: bbjlstBin(home, platform), args };

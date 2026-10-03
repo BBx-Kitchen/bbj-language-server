@@ -222,24 +222,19 @@ describe('process-args - buildCompileArgv (bbj.compiler.* group)', () => {
 });
 
 describe('process-args - buildDecompileArgv', () => {
-    test('no flags when not denumbering', () => {
+    test("['-l'] before the file name for a non-.lst input", () => {
         const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj' });
-        expect(argv.args).toEqual(['/w/a.bbj']);
-    });
-
-    test("['-l'] when denumbering a non-.lst input", () => {
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', denumber: true });
         expect(argv.args).toEqual(['-l', '/w/a.bbj']);
     });
 
-    test("['-l', '-xlst'] when denumbering a .lst input", () => {
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.lst', denumber: true });
+    test("['-l', '-xlst'] before the file name for a .lst input", () => {
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.lst' });
         expect(argv.args).toEqual(['-l', '-xlst', '/w/a.lst']);
     });
 
     test('a fileName carrying a shell metacharacter is one verbatim element', () => {
         const fileName = `/w/${METACHAR_FIXTURE}.bbj`;
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, denumber: true });
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName });
         expect(argv.args[argv.args.length - 1]).toBe(fileName);
     });
 });

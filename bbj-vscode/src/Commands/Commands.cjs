@@ -208,8 +208,7 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
   const argv = buildDecompileArgv({
     home,
     platform: os.platform(),
-    fileName: resolvedFileName,
-    denumber: options.denumber
+    fileName: resolvedFileName
   });
 
   const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
@@ -465,7 +464,7 @@ const Commands = {
         await fs.promises.copyFile(resolvedFileName, tmpInput);
 
         const wasTokenized = await isTokenizedFile(tmpInput);
-        const argv = buildDecompileArgv({ home, platform: os.platform(), fileName: tmpInput, denumber: true });
+        const argv = buildDecompileArgv({ home, platform: os.platform(), fileName: tmpInput });
         await execWithProgress(argv);
 
         // Wait for the output, then normalise it to a `.bbj` file so the editor
