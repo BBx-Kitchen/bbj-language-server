@@ -152,22 +152,6 @@ describe('target-resolution - Commands.cjs wiring (source guard)', () => {
         expect(resolveIndex).toBeLessThan(homeIndex);
     });
 
-    test('const decompile = resolves its target via runTargetOrWarn before calling getBBjHome', () => {
-        // Not extracted via extractBraceBlock: the `options = {}` default parameter's
-        // own braces would be mistaken for the function body's opening brace.
-        const source = readCommandsSource();
-        const start = source.indexOf('const decompile = (params, options = {}) => {');
-        expect(start).toBeGreaterThan(-1);
-        const end = source.indexOf('const decompileInPlace', start);
-        expect(end).toBeGreaterThan(start);
-        const body = source.slice(start, end);
-        const resolveIndex = body.indexOf('runTargetOrWarn(params)');
-        const homeIndex = body.indexOf('getBBjHome()');
-        expect(resolveIndex).toBeGreaterThan(-1);
-        expect(homeIndex).toBeGreaterThan(-1);
-        expect(resolveIndex).toBeLessThan(homeIndex);
-    });
-
     test('decompileTargetOrWarn resolves via resolveDecompileTarget and warns with the shared message when unresolved', () => {
         const body = extractBraceBlock(readCommandsSource(), 'const decompileTargetOrWarn = ');
         expect(body).toMatch(/resolveDecompileTarget\(/);

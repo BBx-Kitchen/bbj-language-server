@@ -152,7 +152,6 @@ interface CommandsModule {
     runBUI: (params: RunTargetParams, credentials?: WebCredentials) => void;
     runDWC: (params: RunTargetParams, credentials?: WebCredentials) => void;
     compile: (params: RunTargetParams) => void;
-    denumber: (params: RunTargetParams) => void;
     decompileReplace: (params: RunTargetParams) => void;
     decompileReadonly: (params: RunTargetParams) => void;
     [key: string]: unknown;

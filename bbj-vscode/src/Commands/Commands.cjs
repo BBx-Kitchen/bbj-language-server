@@ -156,9 +156,9 @@ const runWeb = (params, client, credentials) => {
 };
 
 /**
- * Resolves the target for Run, Run BUI, Run DWC, Compile and Denumber via
+ * Resolves the target for Run, Run BUI, Run DWC and Compile via
  * target-resolution.js's resolveRunTarget (argument-first, then an active
- * editor that passes the run/compile/denumber menus' own `when` check). Shows
+ * editor that passes the run/compile menus' own `when` check). Shows
  * the shared "no active BBj file" warning and returns undefined when neither
  * is available, so the caller can bail out instead of throwing (issue #512).
  */
@@ -183,19 +183,11 @@ const decompileTargetOrWarn = (params) => {
   return fileName;
 };
 
-const decompile = (params, options = {}) => {
-  const fileName = runTargetOrWarn(params);
-  if (!fileName) return;
-  const home = getBBjHome();
-  if (!home) return;
-  decompileInPlace(path.resolve(fileName), options);
-};
-
 /**
- * Run bbjlst on an already-resolved file, replacing it in place with the result,
- * then open the result. `options.denumber` selects denumbered (clean) source.
+ * Run bbjlst on an already-resolved tokenized program, replacing it in place with the
+ * decompiled source, then open the result.
  */
-const decompileInPlace = (resolvedFileName, options = {}) => {
+const decompileInPlace = (resolvedFileName) => {
   const home = getBBjHome();
   if (!home) return;
   const fileName = resolvedFileName;
@@ -203,24 +195,20 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
     ? resolvedFileName
     : resolvedFileName + '.lst';
 
-  const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
-
   const argv = buildDecompileArgv({
     home,
     platform: os.platform(),
     fileName: resolvedFileName
   });
 
-  const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
-
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
-    title: title,
+    title: "Decompiling BBj Program...",
     cancellable: false
   }, async () => {
     try {
       // Capture up-front whether the input is tokenized: only then can bbjlst
-      // legitimately rewrite it in place (denumbering plain text always emits `.lst`).
+      // legitimately rewrite it in place.
       const wasTokenized = await isTokenizedFile(resolvedFileName);
       await deleteLeftoverLst(resolvedFileName);
       await execWithProgress(argv);
@@ -230,15 +218,12 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
       const { inPlace } = await waitForDecompileOutput(resolvedFileName, { canRewriteInPlace: wasTokenized });
 
       if (!inPlace) {
-        if (!options.denumber && resolvedFileName !== newFileName) {
-          await fs.promises.unlink(resolvedFileName).catch(() => { });
-        }
-        await fs.promises.rename(resolvedLstFileName, newFileName);
+        await fs.promises.rename(resolvedLstFileName, resolvedFileName);
       }
-      // When inPlace, bbjlst already wrote the source into `resolvedFileName`
-      // (=== newFileName for denumber), so there is nothing to move.
+      // When inPlace, bbjlst already wrote the source into `resolvedFileName`,
+      // so there is nothing to move.
 
-      const uri = vscode.Uri.file(newFileName);
+      const uri = vscode.Uri.file(resolvedFileName);
       const doc = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(doc, { preview: false });
     } catch (err) {
@@ -425,18 +410,15 @@ const Commands = {
       }
     });
   },
-  denumber: function (params) {
-    decompile(params, { denumber: true });
-  },
   /**
-   * Decompile a tokenized (binary) BBj program to denumbered source and replace
+   * Decompile a tokenized (binary) BBj program to unnumbered source and replace
    * the file on disk (issue #65). Resolves the target from the passed uri so it
    * works for binary files that have no active text editor.
    */
   decompileReplace: function (params) {
     const fileName = decompileTargetOrWarn(params);
     if (!fileName) return;
-    decompileInPlace(path.resolve(fileName), { denumber: true });
+    decompileInPlace(path.resolve(fileName));
   },
   /**
    * Decompile a tokenized (binary) BBj program to a temporary, read-only source

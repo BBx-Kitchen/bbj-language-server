@@ -67,13 +67,17 @@ describe('Commands.cjs executes under vitest', () => {
             'runBUI',
             'runDWC',
             'compile',
-            'denumber',
             'decompileReplace',
             'decompileReadonly',
             'setOutputChannel',
         ]) {
             expect(typeof (Commands as Record<string, unknown>)[name]).toBe('function');
         }
+    });
+
+    test('the loaded Commands object has no member for the removed bbjlst line-number command', () => {
+        const { Commands } = loadCommands();
+        expect(Object.prototype.hasOwnProperty.call(Commands, 'denumber')).toBe(false);
     });
 
     test('Commands.run launches once with the resolved config path, ending on the target file', () => {
@@ -378,7 +382,10 @@ describe('Commands.cjs compile', () => {
     });
 });
 
-describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
+/** The first bytes of a tokenized BBj program ("<<bbj>>") followed by an opaque payload. */
+const TOKENIZED_PROGRAM = '<<bbj>>tokenized payload';
+
+describe('Commands.cjs decompileReplace / decompileReadonly', () => {
     let tmpDir: string;
 
     beforeEach(() => {
@@ -438,26 +445,10 @@ describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
         fs.rmSync(path.dirname(openedPath), { recursive: true, force: true });
     });
 
-    test('denumber rewrites the input file in place with the .lst content, then opens and shows it', async () => {
+    test('decompileReplace rewrites the input file in place with the .lst content, then opens and shows it', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'a.bbj');
-        fs.writeFileSync(inputPath, 'plain text program\n');
-        const lstContent = 'denumbered content\n';
-        fakeBbjlstWrites(lstContent);
-
-        Commands.denumber({ fsPath: inputPath });
-        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
-
-        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
-        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
-        expect((uri as { fsPath?: string } | undefined)?.fsPath).toBe(inputPath);
-        expect(fakeVscode.window.showTextDocument).toHaveBeenCalledTimes(1);
-    });
-
-    test('decompileReplace produces the same in-place result as denumber, through the decompile target resolver', async () => {
-        const { Commands } = loadCommands();
-        const inputPath = path.join(tmpDir, 'b.bbj');
-        fs.writeFileSync(inputPath, 'plain text program\n');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
         const lstContent = 'decompiled content\n';
         fakeBbjlstWrites(lstContent);
 
@@ -465,12 +456,29 @@ describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
         await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
 
         expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        expect((uri as { fsPath?: string } | undefined)?.fsPath).toBe(inputPath);
+        expect(fakeVscode.window.showTextDocument).toHaveBeenCalledTimes(1);
+        expect(fakeVscode.window.withProgress.mock.calls[0][0]).toMatchObject({ title: 'Decompiling BBj Program...' });
+    });
+
+    test('decompileReplace resolves its target through the decompile target resolver', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'b.bbj');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        fakeBbjlstWrites('decompiled content\n');
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeProcessRunner.runProcess.mock.calls[0][0].args.at(-1)).toBe(path.resolve(inputPath));
+        expect(fakeVscode.window.showWarningMessage).not.toHaveBeenCalled();
     });
 
     test('decompileReadonly leaves the original untouched and opens a .bbj file in a bbj-decompiled- temp dir as read-only', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'c.bbj');
-        const originalContent = 'original content, never rewritten\n';
+        const originalContent = TOKENIZED_PROGRAM;
         fs.writeFileSync(inputPath, originalContent);
         const lstContent = 'read-only decompiled content\n';
         fakeBbjlstWrites(lstContent);
@@ -494,10 +502,10 @@ describe('Commands.cjs denumber / decompileReplace / decompileReadonly', () => {
     test('a decompile whose runProcess rejects shows an error starting "Failed to decompile"', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'd.bbj');
-        fs.writeFileSync(inputPath, 'plain text program\n');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
         fakeProcessRunner.runProcess.mockRejectedValueOnce(new Error('decompile boom'));
 
-        Commands.denumber({ fsPath: inputPath });
+        Commands.decompileReplace({ fsPath: inputPath });
         await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
 
         const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];

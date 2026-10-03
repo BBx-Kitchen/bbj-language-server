@@ -317,7 +317,7 @@ describe('decompile-io', () => {
     describe('decompileInPlace wiring (source guard)', () => {
         test('decompileInPlace awaits deleteLeftoverLst before execWithProgress, inside the try block', () => {
             const source = readCommandsSource();
-            const start = source.indexOf('const decompileInPlace = (resolvedFileName, options = {}) => {');
+            const start = source.indexOf('const decompileInPlace = (resolvedFileName) => {');
             expect(start).toBeGreaterThan(-1);
             const end = source.indexOf('const Commands = {', start);
             expect(end).toBeGreaterThan(start);
@@ -340,5 +340,14 @@ describe('decompile-io', () => {
             expect(requireLine).not.toBeNull();
             expect(requireLine![0]).toMatch(/deleteLeftoverLst/);
         });
+    });
+});
+
+describe('the bbjlst launch path never denumbers (source guard)', () => {
+    test.each([
+        ['Commands.cjs', COMMANDS_CJS],
+        ['process-args.ts', path.join(__dirname, '..', 'src', 'Commands', 'process-args.ts')],
+    ])('%s contains no mention of denumbering', (_name, file) => {
+        expect(fs.readFileSync(file, 'utf-8')).not.toMatch(/denumber/i);
     });
 });
