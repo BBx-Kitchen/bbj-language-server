@@ -11,9 +11,11 @@
  * constants and plain-JSON payload types, no imports at all, so the server and any host's client
  * code can use it.
  *
- * A host renders the list as text. It must never turn a payload field into a command, a path to
- * open or a document location, and it must ignore any payload of the reveal notification: that
- * notification only means "show the list you already hold".
+ * A host shows the list as text, or as problems on the document. The uri only selects a document
+ * the host already has open, and a line only places an entry inside that document, clamped to its
+ * lines. No payload field ever becomes a command, a command argument, a link or a path to open, and
+ * a host must ignore any payload of the reveal notification: that notification only means "show
+ * the list you already hold".
  */
 
 /**

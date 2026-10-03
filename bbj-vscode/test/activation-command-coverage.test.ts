@@ -266,6 +266,8 @@ const EXPECTED_SEQUENCE = [
     `notification:${OPEN_FORMATTER_SETTINGS_METHOD}`,
     `notification:${DENUM_DIAGNOSTICS_METHOD}`,
     `notification:${SHOW_DENUM_DIAGNOSTICS_METHOD}`,
+    'onDidChangeTextDocument',
+    'onDidCloseTextDocument',
     'onDidChangeTabs',
     'onDidChangeActiveTextEditor',
     'statusBar:100',
@@ -279,7 +281,7 @@ const EXPECTED_SEQUENCE = [
     'onDidOpenTextDocument',
     'onDidChangeConfiguration',
 ];
-const EXPECTED_SUBSCRIPTIONS_LENGTH = 34;
+const EXPECTED_SUBSCRIPTIONS_LENGTH = 36;
 
 let context: Parameters<typeof activate>[0];
 

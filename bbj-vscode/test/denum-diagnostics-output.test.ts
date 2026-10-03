@@ -202,6 +202,14 @@ describe('denumPayloadUri', () => {
     test('gives the uri of a payload that names one', () => {
         expect(denumPayloadUri({ uri: 'file:///ws/a.bbj', diagnostics: [] })).toBe('file:///ws/a.bbj');
     });
+
+    test.each([
+        ['a numeric uri', { uri: 7 }],
+        ['null', null],
+        ['a string', 'x'],
+    ])('gives undefined for %s', (_name, payload) => {
+        expect(denumPayloadUri(payload)).toBeUndefined();
+    });
 });
 
 describe('denumProblems', () => {
@@ -210,5 +218,117 @@ describe('denumProblems', () => {
             uri: 'file:///ws/a.bbj',
             diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'syntax error' }],
         }, 3)).toEqual([{ line: 0, severity: 'ERROR', message: 'syntax error (original line 0010)' }]);
+    });
+});
+
+describe('denumProblems messages', () => {
+    const params = (...entries: Array<Record<string, unknown>>) => ({ uri: 'file:///ws/a.bbj', diagnostics: entries });
+
+    test('a located entry without an original number keeps its message alone', () => {
+        expect(denumProblems(params(entry({ originalLineNumber: '' })), 3)[0].message).toBe('syntax error');
+    });
+
+    test('an entry without a location is said to have none, with or without an original number', () => {
+        const problems = denumProblems(params(
+            entry({ line: 0, originalLineNumber: '', severity: 'INFO', message: 'note' }),
+            entry({ line: 0, originalLineNumber: '0010', severity: 'INFO', message: 'note' })
+        ), 3);
+
+        expect(problems.map(problem => problem.message)).toEqual([
+            'note (no location)',
+            'note (no location, original line 0010)',
+        ]);
+        expect(problems.map(problem => problem.line)).toEqual([0, 0]);
+    });
+
+    test('control characters and separators in the message and the original number become spaces', () => {
+        const [problem] = denumProblems(params(
+            entry({ message: 'a\r\nb\u2028c\u0085d', originalLineNumber: '00\u2029\u001b10' })
+        ), 3);
+
+        expect(problem.message).toBe('a  b c d (original line 00  10)');
+    });
+
+    test('the severity passes through unchanged', () => {
+        const problems = denumProblems(params(
+            entry({ severity: 'ERROR' }), entry({ severity: 'WARNING' }), entry({ severity: 'INFO' })
+        ), 3);
+
+        expect(problems.map(problem => problem.severity)).toEqual(['ERROR', 'WARNING', 'INFO']);
+    });
+});
+
+describe('denumProblems lines and entries', () => {
+    const params = (...entries: unknown[]) => ({ uri: 'file:///ws/a.bbj', diagnostics: entries });
+
+    test('a line past the end lands on the last line and a located entry lands one line before its number', () => {
+        const problems = denumProblems(params(entry({ line: 2 }), entry({ line: 3 }), entry({ line: 99 })), 3);
+
+        expect(problems.map(problem => problem.line)).toEqual([1, 2, 2]);
+    });
+
+    test.each([[0], [-4], [Number.NaN]])('a line count of %s puts every entry on line 0', (lineCount) => {
+        const problems = denumProblems(params(entry({ line: 1 }), entry({ line: 7 }), entry({ line: 0 })), lineCount);
+
+        expect(problems.map(problem => problem.line)).toEqual([0, 0, 0]);
+    });
+
+    test('skips exactly the entries the output block skips', () => {
+        const diagnostics = [
+            entry({ message: 'first' }),
+            null,
+            'text',
+            42,
+            [],
+            entry({ line: -1, message: 'negative line' }),
+            entry({ line: 1.5, message: 'fractional line' }),
+            entry({ line: '3', message: 'text line' }),
+            entry({ line: Number.MAX_SAFE_INTEGER + 1, message: 'unsafe line' }),
+            entry({ severity: 'FATAL', message: 'unknown severity' }),
+            entry({ severity: 'error', message: 'lower-case severity' }),
+            entry({ message: 42 }),
+            entry({ message: undefined }),
+            entry({ line: 2, message: 'second' }),
+        ];
+
+        const problems = denumProblems(params(...diagnostics), 5);
+        const blockLines = formatDenumDiagnosticsBlock(params(...diagnostics)).slice(1);
+
+        expect(problems.map(problem => problem.message)).toEqual([
+            'first (original line 0010)',
+            'second (original line 0010)',
+        ]);
+        expect(blockLines).toHaveLength(problems.length);
+    });
+
+    test('keeps the payload order, equal lines included', () => {
+        const problems = denumProblems(params(
+            entry({ line: 5, message: 'a' }),
+            entry({ line: 2, message: 'b' }),
+            entry({ line: 5, message: 'c' })
+        ), 9);
+
+        expect(problems.map(problem => [problem.line, problem.message.split(' ')[0]])).toEqual([[4, 'a'], [1, 'b'], [4, 'c']]);
+    });
+
+    test('keeps at most 500 entries, the first 500', () => {
+        const entries = Array.from({ length: 501 }, (_, index) => entry({ message: `m${index}` }));
+
+        const problems = denumProblems(params(...entries), 3);
+
+        expect(problems).toHaveLength(500);
+        expect(problems[0].message.startsWith('m0 ')).toBe(true);
+        expect(problems[499].message.startsWith('m499 ')).toBe(true);
+    });
+
+    test.each([
+        ['null', null],
+        ['a number', 42],
+        ['a string', 'text'],
+        ['an array', []],
+        ['an empty object', {}],
+        ['diagnostics that are not a list', { uri: 'file:///ws/a.bbj', diagnostics: 'x' }],
+    ])('%s gives no problem and does not throw', (_name, payload) => {
+        expect(denumProblems(payload, 3)).toEqual([]);
     });
 });

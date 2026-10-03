@@ -701,6 +701,22 @@ function registerDenumDiagnosticsOutput(
             void vscode.commands.executeCommand('workbench.actions.view.problems', { preserveFocus: true });
         })
     );
+
+    // The problems describe the text the list was computed for, so they go when that text goes:
+    // a content change or a close deletes them, and the next list replaces them. An event without
+    // a content change (the dirty-state flip of a save) keeps them, because the text is the same.
+    // The denumber edit itself never clears its own problems: the server sends the list only after
+    // the edit is applied.
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(event => {
+            if (event.contentChanges.length > 0) {
+                collection?.delete(event.document.uri);
+            }
+        }),
+        vscode.workspace.onDidCloseTextDocument(document => {
+            collection?.delete(document.uri);
+        })
+    );
 }
 
 /** Registers the config-reload status bar (#486) and the notification handler that drives it through the restart gate. */

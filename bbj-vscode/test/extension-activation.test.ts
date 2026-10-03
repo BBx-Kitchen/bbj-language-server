@@ -553,5 +553,166 @@ describe('denumber diagnostics output', () => {
 
             disposeSubscriptions(context);
         });
+
+        test('a second list replaces the first with only its own entries', () => {
+            const { context, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+            list(payload);
+            list({
+                uri: 'file:///ws/a.bbj',
+                diagnostics: [{ line: 3, originalLineNumber: '', severity: 'WARNING', message: 'second run' }],
+            });
+
+            const { set } = collections()[0];
+            expect(set).toHaveBeenCalledTimes(2);
+            const second = set.mock.calls[1][1] as Array<Record<string, unknown>>;
+            expect(second.map(d => d.message)).toEqual(['second run']);
+
+            disposeSubscriptions(context);
+        });
+
+        test('a list whose entries are all invalid removes the document problems and places none', () => {
+            const { context, list } = activateAndFindHandlers();
+            const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+            list({ uri: 'file:///ws/a.bbj', diagnostics: [{ line: -1, severity: 'ERROR', message: 'bad' }, null] });
+
+            const [collection] = collections();
+            expect(collection.set).not.toHaveBeenCalled();
+            expect(collection.delete.mock.calls).toEqual([[document.uri]]);
+
+            disposeSubscriptions(context);
+        });
+
+        test.each([
+            ['a uri that is not open', { uri: 'file:///ws/other.bbj', diagnostics: payload.diagnostics }],
+            ['a command uri', { uri: 'command:workbench.action.reloadWindow', diagnostics: payload.diagnostics }],
+            ['a numeric uri', { uri: 7, diagnostics: payload.diagnostics }],
+            ['a null payload', null],
+            ['a numeric payload', 42],
+            ['a text payload', 'text'],
+        ])('%s places nothing, creates no collection and still writes the log copy', (_name, hostile) => {
+            const { context, channel, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+            const spies = [
+                vscode.commands.executeCommand,
+                vscode.window.showTextDocument,
+                vscode.workspace.openTextDocument,
+            ] as Array<ReturnType<typeof vi.fn>>;
+            spies.forEach(spy => spy.mockClear());
+
+            expect(() => list(hostile)).not.toThrow();
+
+            expect(createCollection).not.toHaveBeenCalled();
+            expect(channel.appendLine).toHaveBeenCalled();
+            spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+
+            disposeSubscriptions(context);
+        });
+
+        test('an open document that is not a BBj document gets nothing', () => {
+            const { context, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three'], 'plaintext');
+
+            list(payload);
+
+            expect(createCollection).not.toHaveBeenCalled();
+
+            disposeSubscriptions(context);
+        });
+
+        test('a placed problem carries only range, message, severity and source', () => {
+            const { context, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+            list({
+                uri: 'file:///ws/a.bbj',
+                diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'command:workbench.action.quit' }],
+            });
+
+            const [diagnostic] = collections()[0].set.mock.calls[0][1] as Array<object>;
+            expect(Object.keys(diagnostic).sort()).toEqual(['message', 'range', 'severity', 'source']);
+
+            disposeSubscriptions(context);
+        });
+
+        describe('clearing', () => {
+            const changeListener = vscode.workspace.onDidChangeTextDocument as ReturnType<typeof vi.fn>;
+            const closeListener = vscode.workspace.onDidCloseTextDocument as ReturnType<typeof vi.fn>;
+
+            function activateWithListeners() {
+                changeListener.mockClear();
+                closeListener.mockClear();
+                const activated = activateAndFindHandlers();
+                return {
+                    ...activated,
+                    change: changeListener.mock.calls[0][0] as (event: unknown) => void,
+                    close: closeListener.mock.calls[0][0] as (document: unknown) => void,
+                };
+            }
+
+            test('each document listener is registered once per activation and disposed with it', () => {
+                const { context } = activateWithListeners();
+
+                expect(changeListener).toHaveBeenCalledTimes(1);
+                expect(closeListener).toHaveBeenCalledTimes(1);
+                expect(context.subscriptions).toContain(changeListener.mock.results[0].value);
+                expect(context.subscriptions).toContain(closeListener.mock.results[0].value);
+
+                disposeSubscriptions(context);
+            });
+
+            test('a content change removes the problems of the changed document', () => {
+                const { context, list, change } = activateWithListeners();
+                const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+                list(payload);
+                const [collection] = collections();
+
+                change({ document, contentChanges: [{ text: 'x' }] });
+
+                expect(collection.delete.mock.calls).toEqual([[document.uri]]);
+
+                disposeSubscriptions(context);
+            });
+
+            test('an event without a content change keeps the problems', () => {
+                const { context, list, change } = activateWithListeners();
+                const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+                list(payload);
+                const [collection] = collections();
+
+                change({ document, contentChanges: [] });
+
+                expect(collection.delete).not.toHaveBeenCalled();
+
+                disposeSubscriptions(context);
+            });
+
+            test('closing the document removes its problems', () => {
+                const { context, list, close } = activateWithListeners();
+                const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+                list(payload);
+                const [collection] = collections();
+
+                close(document);
+
+                expect(collection.delete.mock.calls).toEqual([[document.uri]]);
+
+                disposeSubscriptions(context);
+            });
+
+            test('a change or a close before any list creates no collection and throws nothing', () => {
+                const { context, change, close } = activateWithListeners();
+                const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+                expect(() => change({ document, contentChanges: [{ text: 'x' }] })).not.toThrow();
+                expect(() => close(document)).not.toThrow();
+
+                expect(createCollection).not.toHaveBeenCalled();
+
+                disposeSubscriptions(context);
+            });
+        });
     });
 });
