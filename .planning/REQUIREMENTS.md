@@ -45,15 +45,15 @@ stays switched off until the evaluation verdict.
 - [ ] **DEN-02**: VS Code's "Denumber BBj Program" command (same id, menus and keybinding) denumbers the live buffer through `bbj/denum` as one undoable edit, including unsaved changes
 - [x] **DEN-03**: Denumbering an unnumbered file says "nothing to do"; success shows a short confirmation; failures use the typed messages (tokenized input points to Decompile, protected programs say so)
 - [x] **DEN-04**: DENUM diagnostics appear in an output list (line, original line number, severity, message) with a notification showing the counts and a "Show" action
-- [ ] **DEN-05**: The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" via the new path and still offers read-only opening
+- [x] **DEN-05**: The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" via the new path and still offers read-only opening
 - [ ] **DEN-06**: The bbjlst denumber path is removed, while decompiling tokenized programs through bbjlst keeps working
 
 ### Settings (SET)
 
-- [ ] **SET-01**: All 15 formatter settings are available in VS Code with a typed schema (bounded integer, booleans, enums with descriptions), applied without restart
+- [x] **SET-01**: All 15 formatter settings are available in VS Code with a typed schema (bounded integer, booleans, enums with descriptions), applied without restart
 - [x] **SET-02**: Only the 15 known keys reach bbj-ls, each with an explicit value; `indentWidth` defaults to 2 in both IDEs
-- [ ] **SET-03**: A user who set `bbj.formatter.splitSingleLineIF` keeps that behaviour through `splitSingleLineIf` (deprecated alias for one release)
-- [ ] **SET-04**: `bbj.formatter.javaPath` is removed
+- [x] **SET-03**: A user who set `bbj.formatter.splitSingleLineIF` keeps that behaviour through `splitSingleLineIf` (deprecated alias for one release)
+- [x] **SET-04**: `bbj.formatter.javaPath` is removed
 
 ### VS Code cut-over (CUT)
 
@@ -122,12 +122,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEN-02 | Phase 127 | Pending |
 | DEN-03 | Phase 126 | Complete |
 | DEN-04 | Phase 126 | Complete |
-| DEN-05 | Phase 127 | Pending |
+| DEN-05 | Phase 127 | Complete |
 | DEN-06 | Phase 127 | Pending |
-| SET-01 | Phase 127 | Pending |
+| SET-01 | Phase 127 | Complete |
 | SET-02 | Phase 125 | Complete |
-| SET-03 | Phase 127 | Pending |
-| SET-04 | Phase 127 | Pending |
+| SET-03 | Phase 127 | Complete |
+| SET-04 | Phase 127 | Complete |
 | CUT-01 | Phase 125 | Complete |
 | CUT-02 | Phase 127 | Pending |
 | CUT-03 | Phase 127 | Pending |
