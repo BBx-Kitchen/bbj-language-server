@@ -270,6 +270,10 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjJavaInteropNotificationProvider"/>
 
+        <!-- Editor banner offering Denumber on line-numbered programs -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjLineNumberedNotificationProvider"/>
+
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
