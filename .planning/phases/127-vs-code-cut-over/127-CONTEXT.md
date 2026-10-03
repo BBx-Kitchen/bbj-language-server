@@ -68,9 +68,12 @@ Not in this phase: IntelliJ (128/129), user docs and QA checklists (130), any bb
 ### Decompile vs denumber (DEN-06)
 - **D-08:** **Decompile keeps bbjlst's `-l`**, so Decompile (Replace) and Decompile (Read-only) still
   turn tokenized programs into unnumbered source in one step, without BBjServices or BBj 26.03.
-  Removed: `Commands.denumber`, the plain-text/`.lst` denumber branch (`-xlst` handling, the in-place
-  rewrite of plain-text files in `decompileInPlace`). The `denumber` option of `buildDecompileArgv`
-  is renamed or folded so nothing named "denumber" remains on the bbjlst path. Decompile's output,
+  Removed: `Commands.denumber`, the `decompile()` helper behind it, and the plain-text branch of
+  `decompileInPlace` (the `denumber: false` path and the in-place rewrite of plain-text files). The
+  `denumber` option of `buildDecompileArgv` is folded away so it always emits `-l`; the `-xlst`
+  flag for a `*.lst` input **stays**, because it is part of how bbjlst decompiles such input and
+  dropping it would change decompile behaviour (orchestrator clarification after research, keeping
+  "decompile output unchanged"). Decompile's output,
   messages and temp-dir read-only flow are unchanged.
 
 ### Settings migration (SET-01, SET-03, SET-04)
