@@ -42,7 +42,7 @@ stays switched off until the evaluation verdict.
 ### DENUM (DEN)
 
 - [x] **DEN-01**: The language server serves a `bbj/denum` request that returns the denumbered text as one edit for the open document, plus DENUM's diagnostics
-- [ ] **DEN-02**: VS Code's "Denumber BBj Program" command (same id, menus and keybinding) denumbers the live buffer through `bbj/denum` as one undoable edit, including unsaved changes
+- [x] **DEN-02**: VS Code's "Denumber BBj Program" command (same id, menus and keybinding) denumbers the live buffer through `bbj/denum` as one undoable edit, including unsaved changes
 - [x] **DEN-03**: Denumbering an unnumbered file says "nothing to do"; success shows a short confirmation; failures use the typed messages (tokenized input points to Decompile, protected programs say so)
 - [x] **DEN-04**: DENUM diagnostics appear in an output list (line, original line number, severity, message) with a notification showing the counts and a "Show" action
 - [x] **DEN-05**: The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" via the new path and still offers read-only opening
@@ -119,7 +119,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FMT-11 | Phase 125 | Complete |
 | FMT-12 | Phase 125 | Complete |
 | DEN-01 | Phase 126 | Complete |
-| DEN-02 | Phase 127 | Pending |
+| DEN-02 | Phase 127 | Complete |
 | DEN-03 | Phase 126 | Complete |
 | DEN-04 | Phase 126 | Complete |
 | DEN-05 | Phase 127 | Complete |
