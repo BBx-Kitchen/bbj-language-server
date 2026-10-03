@@ -565,6 +565,20 @@ describe('a file the offer must never be raised for', () => {
             expectNoDenumberingYet(harness);
         });
 
+    test('an offer that throws still answers [] and leaves only a fixed debug line', async () => {
+        const harness = createOfferHarness();
+        vi.spyOn(harness.service, 'offer').mockImplementation(() => { throw new Error('SECRET_MARKER_OFFER_FAILURE'); });
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        expect(await harness.formatDocument()).toEqual([]);
+
+        const lines = loggedLines(harness.loggers, 'debug');
+        expect(lines).toContain('Format notice: denum-needed not offered (offer failed)');
+        for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+            expect(loggedLines(harness.loggers, level).join('\n'), `logger.${level}`).not.toContain('SECRET_MARKER_OFFER_FAILURE');
+        }
+    });
+
     test('a format service without a denumber service answers [] and shows nothing', async () => {
         const harness = createOfferHarness();
         const service = new BBjFormatService({ java: { JavaInteropService: harness.double } });

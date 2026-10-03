@@ -340,6 +340,7 @@ export class BBjFormatService {
             denum.offer({ uri: request.document.uri, current: () => request.current() }, selection ? 'selection' : 'document');
         } catch {
             // An offer that cannot be shown must never break a format request.
+            logger.debug(`Format notice: ${kind} not offered (offer failed)`);
         }
     }
 

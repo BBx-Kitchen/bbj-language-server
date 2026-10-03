@@ -626,6 +626,19 @@ describe('denumber diagnostics output', () => {
             disposeSubscriptions(context);
         });
 
+        test('a placement that throws still writes the log copy, leaves a fixed debug trace and throws nothing', () => {
+            const { context, channel, list } = activateAndFindHandlers();
+            const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
+            (document as unknown as { lineAt: () => never }).lineAt = () => { throw new Error('SECRET_MARKER_PLACEMENT'); };
+
+            expect(() => list(payload)).not.toThrow();
+
+            expect(channel.appendLine).toHaveBeenCalledTimes(2);
+            expect(channel.debug.mock.calls).toEqual([['denumber problems not placed']]);
+
+            disposeSubscriptions(context);
+        });
+
         test('an open document that is not a BBj document gets nothing', () => {
             const { context, list } = activateAndFindHandlers();
             open('file:///ws/a.bbj', ['one', 'two', 'three'], 'plaintext');

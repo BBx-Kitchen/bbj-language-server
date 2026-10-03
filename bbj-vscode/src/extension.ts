@@ -706,6 +706,8 @@ function registerDenumDiagnosticsOutput(
                 placeProblems(params);
             } catch {
                 // The log copy above already holds the list; a failed placement must not surface.
+                // A fixed token only, never the payload or the error text.
+                outputChannel.debug('denumber problems not placed');
             }
         }),
         client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
