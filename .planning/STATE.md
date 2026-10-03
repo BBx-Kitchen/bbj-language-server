@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 127
 current_phase_name: VS Code Cut-Over
 status: planning
-stopped_at: Phase 126 complete, ready to plan Phase 127
-last_updated: "2026-10-03T08:20:30.120Z"
+stopped_at: Phase 127 context gathered
+last_updated: "2026-10-03T08:30:13.627Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 126 complete, transitioned to Phase 127
-state_head: 465fc36fd11c83a7ac435dda5e845f5fee719883
+state_head: f00d30bef7296865ab14f3a712370e22915b578f
 progress:
   total_phases: 7
   completed_phases: 3
@@ -463,9 +463,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T08:55:00Z
-Stopped at: Phase 126 complete, ready to plan Phase 127
-Resume file: None
+Last session: 2026-10-03T08:30:13.471Z
+Stopped at: Phase 127 context gathered
+Resume file: .planning/phases/127-vs-code-cut-over/127-CONTEXT.md
 
 Next: `/gsd-discuss-phase 127` or `/gsd-plan-phase 127`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open. Recheck tokenized and protected DENUM (126 UAT test 7) in Phase 127.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
