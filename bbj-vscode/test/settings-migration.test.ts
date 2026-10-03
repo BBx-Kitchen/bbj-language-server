@@ -200,7 +200,7 @@ describe('migrateSplitSingleLineIf', () => {
     test('names a rejection that is not an Error', async () => {
         const config = new FakeConfiguration({ [OLD_KEY]: { globalValue: true } });
         config.deps = () => ({
-            inspect: () => ({ globalValue: true }),
+            inspect: (key: string) => (key === OLD_KEY ? { globalValue: true } : {}),
             update: () => Promise.reject('plain text reason'),
             userTarget: USER,
             workspaceTarget: WORKSPACE,

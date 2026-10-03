@@ -37,6 +37,7 @@ import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './lang
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
 import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
+import { migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
 import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerEmLoginCommand } from './em-auth.js';
@@ -459,6 +460,28 @@ function sweepOpenDocumentsForConfigAssociation(): void {
     lastKnownActiveConfigPath = getActiveConfigPath();
 }
 
+/**
+ * Moves a user's old `bbj.formatter.splitSingleLineIF` value to `splitSingleLineIf` in the same
+ * settings scope. Fire-and-forget: it adds no disposable, no popup and never rejects, so it cannot
+ * hold up or break activation. The configuration push the language client sends on registration
+ * and on every change carries the moved value to the server either way.
+ */
+function startFormatterSettingsMigration(): void {
+    try {
+        const formatterConfig = vscode.workspace.getConfiguration('bbj.formatter');
+        void migrateSplitSingleLineIf({
+            inspect: key => formatterConfig.inspect(key),
+            update: (key, value, target) => formatterConfig.update(key, value, target),
+            userTarget: vscode.ConfigurationTarget.Global,
+            workspaceTarget: vscode.ConfigurationTarget.Workspace,
+            workspaceTrusted: vscode.workspace.isTrusted,
+            log: appendOutputLine
+        });
+    } catch {
+        // An unavailable configuration API means there is nothing to migrate.
+    }
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
@@ -489,6 +512,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
+    startFormatterSettingsMigration();
 
     registerConfigFileCommands(context);
     registerEmLoginCommand(context, { outputChannel });
