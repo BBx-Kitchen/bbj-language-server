@@ -431,12 +431,6 @@
           "description": "Enable/disable single line IF statements",
           "scope": "window"
         },
-        "bbj.formatter.javaPath": {
-          "type": "string",
-          "default": "",
-          "description": "Deprecated and no longer used: formatting now runs through the BBj language server and BBjServices (BBj 26.03 or later), so this setting has no effect.",
-          "scope": "machine"
-        },
         "bbj.compiler.typeChecking.enabled": {
           "type": "boolean",
           "default": false,

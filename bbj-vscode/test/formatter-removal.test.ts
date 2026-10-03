@@ -63,4 +63,21 @@ describe('the client-side formatter is removed', () => {
         const readme = fs.readFileSync(path.join(REPO_ROOT, 'README.md'), 'utf-8');
         expect(readme).not.toContain('BBjCodeFormatter');
     });
+
+    test('the java resolver module and its test do not exist', () => {
+        expect(exists('src/formatter-java-resolver.ts')).toBe(false);
+        expect(exists('test/formatter-java-resolver.test.ts')).toBe(false);
+    });
+
+    test('no file under src/ imports the java resolver module', () => {
+        expect(importersOf('formatter-java-resolver')).toEqual([]);
+    });
+
+    test('package.json no longer declares the bbj.formatter.javaPath setting', () => {
+        const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8'));
+        const configurations = [manifest.contributes.configuration].flat();
+        for (const configuration of configurations) {
+            expect(Object.keys(configuration.properties)).not.toContain('bbj.formatter.javaPath');
+        }
+    });
 });
