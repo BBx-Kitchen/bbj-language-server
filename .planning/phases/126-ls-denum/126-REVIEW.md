@@ -1,30 +1,17 @@
 ---
 phase: 126-ls-denum
-reviewed: 2026-10-02T00:00:00Z
+reviewed: 2026-10-03T00:00:00Z
 depth: standard
-files_reviewed: 21
+files_reviewed: 8
 files_reviewed_list:
   - bbj-vscode/src/denum-diagnostics-output.ts
   - bbj-vscode/src/extension.ts
-  - bbj-vscode/src/language/bbj-denum-service.ts
   - bbj-vscode/src/language/bbj-format-service.ts
-  - bbj-vscode/src/language/bbj-module.ts
-  - bbj-vscode/src/language/bbj-notifications.ts
-  - bbj-vscode/src/language/denum-command.ts
   - bbj-vscode/src/language/denum-notifications.ts
-  - bbj-vscode/src/language/main.ts
   - bbj-vscode/test/activation-command-coverage.test.ts
   - bbj-vscode/test/bbj-denum-offer.test.ts
-  - bbj-vscode/test/bbj-denum-outcomes.test.ts
-  - bbj-vscode/test/bbj-denum-service.test.ts
-  - bbj-vscode/test/bbj-format-notices.test.ts
-  - bbj-vscode/test/bbj-test-module.ts
-  - bbj-vscode/test/denum-command.test.ts
   - bbj-vscode/test/denum-diagnostics-output.test.ts
-  - bbj-vscode/test/denum-test-harness.ts
   - bbj-vscode/test/extension-activation.test.ts
-  - bbj-vscode/test/fake-server-connection.ts
-  - bbj-vscode/test/functional/program-live.test.ts
 findings:
   critical: 0
   warning: 2
@@ -33,119 +20,75 @@ findings:
 status: issues_found
 ---
 
-# Phase 126: Code Review Report
+# Phase 126: Code Review Report (gap-closure re-review)
 
-**Reviewed:** 2026-10-02
+**Reviewed:** 2026-10-03
 **Depth:** standard
-**Files Reviewed:** 21
+**Files Reviewed:** 8
 **Status:** issues_found
 
 ## Summary
 
-The DENUM orchestration is carefully built: capture-then-recheck of the buffer version, a single
-core for `run` and `runDenumAndFormat`, fixed message texts only, a never-throwing handler, and a
-payload renderer that validates every field. I traced the stale-buffer, claim/release, cancellation
-and not-applied paths and found them correct. The VS Code client (`vscode-languageclient`
-`validateWorkspaceEdit`) does refuse a versioned edit whose version no longer matches the open
-document, so D-07/D-14 hold on VS Code. Behaviour that matches a locked decision (never-deduplicated
-DENUM messages, server-applied edits, `Warning` on any failure, Format-on-save offer) was not
-treated as a finding. No security issues found: payload text is rendered as plain lines, nothing in
-a payload becomes a command, path or jump target.
+This review covers the gap-closure diff only (`git diff 0f953dd9..HEAD` over the eight files, plans 126-06 and 126-07). The earlier whole-phase review is in git history; it was already fixed per 126-REVIEW-FIX.md.
 
-Two robustness warnings and four minor items follow.
+The change set has two parts. In `bbj-format-service.ts` the line-number offer now bypasses the notice ledger and is raised on every format request. In `denum-diagnostics-output.ts` and `extension.ts` the denumber list is now also placed as problems in a `bbj-denum` diagnostic collection. Show now opens the Problems view, and a content change or a close clears the problems.
+
+The trust boundary holds. The payload uri only selects an already-open BBj document by string comparison. Problems are keyed by that document's own `Uri`, and lines are clamped to `lineCount`. Nothing in a payload becomes a command, a link or a path. Both consumers go through the same `validEntry`, so the log copy and the problems cannot drift apart. The service-side line semantics ("one-based line in the result's own text") match the client-side `line - 1` mapping, and the server sends the list only after `applyEdit` has resolved, so the denumber edit does not clear its own problems. I found no critical defects. Two behavioural warnings and four info items follow.
 
 ## Warnings
 
-### WR-01: A hung `workspace/applyEdit` holds the per-document claim forever
+### WR-01: Show opens an empty Problems view once the user has edited the document, and the list is then unreachable
 
-**File:** `bbj-vscode/src/language/bbj-denum-service.ts:320-322, 346, 358, 368-372` (and `bbj-vscode/src/language/bbj-notifications.ts` `applyDocumentEdit`)
-**Issue:** `running.add(claimed)` is released only in `finally`, and the run awaits
-`messenger.applyEdit(...)` with no deadline and no cancellation. Every other await in the run is
-bounded (the peer calls carry 15 s / 25 s deadlines), but a client that never answers
-`workspace/applyEdit` (a client that does not implement it, a dropped response, or a modal prompt
-the editor never resolves) leaves the promise pending. From then on every `bbj/denum` and every
-offer click for that document ends with `DENUM_IN_PROGRESS_MESSAGE` until the server restarts,
-which is exactly the "a DENUM run always gets its answer" guarantee (D-12) broken. The CONTEXT
-interface comment says "Every method is fire and forget or never rejects", but never-rejects is not
-never-hangs.
-**Fix:** Bound the apply in `applyDocumentEdit` (or at the call sites) with a timeout that resolves
-`false`, so the run ends with `not-applied` and the claim is released:
+**File:** `bbj-vscode/src/extension.ts:694-700` (clearing at 709-720)
+**Issue:** The "Show" button is on a persistent notification, but the problems it points at are deleted by any content change (`onDidChangeTextDocument` with `contentChanges.length > 0`) or by closing the document. The notification is easy to leave unanswered while the user edits the freshly denumbered file. Clicking Show afterwards runs `workbench.actions.view.problems`, which opens a Problems view with no denumber entries. The log copy in the 'BBj' channel still holds the list, but the reveal handler no longer shows that channel, so the one remaining record is not reachable from Show. Before 126-07, Show revealed the channel and always worked. The user sees a "Show" that shows nothing.
+**Fix:** When the collection holds no entries at reveal time, fall back to the channel that still holds the log copy.
 ```ts
-const APPLY_EDIT_TIMEOUT_MS = 30_000;
-function withDeadline(p: Promise<boolean>, ms: number): Promise<boolean> {
-    return new Promise(resolve => {
-        const timer = setTimeout(() => resolve(false), ms);
-        p.then(v => { clearTimeout(timer); resolve(v); }, () => { clearTimeout(timer); resolve(false); });
-    });
-}
-// in applyDocumentEdit: return withDeadline(apply(), APPLY_EDIT_TIMEOUT_MS);
+client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
+    let placed = false;
+    collection?.forEach(() => { placed = true; });
+    if (placed) {
+        void vscode.commands.executeCommand('workbench.actions.view.problems', { preserveFocus: true });
+    } else {
+        outputChannel.show(true);
+    }
+})
 ```
-Add a test with an `applyEdit` mock that never settles (fake timers) asserting a second run is not
-`in-progress` afterwards.
+Add a test for "problems cleared, then Show reveals the channel".
 
-### WR-02: A run that reports diagnostics but yields no edit drops them silently
+### WR-02: Problems are placed by line number with no binding to the text version they describe
 
-**File:** `bbj-vscode/src/language/bbj-denum-service.ts:353-357`
-**Issue:** When `denumbered === true` and `minimalLineEdit` returns no edits, the code sends the
-plain `base` message and returns, never calling `denumDiagnostics` / `presentSuccess`. D-03 says a
-run with diagnostics > 0 shows the counts and [Show], and D-01 says the list is the one source for
-every path. Here the diagnostics are copied into the result (`diagnostics` is returned) but the user
-and the output channel never see them, so a caller sees diagnostics in the result that the client
-never rendered. This is reachable when the peer answers `denumbered: true` with text that equals the
-buffer (for example a buffer the user already denumbered by hand while the version stayed equal is
-not possible, but a peer that reports diagnostics for an already-clean text is). The branch also has
-no test.
-**Fix:** Route the no-edit success through `presentSuccess` so diagnostics are always surfaced:
-```ts
-if (edits.length === 0) {
-    const message = this.presentSuccess(live.uri, diagnostics, base);
-    return { status: 'denumbered', message, version, edits, diagnostics, applied: false };
-}
-```
+**File:** `bbj-vscode/src/extension.ts:652-679` (`placeProblems`); payload `bbj-vscode/src/language/denum-notifications.ts:34-51`
+**Issue:** The payload carries a uri and lines but no document version. The server checks the version only before it applies the edit. Any keystroke that reaches the client between the edit being applied and the notification being handled lands before `placeProblems`. The `onDidChangeTextDocument` clear has already run on an empty collection, so it does nothing, and the problems are then placed on lines of text that have already moved. They stay attached to the wrong lines until the next edit or close. The window is small, but the client cannot detect the case.
+**Fix:** Carry the version the list was computed for (the version after the applied edit, or the live version when no edit was needed). In `placeProblems`, drop the placement (log copy only) when `document.version` differs. If threading the version is too invasive, record the document version in the `applyEdit` completion path and compare it there.
 
 ## Info
 
-### IN-01: Combined run on a file that turned out unnumbered reports "Nothing to denumber" although it reformatted the file
+### IN-01: Uri matching is a silent no-op on any string mismatch
 
-**File:** `bbj-vscode/src/language/bbj-denum-service.ts:340-351`
-**Issue:** With `denumbered: false` and a non-empty format edit, the edit is applied and then
-`DENUM_NOTHING_TO_DO_MESSAGE` is shown, with `status: 'not-line-numbered'` and `applied: true`. The
-user who clicked "Denumber and Format" gets a message that says nothing was done while their buffer
-changed (one extra undo step). Also any diagnostics on that answer are ignored. A test asserts this
-deliberately, so it is a wording gap rather than a logic error.
-**Fix:** Use a distinct text for the applied case, for example `'This file has no line numbers. It was formatted.'`, and keep `DENUM_NOTHING_TO_DO_MESSAGE` for the no-edit case.
+**File:** `bbj-vscode/src/extension.ts:654-656`
+**Issue:** `candidate.uri.toString() === uri` assumes the server's uri string is byte-identical to VS Code's `toString()` (the doc comment states this is true for the language client's default conversion). If a server-side normalisation ever differs, for example Windows drive-letter casing or encoding, no problems appear and nothing is logged. The tests cover only the not-open case.
+**Fix:** Compare after normalising the payload uri: `vscode.Uri.parse(uri).toString()`. Parsing is safe here because the result is only compared, never opened. Alternatively, log one debug line on a miss.
 
-### IN-02: `flatten` only handles CR and LF
+### IN-02: Silent `catch {}` around `placeProblems` and the offer hides programmer errors
 
-**File:** `bbj-vscode/src/denum-diagnostics-output.ts:76-78`
-**Issue:** The header docs promise "one entry is always one output line", but only `\r` and `\n`
-are replaced. U+2028, U+2029, U+0085 and other C0 controls pass through in `message`,
-`originalLineNumber` and the uri. The DTO comment says the interop guard already strips control
-characters from `message`, but `originalLineNumber` and `uri` rely on that being true for fields the
-guard may not cover, and this function is documented as the trust boundary.
-**Fix:** Replace every C0/C1 control character and the Unicode line and paragraph separators (U+2028, U+2029) with a space, not only CR and LF.
+**File:** `bbj-vscode/src/extension.ts:692-696`, `bbj-vscode/src/language/bbj-format-service.ts:340-342`
+**Issue:** Both catches are empty. `BBjDenumService.offer` already wraps its own body in try/catch with a debug log (`bbj-denum-service.ts:254-269`), so the `try` in `offerDenum` is redundant. In the client, a bug in `placeProblems`, such as a wrong mock-only API, would fail invisibly in production because nothing reaches the output channel. Swallowing is right for the user; a one-line debug trace is missing.
+**Fix:** Log a fixed token in each catch, for example `outputChannel.debug('denumber problems not placed')`. Never log payload text. Drop the redundant try in `offerDenum`, or keep it and log.
 
-### IN-03: Duplicated "run only if the user picked X" logic
+### IN-03: Problems are capped at 500 while the log copy and the summary count are not
 
-**File:** `bbj-vscode/src/language/bbj-denum-service.ts:166-176, 184-194`
-**Issue:** `runOnPick` and the inline `warnWithActions` handler both implement the same
-then/try/catch/ignore pattern, with differing guards (`picked === actionTitle` versus
-`picked !== undefined && actionTitles.includes(picked)`).
-**Fix:** Make `runOnPick` take a predicate/callback `(picked: string) => void` and implement the
-single-button variants on top of it.
+**File:** `bbj-vscode/src/denum-diagnostics-output.ts:12-13, 86-88`
+**Issue:** `MAX_DENUM_PROBLEMS` truncates silently. The notification text ("N diagnostics") and the log block use the full list, so the user can see 800 in the message and 500 in Problems with no explanation. The log block (`formatDenumDiagnosticsBlock`) has no bound at all, so it relies on the server's bound.
+**Fix:** Either append a final problem such as "N more not shown, see the BBj output" when the cap is hit, or apply the same cap to the block and add a trailing line. Document the choice.
 
-### IN-04: Handler mixes the module-level channel with the injected one
+### IN-04: Duplicated uri extraction
 
-**File:** `bbj-vscode/src/extension.ts:637-645`
-**Issue:** `registerDenumDiagnosticsOutput` receives `outputChannel` in `deps` and uses it for
-`show(true)`, but writes through the module-level `appendOutputLine`, which targets the module
-global `outputChannel`. They are the same object today; if they ever diverge, the list is written to
-one channel and revealed on another.
-**Fix:** Write through the injected channel (`deps.outputChannel.appendLine`, wrapped in the same
-try/catch) or reveal through the module global, not a mix of both.
+**File:** `bbj-vscode/src/denum-diagnostics-output.ts:51, 67-70`
+**Issue:** `formatDenumDiagnosticsBlock` still inlines `typeof payload.uri === 'string' ? payload.uri : undefined`, while the new `denumPayloadUri` does the same. They are two copies of one trust-boundary check.
+**Fix:** Call `denumPayloadUri(params)` from `formatDenumDiagnosticsBlock`.
 
 ---
 
-_Reviewed: 2026-10-02_
+_Reviewed: 2026-10-03_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
