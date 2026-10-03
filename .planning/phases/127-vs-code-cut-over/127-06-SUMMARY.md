@@ -11,12 +11,12 @@ provides:
   - "VSIX built from the final tree and installed in the test VS Code, with its file list"
   - "live format and DENUM results against the BBjServices on :5008"
   - "gate results for the final tree"
-  - "IntelliJ plugin zip path and the hand-check record (pending)"
+  - "IntelliJ plugin zip path and the hand-check record (16 of 17 passed; step 15 routed to backlog 999.1)"
 affects: [verification]
 
 actuals:
   tokens: 5200
-  tasks: 2
+  tasks: 3
   commits: 1
 
 key-files:
@@ -25,24 +25,25 @@ key-files:
 
 key-decisions:
   - "No source file changed; every gate reported zero failed tests, so nothing was fixed in an earlier plan"
+  - "Hand-check step 15 (decompile of a tokenized program) failed; not a phase regression, routed by the user to backlog 999.1 for separate planning"
 
-requirements-completed: []
+requirements-completed: [CUT-02, CUT-03]
 
-status: awaiting-hand-check
+status: complete
 completed: 2026-10-03
 ---
 
 # Phase 127 Plan 06: VSIX, live proof and gates Summary
 
-**Tasks 1 and 2 are done: the VSIX built from the final tree (no jar, no `tools/formatter`) is installed in the test VS Code, the live peer formats and denumbers, and every CI gate passes with zero failed tests. Task 3, the hand check, is pending the user.**
+**Tasks 1 and 2 are done: the VSIX built from the final tree (no jar, no `tools/formatter`) is installed in the test VS Code, the live peer formats and denumbers, and every CI gate passes with zero failed tests. The user's hand check passed 16 of 17 steps; step 15 (in-place decompile of a tokenized program, pre-existing) is routed to backlog 999.1.**
 
-Status: awaiting hand check. This plan is not complete; `requirements-completed` stays empty until the user approves Task 3.
+Status: complete. CUT-02 and CUT-03 are met: format and DENUM work end to end from the installed VSIX against live BBj 26.03.
 
 ## Performance
 
 - **Started:** 2026-10-03T10:43Z (approximate)
 - **Tasks 1 and 2 finished:** 2026-10-03T10:48Z
-- **Tasks:** 2 of 3 executed (Task 3 is the blocking human check)
+- **Tasks:** 3 of 3 executed (Task 3 by the user)
 - **Files modified:** 0 source files (this SUMMARY only)
 - **Packaged root:** `/home/coder/repos/bbj-language-server/bbj-vscode` (the main working tree on branch `gsd/v4.9-bbj-ls-denum-format`, HEAD `f7fedae8`; no worktree, so `BBJ_LS_SRC` was not set)
 
@@ -140,15 +141,24 @@ Evidence that it is not caused by this phase:
 
 This is recorded as an unchanged pre-existing failure, not as a gate pass. The orchestrator may want to decide whether the plan's "after the install it runs this tree" expectation still holds.
 
-## Task 3: hand check (pending)
+## Task 3: hand check
 
-Checkpoint `human-verify`, blocking. The 17 steps are in `127-06-PLAN.md`. Prepared state for the user:
+Checkpoint `human-verify`, blocking. The 17 steps are in `127-06-PLAN.md`. The user ran them on 2026-10-03 from the installed VSIX (reloaded "VS Code (ext test)" tab, BBjServices with bbj-ls on :5008) and the IntelliJ zip `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`.
 
-- VSIX from the final tree installed in `~/.ext-test`; reload the "VS Code (ext test)" tab on 127.0.0.1:13338 first.
-- BBjServices with bbj-ls on 127.0.0.1:5008.
-- IntelliJ zip: `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`.
+| Steps | Outcome |
+|-------|---------|
+| 1-4 Settings (typed controls, splitSingleLineIF migration, leftover javaPath, live setting changes) | passed |
+| 5-6 Format (Document, Selection, on save, numbered-file offer and selection refusal) | passed |
+| 7-14 Denumber (prompt, Alt+N, title icon, context menu, Explorer, Denumber and Format, refusals, config.bbx, Open Read-only) | passed |
+| 15 Decompile of a tokenized program from the open prompt | **failed** — see below |
+| 16 Decompile commands on a plain-text file refuse with the "not a tokenized BBj program" message | passed |
+| 17 IntelliJ smoke | passed |
 
-Outcome of steps 1-17: not yet recorded.
+### Step 15 failure: routed to backlog 999.1
+
+The user reported: opening a binary (tokenized) program, with or without line numbers, does not work safely — it fails to upgrade the binary to source text in place. The user asked for this to be revisited as a separate, properly planned effort.
+
+It is not a phase 127 regression. For a tokenized input, `decompileReplace` runs bbjlst with the same argv as on the phase base `fbe7e07d` (`-l <file>`, `-xlst` added for `.lst`; previously reached via `denumber: true`), and the `.lst` → original rename is the same; phase 127 only added the plain-text refusal in front of it and removed the bbjlst Denumber path. Routed to ROADMAP backlog item **Phase 999.1: Safe in-place decompile of tokenized BBj programs**. CUT-02 and CUT-03 (format and DENUM end to end) are unaffected.
 
 ## Deviations from Plan
 
@@ -172,8 +182,8 @@ None - the plan adds no source.
 - VSIX list, live lines, zip path, gate numbers: each taken from the command output in this session.
 - `/tmp/bbj-lang.vsix`: FOUND. `bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`: FOUND.
 - Source and test trees: no change (`git status --porcelain` empty for `bbj-vscode/src`, `bbj-vscode/test`, `bbj-intellij/src`).
-- Self-check result for Tasks 1 and 2: PASSED. Task 3 and plan completion: pending the hand check.
+- Self-check result: PASSED. Task 3: 16 of 17 steps passed; step 15 routed to backlog 999.1.
 
 ---
 *Phase: 127-vs-code-cut-over*
-*Tasks 1-2 completed: 2026-10-03; Task 3 pending*
+*Completed: 2026-10-03*

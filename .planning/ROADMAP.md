@@ -665,6 +665,24 @@ under "Current Milestone", and the requirement list and its traceability table a
 `.planning/REQUIREMENTS.md`.
 Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 
+## Backlog
+
+### Phase 999.1: Safe in-place decompile of tokenized BBj programs (BACKLOG)
+
+**Goal:** [Captured for future planning] Opening a tokenized (binary) BBj program, with or without
+line numbers, does not upgrade it safely to source: "Decompile & Replace" fails to rewrite the binary
+in place as text. Found in the phase 127 hand check (127-06, step 15) from the VSIX built at
+`1f336351`, against BBj 26.03. Not a phase 127 regression: the bbjlst argv (`-l`, plus `-xlst` for
+`.lst`) and the rename step are unchanged from the phase base `fbe7e07d`; phase 127 only added the
+plain-text refusal. Revisit the whole open-binary flow (prompt, bbjlst invocation, in-place
+detection in `decompile-io.ts`, rename/replace, read-only copy) with proper planning, possibly
+moving decompile to bbj-ls the way DENUM moved.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *Roadmap last updated: 2026-10-01 — v4.9 bbj-ls DENUM & Format Migration roadmapped (Phases
