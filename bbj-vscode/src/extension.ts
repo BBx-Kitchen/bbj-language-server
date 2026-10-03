@@ -33,7 +33,7 @@ import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './la
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
-import { formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
+import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
@@ -619,18 +619,65 @@ function registerFormatterSettingsLink(context: vscode.ExtensionContext, deps: {
     );
 }
 
+function denumSeverity(severity: 'ERROR' | 'WARNING' | 'INFO'): vscode.DiagnosticSeverity {
+    switch (severity) {
+        case 'ERROR': return vscode.DiagnosticSeverity.Error;
+        case 'WARNING': return vscode.DiagnosticSeverity.Warning;
+        case 'INFO': return vscode.DiagnosticSeverity.Information;
+    }
+}
+
 /**
  * Registers the handlers for the server's two denumber notifications. The server sends the list of
  * DENUM's diagnostics after a successful run that reported any, and the reveal request when the
- * user picks Show. The list is written into the existing 'BBj' channel as plain lines, one block per
- * run; the reveal request only brings that channel into view. Neither handler turns anything in a
- * payload into a command, a path to open or a location to jump to.
+ * user picks Show.
+ *
+ * The list is placed twice. It becomes problems on the denumbered document, in a collection of its
+ * own that is created when the first list names a BBj document the editor has open, and it is
+ * written into the 'BBj' channel as plain lines, one block per run, as a log copy that outlives the
+ * problems. The reveal request opens the Problems view and ignores its payload.
+ *
+ * Nothing in a payload becomes a command, a link or a path to open: the uri only selects an open
+ * document by comparing strings, and the problems are keyed by that document's own uri.
  */
 function registerDenumDiagnosticsOutput(
     context: vscode.ExtensionContext,
     deps: { client: LanguageClient, outputChannel: vscode.LogOutputChannel }
 ): void {
     const { client, outputChannel } = deps;
+    let collection: vscode.DiagnosticCollection | undefined;
+
+    function placeProblems(params: unknown): void {
+        const uri = denumPayloadUri(params);
+        if (uri === undefined) {
+            return;
+        }
+        const document = vscode.workspace.textDocuments.find(
+            candidate => candidate.languageId === 'bbj' && candidate.uri.toString() === uri
+        );
+        if (document === undefined) {
+            return;
+        }
+        const problems = denumProblems(params, document.lineCount);
+        if (collection === undefined) {
+            collection = vscode.languages.createDiagnosticCollection('bbj-denum');
+            context.subscriptions.push(collection);
+        }
+        if (problems.length === 0) {
+            collection.delete(document.uri);
+            return;
+        }
+        collection.set(document.uri, problems.map(problem => {
+            const diagnostic = new vscode.Diagnostic(
+                new vscode.Range(problem.line, 0, problem.line, document.lineAt(problem.line).text.length),
+                problem.message,
+                denumSeverity(problem.severity)
+            );
+            diagnostic.source = 'BBj Denumber';
+            return diagnostic;
+        }));
+    }
+
     context.subscriptions.push(
         client.onNotification(DENUM_DIAGNOSTICS_METHOD, (params: unknown) => {
             // Raw appendLine, not the log-level methods: those add a timestamp and the Output
@@ -642,10 +689,16 @@ function registerDenumDiagnosticsOutput(
                     // A broken write must not stop the rest of the list.
                 }
             }
+            try {
+                placeProblems(params);
+            } catch {
+                // The log copy above already holds the list; a failed placement must not surface.
+            }
         }),
         client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
-            // Preserve focus: the list is revealed, the editor keeps the caret.
-            outputChannel.show(true);
+            // preserveFocus opens the view without taking focus from the editor, and never
+            // toggles an already focused Problems view closed.
+            void vscode.commands.executeCommand('workbench.actions.view.problems', { preserveFocus: true });
         })
     );
 }

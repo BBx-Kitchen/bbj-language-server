@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
  * Regression for P62-D2-004: extension.ts's startLanguageClient() calls client.start()
@@ -57,6 +57,9 @@ vi.mock('vscode', () => {
             onDidChangeDiagnostics: vi.fn(() => disposable()),
             getDiagnostics: vi.fn(() => []),
             setTextDocumentLanguage: vi.fn(),
+            createDiagnosticCollection: vi.fn(() => ({
+                set: vi.fn(), delete: vi.fn(), clear: vi.fn(), has: vi.fn(), dispose: vi.fn(),
+            })),
         },
         workspace: {
             createFileSystemWatcher: vi.fn(() => disposable()),
@@ -80,6 +83,16 @@ vi.mock('vscode', () => {
         QuickPickItemKind: { Separator: -1 },
         CodeActionKind: { RefactorRewrite: { value: 'refactor.rewrite' } },
         Uri: class { },
+        Range: class {
+            constructor(
+                public startLine: number, public startCharacter: number,
+                public endLine: number, public endCharacter: number
+            ) { }
+        },
+        Diagnostic: class {
+            source?: string;
+            constructor(public range: unknown, public message: string, public severity?: number) { }
+        },
     };
 });
 
@@ -418,32 +431,127 @@ describe('denumber diagnostics output', () => {
         ['a file uri payload', { uri: 'file:///etc/passwd' }],
         ['no payload', undefined],
         ['a string payload', 'x'],
-    ])('the reveal notification with %s only shows the channel', (_name, payload) => {
+    ])('the reveal notification with %s opens the Problems view and nothing else', (_name, payload) => {
         const { context, channel, reveal } = activateAndFindHandlers();
+        const executeCommand = vscode.commands.executeCommand as ReturnType<typeof vi.fn>;
         const spies = [
-            vscode.commands.executeCommand,
             vscode.window.showTextDocument,
             vscode.workspace.openTextDocument,
         ] as Array<ReturnType<typeof vi.fn>>;
+        executeCommand.mockClear();
         spies.forEach(spy => spy.mockClear());
 
         reveal(payload);
 
-        expect(channel.show.mock.calls).toEqual([[true]]);
+        expect(executeCommand.mock.calls).toEqual([['workbench.actions.view.problems', { preserveFocus: true }]]);
+        expect(channel.show).not.toHaveBeenCalled();
         expect(channel.appendLine).not.toHaveBeenCalled();
         spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
 
         disposeSubscriptions(context);
     });
 
-    test('the reveal notification shows the BBj channel without taking focus and appends nothing', () => {
-        const { context, channel, reveal } = activateAndFindHandlers();
+    describe('problems for an open document', () => {
+        const createCollection = vscode.languages.createDiagnosticCollection as ReturnType<typeof vi.fn>;
 
-        reveal();
+        interface CollectionMock {
+            set: ReturnType<typeof vi.fn>;
+            delete: ReturnType<typeof vi.fn>;
+            dispose: ReturnType<typeof vi.fn>;
+        }
 
-        expect(channel.show.mock.calls).toEqual([[true]]);
-        expect(channel.appendLine).not.toHaveBeenCalled();
+        const openDocuments: unknown[] = [];
 
-        disposeSubscriptions(context);
+        /** Puts a fake open document into the editor's document list for the length of one test. */
+        function open(uri: string, lines: string[], languageId = 'bbj'): { uri: { toString(): string }; lineCount: number } {
+            const document = {
+                uri: { toString: () => uri },
+                languageId,
+                lineCount: lines.length,
+                lineAt: (n: number) => ({ text: lines[n] }),
+            };
+            (vscode.workspace.textDocuments as unknown[]).push(document);
+            openDocuments.push(document);
+            return document;
+        }
+
+        beforeEach(() => {
+            createCollection.mockClear();
+        });
+
+        afterEach(() => {
+            const documents = vscode.workspace.textDocuments as unknown[];
+            for (const document of openDocuments.splice(0)) {
+                documents.splice(documents.indexOf(document), 1);
+            }
+        });
+
+        function collections(): CollectionMock[] {
+            return createCollection.mock.results.map(result => result.value as CollectionMock);
+        }
+
+        test('a list for an open BBj document becomes one problem on the first line, keyed by the document own uri', () => {
+            const { context, channel, list } = activateAndFindHandlers();
+            const document = open('file:///ws/a.bbj', ['L10: if then', 'x', 'y']);
+
+            list(payload);
+
+            expect(createCollection.mock.calls).toEqual([['bbj-denum']]);
+            const [collection] = collections();
+            expect(collection.set).toHaveBeenCalledTimes(1);
+            const [target, diagnostics] = collection.set.mock.calls[0] as [unknown, Array<Record<string, unknown>>];
+            expect(target).toBe(document.uri);
+            expect(diagnostics).toHaveLength(1);
+            expect(diagnostics[0].range).toMatchObject({ startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 12 });
+            expect(diagnostics[0].message).toBe('syntax error (original line 0010)');
+            expect(diagnostics[0].severity).toBe(vscode.DiagnosticSeverity.Error);
+            expect(diagnostics[0].source).toBe('BBj Denumber');
+            expect(context.subscriptions).toContain(collection);
+            expect(channel.appendLine.mock.calls).toEqual([
+                ['Denumber diagnostics for /ws/a.bbj:'],
+                ['  line 1 (original 0010) ERROR: syntax error'],
+            ]);
+
+            disposeSubscriptions(context);
+        });
+
+        test('the collection is created once and reused by the next list', () => {
+            const { context, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+            list(payload);
+            list(payload);
+
+            expect(createCollection).toHaveBeenCalledTimes(1);
+            expect(collections()[0].set).toHaveBeenCalledTimes(2);
+
+            disposeSubscriptions(context);
+        });
+
+        test('each placed problem sits on its own line with its own severity, and every line is clamped to the document', () => {
+            const { context, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['first', 'second', 'third']);
+
+            list({
+                uri: 'file:///ws/a.bbj',
+                diagnostics: [
+                    { line: 0, originalLineNumber: '', severity: 'INFO', message: 'note' },
+                    { line: 2, originalLineNumber: '0020', severity: 'WARNING', message: 'careful' },
+                    { line: 99, originalLineNumber: '', severity: 'ERROR', message: 'past the end' },
+                ],
+            });
+
+            const diagnostics = collections()[0].set.mock.calls[0][1] as Array<Record<string, unknown>>;
+            expect(diagnostics.map(d => (d.range as { startLine: number }).startLine)).toEqual([0, 1, 2]);
+            expect(diagnostics.map(d => d.severity)).toEqual([
+                vscode.DiagnosticSeverity.Information,
+                vscode.DiagnosticSeverity.Warning,
+                vscode.DiagnosticSeverity.Error,
+            ]);
+            expect(diagnostics[0].message).toContain('(no location');
+            expect(diagnostics[2].range).toMatchObject({ endCharacter: 'third'.length });
+
+            disposeSubscriptions(context);
+        });
     });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { formatDenumDiagnosticsBlock } from '../src/denum-diagnostics-output.js';
+import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from '../src/denum-diagnostics-output.js';
 
 const UNKNOWN_HEADER = 'Denumber diagnostics for an unknown file:';
 
@@ -195,5 +195,20 @@ describe('formatDenumDiagnosticsBlock', () => {
             'Denumber diagnostics for command:workbench.action.reloadWindow:',
             '  line 1 (original 0010) ERROR: command:workbench.action.quit',
         ]);
+    });
+});
+
+describe('denumPayloadUri', () => {
+    test('gives the uri of a payload that names one', () => {
+        expect(denumPayloadUri({ uri: 'file:///ws/a.bbj', diagnostics: [] })).toBe('file:///ws/a.bbj');
+    });
+});
+
+describe('denumProblems', () => {
+    test('maps a located entry to its zero-based line with the original line number after the message', () => {
+        expect(denumProblems({
+            uri: 'file:///ws/a.bbj',
+            diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'syntax error' }],
+        }, 3)).toEqual([{ line: 0, severity: 'ERROR', message: 'syntax error (original line 0010)' }]);
     });
 });
