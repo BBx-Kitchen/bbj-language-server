@@ -184,6 +184,16 @@ const decompileTargetOrWarn = (params) => {
 };
 
 /**
+ * Shown when a decompile command is pointed at a file that is not a tokenized BBj
+ * program (plain text, or anything `isTokenizedFile` does not accept). bbjlst is never
+ * launched on such a file.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const notTokenizedMessage = (fileName) =>
+  `"${path.basename(fileName)}" is not a tokenized BBj program, so there is nothing to decompile.`;
+
+/**
  * Run bbjlst on an already-resolved tokenized program, replacing it in place with the
  * decompiled source, then open the result.
  */
@@ -207,9 +217,13 @@ const decompileInPlace = (resolvedFileName) => {
     cancellable: false
   }, async () => {
     try {
-      // Capture up-front whether the input is tokenized: only then can bbjlst
-      // legitimately rewrite it in place.
+      // Only a tokenized program is decompiled in place; a plain-text file is refused
+      // before anything is cleaned up or launched, so it is never rewritten.
       const wasTokenized = await isTokenizedFile(resolvedFileName);
+      if (!wasTokenized) {
+        vscode.window.showWarningMessage(notTokenizedMessage(fileName));
+        return;
+      }
       await deleteLeftoverLst(resolvedFileName);
       await execWithProgress(argv);
 
@@ -437,6 +451,13 @@ const Commands = {
       cancellable: false
     }, async () => {
       try {
+        // Only a tokenized program is decompiled; a plain-text file is refused before
+        // any temporary directory is created or bbjlst is launched.
+        if (!(await isTokenizedFile(resolvedFileName))) {
+          vscode.window.showWarningMessage(notTokenizedMessage(fileName));
+          return;
+        }
+
         // Run bbjlst against a private copy in a temp dir, so the original binary
         // is never touched — regardless of whether bbjlst emits `<input>.lst` or
         // rewrites its input in place.

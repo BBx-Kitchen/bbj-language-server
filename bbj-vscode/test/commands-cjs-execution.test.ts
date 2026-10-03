@@ -499,6 +499,54 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         fs.rmSync(path.dirname(openedPath), { recursive: true, force: true });
     });
 
+    const PLAIN_NUMBERED_PROGRAM = '0010 PRINT 1\n0020 END\n';
+
+    function decompileTempDirs(): string[] {
+        return fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('bbj-decompiled-')).sort();
+    }
+
+    test('decompileReplace refuses a plain-text file: warns once, launches nothing, opens nothing, leaves the file unchanged', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'plain-replace.bbj');
+        fs.writeFileSync(inputPath, PLAIN_NUMBERED_PROGRAM);
+        fakeBbjlstWrites('must never be written\n');
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledWith(
+            '"plain-replace.bbj" is not a tokenized BBj program, so there is nothing to decompile.'
+        );
+        expect(fakeProcessRunner.runProcess).not.toHaveBeenCalled();
+        expect(fakeVscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(PLAIN_NUMBERED_PROGRAM);
+        expect(fs.existsSync(`${inputPath}.lst`)).toBe(false);
+    });
+
+    test('decompileReadonly refuses a plain-text file: warns once, creates no temporary directory, launches nothing, opens nothing', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'plain-readonly.bbj');
+        fs.writeFileSync(inputPath, PLAIN_NUMBERED_PROGRAM);
+        fakeBbjlstWrites('must never be written\n');
+        const tempDirsBefore = decompileTempDirs();
+
+        Commands.decompileReadonly({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledWith(
+            '"plain-readonly.bbj" is not a tokenized BBj program, so there is nothing to decompile.'
+        );
+        expect(fakeProcessRunner.runProcess).not.toHaveBeenCalled();
+        expect(decompileTempDirs()).toEqual(tempDirsBefore);
+        expect(fakeVscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        expect(fakeVscode.commands.executeCommand).not.toHaveBeenCalled();
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(PLAIN_NUMBERED_PROGRAM);
+    });
+
     test('a decompile whose runProcess rejects shows an error starting "Failed to decompile"', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'd.bbj');

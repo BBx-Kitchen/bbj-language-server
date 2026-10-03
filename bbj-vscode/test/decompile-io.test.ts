@@ -173,7 +173,7 @@ describe('decompile-io', () => {
         });
 
         test('does NOT treat a non-tokenized input as in-place (waits for .lst)', async () => {
-            // e.g. denumbering line-numbered text: bbjlst always emits .lst.
+            // e.g. a plain-text, line-numbered file: bbjlst always emits .lst.
             const input = path.join(dir, 'numbered.bbj');
             fs.writeFileSync(input, '0010 print "hi"\n'); // never tokenized
             const lst = input + '.lst';

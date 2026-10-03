@@ -107,8 +107,8 @@ export interface WaitOptions {
     pollMs?: number;
     /**
      * Allow the "input is no longer tokenized → rewritten in place" detection.
-     * Set this only when the input started out tokenized; otherwise (e.g.
-     * denumbering line-numbered text) bbjlst always emits `<input>.lst` and the
+     * Set this only when the input started out tokenized; otherwise (e.g. a
+     * plain-text, line-numbered file) bbjlst always emits `<input>.lst` and the
      * heuristic would fire spuriously on the very first poll.
      */
     canRewriteInPlace?: boolean;
