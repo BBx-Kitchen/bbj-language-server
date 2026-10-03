@@ -46,7 +46,7 @@ stays switched off until the evaluation verdict.
 - [x] **DEN-03**: Denumbering an unnumbered file says "nothing to do"; success shows a short confirmation; failures use the typed messages (tokenized input points to Decompile, protected programs say so)
 - [x] **DEN-04**: DENUM diagnostics appear in an output list (line, original line number, severity, message) with a notification showing the counts and a "Show" action
 - [x] **DEN-05**: The open-file prompt for numbered programs (`bbj.denumber.promptOnOpen`) offers "Denumber" via the new path and still offers read-only opening
-- [ ] **DEN-06**: The bbjlst denumber path is removed, while decompiling tokenized programs through bbjlst keeps working
+- [x] **DEN-06**: The bbjlst denumber path is removed, while decompiling tokenized programs through bbjlst keeps working
 
 ### Settings (SET)
 
@@ -123,7 +123,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEN-03 | Phase 126 | Complete |
 | DEN-04 | Phase 126 | Complete |
 | DEN-05 | Phase 127 | Complete |
-| DEN-06 | Phase 127 | Pending |
+| DEN-06 | Phase 127 | Complete |
 | SET-01 | Phase 127 | Complete |
 | SET-02 | Phase 125 | Complete |
 | SET-03 | Phase 127 | Complete |

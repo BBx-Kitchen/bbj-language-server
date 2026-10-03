@@ -545,7 +545,7 @@ Plans:
   4. The built VSIX contains no `BBjCFCli.jar` or `tools/formatter`. `document-formatter.ts`, `formatter-java-resolver.ts`, `formatter-verifier.ts` and their tests, guards and packaging references are gone, and every CI gate passes.
   5. Installed from the built VSIX against a live BBj 26.03 BBjServices, Format Document, Format Selection, format-on-save, the numbered-file offer, Denumber and Denumber-and-Format all work end to end.
 
-**Plans**: 4/6 plans executed
+**Plans**: 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -557,7 +557,7 @@ Plans:
 
 - [x] 127-03-PLAN.md — The 15 typed formatter settings, the deprecated `splitSingleLineIF` with its one-time per-scope migration, the reworded prompt setting (wave 2)
 - [x] 127-04-PLAN.md — bbjlst denumber path removed: no denumber member, helper or argv option; Decompile keeps `-l` and refuses plain text (wave 2)
-- [ ] 127-05-PLAN.md — Ten activation suites' Commands.cjs mocks without the removed member (wave 2)
+- [x] 127-05-PLAN.md — Ten activation suites' Commands.cjs mocks without the removed member (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -653,7 +653,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 124. Interop Client | 6/6 | Complete | 2026-10-01 |
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
-| 127. VS Code Cut-Over | 4/6 | Planned |  |
+| 127. VS Code Cut-Over | 5/6 | Planned |  |
 | 128. IntelliJ DENUM | 0/TBD | Not started | - |
 | 129. IntelliJ Verdict | 0/TBD | Not started | - |
 | 130. Docs & Migration | 0/TBD | Not started | - |
