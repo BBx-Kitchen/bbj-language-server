@@ -5,17 +5,24 @@ import com.basis.bbj.intellij.config.BbjConfigPathService;
 import com.basis.bbj.intellij.config.ConfigModels.ConfigReloadNotification;
 import com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult;
 import com.basis.bbj.intellij.config.ConfigReloadPresentation;
+import com.basis.bbj.intellij.denum.DenumDiagnosticsPresenter;
+import com.basis.bbj.intellij.denum.DenumModels;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
+import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * BBj language client implementation.
@@ -120,6 +127,52 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             ConfigReloadPresentation.consoleLine(result.path, result.reason),
             com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
         service.requestRestart(BbjServerService.RESTART_DEBOUNCE_MS);
+    }
+
+    /**
+     * Receives the pushed DENUM diagnostics list (see
+     * {@code bbj-vscode/src/language/denum-notifications.ts}) and prints it as one block into the
+     * "BBj Language Server" console. LSP4IJ hands this client instance to LSP4J's launcher as the
+     * local service, and LSP4J reflects over the concrete class to find supported methods, so
+     * declaring the method directly on this class is what makes the notification reachable -- no
+     * extra registration exists or is needed. The block is plain text: no line is a link and no
+     * payload field is ever read as a command or a path to open. The notification never shows,
+     * activates or focuses the tool window; revealing it is the user's choice, made through the
+     * server's Show button (see {@link #showDenumDiagnostics}).
+     */
+    @JsonNotification("bbj/denumDiagnostics")
+    public void denumDiagnostics(DenumModels.DenumDiagnosticsParams params) {
+        List<DenumDiagnosticsPresenter.Line> lines = DenumDiagnosticsPresenter.present(params);
+        Project project = getProject();
+        if (project.isDisposed()) {
+            return;
+        }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            ensureLogConsole(project);
+            BbjServerService service = BbjServerService.getInstance(project);
+            for (DenumDiagnosticsPresenter.Line line : lines) {
+                service.logToConsole(line.text(),
+                    line.error() ? ConsoleViewContentType.ERROR_OUTPUT : ConsoleViewContentType.NORMAL_OUTPUT);
+            }
+        });
+    }
+
+    /**
+     * Makes sure the "BBj Language Server" console exists and returns its tool window, or null
+     * when the window is not registered. The console is created lazily, the first time the tool
+     * window's content is asked for, and {@link BbjServerService#logToConsole} drops text until it
+     * exists; asking for the content manager creates the console without showing the window. Call
+     * on the EDT.
+     */
+    private static @Nullable ToolWindow ensureLogConsole(@NotNull Project project) {
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("BBj Language Server");
+        if (toolWindow != null) {
+            toolWindow.getContentManager();
+        }
+        return toolWindow;
     }
 
     /**
