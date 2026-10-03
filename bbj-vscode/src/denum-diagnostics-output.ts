@@ -52,7 +52,7 @@ interface ValidEntry {
  */
 export function formatDenumDiagnosticsBlock(params: unknown): string[] {
     const payload = isRecord(params) ? params : {};
-    const uri = typeof payload.uri === 'string' ? payload.uri : undefined;
+    const uri = denumPayloadUri(params);
     const lines = [`Denumber diagnostics for ${uri === undefined ? UNKNOWN_FILE : flatten(displayPath(uri))}:`];
 
     const diagnostics = payload.diagnostics;
