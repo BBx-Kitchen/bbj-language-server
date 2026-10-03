@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 127
 current_phase_name: VS Code Cut-Over
 status: executing
-stopped_at: Completed 127-03-PLAN.md
-last_updated: "2026-10-03T09:43:15.071Z"
+stopped_at: Completed 127-04-PLAN.md
+last_updated: "2026-10-03T09:48:25.665Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 127 execution started
-state_head: b1e3c7608fc44053353d5dc141079314a5a577c4
+state_head: f0db77a0071648408895754dbf015dc9c1722fff
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 43
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 ## Current Position
 
 Phase: 127 (VS Code Cut-Over) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-03 — Phase 127 execution started
 
@@ -224,6 +224,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 127 P01 | 10 min | 2 tasks | 5 files |
 | Phase 127 P02 | 2 min | 3 tasks | 16 files |
 | Phase 127 P03 | 9 min | 2 tasks | 6 files |
+| Phase 127 P04 | 8 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -402,6 +403,7 @@ decisions:
 - [Phase 127]: Denumber command sends bbj/denum through createDenumberCommand, client words no outcome, no retry; Explorer path marks the document so the numbered-file prompt stays quiet — Server presents every outcome and applies the edit; the document is opened first so the server already has it
 - [Phase 127]: Client-side formatter and bbj.formatter.javaPath removed; the language server normalizer stays as the backstop for leftover user values — The language server formats; the vendored jars, java resolver and verifier were dead code and a supply-chain surface
 - [Phase 127]: 127-03: formatter settings migration moves splitSingleLineIF to splitSingleLineIf per scope (user, then trusted workspace), write-before-remove, never overwrites a set value
+- [Phase 127]: 127-04: both Decompile commands refuse a non-tokenized input (symlinks included) before any bbjlst launch; -xlst kept for .lst input — Running bbjlst on plain text is the denumber path being removed; isTokenizedFile already treats non-regular files as not tokenized (issue #585)
 
 ### Tech Debt
 
@@ -469,8 +471,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T09:43:14.923Z
-Stopped at: Completed 127-03-PLAN.md
+Last session: 2026-10-03T09:48:25.507Z
+Stopped at: Completed 127-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 127` or `/gsd-plan-phase 127`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open. Recheck tokenized and protected DENUM (126 UAT test 7) in Phase 127.
