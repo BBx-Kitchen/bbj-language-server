@@ -25,6 +25,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStatePara
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
+import com.basis.bbj.intellij.denum.DenumModels.DenumParams;
+import com.basis.bbj.intellij.denum.DenumModels.DenumResult;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
 
@@ -147,4 +149,12 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/composer/cvs/preview")
     CompletableFuture<CvsPreview> cvsPreview(CvsPreviewParams params);
+
+    /**
+     * Denumbers the open document named by {@code uri}. The language server runs DENUM, applies the
+     * edit itself through {@code workspace/applyEdit} and shows every outcome, so a caller never
+     * reads the result. Shape per {@code bbj-vscode/src/language/denum-command.ts}.
+     */
+    @JsonRequest("bbj/denum")
+    CompletableFuture<DenumResult> denum(DenumParams params);
 }

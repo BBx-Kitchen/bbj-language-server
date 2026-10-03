@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Cross-language contract for the custom {@code bbj/composer/*}, {@code bbj/compile},
- * {@code bbj/resolvedConfigPath} and {@code bbj/refreshJavaClasses} requests (#544, #632): every
+ * {@code bbj/resolvedConfigPath}, {@code bbj/refreshJavaClasses} and {@code bbj/denum} requests (#544, #632): every
  * request name {@link BbjComposerServer} declares must appear as a quoted literal in the language
  * server's own TypeScript sources, so renaming one side alone fails here instead of silently
  * breaking the request at run time. The sources are read only as plain text -- never parsed as
@@ -44,7 +44,10 @@ class ComposerRequestContractTest {
     private static final Path JAVA_CLASS_REFRESH_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "java-class-refresh.ts").toAbsolutePath().normalize();
 
-    /** The sixteen names this test expects; also independently derived reflectively below. */
+    private static final Path DENUM_COMMAND_TS = Paths.get(
+        "..", "bbj-vscode", "src", "language", "denum-command.ts").toAbsolutePath().normalize();
+
+    /** The seventeen names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -61,7 +64,8 @@ class ComposerRequestContractTest {
         "bbj/composer/setopts/decodeInCode",
         "bbj/composer/setopts/composeTriState",
         "bbj/composer/cvs/decodeCall",
-        "bbj/composer/cvs/preview"
+        "bbj/composer/cvs/preview",
+        "bbj/denum"
     );
 
     private static String readLanguageServerSource(Path path) {
@@ -100,15 +104,17 @@ class ComposerRequestContractTest {
         String mainSource = readLanguageServerSource(MAIN_TS);
         String setoptsInCodeSource = readLanguageServerSource(SETOPTS_IN_CODE_REQUEST_TS);
         String javaClassRefreshSource = readLanguageServerSource(JAVA_CLASS_REFRESH_TS);
+        String denumSource = readLanguageServerSource(DENUM_COMMAND_TS);
         String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource + setoptsInCodeSource
-            + javaClassRefreshSource;
+            + javaClassRefreshSource + denumSource;
 
         for (String requestName : DECLARED_REQUESTS) {
             boolean present = combined.contains("'" + requestName + "'")
                 || combined.contains("\"" + requestName + "\"");
             assertTrue(present, "request name '" + requestName + "' not found as a quoted literal "
                 + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + ", " + RESOLVED_CONFIG_PATH_REQUEST_TS
-                + ", " + MAIN_TS + ", " + SETOPTS_IN_CODE_REQUEST_TS + " or " + JAVA_CLASS_REFRESH_TS);
+                + ", " + MAIN_TS + ", " + SETOPTS_IN_CODE_REQUEST_TS + ", " + JAVA_CLASS_REFRESH_TS
+                + " or " + DENUM_COMMAND_TS);
         }
     }
 
@@ -161,10 +167,12 @@ class ComposerRequestContractTest {
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
         String mainSource = readLanguageServerSource(MAIN_TS);
         String setoptsInCodeSource = readLanguageServerSource(SETOPTS_IN_CODE_REQUEST_TS);
+        String denumSource = readLanguageServerSource(DENUM_COMMAND_TS);
         assertTrue(composerSource.length() > 0, "composer-commands.ts must be non-empty");
         assertTrue(compileSource.length() > 0, "compile-command.ts must be non-empty");
         assertTrue(resolvedConfigPathSource.length() > 0, "resolved-config-path-request.ts must be non-empty");
         assertTrue(mainSource.length() > 0, "main.ts must be non-empty");
         assertTrue(setoptsInCodeSource.length() > 0, "setopts-in-code-request.ts must be non-empty");
+        assertTrue(denumSource.length() > 0, "denum-command.ts must be non-empty");
     }
 }
