@@ -3,6 +3,7 @@ package com.basis.bbj.intellij.actions;
 import com.basis.bbj.intellij.composer.BbjComposerServer;
 import com.basis.bbj.intellij.composer.BbjComposerService;
 import com.basis.bbj.intellij.denum.DenumModels.DenumParams;
+import com.basis.bbj.intellij.denum.LineNumbering;
 import com.basis.bbj.intellij.ui.BbjFileVisibility;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
@@ -31,6 +32,9 @@ import java.util.concurrent.TimeoutException;
  * the edit as one undoable change and shows every outcome itself, so this class shows nothing
  * but a transport failure, and it never writes the file to disk, which stays modified for the
  * user to review.
+ *
+ * <p>The action is enabled only when the editor's BBj program looks line-numbered; a mismatch is
+ * harmless because the server answers with its own message.
  */
 public final class BbjDenumberAction extends AnAction implements DumbAware {
 
@@ -57,7 +61,8 @@ public final class BbjDenumberAction extends AnAction implements DumbAware {
             return;
         }
         e.getPresentation().setVisible(true);
-        e.getPresentation().setEnabled(true);
+        e.getPresentation().setEnabled(LineNumbering.isLineNumberedSource(
+            editor.getDocument().getImmutableCharSequence()));
     }
 
     @Override
