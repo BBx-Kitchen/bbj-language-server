@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 128
 current_phase_name: IntelliJ DENUM
 status: executing
-stopped_at: Phase 128 context gathered
-last_updated: "2026-10-03T12:37:11.170Z"
+stopped_at: Completed 128-01-PLAN.md
+last_updated: "2026-10-03T12:44:56.141Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 127 complete, transitioned to Phase 128
-state_head: 80109652b46fac0cb8e5ae672f69657f55ff1df9
+last_activity_desc: Phase 128 execution started
+state_head: 8ba981e8210a17a817ebc510bbc563788bfc5a28
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 29
-  completed_plans: 25
+  completed_plans: 26
   percent: 57
 ---
 
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 ## Current Position
 
-Phase: 128 (IntelliJ DENUM) — READY TO EXECUTE
-Plan: Not started
+Phase: 128 (IntelliJ DENUM) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-10-03 — Phase 127 complete, transitioned to Phase 128
+Last activity: 2026-10-03 — Phase 128 execution started
 
-Progress: [████░░░░░░] 43% (v4.9: 3/7 phases)
+Progress: [██████░░░░] 57% (v4.9: 3/7 phases)
 
 ### v4.9 milestone map
 
@@ -227,6 +227,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 127 P04 | 8 min | 3 tasks | 8 files |
 | Phase 127 P05 | 5 min | 2 tasks | 10 files |
 | Phase 127 P06 | 5 min + hand check | 3 tasks | 0 files |
+| Phase 128 P01 | 12 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -406,6 +407,7 @@ decisions:
 - [Phase 127]: Client-side formatter and bbj.formatter.javaPath removed; the language server normalizer stays as the backstop for leftover user values — The language server formats; the vendored jars, java resolver and verifier were dead code and a supply-chain surface
 - [Phase 127]: 127-03: formatter settings migration moves splitSingleLineIF to splitSingleLineIf per scope (user, then trusted workspace), write-before-remove, never overwrites a set value
 - [Phase 127]: 127-04: both Decompile commands refuse a non-tokenized input (symlinks included) before any bbjlst launch; -xlst kept for .lst input — Running bbjlst on plain text is the denumber path being removed; isTokenizedFile already treats non-regular files as not tokenized (issue #585)
+- [Phase 128]: Denumber client words no outcome: DenumResult discarded; only a transport failure shows one XML-escaped 'Denumber failed' balloon (60 s timeout)
 
 ### Tech Debt
 
@@ -473,11 +475,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T11:54:09.508Z
-Stopped at: Phase 128 context gathered
-Resume file: .planning/phases/128-intellij-denum/128-CONTEXT.md
+Last session: 2026-10-03T12:44:55.936Z
+Stopped at: Completed 128-01-PLAN.md
+Resume file: None
 
-Next: `/gsd-discuss-phase 128` or `/gsd-plan-phase 128`. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
+Next: execute 128-02 (`/gsd-execute-phase 128`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
