@@ -9,7 +9,11 @@ import { URI } from 'vscode-uri';
 const UNKNOWN_FILE = 'an unknown file';
 const SEVERITIES: readonly unknown[] = ['ERROR', 'WARNING', 'INFO'];
 
-/** The most problems one list may place; the server bounds its list the same way, and the payload crosses a process boundary. */
+/**
+ * The most entries of one list that become problems; the server bounds its list the same way, and
+ * the payload crosses a process boundary. The log copy of the list is not cut by this bound. When
+ * entries are left out, one last problem says how many.
+ */
 export const MAX_DENUM_PROBLEMS = 500;
 
 /** One entry of the list, validated and ready to be placed as a problem on a document. */
@@ -70,10 +74,12 @@ export function denumPayloadUri(params: unknown): string | undefined {
 }
 
 /**
- * One problem per valid entry, in payload order, at most `MAX_DENUM_PROBLEMS`. A located entry
- * lands on its zero-based line, clamped to the document's `lineCount`; an entry without a location
- * lands on the first line. The message is flattened and followed by the original line number or the
- * missing location in parentheses. Never throws; anything that is not a list gives `[]`.
+ * One problem per valid entry, in payload order, at most `MAX_DENUM_PROBLEMS` of them. A located
+ * entry lands on its zero-based line, clamped to the document's `lineCount`; an entry without a
+ * location lands on the first line. The message is flattened and followed by the original line
+ * number or the missing location in parentheses. When valid entries are left out by the bound, one
+ * more information problem on the first line says how many and points at the output channel, which
+ * holds the whole list. Never throws; anything that is not a list gives `[]`.
  */
 export function denumProblems(params: unknown, lineCount: number): DenumProblem[] {
     const diagnostics = isRecord(params) ? params.diagnostics : undefined;
@@ -82,12 +88,14 @@ export function denumProblems(params: unknown, lineCount: number): DenumProblem[
     }
     const lastLine = Math.max(Number.isFinite(lineCount) ? Math.trunc(lineCount) : 1, 1) - 1;
     const problems: DenumProblem[] = [];
+    let omitted = 0;
     for (const diagnostic of diagnostics) {
-        if (problems.length >= MAX_DENUM_PROBLEMS) {
-            break;
-        }
         const entry = validEntry(diagnostic);
         if (entry === undefined) {
+            continue;
+        }
+        if (problems.length >= MAX_DENUM_PROBLEMS) {
+            omitted++;
             continue;
         }
         const parts: string[] = [];
@@ -101,6 +109,13 @@ export function denumProblems(params: unknown, lineCount: number): DenumProblem[
             line: entry.line === 0 ? 0 : Math.min(entry.line - 1, lastLine),
             severity: entry.severity,
             message: parts.length === 0 ? flatten(entry.message) : `${flatten(entry.message)} (${parts.join(', ')})`
+        });
+    }
+    if (omitted > 0) {
+        problems.push({
+            line: 0,
+            severity: 'INFO',
+            message: `${omitted} more ${omitted === 1 ? 'diagnostic' : 'diagnostics'} not shown here, see the BBj output`
         });
     }
     return problems;

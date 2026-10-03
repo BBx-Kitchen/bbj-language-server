@@ -311,14 +311,32 @@ describe('denumProblems lines and entries', () => {
         expect(problems.map(problem => [problem.line, problem.message.split(' ')[0]])).toEqual([[4, 'a'], [1, 'b'], [4, 'c']]);
     });
 
-    test('keeps at most 500 entries, the first 500', () => {
+    test('keeps at most 500 entries, the first 500, and one last problem counts the rest', () => {
         const entries = Array.from({ length: 501 }, (_, index) => entry({ message: `m${index}` }));
 
         const problems = denumProblems(params(...entries), 3);
 
-        expect(problems).toHaveLength(500);
+        expect(problems).toHaveLength(501);
         expect(problems[0].message.startsWith('m0 ')).toBe(true);
         expect(problems[499].message.startsWith('m499 ')).toBe(true);
+        expect(problems[500]).toEqual({
+            line: 0,
+            severity: 'INFO',
+            message: '1 more diagnostic not shown here, see the BBj output'
+        });
+    });
+
+    test('the count of left-out entries ignores invalid entries and a list within the bound gets no such problem', () => {
+        const valid = Array.from({ length: 502 }, (_, index) => entry({ message: `m${index}` }));
+        const invalid = [null, entry({ line: -1 })];
+
+        const over = denumProblems(params(...valid.slice(0, 250), ...invalid, ...valid.slice(250)), 3);
+        const within = denumProblems(params(...valid.slice(0, 500), ...invalid), 3);
+
+        expect(over).toHaveLength(501);
+        expect(over[500].message).toBe('2 more diagnostics not shown here, see the BBj output');
+        expect(within).toHaveLength(500);
+        expect(within.some(problem => problem.message.includes('not shown here'))).toBe(false);
     });
 
     test.each([
