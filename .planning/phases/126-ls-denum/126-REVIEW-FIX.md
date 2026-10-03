@@ -1,79 +1,77 @@
 ---
 phase: 126-ls-denum
-fixed_at: 2026-10-02T16:21:00Z
-review_path: /home/coder/repos/bbj-language-server/.planning/phases/126-ls-denum/126-REVIEW.md
+fixed_at: 2026-10-03T08:06:00Z
+review_path: .planning/phases/126-ls-denum/126-REVIEW.md
 iteration: 1
 findings_in_scope: 6
-fixed: 6
-skipped: 0
-status: all_fixed
+fixed: 5
+skipped: 1
+status: partial
 ---
 
 # Phase 126: Code Review Fix Report
 
-**Fixed at:** 2026-10-02
-**Source review:** /home/coder/repos/bbj-language-server/.planning/phases/126-ls-denum/126-REVIEW.md
+**Fixed at:** 2026-10-03
+**Source review:** .planning/phases/126-ls-denum/126-REVIEW.md (gap-closure re-review; the earlier whole-phase fix report stays in git history)
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 6
-- Fixed: 6
-- Skipped: 0
+- Findings in scope: 6 (fix_scope: all)
+- Fixed: 5
+- Skipped: 1
+
+**Verification ran in the isolated worktree**, not the main checkout. The worktree had no `node_modules`, so a plain symlink to the main checkout's `bbj-vscode/node_modules` was placed in it and unlinked (`unlink`, no recursive remove) before the worktree was removed. The gitignored `src/language/generated/*.ts` files were copied from the main checkout, because `langium:generate` does not run under the host's Node 24. The results below are reproducible from the main checkout, which now holds the same commits (fast-forwarded).
+
+- `npm run lint`: clean (`--max-warnings 0`)
+- `npm run typecheck:test`: clean
+- `npm run build`: passes
+- `npx vitest run test/activation-command-coverage.test.ts test/bbj-denum-offer.test.ts test/denum-diagnostics-output.test.ts test/extension-activation.test.ts`: 4 files, 138 tests passed
+- `npx vitest run denum format --maxWorkers=2` (every denumber and formatter test file, 17 files): 404 tests passed
+- Diff register check: no planning ids in the added source or test lines.
+- The IntelliJ `ComposerRequestContractTest` was not run: no language-server request or notification handler path was touched, only the VS Code client handler and the server's debug logging.
 
 ## Fixed Issues
 
-### WR-01: A hung `workspace/applyEdit` holds the per-document claim forever
+### WR-01: Show opens an empty Problems view once the user has edited the document
 
-**Files modified:** `bbj-vscode/src/language/bbj-notifications.ts`, `bbj-vscode/test/bbj-denum-service.test.ts`
-**Commit:** 33d017a8
-**Applied fix:** `applyDocumentEdit` now wraps the request in a `withDeadline` helper and resolves `false` after `APPLY_EDIT_TIMEOUT_MS` (30 s, exported) or on rejection, clearing its timer once the request settles. The run therefore ends as `not-applied` and the claim is released. New test: an `applyEdit` that never settles, fake timers, asserts the `not-applied` result and Warning, then that a second run is not `in-progress` and denumbers.
-**Status note:** timing/logic change, flagged "fixed: requires human verification" (the 30 s value is my choice; the review gave it as an example).
+**Files modified:** `bbj-vscode/src/extension.ts`, `bbj-vscode/test/extension-activation.test.ts`
+**Commit:** 9af8b30b
+**Applied fix:** Instead of the suggested `collection.forEach` probe (the diagnostic collection is not needed for this, and the test mock has no `forEach`), the handler keeps a set of the document uris that hold problems, maintained by one `clearProblems` helper used by the replace-with-nothing path, the content-change listener and the close listener. The reveal handler opens the Problems view while the set is non-empty and otherwise calls `outputChannel.show(true)`, so the log copy stays reachable. The reveal tests were reworked: with nothing placed Show reveals the channel; with problems placed it opens the Problems view; after a content change or a close it reveals the channel; with a second document still holding problems it still opens the Problems view.
 
-### WR-02: A run that reports diagnostics but yields no edit drops them silently
+### IN-01: Uri matching is a silent no-op on any string mismatch
 
-**Files modified:** `bbj-vscode/src/language/bbj-denum-service.ts`, `bbj-vscode/test/bbj-denum-outcomes.test.ts`
-**Commit:** a470ee97
-**Applied fix:** The no-edit success branch now goes through `presentSuccess`, so the diagnostics list and the counts message with Show are sent as on the applied path; `applied` stays `false`. Two new tests: no edit with diagnostics (list sent, Warning with counts and Show, no applyEdit) and no edit without diagnostics (plain "Denumbered.").
-**Status note:** logic change, flagged "fixed: requires human verification".
+**Files modified:** `bbj-vscode/src/extension.ts`, `bbj-vscode/test/extension-activation.test.ts`
+**Commit:** 7d8e8c19
+**Applied fix:** The payload uri is normalised with `vscode.Uri.parse(uri).toString()` before the comparison (compared only, never opened). The `vscode` test mock gained a `Uri.parse` that mimics the editor's encoded drive-letter spelling, and a new test places problems when the payload spells `c:` and the editor spells `c%3A`. I did not add the "debug line on a miss" alternative: a miss is the normal case for a document the user closed, so it would be noise, and existing tests assert the channel gets no debug entries in the normal path.
 
-### IN-01: Combined run on an unnumbered file reports "Nothing to denumber" although it reformatted
+### IN-02: Silent `catch {}` around `placeProblems` and the offer hides programmer errors
 
-**Files modified:** `bbj-vscode/src/language/bbj-denum-service.ts`, `bbj-vscode/test/bbj-denum-offer.test.ts`
-**Commit:** 73b08e6c
-**Applied fix:** Added exported `DENUM_NOT_NUMBERED_FORMATTED_MESSAGE` ('This file has no line numbers. It was formatted.') used for the applied-edit case of a combined run, in both the Information message and the result. `DENUM_NOTHING_TO_DO_MESSAGE` is kept for the no-edit case. The existing offer test that asserted the old text now asserts the new one. Diagnostics on that answer are still ignored, as before.
+**Files modified:** `bbj-vscode/src/extension.ts`, `bbj-vscode/src/language/bbj-format-service.ts`, `bbj-vscode/test/extension-activation.test.ts`, `bbj-vscode/test/bbj-denum-offer.test.ts`
+**Commit:** c1203bea
+**Applied fix:** The placement catch now writes `outputChannel.debug('denumber problems not placed')` and the offer catch writes `Format notice: <kind> not offered (offer failed)` through the logger. Both are fixed tokens; neither includes the payload or the error text. The redundant `try` in `offerDenum` was kept rather than dropped, because it also covers the lazy `BBjDenumService` lookup, which `offer`'s own try does not. The `appendLine` catch stays silent on purpose: it exists because the channel write itself failed, so writing a trace to the same channel gains nothing. Two tests assert the trace and that a secret marker in the thrown error never reaches any log level.
 
-### IN-02: `flatten` only handles CR and LF
+### IN-03: Problems are capped at 500 while the log copy and the summary count are not
 
 **Files modified:** `bbj-vscode/src/denum-diagnostics-output.ts`, `bbj-vscode/test/denum-diagnostics-output.test.ts`
-**Commit:** 3096966e
-**Applied fix:** `flatten` now replaces every `\p{Cc}` character (C0, DEL, C1) plus U+2028 and U+2029 with one space; header doc updated. New test covers separators and controls in the message, the original line number and the uri.
+**Commit:** deb61357
+**Applied fix:** Took the first option: when valid entries are left out by the 500 bound, `denumProblems` appends one final information problem on the first line, "N more diagnostic(s) not shown here, see the BBj output". Invalid entries are not counted. The log block stays whole, which is why the message points at it, and the doc comments on `MAX_DENUM_PROBLEMS` and `denumProblems` say so. The cap test now expects 501 results with the notice last, and a new test covers the singular and plural wording, the invalid entries and a list within the bound.
 
-### IN-03: Duplicated "run only if the user picked X" logic
+### IN-04: Duplicated uri extraction
 
-**Files modified:** `bbj-vscode/src/language/bbj-denum-service.ts`
-**Commit:** a9a26863
-**Applied fix:** `runOnPick` now takes the list of accepted titles and an `onPick(title)` callback; the two single-button senders pass `[actionTitle]` and `warnWithActions` uses it directly. Behaviour unchanged; covered by the existing offer and outcome suites.
+**Files modified:** `bbj-vscode/src/denum-diagnostics-output.ts`
+**Commit:** 0a7a94b8
+**Applied fix:** `formatDenumDiagnosticsBlock` now calls `denumPayloadUri(params)`. Behaviour is unchanged and the existing tests cover it.
 
-### IN-04: Handler mixes the module-level channel with the injected one
+## Skipped Issues
 
-**Files modified:** `bbj-vscode/src/extension.ts`
-**Commit:** 309373c1
-**Applied fix:** The denumber diagnostics handler writes through the injected `outputChannel.appendLine`, wrapped in the same try/catch, so the list is written to and revealed on the same channel. No new test (the existing activation tests already assert the lines on the channel).
+### WR-02: Problems are placed by line number with no binding to the text version they describe
 
-## Verification
-
-Ran in the main checkout `/home/coder/repos/bbj-language-server` (not an isolated worktree, see below).
-
-- `npx vitest run` on bbj-denum-service, bbj-denum-outcomes, bbj-denum-offer, denum-command, denum-diagnostics-output, extension-activation, activation-command-coverage, bbj-format-notices: 8 files, 245 tests, all passed.
-- `npm run lint` (eslint, `--max-warnings 0`): clean.
-- `npm run typecheck:test`: clean.
-- Register check on added lines of `a5830d18..HEAD` in `bbj-vscode/src` and `bbj-vscode/test` (finding, decision, plan and pitfall ids): no hits. Finding ids appear only in commit messages.
-- The live-peer functional test (`test/functional/program-live.test.ts`) was not run (needs a live interop peer). Its unnumbered-buffer assertion uses the plain run, which still returns `DENUM_NOTHING_TO_DO_MESSAGE`, so IN-01 does not affect it.
-
-**Deviation:** `workflow.use_worktrees` is true, but the orchestrator's instructions directed edits, commits and test runs at absolute paths in the main checkout (vitest needs `bbj-vscode/node_modules`, which an isolated worktree lacks). I therefore edited and committed directly on `gsd/v4.9-bbj-ls-denum-format` and created no worktree, temp branch or recovery sentinel. The working tree was clean apart from the untracked `.planning/milestone.lock`, which I did not touch.
+**File:** `bbj-vscode/src/extension.ts:652-679` (`placeProblems`); payload `bbj-vscode/src/language/denum-notifications.ts:34-51`
+**Reason:** No sound client-only mitigation exists, and the sound fix changes the wire contract. The client cannot tell a keystroke that arrived between the applied edit and the notification from the denumber edit's own change event, and it has no version to compare against; any heuristic (line text, line count) would be a guess. The real fix adds a document version to the `bbj/denumDiagnostics` payload. That is a server-to-client protocol change that also reaches the IntelliJ consumer and possibly bbj-ls (sibling repo, out of scope), so it was left for a deliberate design decision rather than made here. The window is small and the effect is bounded: the misplaced problems clear on the next edit or close.
+**Original issue:** The payload carries a uri and lines but no document version, so a keystroke landing between the applied edit and the handled notification leaves problems attached to lines of text that have moved.
 
 ---
 
-_Fixed: 2026-10-02_
+_Fixed: 2026-10-03_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
