@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 128
 current_phase_name: IntelliJ DENUM
 status: planning
-stopped_at: Phase 127 complete, ready to plan Phase 128
-last_updated: "2026-10-03T11:41:52.427Z"
+stopped_at: Phase 128 context gathered
+last_updated: "2026-10-03T11:54:09.693Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 127 complete, transitioned to Phase 128
-state_head: 891b1bfb1c7c0ea9c4eca17f096d158da1c94571
+state_head: c8c2a2f17696b1541d21acc737bb7009fba46044
 progress:
   total_phases: 7
   completed_phases: 4
@@ -473,9 +473,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T09:50:18.070Z
-Stopped at: Phase 127 complete, ready to plan Phase 128
-Resume file: None
+Last session: 2026-10-03T11:54:09.508Z
+Stopped at: Phase 128 context gathered
+Resume file: .planning/phases/128-intellij-denum/128-CONTEXT.md
 
 Next: `/gsd-discuss-phase 128` or `/gsd-plan-phase 128`. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
