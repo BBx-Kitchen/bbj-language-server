@@ -476,8 +476,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 Last session: 2026-10-03T09:50:18.070Z
 Stopped at: Phase 127 complete, ready to plan Phase 128
 Resume file: None
+
 Next: `/gsd-discuss-phase 128` or `/gsd-plan-phase 128`. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
-Next: `/gsd-discuss-phase 127` or `/gsd-plan-phase 127`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open. Recheck tokenized and protected DENUM (126 UAT test 7) in Phase 127.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
