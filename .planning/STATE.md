@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 127
-current_phase_name: VS Code Cut-Over
-status: executing
-stopped_at: Completed 127-06-PLAN.md
-last_updated: "2026-10-03T11:32:42.000Z"
+current_phase: 128
+current_phase_name: IntelliJ DENUM
+status: planning
+stopped_at: Phase 127 complete, ready to plan Phase 128
+last_updated: "2026-10-03T11:41:52.427Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 127 execution started
-state_head: fc0ca2d6133b66871fff6f68874572ad3dd9d46e
+last_activity_desc: Phase 127 complete, transitioned to Phase 128
+state_head: 891b1bfb1c7c0ea9c4eca17f096d158da1c94571
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
   completed_plans: 25
-  percent: 43
+  percent: 57
 ---
 
 # Project State: BBj Language Server
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 127 — VS Code Cut-Over
+**Current Focus:** Phase 128 — IntelliJ DENUM
 
 ---
 
 ## Current Position
 
-Phase: 127 (VS Code Cut-Over) — EXECUTING
-Plan: 6 of 6 (all executed)
-Status: All plans executed — phase gates next
-Last activity: 2026-10-03 — 127-06 hand check: 16 of 17 passed, binary decompile routed to backlog 999.1
+Phase: 128 — IntelliJ DENUM
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-03 — Phase 127 complete, transitioned to Phase 128
 
 Progress: [████░░░░░░] 43% (v4.9: 3/7 phases)
 
@@ -226,6 +226,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 127 P03 | 9 min | 2 tasks | 6 files |
 | Phase 127 P04 | 8 min | 3 tasks | 8 files |
 | Phase 127 P05 | 5 min | 2 tasks | 10 files |
+| Phase 127 P06 | 5 min + hand check | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -473,9 +474,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-10-03T09:50:18.070Z
-Stopped at: Completed 127-05-PLAN.md
+Stopped at: Phase 127 complete, ready to plan Phase 128
 Resume file: None
-
+Next: `/gsd-discuss-phase 128` or `/gsd-plan-phase 128`. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
 Next: `/gsd-discuss-phase 127` or `/gsd-plan-phase 127`. Phase 125 review WR-01..03 (125-REVIEW.md) are still open. Recheck tokenized and protected DENUM (126 UAT test 7) in Phase 127.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 

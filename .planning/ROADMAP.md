@@ -420,7 +420,7 @@ a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumP
 - [x] **Phase 124: Interop Client** - The language server calls bbj-ls `formatProgram` and `denumProgram` with typed results, per-method availability and validated responses, without disturbing live parse diagnostics or the circuit breaker (completed 2026-10-01)
 - [x] **Phase 125: LS Formatting** - Format Document, Format Selection and format-on-save come from the language server with typed messages; VS Code drops its jar provider and IntelliJ stays switched off in the same change (completed 2026-10-02)
 - [x] **Phase 126: LS DENUM** - A `bbj/denum` request for both IDEs, the "Denumber" / "Denumber and Format" offer when formatting a line-numbered file, and DENUM's messages and diagnostics (completed 2026-10-03)
-- [ ] **Phase 127: VS Code Cut-Over** - All 15 formatter settings in VS Code, the Denumber command and open-file prompt on `bbj/denum`, the old jar and the bbjlst denumber path deleted, verified end to end from the built VSIX
+- [x] **Phase 127: VS Code Cut-Over** - All 15 formatter settings in VS Code, the Denumber command and open-file prompt on `bbj/denum`, the old jar and the bbjlst denumber path deleted, verified end to end from the built VSIX (completed 2026-10-03)
 - [ ] **Phase 128: IntelliJ DENUM** - A Denumber action and a line-numbered-file banner in IntelliJ, backed by `bbj/denum`
 - [ ] **Phase 129: IntelliJ Verdict** - A hands-on evaluation of LSP4IJ formatting, the user's supported-or-disabled decision, and the formatter settings page only if supported
 - [ ] **Phase 130: Docs & Migration** - Both user guides, a migration note from the old formatter, and QA checklists for formatting and DENUM in both IDEs
@@ -684,6 +684,7 @@ and reports any I/O error as "not a tokenized BBj program"; use one detection ru
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ---
