@@ -1,7 +1,9 @@
 /**
  * What happens when a format request meets a file with line numbers: formatting never denumbers by
- * itself, it raises one offer, and the user's click (however late) acts on the buffer as it is then.
- * The tests drive the whole chain from the format handler to the (fake) language client.
+ * itself, it raises an offer on every request, and the user's click (however late) acts on the
+ * buffer as it is then. Format Document, Format Selection, a save and two requests started
+ * together each get their own message; the offer never takes part in the notice ledger. The tests
+ * drive the whole chain from the format handler to the (fake) language client.
  */
 import type { DocumentFormattingParams, DocumentRangeFormattingParams, Range, TextEdit } from 'vscode-languageserver';
 import { CancellationToken } from 'vscode-jsonrpc';
@@ -9,7 +11,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
     BBjFormatService, FORMAT_ENGINE_FAILED_MESSAGE, FORMAT_SERVICE_UNAVAILABLE_MESSAGE, FORMAT_TIMEOUT_MESSAGE,
-    FORMAT_TOO_LARGE_MESSAGE, GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, invalidSettingsMessage
+    FORMAT_NOTICE_LEDGER_LIMIT, FORMAT_TOO_LARGE_MESSAGE, GO_TO_LINE_ACTION, OPEN_SETTINGS_ACTION, invalidSettingsMessage
 } from '../src/language/bbj-format-service.js';
 import { registerBoundedFormattingHandler } from '../src/language/bbj-formatting-handler.js';
 import {
@@ -502,6 +504,46 @@ describe('every request on a file with line numbers raises its own message', () 
 
         expect(results).toEqual([[], []]);
         expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expectNoDenumberingYet(harness);
+    });
+});
+
+describe('the offer and the notice ledger', () => {
+
+    test('two requests on one version each answer at once while every prompt stays open', async () => {
+        const harness = createOfferHarness();
+        harness.window.showWarningMessage.mockReturnValue(new Promise(() => { /* never answered */ }));
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+
+        expect(await harness.formatDocument()).toEqual([]);
+        expect(await harness.formatDocument()).toEqual([]);
+
+        expect(warned(harness)).toEqual([DENUM_OFFER_MESSAGE, DENUM_OFFER_MESSAGE]);
+        expectNoDenumberingYet(harness);
+    });
+
+    test('any number of offers never pushes another notice out of the ledger', async () => {
+        const harness = createOfferHarness();
+        const otherUri = 'file:///ws/large.bbj';
+        harness.client.open(URI_TEXT, 1, NUMBERED);
+        harness.client.open(otherUri, 1, 'print 1\n');
+        const tooLarge = () => warned(harness).filter(text => text === FORMAT_TOO_LARGE_MESSAGE);
+
+        harness.double.scriptFormatProgram(wireError(-33003));
+        await harness.formatDocument(otherUri);
+        expect(tooLarge()).toHaveLength(1);
+
+        harness.double.scriptFormatProgram(LINE_NUMBERS);
+        for (let version = 2; version <= FORMAT_NOTICE_LEDGER_LIMIT + 2; version++) {
+            harness.client.change(URI_TEXT, version, [{ text: `${NUMBERED}${'0030 rem edit\n'.repeat(version)}` }]);
+            await harness.formatDocument();
+        }
+        expect(warned(harness).filter(text => text === DENUM_OFFER_MESSAGE)).toHaveLength(FORMAT_NOTICE_LEDGER_LIMIT + 1);
+
+        harness.double.scriptFormatProgram(wireError(-33003));
+        await harness.formatDocument(otherUri);
+
+        expect(tooLarge()).toHaveLength(1);
         expectNoDenumberingYet(harness);
     });
 });

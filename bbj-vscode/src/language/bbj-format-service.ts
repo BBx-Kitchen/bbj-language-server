@@ -279,7 +279,8 @@ export class BBjFormatService {
      * version, so an edit re-arms it and saving an unchanged file never repeats it. A message about
      * the environment is scoped to the connection, so a reconnect re-arms it. Formatter engine
      * failures and timeouts count as the environment: they are shown once per connection, and a
-     * later one is logged only.
+     * later one is logged only. The one exception is the offer to denumber a file with line
+     * numbers, which is not deduplicated at all and is raised on every request.
      */
     private report(outcome: Exclude<ProgramOutcome<FormatProgramResult>, { kind: 'ok' | 'cancelled' }>, request: BBjFormatRequest, version: number): void {
         const generation = `generation:${this.javaInterop.connectionGeneration}`;
