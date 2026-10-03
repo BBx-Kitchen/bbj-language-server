@@ -106,12 +106,21 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, pr
     }
 }
 
+/** What the rest of the extension may do to the prompts wired by {@link registerOpenFilePrompts}. */
+export interface OpenFilePrompts {
+    /**
+     * Marks a document as already handled for this activation, so the line-numbered prompt does not
+     * appear for a document the Denumber command is about to show.
+     */
+    skipLineNumberedPrompt(uri: string): void;
+}
+
 /**
  * Wires both open-file prompts (tokenized and line-numbered) for this activation: the tab-change
  * listener plus a scan of already-open tabs for the tokenized prompt, and the active-editor
  * listener plus a check of the already-active editor for the line-numbered prompt.
  */
-export function registerOpenFilePrompts(context: vscode.ExtensionContext): void {
+export function registerOpenFilePrompts(context: vscode.ExtensionContext): OpenFilePrompts {
     // Tracks files we've already prompted about this session so re-focusing the tab
     // (or reopening it) doesn't nag the user again.
     const promptedTokenizedFiles = new Set<string>();
@@ -142,4 +151,10 @@ export function registerOpenFilePrompts(context: vscode.ExtensionContext): void 
     );
     // Handle the editor that is already active when the extension activates.
     void maybePromptLineNumbered(vscode.window.activeTextEditor, promptedLineNumberedDocs);
+
+    return {
+        skipLineNumberedPrompt(uri: string): void {
+            promptedLineNumberedDocs.add(uri);
+        },
+    };
 }

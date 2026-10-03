@@ -11,7 +11,9 @@ import {
     DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
-import { registerOpenFilePrompts } from './open-file-prompts.js';
+import { registerOpenFilePrompts, type OpenFilePrompts } from './open-file-prompts.js';
+import { createDenumberCommand } from './denumber-command.js';
+import { DENUM_REQUEST_METHOD, type DenumResult } from './language/denum-command.js';
 import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import { registerAddWindowComposer } from './addwindow-composer-ui.js';
@@ -45,6 +47,7 @@ let client: LanguageClient;
 let secretStorage: vscode.SecretStorage;
 let outputChannel: vscode.LogOutputChannel;
 let restartGate: RestartGate | undefined;
+let openFilePrompts: OpenFilePrompts | undefined;
 let configReloadStatusBar: vscode.StatusBarItem;
 let configReloadAutoHideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -494,7 +497,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerJavaClasspathCommands(context, { client });
     registerFormatterSettingsLink(context, { client });
     registerDenumDiagnosticsOutput(context, { client, outputChannel });
-    registerOpenFilePrompts(context);
+    openFilePrompts = registerOpenFilePrompts(context);
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
     registerConfigAssociation(context, { client });
@@ -540,7 +543,16 @@ function registerRunCommands(context: vscode.ExtensionContext, deps: { outputCha
 /** Registers the compile/denumber/decompile commands and the compiler-options QuickPick. */
 function registerCompileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
-    context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", Commands.denumber));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", createDenumberCommand({
+        activeEditor: () => toActiveEditorSnapshot(vscode.window.activeTextEditor),
+        openDocument: (fsPath) => vscode.workspace.openTextDocument(vscode.Uri.file(fsPath)),
+        isVisible: (uri) => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === uri),
+        show: (document) => vscode.window.showTextDocument(document, { preview: false }),
+        skipOpenPrompt: (uri) => openFilePrompts?.skipLineNumberedPrompt(uri),
+        sendDenum: (params) => client.sendRequest<DenumResult>(DENUM_REQUEST_METHOD, params),
+        warn: (message) => { void vscode.window.showWarningMessage(message); },
+        error: (message) => { void vscode.window.showErrorMessage(message); },
+    })));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions));
