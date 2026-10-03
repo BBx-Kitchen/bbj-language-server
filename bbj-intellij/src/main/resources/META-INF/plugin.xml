@@ -283,6 +283,9 @@
         <!-- Project-level composer server/catalogs handle cache (#612) -->
         <projectService serviceImplementation="com.basis.bbj.intellij.composer.BbjComposerService"/>
 
+        <!-- Project-level refresher for the line-numbered banner -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.denum.BbjLineNumberedBannerRefresher"/>
+
         <!-- Status bar widget -->
         <statusBarWidgetFactory
             id="BbjLanguageServerStatus"

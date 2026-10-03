@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij;
 
 import com.basis.bbj.intellij.actions.BbjDenumberAction;
+import com.basis.bbj.intellij.denum.BbjLineNumberedBannerRefresher;
 import com.basis.bbj.intellij.denum.LineNumbering;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -32,6 +33,10 @@ public final class BbjLineNumberedNotificationProvider extends BbjNotificationPr
     @Override
     protected @Nullable Function<? super @NotNull FileEditor, ? extends @Nullable JComponent>
             buildPanel(@NotNull Project project, @NotNull VirtualFile file) {
+
+        // Creates the project's refresher on the first BBj file the platform shows, so its document
+        // listener exists from then on and no startup activity is needed.
+        BbjLineNumberedBannerRefresher.getInstance(project);
 
         boolean lineNumbered = ReadAction.compute(() -> {
             Document document = FileDocumentManager.getInstance().getDocument(file);
