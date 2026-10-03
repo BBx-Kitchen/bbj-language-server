@@ -82,7 +82,10 @@ vi.mock('vscode', () => {
         ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
         QuickPickItemKind: { Separator: -1 },
         CodeActionKind: { RefactorRewrite: { value: 'refactor.rewrite' } },
-        Uri: class { },
+        Uri: class {
+            // Stands in for the editor's own spelling, which encodes the colon of a drive letter.
+            static parse(value: string) { return { toString: () => value.replace(/^file:\/\/\/([a-z]):/i, 'file:///$1%3A') }; }
+        },
         Range: class {
             constructor(
                 public startLine: number, public startCharacter: number,
@@ -607,6 +610,18 @@ describe('denumber diagnostics output', () => {
             expect(createCollection).not.toHaveBeenCalled();
             expect(channel.appendLine).toHaveBeenCalled();
             spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+
+            disposeSubscriptions(context);
+        });
+
+        test('a payload uri spelled differently from the editor but parsing to the same uri still selects the document', () => {
+            const { context, list } = activateAndFindHandlers();
+            const document = open('file:///c%3A/ws/a.bbj', ['one', 'two', 'three']);
+
+            list({ ...payload, uri: 'file:///c:/ws/a.bbj' });
+
+            const [collection] = collections();
+            expect(collection.set.mock.calls[0][0]).toBe(document.uri);
 
             disposeSubscriptions(context);
         });

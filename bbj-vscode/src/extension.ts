@@ -661,8 +661,11 @@ function registerDenumDiagnosticsOutput(
         if (uri === undefined) {
             return;
         }
+        // Parsed only to be compared as text, never opened, so a spelling the editor would
+        // normalise differently (a drive-letter case, an encoding) still selects its document.
+        const wanted = vscode.Uri.parse(uri).toString();
         const document = vscode.workspace.textDocuments.find(
-            candidate => candidate.languageId === 'bbj' && candidate.uri.toString() === uri
+            candidate => candidate.languageId === 'bbj' && candidate.uri.toString() === wanted
         );
         if (document === undefined) {
             return;
