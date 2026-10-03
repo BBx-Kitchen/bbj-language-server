@@ -304,21 +304,27 @@ describe('the tokenized-file open prompt', () => {
 });
 
 describe('the line-numbered-file open prompt', () => {
-    test('shows once for the active editor; a repeat active-editor event shows nothing further; Denumber & Replace runs bbj.denumber', async () => {
-        const filePath = path.join(tmpDir, 'line-numbered.bbj');
-        const text = '0010 LET A=5\n0020 PRINT A\n0030 END\n';
+    const numberedText = '0010 LET A=5\n0020 PRINT A\n0030 END\n';
+
+    function activeEditorWith(fileName: string, text: string) {
+        const filePath = path.join(tmpDir, fileName);
         fs.writeFileSync(filePath, text);
-        const uri = new UriCtor('file', filePath);
-        const doc = { languageId: 'bbj', uri, fileName: filePath, getText: () => text };
+        const doc = { languageId: 'bbj', uri: new UriCtor('file', filePath), fileName: filePath, getText: () => text };
         const editor = { document: doc };
         hostState.activeTextEditor = editor;
-        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Denumber & Replace');
+        return { doc, editor };
+    }
+
+    test('shows once for the active editor; a repeat active-editor event shows nothing further; Denumber runs bbj.denumber', async () => {
+        const { doc, editor } = activeEditorWith('line-numbered.bbj', numberedText);
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Denumber');
 
         activateFresh();
 
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledTimes(1);
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-            `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
-            'Denumber & Replace', 'Open Read-only'
+            `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it for editing, or open it read-only?`,
+            'Denumber', 'Open Read-only'
         );
         await vi.waitFor(() => {
             expect(vscode.commands.executeCommand).toHaveBeenCalledWith('bbj.denumber', doc.uri);
@@ -328,6 +334,40 @@ describe('the line-numbered-file open prompt', () => {
         for (const listener of activeEditorListeners) {
             listener(editor);
         }
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('Open Read-only shows the document and flips it read-only without ever running bbj.denumber', async () => {
+        const { doc } = activeEditorWith('line-numbered-readonly.bbj', numberedText);
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Open Read-only');
+
+        activateFresh();
+
+        await vi.waitFor(() => {
+            expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.action.files.setActiveEditorReadonlyInSession');
+        });
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(doc, { preview: false });
+        const showOrder = (vscode.window.showTextDocument as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+        const readonlyOrder = (vscode.commands.executeCommand as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+        expect(readonlyOrder).toBeGreaterThan(showOrder);
+        const executedCommands = (vscode.commands.executeCommand as ReturnType<typeof vi.fn>).mock.calls.map(call => call[0]);
+        expect(executedCommands).not.toContain('bbj.denumber');
+    });
+
+    test('an unnumbered bbj editor shows no line-numbered prompt', () => {
+        activeEditorWith('plain-source.bbj', 'print 1\nprint 2\n');
+
+        activateFresh();
+
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('with denumber.promptOnOpen false, a numbered bbj editor shows no prompt', () => {
+        settings['denumber.promptOnOpen'] = false;
+        activeEditorWith('line-numbered-suppressed.bbj', numberedText);
+
+        activateFresh();
+
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
     });
 });

@@ -6,7 +6,7 @@
 
 /**
  * Prompts offered when a tab or the active editor turns out to hold a tokenized (binary)
- * or line-numbered BBj program — decompile/denumber in place, or open a read-only copy.
+ * or line-numbered BBj program — decompile it in place or denumber it, or open it read-only.
  * `registerOpenFilePrompts` owns both listeners and their per-activation "already prompted"
  * state; nothing here is module-level.
  */
@@ -75,8 +75,8 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokeniz
 }
 
 /**
- * When a line-numbered BBj program is opened, ask whether to denumber it
- * (replacing the file with editable source) or open it read-only (issue #64).
+ * When a line-numbered BBj program is opened, ask whether to denumber it for editing or open it
+ * read-only (issue #64).
  */
 async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, promptedLineNumberedDocs: Set<string>): Promise<void> {
     if (!editor) return;
@@ -89,14 +89,15 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, pr
     if (!isLineNumberedSource(doc.getText())) return;
     promptedLineNumberedDocs.add(key);
 
-    const denumberAction = 'Denumber & Replace';
+    const denumberAction = 'Denumber';
     const readOnlyAction = 'Open Read-only';
     const choice = await vscode.window.showInformationMessage(
-        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
+        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it for editing, or open it read-only?`,
         denumberAction, readOnlyAction
     );
     if (choice === denumberAction) {
-        // bbj.denumber runs bbjlst and replaces the file in place with denumbered source.
+        // Runs the Denumber BBj Program command: the language server denumbers the open buffer
+        // and leaves it unsaved for the user to review.
         vscode.commands.executeCommand('bbj.denumber', doc.uri);
     } else if (choice === readOnlyAction) {
         // Make sure our editor is the active one before flipping it read-only in-session,
