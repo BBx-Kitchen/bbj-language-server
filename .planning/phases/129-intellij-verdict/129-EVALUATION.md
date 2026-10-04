@@ -143,7 +143,25 @@ Three facts that differ from what the plan assumed, found by running it:
 
 Corpus folder `/home/coder/tinybbj` (outside the repository; `runIde` opens it). `examples/bbj-classes.bbj` with all
 leading whitespace removed (`sed 's/^[ \t]*//'`) is the starting file, so Reformat Code must re-indent it; the
-untouched copy is `tmp/129-eval/linux/corpus/a.orig.bbj` (63 lines, 1240 bytes, no CR).
+untouched copy is `tmp/129-eval/linux/corpus/a.orig.bbj` (63 lines, 1240 bytes, no CR). The remaining corpus files
+for the later cases are in place, sha256 of each (`config.bbx` is a copy of `examples/config.bbx`; nothing under
+`/opt/bbx/cfg` is opened or written):
+
+```
+4ef0fb934787d887ba1a0ff3ed479d64dd3d758a0a20b48553fb44a8e63f7232  tmp/129-eval/linux/corpus/a.orig.bbj
+1e35a9717526732e778b1b8ce5af4891eb7b0fa2b359e3463ec482bd8af8c05f  tmp/129-eval/linux/corpus/c2b.orig.bbj
+f9650057b37e594cfa61f7fb7237378f6d989250461ea2b11f716278e6388e81  /home/coder/tinybbj/numbered.bbj
+c1ef134ca4f5ff320e1b33fc870e7527d80dd5d24671ed8ee6be8614c4dce636  /home/coder/tinybbj/crlf.bbj
+c1ef134ca4f5ff320e1b33fc870e7527d80dd5d24671ed8ee6be8614c4dce636  /home/coder/tinybbj/crlf-eol-crlf.bbj
+c1ef134ca4f5ff320e1b33fc870e7527d80dd5d24671ed8ee6be8614c4dce636  /home/coder/tinybbj/crlf-eol-lf.bbj
+7e924a6f7e416db0168c89495fe1a0381d7d67261e977f7975e6726c0518a1e1  /home/coder/tinybbj/config.bbx
+1933f5d3c2b3ec05d61546bb3f2fe8986dcbd1a7172c2b9495741d7c79ba5648  /home/coder/tinybbj/formatted.bbj
+```
+
+`numbered.bbj` is `0010 PRINT "A"`, `0020 PRINT "B"`, `0030 GOTO 0010`. `crlf.bbj` is the stripped `a.orig.bbj` with CRLF
+endings (`sed 's/$/\r/'`, every one of its 63 lines ends in CR LF); `crlf-eol-crlf.bbj` and `crlf-eol-lf.bbj` are two
+identical copies for the two `eolCharacter` sub-cases. The corpus files of the C1 to C7 sessions (`c1.bbj`, `c2a*.bbj`,
+`c2b*.bbj`, `c7a.bbj`, `c7b.bbj`, `formatted.bbj`) hold the results of those sessions and are not reused.
 
 ### IDE and server
 
@@ -162,10 +180,42 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | C7a | Edit application, one undo step | Linux | script | open a fresh stripped copy c7a.bbj; ReformatCode; editor action Undo once; save; cmp the file with the stripped original | one Undo restores the original text byte for byte | the formatting reached the document as one didChange (version 2) and the undo as one didChange (version 3); the saved file is byte-identical to a.orig.bbj (cmp silent) | ### C7a | pass |
 | C7b | Idempotency | Linux | script | open a fresh stripped copy c7b.bbj; ReformatCode twice, six seconds apart; save | the second response carries no edit | first request (id 18) answered with one edit, second request (id 25) answered with an empty result; the saved file equals the C1 result; the IDE still emitted one didChange with empty text after the empty answer (see Known issues) | ### C7b | pass |
 | C7c | Already formatted file | Linux | script | open formatted.bbj (the C1 result, 1300 bytes), caret at 1:1; ReformatCode; save; compare content and modification time | no edit in the response, modification time unchanged | request id 15 answered with an empty result; content equal to the opened file; modification time 1791102418 before and after (epoch seconds); caret 1:1 in both screenshots; one empty didChange (see Known issues) | ### C7c | pass |
+| C3a | Actions on Save, whole file | Linux | script | Actions on Save with Reformat code on (whole file); unindent one line; save | a formatting request at save, the line indented again | pending | pending | not run |
+| C3b | Actions on Save, changed lines only | Linux | script | Actions on Save with Reformat code on and only changed lines; unindent one line; save | a rangeFormatting request at save | pending | pending | not run |
+| C4a | Numbered-file message | Linux | script | numbered.bbj; Reformat Code | one message from the server (window/showMessageRequest), no edit | pending | pending | not run |
+| C4b | Numbered-file message cadence | Linux | script | numbered.bbj; a second Reformat Code in the same session | no second toast | pending | pending | not run |
+| C5 | Settings reach the format output | Linux | script | set a non-default value in the sandbox BbjSettings.xml; restart the IDE; Reformat Code | the initialize request carries the value and the output follows it | pending | pending | not run |
+| C6a | CRLF file, default eolCharacter KEEP | Linux | script | crlf.bbj; Reformat Code; save; check the line endings on disk | indented, still CRLF on disk, no error | pending | pending | not run |
+| C6b | CRLF file, eolCharacter CRLF | Linux | script | crlf-eol-crlf.bbj with eolCharacter CRLF seeded; Reformat Code | observed outcome recorded (lsp4ij issue 381 is the known trap) | pending | pending | not run |
+| C6c | CRLF file, eolCharacter LF | Linux | script | crlf-eol-lf.bbj with eolCharacter LF seeded; Reformat Code | observed outcome recorded | pending | pending | not run |
 
 ## Code-verified
 
+These rows are verified from code and existing tests, not hand-run (they claim no runtime sequence). The test titles
+below were checked to exist in the named files; the Observed and Class columns are filled when the rows are
+reviewed.
+
+| ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
+|----|------|----------|-----------|-------|----------|----------|----------|-------|
+| V1 | config.bbx and BBx Config left untouched | any | code-verified | read bbj-formatting-handler.ts (the document must be open and its languageId must be bbj, line 52); read bbj-formatting-handler.test.ts line 124 (a config document and a plain text document give no edit and are never sent to the formatter); read plugin.xml (BBx Config is mapped to the server with languageId bbx-config) | the server answers an empty result for a config file, so a reformat of config.bbx changes nothing | pending | pending | not run |
+| V2 | Commit-dialog reformat option | any | code-verified | same server guard as V1; lsp4ij issue 1647 (the commit dialog's reformat cannot be filtered by file type, open) | a commit-time reformat reaches the server for BBx Config files and is answered with an empty result | pending | pending | not run |
+| V3 | Large file: apply time, caret and folding, one undo step, no dirty flag when already formatted | any | code-verified | read bbj-format-edit.test.ts (minimal line edits), bbj-format-service.test.ts lines 87 and 139 (one edit over the changed lines; no edit for formatted text); the Linux rows C7a and C7c cover undo and mtime on a 63-line file | the server returns minimal edits, none when nothing changes | pending | pending | not run |
+| V4 | Server down or older BBj: bounded handler, no EDT freeze, one message | any | code-verified | read bbj-formatting-handler.test.ts line 110 (a format resolves while the workspace is still loading), bbj-format-notices.test.ts lines 98 and 254 (one message per connection, a fixed text for an empty peer message), java-interop-program-lane.ts lines 37 and 45 (15 s and 25 s request deadlines) | an empty edit list, one Warning, the request cancelled on the wire at its deadline | pending | pending | not run |
+| V5 | Stale answer dropped | any | code-verified | read bbj-format-service.test.ts line 149 (an answer for an older version is dropped when the document was edited meanwhile) | an edit computed for an older version is never applied | pending | pending | not run |
+| V6 | Range edit wider than the selection | any | code-verified | read bbj-format-service.test.ts line 255 (an edit that reaches past the selection is accepted at its own range, not clipped); the Linux rows C2a and C2b show the IDE applying such an edit | the platform applies the whole edit without an Overlapping edit error | pending | pending | not run |
+
 ## Windows
+
+Run by the user with the same evaluation zip (sha256 in the frontmatter) following `129-WINDOWS-CHECKLIST.md`; the
+returned `idea.log`, LSP console trace and IDE build line are added here when they arrive. Excerpts only; the raw files
+stay under `tmp/129-eval/windows/`.
+
+| ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
+|----|------|----------|-----------|-------|----------|----------|----------|-------|
+| W1 | CRLF file, Reformat Code | Windows | user | CRLF program without indentation; Reformat Code; save | indented, status bar still shows CRLF after the save, one formatting request | pending | pending | not run |
+| W2 | Reformat Code on a real program | Windows | user | unindented copy of a real program; Reformat Code; one Undo | re-indented with two spaces per level; one Undo restores it | pending | pending | not run |
+| W3 | Reformat selection | Windows | user | select three lines inside a METHOD; Reformat Code | a rangeFormatting request, only those lines (and whole lines around them) change | pending | pending | not run |
+| W4 | Actions on Save | Windows | user | Settings, Tools, Actions on Save, Reformat code on; unindent one line; Ctrl+S | the line is indented again after the save | pending | pending | not run |
 
 ## Evidence
 
