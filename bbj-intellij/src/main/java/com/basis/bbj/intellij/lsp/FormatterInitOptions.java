@@ -133,6 +133,32 @@ public final class FormatterInitOptions {
     }
 
     /**
+     * Stores the 15 values into the persisted {@code formatter*} fields, normalised first, so the
+     * settings page can never persist a value the server rejects.
+     *
+     * @param values the values to store
+     * @param state  the persisted settings state to write into
+     */
+    public static void writeToState(Values values, BbjSettings.State state) {
+        Values normalized = normalize(values);
+        state.formatterIndentWidth = normalized.indentWidth();
+        state.formatterIndentCharacter = normalized.indentCharacter();
+        state.formatterKeywordsToUppercase = normalized.keywordsToUppercase();
+        state.formatterRemoveLineContinuation = normalized.removeLineContinuation();
+        state.formatterSplitSingleLineIf = normalized.splitSingleLineIf();
+        state.formatterSplitInlineComments = normalized.splitInlineComments();
+        state.formatterSplitInlineLabelComment = normalized.splitInlineLabelComment();
+        state.formatterCollapseMultiLine = normalized.collapseMultiLine();
+        state.formatterEolCharacter = normalized.eolCharacter();
+        state.formatterIfClosingKeyword = normalized.ifClosingKeyword();
+        state.formatterIfKeywordCase = normalized.ifKeywordCase();
+        state.formatterParameterLayout = normalized.parameterLayout();
+        state.formatterOperatorSpacing = normalized.operatorSpacing();
+        state.formatterIndentLabelBlocks = normalized.indentLabelBlocks();
+        state.formatterBlankLineAfterReturn = normalized.blankLineAfterReturn();
+    }
+
+    /**
      * Normalises a raw, possibly persisted or hand-edited indent width for transmission to the
      * language server.
      * <p>

@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij;
 
 import com.basis.bbj.intellij.lsp.CompilerInitOptions;
+import com.basis.bbj.intellij.lsp.FormatterInitOptions;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.options.Configurable;
@@ -57,6 +58,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getConfigPath(), state.configPath)
             || !Objects.equals(myComponent.getCompilerOutputDirectory(), state.compilerOutputDirectory)
             || !Objects.equals(myComponent.getCompilerTrigger(), CompilerInitOptions.normalizeTrigger(state.compilerTrigger))
+            || !Objects.equals(myComponent.getFormatterValues(), FormatterInitOptions.fromState(state))
             || !Objects.equals(myComponent.getEmUrl(), state.emUrl)
             || state.autoSaveBeforeRun != myComponent.isAutoSaveBeforeRun();
     }
@@ -87,6 +89,8 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.configPath = myComponent.getConfigPath();
         state.compilerOutputDirectory = myComponent.getCompilerOutputDirectory();
         state.compilerTrigger = myComponent.getCompilerTrigger();
+        // Stored before the restart below, which re-sends them as initializationOptions.formatter.
+        FormatterInitOptions.writeToState(myComponent.getFormatterValues(), state);
         state.emUrl = myComponent.getEmUrl();
         state.autoSaveBeforeRun = myComponent.isAutoSaveBeforeRun();
 
@@ -173,6 +177,10 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
 
         // Load compiler check trigger, normalizing a hand-edited or unrecognised value to debounced
         myComponent.setCompilerTrigger(CompilerInitOptions.normalizeTrigger(state.compilerTrigger));
+
+        // Load the formatter settings normalized, so a hand-edited value shows as its default and
+        // the page does not stay modified forever
+        myComponent.setFormatterValues(FormatterInitOptions.fromState(state));
 
         // Load EM URL and auto-save setting
         myComponent.setEmUrl(state.emUrl != null ? state.emUrl : "");

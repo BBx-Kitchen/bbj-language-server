@@ -162,12 +162,14 @@ class BbjSettingsFormatterSourceGuardTest {
                     control + " must be declared exactly once");
         }
 
-        assertEquals(1, countOccurrences(text, "new JBIntSpinner("), "exactly one spinner is created");
-        assertEquals(1, countOccurrences(text, "new JBIntSpinner(FormatterInitOptions.INDENT_WIDTH_DEFAULT, "
+        String oneLine = text.replaceAll("\\s+", " ");
+        assertEquals(1, countOccurrences(oneLine, "new JBIntSpinner("), "exactly one spinner is created");
+        assertEquals(1, countOccurrences(oneLine, "new JBIntSpinner(FormatterInitOptions.INDENT_WIDTH_DEFAULT, "
                         + "FormatterInitOptions.INDENT_WIDTH_MIN, FormatterInitOptions.INDENT_WIDTH_MAX)"),
                 "the spinner must be bounded by the seam's indent-width constants");
         for (String list : CHOICE_LISTS) {
-            assertEquals(1, countOccurrences(text, "new CollectionComboBoxModel<>(FormatterInitOptions." + list + ")"),
+            assertEquals(1, countOccurrences(oneLine,
+                            "new CollectionComboBoxModel<>(FormatterInitOptions." + list + ")"),
                     "one combo must list exactly FormatterInitOptions." + list);
         }
         assertEquals(0, countOccurrences(text, "splitSingleLineIF"),

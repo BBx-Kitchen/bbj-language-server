@@ -4,6 +4,7 @@ import com.basis.bbj.intellij.concurrency.AlarmScheduler;
 import com.basis.bbj.intellij.concurrency.KeystrokeDebouncer;
 import com.basis.bbj.intellij.concurrency.Scheduler;
 import com.basis.bbj.intellij.lsp.CompilerInitOptions;
+import com.basis.bbj.intellij.lsp.FormatterInitOptions;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
@@ -15,6 +16,7 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.DocumentAdapter;
+import com.intellij.ui.JBIntSpinner;
 import com.intellij.ui.TitledSeparator;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
@@ -28,7 +30,12 @@ import java.util.List;
 
 /**
  * Swing UI panel for the BBj settings page.
- * Contains three sections: BBj Environment, Node.js Runtime, and Classpath.
+ * Sections, top to bottom: BBj Environment, BBj Compiler, Formatter, Node.js Runtime, Classpath,
+ * Language Server, Java Interop, Enterprise Manager and Run Commands.
+ * <p>
+ * The Formatter section's controls can only produce values the language server accepts: the indent
+ * width spinner is bounded by {@link FormatterInitOptions}'s constants, each combo lists exactly that
+ * class's allowed values, and the remaining settings are checkboxes.
  * <p>
  * Every keystroke in the BBj home / Node.js path fields only schedules a debounced background
  * lookup (D-12) — the fields' {@code DocumentAdapter}s and {@code ComponentValidator}s perform no
@@ -44,6 +51,22 @@ public class BbjSettingsComponent {
     private final TextFieldWithBrowseButton compilerOutputDirectoryField;
     private final ComboBox<String> compilerTriggerCombo;
     private final JBLabel compilerTriggerHintLabel;
+    private final JBIntSpinner formatterIndentWidthSpinner;
+    private final ComboBox<String> formatterIndentCharacterCombo;
+    private final JCheckBox formatterIndentLabelBlocksCheckbox;
+    private final JCheckBox formatterKeywordsToUppercaseCheckbox;
+    private final ComboBox<String> formatterIfClosingKeywordCombo;
+    private final ComboBox<String> formatterIfKeywordCaseCombo;
+    private final JCheckBox formatterSplitSingleLineIfCheckbox;
+    private final JCheckBox formatterRemoveLineContinuationCheckbox;
+    private final JCheckBox formatterSplitInlineCommentsCheckbox;
+    private final JCheckBox formatterSplitInlineLabelCommentCheckbox;
+    private final JCheckBox formatterCollapseMultiLineCheckbox;
+    private final JCheckBox formatterBlankLineAfterReturnCheckbox;
+    private final ComboBox<String> formatterParameterLayoutCombo;
+    private final ComboBox<String> formatterOperatorSpacingCombo;
+    private final ComboBox<String> formatterEolCharacterCombo;
+    private final JBLabel formatterNoteLabel;
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
@@ -117,6 +140,32 @@ public class BbjSettingsComponent {
                 new CollectionComboBoxModel<>(CompilerInitOptions.TRIGGER_DISPLAY_NAMES));
         compilerTriggerCombo.setSelectedItem("Debounced");
         compilerTriggerHintLabel = new JBLabel("On save is recommended for large workspaces.");
+
+        // --- Formatter controls: bounded spinner, combos over the allowed values, checkboxes ---
+        formatterIndentWidthSpinner = new JBIntSpinner(FormatterInitOptions.INDENT_WIDTH_DEFAULT,
+                FormatterInitOptions.INDENT_WIDTH_MIN, FormatterInitOptions.INDENT_WIDTH_MAX);
+        formatterIndentCharacterCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.INDENT_CHARACTER_VALUES));
+        formatterIndentLabelBlocksCheckbox = new JCheckBox("Indent label blocks");
+        formatterKeywordsToUppercaseCheckbox = new JCheckBox("Keywords in upper case");
+        formatterIfClosingKeywordCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.IF_CLOSING_KEYWORD_VALUES));
+        formatterIfKeywordCaseCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.IF_KEYWORD_CASE_VALUES));
+        formatterSplitSingleLineIfCheckbox = new JCheckBox("Split single-line IF");
+        formatterRemoveLineContinuationCheckbox = new JCheckBox("Remove line continuation");
+        formatterSplitInlineCommentsCheckbox = new JCheckBox("Move in-line comments to their own line");
+        formatterSplitInlineLabelCommentCheckbox = new JCheckBox("Move label comments to their own line");
+        formatterCollapseMultiLineCheckbox = new JCheckBox("Collapse blank lines");
+        formatterBlankLineAfterReturnCheckbox = new JCheckBox("Blank line after RETURN");
+        formatterParameterLayoutCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.PARAMETER_LAYOUT_VALUES));
+        formatterOperatorSpacingCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.OPERATOR_SPACING_VALUES));
+        formatterEolCharacterCombo = new ComboBox<>(
+                new CollectionComboBoxModel<>(FormatterInitOptions.EOL_CHARACTER_VALUES));
+        formatterNoteLabel = new JBLabel("Applies after the language server restarts.");
+        setFormatterValues(FormatterInitOptions.DEFAULTS);
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
@@ -305,6 +354,24 @@ public class BbjSettingsComponent {
             .addLabeledComponent(new JBLabel("Compile output directory:"), compilerOutputDirectoryField, 1, false)
             .addLabeledComponent(new JBLabel("Compiler check:"), compilerTriggerCombo, 1, false)
             .addComponent(compilerTriggerHintLabel)
+
+            .addComponent(new TitledSeparator("Formatter"))
+            .addLabeledComponent(new JBLabel("Indent width:"), formatterIndentWidthSpinner, 1, false)
+            .addLabeledComponent(new JBLabel("Indent character:"), formatterIndentCharacterCombo, 1, false)
+            .addComponent(formatterIndentLabelBlocksCheckbox)
+            .addComponent(formatterKeywordsToUppercaseCheckbox)
+            .addLabeledComponent(new JBLabel("IF closing keyword:"), formatterIfClosingKeywordCombo, 1, false)
+            .addLabeledComponent(new JBLabel("IF keyword case:"), formatterIfKeywordCaseCombo, 1, false)
+            .addComponent(formatterSplitSingleLineIfCheckbox)
+            .addComponent(formatterRemoveLineContinuationCheckbox)
+            .addComponent(formatterSplitInlineCommentsCheckbox)
+            .addComponent(formatterSplitInlineLabelCommentCheckbox)
+            .addComponent(formatterCollapseMultiLineCheckbox)
+            .addComponent(formatterBlankLineAfterReturnCheckbox)
+            .addLabeledComponent(new JBLabel("Parameter layout:"), formatterParameterLayoutCombo, 1, false)
+            .addLabeledComponent(new JBLabel("Operator spacing:"), formatterOperatorSpacingCombo, 1, false)
+            .addLabeledComponent(new JBLabel("Line ending:"), formatterEolCharacterCombo, 1, false)
+            .addComponent(formatterNoteLabel)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -544,6 +611,56 @@ public class BbjSettingsComponent {
 
     public void setCompilerTrigger(@NotNull String wireValue) {
         compilerTriggerCombo.setSelectedItem(CompilerInitOptions.triggerDisplayName(wireValue));
+    }
+
+    /**
+     * Reads the 15 formatter controls. The values are in range by construction; the configurable
+     * still stores them through {@link FormatterInitOptions}, which normalises them again.
+     */
+    public @NotNull FormatterInitOptions.Values getFormatterValues() {
+        return new FormatterInitOptions.Values(
+                formatterIndentWidthSpinner.getNumber(),
+                selectedChoice(formatterIndentCharacterCombo),
+                formatterKeywordsToUppercaseCheckbox.isSelected(),
+                formatterRemoveLineContinuationCheckbox.isSelected(),
+                formatterSplitSingleLineIfCheckbox.isSelected(),
+                formatterSplitInlineCommentsCheckbox.isSelected(),
+                formatterSplitInlineLabelCommentCheckbox.isSelected(),
+                formatterCollapseMultiLineCheckbox.isSelected(),
+                selectedChoice(formatterEolCharacterCombo),
+                selectedChoice(formatterIfClosingKeywordCombo),
+                selectedChoice(formatterIfKeywordCaseCombo),
+                selectedChoice(formatterParameterLayoutCombo),
+                selectedChoice(formatterOperatorSpacingCombo),
+                formatterIndentLabelBlocksCheckbox.isSelected(),
+                formatterBlankLineAfterReturnCheckbox.isSelected());
+    }
+
+    /**
+     * Shows the given formatter values. Callers pass normalised values, so every choice is one of
+     * its combo's items and the width lies within the spinner's bounds.
+     */
+    public void setFormatterValues(@NotNull FormatterInitOptions.Values values) {
+        formatterIndentWidthSpinner.setNumber(values.indentWidth());
+        formatterIndentCharacterCombo.setSelectedItem(values.indentCharacter());
+        formatterKeywordsToUppercaseCheckbox.setSelected(values.keywordsToUppercase());
+        formatterRemoveLineContinuationCheckbox.setSelected(values.removeLineContinuation());
+        formatterSplitSingleLineIfCheckbox.setSelected(values.splitSingleLineIf());
+        formatterSplitInlineCommentsCheckbox.setSelected(values.splitInlineComments());
+        formatterSplitInlineLabelCommentCheckbox.setSelected(values.splitInlineLabelComment());
+        formatterCollapseMultiLineCheckbox.setSelected(values.collapseMultiLine());
+        formatterEolCharacterCombo.setSelectedItem(values.eolCharacter());
+        formatterIfClosingKeywordCombo.setSelectedItem(values.ifClosingKeyword());
+        formatterIfKeywordCaseCombo.setSelectedItem(values.ifKeywordCase());
+        formatterParameterLayoutCombo.setSelectedItem(values.parameterLayout());
+        formatterOperatorSpacingCombo.setSelectedItem(values.operatorSpacing());
+        formatterIndentLabelBlocksCheckbox.setSelected(values.indentLabelBlocks());
+        formatterBlankLineAfterReturnCheckbox.setSelected(values.blankLineAfterReturn());
+    }
+
+    private static String selectedChoice(ComboBox<String> combo) {
+        Object selected = combo.getSelectedItem();
+        return selected != null ? selected.toString() : null;
     }
 
     public @NotNull String getEmUrl() {
