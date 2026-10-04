@@ -164,8 +164,9 @@ bytes), so it works regardless of the file's extension — tokenized programs ar
 
 #### `bbj.denumber.promptOnOpen`
 
-When opening a line-numbered BBj program, prompt to denumber it (replacing the file with editable
-source) or open it read-only.
+When opening a line-numbered BBj program, prompt to denumber it in the editor (the result is left
+unsaved for you to review and save) or open it read-only. The buttons are `Denumber` and
+`Open Read-only`.
 
 ```json
 {

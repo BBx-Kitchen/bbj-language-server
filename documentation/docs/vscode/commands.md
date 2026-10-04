@@ -68,7 +68,10 @@ set through [Configure Compile Options](#configure-compile-options) below.
 
 ### Denumber BBj Program (`Alt+N`)
 
-Removes line numbers from a BBj program.
+Removes the line numbers from a BBj program in the open editor, through BBjServices (BBj 26.03 or
+later). The result is left unsaved for you to review and save, and one Undo restores the line
+numbers. Line numbers that a statement refers to become labels, and problems found while
+denumbering appear in the Problems view. See [Denumber](./formatting.md#denumber) for the details.
 
 **Command ID:** `bbj.denumber`
 
@@ -79,17 +82,23 @@ Removes line numbers from a BBj program.
 **Before:**
 ```bbj
 0010 PRINT "Hello"
-0020 PRINT "World"
+0020 GOSUB 0100
+0030 END
+0100 PRINT "Sub"
+0110 RETURN
 ```
 
 **After:**
 ```bbj
 PRINT "Hello"
-PRINT "World"
+GOSUB L100
+END
+L100: PRINT "Sub"
+RETURN
 ```
 
-Opening a line-numbered program offers the same choice automatically (denumber and replace, or
-open read-only) unless `bbj.denumber.promptOnOpen` is off — see
+Opening a line-numbered program offers the same choice automatically (the buttons `Denumber` and
+`Open Read-only`) unless `bbj.denumber.promptOnOpen` is off — see
 [Opening Programs](./configuration.md#opening-programs) in the Configuration guide.
 
 ## Decompile Commands
@@ -252,9 +261,9 @@ For commands to work properly, ensure:
 
 1. **BBj Home** is configured (`bbj.home` setting)
 2. **BBjServices** is running
-3. **Formatting** runs through the BBj language server and BBjServices (BBj 26.03 or later); it
-   does not use `bbj.formatter.javaPath`. Compiling and running programs do not need Java: they run
-   BBj's own `bbjcpl` and `bbj` executables from `{bbj.home}/bin`.
+3. **Formatting and Denumber** run through the BBj language server and BBjServices (BBj 26.03 or
+   later). Compiling and running programs do not need Java: they run BBj's own `bbjcpl` and `bbj`
+   executables from `{bbj.home}/bin`.
 4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands — see
    [Login to Enterprise Manager](#login-to-enterprise-manager) above)
 
@@ -265,6 +274,12 @@ For commands to work properly, ensure:
 1. Verify `bbj.home` setting points to a valid BBj installation
 2. Check BBjServices is running
 3. Look for errors in the Output panel (select the `BBj` channel)
+
+### Formatting or Denumber Does Nothing
+
+- BBjServices must be running and be BBj 26.03 or later
+- Read the message that appears and look it up in [the message tables](./formatting.md#messages)
+- A file with line numbers is denumbered before it can be formatted
 
 ### Run Commands Fail
 
