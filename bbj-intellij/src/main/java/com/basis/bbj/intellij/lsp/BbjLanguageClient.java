@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.BbjSettingsConfigurable;
 import com.basis.bbj.intellij.config.BbjConfigPathService;
 import com.basis.bbj.intellij.config.ConfigModels.ConfigReloadNotification;
 import com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult;
@@ -13,6 +14,7 @@ import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
@@ -186,6 +188,29 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             }
             toolWindow.show();
             BbjServerService.getInstance(project).scrollConsoleToEnd();
+        });
+    }
+
+    /**
+     * Receives the server's request to open the formatter settings (see
+     * {@code bbj-vscode/src/language/format-settings-notification.ts}). The server sends it when the
+     * user picks Open Settings on an invalid-settings warning. Declaring the method on this class is
+     * what makes it reachable, as for the notifications above. The payload carries setting names
+     * only and is deliberately ignored, so no name the server sends can become a path, a command or
+     * a link: the handler opens the fixed BBj settings page, where the Formatter section sits near
+     * the top.
+     */
+    @JsonNotification("bbj/openFormatterSettings")
+    public void openFormatterSettings(Object ignoredKeys) {
+        Project project = getProject();
+        if (project.isDisposed()) {
+            return;
+        }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            ShowSettingsUtil.getInstance().showSettingsDialog(project, BbjSettingsConfigurable.class);
         });
     }
 
