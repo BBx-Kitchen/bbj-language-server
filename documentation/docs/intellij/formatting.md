@@ -15,7 +15,7 @@ Formatting BBj files is supported in IntelliJ: for the whole file, for a selecti
 
 Choose **Code > Reformat Code**, or use **Reformat Code** in the editor context menu. The whole file is formatted as one edit, so a single Undo restores the previous text. Nothing is written to disk until you save, and a successful format shows no message.
 
-A file with line numbers cannot be formatted as it is. Nothing is changed, and a `BBj Language Server` balloon offers two buttons instead: `Denumber` and `Denumber and Format`. See the [Formatting messages](#formatting-messages) table for the exact text.
+A file with line numbers cannot be formatted as it is. Nothing is changed, and a `BBj Language Server` balloon offers two buttons instead: `Denumber` and `Denumber and Format`. See [Denumber](#denumber) below, and the [Formatting messages](#formatting-messages) table for the exact text.
 
 ## Reformat a selection
 
@@ -31,6 +31,38 @@ Format on save is IntelliJ's own Actions on Save feature:
 4. Click **OK**.
 
 There is no BBj-specific format-on-save switch, and the BBj settings page points here. IntelliJ saves the text you typed, formats it, and saves a second time, so nothing is lost. On a file with line numbers each save shows the Denumber offer again.
+
+## Denumber
+
+Choose **Tools > Denumber BBj Program**, or use **Denumber BBj Program** in the editor context menu, where it sits after Compile BBj File. The action has no keyboard shortcut. It is shown on BBj program files and enabled only when the file looks line-numbered: all of the first 20 non-blank lines are numbered, and there are at least three of them. On any other file it is greyed out, so a two-line sample never enables it.
+
+A line-numbered file also shows a banner at the top of the editor: `This is a line-numbered BBj program. Denumber it for editing.` Its `Denumber` link runs the same action. The banner disappears after the edit and comes back after Undo.
+
+Denumber removes the line numbers from the text in the open editor, through BBjServices. A line number that a statement refers to becomes a label. For example, this program:
+
+```bbj
+0010 PRINT "Hello"
+0020 GOSUB 0100
+0030 END
+0100 PRINT "Sub"
+0110 RETURN
+```
+
+becomes:
+
+```bbj
+PRINT "Hello"
+GOSUB L100
+END
+L100: PRINT "Sub"
+RETURN
+```
+
+The result is left unsaved. Review it and save to keep it; one Undo restores the line numbers. Denumber never writes the file itself.
+
+Problems that the denumbering reports are written to the `BBj Language Server` console. The `Show` button in the result balloon reveals the console.
+
+When you reformat a file with line numbers, the `Denumber and Format` button in the offer does both in one step, as one edit with one Undo.
 
 ## Formatter settings
 
@@ -76,6 +108,43 @@ Messages appear as `BBj Language Server` balloons. Each message is quoted as the
 | `This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in one step.` | The file is a line-numbered program. Shown on every Reformat Code and on every save with Reformat code turned on, with the buttons `Denumber` and `Denumber and Format`. | Click `Denumber and Format`, or `Denumber` and format afterwards. |
 | `Formatting a selection needs a file without line numbers. Denumber the file first.` | Reformat Code was run on a selection in a file with line numbers. The button `Denumber` is offered. | Click `Denumber`, then format the selection again. |
 | No message of its own | BBjServices is not running, so the file stays unchanged. A Java interop connection error such as `Failed to connect to the Java interop service.` may appear. | Start BBjServices and format again. |
+
+### Denumber messages
+
+| Message | Meaning | What to do |
+|---------|---------|------------|
+| `Denumbered.` | The line numbers were removed in the editor. The file is not saved. | Review the result and save it. |
+| `Denumbered.` followed by counts, for example `Denumbered. 2 errors, 1 warning.` | The line numbers were removed, and the denumbering reported problems. Counts of errors, warnings and notes are shown, zero counts are left out. The balloon is a warning when there is any error. The button `Show` reveals the `BBj Language Server` console. | Click `Show` and check the reported lines. |
+| `This file has no line numbers. Nothing to denumber.` | The file has no line numbers, so nothing changed. IntelliJ greys the action out on files that do not look line-numbered, so this message is rare there. | Nothing. |
+| `Denumbered and formatted.` | `Denumber and Format` removed the line numbers and formatted the file in one edit. | Review the result and save it. |
+| `This file has no line numbers. It was formatted.` | `Denumber and Format` was used on a file without line numbers, so it was only formatted. | Nothing. |
+| `Mixed line numbering at line 3. The file was not changed.` (the line number varies) | Some lines have line numbers and others do not. The message names the line without a number, and the button `Go to Line` jumps to it. Without a line number the text is `Mixed line numbering in this file. The file was not changed.` The action is enabled only when the first 20 non-blank lines are all numbered, so a file mixed earlier than that reaches this message through the `Denumber` button of the Reformat Code offer. | Number every line or none, then run Denumber again. |
+| `BBjServices is not reachable. The file was not changed.` | The language server cannot connect to BBjServices. | Start BBjServices and run Denumber again. |
+| `Denumbering requires BBj 26.03 or later. The connected BBjServices does not provide it.` | The connected BBjServices is older than BBj 26.03. | Upgrade BBj to 26.03 or later. |
+| `Denumbering timed out. The file was not changed; try again.` | The denumbering did not finish in time. | Try again. |
+| `This file is too large to denumber. The file was not changed.` | The file is over the size limit. | Split the file, or denumber it by other means. |
+| `This BBj program is protected and cannot be denumbered.` | The program is protected, so its source cannot be changed. | Denumber the unprotected source instead. |
+| `Denumbering failed. The file was not changed. If it contains characters BBj cannot represent, remove them and try again.` | BBj could not read the text of the file. | Remove the characters BBj cannot represent and try again. |
+| `Denumbering failed. The file was not changed. See the BBj output for details.` | The denumbering failed for another reason. | Open the `BBj Language Server` console for details. |
+| `The BBj denumbering service is not available right now. The file was not changed; try again later.` | The denumbering service in BBjServices cannot be reached at the moment. | Check that BBjServices is running, then try again. |
+| `This is a tokenized BBj program, not source text. Decompile it first, then denumber the source.` | The file is a compiled program, not source text. | Decompile it first, then denumber the source. |
+| `Open the BBj file in the editor first; denumbering works on the open editor text.` | The file is not open in an editor. | Open the file in the editor and run Denumber again. |
+| `The file changed while it was being denumbered. Nothing was changed; run Denumber again.` | You edited the file while the denumbering was running. | Run Denumber again. |
+| `The editor did not accept the denumbered text. Nothing was changed; run Denumber again.` | The editor refused the change. | Run Denumber again. |
+| `Denumbering is already running for this file.` | A denumbering of this file is still in progress. | Wait for it to finish. |
+
+Formatting problems during `Denumber and Format` use the texts from the formatting messages table, including the invalid settings message with its `Open Settings` button.
+
+One failure is specific to IntelliJ. When the request cannot be sent or answered, the notification group `BBj Language Server` shows an error titled `Denumber failed`. Its body is one of:
+
+| Body | Meaning | What to do |
+|------|---------|------------|
+| `the BBj language server is not running` | The language server is not started. | Start or restart the language server and try again. |
+| `no answer from the BBj language server within 60 seconds` | The language server did not answer in time. | Restart the language server and try again. |
+| `interrupted` | The denumbering was interrupted. | Try again. |
+| `the BBj language server was stopped or restarted` | The language server was stopped or restarted while the request was running. | Wait until it is ready, then try again. |
+
+Any other error shows its own message as the body.
 
 ## Changes from the old formatter
 

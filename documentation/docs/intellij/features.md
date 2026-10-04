@@ -144,6 +144,12 @@ Intelligent spell checking with BBj awareness:
 - BBj keywords not flagged as typos
 - Standard IntelliJ spell checking for comments and strings
 
+## Code Formatting
+
+Reformat Code formats a BBj file or a selection, and Actions on Save can format on save. The 15
+Formatter settings are on the BBj settings page, and Denumber removes the line numbers from
+line-numbered programs. See [Formatting](./formatting.md) for the details.
+
 ## Run Commands
 
 Execute BBj programs directly from the editor. See [Commands](./commands) page for full details.
@@ -156,6 +162,7 @@ Quick reference:
 | Run As BUI Program | `Alt+B` | Run program as BUI web application |
 | Run As DWC Program | `Alt+D` | Run program as DWC application |
 | Compile BBj File | `Alt+C` | Compile BBj program to bytecode |
+| Denumber BBj Program | none | Remove line numbers (line-numbered programs only) |
 
 ## Java Interop
 
@@ -221,6 +228,7 @@ Contextual notifications appear at the top of the editor to help with configurat
 - **Missing Node.js** - Install Node.js or let the plugin download it automatically
 - **Java Interop Unavailable** - Start BBjServices or check configuration
 - **Server Crash** - The language server crashed twice within 30 seconds and was not restarted automatically; use Restart Server or check the log
+- **Line-numbered program** - `This is a line-numbered BBj program. Denumber it for editing.` Click its `Denumber` link to remove the line numbers
 
 Follow the banner instructions to resolve configuration issues.
 
