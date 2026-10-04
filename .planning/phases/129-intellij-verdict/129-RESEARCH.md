@@ -626,7 +626,9 @@ Memory-derived execution cautions that bear on this structure: diff `REQUIREMENT
 | A8 | `ReformatCodeProcessor(project, false)` used by `%reformat` is project-level, not the editor action | Driving the evaluation | Only affects which script command to pick |
 | A9 | `LanguageFormatting.INSTANCE` needs the platform Application, so a plain-JUnit "inverse" switch test would be fragile | Switch and fence tests | Low; a source guard is the recommended route either way |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Each question below is resolved by measurement in plans 129-03/129-04 (Actions on Save request visibility, CRLF, IDE build representativeness, driver choice) or put to the user as an explicit sub-question at the 129-05 decision checkpoint (eolCharacter LF/CRLF exposure).
 
 1. **What does `eolCharacter` do in IntelliJ, and does IJF-04's "all 15 settings" survive the answer?**
    - What we know: IntelliJ documents are LF in memory; bbj-ls treats terminator changes as real edits and does not normalize them (`bbj-format-edit.ts:14-19`, no `eol` handling in `bbj-format-service.ts`); `LSPIJUtils.applyEdits` does no `\r` handling; #381 is open.
