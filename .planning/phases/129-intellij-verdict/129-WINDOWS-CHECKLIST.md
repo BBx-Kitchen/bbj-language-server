@@ -14,7 +14,8 @@ used on Linux. It is for this test only: install your usual plugin build again a
   plugin can reach (formatting needs it; with an older BBj the plugin shows a message and nothing is formatted).
 - The evaluation zip from the remote workspace: `tmp/129-eval/bbj-intellij-eval.zip` (1044094 bytes).
 - Optional test files, same folder tree: `tmp/129-eval/for-windows/crlf-test.bbj` (a BBj program with CRLF line
-  endings) and `tmp/129-eval/for-windows/stripped-program.bbj` (a real program with all indentation removed).
+  endings), `tmp/129-eval/for-windows/stripped-program.bbj` (a real program with all indentation removed) and
+  `tmp/129-eval/for-windows/numbered-test.bbj` (three line-numbered lines, for the extra steps at the end).
   In VS Code's Explorer: right-click the file, Download. If you prefer, create the CRLF file yourself in Notepad
   (Notepad writes CRLF by default).
 
@@ -107,4 +108,49 @@ the Marketplace version) and restart. Turn "Reformat code" on save back off if y
 
 ## Extra steps from the Linux run
 
-(none yet; added after the remaining Linux cases)
+All seven Linux cases that a script could drive have a result; nothing is left as "not run". These steps are what a
+script cannot do (clicking a message) or what only your IDE build can show (build 262 against the Linux build 242).
+Do them after W1 to W4, same console, and write one line per step into `notes.txt` (E1, E2, ...). E1 to E3 matter for
+the verdict; E4 and E5 are optional.
+
+**E1: numbered-file message, click Denumber.**
+
+1. Open `numbered-test.bbj` (or create a file in Notepad with exactly these three lines):
+
+   ```
+   0010 PRINT "A"
+   0020 PRINT "B"
+   0030 GOTO 0010
+   ```
+
+2. Reformat Code (Ctrl+Alt+L). Expect: the text does not change, and a balloon from the BBj Language Server says
+   `This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in one step.`
+   with two buttons, Denumber and Denumber and Format.
+3. Click Denumber. Expect: the line numbers are removed (labels where a GOTO needs one), and one Ctrl+Z puts the numbers
+   back in one step. Write down what you saw.
+
+**E2: numbered-file message, click Denumber and Format.**
+
+1. Reload `numbered-test.bbj` from disk with the numbers back (File | Reload All from Disk, or reopen it).
+2. Reformat Code, click Denumber and Format in the balloon. Expect: the numbers are removed and the program is
+   indented in one step, one Ctrl+Z restores the numbered text.
+
+**E3: dismiss the numbered-file balloon.**
+
+1. With the numbers back, Reformat Code again, but this time close the balloon with its X (or let it expire) instead of
+   clicking a button.
+2. Reformat Code a normal program again (for example the copy from W2). Expect: it still formats, the status bar still
+   says the BBj server is ready, and no error balloon appears. This is the check that closing the open message request does not
+   stop the server.
+
+**E4 (optional): eolCharacter CRLF on your IDE build.** On Linux (IDE build 242) a language-server answer with
+`\r\n` line breaks was refused by the IDE with a `Wrong line separators` error and nothing was formatted. To see whether
+build 262 does the same: close the IDE, in `%APPDATA%\JetBrains\<your IDE folder>\options\BbjSettings.xml` add the line
+`<option name="formatterEolCharacter" value="CRLF" />` inside the `com.basis.bbj.intellij.BbjSettings` component, start
+the IDE, open `crlf-test.bbj` without indentation, Reformat Code, and note whether it indents, does nothing, or shows a
+red error indicator or a message. Remove the line again afterwards (close the IDE first).
+
+**E5 (optional): Actions on Save, changed lines only.** In a folder under Git version control (`git init` and commit
+`stripped-program.bbj`), Settings | Tools | Actions on Save, tick Reformat code and choose "Only changed lines", then
+remove the indentation of one line that is already indented, press Ctrl+S, and note whether only that line is
+re-indented. Untick it again afterwards.

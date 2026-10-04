@@ -159,9 +159,32 @@ c1ef134ca4f5ff320e1b33fc870e7527d80dd5d24671ed8ee6be8614c4dce636  /home/coder/ti
 ```
 
 `numbered.bbj` is `0010 PRINT "A"`, `0020 PRINT "B"`, `0030 GOTO 0010`. `crlf.bbj` is the stripped `a.orig.bbj` with CRLF
-endings (`sed 's/$/\r/'`, every one of its 63 lines ends in CR LF); `crlf-eol-crlf.bbj` and `crlf-eol-lf.bbj` are two
-identical copies for the two `eolCharacter` sub-cases. The corpus files of the C1 to C7 sessions (`c1.bbj`, `c2a*.bbj`,
+endings (`sed 's/$/\r/'`: 63 CR LF line breaks and a lone CR at the very end, because the source has no final line
+break, so it is not a clean CRLF file); `crlf-eol-crlf.bbj` and `crlf-eol-lf.bbj` are two identical copies. The CRLF cases
+C6a to C6c therefore use fresh copies of `tmp/129-eval/linux/corpus/crlf-clean.orig.bbj` (`c6a2.bbj`, `c6b2.bbj`,
+`c6c2.bbj`; sha256 `3c59aa9aed0c75ebd2451669a71d2b1dec1adf85601f32ae026f892b4316db23`, 1303 bytes: 63 CR LF breaks, no bare
+LF or CR, no final line break). The older files are not used as evidence. The corpus files of the C1 to C7 sessions (`c1.bbj`, `c2a*.bbj`,
 `c2b*.bbj`, `c7a.bbj`, `c7b.bbj`, `formatted.bbj`) hold the results of those sessions and are not reused.
+
+### Seeds, project setup and restoration (plan 129-04)
+
+Seeds used after the first cases and their removal (all in git-excluded locations or outside this repository):
+
+- `/home/coder/tinybbj/.idea/workspace.xml`: component `FormatOnSaveOptions` for C3a (`myRunOnSave`, `myAllFileTypesSelected`)
+  and C3b (`myFormatOnlyChangedLines` added); removed again before C4a. The shape the IDE wrote back is in the C3
+  sections.
+- `/home/coder/tinybbj` is a git repository since C3b (one commit `0f0f840 baseline` with `.gitignore` and `c3b.bbj`),
+  with `.idea/vcs.xml` mapping `$PROJECT_DIR$` to Git; the repository is outside this one.
+- sandbox `config_runIde/options/BbjSettings.xml`: the wrapper seed plus `formatterIndentWidth` 4 and
+  `formatterKeywordsToUppercase` true for C5, `formatterEolCharacter` CRLF for C6b and LF for C6c (each file is copied
+  into its case folder).
+- After the last case the file `config_runIde/options/BbjSettings.xml` and the first, unused seed
+  `config/options/BbjSettings.xml` (both held the Node.js wrapper path) were deleted; `test ! -e` on both paths passes.
+  Copies are under `tmp/129-eval/linux/BbjSettings.xml.*`.
+- The one-line evaluation flip in `BbjLanguageServerFactory.java` was restored with `git checkout -- <that file>` after
+  `git diff --numstat HEAD -- bbj-intellij bbj-vscode` showed only `1 1` for it; `git diff --quiet HEAD -- bbj-intellij
+  bbj-vscode` passes afterwards, so the tree's source equals HEAD again (`LSP_FORMATTING_ENABLED = false`).
+- The evaluation zip built in the previous plan still carries the flip and is the one the Windows run uses.
 
 ### IDE and server
 
@@ -184,25 +207,25 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | C3b | Actions on Save, changed lines only | Linux | script | corpus made a git repository with the stripped c3b.bbj committed and a Git mapping seeded; Reformat code on save, only changed lines (workspace.xml seed); insert `;rem` at the end of line 12; SaveAll | a rangeFormatting request at save, only the changed line formatted | after SaveAll: didChange, didSave, then textDocument/rangeFormatting (id 24) with range 11:0 to 11:34, answered with one edit over line 11 (`    print something!, some_string!;rem`), applied as one didChange inserting four spaces at 11:0, a second didSave, a second rangeFormatting (id 31) answered with an empty result; on disk exactly one line differs from the committed file (git diff: line 12 gained four spaces and the typed `;rem`), every other line is unchanged and still unindented; D-07 not triggered | ### C3b | pass |
 | C4a | Numbered-file message | Linux | script | open numbered.bbj (three numbered lines); editor action ReformatCode; screenshot; save | no edit, file unchanged, the server shows its message | one textDocument/formatting request (id 21) answered with an empty result; before it the server sent window/showMessageRequest (its id 5, type 2) with the numbered-file offer and the actions Denumber and Denumber and Format; the screenshot shows the Warning balloon `BBj Language Server` with both buttons; sha256 of numbered.bbj identical before and after; the balloon was still open when the script ended the IDE, no answer to request 5 was sent, and the server kept answering (ids 22 and 23, publishDiagnostics) after the request; no BBj or LSP4IJ line at WARN or above in idea.log; clicking the buttons is not scriptable and is in the Windows extra steps | ### C4a | pass |
 | C4b | Selection on a numbered file | Linux | script | open c4b.bbj (copy of numbered.bbj); select line 1 and the first nine characters of line 2; ReformatCode; save | no edit, the server explains that a selection needs an unnumbered file | one textDocument/rangeFormatting request (id 20, range 0:0 to 1:9) answered with an empty result; the server sent window/showMessageRequest (id 5, type 2) with `Formatting a selection needs a file without line numbers. Denumber the file first.` and the single action Denumber; sha256 of c4b.bbj identical before and after; no BBj or LSP4IJ line at WARN or above in idea.log | ### C4b | pass |
-| C5 | Settings reach the format output | Linux | script | set a non-default value in the sandbox BbjSettings.xml; restart the IDE; Reformat Code | the initialize request carries the value and the output follows it | pending | pending | not run |
-| C6a | CRLF file, default eolCharacter KEEP | Linux | script | crlf.bbj; Reformat Code; save; check the line endings on disk | indented, still CRLF on disk, no error | pending | pending | not run |
-| C6b | CRLF file, eolCharacter CRLF | Linux | script | crlf-eol-crlf.bbj with eolCharacter CRLF seeded; Reformat Code | observed outcome recorded (lsp4ij issue 381 is the known trap) | pending | pending | not run |
-| C6c | CRLF file, eolCharacter LF | Linux | script | crlf-eol-lf.bbj with eolCharacter LF seeded; Reformat Code | observed outcome recorded | pending | pending | not run |
+| C5 | Settings reach the format output | Linux | script | sandbox BbjSettings.xml seeded with formatterIndentWidth 4 and formatterKeywordsToUppercase true (plus the wrapper and home path); fresh IDE session; open c5.bbj (stripped); ReformatCode; save | the initialize request carries both values inside `formatter`, the output follows them | the `initialize` request on the wire carries `"indentWidth":4` and `"keywordsToUppercase":true` inside `initializationOptions.formatter`, the other 13 keys at their defaults; one textDocument/formatting request (id 22) answered with one edit over 4:0 to 63:8; the saved file is indented with four spaces per level and the keywords are upper case (`METHODRET`, `SETERR`, `THROW`, `ERR`, `PRINT`, `CLASSEND`); no BBj or LSP4IJ line at WARN or above | ### C5 | pass |
+| C6a | CRLF file, default eolCharacter KEEP | Linux | script | no seed; open c6a2.bbj (63 lines, every line ending in CR LF, no trailing line break); ReformatCode; save; check the line endings on disk | indented, still CRLF on every line on disk, no error | one textDocument/formatting request (id 18); the response carries `\n` only and one edit over 4:0 to 62:0; the file on disk: 63 CR LF, 0 bare LF, 0 bare CR, the status bar shows CRLF; with the CRs removed the content equals the C1 result byte for byte; no BBj or LSP4IJ line at WARN or above | ### C6a | pass |
+| C6b | CRLF file, eolCharacter CRLF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter CRLF; open c6b2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded (lsp4ij issue 381 is the known trap) | the `initialize` request carries `"eolCharacter":"CRLF"`; one textDocument/formatting request (id 18) answered with one edit over 0:0 to 63:0 whose `newText` carries `\r\n` line breaks (it begins `\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n`); the IDE did not apply it: idea.log has `SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0` (a java.lang.AssertionError from DocumentImpl.replaceString), no didChange followed, the buffer and the file stayed unformatted (sha256 identical to the original) and no balloon showed in the screenshot; the server was unaffected | ### C6b | known issue |
+| C6c | CRLF file, eolCharacter LF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter LF; open c6c2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded | the `initialize` request carries `"eolCharacter":"LF"`; one textDocument/formatting request (id 15) answered with one edit over 4:0 to 62:0 with `\n` breaks, applied; the file on disk: 63 CR LF, 0 bare LF, so the LF value did not change the line endings the IDE keeps for the file; with the CRs removed the content equals the C1 result; no balloon, no exception in idea.log | ### C6c | pass |
 
 ## Code-verified
 
 These rows are verified from code and existing tests, not hand-run (they claim no runtime sequence). The test titles
-below were checked to exist in the named files; the Observed and Class columns are filled when the rows are
-reviewed.
+below were checked to exist in the named files and the four test files pass (see the Evidence column); the rows
+claim no runtime sequence.
 
 | ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
 |----|------|----------|-----------|-------|----------|----------|----------|-------|
-| V1 | config.bbx and BBx Config left untouched | any | code-verified | read bbj-formatting-handler.ts (the document must be open and its languageId must be bbj, line 52); read bbj-formatting-handler.test.ts line 124 (a config document and a plain text document give no edit and are never sent to the formatter); read plugin.xml (BBx Config is mapped to the server with languageId bbx-config) | the server answers an empty result for a config file, so a reformat of config.bbx changes nothing | pending | pending | not run |
-| V2 | Commit-dialog reformat option | any | code-verified | same server guard as V1; lsp4ij issue 1647 (the commit dialog's reformat cannot be filtered by file type, open) | a commit-time reformat reaches the server for BBx Config files and is answered with an empty result | pending | pending | not run |
-| V3 | Large file: apply time, caret and folding, one undo step, no dirty flag when already formatted | any | code-verified | read bbj-format-edit.test.ts (minimal line edits), bbj-format-service.test.ts lines 87 and 139 (one edit over the changed lines; no edit for formatted text); the Linux rows C7a and C7c cover undo and mtime on a 63-line file | the server returns minimal edits, none when nothing changes | pending | pending | not run |
-| V4 | Server down or older BBj: bounded handler, no EDT freeze, one message | any | code-verified | read bbj-formatting-handler.test.ts line 110 (a format resolves while the workspace is still loading), bbj-format-notices.test.ts lines 98 and 254 (one message per connection, a fixed text for an empty peer message), java-interop-program-lane.ts lines 37 and 45 (15 s and 25 s request deadlines) | an empty edit list, one Warning, the request cancelled on the wire at its deadline | pending | pending | not run |
-| V5 | Stale answer dropped | any | code-verified | read bbj-format-service.test.ts line 149 (an answer for an older version is dropped when the document was edited meanwhile) | an edit computed for an older version is never applied | pending | pending | not run |
-| V6 | Range edit wider than the selection | any | code-verified | read bbj-format-service.test.ts line 255 (an edit that reaches past the selection is accepted at its own range, not clipped); the Linux rows C2a and C2b show the IDE applying such an edit | the platform applies the whole edit without an Overlapping edit error | pending | pending | not run |
+| V1 | config.bbx and BBx Config left untouched | any | code-verified | read bbj-formatting-handler.ts line 52 (a document that is not open, or whose languageId is not `bbj`, is answered with `[]`); plugin.xml line 330 maps the language `BBx Config` to the server with languageId `bbx-config`; read the test | a reformat of a config file reaches the server and is answered with no edit, so config.bbx is never rewritten | the server-side allow-list on languageId gives `[]` for `bbx-config`; no runtime sequence is claimed (the evaluation did not open a config file in the IDE); lsp4ij issue 1647 is open | bbj-vscode/test/bbj-formatting-handler.test.ts line 124 "a config document and a plain text document give no edit and are never sent to the formatter"; `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
+| V2 | Commit-dialog reformat option | any | code-verified | the commit dialog's Reformat code option cannot be limited to file types in LSP4IJ (lsp4ij issue 1647, open when the plan was written, taken from the research, not re-read); BBj files take the same Reformat Code path as in C1, config files are answered by the V1 guard | a commit-time reformat of a config file gets `[]`, of a BBj file the same edit as Reformat Code | the only config-file protection is the V1 guard in the server, proven by the V1 test; the commit dialog itself was not opened in either platform and no runtime sequence is claimed | bbj-vscode/test/bbj-formatting-handler.test.ts line 124 (same test as V1); `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
+| V3 | Large file: minimal edits, no edit when already formatted | any | code-verified | read bbj-format-edit.test.ts (`minimalLineEdit`: no edit for equal text; insert, delete, replace-every-line and trailing-line-break edits round-trip and touch only the changed lines) and bbj-format-service.test.ts lines 87 and 139; the Linux rows C7a and C7c show one undo step and an unchanged modification time on a 63-line file | the server returns minimal line edits and none when nothing changes | proven for edit shape and the empty answer; apply time, caret and folding on a large file were not measured (no runtime sequence claimed, the corpus has no large file) | bbj-vscode/test/bbj-format-edit.test.ts "minimalLineEdit" (line 33 onward); bbj-vscode/test/bbj-format-service.test.ts line 87 "an open buffer comes back as one edit over the changed line only", line 139 "text that is already formatted gives no edit"; `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
+| V4 | Server down or older BBj: bounded handler, one message | any | code-verified | read bbj-formatting-handler.test.ts line 110 (a format resolves while the workspace is still loading and no document wait is started), bbj-format-notices.test.ts lines 98 and 254, and java-interop-program-lane.ts lines 37 and 45 (`PROGRAM_REQUEST_TIMEOUT_MS = 15_000`, `PROGRAM_DENUM_FORMAT_REQUEST_TIMEOUT_MS = 25_000`) | an empty edit list, one Warning per connection, the request bounded at its deadline | proven in the server tests; the IDE side (no EDT wait on a down server) was not exercised, no runtime sequence is claimed | bbj-vscode/test/bbj-formatting-handler.test.ts line 110; bbj-vscode/test/bbj-format-notices.test.ts line 98 "is reported once per connection and a reconnect re-arms it", line 254 "a failed outcome with an empty peer message still shows the fixed text"; `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
+| V5 | Stale answer dropped | any | code-verified | read bbj-format-service.test.ts lines 149 and 162 | an edit computed for an older document version is never applied | the answer for a version older than the live buffer is dropped, and so is an answer for a document closed meanwhile | bbj-vscode/test/bbj-format-service.test.ts line 149 "an answer for an older version is dropped when the document was edited meanwhile", line 162 "an answer is dropped when the document was closed meanwhile"; `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
+| V6 | Editor options and a range edit wider than the selection | any | code-verified | read bbj-format-service.test.ts lines 128 and 255; the Linux rows C2a and C2b show the IDE applying such an edit | the editor's tabSize and insertSpaces never change the settings sent, and an edit that reaches past the selection is returned at its own range | both proven in the service tests; the runtime counterpart of the second claim is C2b (response wider than the selection, applied, no Overlapping edit) and of the first C1 (the editor sent `tabSize` 4, the output used `indentWidth` 2) | bbj-vscode/test/bbj-format-service.test.ts line 128 "the editor formatting options never change the settings that are sent", line 255 "an edit that reaches past the selection is accepted at its own range, not clipped to the selection"; `npx vitest run` of the four files on 2026-10-04: `Test Files  4 passed (4)`, `Tests  109 passed (109)` | pass |
 
 ## Windows
 
@@ -602,6 +625,185 @@ OUT: {"jsonrpc":"2.0","id":5,"method":"window/showMessageRequest","params":{"typ
 OUT: {"jsonrpc":"2.0","id":"20","result":[]}
 ```
 
+### C5
+
+Session start `2026-10-04T08:42:41Z`; files `tmp/129-eval/linux/C5/` (`BbjSettings.xml.after`, screenshots `C5-before.png`,
+`C5-after.png`). The sandbox `config_runIde/options/BbjSettings.xml` was seeded (before-state kept as
+`tmp/129-eval/linux/BbjSettings.xml.before-c5`):
+
+```
+<application>
+  <component name="com.basis.bbj.intellij.BbjSettings">
+    <option name="bbjHomePath" value="/opt/bbx" />
+    <option name="nodeJsPath" value="$USER_HOME$/repos/bbj-language-server/tmp/129-eval/node-tee.sh" />
+    <option name="javaInteropSettingsMigrated" value="true" />
+    <option name="formatterIndentWidth" value="4" />
+    <option name="formatterKeywordsToUppercase" value="true" />
+  </component>
+</application>
+```
+
+The IDE left the file unchanged at exit. idea.log:
+
+```
+2026-10-04 08:42:47,024 [   3848]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:42:48,070 [   4894]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+37 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+
+Wire, the `initialize` request from the fresh session (capabilities elided with `…`):
+
+```
+{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"processId":…,"rootPath":"/home/coder/tinybbj","rootUri":"file:///home/coder/tinybbj","initializationOptions":{"home":"/opt/bbx","classpath":"","interopHost":"localhost","interopPort":5008,"configPath":"","compilerOutputDirectory":"","compilerTrigger":"debounced","formatter":{"indentWidth":4,"indentCharacter":"SPACE","keywordsToUppercase":true,"removeLineContinuation":false,"splitSingleLineIf":false,"splitInlineComments":false,"splitInlineLabelComment":false,"collapseMultiLine":false,"eolCharacter":"KEEP","ifClosingKeyword":"KEEP","ifKeywordCase":"KEEP","parameterLayout":"KEEP_INITIAL_LAYOUT","operatorSpacing":"KEEP","indentLabelBlocks":false,"blankLineAfterReturn":false}},"capabilities":…
+```
+
+Formatting request and response (long body elided with `…`):
+
+```
+IN : {"jsonrpc":"2.0","id":"22","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c5.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"22","result":[{"range":{"start":{"line":4,"character":0},"end":{"line":63,"character":8}},"newText":"    FIELD PUBLIC BBjString someInstanceString$\n\n    METHOD PUBLIC STATIC String getSomeString()\n        METHODRET \"ABC\"\n    METHODEND\n\n    METHOD PUBLIC String getInstanceString(Boolean something!, String some_string!)…eString()\n? someOtherClass.getSomeString()\n\nx! = new someOtherClass(\"ABC\")\n? x!.getsomeInstanceString()\n? x!.getSomeString()\n\nCLASS PUBLIC Sample\n\n    METHOD PUBLIC String write(String dr!)\n        SETERR writeErr\n        PRINT dr!\n        METHODRET dr!\n\n        writeErr:\n        THROW errmes(-1), ERR\n    METHODEND\n\nCLASSEND"}]}
+```
+
+The saved `c5.bbj` (two excerpts, the start and the end of the formatted part):
+
+```
+CLASS PUBLIC someClass
+
+    FIELD PUBLIC BBjString someInstanceString$
+
+    METHOD PUBLIC STATIC String getSomeString()
+        METHODRET "ABC"
+    METHODEND
+
+    METHOD PUBLIC String getInstanceString(Boolean something!, String some_string!)
+        PRINT something!, some_string!
+
+        METHODRET #someInstanceString$
+
+    METHODEND
+...
+    METHOD PUBLIC String write(String dr!)
+        SETERR writeErr
+        PRINT dr!
+        METHODRET dr!
+
+        writeErr:
+        THROW errmes(-1), ERR
+    METHODEND
+
+CLASSEND
+```
+
+Four spaces per level (the C1 session with the default seed produced two) and upper-case keywords (the source
+has `print` and `methodret` in lower case; the C1 output keeps their case). The seed was removed after the case.
+
+### C6a
+
+Session start `2026-10-04T08:45:17Z`; files `tmp/129-eval/linux/C6a/` (screenshots `C6a-before.png`, `C6a-after.png`).
+The sandbox carries no formatter seed in this session (the before-c5 file again). Corpus: `c6a2.bbj`, a copy of
+`corpus/crlf-clean.orig.bbj` (sha256 `3c59aa9aed0c75ebd2451669a71d2b1dec1adf85601f32ae026f892b4316db23`, 1303 bytes), the
+unindented program with CR LF after each of its 63 line breaks and no line break at the end. A first attempt with the
+older `crlf.bbj` is not used as evidence: its last line ended in a lone CR (63 LF, 64 CR), the IDE read that as one
+more line break and the saved file gained a final CR LF; the session is kept as
+`tmp/129-eval/linux/aside/c6a-lone-cr-probe/`.
+
+idea.log:
+
+```
+2026-10-04 08:45:23,119 [   4076]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:45:24,250 [   5207]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+37 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+
+Wire. The IDE hands the server the document with LF breaks (the `didOpen` text of the file contains no `\r`), and the
+answer carries `\n` only, so the line endings of the file on disk are the IDE's to keep:
+
+```
+IN : {"jsonrpc":"2.0","id":"18","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c6a2.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"18","result":[{"range":{"start":{"line":4,"character":0},"end":{"line":62,"character":0}},"newText":"  FIELD PUBLIC BBjString someInstanceString$\n\n  METHOD PUBLIC STATIC String getSomeString()\n    METHODRET \"ABC\"\n  METHOD…\n  method public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  methodend\n"}]}
+```
+
+Line endings of the saved file, counted from the bytes (python, `\r\n`, bare `\n`, bare `\r`):
+
+```
+bytes 1363 CRLF 63 bare LF 0 bare CR 0 tail b'\r\n\r\nclassend'
+```
+
+The status bar of `C6a-after.png` shows `CRLF`, and `tr -d '\r' < c6a2.bbj | diff - c1.bbj` prints nothing: the content
+is the formatted program.
+
+### C6b
+
+Session start `2026-10-04T08:46:17Z`; files `tmp/129-eval/linux/C6b/` (`BbjSettings.xml.after`, screenshots
+`C6b-before.png`, `C6b-after.png`). The seed is the C5 file with `formatterEolCharacter` `CRLF` as its only formatter
+option; the wire shows `"eolCharacter":"CRLF"` in `initializationOptions.formatter`. Corpus `c6b2.bbj`, the same bytes
+as C6a (sha256 `3c59aa9a...`).
+
+idea.log, the launch (32 WARN or SEVERE lines in total; the two below are the only ones that name formatting):
+
+```
+2026-10-04 08:46:24,322 [   5371]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:46:25,281 [   6330]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+idea.log, at the Reformat Code action:
+
+```
+2026-10-04 08:47:04,603 [  45652]   INFO - #c.j.p.CommandLogger - %executeEditorAction ReformatCode
+2026-10-04 08:47:04,791 [  45840] SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0
+java.lang.AssertionError: Wrong line separators: '\r\nREM /** ...' at offset 0
+	at com.intellij.openapi.util.text.StringUtil.assertValidSeparators(StringUtil.java:2552)
+	at com.intellij.openapi.editor.impl.DocumentImpl.assertValidSeparators(DocumentImpl.java:716)
+	at com.intellij.openapi.editor.impl.DocumentImpl.replaceString(DocumentImpl.java:607)
+	at com.intellij.openapi.editor.impl.DocumentImpl.lambda$setText$3(DocumentImpl.java:1086)
+	at com.intellij.openapi.editor.impl.DocumentImpl.setText(DocumentImpl.java:1088)
+	at com.intellij.formatting.service.AsyncDocumentFormattingService$FormattingRequestImpl.updateDocument(AsyncDocumentFormattingService.java:310)
+```
+
+No frame in the trace names a BBj or LSP4IJ class, and the idea.log count of `LSP formatting error` (LSP4IJ's own error balloon title) is 0. Wire:
+
+```
+IN : {"jsonrpc":"2.0","id":"18","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c6b2.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"18","result":[{"range":{"start":{"line":0,"character":0},"end":{"line":63,"character":0}},"newText":"\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n\r\n  FIELD PUBLIC BBjString someInstanceString$\r\n\r\n  METHOD PUBLIC STATIC String getSomeString()\r\n    METHODRET …! = new someOtherClass(\"ABC\")\r\n? x!.getsomeInstanceString()\r\n? x!.getSomeString()\r\n\r\nclass public Sample\r\n\r\n  method public String write(String dr!)\r\n    seterr writeErr\r\n    PRINT dr!\r\n    methodret dr!\r\n\r\n    writeErr:\r\n    throw errmes(-1), err\r\n  methodend\r\n\r\n"}]}
+```
+
+After the response the wire has no `didChange` and no `didSave` for `c6b2.bbj` (only the two `didClose` at exit); the
+file on disk has the sha256 of the original (`3c59aa9a...` before and after) and the screenshot `C6b-after.png` still
+shows the unindented text with `CRLF` in the status bar and no balloon. So with `eolCharacter` CRLF the whole edit is
+thrown away by the IDE's document check, the user sees nothing happen, and the log carries one SEVERE assertion from
+the platform's formatting service (IDE 2024.2, build 242). Data is not lost or damaged and nothing froze. Whether the
+IDE build 262 behaves the same is not known; the Windows checklist has an extra step for it.
+
+### C6c
+
+Session start `2026-10-04T08:47:29Z`; files `tmp/129-eval/linux/C6c/` (`BbjSettings.xml.after`). The seed is the same
+file with `formatterEolCharacter` `LF`; the wire shows `"eolCharacter":"LF"`. Corpus `c6c2.bbj`, same bytes as C6a.
+
+idea.log:
+
+```
+2026-10-04 08:47:34,974 [   3864]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:47:35,941 [   4831]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+27 WARN or SEVERE lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`, no
+exception.
+
+Wire:
+
+```
+IN : {"jsonrpc":"2.0","id":"15","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c6c2.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"15","result":[{"range":{"start":{"line":4,"character":0},"end":{"line":62,"character":0}},"newText":"  FIELD PUBLIC BBjString someInstanceString$\n\n  METHOD PUBLIC STATIC String getSomeString()\n    METHODRET \"ABC\"\n  METHODEND\n\n  METHOD PUBLIC String getInstanceString(Bo…eOtherClass.getSomeString()\n\nx! = new someOtherClass(\"ABC\")\n? x!.getsomeInstanceString()\n? x!.getSomeString()\n\nclass public Sample\n\n  method public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  methodend\n"}]}
+IN : {"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c6c2.bbj"}}}
+```
+
+The saved file: `bytes 1363 CRLF 63 bare LF 0 bare CR 0`, content equal to the C1 result once the CRs are removed. An `LF`
+setting therefore does not convert a CRLF file; the answer is applied as text and the IDE keeps the file's own line
+separator on disk. This is the input for the eolCharacter sub-question at the decision checkpoint: LF is harmless and has
+no effect, CRLF is thrown away by the IDE (C6b).
+
 ## Known issues
 
 - After an empty formatting answer the IDE still sends one `textDocument/didChange` with `rangeLength` 0 and empty
@@ -613,6 +815,10 @@ OUT: {"jsonrpc":"2.0","id":"20","result":[]}
   second request answered `[]` (C3a ids 25 and 32, C3b ids 24 and 31). A crash between the two saves would leave the
   unformatted text on disk, which is what the user typed, so nothing is lost; it is noted as an observation, not a
   defect. Evidence: sections C3a and C3b.
+- With `eolCharacter` CRLF the server answers with `\r\n` in `newText` and the IDE (2024.2) refuses it with a SEVERE
+  `Wrong line separators` assertion in `AsyncDocumentFormattingService`: nothing is formatted, nothing is damaged,
+  the user sees no message. Only a non-default value triggers it; the default KEEP (C6a) and LF (C6c) format a CRLF
+  file correctly. Evidence: section C6b. Put to the user as the eolCharacter sub-question.
 
 ## Blockers
 
