@@ -123,12 +123,14 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
-    void theLspFormattingSwitchIsOneConstantSetToFalseThatGatesAllFourFormattingChecks() {
+    void theLspFormattingSwitchIsOneConstantSetToTrueThatGatesAllFourFormattingChecks() {
         String text = readGuardedSource(FACTORY_SOURCE);
 
         assertEquals(1, countOccurrences(text,
-                "private static final boolean LSP_FORMATTING_ENABLED = false;"),
-            "the factory must declare the formatting switch exactly once, set to false");
+                "private static final boolean LSP_FORMATTING_ENABLED = true;"),
+            "the factory must declare the formatting switch exactly once, set to true");
+        assertEquals(0, countOccurrences(text, "LSP_RANGE_FORMATTING_ENABLED"),
+            "range formatting must follow the one switch; no second, range-only constant may exist");
 
         String body = bodyOf(text, "new LSPFormattingFeature()");
         assertEquals(1, countOccurrences(body, "public boolean isEnabled(@NotNull PsiFile file)"),

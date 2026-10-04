@@ -4,30 +4,22 @@ import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.client.features.LSPFormattingFeature;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Proxy;
+import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Proves the formatting feature the factory installs refuses LSP formatting while the factory's
- * formatting switch is off: all four formatting checks answer false, and they do so without ever
- * calling into LSP4IJ or reading the file. The file handed to the checks is a proxy whose every
- * method throws, so any attempt by the vendor superclass to touch it fails the test.
+ * Proves the factory installs its own gated formatting feature, once, and that this feature
+ * declares its own override of every one of the four formatting checks, so the factory's
+ * formatting switch reaches Reformat Code, range formatting and Actions on Save alike. With the
+ * switch on, each check defers to LSP4IJ, which reads the file and the server's capabilities; what
+ * the checks answer for a real file is therefore left to the hands-on evaluation, and the source
+ * guard in {@link Lsp4ijOverrideSiteSourceGuardTest} pins the switch's value and its short-circuits.
  */
 class BbjLspFormattingSwitchTest {
-
-    private static PsiFile throwingFile() {
-        return (PsiFile) Proxy.newProxyInstance(
-            PsiFile.class.getClassLoader(),
-            new Class<?>[] { PsiFile.class },
-            (proxy, method, args) -> {
-                throw new AssertionError("the formatting checks must not touch the file, but called "
-                    + method.getName());
-            });
-    }
 
     @Test
     void theInstalledFormattingFeatureIsOurSubclassAndIsStable() {
@@ -45,16 +37,15 @@ class BbjLspFormattingSwitchTest {
     }
 
     @Test
-    void everyFormattingCheckAnswersFalseWithoutTouchingTheFile() {
-        LSPFormattingFeature feature = new BbjLanguageServerFactory()
-            .createClientFeatures().getFormattingFeature();
-        PsiFile file = throwingFile();
+    void theGatedSubclassOverridesAllFourChecks() throws NoSuchMethodException {
+        Class<?> installed = new BbjLanguageServerFactory()
+            .createClientFeatures().getFormattingFeature().getClass();
 
-        assertFalse(feature.isEnabled(file), "isEnabled must answer false while the switch is off");
-        assertFalse(feature.isSupported(file), "isSupported must answer false while the switch is off");
-        assertFalse(feature.isFormattingSupported(file),
-            "isFormattingSupported must answer false while the switch is off");
-        assertFalse(feature.isRangeFormattingSupported(file),
-            "isRangeFormattingSupported must answer false while the switch is off");
+        for (String name : new String[] {
+                "isEnabled", "isSupported", "isFormattingSupported", "isRangeFormattingSupported"}) {
+            Method method = installed.getDeclaredMethod(name, PsiFile.class);
+            assertEquals(boolean.class, method.getReturnType(),
+                name + " must be declared by the gated subclass and answer a boolean");
+        }
     }
 }

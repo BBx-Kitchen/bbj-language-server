@@ -25,15 +25,27 @@ import org.jetbrains.annotations.NotNull;
 public final class BbjLanguageServerFactory implements LanguageServerFactory {
 
     /**
-     * The one switch deciding whether IntelliJ offers LSP formatting for BBj files. It stays off
-     * until LSP4IJ formatting has been evaluated against the BBj formatter. While it is off,
-     * Reformat Code, Actions on Save and the client-side typed-character triggers never send a
-     * formatting request to the language server, even once the server advertises formatting.
-     * Server-driven on-type formatting is not gated here: it is never offered because the
-     * language server does not advertise it. Setting the switch to {@code true} restores
-     * LSP4IJ's own behaviour unchanged.
+     * The one switch deciding whether IntelliJ offers LSP formatting for BBj files. It is on after
+     * a hands-on evaluation of the BBj formatter through LSP4IJ 0.21.0 on IntelliJ IDEA 2024.2
+     * (build 242, Linux) and IntelliJ IDEA 2026.2.2 (build 262, Windows): Reformat Code, Reformat
+     * Code on a selection and Actions on Save all format through the language server. Known issues:
+     * <ul>
+     *   <li>The formatter's Line ending setting CRLF stops formatting entirely: the IDE refuses an
+     *       edit whose text carries CRLF line breaks, leaves the file unchanged and shows no
+     *       message (an LSP4IJ limitation, lsp4ij #381). KEEP, the default, works.</li>
+     *   <li>When the formatter has nothing to change, the IDE still sends one empty change
+     *       notification and bumps the document version; text and file stay unchanged.</li>
+     *   <li>Actions on Save saves the typed text first, then formats and saves a second time;
+     *       nothing is lost.</li>
+     *   <li>Format on save is IntelliJ's own Actions on Save setting, not an option on the BBj
+     *       settings page.</li>
+     * </ul>
+     * All four formatting checks are gated on this switch, so setting it to {@code false} again
+     * makes Reformat Code, Actions on Save and the client-side typed-character triggers never send
+     * a formatting request to the language server. Server-driven on-type formatting is not gated
+     * here: it is never offered because the language server does not advertise it.
      */
-    private static final boolean LSP_FORMATTING_ENABLED = false;
+    private static final boolean LSP_FORMATTING_ENABLED = true;
 
     @Override
     public @NotNull StreamConnectionProvider createConnectionProvider(@NotNull Project project) {
@@ -110,7 +122,7 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
         // All four checks are overridden because the formatting services gate on isEnabled and
         // then call the two supported checks directly; overriding isSupported alone, as on the
         // document-link feature above, would leave Reformat Code live. The short-circuit keeps
-        // super from touching the capability registry or the file while the switch is off.
+        // super from touching the capability registry or the file whenever the switch is off.
         .setFormattingFeature(new LSPFormattingFeature() {
             @Override
             public boolean isEnabled(@NotNull PsiFile file) {
