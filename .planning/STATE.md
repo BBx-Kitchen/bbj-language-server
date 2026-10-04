@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130
 current_phase_name: Docs & Migration
 status: executing
-stopped_at: Completed 130-03-PLAN.md
-last_updated: "2026-10-04T17:17:58.465Z"
+stopped_at: Completed 130-04-PLAN.md
+last_updated: "2026-10-04T17:20:49.341Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 130 execution started
-state_head: 1fa58129ea3f5b1c4fea4a71baee32c739ab2623
+state_head: 77518b71180956065c11e47b1a3d36117b7e223b
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 86
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130 (Docs & Migration) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 130 execution started
 
@@ -243,6 +243,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130 P01 | 4 min | 3 tasks | 6 files |
 | Phase 130 P02 | 3 min | 2 tasks | 2 files |
 | Phase 130 P03 | 8 min | 2 tasks | 2 files |
+| Phase 130 P04 | 14 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -441,6 +442,7 @@ decisions:
 - [Phase 130]: 130-01: settings table Description cells avoid VS Code key names so the IntelliJ guide reuses them word for word; message tables quote server text verbatim
 - [Phase 130]: 130-02: release notes state only verified old-jar differences; old blank-line positions are not listed because the live run differs from the research capture
 - [Phase 130]: 130-03: QA rows carry no planning ids; Denumber action expected greyed out on unnumbered and early-mixed files in IntelliJ — Repo rule for QA files; research enablement trap
+- [Phase 130]: 130-04: IntelliJ Formatting page reuses the VS Code Description cells word for word (script-checked), the CRLF warning follows the Line ending row, and the Denumber failed balloon bodies have their own table
 
 ### Tech Debt
 
@@ -510,8 +512,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T17:17:58.155Z
-Stopped at: Completed 130-03-PLAN.md
+Last session: 2026-10-04T17:20:49.032Z
+Stopped at: Completed 130-04-PLAN.md
 Resume file: None
 
 Next: execute the remaining phase 130 plans (130-02 to 130-05). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
