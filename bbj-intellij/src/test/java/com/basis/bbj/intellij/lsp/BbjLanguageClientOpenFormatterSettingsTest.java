@@ -140,6 +140,10 @@ class BbjLanguageClientOpenFormatterSettingsTest {
             "the handler must check for a disposed project before and after the hop to the EDT");
         assertEquals(1, countOccurrences(body, "showSettingsDialog(project, BbjSettingsConfigurable.class)"),
             "the handler must open the BBj settings page, a fixed configurable class, exactly once");
+        assertEquals(1, countOccurrences(body, "compareAndSet(false, true)"),
+            "repeated requests must be coalesced through one pending flag");
+        assertEquals(1, countOccurrences(body, "finally"),
+            "the pending flag must be cleared in a finally, so a failed dialog cannot block later requests");
         for (String forbidden : new String[] {"BrowserUtil", "Paths.", "VirtualFile", "ActionManager", "getParams"}) {
             assertEquals(0, countOccurrences(body, forbidden),
                 "the handler must not use " + forbidden + ": nothing from the server may become a "

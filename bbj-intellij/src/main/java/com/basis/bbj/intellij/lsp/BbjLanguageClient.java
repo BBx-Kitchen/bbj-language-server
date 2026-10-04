@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * BBj language client implementation.
@@ -35,6 +36,9 @@ import java.util.List;
  * calls the client features.
  */
 public final class BbjLanguageClient extends LanguageClientImpl {
+
+    /** Set while an open-settings request is queued or its dialog is showing. */
+    private final AtomicBoolean openFormatterSettingsPending = new AtomicBoolean(false);
 
     public BbjLanguageClient(@NotNull Project project) {
         super(project);
@@ -206,11 +210,20 @@ public final class BbjLanguageClient extends LanguageClientImpl {
         if (project.isDisposed()) {
             return;
         }
+        // Coalesce repeated requests: the dialog is modal, so every further click on Open Settings
+        // would otherwise queue another dialog behind it that opens as soon as this one closes.
+        if (!openFormatterSettingsPending.compareAndSet(false, true)) {
+            return;
+        }
         ApplicationManager.getApplication().invokeLater(() -> {
-            if (project.isDisposed()) {
-                return;
+            try {
+                if (project.isDisposed()) {
+                    return;
+                }
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, BbjSettingsConfigurable.class);
+            } finally {
+                openFormatterSettingsPending.set(false);
             }
-            ShowSettingsUtil.getInstance().showSettingsDialog(project, BbjSettingsConfigurable.class);
         });
     }
 
