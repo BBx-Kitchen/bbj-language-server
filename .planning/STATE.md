@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 129
 current_phase_name: IntelliJ Verdict
 status: executing
-stopped_at: Completed 129-07-PLAN.md
-last_updated: "2026-10-04T15:21:12.112Z"
+stopped_at: Completed 129-08-PLAN.md (not applicable, verdict supported)
+last_updated: "2026-10-04T15:22:06.153Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 129 execution started
-state_head: 8dc17822fe3044ca61a6bb9916f437ecf265f91b
+state_head: 67729d674537b0ca7fc94a260de5d2b308d1b1ea
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 38
-  completed_plans: 36
+  completed_plans: 37
   percent: 71
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 129 (IntelliJ Verdict) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 129 execution started
 
@@ -238,6 +238,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 129 P05 | 13min | 3 tasks | 3 files |
 | Phase 129 P06 | 6 min | 3 tasks | 5 files |
 | Phase 129 P07 | 5 min | 3 tasks | 7 files |
+| Phase 129 P08 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -430,6 +431,7 @@ decisions:
 - [Phase 129]: IntelliJ LSP formatting is on (LSP_FORMATTING_ENABLED = true) for whole-file, range and on-save formatting; no range-only constant
 - [Phase 129]: bbj/openFormatterSettings opens BbjSettingsConfigurable by class and ignores its keys payload
 - [Phase 129]: IntelliJ Formatter section: RESTART_NOTE ends with the verdict's eol_note verbatim; note and format-on-save hint are wrapping comment labels
+- [Phase 129]: 129-08 disabled-outcome plan skipped: verdict is supported, no file changed
 
 ### Tech Debt
 
@@ -498,8 +500,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T15:21:11.864Z
-Stopped at: Completed 129-07-PLAN.md
+Last session: 2026-10-04T15:22:05.903Z
+Stopped at: Completed 129-08-PLAN.md (not applicable, verdict supported)
 Resume file: None
 
 Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
