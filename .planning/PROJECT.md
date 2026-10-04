@@ -506,6 +506,7 @@ until publication).
 - ✓ **DEV-01..03**: CLAUDE.md and the browser-editor concepts page match the architecture, test pattern and CI gates — v4.8 Phase 123
 - ✓ **FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01**: Format Document, Format Selection and format-on-save run through the language server on bbj-ls `formatProgram` with minimal, version-checked edits and one deduplicated message per failure; only the 15 known formatter keys reach bbj-ls; VS Code's jar provider is no longer registered; IntelliJ LSP formatting is held off by one switch until the Phase 129 verdict — v4.9 Phase 125
 - ✓ **DEN-01, DEN-03, DEN-04, FMT-06, FMT-07**: a `bbj/denum` request for both IDEs denumbers the open buffer through bbj-ls with one version-checked edit and one message per outcome; formatting a line-numbered file offers "Denumber" / "Denumber and Format" (Format Selection: "Denumber") on every request instead of changing the buffer; DENUM diagnostics land in VS Code's Problems view (and the 'BBj' channel as a log copy) — v4.9 Phase 126
+- ✓ **IJF-05, IJF-06**: IntelliJ has a "Denumber BBj Program" action after Compile in the Tools and editor menus, enabled only on line-numbered BBj programs, applied as one undoable edit through `bbj/denum` and never saving; a line-numbered banner with one Denumber link disappears after the edit and comes back on Undo; DENUM diagnostics go to the BBj console as one plain-text block — v4.9 Phase 128
 
 ### Active
 
@@ -798,4 +799,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 after Phase 126*
+*Last updated: 2026-10-04 after Phase 128*

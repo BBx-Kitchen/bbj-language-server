@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 128
-current_phase_name: IntelliJ DENUM
-status: verifying
-stopped_at: Completed 128-04-PLAN.md
-last_updated: "2026-10-04T06:03:18.014Z"
-last_activity: 2026-10-03
-last_activity_desc: Phase 128 execution started
-state_head: 700eed2f8863c0b7595531e6c4f0ca63fe144a77
+current_phase: 129
+current_phase_name: IntelliJ Verdict
+status: planning
+stopped_at: Phase 128 complete, ready to plan Phase 129
+last_updated: "2026-10-04T06:30:00.738Z"
+last_activity: 2026-10-04
+last_activity_desc: Phase 128 complete, transitioned to Phase 129
+state_head: fdd717016eb574e02e06e859497db39b77903875
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 29
   completed_plans: 29
-  percent: 57
+  percent: 71
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-03 (Phase 126 LS DENUM complete — 7/7 plans, UAT 7/7 after gap closure, validated, secured)
+**Last Updated:** 2026-10-04 (Phase 128 IntelliJ DENUM complete — 4/4 plans, UAT 1/1, Nyquist-compliant, 19/19 threats closed)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-03)
+See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 128 — IntelliJ DENUM
+**Current Focus:** Phase 129 — IntelliJ Verdict
 
 ---
 
 ## Current Position
 
-Phase: 128 (IntelliJ DENUM) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-10-03 — Phase 128 execution started
+Phase: 129 — IntelliJ Verdict
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-04 — Phase 128 complete, transitioned to Phase 129
 
-Progress: [██████░░░░] 57% (v4.9: 3/7 phases)
+Progress: [███████░░░] 71% (v4.9: 5/7 phases)
 
 ### v4.9 milestone map
 
@@ -435,6 +435,7 @@ decisions:
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
 - `2026-09-26-intellij-interop-initoptions-key-mismatch` — IntelliJ sends javaInteropHost/Port, the server reads interopHost/Port (found in Phase 110; unscheduled)
 - `2026-09-26-signature-help-and-snippet-peer-name-escaping` — transferred threat T-111-15: peer names in the signature-help fence and completion snippet placeholders (unscheduled)
+- `2026-10-04-skip-syntax-checks-on-line-numbered-programs` — line-numbered programs show many pointless syntax errors (at least in IntelliJ); send no diagnostics, or one pointing to Denumber (from the Phase 128 UAT; unscheduled)
 
 Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111), `2026-09-20-phase-97-code-review-follow-ups` (FIX-04, Phase 114).
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
@@ -482,10 +483,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-10-04T06:03:11.126Z
-Stopped at: Completed 128-04-PLAN.md
+Stopped at: Phase 128 complete, ready to plan Phase 129
 Resume file: None
 
-Next: verify phase 128 (`/gsd-verify-work 128`), then phase 129. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
+Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items

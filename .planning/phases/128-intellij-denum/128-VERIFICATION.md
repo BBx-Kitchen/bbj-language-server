@@ -1,11 +1,12 @@
 ---
 phase: 128-intellij-denum
 verified: 2026-10-04T06:15:00Z
-status: human_needed
+status: passed
 score: 3/3 roadmap truths verified (plus 7 plan truths, see table); 0 failed
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Smoke the final plugin zip once (it was rebuilt from the final tree after the hand check approval). Install it, open a line-numbered BBj file, choose Tools > Denumber BBj Program, then Undo; reopen/undo to bring the banner back and click its Denumber link; click Denumber twice quickly. Afterwards read idea.log."
     expected: "Menu action and banner both denumber as one undoable edit, banner disappears and returns after Undo, the second quick click is answered by the server's 'already running' message, no 'Denumber failed' balloon on a healthy server, and idea.log has no 'Unsupported notification method' line for bbj/denumDiagnostics or bbj/showDenumDiagnostics and no editor-notification-provider exception."
     why_human: "Commits 9a09f46d, bd607fa8 and 5bf76fb5 (review fixes WR-01..03) changed the request path and the banner refresh queue AFTER the user approved the hand check, and the step-14 idea.log lines were never pasted. Source guards and unit tests cover the changes, but no live IDE run covers the final tree."
