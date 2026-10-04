@@ -10,39 +10,51 @@ requires:
 provides:
   - "language server, VSIX and IntelliJ plugin zip built from the final tree, with the zip contents checked"
   - "gate results for the final tree: whole IntelliJ suite, register check, scope check, allowlist check"
-  - "the hand-check list for a running IntelliJ against live BBj 26.03 (Task 3, awaiting the tester)"
+  - "the hand check of the rebuilt plugin zip in a running IntelliJ against live BBj 26.03, approved by the user"
+  - "a fix for a language-server crash found in that hand check: a cancelled window message no longer terminates the server"
 affects: [verification]
 
 actuals:
-  tokens: 3000
-  tasks: 2
-  commits: 1
+  tokens: 6200
+  tasks: 3
+  commits: 3
 
 key-files:
   created: []
-  modified: []
+  modified:
+    - bbj-vscode/src/language/bbj-notifications.ts
+    - bbj-vscode/src/language/java-class-refresh.ts
+    - bbj-vscode/test/notifications.test.ts
+    - bbj-vscode/test/java-class-refresh.test.ts
 
 key-decisions:
-  - "No source file changed; every automated gate passed on the first run, so nothing was fixed in an earlier plan"
+  - "Tasks 1 and 2 changed no source: every automated gate passed on the first run"
+  - "The cancelled-message crash found in the hand check was fixed inside this phase, with the user's approval, at all five fire-and-forget message sites in the language server"
 
-requirements-completed: []
+requirements-completed: [IJF-05, IJF-06]
 
-status: halted
-completed: 2026-10-03
+status: complete
+completed: 2026-10-04
 ---
 
 # Phase 128 Plan 04: Plugin zip, gates and hand check Summary
 
-**Tasks 1 and 2 are done: the language server, the VSIX and the IntelliJ plugin zip are built from the final tree, the zip carries the byte-identical fresh server plus the action, banner and refresher, and the whole IntelliJ suite (1258 tests, 0 failures) plus the register, scope and allowlist checks pass. Task 3, the hand check in a running IntelliJ, is waiting for the tester.**
+**The language server, the VSIX and the IntelliJ plugin zip are built from the final tree, the zip carries the byte-identical fresh server plus the action, banner and refresher, the whole IntelliJ suite (1258 tests, 0 failures) and the register, scope and allowlist checks pass, and the user approved the hand check in a running IntelliJ; the hand check also exposed a language-server crash on closing a balloon, fixed in the same plan.**
 
-Status: awaiting the Task 3 hand check (`checkpoint:human-verify`, gate `blocking`). IJF-05 and IJF-06 are not marked complete: they rest on that hand check, and REQUIREMENTS.md is untouched.
+Status: complete. All three tasks are done. The user approved the Task 3 hand check on the rebuilt zip.
+
+## Commits
+
+- `d32a90d9` docs(128-04): plugin zip build and gate results (Tasks 1 and 2, this SUMMARY only)
+- `acb1912a` fix(128-04): never let a cancelled window message terminate the language server (`bbj-notifications.ts`, `java-class-refresh.ts` and their tests `notifications.test.ts`, `java-class-refresh.test.ts`)
+- `d68f5f93` docs(128-04): record the cancelled-message crash fix as a deviation
 
 ## Performance
 
 - **Started:** 2026-10-03T12:53Z
 - **Tasks 1 and 2 finished:** 2026-10-03T12:55Z
-- **Tasks:** 2 of 3 executed (Task 3 is the human checkpoint)
-- **Files modified:** 0 source files (this SUMMARY only)
+- **Tasks:** 3 of 3 (Task 3 is the human checkpoint, approved by the user)
+- **Files modified:** 2 source files and 2 test files under `bbj-vscode/` (the deviation fix, `acb1912a`), plus this SUMMARY
 - **Packaged root:** `/home/coder/repos/bbj-language-server/bbj-vscode` on the main working tree, branch `gsd/v4.9-bbj-ls-denum-format`, HEAD `9687f988` (no worktree, so `BBJ_LS_SRC` was not set)
 
 ## Task 1: both distributables from the final tree
@@ -101,20 +113,26 @@ Outputs:
 
 Phase diff size for context: 17 commits since the base; `bbj-intellij` shows 26 files changed, 2462 insertions, 12 deletions.
 
-## Task 3: hand check (awaiting)
+## Task 3: hand check (approved)
 
-The tester installs `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip` through Settings | Plugins | gear | Install Plugin from Disk, against IntelliJ with LSP4IJ and a BBj 26.03 BBjServices (live on 127.0.0.1:5008 in this container; the VSIX is installed in the test code-server on :13338). The 15 steps are in `128-04-PLAN.md` (Task 3, `how-to-verify`). The outcome of steps 1-14 and the pasted `idea.log` lines from step 14 are recorded below once the tester answers.
+The tester installs `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip` through Settings | Plugins | gear | Install Plugin from Disk, against IntelliJ with LSP4IJ and a BBj 26.03 BBjServices (live on 127.0.0.1:5008 in this container; the VSIX is installed in the test code-server on :13338). The 15 steps are in `128-04-PLAN.md` (Task 3, `how-to-verify`). 
 
-Hand-check outcome: pending.
+Outcome, as reported by the user:
+
+- The first session, on the zip from Task 1, exposed the crash described under Deviations (closing the "Denumbered." balloon killed the language server). The fix `acb1912a` followed, and the language server, VSIX and plugin zip were rebuilt.
+- The user re-ran the hand check on the rebuilt zip (`bbj-intellij-0.1.0.zip`, 1038423 bytes) and answered "approved". Steps 1-14 are approved by the user.
+- Step 14 `idea.log` lines: not provided by the user, so no `idea.log` excerpt is recorded and the "no `Unsupported notification method` line" claim of the plan rests on the user's approval only, not on pasted log evidence.
+- A `Denumber run failed: not-open` language-server log line was seen in the first (crashing) session. The user did not say which step produced it, so its step is unidentified and it is not explained here.
+- No per-step observations beyond the approval were reported, and none are recorded.
 
 ## Deviations from Plan
 
-Tasks 1 and 2 executed as written, and each automated command passed on its first run. The commit trailer follows the task prompt (`Claude Opus 5.5`).
+Tasks 1 and 2 executed as written, and each automated command passed on its first run. Task 3 led to the one deviation below. The commit trailer follows the task prompt (`Claude Opus 5.5`).
 
 **1. [Rule 1 - Bug, found in the Task 3 hand check, user-approved] Closing a DENUM balloon terminated the language server**
-- **Found during:** Task 3. Closing the plain "Denumbered." balloon in IntelliJ killed the LS (`ResponseError: The request (id: 7, method: 'window/showMessageRequest') has been cancelled`, code -32800, then Node exit).
+- **Found during:** Task 3 (first hand-check session). Closing the plain "Denumbered." balloon in IntelliJ killed the LS (`ResponseError: The request (id: 7, method: 'window/showMessageRequest') has been cancelled`, code -32800, then Node exit).
 - **Cause:** every `window.show*Message` call is a `window/showMessageRequest` request, even without buttons. LSP4IJ cancels it when the balloon is closed (VS Code answers `null` instead, so VS Code never showed it). The fire-and-forget helpers dropped the promise; their `try/catch` only covered synchronous throws, so the rejection went unhandled.
-- **Fix:** `acb1912a`. The rejection is handled at all five fire-and-forget sites: `showInformation`, `showFormatterWarning` and `notifyJavaConnectionError` in `bbj-notifications.ts`, and the success and failure messages in `java-class-refresh.ts`. Four regression tests (`notifications.test.ts`, `java-class-refresh.test.ts`) use plain-function cancelling mocks, because a `vi.fn` mock subscribes to its returned promise and hides the defect. They are red on the old source (4 failed) and green on the fix.
+- **Fix:** `acb1912a` (recorded in `d68f5f93`). The rejection is handled at all five fire-and-forget sites: `showInformation`, `showFormatterWarning` and `notifyJavaConnectionError` in `bbj-notifications.ts`, and the success and failure messages in `java-class-refresh.ts`. Four regression tests (`notifications.test.ts`, `java-class-refresh.test.ts`) use plain-function cancelling mocks, because a `vi.fn` mock subscribes to its returned promise and hides the defect. They are red on the old source (4 failed) and green on the fix.
 - **Scope gate:** this deliberately breaks Task 2's "nothing outside bbj-intellij/ and .planning/" check. The user asked for the fix inside this phase so it finishes clean; the only paths outside are those two source files and two test files under `bbj-vscode/`.
 - **Re-verified on the final tree:** lint and typecheck:test are clean. Whole vitest suite: 4464 tests, 0 failed; the only failing suite is the known baseline `installed-extension-e2e`. The LS, the VSIX (`bbj-ext-install`) and the plugin zip were rebuilt (`bbj-intellij-0.1.0.zip`, 1038423 bytes), and the zip's `main.cjs` is byte-identical to the fresh build.
 
@@ -130,13 +148,15 @@ None. This plan adds no source.
 
 None - the plan adds no source and no new surface. T-128-16 (zip contents: `cmp` plus class and plugin.xml check), T-128-17 (register check) and T-128-18 (scope and allowlist checks) are mitigated as planned; T-128-19 stays accepted.
 
-## Self-Check: PASSED (Tasks 1 and 2)
+## Self-Check: PASSED (Tasks 1, 2 and 3)
 
 - Zip, VSIX, `cmp` result, class and plugin.xml lines, suite numbers, register, scope and allowlist results: each taken from the command output in this session.
 - `/home/coder/repos/bbj-language-server/bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip`: FOUND. `/tmp/bbj-lang.vsix`: FOUND.
 - Source and test trees: no change (`git status --porcelain` empty for `bbj-intellij/src`, `bbj-vscode/src`, `bbj-vscode/test`).
-- Task 3 is not self-checked: it is the pending human checkpoint.
+- Task 3: the approval is the user's answer "approved" on the rebuilt zip; the missing step 14 log lines and the unidentified `not-open` log line are stated above, not filled in.
+- Commits `d32a90d9`, `acb1912a`, `d68f5f93`: each present in `git log`.
+- The four `bbj-vscode` files of `acb1912a`: each present in that commit's stat.
 
 ---
 *Phase: 128-intellij-denum*
-*Tasks 1-2 completed: 2026-10-03*
+*Tasks 1-2 completed: 2026-10-03; Task 3 approved and plan closed: 2026-10-04*
