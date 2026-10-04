@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130
 current_phase_name: Docs & Migration
 status: executing
-stopped_at: Phase 130 context gathered
-last_updated: "2026-10-04T17:07:48.641Z"
+stopped_at: Completed 130-01-PLAN.md
+last_updated: "2026-10-04T17:11:57.014Z"
 last_activity: 2026-10-04
-last_activity_desc: Phase 129 complete, transitioned to Phase 130
-state_head: a4439b4c1d429907d24d3e18cbe35033d39a27cb
+last_activity_desc: Phase 130 execution started
+state_head: f91004842c9e54e42412b1a5d6b1cec818251891
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 43
-  completed_plans: 38
+  completed_plans: 39
   percent: 86
 ---
 
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 ## Current Position
 
-Phase: 130 (Docs & Migration) — READY TO EXECUTE
-Plan: Not started
+Phase: 130 (Docs & Migration) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-04 — Phase 129 complete, transitioned to Phase 130
+Last activity: 2026-10-04 — Phase 130 execution started
 
-Progress: [████████░░] 86% (v4.9: 6/7 phases)
+Progress: [█████████░] 86% (v4.9: 6/7 phases)
 
 ### v4.9 milestone map
 
@@ -240,6 +240,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 129 P07 | 5 min | 3 tasks | 7 files |
 | Phase 129 P08 | 2min | 1 tasks | 1 files |
 | Phase 129 P09 | 9min | 3 tasks | 3 files |
+| Phase 130 P01 | 4 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -435,6 +436,7 @@ decisions:
 - [Phase 129]: IntelliJ Formatter section: RESTART_NOTE ends with the verdict's eol_note verbatim; note and format-on-save hint are wrapping comment labels
 - [Phase 129]: 129-08 disabled-outcome plan skipped: verdict is supported, no file changed
 - [Phase 129]: IJF-02, IJF-03 and IJF-04 complete on the supported verdict; final zip verified (switch int 1, seam and handler present, main.cjs identical)
+- [Phase 130]: 130-01: settings table Description cells avoid VS Code key names so the IntelliJ guide reuses them word for word; message tables quote server text verbatim
 
 ### Tech Debt
 
@@ -504,11 +506,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T16:23:50.830Z
-Stopped at: Phase 130 context gathered
-Resume file: .planning/phases/130-docs-migration/130-CONTEXT.md
+Last session: 2026-10-04T17:11:56.704Z
+Stopped at: Completed 130-01-PLAN.md
+Resume file: None
 
-Next: plan phase 130 (`/gsd-discuss-phase 130` or `/gsd-plan-phase 130`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
+Next: execute the remaining phase 130 plans (130-02 to 130-05). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
