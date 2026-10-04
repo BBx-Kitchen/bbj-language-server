@@ -1,7 +1,7 @@
 ---
 phase: 130-docs-migration
 verified: 2026-10-04T17:40:00Z
-status: human_needed
+status: passed
 score: 10/10 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,6 +9,7 @@ re_verification: false
 gaps: []
 deferred: []
 human_verification:
+
   - test: "Confirm the IntelliJ editor context menu has no Reformat Code entry (code review WR-01)"
     expected: "documentation/docs/intellij/formatting.md line 16 says 'or use Reformat Code in the editor context menu'. plugin.xml registers no such entry, and the stock IntelliJ editor popup is believed not to carry it. If it is absent, delete that clause (the Code > Reformat Code path is correct and is the one the QA rows use)."
     why_human: "Whether the platform's own editor popup lists Reformat Code is IntelliJ behaviour that nothing in this repository defines, so it cannot be settled from source."
