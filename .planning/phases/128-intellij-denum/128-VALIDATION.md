@@ -3,9 +3,9 @@ phase: "128"
 slug: "intellij-denum"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-10-03"
 ---
 
@@ -40,21 +40,21 @@ created: "2026-10-03"
 
 Filled by the planner per task; requirement-to-test map from RESEARCH.md:
 
-| Requirement | Behavior | Test Type | Test class | File Exists |
-|-------------|----------|-----------|------------|-------------|
-| IJF-05 | `bbj/denum` declared on `BbjComposerServer`, present in scanned TS sources (`denum-command.ts` added to the scan list) | contract | `ComposerRequestContractTest` | edit existing |
-| IJF-05 | `DenumResult` parses a real envelope, ignoring `edits`/`diagnostics` | unit | `DenumModelsJsonBoundaryTest` | ❌ W0 |
-| IJF-05 / IJF-06 | `LineNumbering` port matches the 9 TS cases + edge cases | unit | `LineNumberingTest` | ❌ W0 |
-| IJF-06 | TS rule constants have not drifted from the Java port | contract | `LineNumberingContractTest` | ❌ W0 |
-| IJF-05 | Action: BGT, BBj guard, visible/enabled split, no save, background request, no lsp4ij import; plugin.xml placement, no shortcut | source guard | `BbjDenumberActionSourceGuardTest` | ❌ W0 |
-| IJF-05 | No new vendor coupling | existing guard | `Lsp4ijImportAllowlistTest` | ✅ unchanged |
-| IJF-05 | Console block presenter: header + one line per entry, ERROR flagged, control chars flattened, null-tolerant, no links | unit | `DenumDiagnosticsPresenterTest` | ❌ W0 |
-| IJF-05 | `BbjLanguageClient` handles `bbj/denumDiagnostics` and `bbj/showDenumDiagnostics` | unit/guard | `BbjLanguageClientDenumNotificationTest`, `BbjLanguageClientDenumSourceGuardTest` | ❌ W0 |
-| IJF-05 | TS ↔ Java notification names/fields/severities | contract | `DenumNotificationContractTest` | ❌ W0 |
-| IJF-06 | Banner provider on shared base, single [Denumber], no Dismiss, registered | source guard | `BbjLineNumberedNotificationProviderSourceGuardTest` + `BbjNotificationProviderBaseSourceGuardTest` | ❌ W0 / edit |
-| IJF-06 | Debounced refresh: one refresh per distinct file per window | unit | `DirtyFileCoalescerTest` (concurrency package, `ManualScheduler`) | ❌ W0 |
-| IJF-06 | Refresher: one listener, Disposable parent, BBj filter, disposal guards | source guard | `BbjLineNumberedBannerRefresherSourceGuardTest` | ❌ W0 |
-| all | Whole IntelliJ suite green | full | `./gradlew test` | — |
+| Requirement | Behavior | Test Type | Test class | File Exists | Status |
+|-------------|----------|-----------|------------|-------------|--------|
+| IJF-05 | `bbj/denum` declared on `BbjComposerServer`, present in scanned TS sources (`denum-command.ts` added to the scan list) | contract | `ComposerRequestContractTest` | ✅ edited | ✅ green |
+| IJF-05 | `DenumResult` parses a real envelope, ignoring `edits`/`diagnostics` | unit | `DenumModelsJsonBoundaryTest` | ✅ added | ✅ green |
+| IJF-05 / IJF-06 | `LineNumbering` port matches the 9 TS cases + edge cases | unit | `LineNumberingTest` | ✅ added | ✅ green |
+| IJF-06 | TS rule constants have not drifted from the Java port | contract | `LineNumberingContractTest` | ✅ added | ✅ green |
+| IJF-05 | Action: BGT, BBj guard, visible/enabled split, no save, background request, no lsp4ij import; plugin.xml placement, no shortcut | source guard | `BbjDenumberActionSourceGuardTest` | ✅ added | ✅ green |
+| IJF-05 | No new vendor coupling | existing guard | `Lsp4ijImportAllowlistTest` | ✅ unchanged | ✅ green |
+| IJF-05 | Console block presenter: header + one line per entry, ERROR flagged, control chars flattened, null-tolerant, no links | unit | `DenumDiagnosticsPresenterTest` | ✅ added | ✅ green |
+| IJF-05 | `BbjLanguageClient` handles `bbj/denumDiagnostics` and `bbj/showDenumDiagnostics` | unit/guard | `BbjLanguageClientDenumNotificationTest`, `BbjLanguageClientDenumSourceGuardTest` | ✅ added | ✅ green |
+| IJF-05 | TS ↔ Java notification names/fields/severities | contract | `DenumNotificationContractTest` | ✅ added | ✅ green |
+| IJF-06 | Banner provider on shared base, single [Denumber], no Dismiss, registered | source guard | `BbjLineNumberedNotificationProviderSourceGuardTest` + `BbjNotificationProviderBaseSourceGuardTest` | ✅ added / edited | ✅ green |
+| IJF-06 | Debounced refresh: one refresh per distinct file per window | unit | `DirtyFileCoalescerTest` (concurrency package, `ManualScheduler`) | ✅ added | ✅ green |
+| IJF-06 | Refresher: one listener, Disposable parent, BBj filter, disposal guards | source guard | `BbjLineNumberedBannerRefresherSourceGuardTest` | ✅ added | ✅ green |
+| all | Whole IntelliJ suite green | full | `./gradlew test` | — | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -62,15 +62,15 @@ Filled by the planner per task; requirement-to-test map from RESEARCH.md:
 
 ## Wave 0 Requirements
 
-- [ ] `denum/LineNumberingTest.java`, `denum/LineNumberingContractTest.java`
-- [ ] `denum/DenumModelsJsonBoundaryTest.java`
-- [ ] `denum/DenumDiagnosticsPresenterTest.java`
-- [ ] `lsp/BbjLanguageClientDenumNotificationTest.java`, `lsp/BbjLanguageClientDenumSourceGuardTest.java`
-- [ ] `denum/DenumNotificationContractTest.java`
-- [ ] `actions/BbjDenumberActionSourceGuardTest.java`
-- [ ] `BbjLineNumberedNotificationProviderSourceGuardTest.java` + update `BbjNotificationProviderBaseSourceGuardTest.java`
-- [ ] `concurrency/DirtyFileCoalescerTest.java`, `denum/BbjLineNumberedBannerRefresherSourceGuardTest.java`
-- [ ] Edit `composer/ComposerRequestContractTest.java` (add `denum-command.ts` and `bbj/denum`)
+- [x] `denum/LineNumberingTest.java`, `denum/LineNumberingContractTest.java`
+- [x] `denum/DenumModelsJsonBoundaryTest.java`
+- [x] `denum/DenumDiagnosticsPresenterTest.java`
+- [x] `lsp/BbjLanguageClientDenumNotificationTest.java`, `lsp/BbjLanguageClientDenumSourceGuardTest.java`
+- [x] `denum/DenumNotificationContractTest.java`
+- [x] `actions/BbjDenumberActionSourceGuardTest.java`
+- [x] `BbjLineNumberedNotificationProviderSourceGuardTest.java` + update `BbjNotificationProviderBaseSourceGuardTest.java`
+- [x] `concurrency/DirtyFileCoalescerTest.java`, `denum/BbjLineNumberedBannerRefresherSourceGuardTest.java`
+- [x] Edit `composer/ComposerRequestContractTest.java` (add `denum-command.ts` and `bbj/denum`)
 
 Framework install: none.
 
@@ -94,11 +94,21 @@ Build the language server and the IntelliJ plugin zip first, and again from the 
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-10-04 (all 14 mapped classes green in a full `./gradlew test`: 1263 tests, 0 failures; manual-only rows covered by the passing 128-UAT smoke test)
+
+---
+
+## Validation Audit 2026-10-04
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
