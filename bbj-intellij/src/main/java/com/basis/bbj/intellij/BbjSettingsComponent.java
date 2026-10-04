@@ -39,7 +39,7 @@ import java.util.List;
  * class's allowed values, and the remaining settings are checkboxes.
  * <p>
  * Every keystroke in the BBj home / Node.js path fields only schedules a debounced background
- * lookup (D-12) — the fields' {@code DocumentAdapter}s and {@code ComponentValidator}s perform no
+ * lookup — the fields' {@code DocumentAdapter}s and {@code ComponentValidator}s perform no
  * filesystem or subprocess work of their own; that work lives entirely in
  * {@link BbjSettingsLookups}, called only from {@link #nodeDebouncer}/{@link #homeDebouncer}.
  */
@@ -300,7 +300,7 @@ public class BbjSettingsComponent {
         autoSaveCheckbox = new JCheckBox("Auto-save before run");
         autoSaveCheckbox.setSelected(true);
 
-        // --- Debounced background lookups (D-12) ---
+        // --- Debounced background lookups ---
         nodeDebouncer = new KeystrokeDebouncer<>(
             lookupScheduler,
             () -> ApplicationManager.getApplication().isDispatchThread(),
