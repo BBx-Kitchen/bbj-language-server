@@ -603,7 +603,7 @@ Plans:
   2. The user's verdict (supported or disabled) is recorded at a decision checkpoint, and the single formatting switch matches it. IntelliJ offers Reformat Code for BBj files only when the verdict is "supported".
   3. Only if "supported": all 15 formatter settings are on the IntelliJ BBj settings page, they reach the server through `initializationOptions`, and changing one restarts the language server so the next format reflects it. If "disabled": no formatter settings UI ships, and IJF-04 moves to Out of Scope in `.planning/REQUIREMENTS.md`.
 
-**Plans**: 1/9 plans executed (06 and 07 run only on a "supported" verdict, 08 only on "disabled"; each opens with a guard on `129-VERDICT.md`)
+**Plans**: 2/9 plans executed (06 and 07 run only on a "supported" verdict, 08 only on "disabled"; each opens with a guard on `129-VERDICT.md`)
 
 Plans:
 **Wave 1**
@@ -612,7 +612,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 129-02-PLAN.md — `FormatterInitOptions` seam and 15 `BbjSettings.State` fields wired into `initializationOptions.formatter`, normalized, with a recorded revert set (wave 2)
+- [x] 129-02-PLAN.md — `FormatterInitOptions` seam and 15 `BbjSettings.State` fields wired into `initializationOptions.formatter`, normalized, with a recorded revert set (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -705,7 +705,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
 | 127. VS Code Cut-Over | 6/6 | Planned |  |
 | 128. IntelliJ DENUM | 4/4 | In Progress |  |
-| 129. IntelliJ Verdict | 1/9 | Planned |  |
+| 129. IntelliJ Verdict | 2/9 | Planned |  |
 | 130. Docs & Migration | 0/TBD | Not started | - |
 
 **Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
