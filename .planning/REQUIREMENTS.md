@@ -72,9 +72,9 @@ stays switched off until the evaluation verdict.
 
 ### Docs & migration (MIG)
 
-- [ ] **MIG-01**: Both user guides describe formatting, Format Selection, DENUM, the 15 settings, the BBj 26.03 requirement and the IntelliJ verdict
-- [ ] **MIG-02**: A migration note lists the output differences from the old formatter (labels, blank lines, IF closers, line endings, the fixed `--single-line-if` crash #507) and warns about the large first-format diff
-- [ ] **MIG-03**: The QA smoke and full checklists cover format, Format Selection, format-on-save, DENUM and the error messages in both IDEs
+- [x] **MIG-01**: Both user guides describe formatting, Format Selection, DENUM, the 15 settings, the BBj 26.03 requirement and the IntelliJ verdict
+- [x] **MIG-02**: A migration note lists the output differences from the old formatter (labels, blank lines, IF closers, line endings, the fixed `--single-line-if` crash #507) and warns about the large first-format diff
+- [x] **MIG-03**: The QA smoke and full checklists cover format, Format Selection, format-on-save, DENUM and the error messages in both IDEs
 
 ## v2 Requirements
 
@@ -137,9 +137,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IJF-04 | Phase 129 | Complete |
 | IJF-05 | Phase 128 | Complete |
 | IJF-06 | Phase 128 | Complete |
-| MIG-01 | Phase 130 | Pending |
-| MIG-02 | Phase 130 | Pending |
-| MIG-03 | Phase 130 | Pending |
+| MIG-01 | Phase 130 | Complete |
+| MIG-02 | Phase 130 | Complete |
+| MIG-03 | Phase 130 | Complete |
 
 **Coverage:**
 
@@ -150,4 +150,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-10-01*
-*Last updated: 2026-10-04 after Phase 129 (IJF-02, IJF-03, IJF-04 complete on the "supported" verdict)*
+*Last updated: 2026-10-04 after Phase 130 (MIG-01, MIG-02, MIG-03 complete)*
