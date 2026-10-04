@@ -67,8 +67,8 @@ stays switched off until the evaluation verdict.
 - [ ] **IJF-02**: IntelliJ formatting is evaluated on the built plugin zip against a live BBjServices (Reformat Code, selection, Actions on Save, numbered-file message, settings, CRLF, edit application), recorded from a real `idea.log`
 - [ ] **IJF-03**: The user decides from the evaluation whether IntelliJ formatting is officially supported or disabled, and the switch is set accordingly
 - [ ] **IJF-04**: If supported: all 15 formatter settings are on the IntelliJ BBj settings page and reach the server via `initializationOptions` (restart on change)
-- [ ] **IJF-05**: IntelliJ has a "Denumber BBj Program" action (Tools and editor menus) backed by `bbj/denum`, applied as one undoable edit, with `ComposerRequestContractTest` updated
-- [ ] **IJF-06**: IntelliJ shows an editor banner on line-numbered programs offering Denumber
+- [x] **IJF-05**: IntelliJ has a "Denumber BBj Program" action (Tools and editor menus) backed by `bbj/denum`, applied as one undoable edit, with `ComposerRequestContractTest` updated
+- [x] **IJF-06**: IntelliJ shows an editor banner on line-numbered programs offering Denumber
 
 ### Docs & migration (MIG)
 
@@ -135,8 +135,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IJF-02 | Phase 129 | Pending |
 | IJF-03 | Phase 129 | Pending |
 | IJF-04 | Phase 129 | Pending (only on a "supported" verdict in Phase 129; Out of Scope on "disabled") |
-| IJF-05 | Phase 128 | Pending |
-| IJF-06 | Phase 128 | Pending |
+| IJF-05 | Phase 128 | Complete |
+| IJF-06 | Phase 128 | Complete |
 | MIG-01 | Phase 130 | Pending |
 | MIG-02 | Phase 130 | Pending |
 | MIG-03 | Phase 130 | Pending |

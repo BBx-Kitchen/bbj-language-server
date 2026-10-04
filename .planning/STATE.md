@@ -4,17 +4,17 @@ milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 128
 current_phase_name: IntelliJ DENUM
-status: executing
-stopped_at: Completed 128-03-PLAN.md
-last_updated: "2026-10-03T12:53:06.200Z"
+status: verifying
+stopped_at: Completed 128-04-PLAN.md
+last_updated: "2026-10-04T06:03:18.014Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 128 execution started
-state_head: 9038f6d32c8990edaa979b14ab3812b814023364
+state_head: 700eed2f8863c0b7595531e6c4f0ca63fe144a77
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 57
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 Phase: 128 (IntelliJ DENUM) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-03 — Phase 128 execution started
 
 Progress: [██████░░░░] 57% (v4.9: 3/7 phases)
@@ -230,6 +230,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 128 P01 | 12 min | 3 tasks | 11 files |
 | Phase 128 P02 | 6 min | 2 tasks | 8 files |
 | Phase 128 P03 | 8 min | 3 tasks | 9 files |
+| Phase 128 P04 | ~1 day incl. hand check | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -412,6 +413,7 @@ decisions:
 - [Phase 128]: Denumber client words no outcome: DenumResult discarded; only a transport failure shows one XML-escaped 'Denumber failed' balloon (60 s timeout)
 - [Phase 128]: Show reveals the BBj console with show() only (no activate), so the editor keeps focus; the diagnostics notification never shows the window — Matches VS Code; a source guard forbids activate() and show() in the diagnostics handler
 - [Phase 128]: [Phase 128] Line-numbered banner uses Info status; per-file 300 ms debounced refresh via a lazily created Disposable project service that parents its listener and alarm to itself
+- [Phase 128]: A cancelled window/showMessageRequest (balloon closed in IntelliJ) must never terminate the language server: all five fire-and-forget message sites handle the rejection — Found in the 128-04 hand check; fixed in acb1912a inside the phase with the user's approval, so the phase finishes clean
 
 ### Tech Debt
 
@@ -479,11 +481,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-03T12:53:06.010Z
-Stopped at: Completed 128-03-PLAN.md
+Last session: 2026-10-04T06:03:11.126Z
+Stopped at: Completed 128-04-PLAN.md
 Resume file: None
 
-Next: execute 128-02 (`/gsd-execute-phase 128`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
+Next: verify phase 128 (`/gsd-verify-work 128`), then phase 129. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
