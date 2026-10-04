@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Collapses many change events into at most one refresh per distinct key per debounce window. It
@@ -18,6 +20,8 @@ import java.util.function.Consumer;
  * @param <K> the kind of key being refreshed, for example a virtual file
  */
 public final class DirtyFileCoalescer<K> {
+
+    private static final Logger LOG = Logger.getLogger(DirtyFileCoalescer.class.getName());
 
     private final Set<K> dirty = ConcurrentHashMap.newKeySet();
     private final PreviewDebouncer debouncer;
@@ -45,7 +49,13 @@ public final class DirtyFileCoalescer<K> {
         for (K key : List.copyOf(dirty)) {
             // Removing before refreshing keeps a key that is marked during the refresh dirty.
             if (dirty.remove(key)) {
-                refresh.accept(key);
+                try {
+                    refresh.accept(key);
+                } catch (RuntimeException ex) {
+                    // One failing refresh must not strand the remaining keys: they are already
+                    // out of the dirty set and nothing would drain them before the next mark.
+                    LOG.log(Level.WARNING, "Refreshing a dirty key failed", ex);
+                }
             }
         }
     }

@@ -139,6 +139,49 @@ class DirtyFileCoalescerTest {
         assertEquals(List.of("a"), refreshed, "running the dispatched task performs the refresh");
     }
 
+    @Test
+    void aRefreshThatThrowsDoesNotStopTheRemainingKeysFromBeingRefreshed() {
+        List<String> attempted = new ArrayList<>();
+        DirtyFileCoalescer<String> coalescer = new DirtyFileCoalescer<>(
+                scheduler, DELAY_MS, Runnable::run, key -> {
+                    attempted.add(key);
+                    if (attempted.size() == 1) {
+                        throw new IllegalStateException("refresh failed for " + key);
+                    }
+                    refreshed.add(key);
+                });
+
+        coalescer.mark("a");
+        coalescer.mark("b");
+        coalescer.mark("c");
+        scheduler.advanceBy(DELAY_MS);
+
+        assertEquals(3, attempted.size(), "every dirty key is attempted although the first refresh threw");
+        assertEquals(2, refreshed.size(), "the two keys after the failing one are still refreshed");
+        assertEquals(0, scheduler.pendingCount(), "nothing is left waiting for a drain that will not come");
+    }
+
+    @Test
+    void aKeyWhoseRefreshThrewIsRefreshedAgainWhenItIsMarkedAgain() {
+        int[] calls = {0};
+        DirtyFileCoalescer<String> coalescer = new DirtyFileCoalescer<>(
+                scheduler, DELAY_MS, Runnable::run, key -> {
+                    calls[0]++;
+                    if (calls[0] == 1) {
+                        throw new IllegalStateException("refresh failed");
+                    }
+                    refreshed.add(key);
+                });
+
+        coalescer.mark("a");
+        scheduler.advanceBy(DELAY_MS);
+        assertEquals(List.of(), refreshed, "the first refresh threw");
+
+        coalescer.mark("a");
+        scheduler.advanceBy(DELAY_MS);
+        assertEquals(List.of("a"), refreshed, "a later mark still refreshes the key");
+    }
+
     @SuppressWarnings("unchecked")
     private static DirtyFileCoalescer<String>[] newHolder() {
         return new DirtyFileCoalescer[1];
