@@ -209,7 +209,7 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | C4b | Selection on a numbered file | Linux | script | open c4b.bbj (copy of numbered.bbj); select line 1 and the first nine characters of line 2; ReformatCode; save | no edit, the server explains that a selection needs an unnumbered file | one textDocument/rangeFormatting request (id 20, range 0:0 to 1:9) answered with an empty result; the server sent window/showMessageRequest (id 5, type 2) with `Formatting a selection needs a file without line numbers. Denumber the file first.` and the single action Denumber; sha256 of c4b.bbj identical before and after; no BBj or LSP4IJ line at WARN or above in idea.log | ### C4b | pass |
 | C5 | Settings reach the format output | Linux | script | sandbox BbjSettings.xml seeded with formatterIndentWidth 4 and formatterKeywordsToUppercase true (plus the wrapper and home path); fresh IDE session; open c5.bbj (stripped); ReformatCode; save | the initialize request carries both values inside `formatter`, the output follows them | the `initialize` request on the wire carries `"indentWidth":4` and `"keywordsToUppercase":true` inside `initializationOptions.formatter`, the other 13 keys at their defaults; one textDocument/formatting request (id 22) answered with one edit over 4:0 to 63:8; the saved file is indented with four spaces per level and the keywords are upper case (`METHODRET`, `SETERR`, `THROW`, `ERR`, `PRINT`, `CLASSEND`); no BBj or LSP4IJ line at WARN or above | ### C5 | pass |
 | C6a | CRLF file, default eolCharacter KEEP | Linux | script | no seed; open c6a2.bbj (63 lines, every line ending in CR LF, no trailing line break); ReformatCode; save; check the line endings on disk | indented, still CRLF on every line on disk, no error | one textDocument/formatting request (id 18); the response carries `\n` only and one edit over 4:0 to 62:0; the file on disk: 63 CR LF, 0 bare LF, 0 bare CR, the status bar shows CRLF; with the CRs removed the content equals the C1 result byte for byte; no BBj or LSP4IJ line at WARN or above | ### C6a | pass |
-| C6b | CRLF file, eolCharacter CRLF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter CRLF; open c6b2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded (lsp4ij issue 381 is the known trap) | the `initialize` request carries `"eolCharacter":"CRLF"`; one textDocument/formatting request (id 18) answered with one edit over 0:0 to 63:0 whose `newText` carries `\r\n` line breaks (it begins `\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n`); the IDE did not apply it: idea.log has `SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0` (a java.lang.AssertionError from DocumentImpl.replaceString), no didChange followed, the buffer and the file stayed unformatted (sha256 identical to the original) and no balloon showed in the screenshot; the server was unaffected. Classed against D-04 in the verdict plan: this is the listed kind "a CRLF file silently not formatted" (only with the non-default value CRLF), see Blockers | ### C6b | blocker |
+| C6b | CRLF file, eolCharacter CRLF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter CRLF; open c6b2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded (lsp4ij issue 381 is the known trap) | the `initialize` request carries `"eolCharacter":"CRLF"`; one textDocument/formatting request (id 18) answered with one edit over 0:0 to 63:0 whose `newText` carries `\r\n` line breaks (it begins `\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n`); the IDE did not apply it: idea.log has `SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0` (a java.lang.AssertionError from DocumentImpl.replaceString), no didChange followed, the buffer and the file stayed unformatted (sha256 identical to the original) and no balloon showed in the screenshot; the server was unaffected. Against D-04 this is the listed kind "a CRLF file silently not formatted" (only with the non-default value CRLF), and Claude's recommendation classed it a blocker; the user answered sub-question (a) with known-issue at the verdict checkpoint, so it is classed a known issue, see Known issues and Decision | ### C6b | known issue |
 | C6c | CRLF file, eolCharacter LF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter LF; open c6c2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded | the `initialize` request carries `"eolCharacter":"LF"`; one textDocument/formatting request (id 15) answered with one edit over 4:0 to 62:0 with `\n` breaks, applied; the file on disk: 63 CR LF, 0 bare LF, so the LF value did not change the line endings the IDE keeps for the file; with the CRs removed the content equals the C1 result; no balloon, no exception in idea.log | ### C6c | pass |
 
 ## Code-verified
@@ -1146,11 +1146,22 @@ finding is in this list or in Blockers, never in both.
   switch is IntelliJ's own (Settings, Tools, Actions on Save, Reformat code), and it works. Not a blocker. Cause: this
   plugin (the BBj page does not point to IntelliJ's switch). On "supported" it is input for the Formatter section's
   note and the IntelliJ guide. Evidence: section W4 (user observation).
+- C6b: with the formatter setting `eolCharacter` CRLF a BBj file is silently not formatted; formatting stops entirely
+  (whole file, selection and on save), the IDE refuses the edit, no message. **Moved here from Blockers by the user's
+  decision** at the verdict checkpoint (sub-question (a) answered known-issue). Against the D-04 bar alone it is the
+  listed kind "a CRLF file silently not formatted", which is why Claude's recommendation classed it a blocker; the
+  measured facts are unchanged and stay below under Blockers as the record of that classing. Cause: **LSP4IJ** (lsp4ij
+  #381). Draft: `129-LSP4IJ-ISSUE-crlf-newtext.md`. Consequence for the settings page: the `Line ending` control stays,
+  and the Formatter section note says plainly that CRLF stops formatting entirely in IntelliJ (text in `129-VERDICT.md`).
+  Evidence: section C6b.
 
 ## Blockers
 
-- C6b: with the formatter setting `eolCharacter` CRLF a BBj file is silently not formatted. D-04 kind: **a CRLF file
-  silently not formatted**. The server answers with `\r\n` in `newText`, the IDE throws the whole edit away with a
+None after the user's decision (see Decision under Recommendation). The one measured blocker, C6b, is now listed under
+Known issues; its measured facts, as classed for the recommendation, follow so that the record keeps them:
+
+- C6b (moved to Known issues by the user's decision): with the formatter setting `eolCharacter` CRLF a BBj file is
+  silently not formatted. D-04 kind: **a CRLF file silently not formatted**. The server answers with `\r\n` in `newText`, the IDE throws the whole edit away with a
   SEVERE `Wrong line separators` assertion, no change reaches the document, no message reaches the user. Nothing is
   damaged and nothing froze. Scope: only the non-default value CRLF; the default KEEP (C6a, W1) and LF (C6c) format a
   CRLF file correctly. Measured on IntelliJ 2024.2 (build 242) only; the Windows step for build 262 (E4) was not run.
@@ -1180,7 +1191,7 @@ sandbox; Windows: IntelliJ IDEA 2026.2.2, `#IU-262.10315.125`, the user's IDE; L
 | 3 | Actions on Save | C3a (whole file), C3b (changed lines) pass: wire | W4 pass: user observation only; E5 not run | pass |
 | 4 | Numbered-file message | C4a, C4b pass: wire and screenshot | E1, E2 pass: user observation only; E3 pass: user answer plus a related trace case | pass |
 | 5 | Settings | C5 pass: wire (`initialize` carries the values) and the output follows them | wire: `initialize` carries the 15 keys at their defaults; no changed value tried | pass |
-| 6 | CRLF | C6a pass, **C6b blocker** (eolCharacter CRLF), C6c pass: wire and bytes on disk | W1 pass: wire (default KEEP); CRLF kept per the user's status bar, disk not checked; E4 not run | blocker (C6b) |
+| 6 | CRLF | C6a pass, **C6b** (eolCharacter CRLF) not formatted, C6c pass: wire and bytes on disk | W1 pass: wire (default KEEP); CRLF kept per the user's status bar, disk not checked; E4 not run | known issue (C6b, the user's decision; blocker in the recommendation) |
 | 7 | Edit application | C7a, C7b, C7c pass: wire, `cmp`, modification time | W2, W3 pass: wire, replayed (one Undo restores) | pass |
 
 Code-verified only, no runtime sequence on either platform: V1 to V6, all pass, among them V2, the commit-dialog row
@@ -1196,6 +1207,8 @@ The rules, in order, and what each gives:
 3. "A blocker in C1, C4-C7, W1 or W2 means disabled." **Triggered by C6b.**
 4. "A blocker only in C2 or W3 means supported-no-range (D-06)." Not reached; there is no range-formatting blocker.
 5. "No blocker means supported." Not reached.
+
+Claude's recommendation as presented at the checkpoint, kept unchanged:
 
 **Recommended verdict: disabled**, by rule 3 ("a blocker in C1, C4-C7, W1 or W2 means disabled"), and by C6b alone.
 Everything else measured passes. If the user answers sub-question (a) with known-issue, C6b moves to Known issues, no
@@ -1222,3 +1235,18 @@ example by not offering the value); that would change the scope of the settings-
 (C3a, id 25) and `textDocument/rangeFormatting` with only changed lines (C3b, id 24), each answered and applied. On
 build 262 the user saw the file formatted on save (W4), without a wire capture. No known-issue or blocker choice is
 needed for this sub-question.
+
+### Decision
+
+The user answered the blocking decision checkpoint on 2026-10-04, verbatim: "supported + known-issue".
+
+- **Verdict: supported.** This differs from Claude's recommendation (disabled), so it is recorded as an override.
+- **Sub-question (a), eolCharacter: known-issue.** C6b moves from Blockers to Known issues. With no blocker left, the
+  rules above give **supported** by rule 5 ("no blocker means supported"), so the verdict is consistent with the bar
+  once (a) is answered known-issue; the recommendation itself already said the verdict turned on this answer.
+- **Sub-question (b), Actions on Save: observed** (C3a, C3b on the wire; W4 by the user's observation).
+- **Formatter section note for eolCharacter.** It must say plainly that CRLF stops formatting entirely in IntelliJ:
+  the IDE refuses the edit, an LSP4IJ limitation, the same as lsp4ij #381. The weaker wording "LF or CRLF may not take
+  effect" is not enough. The exact text the settings-page plan uses is in `129-VERDICT.md` (`eol_note:`).
+
+The machine-readable record of this decision is `129-VERDICT.md`.

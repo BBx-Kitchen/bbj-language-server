@@ -1,6 +1,7 @@
 TITLE: Formatting edits whose newText contains `\r\n` are dropped silently ("Wrong line separators" AssertionError in AsyncDocumentFormattingService), root cause for #381
 
-> Draft for the user to file or not (phase 129, blocker C6b of `129-EVALUATION.md`). #381 is open and describes the same
+> Draft for the user to file or not (phase 129, finding C6b of `129-EVALUATION.md`, a blocker in the recommendation and
+> a known issue by the user's verdict). #381 is open and describes the same
 > mechanism, so this may fit better as a comment on #381 than as a new issue. Nothing below is proprietary: the repro
 > uses a synthetic three-line document, the log excerpt is IntelliJ platform frames only.
 
