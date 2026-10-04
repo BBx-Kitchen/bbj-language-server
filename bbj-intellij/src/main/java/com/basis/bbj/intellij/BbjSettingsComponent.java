@@ -14,6 +14,7 @@ import com.intellij.openapi.ui.ComponentValidator;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.ui.panel.ComponentPanelBuilder;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.JBIntSpinner;
@@ -66,7 +67,8 @@ public class BbjSettingsComponent {
     private final ComboBox<String> formatterParameterLayoutCombo;
     private final ComboBox<String> formatterOperatorSpacingCombo;
     private final ComboBox<String> formatterEolCharacterCombo;
-    private final JBLabel formatterNoteLabel;
+    private final JLabel formatterNoteLabel;
+    private final JLabel formatterOnSaveHintLabel;
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
@@ -164,7 +166,25 @@ public class BbjSettingsComponent {
                 new CollectionComboBoxModel<>(FormatterInitOptions.OPERATOR_SPACING_VALUES));
         formatterEolCharacterCombo = new ComboBox<>(
                 new CollectionComboBoxModel<>(FormatterInitOptions.EOL_CHARACTER_VALUES));
-        formatterNoteLabel = new JBLabel("Applies after the language server restarts.");
+        formatterIndentWidthSpinner.setToolTipText(FormatterSettingTexts.tooltip("indentWidth"));
+        formatterIndentCharacterCombo.setToolTipText(FormatterSettingTexts.tooltip("indentCharacter"));
+        formatterIndentLabelBlocksCheckbox.setToolTipText(FormatterSettingTexts.tooltip("indentLabelBlocks"));
+        formatterKeywordsToUppercaseCheckbox.setToolTipText(FormatterSettingTexts.tooltip("keywordsToUppercase"));
+        formatterIfClosingKeywordCombo.setToolTipText(FormatterSettingTexts.tooltip("ifClosingKeyword"));
+        formatterIfKeywordCaseCombo.setToolTipText(FormatterSettingTexts.tooltip("ifKeywordCase"));
+        formatterSplitSingleLineIfCheckbox.setToolTipText(FormatterSettingTexts.tooltip("splitSingleLineIf"));
+        formatterRemoveLineContinuationCheckbox.setToolTipText(FormatterSettingTexts.tooltip("removeLineContinuation"));
+        formatterSplitInlineCommentsCheckbox.setToolTipText(FormatterSettingTexts.tooltip("splitInlineComments"));
+        formatterSplitInlineLabelCommentCheckbox.setToolTipText(FormatterSettingTexts.tooltip("splitInlineLabelComment"));
+        formatterCollapseMultiLineCheckbox.setToolTipText(FormatterSettingTexts.tooltip("collapseMultiLine"));
+        formatterBlankLineAfterReturnCheckbox.setToolTipText(FormatterSettingTexts.tooltip("blankLineAfterReturn"));
+        formatterParameterLayoutCombo.setToolTipText(FormatterSettingTexts.tooltip("parameterLayout"));
+        formatterOperatorSpacingCombo.setToolTipText(FormatterSettingTexts.tooltip("operatorSpacing"));
+        formatterEolCharacterCombo.setToolTipText(FormatterSettingTexts.tooltip("eolCharacter"));
+        // Comment labels wrap their text, so the long note does not widen the whole page
+        formatterNoteLabel = ComponentPanelBuilder.createCommentComponent(FormatterSettingTexts.RESTART_NOTE, true);
+        formatterOnSaveHintLabel = ComponentPanelBuilder.createCommentComponent(
+                FormatterSettingTexts.FORMAT_ON_SAVE_HINT, true);
         setFormatterValues(FormatterInitOptions.DEFAULTS);
 
         // --- Node.js field ---
@@ -372,6 +392,7 @@ public class BbjSettingsComponent {
             .addLabeledComponent(new JBLabel("Operator spacing:"), formatterOperatorSpacingCombo, 1, false)
             .addLabeledComponent(new JBLabel("Line ending:"), formatterEolCharacterCombo, 1, false)
             .addComponent(formatterNoteLabel)
+            .addComponent(formatterOnSaveHintLabel)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)

@@ -144,6 +144,21 @@ class BbjSettingsFormatterSourceGuardTest {
             assertTrue(index > previous, control + " must follow the previous control in page order");
             previous = index;
         }
+        assertTrue(section.indexOf("formatterNoteLabel") > previous,
+                "the note must sit under the section's last control");
+    }
+
+    @Test
+    void everyControlCarriesItsTooltipAndTheNoteTakesTheSharedText() {
+        String text = stripComments(readSource(COMPONENT_SOURCE));
+        assertEquals(15, countOccurrences(text, "setToolTipText(FormatterSettingTexts.tooltip("),
+                "each of the 15 controls must carry its tooltip");
+        for (String control : CONTROLS_IN_PAGE_ORDER) {
+            assertEquals(1, countMatches(text, control + "\\.setToolTipText\\(\\s*FormatterSettingTexts\\.tooltip\\("),
+                    control + " must set its tooltip exactly once");
+        }
+        assertEquals(1, countOccurrences(text, "FormatterSettingTexts.RESTART_NOTE"),
+                "the section note must take its text from the shared constant");
     }
 
     @Test
