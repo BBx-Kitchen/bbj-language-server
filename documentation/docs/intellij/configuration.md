@@ -67,6 +67,13 @@ what each choice does.
 
 On save is recommended for large workspaces.
 
+## Formatter
+
+The Formatter section holds the 15 formatter settings. They apply after the language server
+restarts, and Apply restarts it for you. Format on save is not a BBj setting: it is under
+`Settings > Tools > Actions on Save`. Each control is described in
+[Formatter settings](./formatting.md#formatter-settings).
+
 ## Node.js Runtime
 
 ### Node.js Path
