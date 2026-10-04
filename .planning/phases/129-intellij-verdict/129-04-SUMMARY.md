@@ -91,7 +91,7 @@ C3b (changed lines only, project under Git):
 
 ## What 129-05 must know for W1-W4
 
-Sources: `tmp/129-eval/windows/notes.txt` (per-case answers) and `tmp/129-eval/windows/lsp-trace.txt` (one verbose paste, 16:37:33 to 16:43:28, **no step labels**, so steps are matched by time and file name). The trace has 234 request/response lines and contains no `Users` path. idea.log contains `C:\Users\...` paths (681 backslash and 7 forward-slash matches), so redact every excerpt from it and grep the committed files for the user name before committing.
+Sources: `tmp/129-eval/windows/notes.txt` (per-case answers) and `tmp/129-eval/windows/lsp-trace.txt` (one verbose paste, 16:37:33 to 16:43:28, **no step labels**, so steps are matched by time and file name). The trace has 234 request/response lines and contains no `Users` path. idea.log contains `C:\Users\<user>` paths (681 backslash and 7 forward-slash matches), so redact every excerpt from it and grep the committed files for the user name before committing.
 
 | Case | Result (user) | Wire evidence in lsp-trace.txt | Notes |
 |------|---------------|--------------------------------|-------|

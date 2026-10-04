@@ -2,7 +2,7 @@
 record: lsp4ij-formatting-evaluation
 lsp4ij: 0.21.0
 ide_linux: "IntelliJ IDEA 2024.2, Build #IC-242.20224.300, Gradle runIde sandbox, JBR 21.0.3 (from idea.log)"
-ide_windows: pending
+ide_windows: "IntelliJ IDEA 2026.2.2, Build #IU-262.10315.125 (from the returned idea.log's IDE line; Help | About not pasted), LSP4IJ 0.21.0, BBj Language Support 0.1.0; zip sha256 not verified by the user (Step 0 skipped)"
 eval_zip_sha256: ae214de390169bc955c05ce0c53075e644bbe242e7986c86c070e2721ef69626
 bbj_ls_jar: "/opt/bbx/.lib/bbjls/bbj-ls.jar, 305339 bytes, 2026-10-02 00:37 UTC (BBjServices 26.03 on localhost:5008)"
 driver: script
@@ -209,7 +209,7 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | C4b | Selection on a numbered file | Linux | script | open c4b.bbj (copy of numbered.bbj); select line 1 and the first nine characters of line 2; ReformatCode; save | no edit, the server explains that a selection needs an unnumbered file | one textDocument/rangeFormatting request (id 20, range 0:0 to 1:9) answered with an empty result; the server sent window/showMessageRequest (id 5, type 2) with `Formatting a selection needs a file without line numbers. Denumber the file first.` and the single action Denumber; sha256 of c4b.bbj identical before and after; no BBj or LSP4IJ line at WARN or above in idea.log | ### C4b | pass |
 | C5 | Settings reach the format output | Linux | script | sandbox BbjSettings.xml seeded with formatterIndentWidth 4 and formatterKeywordsToUppercase true (plus the wrapper and home path); fresh IDE session; open c5.bbj (stripped); ReformatCode; save | the initialize request carries both values inside `formatter`, the output follows them | the `initialize` request on the wire carries `"indentWidth":4` and `"keywordsToUppercase":true` inside `initializationOptions.formatter`, the other 13 keys at their defaults; one textDocument/formatting request (id 22) answered with one edit over 4:0 to 63:8; the saved file is indented with four spaces per level and the keywords are upper case (`METHODRET`, `SETERR`, `THROW`, `ERR`, `PRINT`, `CLASSEND`); no BBj or LSP4IJ line at WARN or above | ### C5 | pass |
 | C6a | CRLF file, default eolCharacter KEEP | Linux | script | no seed; open c6a2.bbj (63 lines, every line ending in CR LF, no trailing line break); ReformatCode; save; check the line endings on disk | indented, still CRLF on every line on disk, no error | one textDocument/formatting request (id 18); the response carries `\n` only and one edit over 4:0 to 62:0; the file on disk: 63 CR LF, 0 bare LF, 0 bare CR, the status bar shows CRLF; with the CRs removed the content equals the C1 result byte for byte; no BBj or LSP4IJ line at WARN or above | ### C6a | pass |
-| C6b | CRLF file, eolCharacter CRLF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter CRLF; open c6b2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded (lsp4ij issue 381 is the known trap) | the `initialize` request carries `"eolCharacter":"CRLF"`; one textDocument/formatting request (id 18) answered with one edit over 0:0 to 63:0 whose `newText` carries `\r\n` line breaks (it begins `\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n`); the IDE did not apply it: idea.log has `SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0` (a java.lang.AssertionError from DocumentImpl.replaceString), no didChange followed, the buffer and the file stayed unformatted (sha256 identical to the original) and no balloon showed in the screenshot; the server was unaffected | ### C6b | known issue |
+| C6b | CRLF file, eolCharacter CRLF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter CRLF; open c6b2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded (lsp4ij issue 381 is the known trap) | the `initialize` request carries `"eolCharacter":"CRLF"`; one textDocument/formatting request (id 18) answered with one edit over 0:0 to 63:0 whose `newText` carries `\r\n` line breaks (it begins `\r\nREM /** Some Javadoc */\r\nCLASS PUBLIC someClass\r\n`); the IDE did not apply it: idea.log has `SEVERE - #c.i.f.s.AsyncDocumentFormattingService - Wrong line separators: '\r\nREM /** ...' at offset 0` (a java.lang.AssertionError from DocumentImpl.replaceString), no didChange followed, the buffer and the file stayed unformatted (sha256 identical to the original) and no balloon showed in the screenshot; the server was unaffected. Classed against D-04 in the verdict plan: this is the listed kind "a CRLF file silently not formatted" (only with the non-default value CRLF), see Blockers | ### C6b | blocker |
 | C6c | CRLF file, eolCharacter LF | Linux | script | sandbox BbjSettings.xml seeded with formatterEolCharacter LF; open c6c2.bbj (unformatted, CRLF); ReformatCode; save | observed outcome recorded | the `initialize` request carries `"eolCharacter":"LF"`; one textDocument/formatting request (id 15) answered with one edit over 4:0 to 62:0 with `\n` breaks, applied; the file on disk: 63 CR LF, 0 bare LF, so the LF value did not change the line endings the IDE keeps for the file; with the CRs removed the content equals the C1 result; no balloon, no exception in idea.log | ### C6c | pass |
 
 ## Code-verified
@@ -229,16 +229,43 @@ claim no runtime sequence.
 
 ## Windows
 
-Run by the user with the same evaluation zip (sha256 in the frontmatter) following `129-WINDOWS-CHECKLIST.md`; the
-returned `idea.log`, LSP console trace and IDE build line are added here when they arrive. Excerpts only; the raw files
-stay under `tmp/129-eval/windows/`.
+Run by the user on 2026-10-04 following `129-WINDOWS-CHECKLIST.md`. Returned: `idea.log` (2,355,504 bytes) and one
+verbose LSP console paste `lsp-trace.txt` (152,098 bytes, 16:37:33 to 16:43:28 local time, no step labels, so each step
+is matched to the trace by time and file name); the user's per-case answers were written down from the chat into
+`notes.txt`. `ide-build.txt` and the Help | About line were not returned. Excerpts only; the raw files stay under the
+git-excluded `tmp/129-eval/windows/`. In every idea.log excerpt the Windows user name is replaced by `<user>`; nothing
+else in a quoted line is changed. The trace contains no home-directory path.
+
+What the evidence covers, stated once for all rows below:
+
+- **Build.** IntelliJ IDEA 2026.2.2, `build #IU-262.10315.125`, LSP4IJ 0.21.0, BBj Language Support 0.1.0, from
+  idea.log (section W-session). Step 0 of the checklist (sha256 of the zip with `Get-FileHash`) was **not verified** by
+  the user. Indirect only: the loaded plugin is 0.1.0 (the user's usual install is 0.16.0), and the trace shows
+  `textDocument/formatting` and `textDocument/rangeFormatting` requests reaching the server, which happens only with the
+  switch on. So a switch-on build was installed; byte identity with the evaluation zip (`ae214de3...`) is not proven.
+- **Wire-backed:** W1, W2, W3. W2 ran on the checklist's test file `crlf-test.bbj`, not on one of the user's own programs.
+- **User observation only**, made after the trace and idea.log had been copied (both end at 16:43:28): W4, E1, E2.
+- **E3:** the user's answer plus a related case in the trace (not the two-button balloon of the step).
+- **Not tested:** E4, E5 (both optional).
+- The trace has **no `textDocument/didSave`** at all (count 0), so no save step of any row is on the wire, and the line
+  endings on disk were not checked from a file.
 
 | ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
 |----|------|----------|-----------|-------|----------|----------|----------|-------|
-| W1 | CRLF file, Reformat Code | Windows | user | CRLF program without indentation; Reformat Code; save | indented, status bar still shows CRLF after the save, one formatting request | pending | pending | not run |
-| W2 | Reformat Code on a real program | Windows | user | unindented copy of a real program; Reformat Code; one Undo | re-indented with two spaces per level; one Undo restores it | pending | pending | not run |
-| W3 | Reformat selection | Windows | user | select three lines inside a METHOD; Reformat Code | a rangeFormatting request, only those lines (and whole lines around them) change | pending | pending | not run |
-| W4 | Actions on Save | Windows | user | Settings, Tools, Actions on Save, Reformat code on; unindent one line; Ctrl+S | the line is indented again after the save | pending | pending | not run |
+| W1 | CRLF file, Reformat Code | Windows, IU-262.10315.125 | user | CRLF program without indentation (`crlf-test.bbj`); Reformat Code; save | indented, status bar still shows CRLF after the save, one formatting request | wire: one `textDocument/formatting` request (id 73) at 16:38:59 on `crlf-test.bbj`, answered with one edit over 4:0 to 62:0 whose `newText` carries `\n` only, applied as one `didChange` (version 6); the buffer after it equals the answer applied to the text before it (replayed from the trace); the IDE sent the file to the server with LF breaks (no `\r` in the `didOpen` text), as on Linux (C6a). User: status bar CRLF before and after Reformat Code and save, file indented. No save on the wire, line endings on disk not checked from a file; no `Wrong line separators` in idea.log | ### W1 (wire); CRLF status bar: user observation | pass |
+| W2 | Reformat Code + one Undo | Windows, IU-262.10315.125 | user | ran on the test file `crlf-test.bbj` (same text as `stripped-program.bbj`), not on an own program; Reformat Code; one Undo | re-indented with two spaces per level; one Undo restores it | wire: the formatting of W1 (id 73, version 6), then exactly one `didChange` (version 7) at 16:39:51 replacing 4:0 to 61:2 with the unindented text; replayed from the trace, the buffer after version 7 equals the `didOpen` text | ### W2 (wire) | pass |
+| W3 | Reformat selection | Windows, IU-262.10315.125 | user | in `stripped-program.bbj` select the three lines of the METHOD `getSomeString` (header, METHODRET, METHODEND; the wire range is 6:0 to 8:9); Reformat Code; Undo | a rangeFormatting request, only those lines (and whole lines around them) change | wire: `textDocument/rangeFormatting` (id 103) at 16:40:28 with range 6:0 to 8:9, answered with one edit over 6:0 to 9:0, applied as one `didChange` (version 2); replayed, only 0-based lines 6, 7 and 8 changed (two, four and two leading spaces); one `didChange` (version 3) at 16:40:32 restores them. User: "no balloon, all worked also for a partial format" | ### W3 (wire) | pass |
+| W4 | Actions on Save | Windows, IU-262.10315.125 | user | Settings, Tools, Actions on Save, Reformat code on; unindent one line; Ctrl+S | the line is indented again after the save | user observation only, after the trace and idea.log were copied: Reformat code on save works. Usability: the user first looked for a format-on-save toggle on the BBj settings page and did not find it there (see Known issues) | user observation only; no wire or idea.log line covers it | pass |
+
+Extra steps from the checklist (not among the seven cases; recorded as run):
+
+| ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
+|----|------|----------|-----------|-------|----------|----------|----------|-------|
+| E1 | Numbered file, balloon, Denumber | Windows, IU-262.10315.125 | user | Reformat Code on a numbered file; click Denumber in the balloon | the balloon with both buttons; Denumber converts the file | user observation only, retested after the trace was copied: the balloon shows both buttons and Denumber works. Related in the trace, not through the balloon: a direct `bbj/denum` request (id 24) at 16:37:57 on `numbered-test.bbj`, the server's `workspace/applyEdit` (id 5) answered `"applied": true`, one `didChange` (version 2) | user observation only; related: ### E1 to E5 | pass |
+| E2 | Balloon, Denumber and Format | Windows, IU-262.10315.125 | user | as E1, click Denumber and Format | denumbered and formatted in one step | user observation only, retested after the trace was copied: "works as expected" | user observation only | pass |
+| E3 | Dismiss the balloon, then format again | Windows, IU-262.10315.125 | user | close the two-button balloon without a choice; Reformat Code on a normal file | the server still answers, no error | the user answered "yes" (still formats, server ready). Related in the trace: the server's `window/showMessageRequest` (id 6, "Denumbered.", no actions) was answered after 91,612 ms at 16:39:28, and the server answered later requests (formatting id 73 at 16:38:59 while it was open, rangeFormatting id 103 at 16:40:28) | user answer plus a related trace case: ### E1 to E5 | pass |
+| E4 | eolCharacter CRLF on build 262 (optional) | Windows | user | not run | | not tested (optional step, skipped by the user) | none | not run |
+| E5 | Actions on Save, changed lines only (optional) | Windows | user | not run | | not tested (optional step, skipped by the user) | none | not run |
 
 ## Evidence
 
@@ -804,24 +831,394 @@ setting therefore does not convert a CRLF file; the answer is applied as text an
 separator on disk. This is the input for the eolCharacter sub-question at the decision checkpoint: LF is harmless and has
 no effect, CRLF is thrown away by the IDE (C6b).
 
+### W-session (Windows idea.log)
+
+Files `tmp/129-eval/windows/idea.log` (session from line 14210, `2026-10-04 16:37:24,416 ... IDE STARTED`, to its last
+line at 16:43:28,512) and `lsp-trace.txt`. idea.log, the build, the plugins, the launch and the start (the user name is
+replaced by `<user>`):
+
+```
+2026-10-04 16:37:24,438 [     26]   INFO - #c.i.p.i.b.AppStarter - IDE: IntelliJ IDEA (build #IU-262.10315.125, Wed, 2 Sep 2026 05:01:00 GMT)
+2026-10-04 16:37:24,971 [    559]   INFO - #c.i.p.i.b.AppStarter - Loaded custom plugins: BBj Language Support (0.1.0), Jakarta EE Platform (262.10315.131), LSP4IJ (0.21.0), MCP Server (262.10315.174), Node.js Remote Interpreter (262.10315.135)
+2026-10-04 16:37:32,498 [   8086]   WARN - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Rejected[source=SETTINGS, reason=BELOW_MINIMUM_VERSION, candidate=C:\Program Files\nodejs\node.exe]
+2026-10-04 16:37:32,499 [   8087]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: C:\Users\<user>\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\bbj-intellij-data\nodejs\node.exe C:\Users\<user>\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\bbj-intellij\lib\language-server\main.cjs --stdio (working directory: C:\tinybbj)
+2026-10-04 16:37:33,096 [   8684]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: stopped -> starting
+2026-10-04 16:37:33,683 [   9271]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+The zip install runs `lib\language-server\main.cjs`. The session has 453 WARN lines and no SEVERE or ERROR line; the
+only WARN naming a BBj class is the Node.js rejection above (the configured Node.js is below the minimum, so the
+plugin's cached copy is used), none names an LSP4IJ class. idea.log counts of `Wrong line separators`, `LSP formatting
+error` and `Overlapping edit`: 0, 0, 0. No freeze report (`PerformanceWatcher` logs only the startup line `general
+responsiveness: ok; EDT responsiveness: ok`). The only EDT wait lines after startup are at 16:41:25, while the
+Settings dialog was being built (keymap `ActionsTreeUtil` lines just before, the Settings history action in the same
+batch), outside any formatting request:
+
+```
+2026-10-04 16:41:25,588 [ 241176]   INFO - #c.i.o.a.i.ActionUpdater - 565 ms to grab EDT for AutoFoldingAction#presentation@LSP Console (com.redhat.devtools.lsp4ij.console.actions.AutoFoldingAction)
+2026-10-04 16:41:25,588 [ 241176]   INFO - #c.i.o.a.i.ActionUpdater - 565 ms to grab EDT for NonModalWindowWrapper$PinWindowAction#presentation@SettingsHistory (com.intellij.openapi.ui.NonModalWindowWrapper$PinWindowAction)
+```
+
+Trace, the `initialize` request on Windows carries the `formatter` object with the 15 keys at their defaults (a
+changed value was not tried on Windows; lines 1 to 23 of the paste, `...` marks left-out lines):
+
+```
+[Trace - 16:37:33] Sending request 'initialize - (1)'.
+Params: {
+  "processId": 7304,
+  "rootPath": "C:/tinybbj",
+  "rootUri": "file:///C:/tinybbj",
+  "initializationOptions": {
+    "home": "C:\\bbx",
+    ...
+    "formatter": {
+      "indentWidth": 2,
+      "indentCharacter": "SPACE",
+      ...
+      "eolCharacter": "KEEP",
+```
+
+and the `initialize` result advertises `"documentFormattingProvider": true` and `"documentRangeFormattingProvider": true`
+(paste lines 382 and 383). Files opened in the trace: `test.bbj` (16:37:34), `numbered-test.bbj` (16:37:53),
+`crlf-test.bbj` (16:38:09), `stripped-program.bbj` (16:39:56). No `didOpen` text contains `\r`.
+
+The statements "the buffer after version N equals ..." in W1 to W3 come from replaying the trace: a script outside the
+repository applied every `didOpen` and `didChange` of the paste in order (each change's `rangeLength` matched the
+replaced span) and applied each formatting answer to the buffer it was computed for. Results, verbatim (lines
+left out: the line counts of the opened files, the changed-line count of version 6 and the three changed lines of W3):
+
+```
+16:37:57 numbered-test.bbj v2 differs from opened text CR in buffer: False
+16:38:05 numbered-test.bbj v3 equals opened text CR in buffer: False
+16:38:25 crlf-test.bbj v2 differs from opened text CR in buffer: False
+16:38:25 crlf-test.bbj v3 differs from opened text CR in buffer: False
+16:38:25 crlf-test.bbj v4 differs from opened text CR in buffer: False
+16:38:26 crlf-test.bbj v5 equals opened text CR in buffer: False
+16:38:59 crlf-test.bbj v6 differs from opened text CR in buffer: False
+16:39:51 crlf-test.bbj v7 equals opened text CR in buffer: False
+16:40:28 stripped-program.bbj v2 differs from opened text CR in buffer: False
+16:40:32 stripped-program.bbj v3 equals opened text CR in buffer: False
+request 73 crlf-test.bbj v6 buffer equals server answer applied: True
+request 103 stripped-program.bbj v2 buffer equals server answer applied: True
+stripped v2 line count 64 64 changed 0-based lines [6, 7, 8]
+```
+
+Versions 2 to 5 of `crlf-test.bbj` are four typed changes on line 8 (two `-` inserted, two deleted) that cancel out, so
+the formatting request ran on the opened text.
+
+### W1
+
+Trace (the `newText` is cut where marked `…`; its end is shown separately; it contains no `\r`):
+
+```
+[Trace - 16:38:59] Sending request 'textDocument/formatting - (73)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///C:/tinybbj/crlf-test.bbj"
+  },
+  "options": {
+    "tabSize": 4,
+    "insertSpaces": true
+  }
+}
+
+
+[Trace - 16:38:59] Received response 'textDocument/formatting - (73)' in 0ms.
+Result: [
+  {
+    "range": {
+      "start": {
+        "line": 4,
+        "character": 0
+      },
+      "end": {
+        "line": 62,
+        "character": 0
+      }
+    },
+    "newText": "  FIELD PUBLIC BBjString someInstanceString$\n\n  METHOD PUBLIC STATIC String getSomeString()\n    METHODRET \"ABC\"\n  METHODEND\n\n  METHOD PU…
+```
+
+End of that `newText`: `…ite(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  methodend\n"`.
+The change the IDE made from it:
+
+```
+[Trace - 16:38:59] Sending notification 'textDocument/didChange'
+Params: {
+  "textDocument": {
+    "version": 6,
+    "uri": "file:///C:/tinybbj/crlf-test.bbj"
+  },
+  "contentChanges": [
+    {
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 0
+        },
+        "end": {
+          "line": 61,
+          "character": 0
+        }
+      },
+      "rangeLength": 1172,
+```
+
+The CRLF part of the row rests on the user's word: the status bar showed CRLF before and after Reformat Code and the
+save, and the user confirmed the file was a CRLF file. The trace has no `didSave`, and the file on disk was not
+inspected. The behaviour matches Linux C6a (the IDE hands the server LF text, the default KEEP answers with `\n`, and
+the IDE keeps the file's own separator).
+
+### W2
+
+Trace, the single change after the formatting of W1 (16:39:51; the `text` is cut at `…`):
+
+```
+[Trace - 16:39:51] Sending notification 'textDocument/didChange'
+Params: {
+  "textDocument": {
+    "version": 7,
+    "uri": "file:///C:/tinybbj/crlf-test.bbj"
+  },
+  "contentChanges": [
+    {
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 0
+        },
+        "end": {
+          "line": 61,
+          "character": 2
+        }
+      },
+      "rangeLength": 1232,
+      "text": "FIELD PUBLIC BBjString someInstanceString$\n\nMETHOD PUBLIC STATIC String getSomeString()\nMETHODRET \"ABC\"\nMETHODEND\n\n…
+```
+
+No other `didChange` for `crlf-test.bbj` lies between version 6 (16:38:59) and version 7, and the replay shows the buffer
+after version 7 equal to the opened text: one Undo restored it. The row ran on the test file, not on one of the user's
+own programs as the checklist step asks.
+
+### W3
+
+Trace (verbatim, the request, the response and the change):
+
+```
+[Trace - 16:40:28] Sending request 'textDocument/rangeFormatting - (103)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///C:/tinybbj/stripped-program.bbj"
+  },
+  "options": {
+    "tabSize": 4,
+    "insertSpaces": true
+  },
+  "range": {
+    "start": {
+      "line": 6,
+      "character": 0
+    },
+    "end": {
+      "line": 8,
+      "character": 9
+    }
+  }
+}
+
+
+[Trace - 16:40:28] Received response 'textDocument/rangeFormatting - (103)' in 0ms.
+Result: [
+  {
+    "range": {
+      "start": {
+        "line": 6,
+        "character": 0
+      },
+      "end": {
+        "line": 9,
+        "character": 0
+      }
+    },
+    "newText": "  METHOD PUBLIC STATIC String getSomeString()\n    METHODRET \"ABC\"\n  METHODEND\n"
+  }
+]
+
+
+[Trace - 16:40:28] Sending notification 'textDocument/didChange'
+Params: {
+  "textDocument": {
+    "version": 2,
+    "uri": "file:///C:/tinybbj/stripped-program.bbj"
+  },
+  "contentChanges": [
+    {
+      "range": {
+        "start": {
+          "line": 6,
+          "character": 0
+        },
+        "end": {
+          "line": 8,
+          "character": 0
+        }
+      },
+      "rangeLength": 60,
+      "text": "  METHOD PUBLIC STATIC String getSomeString()\n    METHODRET \"ABC\"\n  "
+    }
+  ]
+}
+```
+
+The undo at 16:40:32 (`version` 3, range 6:0 to 8:2, `rangeLength` 68, text
+`"METHOD PUBLIC STATIC String getSomeString()\nMETHODRET \"ABC\"\n"`) brings the buffer back to the opened text (replay).
+The selection was a whole METHOD (header, body, METHODEND) at class level, not three lines inside a METHOD body; the
+Linux rows C2a and C2b cover a selection inside a body and inside a continued statement.
+
+### W4
+
+No log evidence. The user switched on Settings, Tools, Actions on Save, Reformat code and saw the file formatted on
+save, after the trace and idea.log had been copied (both end at 16:43:28). Before that, the user looked for a
+format-on-save switch on the BBj settings page and did not find it there. Whether the save path sent
+`textDocument/formatting` (whole file) or `rangeFormatting` on build 262 is not known from the Windows run; on 2024.2 it
+sent both kinds as configured (C3a, C3b).
+
+### E1 to E5
+
+E1 and E2: user observation only (retests after the copy). The trace holds a related, direct Denumber at 16:37:57 that
+did not go through the balloon (verbatim, abridged to the request and the edit's result):
+
+```
+[Trace - 16:37:57] Sending request 'bbj/denum - (24)'.
+Params: {
+  "uri": "file:///C:/tinybbj/numbered-test.bbj"
+}
+...
+[Trace - 16:37:57] Sending response 'workspace/applyEdit - (5)'. Processing request took 0ms
+Result: {
+  "applied": true
+}
+
+
+[Trace - 16:37:57] Received request 'window/showMessageRequest - (6)'
+Params: {
+  "actions": [],
+  "type": 3,
+  "message": "Denumbered."
+}
+```
+
+The server's `workspace/applyEdit` addressed the document as `file:///c%3A/tinybbj/numbered-test.bbj` while the IDE uses
+`file:///C:/tinybbj/numbered-test.bbj`; the IDE applied it anyway (`"applied": true`, `didChange` version 2 at 16:37:57),
+and a change at 16:38:05 (version 3) brought the numbered text back in one step (replay: version 3 equals the opened
+text).
+
+E3: the user answered that formatting still works and the server stays ready after the balloon is dismissed. The trace
+case closest to it is the message request above: it stayed open until the user closed it,
+
+```
+[Trace - 16:39:28] Sending response 'window/showMessageRequest - (6)'. Processing request took 91612ms
+No response returned.
+```
+
+and in that time the server answered the W1 formatting (16:38:59); it answered the W3 range request afterwards
+(16:40:28). This is an information message without actions, not the two-button balloon of the step.
+
+E4 (eolCharacter CRLF on build 262) and E5 (Actions on Save, changed lines only) were not run; C6b is therefore
+measured on 2024.2 only, and the changed-lines save path on 2024.2 only (C3b).
+
 ## Known issues
 
-- After an empty formatting answer the IDE still sends one `textDocument/didChange` with `rangeLength` 0 and empty
-  text at the end of the document, and bumps the document version (C7b second request, C7c). The text, the saved
-  file and its modification time do not change, and the editor shows no unsaved marker in the C7c screenshots, so
-  it is cosmetic under the blocker bar. Evidence: sections C7b and C7c.
-- Actions on Save writes the edited, still unformatted text to disk first (the `didSave` comes before the formatting
-  request), applies the formatting and saves a second time; the platform's second pass over the formatted text sends a
-  second request answered `[]` (C3a ids 25 and 32, C3b ids 24 and 31). A crash between the two saves would leave the
-  unformatted text on disk, which is what the user typed, so nothing is lost; it is noted as an observation, not a
-  defect. Evidence: sections C3a and C3b.
-- With `eolCharacter` CRLF the server answers with `\r\n` in `newText` and the IDE (2024.2) refuses it with a SEVERE
-  `Wrong line separators` assertion in `AsyncDocumentFormattingService`: nothing is formatted, nothing is damaged,
-  the user sees no message. Only a non-default value triggers it; the default KEEP (C6a) and LF (C6c) format a CRLF
-  file correctly. Evidence: section C6b. Put to the user as the eolCharacter sub-question.
+Every finding of the record is classed once, against D-04 (only data loss or a UI freeze blocks "supported": wrong or
+corrupted edits, a CRLF file silently not formatted, `config.bbx` rewritten, an EDT freeze), worst effect first. A
+finding is in this list or in Blockers, never in both.
+
+- C7b, C7c: after an empty formatting answer the IDE still sends one empty `didChange` at the end of the document and
+  bumps its version; text, saved file and modification time are unchanged and no unsaved marker shows. Cosmetic.
+  Cause: IntelliJ platform formatting service fed by LSP4IJ (LSP4IJ 0.21.0 hands the unchanged text back through
+  `onTextReady` for an empty edit list, `LSPFormattingSupport.java` line 73; which side emits the empty change is not
+  narrowed further). Evidence: sections C7b, C7c.
+- C3a, C3b: Actions on Save writes the typed, still unformatted text to disk first, then formats and saves a second
+  time; the second pass sends one more request, answered `[]`. Nothing is lost (a crash between the saves leaves what
+  the user typed). Observation, not a defect. Cause: IntelliJ platform (order of the Actions on Save steps). Evidence:
+  sections C3a, C3b.
+- W4: usability. The user looked for a format-on-save switch on the BBj settings page first and did not find it; the
+  switch is IntelliJ's own (Settings, Tools, Actions on Save, Reformat code), and it works. Not a blocker. Cause: this
+  plugin (the BBj page does not point to IntelliJ's switch). On "supported" it is input for the Formatter section's
+  note and the IntelliJ guide. Evidence: section W4 (user observation).
 
 ## Blockers
 
+- C6b: with the formatter setting `eolCharacter` CRLF a BBj file is silently not formatted. D-04 kind: **a CRLF file
+  silently not formatted**. The server answers with `\r\n` in `newText`, the IDE throws the whole edit away with a
+  SEVERE `Wrong line separators` assertion, no change reaches the document, no message reaches the user. Nothing is
+  damaged and nothing froze. Scope: only the non-default value CRLF; the default KEEP (C6a, W1) and LF (C6c) format a
+  CRLF file correctly. Measured on IntelliJ 2024.2 (build 242) only; the Windows step for build 262 (E4) was not run.
+  The IDE's document holds `\n` breaks for every file (no `\r` in any `didOpen` on either platform), so the same
+  rejection is expected for an LF file under CRLF too: inferred from the code and the wire, not measured. Cause:
+  **LSP4IJ**. In LSP4IJ 0.21.0 `LSPIJUtils.applyEdits` joins each `newText` into the document text unconverted and
+  `LSPFormattingSupport` passes the result to the platform's `AsyncDocumentFormattingService` (`onTextReady`), whose
+  `DocumentImpl.setText` accepts only `\n`; the assertion is thrown later, on the EDT inside the platform's write action
+  (`FlushQueue` frames in the C6b stack), outside LSP4IJ's error handling, so its `LSP formatting error` balloon never
+  shows. Upstream: lsp4ij #381 (open, same mechanism). Draft:
+  `129-LSP4IJ-ISSUE-crlf-newtext.md`. Put to the user as sub-question (a) below.
+
+No other blocker was measured: every applied edit matches the server's answer (Linux file diffs, Windows replay), one
+Undo restores the text (C7a, W2, W3), no EDT freeze is reported on either platform (the one Windows EDT wait, 565 ms,
+was while the Settings dialog opened), and `config.bbx` protection is code-verified (V1). There is no blocker with a
+cause other than LSP4IJ, so there is no other draft.
+
 ## Recommendation
 
-(Filled in the verdict plan.)
+The seven IJF-02 cases with the best evidence per platform (Linux: IntelliJ IDEA 2024.2, `#IC-242.20224.300`, `runIde`
+sandbox; Windows: IntelliJ IDEA 2026.2.2, `#IU-262.10315.125`, the user's IDE; LSP4IJ 0.21.0 on both):
+
+| # | Case | Linux, build 242 | Windows, build 262 | Class |
+|---|------|------------------|--------------------|-------|
+| 1 | Reformat Code | C1 pass: wire and idea.log | W1 pass: wire; W2 pass: wire (test file, not an own program) | pass |
+| 2 | Reformat selection | C2a, C2b pass: wire | W3 pass: wire | pass |
+| 3 | Actions on Save | C3a (whole file), C3b (changed lines) pass: wire | W4 pass: user observation only; E5 not run | pass |
+| 4 | Numbered-file message | C4a, C4b pass: wire and screenshot | E1, E2 pass: user observation only; E3 pass: user answer plus a related trace case | pass |
+| 5 | Settings | C5 pass: wire (`initialize` carries the values) and the output follows them | wire: `initialize` carries the 15 keys at their defaults; no changed value tried | pass |
+| 6 | CRLF | C6a pass, **C6b blocker** (eolCharacter CRLF), C6c pass: wire and bytes on disk | W1 pass: wire (default KEEP); CRLF kept per the user's status bar, disk not checked; E4 not run | blocker (C6b) |
+| 7 | Edit application | C7a, C7b, C7c pass: wire, `cmp`, modification time | W2, W3 pass: wire, replayed (one Undo restores) | pass |
+
+Code-verified only, no runtime sequence on either platform: V1 to V6, all pass, among them V2, the commit-dialog row
+that D-07 names. Further limits of the evidence: the Windows zip hash was not verified (a switch-on build is shown to
+be installed, byte identity is not), apply time on a large file was not measured (V3).
+
+The rules, in order, and what each gives:
+
+1. "Any of the seven cases without real-log evidence on either platform means the recommendation cannot be supported."
+   Not triggered: all seven have real-log evidence on Linux; on Windows cases 1, 2, 5, 6 and 7 have wire evidence,
+   cases 3 and 4 rest on the user's observation.
+2. "A blocker in C3, W4 or V2 means disabled (D-07)." Not triggered: no blocker in the save path or the commit dialog.
+3. "A blocker in C1, C4-C7, W1 or W2 means disabled." **Triggered by C6b.**
+4. "A blocker only in C2 or W3 means supported-no-range (D-06)." Not reached; there is no range-formatting blocker.
+5. "No blocker means supported." Not reached.
+
+**Recommended verdict: disabled**, by rule 3 ("a blocker in C1, C4-C7, W1 or W2 means disabled"), and by C6b alone.
+Everything else measured passes. If the user answers sub-question (a) with known-issue, C6b moves to Known issues, no
+blocker remains, and the same rules give **supported** (rule 5). The verdict therefore turns on sub-question (a).
+
+### Sub-question (a): eolCharacter LF and CRLF in IntelliJ
+
+Measured: C6b (CRLF) refused by the IDE, nothing formatted, no message, file unchanged (above). C6c (LF) formats the
+file, but a CRLF file stays CRLF on disk, so LF has no effect on line endings. C6a and W1 (KEEP, the default) format and
+keep the file's line endings. C6b and C6c did not both pass, so `pass` is not proposed. The choice:
+
+- **known issue**: keep the control and say in the Formatter section that LF or CRLF may not take effect in IntelliJ.
+  The note must then be accurate for CRLF: CRLF does not just leave the line endings alone, it stops formatting
+  altogether, silently, for whole-file, selection and on-save formatting alike. With this answer the recommendation
+  becomes supported.
+- **blocker**: C6b stays a blocker and the recommendation stays disabled.
+
+Not among the plan's choices, named only so that it is visible: the IntelliJ side could avoid sending CRLF at all (for
+example by not offering the value); that would change the scope of the settings-page plan.
+
+### Sub-question (b): did Actions on Save send a request?
+
+**Observed.** On build 242 the save path sent `textDocument/formatting` with Reformat code on save for the whole file
+(C3a, id 25) and `textDocument/rangeFormatting` with only changed lines (C3b, id 24), each answered and applied. On
+build 262 the user saw the file formatted on save (W4), without a wire capture. No known-issue or blocker choice is
+needed for this sub-question.
