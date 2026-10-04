@@ -652,7 +652,22 @@ Plans:
   2. A migration note lists the output differences from the old formatter (labels, blank lines, IF closers, line endings, the fixed `--single-line-if` crash #507) and warns about the large diff on the first format.
   3. The QA smoke and full checklists cover format, Format Selection, format-on-save, DENUM and the error messages in both IDEs, with the IntelliJ rows matching the verdict.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 130-01-PLAN.md — VS Code guide: new Formatting page wired into the sidebar and Quick Links (tracer), Denumber on the bbj/denum behaviour, all 15 settings in the settings reference, no jar/Java path/bbjlst-denumber text (wave 1)
+- [ ] 130-02-PLAN.md — Old-versus-new formatter evidence from real runs (git-history jar on Java 25, live formatProgram on :5008), then the release-notes migration draft built from it (wave 1)
+- [ ] 130-03-PLAN.md — QA checklists: smoke rows 11-14, VS Code row 25 replaced and rows 29-38, IntelliJ rows 34-43 incl. the CRLF known issue (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 130-04-PLAN.md — IntelliJ guide: new Formatting page (Reformat Code, selection, Actions on Save, Formatter controls, CRLF warning), Denumber action/banner/console, configuration pointer (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 130-05-PLAN.md — IntelliJ changeNotes and root README, then the phase-wide gate and MIG-01..03 marked complete (wave 3)
 
 ## Progress
 
@@ -706,7 +721,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 127. VS Code Cut-Over | 6/6 | Planned |  |
 | 128. IntelliJ DENUM | 4/4 | In Progress |  |
 | 129. IntelliJ Verdict | 9/9 | In Progress |  |
-| 130. Docs & Migration | 0/TBD | Not started | - |
+| 130. Docs & Migration | 0/5 | Planned | - |
 
 **Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
 39/39 requirements mapped to 7 phases, with no orphans and no duplicates. IJF-04 depends on the
