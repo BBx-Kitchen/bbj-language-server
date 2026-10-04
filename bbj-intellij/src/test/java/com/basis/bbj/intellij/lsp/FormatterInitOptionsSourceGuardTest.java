@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +66,15 @@ class FormatterInitOptionsSourceGuardTest {
         return count;
     }
 
+    private static int countMatches(String text, String regex) {
+        Matcher matcher = Pattern.compile(regex).matcher(text);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
     /** The text of the brace-delimited body that follows the first occurrence of {@code signature}. */
     private static String bodyOf(String text, String signature) {
         int at = text.indexOf(signature);
@@ -103,6 +114,11 @@ class FormatterInitOptionsSourceGuardTest {
         String text = readSource(FORMATTER_INIT_OPTIONS_SOURCE);
         assertEquals(0, countOccurrences(text, "import com.intellij"),
                 "FormatterInitOptions must have no IntelliJ platform import");
+        // The only allowed link to the platform-bound settings class is its nested plain-data
+        // State; any other use of BbjSettings would pull the application service into the seam.
+        String withoutImport = text.replace("import com.basis.bbj.intellij.BbjSettings;", "");
+        assertEquals(0, countMatches(withoutImport, "BbjSettings\\b(?!\\.State\\b)"),
+                "FormatterInitOptions may reference BbjSettings.State only, never BbjSettings itself");
     }
 
     @Test

@@ -22,7 +22,10 @@ import java.util.List;
  * VS Code extension's {@code package.json}; a contract test pins them. The deprecated
  * {@code splitSingleLineIF} spelling is a VS Code-only alias and is never sent.
  * <p>
- * This class has no IntelliJ platform dependency so it can be covered by plain JUnit 5 tests.
+ * This class has no IntelliJ platform import of its own. Its one link to the settings class is the
+ * nested plain-data {@code BbjSettings.State}, used only by {@link #fromState} and
+ * {@link #writeToState}; the platform-bound outer settings class is never touched, so the
+ * seam can be covered by plain JUnit 5 tests.
  */
 public final class FormatterInitOptions {
 
