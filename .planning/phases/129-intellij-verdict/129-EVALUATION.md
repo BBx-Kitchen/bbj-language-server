@@ -180,10 +180,10 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | C7a | Edit application, one undo step | Linux | script | open a fresh stripped copy c7a.bbj; ReformatCode; editor action Undo once; save; cmp the file with the stripped original | one Undo restores the original text byte for byte | the formatting reached the document as one didChange (version 2) and the undo as one didChange (version 3); the saved file is byte-identical to a.orig.bbj (cmp silent) | ### C7a | pass |
 | C7b | Idempotency | Linux | script | open a fresh stripped copy c7b.bbj; ReformatCode twice, six seconds apart; save | the second response carries no edit | first request (id 18) answered with one edit, second request (id 25) answered with an empty result; the saved file equals the C1 result; the IDE still emitted one didChange with empty text after the empty answer (see Known issues) | ### C7b | pass |
 | C7c | Already formatted file | Linux | script | open formatted.bbj (the C1 result, 1300 bytes), caret at 1:1; ReformatCode; save; compare content and modification time | no edit in the response, modification time unchanged | request id 15 answered with an empty result; content equal to the opened file; modification time 1791102418 before and after (epoch seconds); caret 1:1 in both screenshots; one empty didChange (see Known issues) | ### C7c | pass |
-| C3a | Actions on Save, whole file | Linux | script | Actions on Save with Reformat code on (whole file); unindent one line; save | a formatting request at save, the line indented again | pending | pending | not run |
-| C3b | Actions on Save, changed lines only | Linux | script | Actions on Save with Reformat code on and only changed lines; unindent one line; save | a rangeFormatting request at save | pending | pending | not run |
-| C4a | Numbered-file message | Linux | script | numbered.bbj; Reformat Code | one message from the server (window/showMessageRequest), no edit | pending | pending | not run |
-| C4b | Numbered-file message cadence | Linux | script | numbered.bbj; a second Reformat Code in the same session | no second toast | pending | pending | not run |
+| C3a | Actions on Save, whole file | Linux | script | project setting Reformat code on save, all file types (workspace.xml seed); open c3a.bbj (stripped, no indentation); insert `;rem` at the end of line 12; editor action SaveAll | a formatting request at save, the file formatted on disk | after SaveAll the wire shows didChange, didSave, then one textDocument/formatting request (id 25) answered with one edit over lines 4 to 62, a didChange applying it, a second didSave and a second formatting request (id 32) answered with an empty result; the file on disk is the C1 result plus the typed `;rem` on line 12 (diff against c1.bbj shows only that); no message, no WARN or ERROR from a BBj or LSP4IJ class; D-07 not triggered | ### C3a | pass |
+| C3b | Actions on Save, changed lines only | Linux | script | corpus made a git repository with the stripped c3b.bbj committed and a Git mapping seeded; Reformat code on save, only changed lines (workspace.xml seed); insert `;rem` at the end of line 12; SaveAll | a rangeFormatting request at save, only the changed line formatted | after SaveAll: didChange, didSave, then textDocument/rangeFormatting (id 24) with range 11:0 to 11:34, answered with one edit over line 11 (`    print something!, some_string!;rem`), applied as one didChange inserting four spaces at 11:0, a second didSave, a second rangeFormatting (id 31) answered with an empty result; on disk exactly one line differs from the committed file (git diff: line 12 gained four spaces and the typed `;rem`), every other line is unchanged and still unindented; D-07 not triggered | ### C3b | pass |
+| C4a | Numbered-file message | Linux | script | open numbered.bbj (three numbered lines); editor action ReformatCode; screenshot; save | no edit, file unchanged, the server shows its message | one textDocument/formatting request (id 21) answered with an empty result; before it the server sent window/showMessageRequest (its id 5, type 2) with the numbered-file offer and the actions Denumber and Denumber and Format; the screenshot shows the Warning balloon `BBj Language Server` with both buttons; sha256 of numbered.bbj identical before and after; the balloon was still open when the script ended the IDE, no answer to request 5 was sent, and the server kept answering (ids 22 and 23, publishDiagnostics) after the request; no BBj or LSP4IJ line at WARN or above in idea.log; clicking the buttons is not scriptable and is in the Windows extra steps | ### C4a | pass |
+| C4b | Selection on a numbered file | Linux | script | open c4b.bbj (copy of numbered.bbj); select line 1 and the first nine characters of line 2; ReformatCode; save | no edit, the server explains that a selection needs an unnumbered file | one textDocument/rangeFormatting request (id 20, range 0:0 to 1:9) answered with an empty result; the server sent window/showMessageRequest (id 5, type 2) with `Formatting a selection needs a file without line numbers. Denumber the file first.` and the single action Denumber; sha256 of c4b.bbj identical before and after; no BBj or LSP4IJ line at WARN or above in idea.log | ### C4b | pass |
 | C5 | Settings reach the format output | Linux | script | set a non-default value in the sandbox BbjSettings.xml; restart the IDE; Reformat Code | the initialize request carries the value and the output follows it | pending | pending | not run |
 | C6a | CRLF file, default eolCharacter KEEP | Linux | script | crlf.bbj; Reformat Code; save; check the line endings on disk | indented, still CRLF on disk, no error | pending | pending | not run |
 | C6b | CRLF file, eolCharacter CRLF | Linux | script | crlf-eol-crlf.bbj with eolCharacter CRLF seeded; Reformat Code | observed outcome recorded (lsp4ij issue 381 is the known trap) | pending | pending | not run |
@@ -413,12 +413,206 @@ Wire:
 the end of the file (`classend`, no trailing line break), so the empty `didChange` is an empty replacement at the
 end of the document.
 
+### C3a
+
+Session start `2026-10-04T08:36:28Z`; files `tmp/129-eval/linux/C3a/` (`idea.log`, `wire-in.log`, `wire-out.log`,
+`screens/C3a-before.png`, `C3a-edited.png`, `C3a-after.png`). The project's `.idea/workspace.xml` was seeded before the
+session with the component below (the backup is `tmp/129-eval/linux/workspace.xml.before-c3`); the stripped corpus copy
+`c3a.bbj` is byte-identical to `a.orig.bbj` (sha256 `4ef0fb93...`).
+
+```
+<component name="FormatOnSaveOptions">
+  <option name="myRunOnSave" value="true" />
+  <option name="myAllFileTypesSelected" value="true" />
+</component>
+```
+
+The IDE wrote the component back at exit in this shape (the default `myAllFileTypesSelected` is not written):
+
+```
+  <component name="FormatOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+```
+
+idea.log:
+
+```
+2026-10-04 08:36:33,349 [   3796]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:36:34,183 [   4630]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+30 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class (the IDE noise of the earlier sessions); no
+`Overlapping edit`, no `LSP formatting error`; nothing in idea.log mentions the save action.
+
+Wire, in order (`wire-in.log` and `wire-out.log`; the long `newText` and `text` bodies are elided with `…` inside the
+line). The script typed `;rem` at the end of line 12 and ran SaveAll. The first `didSave` comes before the formatting
+request, so the unformatted edit is written to disk first; the formatting follows, and a second save writes the
+formatted text:
+
+```
+IN : {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/c3a.bbj"},"contentChanges":[{"range":{"start":{"line":11,"character":30},"end":{"line":11,"character":30}},"rangeLength":0,"text":";rem"}]}}
+IN : {"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3a.bbj"}}}
+IN : {"jsonrpc":"2.0","id":"25","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3a.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"25","result":[{"range":{"start":{"line":4,"character":0},"end":{"line":62,"character":0}},"newText":"  FIELD PUBLIC BBjString someInstanceStri…ethod public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  methodend\n"}]}
+IN : {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":3,"uri":"file:///home/coder/tinybbj/c3a.bbj"},"contentChanges":[{"range":{"sta…ple\n\n  method public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  "}]}}
+IN : {"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3a.bbj"}}}
+IN : {"jsonrpc":"2.0","id":"32","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3a.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","id":"32","result":[]}
+IN : {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":4,"uri":"file:///home/coder/tinybbj/c3a.bbj"},"contentChanges":[{"range":{"start":{"line":63,"character":8},"end":{"line":63,"character":8}},"rangeLength":0,"text":""}]}}
+```
+
+The whole-document request `textDocument/formatting` is what Actions on Save sends in this mode; the second request
+is the platform's second pass over the already formatted text and is answered `[]`. The last `didChange` is the empty
+one named in Known issues. On disk, `diff /home/coder/tinybbj/c1.bbj /home/coder/tinybbj/c3a.bbj` (c1.bbj is the
+Reformat Code result of the same program) prints only:
+
+```
+12c12
+<     print something!, some_string!
+---
+>     print something!, some_string!;rem
+```
+
+So the whole file was formatted on save and the typed edit survived.
+
+### C3b
+
+Session start `2026-10-04T08:37:48Z`; files `tmp/129-eval/linux/C3b/` (screenshots `C3b-before.png`, `C3b-edited.png`,
+`C3b-after.png`). Setup before the session: `git init` in `/home/coder/tinybbj` (outside this repository), `.gitignore`
+holding `.idea/`, the stripped `c3b.bbj` committed as `0f0f840 baseline`, and `.idea/vcs.xml` seeded with the mapping
+`$PROJECT_DIR$` to `Git`; the workspace component gained `myFormatOnlyChangedLines`. The IDE wrote it back as:
+
+```
+  <component name="FormatOnSaveOptions">
+    <option name="myFormatOnlyChangedLines" value="true" />
+    <option name="myRunOnSave" value="true" />
+  </component>
+```
+
+The screenshots show the Git branch `master` in the title bar, so the VCS mapping took effect.
+
+idea.log:
+
+```
+2026-10-04 08:37:53,724 [   4280]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:37:54,788 [   5344]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+37 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class (more IDE noise than before from the Git
+integration); no `Overlapping edit`, no `LSP formatting error`.
+
+Wire, in order:
+
+```
+IN : {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/c3b.bbj"},"contentChanges":[{"range":{"start":{"line":11,"character":30},"end":{"line":11,"character":30}},"rangeLength":0,"text":";rem"}]}}
+IN : {"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3b.bbj"}}}
+IN : {"jsonrpc":"2.0","id":"24","method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3b.bbj"},"options":{"tabSize":4,"insertSpaces":true},"range":{"start":{"line":11,"character":0},"end":{"line":11,"character":34}}}}
+OUT: {"jsonrpc":"2.0","id":"24","result":[{"range":{"start":{"line":11,"character":0},"end":{"line":12,"character":0}},"newText":"    print something!, some_string!;rem\n"}]}
+IN : {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":3,"uri":"file:///home/coder/tinybbj/c3b.bbj"},"contentChanges":[{"range":{"start":{"line":11,"character":0},"end":{"line":11,"character":0}},"rangeLength":0,"text":"    "}]}}
+IN : {"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3b.bbj"}}}
+IN : {"jsonrpc":"2.0","id":"31","method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c3b.bbj"},"options":{"tabSize":4,"insertSpaces":true},"range":{"start":{"line":11,"character":0},"end":{"line":11,"character":38}}}}
+OUT: {"jsonrpc":"2.0","id":"31","result":[]}
+```
+
+The request range is the changed line only (line 11 in 0-based numbering, the typed line), and the result is one
+whole-line edit. On disk, `git -C /home/coder/tinybbj diff` after the session shows a single hunk:
+
+```
+ METHOD PUBLIC String getInstanceString(Boolean something!, String some_string!)
+-print something!, some_string!
++    print something!, some_string!;rem
+```
+
+and `diff` of the saved file against the unindented original shows only that line, so no other line was touched.
+
+### C4a
+
+Session start `2026-10-04T08:39:00Z`; files `tmp/129-eval/linux/C4a/` (`sha-before.txt`, `sha-after.txt`, screenshots
+`C4a-before.png`, `C4a-after.png`). The Actions on Save component was removed from the project's `workspace.xml`
+before this session and the next ones.
+
+```
+f9650057b37e594cfa61f7fb7237378f6d989250461ea2b11f716278e6388e81  /home/coder/tinybbj/numbered.bbj   (before)
+f9650057b37e594cfa61f7fb7237378f6d989250461ea2b11f716278e6388e81  /home/coder/tinybbj/numbered.bbj   (after)
+```
+
+idea.log:
+
+```
+2026-10-04 08:39:05,885 [   3918]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:39:06,820 [   4853]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+34 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+The session ended with the message request still open (the script ends the IDE eight seconds after Reformat Code and
+does not click): idea.log has no line from the BBj or LSP4IJ code between `starting -> started` and the IDE shutdown
+lines, and the wire has no answer to the server's request id 5 (`grep -c '"id":5,"result"' wire-in.log` prints 0).
+The IDE closed the files and exited without sending `shutdown`; there was no stop of the server to observe in this
+form.
+
+Wire (the server's log message, the message request, the response to the formatting request, and the traffic that
+followed while the request was open):
+
+```
+IN : {"jsonrpc":"2.0","id":"21","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/numbered.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+OUT: {"jsonrpc":"2.0","method":"window/logMessage","params":{"type":2,"message":"Format/DENUM interop: formatProgram failed (denum-needed): DENUM needed: the source is a line-numbered program (first numbered line 1); DENUM it first or set allowDenum"}}
+OUT: {"jsonrpc":"2.0","id":5,"method":"window/showMessageRequest","params":{"type":2,"message":"This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in one step.","actions":[{"title":"Denumber"},{"title":"Denumber and Format"}]}}
+OUT: {"jsonrpc":"2.0","id":"21","result":[]}
+IN : {"jsonrpc":"2.0","id":"22","method":"textDocument/codeAction", …
+IN : {"jsonrpc":"2.0","id":"23","method":"textDocument/codeAction", …
+OUT: {"jsonrpc":"2.0","id":"22","result":null}
+OUT: {"jsonrpc":"2.0","id":"23","result":null}
+```
+
+The buffer was not changed by the formatting answer: the only `didChange` after the request is the empty
+replacement at the end of the document named in Known issues. The screenshot `C4a-after.png` shows the balloon `BBj
+Language Server`, `This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in
+one...` with the buttons Denumber and Denumber and Format, and the editor banner `This is a line-numbered BBj program.
+Denumber it for editing.` The server answered the later requests (ids 22 and 23) and kept publishing diagnostics
+while request 5 was unanswered, which is the observable part of "the server keeps running after the IDE drops the
+open request". What cancelling the request on a balloon close does is not reproducible by script; it is in the
+Windows extra steps.
+
+### C4b
+
+Session start `2026-10-04T08:40:15Z`; files `tmp/129-eval/linux/C4b/` (`sha-before.txt`, `sha-after.txt`, screenshots
+`C4b-selected.png`, `C4b-after.png`). The script selected line 1 and the first nine characters of line 2.
+
+```
+f9650057b37e594cfa61f7fb7237378f6d989250461ea2b11f716278e6388e81  /home/coder/tinybbj/c4b.bbj   (before)
+f9650057b37e594cfa61f7fb7237378f6d989250461ea2b11f716278e6388e81  /home/coder/tinybbj/c4b.bbj   (after)
+```
+
+idea.log:
+
+```
+2026-10-04 08:40:21,431 [   4219]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:40:22,452 [   5240]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+36 WARN, SEVERE or ERROR lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+
+Wire:
+
+```
+IN : {"jsonrpc":"2.0","id":"20","method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c4b.bbj"},"options":{"tabSize":4,"insertSpaces":true},"range":{"start":{"line":0,"character":0},"end":{"line":1,"character":9}}}}
+OUT: {"jsonrpc":"2.0","method":"window/logMessage","params":{"type":2,"message":"Format/DENUM interop: formatProgram failed (denum-needed): DENUM needed: a range cannot be formatted in a line-numbered program (first numbered line 1); DENUM the program or format the whole document"}}
+OUT: {"jsonrpc":"2.0","id":5,"method":"window/showMessageRequest","params":{"type":2,"message":"Formatting a selection needs a file without line numbers. Denumber the file first.","actions":[{"title":"Denumber"}]}}
+OUT: {"jsonrpc":"2.0","id":"20","result":[]}
+```
+
 ## Known issues
 
 - After an empty formatting answer the IDE still sends one `textDocument/didChange` with `rangeLength` 0 and empty
   text at the end of the document, and bumps the document version (C7b second request, C7c). The text, the saved
   file and its modification time do not change, and the editor shows no unsaved marker in the C7c screenshots, so
   it is cosmetic under the blocker bar. Evidence: sections C7b and C7c.
+- Actions on Save writes the edited, still unformatted text to disk first (the `didSave` comes before the formatting
+  request), applies the formatting and saves a second time; the platform's second pass over the formatted text sends a
+  second request answered `[]` (C3a ids 25 and 32, C3b ids 24 and 31). A crash between the two saves would leave the
+  unformatted text on disk, which is what the user typed, so nothing is lost; it is noted as an observation, not a
+  defect. Evidence: sections C3a and C3b.
 
 ## Blockers
 
