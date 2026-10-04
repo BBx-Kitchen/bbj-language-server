@@ -155,3 +155,7 @@ Phase 130 has all five plans executed; ready for verification (`/gsd-verify-work
 ---
 *Phase: 130-docs-migration*
 *Completed: 2026-10-04*
+
+## Self-Check: PASSED
+
+Files found: bbj-intellij/build.gradle.kts, README.md, 130-05-SUMMARY.md. Commits found: 6e256a6f, 63903685, 20eab92c.
