@@ -108,6 +108,16 @@ Three facts that differ from what the plan assumed, found by running it:
   the IDE between two sessions opened with the previous session's content (the first Reformat Code then answered
   `[]` because the buffer was already formatted; that session is kept as `tmp/129-eval/linux/aside/c1-stale-vfs/`
   and is not used as evidence). Every case therefore uses a corpus file name the IDE has never seen.
+- A file created while no IDE was running is not always known to the IDE's virtual file system when the script runs
+  `%openFile`: with a freshly created `c2b.bbj` and then `c2b-cont.bbj` the command failed with `File not found`
+  (`%reloadFiles` and `%waitForInitialRefresh` did not help; those sessions are kept under `tmp/129-eval/linux/aside/`).
+  Running the editor action `Synchronize` (File, Reload All from Disk) first fixed it, so every later script starts
+  with `%waitForSmart`, `%sleep 3000`, `%executeEditorAction Synchronize`, `%sleep 4000`.
+- `%selectText a b c d` takes 1-based line and column numbers (the command subtracts one from each argument, read
+  from its bytecode), so the range that reaches the server is taken from the wire, not from the script. `%selectText
+  12 1 14 31` produced the request range 11:0 to 13:30 in C2a. A first probe with `%selectText 11 0 14 0` produced
+  9:0 to 11:30 (the selection ended at the end of the print line); it was also answered with one
+  edit, is kept as `aside/c2a-probe-selection/` and is not used as evidence.
 
 ### Evidence routes
 
@@ -147,6 +157,11 @@ the evidence for that build. BBjServices 26.03 on `localhost:5008` with the `bbj
 | ID | Case | Platform | Driven by | Steps | Expected | Observed | Evidence | Class |
 |----|------|----------|-----------|-------|----------|----------|----------|-------|
 | C1 | Reformat Code | Linux | script | open c1.bbj (63 lines, no leading indentation); wait for smart mode and the started server (25 s); editor action ReformatCode; save | re-indented with indentWidth 2, one formatting request | one textDocument/formatting request (id 12), response with one edit over lines 5 to 62; file on disk grew from 1240 to 1300 bytes and is indented two spaces per level; no message, no WARN or ERROR from a BBj or LSP4IJ class | ### C1 | pass |
+| C2a | Reformat selection inside a block | Linux | script | open c2a-body.bbj (stripped copy); select the print and METHODRET lines of a METHOD body (wire range: line 11 column 0 to line 13 column 30, 0-based); ReformatCode; save | a textDocument/rangeFormatting request; lines outside the selection unchanged | rangeFormatting request id 17 with that range; response with one edit over lines 11 to 14 (whole lines, ending at the start of the next line); the IDE applied it as one didChange; only the two selected non-blank lines of the file changed (four leading spaces each); no Overlapping edit and no LSP formatting error in idea.log | ### C2a | pass |
+| C2b | Reformat selection inside a multi-line statement | Linux | script | open c2b-cont.bbj (statement continued with colon lines, first line indented four spaces); select nine characters inside the second line (line 2, columns 8 to 17, 0-based); ReformatCode; save | response range wider than the selection, applied, no Overlapping edit error | rangeFormatting request id 19; response one edit over line 2 column 0 to line 3 column 0, the whole continuation line, wider than the selection; applied (the didChange removed five spaces); the first line of the statement was not touched, the server snapped to the line, not to the statement; no Overlapping edit in idea.log | ### C2b | pass |
+| C7a | Edit application, one undo step | Linux | script | open a fresh stripped copy c7a.bbj; ReformatCode; editor action Undo once; save; cmp the file with the stripped original | one Undo restores the original text byte for byte | the formatting reached the document as one didChange (version 2) and the undo as one didChange (version 3); the saved file is byte-identical to a.orig.bbj (cmp silent) | ### C7a | pass |
+| C7b | Idempotency | Linux | script | open a fresh stripped copy c7b.bbj; ReformatCode twice, six seconds apart; save | the second response carries no edit | first request (id 18) answered with one edit, second request (id 25) answered with an empty result; the saved file equals the C1 result; the IDE still emitted one didChange with empty text after the empty answer (see Known issues) | ### C7b | pass |
+| C7c | Already formatted file | Linux | script | open formatted.bbj (the C1 result, 1300 bytes), caret at 1:1; ReformatCode; save; compare content and modification time | no edit in the response, modification time unchanged | request id 15 answered with an empty result; content equal to the opened file; modification time 1791102418 before and after (epoch seconds); caret 1:1 in both screenshots; one empty didChange (see Known issues) | ### C7c | pass |
 
 ## Code-verified
 
@@ -205,7 +220,155 @@ object, which is what the two-space result shows. The saved file against the unt
 `METHODRET "ABC"` gains four, `METHODEND` two; trailing blanks on `rem missing: ` and `a! = new someClass() ` are
 removed.
 
+### C2a
+
+Session start `2026-10-04T08:22:36Z`; files `tmp/129-eval/linux/C2a/`, screenshots `screens/C2a-selected.png` and
+`screens/C2a-after.png`. In this and the following sections the number in the `/tmp/bbj-language-server-<n>.cjs`
+path of the launch line is replaced by `<n>`; nothing else in a quoted line is changed.
+
+idea.log:
+
+```
+2026-10-04 08:22:42,389 [   4870]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:22:43,144 [   5625]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+27 WARN or SEVERE lines, none naming a BBj or LSP4IJ class (the same IDE noise as in C1); no `Overlapping edit`, no
+`LSP formatting error`.
+
+Wire (request, the document change the IDE made from the response, response):
+
+```
+{"jsonrpc":"2.0","id":"17","method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c2a-body.bbj"},"options":{"tabSize":4,"insertSpaces":true},"range":{"start":{"line":11,"character":0},"end":{"line":13,"character":30}}}}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/c2a-body.bbj"},"contentChanges":[{"range":{"start":{"line":11,"character":0},"end":{"line":13,"character":0}},"rangeLength":32,"text":"    print something!, some_string!\n\n    "}]}}
+{"jsonrpc":"2.0","id":"17","result":[{"range":{"start":{"line":11,"character":0},"end":{"line":14,"character":0}},"newText":"    print something!, some_string!\n\n    METHODRET #someInstanceString$\n"}]}
+```
+
+`diff` of the saved file against the stripped original shows exactly two changed lines, 12 (`print something!, some_string!`)
+and 14 (`METHODRET #someInstanceString$`), each gaining four leading spaces; every line outside the selection is
+unchanged.
+
+### C2b
+
+Session start `2026-10-04T08:25:47Z`; files `tmp/129-eval/linux/C2b/`, screenshots `screens/C2b-selected.png`,
+`screens/C2b-after.png`. Corpus file `c2b-cont.bbj` (5 lines): `rem multiline statement`, `    X! = "TEST"+`,
+`      : "TEST123"+`, ` : "jhgjgj"`, `PRINT X!`.
+
+idea.log:
+
+```
+2026-10-04 08:25:52,591 [   3963]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:25:53,398 [   4770]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+27 WARN or SEVERE lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+
+Wire:
+
+```
+{"jsonrpc":"2.0","id":"19","method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c2b-cont.bbj"},"options":{"tabSize":4,"insertSpaces":true},"range":{"start":{"line":2,"character":8},"end":{"line":2,"character":17}}}}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/c2b-cont.bbj"},"contentChanges":[{"range":{"start":{"line":2,"character":1},"end":{"line":2,"character":6}},"rangeLength":5,"text":""}]}}
+{"jsonrpc":"2.0","id":"19","result":[{"range":{"start":{"line":2,"character":0},"end":{"line":3,"character":0}},"newText":" : \"TEST123\"+\n"}]}
+```
+
+The saved file: line 3 changed from `      : "TEST123"+` to ` : "TEST123"+`; the other four lines are unchanged,
+including the four-space indent of `X! = "TEST"+`.
+
+### C7a
+
+Session start `2026-10-04T08:26:58Z`; files `tmp/129-eval/linux/C7a/`, screenshots `screens/C7a-formatted.png`,
+`screens/C7a-undone.png`.
+
+idea.log:
+
+```
+2026-10-04 08:27:03,371 [   3774]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:27:04,202 [   4605]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+31 WARN or SEVERE lines, none naming a BBj or LSP4IJ class (four more than the other sessions: four
+`AbstractTreeNodeVisitor - unexpected component class ...CachedTreePresentationNode` lines from the IDE's project
+view); no `Overlapping edit`, no `LSP formatting error`.
+
+Wire (request, the two document changes in order, the response; long strings elided with `…` inside the line):
+
+```
+{"jsonrpc":"2.0","id":"18","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c7a.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/c7a.bbj"},"contentChanges":[{"range":{"start":{"line":4,"character":0},"end":{"line":61…g()\n? x!.getSomeString()\n\nclass public Sample\n\n  method public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  "}]}}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":3,"uri":"file:///home/coder/tinybbj/c7a.bbj"},"contentChanges":[{"range":{"start":{"line":4,"character":0},"end":{"line":61… x!.getsomeInstanceString()\n? x!.getSomeString()\n\nclass public Sample\n\nmethod public String write(String dr!)\nseterr writeErr\nPRINT dr!\nmethodret dr!\n\nwriteErr:\nthrow errmes(-1), err\n"}]}}
+```
+
+Exactly one `didChange` for the formatting (version 2) and one for the undo (version 3); the undo's text is the
+unindented original. After the save, `cmp /home/coder/tinybbj/c7a.bbj tmp/129-eval/linux/corpus/a.orig.bbj` is silent:
+the file equals the original byte for byte.
+
+### C7b
+
+Session start `2026-10-04T08:28:04Z`; files `tmp/129-eval/linux/C7b/`, screenshots `screens/C7b-first.png`,
+`screens/C7b-second.png`.
+
+idea.log:
+
+```
+2026-10-04 08:28:10,818 [   4704]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:28:11,506 [   5392]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+27 WARN or SEVERE lines, none naming a BBj or LSP4IJ class; no `Overlapping edit`, no `LSP formatting error`.
+
+Wire (the first response is shortened to its shape; the second is verbatim):
+
+```
+{"jsonrpc":"2.0","id":"18","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c7b.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+{"jsonrpc":"2.0","id":"18","result":[{"range":{"start":{"line":4,"character":0},"end":{"line":62,"character":0}},"newText":"  FIELD PUBLIC BBjString someInstanceString$\n\n  METHOD PUBLIC STATIC String getSomeS…getSomeString()\n\nclass public Sample\n\n  method public String write(String dr!)\n    seterr writeErr\n    PRINT dr!\n    methodret dr!\n\n    writeErr:\n    throw errmes(-1), err\n  methodend\n"}]}
+{"jsonrpc":"2.0","id":"25","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/c7b.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+{"jsonrpc":"2.0","id":"25","result":[]}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":3,"uri":"file:///home/coder/tinybbj/c7b.bbj"},"contentChanges":[{"range":{"start":{"line":63,"character":8},"end":{"line":63,"character":8}},"rangeLength":0,"text":""}]}}
+```
+
+The saved file equals the C1 result (`diff` of `c7b.bbj` and `c1.bbj` is empty).
+
+### C7c
+
+Session start `2026-10-04T08:29:14Z`; files `tmp/129-eval/linux/C7c/`, screenshots `screens/C7c-before.png` and
+`screens/C7c-after.png` (status bar `1:1` in both); `tmp/129-eval/linux/formatted-stat-before.txt` and
+`formatted-stat-after.txt`.
+
+idea.log:
+
+```
+2026-10-04 08:29:19,608 [   3787]   INFO - #com.basis.bbj.intellij.lsp.BbjLanguageServer - Launching the BBj language server: /home/coder/repos/bbj-language-server/tmp/129-eval/node-tee.sh /tmp/bbj-language-server-<n>.cjs --stdio (working directory: /home/coder/tinybbj)
+2026-10-04 08:29:20,550 [   4729]   INFO - #com.basis.bbj.intellij.ui.BbjServerService - BBj language server status: starting -> started
+```
+
+33 WARN or SEVERE lines, none naming a BBj or LSP4IJ class (the same IDE noise plus six project-view lines of the kind named in C7a);
+no `Overlapping edit`, no `LSP formatting error`.
+
+Modification time (`stat -c '%n %s %Y'` of `/home/coder/tinybbj/formatted.bbj`, taken before and after the session):
+
+```
+/home/coder/tinybbj/formatted.bbj 1300 1791102418
+/home/coder/tinybbj/formatted.bbj 1300 1791102418
+```
+
+Wire:
+
+```
+{"jsonrpc":"2.0","id":"15","method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///home/coder/tinybbj/formatted.bbj"},"options":{"tabSize":4,"insertSpaces":true}}}
+{"jsonrpc":"2.0","id":"15","result":[]}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"version":2,"uri":"file:///home/coder/tinybbj/formatted.bbj"},"contentChanges":[{"range":{"start":{"line":63,"character":8},"end":{"line":63,"character":8}},"rangeLength":0,"text":""}]}}
+```
+
+`cmp` of the file after the session with `tmp/129-eval/linux/corpus/formatted.orig.bbj` is silent. Line 63, column 8 is
+the end of the file (`classend`, no trailing line break), so the empty `didChange` is an empty replacement at the
+end of the document.
+
 ## Known issues
+
+- After an empty formatting answer the IDE still sends one `textDocument/didChange` with `rangeLength` 0 and empty
+  text at the end of the document, and bumps the document version (C7b second request, C7c). The text, the saved
+  file and its modification time do not change, and the editor shows no unsaved marker in the C7c screenshots, so
+  it is cosmetic under the blocker bar. Evidence: sections C7b and C7c.
 
 ## Blockers
 
