@@ -192,6 +192,32 @@ class FormatterInitOptionsTest {
     }
 
     @Test
+    void writingToStateAndReadingBackGivesTheNormalizedValues() {
+        List<FormatterInitOptions.Values> inputs = List.of(
+            FormatterInitOptions.DEFAULTS,
+            new FormatterInitOptions.Values(16, "TAB", true, true, true, true, true, true,
+                "LF", "ENDIF", "MATCH_IF", "AFTER_COMMA", "SPACED", true, true),
+            new FormatterInitOptions.Values(0, "SPACE", false, true, false, true, false, true,
+                "CRLF", "FI", "LOWER_CASE", "NO_BLANK", "KEEP", false, true),
+            new FormatterInitOptions.Values(17, "tab", true, false, true, false, true, false,
+                null, "", "   ", "BOGUS", "spaced", true, false),
+            new FormatterInitOptions.Values(-1, null, false, false, false, false, false, false,
+                " LF ", "endif", "UPPER_CASE", "BEFORE_AND_AFTER_COMMA", "SPACED", false, false));
+        for (FormatterInitOptions.Values input : inputs) {
+            BbjSettings.State state = new BbjSettings.State();
+            FormatterInitOptions.writeToState(input, state);
+            assertEquals(FormatterInitOptions.normalize(input), FormatterInitOptions.fromState(state),
+                "writing " + input + " and reading it back must give the normalized values");
+        }
+        BbjSettings.State outOfRange = new BbjSettings.State();
+        FormatterInitOptions.writeToState(new FormatterInitOptions.Values(17, "BOGUS", false, false, false,
+            false, false, false, null, null, null, null, null, false, false), outOfRange);
+        assertEquals(2, outOfRange.formatterIndentWidth, "an out-of-range width is stored as the default");
+        assertEquals("SPACE", outOfRange.formatterIndentCharacter, "an unknown choice is stored as the default");
+        assertEquals("KEEP", outOfRange.formatterEolCharacter, "a null choice is stored as the default");
+    }
+
+    @Test
     void theDeprecatedAliasIsNeverSent() {
         List<JsonObject> outputs = List.of(
             sentBy(new BbjSettings.State()),
