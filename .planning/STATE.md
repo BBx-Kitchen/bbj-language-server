@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 129
 current_phase_name: IntelliJ Verdict
 status: executing
-stopped_at: Phase 129 context gathered
-last_updated: "2026-10-04T08:05:34.296Z"
+stopped_at: Completed 129-01-PLAN.md
+last_updated: "2026-10-04T08:08:34.378Z"
 last_activity: 2026-10-04
-last_activity_desc: Phase 128 complete, transitioned to Phase 129
-state_head: e4cd8c4ee1453d081c9f140366e8bc25694ee457
+last_activity_desc: Phase 129 execution started
+state_head: 98515e8469b0b014685a6a5a9fd31e982a7e9bc3
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 38
-  completed_plans: 29
+  completed_plans: 30
   percent: 71
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 ## Current Position
 
-Phase: 129 (IntelliJ Verdict) — READY TO EXECUTE
-Plan: Not started
+Phase: 129 (IntelliJ Verdict) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-10-04 — Phase 128 complete, transitioned to Phase 129
+Last activity: 2026-10-04 — Phase 129 execution started
 
 Progress: [███████░░░] 71% (v4.9: 5/7 phases)
 
@@ -231,6 +231,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 128 P02 | 6 min | 2 tasks | 8 files |
 | Phase 128 P03 | 8 min | 3 tasks | 9 files |
 | Phase 128 P04 | ~1 day incl. hand check | 3 tasks | 6 files |
+| Phase 129 P01 | 6 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -414,6 +415,7 @@ decisions:
 - [Phase 128]: Show reveals the BBj console with show() only (no activate), so the editor keeps focus; the diagnostics notification never shows the window — Matches VS Code; a source guard forbids activate() and show() in the diagnostics handler
 - [Phase 128]: [Phase 128] Line-numbered banner uses Info status; per-file 300 ms debounced refresh via a lazily created Disposable project service that parents its listener and alarm to itself
 - [Phase 128]: A cancelled window/showMessageRequest (balloon closed in IntelliJ) must never terminate the language server: all five fire-and-forget message sites handle the rejection — Found in the 128-04 hand check; fixed in acb1912a inside the phase with the user's approval, so the phase finishes clean
+- [Phase 129]: 129-01: interop wire keys renamed on the IntelliJ side only (interopHost/interopPort); no server-side shim, BbjSettings.State field names unchanged
 
 ### Tech Debt
 
@@ -482,9 +484,9 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T07:09:21.933Z
-Stopped at: Phase 129 context gathered
-Resume file: .planning/phases/129-intellij-verdict/129-CONTEXT.md
+Last session: 2026-10-04T08:08:34.178Z
+Stopped at: Completed 129-01-PLAN.md
+Resume file: None
 
 Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
