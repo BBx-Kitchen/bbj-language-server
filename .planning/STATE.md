@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 129
-current_phase_name: IntelliJ Verdict
-status: verifying
-stopped_at: Completed 129-09-PLAN.md
-last_updated: "2026-10-04T15:25:35.501Z"
+current_phase: 130
+current_phase_name: Docs & Migration
+status: planning
+stopped_at: Phase 129 complete, ready to plan Phase 130
+last_updated: "2026-10-04T16:13:05.430Z"
 last_activity: 2026-10-04
-last_activity_desc: Phase 129 execution started
-state_head: f0b05e8b2233c4b36faae88e489a21b7bb7ee4fd
+last_activity_desc: Phase 129 complete, transitioned to Phase 130
+state_head: 1a83cebb2c4fb1d1ce54e6c522a9ea619e2be2db
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 38
   completed_plans: 38
-  percent: 71
+  percent: 86
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-04 (Phase 128 IntelliJ DENUM complete — 4/4 plans, UAT 1/1, Nyquist-compliant, 19/19 threats closed)
+**Last Updated:** 2026-10-04 (Phase 129 IntelliJ Verdict complete — 9/9 plans, verdict `supported`, UAT 4/4, Nyquist-compliant, 36/37 threats closed (T-129-16 medium, non-blocking))
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 129 — IntelliJ Verdict
+**Current Focus:** Phase 130 — Docs & Migration
 
 ---
 
 ## Current Position
 
-Phase: 129 (IntelliJ Verdict) — EXECUTING
-Plan: 9 of 9
-Status: Phase complete — ready for verification
-Last activity: 2026-10-04 — Phase 129 execution started
+Phase: 130 — Docs & Migration
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-04 — Phase 129 complete, transitioned to Phase 130
 
-Progress: [███████░░░] 71% (v4.9: 5/7 phases)
+Progress: [████████░░] 86% (v4.9: 6/7 phases)
 
 ### v4.9 milestone map
 
@@ -273,6 +273,7 @@ decisions:
 - [v4.1, standing]: No CVE is requested for any advisory during implementation; CVE and severity are decided by the maintainer at publication time (a deliberate PROC-03 departure).
 - [v4.1, standing]: Whole-suite regression gate is project-wide `numFailedTests: 0` plus deterministic targeted-file runs, not a failing-suite identity delta (DEBT.md item 5).
 - [v4.4, standing]: IntelliJ consolidations ship as an abstract base plus thin no-arg subclasses, never a runtime-keyed "data-driven" single class — every per-kind difference stays compile-time checked.
+- [v4.9 Phase 129]: IntelliJ LSP formatting is `supported` (`LSP_FORMATTING_ENABLED = true`), the user's override of Claude's `disabled` recommendation; CRLF with Line ending CRLF silently formats nothing in IntelliJ (LSP4IJ #381), kept as a known issue and stated on the settings page. All 15 formatter settings are on the IntelliJ BBj page and reach the server via `initializationOptions.formatter`; Apply restarts the server.
 - [v4.4, standing]: A runtime status or lifecycle sequence used as UAT evidence must come from a real `idea.log`, not a hand-derived trace (the Phase 97 crash-detection rework was approved on a wrong trace and reverted).
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
@@ -445,18 +446,19 @@ decisions:
 - v4.6: 107 A2 accepted on a file-set reading; 108 final UAT ran on the pre-review-fix build; 109-REVIEW IN-01..05 open (full list in `milestones/v4.6-MILESTONE-AUDIT.md`)
 - v4.6 Phase 106 review debt (106-REVIEW.md): CR-01 a pending debounced compiler check still runs and publishes after switching the trigger to `off` (pre-existing); WR-01 the bbjcpl fallback branch suppresses Langium warnings before merging the kept BBjCPL error
 - v4.7 Phase 114 review (114-REVIEW.md, advisory): WR-01 the formatter's ENOENT branch in `document-formatter.ts` rejects exactly like the other branch (pre-existing dead code); IN-01 `readSimpleName` duplicated in `bbj-hover.ts` and `java-javadoc.ts` with different return types. `installed-extension-e2e` still counts as a failed suite with 0 failed assertions (stale installed bundle, pre-existing)
+- v4.9 Phase 129 review (129-REVIEW-FIX.md): IN-02 (formatter defaults duplicated as literals in `BbjSettings.State`) and IN-03 (switch constant `true` makes the four overrides tautological; kill-switch not exercised by a test) skipped on purpose. LSP4IJ CRLF `newText` issue draft (`129-LSP4IJ-ISSUE-crlf-newtext.md`) not filed yet; filing is the user's call
 - v4.5: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104 (full list in `milestones/v4.5-MILESTONE-AUDIT.md`)
 
 ### Pending Todos
 
-4 pending in `.planning/todos/pending/`:
+Listed in `.planning/todos/pending/`:
 
 - `2026-09-27-windows-intellij-node-download-progress-check` — repeat the IntelliJ Node.js download progress check on Windows the next time Windows is used for testing (Linux passed in Phase 114; opportunistic, not blocking)
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
-- `2026-09-26-intellij-interop-initoptions-key-mismatch` — IntelliJ sends javaInteropHost/Port, the server reads interopHost/Port (found in Phase 110; unscheduled)
 - `2026-09-26-signature-help-and-snippet-peer-name-escaping` — transferred threat T-111-15: peer names in the signature-help fence and completion snippet placeholders (unscheduled)
 - `2026-10-04-skip-syntax-checks-on-line-numbered-programs` — line-numbered programs show many pointless syntax errors (at least in IntelliJ); send no diagnostics, or one pointing to Denumber (from the Phase 128 UAT; unscheduled)
 
+Closed in v4.9: `2026-09-26-intellij-interop-initoptions-key-mismatch` (folded into Phase 129).
 Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111), `2026-09-20-phase-97-code-review-follow-ups` (FIX-04, Phase 114).
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
 
@@ -502,11 +504,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T15:25:35.253Z
-Stopped at: Completed 129-09-PLAN.md
+Last session: 2026-10-04T16:15:00Z
+Stopped at: Phase 129 complete, ready to plan Phase 130
 Resume file: None
 
-Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
+Next: plan phase 130 (`/gsd-discuss-phase 130` or `/gsd-plan-phase 130`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -624,4 +626,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Plan Phase 124 with /gsd-plan-phase 124 (or /gsd-discuss-phase 124 first)
+- Plan Phase 130 with /gsd-plan-phase 130 (or /gsd-discuss-phase 130 first)
