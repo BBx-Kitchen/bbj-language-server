@@ -75,6 +75,9 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                     CompilerInitOptions.normalizeOutputDirectory(state.compilerOutputDirectory));
                 options.addProperty(CompilerInitOptions.COMPILER_TRIGGER_KEY,
                     CompilerInitOptions.normalizeTrigger(state.compilerTrigger));
+                // The formatter settings travel as one object the server normalizes.
+                options.add(FormatterInitOptions.FORMATTER_KEY,
+                    FormatterInitOptions.toJson(FormatterInitOptions.fromState(state)));
                 params.setInitializationOptions(options);
             }
 
