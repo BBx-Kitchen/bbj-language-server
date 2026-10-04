@@ -423,7 +423,7 @@ a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumP
 - [x] **Phase 127: VS Code Cut-Over** - All 15 formatter settings in VS Code, the Denumber command and open-file prompt on `bbj/denum`, the old jar and the bbjlst denumber path deleted, verified end to end from the built VSIX (completed 2026-10-03)
 - [x] **Phase 128: IntelliJ DENUM** - A Denumber action and a line-numbered-file banner in IntelliJ, backed by `bbj/denum` (completed 2026-10-04)
 - [x] **Phase 129: IntelliJ Verdict** - A hands-on evaluation of LSP4IJ formatting, the user's supported-or-disabled decision, and the formatter settings page only if supported (completed 2026-10-04)
-- [ ] **Phase 130: Docs & Migration** - Both user guides, a migration note from the old formatter, and QA checklists for formatting and DENUM in both IDEs
+- [x] **Phase 130: Docs & Migration** - Both user guides, a migration note from the old formatter, and QA checklists for formatting and DENUM in both IDEs (completed 2026-10-04)
 
 ## Phase Details
 

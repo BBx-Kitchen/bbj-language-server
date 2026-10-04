@@ -4,23 +4,23 @@ milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130
 current_phase_name: Docs & Migration
-status: verifying
-stopped_at: Completed 130-05-PLAN.md
-last_updated: "2026-10-04T17:22:50.695Z"
+status: completed
+stopped_at: Phase 130 complete — all phases complete
+last_updated: "2026-10-04T19:18:28.105Z"
 last_activity: 2026-10-04
-last_activity_desc: Phase 130 execution started
-state_head: 20eab92c7399f1b01486f0beb3c9a58b27eff3ad
+last_activity_desc: Phase 130 complete
+state_head: a2e32dc6b963f5c85d5e08eb7e414812627aa760
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 43
   completed_plans: 43
-  percent: 86
+  percent: 100
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-04 (Phase 129 IntelliJ Verdict complete — 9/9 plans, verdict `supported`, UAT 4/4, Nyquist-compliant, 36/37 threats closed (T-129-16 medium, non-blocking))
+**Last Updated:** 2026-10-04 (Phase 130 Docs & Migration complete — 5/5 plans, UAT 4/4, Nyquist-compliant, 17/17 threats closed; v4.9 all 7 phases complete)
 
 ## Project Reference
 
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 130 — Docs & Migration
+**Current Focus:** v4.9 complete — ready for /gsd-complete-milestone
 
 ---
 
 ## Current Position
 
-Phase: 130 (Docs & Migration) — EXECUTING
+Phase: 130 (Docs & Migration) — COMPLETE
 Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-04 — Phase 130 execution started
+Status: All v4.9 phases complete — ready to complete milestone
+Last activity: 2026-10-04 — Phase 130 complete
 
-Progress: [█████████░] 86% (v4.9: 6/7 phases)
+Progress: [██████████] 100% (v4.9: 7/7 phases)
 
 ### v4.9 milestone map
 
@@ -514,11 +514,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T17:22:50.361Z
-Stopped at: Completed 130-05-PLAN.md
+Last session: 2026-10-04T19:20:00Z
+Stopped at: Phase 130 complete — all phases complete
 Resume file: None
 
-Next: execute the remaining phase 130 plans (130-02 to 130-05). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
+Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
