@@ -226,3 +226,9 @@ None.
 ## Threat Flags
 
 None. No new network endpoint, auth path or file access. The plan changed only a comment and planning files.
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/129-intellij-verdict/129-09-SUMMARY.md, .planning/REQUIREMENTS.md, bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip, /tmp/bbj-lang.vsix
+- FOUND: 9336b5da, c96859c6, f0b05e8b
+- No file deletions in the plan's commits

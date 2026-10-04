@@ -603,7 +603,7 @@ Plans:
   2. The user's verdict (supported or disabled) is recorded at a decision checkpoint, and the single formatting switch matches it. IntelliJ offers Reformat Code for BBj files only when the verdict is "supported".
   3. Only if "supported": all 15 formatter settings are on the IntelliJ BBj settings page, they reach the server through `initializationOptions`, and changing one restarts the language server so the next format reflects it. If "disabled": no formatter settings UI ships, and IJF-04 moves to Out of Scope in `.planning/REQUIREMENTS.md`.
 
-**Plans**: 5/9 plans executed (06 and 07 run only on a "supported" verdict, 08 only on "disabled"; each opens with a guard on `129-VERDICT.md`)
+**Plans**: 9/9 plans executed (06 and 07 run only on a "supported" verdict, 08 only on "disabled"; each opens with a guard on `129-VERDICT.md`)
 
 Plans:
 **Wave 1**
@@ -628,16 +628,16 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 129-06-PLAN.md — Supported only: switch (and range constant) set to the verdict with its fence tests; `bbj/openFormatterSettings` opens the BBj settings page (wave 6)
-- [ ] 129-07-PLAN.md — Supported only: the Formatter section with the 15 controls, tooltips from package.json, stored on Apply before the debounced restart (wave 6)
+- [x] 129-06-PLAN.md — Supported only: switch (and range constant) set to the verdict with its fence tests; `bbj/openFormatterSettings` opens the BBj settings page (wave 6)
+- [x] 129-07-PLAN.md — Supported only: the Formatter section with the 15 controls, tooltips from package.json, stored on Apply before the debounced restart (wave 6)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 129-08-PLAN.md — Disabled only: seam reverted, switch kept off with a Javadoc naming the blockers, IJF-04 to Out of Scope, nothing new in the IDE (wave 7)
+- [x] 129-08-PLAN.md — Disabled only: seam reverted, switch kept off with a Javadoc naming the blockers, IJF-04 to Out of Scope, nothing new in the IDE (wave 7)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 129-09-PLAN.md — Final gate: both distributables from the final tree, zip switch checked against the verdict, whole suite, register/scope/redaction checks, requirements marked, hand-check list (wave 8)
+- [x] 129-09-PLAN.md — Final gate: both distributables from the final tree, zip switch checked against the verdict, whole suite, register/scope/redaction checks, requirements marked, hand-check list (wave 8)
 
 **UI hint**: yes
 
@@ -705,7 +705,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
 | 127. VS Code Cut-Over | 6/6 | Planned |  |
 | 128. IntelliJ DENUM | 4/4 | In Progress |  |
-| 129. IntelliJ Verdict | 5/9 | Planned |  |
+| 129. IntelliJ Verdict | 9/9 | In Progress |  |
 | 130. Docs & Migration | 0/TBD | Not started | - |
 
 **Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
