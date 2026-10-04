@@ -148,6 +148,20 @@ class BbjDenumberActionSourceGuardTest {
     }
 
     @Test
+    void oneDeadlineCoversServerResolutionAndTheRequestAndATimeoutCancelsTheRequest() {
+        String text = withoutCommentLines(readSource(ACTION_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "System.nanoTime() + TimeUnit.SECONDS.toNanos(DENUM_TIMEOUT_SECONDS)"),
+                "the deadline must be computed once, from the single timeout constant");
+        assertEquals(2, countOccurrences(text, ".get(remainingNanos(deadline), TimeUnit.NANOSECONDS)"),
+                "both the server lookup and the request must wait only for the remaining time");
+        assertEquals(0, countOccurrences(text, ".get(DENUM_TIMEOUT_SECONDS"),
+                "no wait may restart the full timeout");
+        assertTrue(text.contains("request.cancel(true)"),
+                "a timed-out request must be cancelled");
+    }
+
+    @Test
     void theClientNeverSavesTheFileOrReadsTheResult() {
         String text = withoutCommentLines(readSource(ACTION_SOURCE));
 

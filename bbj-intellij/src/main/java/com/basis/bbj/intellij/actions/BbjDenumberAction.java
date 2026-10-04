@@ -23,6 +23,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -93,17 +94,25 @@ public final class BbjDenumberAction extends AnAction implements DumbAware {
                     uri = file.getUrl();
                 }
 
+                // One deadline covers resolving the server and the request together, so the
+                // message below stays true however the time is split between the two.
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(DENUM_TIMEOUT_SECONDS);
+                CompletableFuture<?> request = null;
                 try {
-                    BbjComposerServer server =
-                        BbjComposerService.server(project).get(DENUM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    BbjComposerServer server = BbjComposerService.server(project)
+                        .get(remainingNanos(deadline), TimeUnit.NANOSECONDS);
                     if (server == null) {
                         failed(project, "the BBj language server is not running");
                         return;
                     }
                     // The server has already applied the edit and shown its own outcome by the
                     // time it answers, so the value is deliberately discarded.
-                    server.denum(new DenumParams(uri)).get(DENUM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    request = server.denum(new DenumParams(uri));
+                    request.get(remainingNanos(deadline), TimeUnit.NANOSECONDS);
                 } catch (TimeoutException ex) {
+                    if (request != null) {
+                        request.cancel(true);
+                    }
                     failed(project, "no answer from the BBj language server within "
                         + DENUM_TIMEOUT_SECONDS + " seconds");
                 } catch (InterruptedException ex) {
@@ -114,6 +123,10 @@ public final class BbjDenumberAction extends AnAction implements DumbAware {
                 }
             }
         }.queue();
+    }
+
+    private static long remainingNanos(long deadline) {
+        return Math.max(0L, deadline - System.nanoTime());
     }
 
     private static String detailOf(@NotNull ExecutionException ex) {
