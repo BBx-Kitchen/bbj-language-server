@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 129
 current_phase_name: IntelliJ Verdict
 status: executing
-stopped_at: Completed 129-06-PLAN.md
-last_updated: "2026-10-04T15:14:24.483Z"
+stopped_at: Completed 129-07-PLAN.md
+last_updated: "2026-10-04T15:21:12.112Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 129 execution started
-state_head: f27d075128a753ac6791c021335aae951ee01130
+state_head: 8dc17822fe3044ca61a6bb9916f437ecf265f91b
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 38
-  completed_plans: 35
+  completed_plans: 36
   percent: 71
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 129 (IntelliJ Verdict) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 129 execution started
 
@@ -237,6 +237,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 129 P04 | 30min | 3 tasks | 2 files |
 | Phase 129 P05 | 13min | 3 tasks | 3 files |
 | Phase 129 P06 | 6 min | 3 tasks | 5 files |
+| Phase 129 P07 | 5 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -428,6 +429,7 @@ decisions:
 - [Phase 129]: Phase 129: IntelliJ LSP formatting verdict is supported (the user's answer, overriding the recommendation disabled); eolCharacter CRLF is a known issue whose Formatter note says plainly that CRLF stops formatting entirely in IntelliJ (LSP4IJ, lsp4ij #381)
 - [Phase 129]: IntelliJ LSP formatting is on (LSP_FORMATTING_ENABLED = true) for whole-file, range and on-save formatting; no range-only constant
 - [Phase 129]: bbj/openFormatterSettings opens BbjSettingsConfigurable by class and ignores its keys payload
+- [Phase 129]: IntelliJ Formatter section: RESTART_NOTE ends with the verdict's eol_note verbatim; note and format-on-save hint are wrapping comment labels
 
 ### Tech Debt
 
@@ -496,8 +498,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T15:14:24.241Z
-Stopped at: Completed 129-06-PLAN.md
+Last session: 2026-10-04T15:21:11.864Z
+Stopped at: Completed 129-07-PLAN.md
 Resume file: None
 
 Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
