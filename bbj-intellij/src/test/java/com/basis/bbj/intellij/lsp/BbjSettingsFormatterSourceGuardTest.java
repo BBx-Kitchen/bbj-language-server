@@ -13,6 +13,8 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static com.basis.bbj.intellij.lsp.JavaSourceScan.methodBody;
+import static com.basis.bbj.intellij.lsp.JavaSourceScan.stripComments;
 
 /**
  * Source-guard fence for the Formatter section of the BBj settings page.
@@ -76,12 +78,6 @@ class BbjSettingsFormatterSourceGuardTest {
         }
     }
 
-    /** Removes block and line comments so prose can neither satisfy nor break an assertion. */
-    private static String stripComments(String text) {
-        String noBlockComments = text.replaceAll("(?s)/\\*.*?\\*/", "");
-        return noBlockComments.replaceAll("//[^\n]*", "");
-    }
-
     private static int countOccurrences(String text, String literal) {
         int count = 0;
         int index = 0;
@@ -99,27 +95,6 @@ class BbjSettingsFormatterSourceGuardTest {
             count++;
         }
         return count;
-    }
-
-    /** The body of the method declared by {@code signature}, between its braces. */
-    private static String methodBody(String text, String signature) {
-        int at = text.indexOf(signature);
-        assertTrue(at >= 0, "signature not found: " + signature);
-        int open = text.indexOf('{', at);
-        int depth = 0;
-        for (int i = open; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '{') {
-                depth++;
-            } else if (c == '}') {
-                depth--;
-                if (depth == 0) {
-                    return text.substring(open + 1, i);
-                }
-            }
-        }
-        fail("unbalanced braces after " + signature);
-        return "";
     }
 
     @Test

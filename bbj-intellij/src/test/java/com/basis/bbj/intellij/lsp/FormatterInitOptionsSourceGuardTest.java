@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static com.basis.bbj.intellij.lsp.JavaSourceScan.bodyOf;
 
 /**
  * Source-guard fence for the {@code formatter} initialization option: the factory attaches it once
@@ -73,27 +74,6 @@ class FormatterInitOptionsSourceGuardTest {
             count++;
         }
         return count;
-    }
-
-    /** The text of the brace-delimited body that follows the first occurrence of {@code signature}. */
-    private static String bodyOf(String text, String signature) {
-        int at = text.indexOf(signature);
-        assertTrue(at >= 0, "signature not found: " + signature);
-        int open = text.indexOf('{', at);
-        int depth = 0;
-        for (int i = open; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '{') {
-                depth++;
-            } else if (c == '}') {
-                depth--;
-                if (depth == 0) {
-                    return text.substring(open, i + 1);
-                }
-            }
-        }
-        fail("unbalanced braces after " + signature);
-        return "";
     }
 
     @Test

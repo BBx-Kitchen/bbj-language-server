@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static com.basis.bbj.intellij.lsp.JavaSourceScan.stripComments;
 
 /**
  * Cross-language contract for the two interop connection keys in the {@code initializationOptions}
@@ -58,15 +59,6 @@ class InteropInitOptionsContractTest {
         UncheckedIOExceptionForTest(Path resolved, IOException cause) {
             super("Failed to read " + resolved, cause);
         }
-    }
-
-    /**
-     * Strips block comments (including javadoc) and line comments from {@code text}, so a prose
-     * comment mentioning a guarded token can neither satisfy nor break an assertion.
-     */
-    private static String stripComments(String text) {
-        String noBlockComments = text.replaceAll("(?s)/\\*.*?\\*/", "");
-        return noBlockComments.replaceAll("//[^\n]*", "");
     }
 
     private static int countOccurrences(String text, String literal) {

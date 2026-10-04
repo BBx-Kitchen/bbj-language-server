@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static com.basis.bbj.intellij.lsp.JavaSourceScan.bodyOf;
 
 /**
  * The server's request to open the formatter settings reaches the client the way a real server
@@ -78,31 +79,6 @@ class BbjLanguageClientOpenFormatterSettingsTest {
             index += literal.length();
         }
         return count;
-    }
-
-    /**
-     * Returns the text from the opening brace after {@code declarationSubstring} to its matching
-     * closing brace, counting braces. Fails the test when either cannot be found.
-     */
-    private static String bodyOf(String text, String declarationSubstring) {
-        int declIndex = text.indexOf(declarationSubstring);
-        assertTrue(declIndex >= 0, "declaration not found: " + declarationSubstring);
-        int openBrace = text.indexOf('{', declIndex);
-        assertTrue(openBrace >= 0, "no opening brace found after declaration: " + declarationSubstring);
-        int depth = 0;
-        for (int i = openBrace; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '{') {
-                depth++;
-            } else if (c == '}') {
-                depth--;
-                if (depth == 0) {
-                    return text.substring(openBrace, i + 1);
-                }
-            }
-        }
-        fail("no matching closing brace found for declaration: " + declarationSubstring);
-        throw new AssertionError("unreachable");
     }
 
     @Test
