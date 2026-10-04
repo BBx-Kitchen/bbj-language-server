@@ -11,7 +11,7 @@
  */
 import { EmptyFileSystem } from 'langium';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import type { Connection } from 'vscode-languageserver';
+import { LSPErrorCodes, ResponseError, type Connection } from 'vscode-languageserver';
 import {
     REFRESH_JAVA_CLASSES_METHOD,
     createInlayHintRefresher,
@@ -138,5 +138,41 @@ describe('bbj/refreshJavaClasses (#563)', () => {
         expect(connection.window.showErrorMessage).toHaveBeenCalledWith('Failed to refresh Java classes: Error: boom');
         expect(connection.window.showInformationMessage).not.toHaveBeenCalled();
         expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to refresh Java classes:', boom);
+    });
+
+    test('a cancelled "Java classes refreshed" or failure message never becomes an unhandled rejection', async () => {
+        const cancelled = () => Promise.reject(new ResponseError(LSPErrorCodes.RequestCancelled, 'cancelled'));
+        // Plain functions, not vi.fn: a vi.fn mock subscribes to the promises it returns to record
+        // settled results, which would mark the rejection handled and hide the defect.
+        const shown: string[] = [];
+        const show = (message: string) => { shown.push(message); return cancelled(); };
+        const connection = createFakeConnection();
+        Object.assign(connection.window, { showInformationMessage: show, showErrorMessage: show });
+        vi.spyOn(console, 'error').mockImplementation(() => { /* expected failure log */ });
+        const { reloadServices, javaInterop } = createReloadFixture();
+        const reload = createReloadJavaClassesAndRevalidate({
+            javaInterop,
+            reloadServices,
+            refreshInlayHints: () => { /* not under test */ },
+            window: connection.window,
+        });
+        registerRefreshJavaClassesRequest(connection, {
+            reloadJavaClassesAndRevalidate: () => Promise.reject(new Error('boom')),
+        });
+        const [, failingHandler] = (connection.onRequest as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, () => Promise<boolean>];
+
+        const seen: unknown[] = [];
+        const listener = (reason: unknown) => { seen.push(reason); };
+        process.on('unhandledRejection', listener);
+        try {
+            await reload();
+            expect(await failingHandler()).toBe(false);
+            await new Promise(resolve => setTimeout(resolve, 20));
+        } finally {
+            process.off('unhandledRejection', listener);
+        }
+
+        expect(seen).toEqual([]);
+        expect(shown).toEqual(['Java classes refreshed', 'Failed to refresh Java classes: Error: boom']);
     });
 });

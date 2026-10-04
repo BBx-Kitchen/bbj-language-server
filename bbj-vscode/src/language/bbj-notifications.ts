@@ -74,12 +74,22 @@ export function notifyConfigReloadRequired(params: ConfigReloadNotification): vo
 }
 
 /**
+ * Mark a `window/showMessageRequest` promise as handled. Every `window.show*Message` call is a
+ * request, even without action buttons, and a client may answer it with an error: LSP4IJ cancels
+ * the request when the user closes the balloon. Left unhandled, that rejection terminates the
+ * language server process.
+ */
+function ignoreMessageRejection(pending: unknown): void {
+    void Promise.resolve(pending).catch(() => { /* a dismissed or cancelled message is harmless */ });
+}
+
+/**
  * Show a plain Warning message for a formatting problem. Fire and forget: nothing waits for the
  * user. No-op if the connection has not been initialized yet.
  */
 export function showFormatterWarning(text: string): void {
     try {
-        _connection?.window.showWarningMessage(text);
+        ignoreMessageRejection(_connection?.window.showWarningMessage(text));
     } catch {
         // A notification that cannot be sent must never break a format request.
     }
@@ -91,7 +101,7 @@ export function showFormatterWarning(text: string): void {
  */
 export function showInformation(text: string): void {
     try {
-        _connection?.window.showInformationMessage(text);
+        ignoreMessageRejection(_connection?.window.showInformationMessage(text));
     } catch {
         // A notification that cannot be sent must never break a request.
     }
@@ -277,9 +287,9 @@ export function notifyShowDenumDiagnostics(): void {
  * the Java service / BBjServices.
  */
 export function notifyJavaConnectionError(errorDetail: string): void {
-    _connection?.window.showErrorMessage(
+    ignoreMessageRejection(_connection?.window.showErrorMessage(
         `Failed to connect to the Java interop service. ` +
         `Check that BBj Services is running and the interop host/port settings are correct. ` +
         `(${errorDetail})`
-    );
+    ));
 }
