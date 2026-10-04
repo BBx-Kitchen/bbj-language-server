@@ -603,7 +603,42 @@ Plans:
   2. The user's verdict (supported or disabled) is recorded at a decision checkpoint, and the single formatting switch matches it. IntelliJ offers Reformat Code for BBj files only when the verdict is "supported".
   3. Only if "supported": all 15 formatter settings are on the IntelliJ BBj settings page, they reach the server through `initializationOptions`, and changing one restarts the language server so the next format reflects it. If "disabled": no formatter settings UI ships, and IJF-04 moves to Out of Scope in `.planning/REQUIREMENTS.md`.
 
-**Plans**: TBD
+**Plans**: 9 plans (06 and 07 run only on a "supported" verdict, 08 only on "disabled"; each opens with a guard on `129-VERDICT.md`)
+
+Plans:
+**Wave 1**
+
+- [ ] 129-01-PLAN.md — IntelliJ sends the interop host and port as `interopHost`/`interopPort` (folded todo), pinned by a cross-language contract test; todo closed (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 129-02-PLAN.md — `FormatterInitOptions` seam and 15 `BbjSettings.State` fields wired into `initializationOptions.formatter`, normalized, with a recorded revert set (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 129-03-PLAN.md — Both distributables, the evaluation zip (local switch flip, never committed), runIde under Xvfb with a driver spike; Reformat Code, selection and edit application from real logs; Windows checklist (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 129-04-PLAN.md — Actions on Save, numbered-file message, settings and CRLF from real logs, code-verified rows, flip restored; the user's Windows run (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 129-05-PLAN.md — Windows rows, classes against the blocker bar, LSP4IJ issue drafts, recommendation, the user's blocking verdict checkpoint, `129-VERDICT.md` (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 129-06-PLAN.md — Supported only: switch (and range constant) set to the verdict with its fence tests; `bbj/openFormatterSettings` opens the BBj settings page (wave 6)
+- [ ] 129-07-PLAN.md — Supported only: the Formatter section with the 15 controls, tooltips from package.json, stored on Apply before the debounced restart (wave 6)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 129-08-PLAN.md — Disabled only: seam reverted, switch kept off with a Javadoc naming the blockers, IJF-04 to Out of Scope, nothing new in the IDE (wave 7)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 129-09-PLAN.md — Final gate: both distributables from the final tree, zip switch checked against the verdict, whole suite, register/scope/redaction checks, requirements marked, hand-check list (wave 8)
+
 **UI hint**: yes
 
 ### Phase 130: Docs & Migration
@@ -670,7 +705,7 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
 | 127. VS Code Cut-Over | 6/6 | Planned |  |
 | 128. IntelliJ DENUM | 4/4 | In Progress |  |
-| 129. IntelliJ Verdict | 0/TBD | Not started | - |
+| 129. IntelliJ Verdict | 0/9 | Planned | - |
 | 130. Docs & Migration | 0/TBD | Not started | - |
 
 **Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
