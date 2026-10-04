@@ -64,9 +64,9 @@ stays switched off until the evaluation verdict.
 ### IntelliJ (IJF)
 
 - [x] **IJF-01**: IntelliJ does not offer LSP formatting until the evaluation verdict; the on/off decision is a single switch
-- [ ] **IJF-02**: IntelliJ formatting is evaluated on the built plugin zip against a live BBjServices (Reformat Code, selection, Actions on Save, numbered-file message, settings, CRLF, edit application), recorded from a real `idea.log`
-- [ ] **IJF-03**: The user decides from the evaluation whether IntelliJ formatting is officially supported or disabled, and the switch is set accordingly
-- [ ] **IJF-04**: If supported: all 15 formatter settings are on the IntelliJ BBj settings page and reach the server via `initializationOptions` (restart on change)
+- [x] **IJF-02**: IntelliJ formatting is evaluated on the built plugin zip against a live BBjServices (Reformat Code, selection, Actions on Save, numbered-file message, settings, CRLF, edit application), recorded from a real `idea.log`
+- [x] **IJF-03**: The user decides from the evaluation whether IntelliJ formatting is officially supported or disabled, and the switch is set accordingly
+- [x] **IJF-04**: If supported: all 15 formatter settings are on the IntelliJ BBj settings page and reach the server via `initializationOptions` (restart on change)
 - [x] **IJF-05**: IntelliJ has a "Denumber BBj Program" action (Tools and editor menus) backed by `bbj/denum`, applied as one undoable edit, with `ComposerRequestContractTest` updated
 - [x] **IJF-06**: IntelliJ shows an editor banner on line-numbered programs offering Denumber
 
@@ -132,9 +132,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CUT-02 | Phase 127 | Complete |
 | CUT-03 | Phase 127 | Complete |
 | IJF-01 | Phase 125 | Complete |
-| IJF-02 | Phase 129 | Pending |
-| IJF-03 | Phase 129 | Pending |
-| IJF-04 | Phase 129 | Pending (only on a "supported" verdict in Phase 129; Out of Scope on "disabled") |
+| IJF-02 | Phase 129 | Complete |
+| IJF-03 | Phase 129 | Complete |
+| IJF-04 | Phase 129 | Complete |
 | IJF-05 | Phase 128 | Complete |
 | IJF-06 | Phase 128 | Complete |
 | MIG-01 | Phase 130 | Pending |
@@ -150,4 +150,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-10-01*
-*Last updated: 2026-10-01 after roadmap creation (traceability filled, Phases 124-130)*
+*Last updated: 2026-10-04 after Phase 129 (IJF-02, IJF-03, IJF-04 complete on the "supported" verdict)*
