@@ -109,7 +109,14 @@ Hand-check outcome: pending.
 
 ## Deviations from Plan
 
-None - Tasks 1 and 2 executed as written, each automated command passed on its first run. The commit trailer follows the task prompt (`Claude Opus 5.5`).
+Tasks 1 and 2 executed as written, and each automated command passed on its first run. The commit trailer follows the task prompt (`Claude Opus 5.5`).
+
+**1. [Rule 1 - Bug, found in the Task 3 hand check, user-approved] Closing a DENUM balloon terminated the language server**
+- **Found during:** Task 3. Closing the plain "Denumbered." balloon in IntelliJ killed the LS (`ResponseError: The request (id: 7, method: 'window/showMessageRequest') has been cancelled`, code -32800, then Node exit).
+- **Cause:** every `window.show*Message` call is a `window/showMessageRequest` request, even without buttons. LSP4IJ cancels it when the balloon is closed (VS Code answers `null` instead, so VS Code never showed it). The fire-and-forget helpers dropped the promise; their `try/catch` only covered synchronous throws, so the rejection went unhandled.
+- **Fix:** `acb1912a`. The rejection is handled at all five fire-and-forget sites: `showInformation`, `showFormatterWarning` and `notifyJavaConnectionError` in `bbj-notifications.ts`, and the success and failure messages in `java-class-refresh.ts`. Four regression tests (`notifications.test.ts`, `java-class-refresh.test.ts`) use plain-function cancelling mocks, because a `vi.fn` mock subscribes to its returned promise and hides the defect. They are red on the old source (4 failed) and green on the fix.
+- **Scope gate:** this deliberately breaks Task 2's "nothing outside bbj-intellij/ and .planning/" check. The user asked for the fix inside this phase so it finishes clean; the only paths outside are those two source files and two test files under `bbj-vscode/`.
+- **Re-verified on the final tree:** lint and typecheck:test are clean. Whole vitest suite: 4464 tests, 0 failed; the only failing suite is the known baseline `installed-extension-e2e`. The LS, the VSIX (`bbj-ext-install`) and the plugin zip were rebuilt (`bbj-intellij-0.1.0.zip`, 1038423 bytes), and the zip's `main.cjs` is byte-identical to the fresh build.
 
 ## Issues Encountered
 
