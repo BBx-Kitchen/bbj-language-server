@@ -162,6 +162,18 @@ class BbjDenumberActionSourceGuardTest {
     }
 
     @Test
+    void aCancelledRequestIsReportedAsATransportFailureNotLeftToEscape() {
+        String text = withoutCommentLines(readSource(ACTION_SOURCE));
+
+        assertEquals(1, countOccurrences(text, "catch (CancellationException ex)"),
+                "a request cancelled by a server stop or restart must be caught");
+        assertTrue(text.indexOf("catch (CancellationException ex)") > text.indexOf("Task.Backgroundable"),
+                "the catch must sit inside the background task");
+        assertTrue(text.contains("import java.util.concurrent.CancellationException;"),
+                "the unchecked exception must be the java.util.concurrent one");
+    }
+
+    @Test
     void theClientNeverSavesTheFileOrReadsTheResult() {
         String text = withoutCommentLines(readSource(ACTION_SOURCE));
 

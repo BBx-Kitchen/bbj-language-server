@@ -97,6 +97,19 @@ class BbjCompileActionSourceGuardTest {
     }
 
     @Test
+    void aCancelledRequestOrServerLookupIsReportedAsAFailureNotLeftToEscape() {
+        String text = withoutCommentLines(readSource(COMPILE_ACTION_SOURCE));
+
+        assertTrue(text.contains("import java.util.concurrent.CancellationException;"),
+                "the unchecked exception must be the java.util.concurrent one");
+        assertEquals(2, countOccurrences(text,
+                        "catch (InterruptedException | ExecutionException | TimeoutException | CancellationException ex)"),
+                "both the server lookup and the compile request must catch a cancellation");
+        assertEquals(0, countOccurrences(text, "catch (InterruptedException | ExecutionException | TimeoutException ex)"),
+                "no wait may be left that lets a cancellation escape");
+    }
+
+    @Test
     void theDocumentIsSavedBeforeTheBackgroundTaskIsQueued() {
         String text = readSource(COMPILE_ACTION_SOURCE);
 

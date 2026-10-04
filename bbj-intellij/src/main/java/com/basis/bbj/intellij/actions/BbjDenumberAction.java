@@ -23,6 +23,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -120,6 +121,9 @@ public final class BbjDenumberAction extends AnAction implements DumbAware {
                     failed(project, "interrupted");
                 } catch (ExecutionException ex) {
                     failed(project, detailOf(ex));
+                } catch (CancellationException ex) {
+                    // LSP4IJ cancels its pending requests when the server stops or restarts.
+                    failed(project, "the BBj language server was stopped or restarted");
                 }
             }
         }.queue();
