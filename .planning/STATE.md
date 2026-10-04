@@ -5,16 +5,16 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 129
 current_phase_name: IntelliJ Verdict
 status: executing
-stopped_at: Completed 129-03-PLAN.md
-last_updated: "2026-10-04T08:34:28.864Z"
+stopped_at: Completed 129-04-PLAN.md
+last_updated: "2026-10-04T14:57:03.757Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 129 execution started
-state_head: e97175b5dda31781724f5c329abc29be7fb01bf8
+state_head: 91429723a28d4d3af7af612fd1a4060b5ac80ed0
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 38
-  completed_plans: 32
+  completed_plans: 33
   percent: 71
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 129 (IntelliJ Verdict) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 129 execution started
 
@@ -234,6 +234,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 129 P01 | 6 min | 2 tasks | 4 files |
 | Phase 129 P02 | 12min | 2 tasks | 6 files |
 | Phase 129 P03 | 20 min | 3 tasks | 2 files |
+| Phase 129 P04 | 30min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -420,6 +421,8 @@ decisions:
 - [Phase 129]: 129-01: interop wire keys renamed on the IntelliJ side only (interopHost/interopPort); no server-side shim, BbjSettings.State field names unchanged
 - [Phase 129]: 129-02: formatter State fields are formatter+Key; out-of-range indentWidth resets to 2, choices match exactly after trim else default; normalization lives in the seam
 - [Phase 129]: 129-03: Linux evaluation driven by the performanceTesting script plugin under Xvfb with a node wrapper for wire capture; runIde sandbox folders are suffixed _runIde, runIde needs network, every case uses a fresh corpus file name plus Synchronize
+- [Phase 129]: Phase 129-04: Actions on Save reaches the server on IntelliJ 2024.2 in both modes (formatting / rangeFormatting); eolCharacter CRLF is rejected by the IDE (known issue, sub-question for the user); KEEP and LF format CRLF files correctly
+- [Phase 129]: Phase 129-04: Windows run returned on IntelliJ 2026.2.2 (#IU-262.10315.125) with LSP4IJ 0.21.0; zip sha256 not verified by the user, switch-on build shown by formatting requests on the wire
 
 ### Tech Debt
 
@@ -488,8 +491,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-04T08:34:28.649Z
-Stopped at: Completed 129-03-PLAN.md
+Last session: 2026-10-04T14:57:03.521Z
+Stopped at: Completed 129-04-PLAN.md
 Resume file: None
 
 Next: plan phase 129 (`/gsd-discuss-phase 129` or `/gsd-plan-phase 129`). Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
