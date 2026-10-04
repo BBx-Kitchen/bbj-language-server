@@ -107,13 +107,14 @@ public final class FormatterInitOptions {
     }
 
     /**
-     * Reads the 15 persisted {@code formatter*} fields into a {@link Values}.
+     * Reads the 15 persisted {@code formatter*} fields into a {@link Values}, normalised so a
+     * hand-edited settings file can never yield a value the server rejects.
      *
      * @param state the persisted settings state
-     * @return the values as stored
+     * @return the normalised values
      */
     public static Values fromState(BbjSettings.State state) {
-        return new Values(
+        return normalize(new Values(
                 state.formatterIndentWidth,
                 state.formatterIndentCharacter,
                 state.formatterKeywordsToUppercase,
@@ -128,18 +129,90 @@ public final class FormatterInitOptions {
                 state.formatterParameterLayout,
                 state.formatterOperatorSpacing,
                 state.formatterIndentLabelBlocks,
-                state.formatterBlankLineAfterReturn);
+                state.formatterBlankLineAfterReturn));
+    }
+
+    /**
+     * Normalises a raw, possibly persisted or hand-edited indent width for transmission to the
+     * language server.
+     * <p>
+     * Returns the value unchanged when it lies within {@link #INDENT_WIDTH_MIN} to
+     * {@link #INDENT_WIDTH_MAX} inclusive, which is the range bbj-ls and the VS Code schema accept;
+     * anything else is reset to {@link #INDENT_WIDTH_DEFAULT} rather than clamped, so a corrupt
+     * value falls back to the documented default instead of silently becoming an edge value.
+     *
+     * @param raw the raw field value
+     * @return a width within the allowed range
+     */
+    public static int normalizeIndentWidth(int raw) {
+        if (raw >= INDENT_WIDTH_MIN && raw <= INDENT_WIDTH_MAX) {
+            return raw;
+        }
+        return INDENT_WIDTH_DEFAULT;
+    }
+
+    /**
+     * Normalises a raw, possibly persisted or hand-edited choice value for transmission to the
+     * language server.
+     * <p>
+     * Trims the input, then returns it unchanged when it is exactly one of the allowed values.
+     * Anything else -- {@code null}, blank, a wrong-case spelling or an unknown value -- normalises to
+     * the first allowed value, which is the setting's default. The match is exact and
+     * case-sensitive on purpose: bbj-ls accepts only the listed values and rejects anything else
+     * with -33007, so guessing at a near miss would trade a harmless default for a failing format
+     * request.
+     *
+     * @param raw     the raw field value, or {@code null}
+     * @param allowed the allowed values, default first
+     * @return one of the allowed values
+     */
+    public static String normalizeChoice(String raw, List<String> allowed) {
+        if (raw != null) {
+            String trimmed = raw.trim();
+            if (allowed.contains(trimmed)) {
+                return trimmed;
+            }
+        }
+        return allowed.get(0);
+    }
+
+    /**
+     * Applies {@link #normalizeIndentWidth(int)} and {@link #normalizeChoice(String, List)} to every
+     * field; the eight flags need no normalisation. Idempotent.
+     *
+     * @param raw the values to normalise
+     * @return values the server accepts
+     */
+    public static Values normalize(Values raw) {
+        return new Values(
+                normalizeIndentWidth(raw.indentWidth()),
+                normalizeChoice(raw.indentCharacter(), INDENT_CHARACTER_VALUES),
+                raw.keywordsToUppercase(),
+                raw.removeLineContinuation(),
+                raw.splitSingleLineIf(),
+                raw.splitInlineComments(),
+                raw.splitInlineLabelComment(),
+                raw.collapseMultiLine(),
+                normalizeChoice(raw.eolCharacter(), EOL_CHARACTER_VALUES),
+                normalizeChoice(raw.ifClosingKeyword(), IF_CLOSING_KEYWORD_VALUES),
+                normalizeChoice(raw.ifKeywordCase(), IF_KEYWORD_CASE_VALUES),
+                normalizeChoice(raw.parameterLayout(), PARAMETER_LAYOUT_VALUES),
+                normalizeChoice(raw.operatorSpacing(), OPERATOR_SPACING_VALUES),
+                raw.indentLabelBlocks(),
+                raw.blankLineAfterReturn());
     }
 
     /**
      * Builds the {@code formatter} object for the initialization options: exactly the 15
      * {@link #KEYS} in order, the indent width as a JSON number, the eight flags as JSON booleans
-     * and the six choices as JSON strings.
+     * and the six choices as JSON strings. The values are normalised first, so the result never
+     * holds a JSON null whatever it is given.
      *
-     * @param values the values to send
+     * @param raw the values to send
      * @return the JSON object
      */
-    public static JsonObject toJson(Values values) {
+    public static JsonObject toJson(Values raw) {
+        Values values = normalize(raw);
         JsonObject json = new JsonObject();
         json.addProperty("indentWidth", values.indentWidth());
         json.addProperty("indentCharacter", values.indentCharacter());
