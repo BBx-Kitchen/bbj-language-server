@@ -119,6 +119,29 @@ No language-server, extension or plugin behaviour changes.
   change a formatter setting (e.g. `indentWidth` 4), format, and the output follows without a restart.
   An old `splitSingleLineIF` value in settings.json moves to `splitSingleLineIf` on activation.
 
+### Research amendments (2026-10-04, applied by the orchestrator in auto mode; see 130-RESEARCH.md §E5)
+- **D-18:** **The migration note uses the verified old-jar behaviour, not the FEATURES.md framing.**
+  - IF closers: the old CLI jar kept existing `endif`/`ENDIF`/`fi`. The real differences are: a closer
+    added when a single-line IF is split is now `FI` (it was `ENDIF`), a closer followed by `; rem` is
+    now recognised, and `ifClosingKeyword`/`ifKeywordCase` are new.
+  - `indentWidth` stays 2. It is not a change, but the range is now checked (0-16).
+  - The output-difference table is for VS Code users. IntelliJ users get formatting for the first
+    time, so the note says so.
+  - The IntelliJ Denumber action is greyed out on files that are not line-numbered, and the IntelliJ QA
+    rows expect that.
+- **D-19:** **Cite the `--single-line-if` crash neutrally as "tracked under #507"**, with no closing
+  keyword anywhere. On GitHub, #507 is titled as the jar-provenance issue.
+- **D-20:** **Two small extra edits so nothing contradicts the new guides:**
+  - Root `README.md` (~line 91): stop saying formatting and Denumber are VS Code-only.
+  - `documentation/docs/intellij/configuration.md`: add a short `## Formatter` section after BBj
+    Compiler that points to `formatting.md`.
+  - The JetBrains Marketplace `description.html` is not touched.
+- **D-21:** **`formatting.md` uses `sidebar_position: 7` in both guides** (no renumbering). Add a
+  Formatting row to each `index.md` Quick Links table.
+- **D-22:** **Evidence file.** The before/after inputs, the commands and the raw old/new outputs are
+  saved as `.planning/phases/130-docs-migration/130-FORMAT-EVIDENCE.md`. Each snippet in the release
+  notes is copied unedited from it.
+
 ### Claude's Discretion
 - Exact prose, table layout, sidebar positions of the new `formatting.md` pages, and the
   `changeNotes` wording.
