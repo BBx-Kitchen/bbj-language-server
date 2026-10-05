@@ -1,5 +1,6 @@
 package com.basis.bbj.intellij.tokenized;
 
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,6 +20,8 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /**
  * Detection of tokenized (compiled, binary) BBj programs. A tokenized program starts with the
@@ -29,6 +32,9 @@ public final class TokenizedBbj {
 
     /** The ASCII text {@code <<bbj>>} that opens every tokenized BBj program. */
     static final byte[] MAGIC = {0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e};
+
+    /** Per file: {@code {modificationStamp, 1 if tokenized else 0}}, see {@link #isTokenized}. */
+    private static final Key<long[]> VERDICT = Key.create("bbj.tokenized.verdict");
 
     /** What {@link #probe} found at a path. */
     public enum Kind {
@@ -135,6 +141,42 @@ public final class TokenizedBbj {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /**
+     * Whether {@code file} is a tokenized program, cheap enough to ask on every connect decision:
+     * the verdict is kept on the file and reused while its modification stamp is unchanged, so the
+     * seven-byte read happens once per content. Never throws; a failure counts as not tokenized
+     * and is not remembered.
+     */
+    public static boolean isTokenized(@NotNull VirtualFile file) {
+        try {
+            return cachedVerdict(file.getUserData(VERDICT), file.getModificationStamp(),
+                    () -> readsTokenized(file), verdict -> file.putUserData(VERDICT, verdict));
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The caching rule behind {@link #isTokenized}: {@code stored} is {@code {stamp, verdict}} (1
+     * for tokenized) or {@code null}. A matching stamp answers from the store; otherwise the
+     * verdict is computed once and stored with {@code stamp}. A compute that throws answers false
+     * and stores nothing.
+     */
+    static boolean cachedVerdict(long @Nullable [] stored, long stamp, @NotNull BooleanSupplier compute,
+                                 @NotNull Consumer<long[]> store) {
+        if (stored != null && stored.length == 2 && stored[0] == stamp) {
+            return stored[1] == 1L;
+        }
+        boolean verdict;
+        try {
+            verdict = compute.getAsBoolean();
+        } catch (RuntimeException e) {
+            return false;
+        }
+        store.accept(new long[] {stamp, verdict ? 1L : 0L});
+        return verdict;
     }
 
     /** A non-empty cause for an I/O failure, without leaking the bare path the JDK puts in some messages. */

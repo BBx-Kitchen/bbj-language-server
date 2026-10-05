@@ -123,6 +123,17 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
+    void createClientFeaturesKeepsTokenizedFilesAwayFromTheServerWithOneIsEnabledOverride() {
+        String text = readGuardedSource(FACTORY_SOURCE);
+        String body = bodyOf(text, "public @NotNull LSPClientFeatures createClientFeatures()");
+
+        assertEquals(1, countOccurrences(body, "public boolean isEnabled(@NotNull VirtualFile file)"),
+            "createClientFeatures()'s anonymous LSPClientFeatures must override isEnabled(VirtualFile) exactly once");
+        assertEquals(1, countOccurrences(body, "super.isEnabled(file) && !TokenizedBbj.isTokenized(file)"),
+            "the isEnabled(VirtualFile) override must defer to super and then refuse a tokenized file");
+    }
+
+    @Test
     void theLspFormattingSwitchIsOneConstantSetToTrueThatGatesAllFourFormattingChecks() {
         String text = readGuardedSource(FACTORY_SOURCE);
 

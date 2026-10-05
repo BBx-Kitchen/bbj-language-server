@@ -2,10 +2,12 @@ package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.composer.BbjComposerServer;
+import com.basis.bbj.intellij.tokenized.TokenizedBbj;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.LanguageServerFactory;
 import com.redhat.devtools.lsp4ij.ServerStatus;
@@ -91,6 +93,15 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.add(FormatterInitOptions.FORMATTER_KEY,
                     FormatterInitOptions.toJson(FormatterInitOptions.fromState(state)));
                 params.setInitializationOptions(options);
+            }
+
+            // A tokenized program is offered decompile by the editor banner and is never sent to
+            // the server (the server also ignores one). Declining the file here means no didOpen
+            // is sent and the server never parses a large binary. After Decompile & Replace the
+            // editor is reopened, the file is source, and it is connected as usual.
+            @Override
+            public boolean isEnabled(@NotNull VirtualFile file) {
+                return super.isEnabled(file) && !TokenizedBbj.isTokenized(file);
             }
 
             // This is the status-feed site: LSP4IJ calls the client features for every status

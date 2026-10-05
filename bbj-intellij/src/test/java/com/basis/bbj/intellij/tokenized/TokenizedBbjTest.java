@@ -9,8 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -140,6 +144,63 @@ class TokenizedBbjTest {
         assertEquals("Could not read \"a.bbj\": permission denied",
                 TokenizedBbj.refusal(
                         new TokenizedBbj.Probe(TokenizedBbj.Kind.UNREADABLE, null, "permission denied"), "a.bbj"));
+    }
+
+    @Test
+    void aVerdictStoredForTheSameStampIsReturnedWithoutComputingAgain() {
+        AtomicInteger computed = new AtomicInteger();
+        List<long[]> stored = new ArrayList<>();
+
+        assertTrue(TokenizedBbj.cachedVerdict(new long[] {42L, 1L}, 42L, () -> {
+            computed.incrementAndGet();
+            return false;
+        }, stored::add));
+        assertFalse(TokenizedBbj.cachedVerdict(new long[] {42L, 0L}, 42L, () -> {
+            computed.incrementAndGet();
+            return true;
+        }, stored::add));
+
+        assertEquals(0, computed.get());
+        assertTrue(stored.isEmpty());
+    }
+
+    @Test
+    void aNewStampComputesOnceAndStoresTheNewPair() {
+        AtomicInteger computed = new AtomicInteger();
+        List<long[]> stored = new ArrayList<>();
+
+        boolean verdict = TokenizedBbj.cachedVerdict(new long[] {41L, 0L}, 42L, () -> {
+            computed.incrementAndGet();
+            return true;
+        }, stored::add);
+
+        assertTrue(verdict);
+        assertEquals(1, computed.get());
+        assertEquals(1, stored.size());
+        assertArrayEquals(new long[] {42L, 1L}, stored.get(0));
+    }
+
+    @Test
+    void nothingStoredYetComputesAndStoresTheVerdict() {
+        List<long[]> stored = new ArrayList<>();
+
+        boolean verdict = TokenizedBbj.cachedVerdict(null, 7L, () -> false, stored::add);
+
+        assertFalse(verdict);
+        assertEquals(1, stored.size());
+        assertArrayEquals(new long[] {7L, 0L}, stored.get(0));
+    }
+
+    @Test
+    void aComputeThatThrowsYieldsFalseAndStoresNothing() {
+        List<long[]> stored = new ArrayList<>();
+
+        boolean verdict = TokenizedBbj.cachedVerdict(null, 7L, () -> {
+            throw new IllegalStateException("boom");
+        }, stored::add);
+
+        assertFalse(verdict);
+        assertTrue(stored.isEmpty());
     }
 
     private static Path linkOrSkip(Path link, Path target) throws IOException {
