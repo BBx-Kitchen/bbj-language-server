@@ -545,6 +545,59 @@
 - Sessions: a few, all on 2026-09-30
 - Notable: 45 commits, 20 files outside `.planning/`, one day
 
+## Milestone: v4.9 — bbj-ls DENUM & Format Migration
+
+**Shipped:** 2026-10-05
+**Phases:** 8 | **Plans:** 53
+
+### What Was Built
+- A dedicated interop lane for bbj-ls `formatProgram` / `denumProgram` with a strict answer guard,
+  typed outcomes for every bbj-ls error code, per-method latching and a 15 s cancel-always backstop.
+- Server-side formatting (document, selection, on save) in both IDEs with 15 normalized settings,
+  replacing the 2021 formatter jar, its Java resolver and `bbj.formatter.javaPath`.
+- `bbj/denum` for both IDEs: one undoable versioned edit, diagnostics in Problems or the IntelliJ
+  console, and a Denumber offer when formatting a numbered program.
+- IntelliJ: Denumber action and banner, and LSP formatting switched on after a hands-on evaluation.
+- Tokenized programs (130.1): one hardened detection rule, in-place decompile fixed in VS Code and
+  added to IntelliJ, no diagnostic noise for tokenized or line-numbered programs, lazy server start.
+- Formatting pages in both guides, a release-notes draft built from real output, and QA rows.
+
+### What Worked
+- Putting the interop client first, with a real-socket proof and a scriptable double, let every
+  later phase test against typed outcomes without a live BBj.
+- Hand checks in both IDEs from the built distributables found what unit tests could not: the
+  in-place decompile failure (127 step 15), the per-version offer dedupe silencing repeats (126
+  round 1), and four 130.1 findings (lazy start, Explorer entries, `-l`, placeholder tab).
+- A recorded evidence file (`130-FORMAT-EVIDENCE.md`) kept the release notes honest: it disproved
+  the research's assumption that the old jar normalized IF closers.
+- Inserting a tech-debt phase (130.1) after the first audit, instead of closing with open review
+  warnings, cleared every high-priority item before the release.
+
+### What Was Inefficient
+- Phase 127's four review warnings never got a fix pass and waited for 130.1.
+- The 127 decision to keep bbjlst `-l` was reversed in 130.1 after the hand check showed it leaves
+  `GOSUB 0100` dangling; testing against the real bbjlst earlier would have caught it.
+- The milestone was audited three times (before 130.1, a re-audit, after 130.1).
+
+### Patterns Established
+- New external RPC methods get their own lazily opened connection when they can block, so they
+  never contend with the live parse or the circuit breaker.
+- Cross-IDE wire names are pinned by IntelliJ contract tests that read the TypeScript literals.
+- Decompile and other external-tool flows are tested against the real tool (`decompile-real-bbjlst`),
+  not only against argv builders.
+- A user verdict can override a recommendation (129: `supported` over `disabled`); record the known
+  issue (CRLF, LSP4IJ #381) on the settings page instead of blocking.
+
+### Key Lessons
+- Run external tools for real before deciding their flags; argv-only tests hid the `-l` naming bug.
+- Release notes must quote recorded output, not research summaries.
+- A failed lazy start must reject, or every later command hits a dead client (130.1 WR-01).
+
+### Cost Observations
+- Model mix: opus orchestration and executors; haiku integration checker; sonnet/opus verifiers and reviewers
+- Sessions: many over five days (2026-10-01 → 2026-10-05)
+- Notable: 405 commits, 168 files in source, tests and docs (+24,073 / −2,725)
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -560,6 +613,7 @@
 | v4.6 | n/a | 4 | Lean user-facing bug burn-down; measure-first plans; crash detection redone on real-log evidence; milestone audit run (no gaps) |
 | v4.7 | n/a | 13 | Audit backlog burn-down in one milestone PR; permanent CI hygiene gates; Dependabot roll-up; milestone audit run (no gaps, `tech_debt`) |
 | v4.8 | n/a | 1 | Docs-only drift fix from a file:line drift scan; script-diffed settings against `package.json`; milestone audit run (no gaps, `tech_debt`) |
+| v4.9 | n/a | 8 | Feature migration onto an external RPC (bbj-ls); dedicated interop lane; a tech-debt phase inserted after the first audit; three audit passes (no gaps, `tech_debt`) |
 
 ### Cumulative Quality
 
@@ -573,6 +627,7 @@
 | v4.6 | 2,854 vitest (whole suite at 109-08) + IntelliJ suite green | not measured at close | 0 new runtime dependencies |
 | v4.7 | 3,715 vitest (0 failed) + 1,160 JUnit | not measured at close | 0 new runtime dependencies (Guava 33.7.1, vsce moved to dev) |
 | v4.8 | unchanged (docs only) | not measured at close | 0 new runtime dependencies |
+| v4.9 | 4,659 vitest (0 failed) + 1,367 JUnit | not measured at close | 0 new runtime dependencies (formatter jar removed) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -591,3 +646,5 @@
    confirmed the converse: the same feature built on a real `idea.log` passed first time.
 7. Judge by per-item diffs, not totals — v4.5's conformance totals hid validator A2 hits
    unmasked by parser fixes and a lexer token that swallowed its terminator.
+8. Test against the real external tool, not only its argv — v4.9's bbjlst `-l` naming bug
+   survived two phases of argv tests and failed in the first hand check.
