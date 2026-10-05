@@ -17,10 +17,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Source-guard fence for the consolidated editor notification providers (#622). The shared
  * resolved-file-type guard now lives in {@link BbjNotificationProviderBase} and is pinned there,
  * inside its extracted {@code collectNotificationData} method body rather than merely somewhere
- * in the file. Each of the five subclasses keeps a delegation pin -- exactly one {@code extends
+ * in the file. Each of the six subclasses keeps a delegation pin -- exactly one {@code extends
  * BbjNotificationProviderBase} and zero declarations of {@code collectNotificationData} -- and the
  * negative assertion against re-deriving visibility from a file extension sweeps the base and all
- * five subclasses at full breadth. This is the guard that makes the fixed crash-banner guard
+ * six subclasses at full breadth. This is the guard that makes the fixed crash-banner guard
  * permanent.
  */
 class BbjNotificationProviderBaseSourceGuardTest {
@@ -43,6 +43,9 @@ class BbjNotificationProviderBaseSourceGuardTest {
             .toAbsolutePath();
     private static final Path LINE_NUMBERED_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "BbjLineNumberedNotificationProvider.java")
+            .toAbsolutePath();
+    private static final Path TOKENIZED_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "BbjTokenizedNotificationProvider.java")
             .toAbsolutePath();
 
     private static String readSource(Path path) {
@@ -98,6 +101,8 @@ class BbjNotificationProviderBaseSourceGuardTest {
                 return SERVER_CRASH_SOURCE;
             case "BbjLineNumberedNotificationProvider":
                 return LINE_NUMBERED_SOURCE;
+            case "BbjTokenizedNotificationProvider":
+                return TOKENIZED_SOURCE;
             case "BbjNotificationProviderBase":
                 return BASE_SOURCE;
             default:
@@ -121,7 +126,8 @@ class BbjNotificationProviderBaseSourceGuardTest {
             "BbjMissingNodeNotificationProvider",
             "BbjJavaInteropNotificationProvider",
             "BbjServerCrashNotificationProvider",
-            "BbjLineNumberedNotificationProvider"
+            "BbjLineNumberedNotificationProvider",
+            "BbjTokenizedNotificationProvider"
     })
     void subclassCarriesADelegationPinAndDeclaresNoOwnCollectNotificationData(String simpleName) {
         String text = readSource(sourceFor(simpleName));
@@ -138,7 +144,8 @@ class BbjNotificationProviderBaseSourceGuardTest {
             "BbjMissingNodeNotificationProvider",
             "BbjJavaInteropNotificationProvider",
             "BbjServerCrashNotificationProvider",
-            "BbjLineNumberedNotificationProvider"
+            "BbjLineNumberedNotificationProvider",
+            "BbjTokenizedNotificationProvider"
     })
     void providerSourceNeverReDerivesVisibilityByExtension(String simpleName) {
         String text = readSource(sourceFor(simpleName));

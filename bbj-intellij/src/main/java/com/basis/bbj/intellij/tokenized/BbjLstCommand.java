@@ -28,6 +28,8 @@ import java.util.stream.Stream;
  */
 public final class BbjLstCommand {
 
+    /** Name prefix of the private directory each decompile run gets. */
+    private static final String PRIVATE_DIR_PREFIX = "bbj-decompiled-";
     /** How long a listing that never appears is waited for after {@code bbjlst} has returned. */
     private static final long APPEAR_GRACE_MILLIS = 3_000;
     /** How long a listing that keeps growing is waited for before it is judged as it stands. */
@@ -113,8 +115,8 @@ public final class BbjLstCommand {
         Path dir;
         try {
             dir = tempParent == null
-                    ? Files.createTempDirectory("bbj-decompiled-")
-                    : Files.createTempDirectory(tempParent, "bbj-decompiled-");
+                    ? Files.createTempDirectory(PRIVATE_DIR_PREFIX)
+                    : Files.createTempDirectory(tempParent, PRIVATE_DIR_PREFIX);
         } catch (IOException e) {
             throw new DecompileException("Could not create a private directory for the listing: "
                     + TokenizedBbj.describe(e));

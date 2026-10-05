@@ -14,20 +14,20 @@ import javax.swing.*;
 import java.util.function.Function;
 
 /**
- * Shared base for the five registered editor notification providers (#622). Owns the one
+ * Shared base for the six registered editor notification providers (#622). Owns the one
  * resolved-file-type visibility guard -- {@link BbjFileVisibility#isBbjProgramFileTypeName} --
  * and the {@code fileEditor}-arg panel construction, so "is this a BBj program file" has exactly
  * one definition in the tree and every banner is built the same way. This class is placed in
  * {@code com.basis.bbj.intellij} rather than {@code ui}, deliberately: it is a cross-package
- * caller of {@link BbjFileVisibility}, and four of the five subclasses already live in this
+ * caller of {@link BbjFileVisibility}, and five of the six subclasses already live in this
  * package, so no provider has to move.
  *
  * <p>{@link #collectNotificationData} is the base's one {@code final} sequencing point, mirroring
  * {@code BbjStatusBarWidgetBase}'s single {@code updateStatus} delegation: it runs the shared
  * guard and, once it passes, delegates to {@link #buildPanel}. {@code Status} is deliberately
  * NOT a field on this base -- each subclass supplies it at its own panel-construction call site,
- * so the crash banner keeps {@code Error}, the line-numbered banner uses {@code Info} and the
- * other three keep {@code Warning}. Action
+ * so the crash banner keeps {@code Error}, the line-numbered and tokenized banners use
+ * {@code Info} and the other three keep {@code Warning}. Action
  * labels are likewise per-provider and never hoisted here.
  *
  * <p>Every provider becomes {@link DumbAware} through this base, so banners now render during
