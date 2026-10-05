@@ -35,9 +35,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)) — EXECUTING
-Plan: 2 of 10
-Status: Ready to execute
-Last activity: 2026-10-05 — Phase 130.1 execution started
+Plan: 10 of 10 (130.1-01..09 complete; 130.1-10 is wave 5)
+Status: Wave 4 complete — ready for wave 5
+Last activity: 2026-10-05 — Phase 130.1 wave 4 (plan 09, guides + QA) complete
 
 Progress: [██████████] 100% (v4.9: 7/7 phases)
 
