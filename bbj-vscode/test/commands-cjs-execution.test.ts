@@ -580,6 +580,114 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         expect(fs.readFileSync(inputPath, 'utf-8')).toBe(PLAIN_NUMBERED_PROGRAM);
     });
 
+    describe('a file the probe cannot call tokenized names its real cause', () => {
+        const COMMANDS = ['decompileReplace', 'decompileReadonly'] as const;
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        async function run(command: typeof COMMANDS[number], target: string): Promise<void> {
+            const { Commands } = loadCommands();
+            Commands[command]({ fsPath: target });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+        }
+
+        function expectNothingStarted(): void {
+            expect(fakeProcessRunner.runProcess).not.toHaveBeenCalled();
+            expect(decompileTempDirs()).toEqual([]);
+            expect(fakeVscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        }
+
+        test.each(COMMANDS)('%s on a file that fails to open shows one error with the cause, not "not a tokenized BBj program"', async (command) => {
+            const inputPath = path.join(tmpDir, 'busy.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeBbjlstWrites('must never be written\n');
+            vi.spyOn(fs.promises, 'open').mockRejectedValueOnce(Object.assign(new Error('resource busy or locked'), { code: 'EBUSY' }));
+
+            await run(command, inputPath);
+
+            expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+            const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];
+            expect(message).toBe('Could not read "busy.bbj": resource busy or locked');
+            expect(fakeVscode.window.showWarningMessage).not.toHaveBeenCalled();
+            expectNothingStarted();
+        });
+
+        test.skipIf(process.platform === 'win32' || process.getuid?.() === 0).each(COMMANDS)(
+            '%s on a file without read permission shows one error that contains EACCES',
+            async (command) => {
+                const inputPath = path.join(tmpDir, 'locked.bbj');
+                fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+                fs.chmodSync(inputPath, 0o000);
+
+                await run(command, inputPath);
+
+                expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+                expect(fakeVscode.window.showErrorMessage.mock.calls[0][0]).toContain('EACCES');
+                expect(fakeVscode.window.showWarningMessage).not.toHaveBeenCalled();
+                expectNothingStarted();
+            }
+        );
+
+        test.each(COMMANDS)('%s on a missing file warns that it was not found', async (command) => {
+            await run(command, path.join(tmpDir, 'gone.bbj'));
+
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledWith(
+                '"gone.bbj" was not found, so there is nothing to decompile.'
+            );
+            expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+            expectNothingStarted();
+        });
+
+        test.each(COMMANDS)('%s on a directory warns that it is not a regular file', async (command) => {
+            const dirPath = path.join(tmpDir, 'a-folder.bbj');
+            fs.mkdirSync(dirPath);
+
+            await run(command, dirPath);
+
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledWith(
+                '"a-folder.bbj" is not a regular file, so there is nothing to decompile.'
+            );
+            expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+            expectNothingStarted();
+        });
+
+        test.each(COMMANDS)('%s on plain text keeps the not-tokenized warning', async (command) => {
+            const inputPath = path.join(tmpDir, 'plain.bbj');
+            fs.writeFileSync(inputPath, PLAIN_NUMBERED_PROGRAM);
+
+            await run(command, inputPath);
+
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+            expect(fakeVscode.window.showWarningMessage).toHaveBeenCalledWith(
+                '"plain.bbj" is not a tokenized BBj program, so there is nothing to decompile.'
+            );
+            expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+            expectNothingStarted();
+        });
+    });
+
+    test('decompileReplace on a symlinked tokenized program hands bbjlst the target, rewrites the target and keeps the link', async () => {
+        const { Commands } = loadCommands();
+        const target = path.join(tmpDir, 'target.bbj');
+        const link = path.join(tmpDir, 'link.bbj');
+        fs.writeFileSync(target, TOKENIZED_PROGRAM);
+        fs.symlinkSync(target, link);
+        fakeBbjlstWrites('decompiled content\n');
+
+        Commands.decompileReplace({ fsPath: link });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeProcessRunner.runProcess.mock.calls[0][0].args.at(-1)).toBe(fs.realpathSync(target));
+        expect(fs.readFileSync(target, 'utf-8')).toBe('decompiled content\n');
+        expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        expect((uri as { fsPath?: string } | undefined)?.fsPath).toBe(link);
+    });
+
     test('a decompile whose runProcess rejects shows an error starting "Failed to decompile"', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'd.bbj');

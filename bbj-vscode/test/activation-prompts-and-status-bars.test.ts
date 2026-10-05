@@ -284,6 +284,70 @@ describe('the tokenized-file open prompt', () => {
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
     });
 
+    function channelLines(): string[] {
+        const channels = (vscode.window.createOutputChannel as ReturnType<typeof vi.fn>).mock.results
+            .map((result) => result.value as { appendLine: ReturnType<typeof vi.fn> });
+        return channels.flatMap((channel) => channel.appendLine.mock.calls.map(([line]) => String(line)));
+    }
+
+    test('an unreadable file raises no popup, logs one channel line, and is probed again on a later tab event', async () => {
+        const filePath = path.join(tmpDir, 'tokenized-unreadable.bbj');
+        fs.writeFileSync(filePath, Buffer.concat([Buffer.from('<<bbj>>'), Buffer.from('payload')]));
+        const resolved = fs.realpathSync(filePath);
+        const uri = new UriCtor('file', filePath);
+        const tab = { input: { uri } };
+        hostState.tabsAll = [{ tabs: [tab] }];
+        const realOpen = fs.promises.open.bind(fs.promises);
+        const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(((target: fs.PathLike, ...rest: unknown[]) => {
+            if (target === resolved) {
+                return Promise.reject(Object.assign(new Error('resource busy or locked'), { code: 'EBUSY' }));
+            }
+            return (realOpen as (...args: unknown[]) => Promise<fs.promises.FileHandle>)(target, ...rest);
+        }) as typeof fs.promises.open);
+        try {
+            activateFresh();
+
+            await vi.waitFor(() => {
+                expect(channelLines().filter((line) => line.startsWith('Could not check whether "'))).toEqual([
+                    'Could not check whether "tokenized-unreadable.bbj" is a tokenized BBj program: resource busy or locked',
+                ]);
+            });
+            expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+            expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+        } finally {
+            openSpy.mockRestore();
+        }
+
+        tabsListeners[0]({ opened: [tab] });
+
+        await vi.waitFor(() => {
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    test('a symlink to a tokenized program is offered, and Decompile & Replace receives the link uri', async () => {
+        const target = path.join(tmpDir, 'tokenized-link-target.bbj');
+        fs.writeFileSync(target, Buffer.concat([Buffer.from('<<bbj>>'), Buffer.from('payload')]));
+        const link = path.join(tmpDir, 'tokenized-link.bbj');
+        fs.symlinkSync(target, link);
+        const uri = new UriCtor('file', link);
+        hostState.tabsAll = [{ tabs: [{ input: { uri } }] }];
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Decompile & Replace');
+
+        activateFresh();
+
+        await vi.waitFor(() => {
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+                '"tokenized-link.bbj" is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy?',
+                'Decompile & Replace', 'Open Read-only'
+            );
+        });
+        await vi.waitFor(() => {
+            expect(Commands.decompileReplace).toHaveBeenCalledWith(uri);
+        });
+    });
+
     test('with decompile.promptOnOpen false, neither a tokenized file nor a plain-text file prompts', () => {
         settings['decompile.promptOnOpen'] = false;
         const tokenizedPath = path.join(tmpDir, 'tokenized-suppressed.bbj');
