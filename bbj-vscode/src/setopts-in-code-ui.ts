@@ -19,6 +19,7 @@
  * interim entry point, exactly as Phase 87's context-menu command was for config.bbx.
  */
 import * as vscode from 'vscode';
+import { LanguageServerStartError } from './language-client-starter.js';
 import { openSetOptsComposerPanel, SetOptsPanelArg } from './setopts-composer-webview.js';
 import {
     openSetOptsTriStateComposerPanel, SetOptsInCodeRequestSender, SetOptsTriStatePanelArg, SetOptsTriStateTarget,
@@ -131,6 +132,9 @@ async function handleComposeSetoptsInCode(
     try {
         result = await send(SETOPTS_DECODE_IN_CODE_METHOD, params) as SetOptsInCodeDecodeResult;
     } catch (error) {
+        if (error instanceof LanguageServerStartError) {
+            return; // the server did not start and the user has been told why
+        }
         vscode.window.showInformationMessage(`SETOPTS composer failed: ${error instanceof Error ? error.message : String(error)}`);
         return;
     }

@@ -312,7 +312,7 @@ describe('language client starts on the first BBj document, not on activation', 
         disposeSubscriptions(context);
     });
 
-    test('Refresh Java Classes reports a failed start instead of sending a request', async () => {
+    test('Refresh Java Classes reports a failed start once and never sends a request', async () => {
         startMock.mockImplementation(() => Promise.reject(new Error('spawn ENOENT')));
         (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mockClear();
         const context = makeContext();
@@ -321,8 +321,59 @@ describe('language client starts on the first BBj document, not on activation', 
         await commandHandlers.get('bbj.refreshJavaClasses')!();
 
         expect(startMock).toHaveBeenCalledTimes(1);
-        const message = (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0])).join('\n');
-        expect(message).toMatch(/did not start/i);
+        expect(sentRequests).toEqual([]);
+        const messages = (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0]));
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatch(/did not start.*spawn ENOENT/i);
+        disposeSubscriptions(context);
+    });
+
+    test('Refresh Java Classes after a failed start tries again and sends once the server is up', async () => {
+        startMock.mockImplementationOnce(() => Promise.reject(new Error('spawn ENOENT')));
+        const context = makeContext();
+        activate(context);
+
+        await commandHandlers.get('bbj.refreshJavaClasses')!();
+        expect(sentRequests).toEqual([]);
+
+        await commandHandlers.get('bbj.refreshJavaClasses')!();
+
+        expect(startMock).toHaveBeenCalledTimes(2);
+        expect(sentRequests).toEqual(['bbj/refreshJavaClasses']);
+        disposeSubscriptions(context);
+    });
+
+    test('a document opening after a failed start tries to start the client again', async () => {
+        startMock.mockImplementationOnce(() => Promise.reject(new Error('spawn ENOENT')));
+        openDocuments().push(fakeDocument('bbj'));
+        const context = makeContext();
+        activate(context);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(startMock).toHaveBeenCalledTimes(1);
+
+        openListeners.forEach(listener => listener(fakeDocument('bbj')));
+
+        expect(startMock).toHaveBeenCalledTimes(2);
+        disposeSubscriptions(context);
+    });
+
+    test('a failed start triggered by a document produces no unhandled rejection', async () => {
+        startMock.mockImplementation(() => Promise.reject(new Error('spawn ENOENT')));
+        const unhandled: unknown[] = [];
+        const onUnhandled = (reason: unknown): void => { unhandled.push(reason); };
+        process.on('unhandledRejection', onUnhandled);
+        const context = makeContext();
+        try {
+            activate(context);
+            openListeners.forEach(listener => listener(fakeDocument('bbj')));
+            // Several event-loop turns, so a rejection nobody handles has surfaced by now.
+            await new Promise(resolve => setTimeout(resolve, 20));
+        } finally {
+            process.off('unhandledRejection', onUnhandled);
+        }
+
+        expect(unhandled).toEqual([]);
+        expect(startMock).toHaveBeenCalledTimes(1);
         disposeSubscriptions(context);
     });
 });

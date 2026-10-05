@@ -4,6 +4,7 @@ import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, type ActiveEditorSnapshot } from '../src/Commands/target-resolution.js';
 import { createDenumberCommand, denumberFailedMessage, tokenizedProgramMessage, type DenumberDocument } from '../src/denumber-command.js';
 import type { DenumParams, DenumResult } from '../src/language/denum-command.js';
+import { LanguageServerStartError } from '../src/language-client-starter.js';
 
 /**
  * Covers the Denumber BBj Program command through recording stubs (no editor host, no language
@@ -192,6 +193,17 @@ describe('the Denumber command request', () => {
         const { handler, recorder } = setup({ visible: true, sendError: new Error('connection lost') });
         await handler({ fsPath: '/work/numbered.bbj' });
         expect(recorder.calls.filter(call => call[0] === 'error')).toEqual([['error', 'Denumber failed: connection lost']]);
+        expect(recorder.count('warn')).toBe(0);
+        expect(recorder.count('sendDenum')).toBe(1);
+    });
+
+    test('a server that did not start adds no second message: the start failure was already reported', async () => {
+        const { handler, recorder } = setup({
+            visible: true,
+            sendError: new LanguageServerStartError(new Error('spawn failed'))
+        });
+        await handler({ fsPath: '/work/numbered.bbj' });
+        expect(recorder.count('error')).toBe(0);
         expect(recorder.count('warn')).toBe(0);
         expect(recorder.count('sendDenum')).toBe(1);
     });

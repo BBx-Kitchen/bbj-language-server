@@ -21,6 +21,7 @@
 import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, type ActiveEditorSnapshot } from './Commands/target-resolution.js';
 import type { DenumParams, DenumResult } from './language/denum-command.js';
+import { LanguageServerStartError } from './language-client-starter.js';
 
 /** The slice of an opened text document the command needs: its URI. */
 export interface DenumberDocument {
@@ -107,6 +108,9 @@ export function createDenumberCommand<D extends DenumberDocument>(
             }
             await deps.sendDenum({ uri });
         } catch (error) {
+            if (error instanceof LanguageServerStartError) {
+                return; // the server did not start and the user has been told why
+            }
             deps.error(denumberFailedMessage(error));
         }
     };

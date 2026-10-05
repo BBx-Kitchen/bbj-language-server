@@ -37,7 +37,7 @@ import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/
 import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
 import { denumPayloadUri, denumPayloadVersion, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
-import { createLanguageClientStarter, startOnServerDocuments, type LanguageClientStarter } from './language-client-starter.js';
+import { createLanguageClientStarter, ensureStartedForCommand, startOnServerDocuments, type LanguageClientStarter } from './language-client-starter.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { createSingleFlightRunner, migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
@@ -506,7 +506,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerCvsComposer(context); // visual CVS() composer (#649)
     registerSetOptsComposer(context); // visual SETOPTS composer for config.bbx (#474)
     registerSetOptsInCodeComposer(context, async (method, params) => { // in-code SETOPTS composer (#475, DISC-06)
-        await clientStarter.ensureStarted();
+        await ensureStartedForCommand(clientStarter);
         return client.sendRequest(method, params);
     });
     secretStorage = context.secrets;
@@ -526,7 +526,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // connects to the Java interop service, and a window without any BBj document has no use for
     // that. Handlers registered below are held by the client and attached when it starts.
     client = createLanguageClient(context, outputChannel);
-    clientStarter = createLanguageClientStarter(() => startLanguageClient(client));
+    clientStarter = createLanguageClientStarter(() => startLanguageClient(client), reportStartFailure);
 
     // The choke point every VS Code restart must go through (#486): reuses this exact
     // client instance (stop then start) so its already-registered notification handlers
@@ -539,7 +539,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerEmLoginCommand(context, { outputChannel });
     registerRunCommands(context, { outputChannel });
     registerCompileCommands(context);
-    registerJavaClasspathCommands(context, { client, ensureStarted: () => clientStarter.ensureStarted() });
+    registerJavaClasspathCommands(context, { client, ensureStarted: () => ensureStartedForCommand(clientStarter) });
     registerFormatterSettingsLink(context, { client });
     registerDenumDiagnosticsOutput(context, { client, outputChannel });
     openFilePrompts = registerOpenFilePrompts(context, { log: appendOutputLine });
@@ -603,7 +603,7 @@ function registerCompileCommands(context: vscode.ExtensionContext): void {
         show: (document) => vscode.window.showTextDocument(document, { preview: false }),
         skipOpenPrompt: (uri) => openFilePrompts?.skipLineNumberedPrompt(uri),
         sendDenum: async (params) => {
-            await clientStarter.ensureStarted();
+            await ensureStartedForCommand(clientStarter);
             return client.sendRequest<DenumResult>(DENUM_REQUEST_METHOD, params);
         },
         warn: (message) => { void vscode.window.showWarningMessage(message); },
@@ -623,6 +623,12 @@ function registerJavaClasspathCommands(
     context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
         try {
             await ensureStarted();
+        } catch {
+            // The server did not start; the starter already told the user why. Sending a request
+            // to a client that never came up would only add a second, less useful error.
+            return;
+        }
+        try {
             await client.sendRequest('bbj/refreshJavaClasses');
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
@@ -925,9 +931,9 @@ function createLanguageClient(context: vscode.ExtensionContext, outputChannel: v
     // Referenced by sendBbjSettings below, assigned once the client is constructed further
     // down; the closure is only ever invoked after that assignment (on a later push or a
     // trust-grant re-push), never synchronously during client construction itself.
-    let client: LanguageClient;
+    let languageClient: LanguageClient;
     const sendBbjSettings = (settings: Record<string, unknown>): Promise<void> =>
-        client.sendNotification(DidChangeConfigurationNotification.type, { settings });
+        languageClient.sendNotification(DidChangeConfigurationNotification.type, { settings });
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
@@ -974,7 +980,7 @@ function createLanguageClient(context: vscode.ExtensionContext, outputChannel: v
     };
 
     // Create the language client; it is started later, on the first BBj document.
-    client = new LanguageClient(
+    languageClient = new LanguageClient(
         'bbj',
         'BBj',
         serverOptions,
@@ -985,23 +991,39 @@ function createLanguageClient(context: vscode.ExtensionContext, outputChannel: v
     // reload: re-send the gated settings through the same builder the push path uses (issue #511).
     // A client that is not running yet has nothing to re-send to: it reads the settings when it starts.
     context.subscriptions.push(
-        registerTrustGrantRepush(settings => client.needsStop() ? sendBbjSettings(settings) : Promise.resolve(), error => {
+        registerTrustGrantRepush(settings => languageClient.needsStop() ? sendBbjSettings(settings) : Promise.resolve(), error => {
             const detail = error instanceof Error ? error.message : String(error);
             appendOutputLine(`Re-sending settings after the workspace trust grant failed: ${detail}`);
         })
     );
-    return client;
+    return languageClient;
 }
 
 /**
- * Starts the language client, which also launches the server. Surfaces (not silently swallows) a
- * start failure -- otherwise every command stays registered as though the server had started, and
- * the rejection becomes an unhandled promise rejection in the extension host.
+ * Starts the language client, which also launches the server. A start failure rejects, so the
+ * starter caches no success and every caller sees it; the user is told once, from the starter's
+ * {@link reportStartFailure}, not from here.
  */
-function startLanguageClient(client: LanguageClient): Promise<void> {
-    return client.start().catch(error => {
-        const detail = error instanceof Error ? error.message : String(error);
-        console.error('BBj language server failed to start:', error);
-        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
+function startLanguageClient(languageClient: LanguageClient): Promise<void> {
+    return languageClient.start();
+}
+
+const RELOAD_WINDOW_ACTION = 'Reload Window';
+
+/**
+ * Tells the user that an attempt to start the language server failed. Called by the starter once
+ * per failed attempt. vscode-languageclient keeps the rejected start promise of a client whose
+ * start failed, so a later attempt on the same client can end with the same error; the reload
+ * action is the way out in that case.
+ */
+function reportStartFailure(error: unknown): void {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('BBj language server failed to start:', error);
+    void Promise.resolve(
+        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`, RELOAD_WINDOW_ACTION)
+    ).then(choice => {
+        if (choice === RELOAD_WINDOW_ACTION) {
+            void vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
     });
 }
