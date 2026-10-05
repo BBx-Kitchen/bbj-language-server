@@ -3,24 +3,23 @@ gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — PHASES COMPLETE, CLOSE PENDING
 current_phase: 130.1
-current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)"
-status: executing
-stopped_at: Completed 130.1-10-PLAN.md
-last_updated: "2026-10-05T15:03:30.456Z"
+status: completed
+stopped_at: Phase 130.1 complete — all phases complete
+last_updated: "2026-10-05T15:49:22.261Z"
 last_activity: 2026-10-05
-last_activity_desc: Phase 130.1 execution started
-state_head: 320a108e41f1cc468d3d9fce7f9bcceee0bc682b
+last_activity_desc: Phase 130.1 complete
+state_head: 3becc42649471f3955dc7c0754486119e8ce4274
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 53
   completed_plans: 53
-  percent: 88
+  percent: 100
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-04 (Phase 130 Docs & Migration complete — 5/5 plans, UAT 4/4, Nyquist-compliant, 17/17 threats closed; v4.9 all 7 phases complete)
+**Last Updated:** 2026-10-05 (Phase 130.1 tech debt complete — 10/10 plans, hand check approved in both IDEs, verification 18/18 passed; v4.9 all 8 phases complete)
 
 ## Project Reference
 
@@ -28,18 +27,18 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 130.1 — Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)
+**Current Focus:** Milestone v4.9 close — all phases complete (124-130.1)
 
 ---
 
 ## Current Position
 
-Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)) — EXECUTING
+Phase: 130.1
 Plan: 10 of 10 (130.1-01..10 complete)
-Status: Wave 5 complete — ready for phase verification
-Last activity: 2026-10-05 — Phase 130.1 wave 5 (plan 10, final gates, hand check approved, ROADMAP and bookkeeping) complete
+Status: All phases complete — milestone close pending
+Last activity: 2026-10-05 — Phase 130.1 complete
 
-Progress: [█████████░] 88% (v4.9: 7/7 phases)
+Progress: [██████████] 100% (v4.9: 8/8 phases)
 
 ### v4.9 milestone map
 
@@ -533,10 +532,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-10-05T15:03:30.086Z
-Stopped at: Completed 130.1-10-PLAN.md
+Stopped at: Phase 130.1 complete — all phases complete
 Resume file: None
 
-Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure (backlog 999.1) were fixed in phase 130.1, which also closed the todo about syntax checks on line-numbered programs.
+Next: /gsd-complete-milestone v4.9. Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open. Phase 130.1 fixed 127 WR-01, backlog 999.1 and the line-numbered syntax-check todo; its own review WR-01/WR-02 are fixed, WR-03/WR-04 and info items are todos (.planning/todos/pending/2026-10-05-*).
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
