@@ -194,6 +194,54 @@ const notTokenizedMessage = (fileName) =>
   `"${path.basename(fileName)}" is not a tokenized BBj program, so there is nothing to decompile.`;
 
 /**
+ * Shown (as an error) when a decompile command cannot read the file at all, so the real cause
+ * (permission, a busy file, a read race) is never mistaken for "not a tokenized program".
+ * @param {string} fileName - The file the command was invoked on
+ * @param {{message: string}} probe - The `unreadable` result of probeTokenizedFile
+ * @returns {string} The error text
+ */
+const unreadableMessage = (fileName, probe) =>
+  `Could not read "${path.basename(fileName)}": ${probe.message}`;
+
+/**
+ * Shown when a decompile command is pointed at a path that no longer exists.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const missingMessage = (fileName) =>
+  `"${path.basename(fileName)}" was not found, so there is nothing to decompile.`;
+
+/**
+ * Shown when a decompile command is pointed at a directory, FIFO, socket or device.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const notAFileMessage = (fileName) =>
+  `"${path.basename(fileName)}" is not a regular file, so there is nothing to decompile.`;
+
+/**
+ * Reports why a probed file cannot be decompiled, with the message that names the real cause.
+ * Call only for a probe that is not `tokenized`.
+ * @param {string} fileName - The file the command was invoked on
+ * @param {import('../decompile-io').TokenizedProbe} probe - The probe result
+ */
+const refuseDecompile = (fileName, probe) => {
+  switch (probe.kind) {
+    case 'unreadable':
+      vscode.window.showErrorMessage(unreadableMessage(fileName, probe));
+      break;
+    case 'missing':
+      vscode.window.showWarningMessage(missingMessage(fileName));
+      break;
+    case 'not-a-file':
+      vscode.window.showWarningMessage(notAFileMessage(fileName));
+      break;
+    default:
+      vscode.window.showWarningMessage(notTokenizedMessage(fileName));
+  }
+};
+
+/**
  * Runs bbjlst on an already-resolved tokenized program with its output directed to a fresh
  * private `bbj-decompiled-*` directory, so nothing is ever written next to the user's files.
  * With `-d`, bbjlst names the listing exactly like its input, for every extension. bbjlst
@@ -243,11 +291,11 @@ const decompileInPlace = (resolvedFileName) => {
   }, async () => {
     let outputDir;
     try {
-      // Only a tokenized program is decompiled in place; a plain-text file is refused
-      // before anything is created or launched, so it is never rewritten.
+      // Only a tokenized program is decompiled in place; anything else is refused, with its
+      // own cause, before anything is created or launched, so it is never rewritten.
       const probe = await probeTokenizedFile(resolvedFileName);
       if (probe.kind !== 'tokenized') {
-        vscode.window.showWarningMessage(notTokenizedMessage(resolvedFileName));
+        refuseDecompile(resolvedFileName, probe);
         return;
       }
       // bbjlst reads, and the replace rewrites, the real file behind a symlink; the document
@@ -476,11 +524,11 @@ const Commands = {
       let outputDir;
       let shown = false;
       try {
-        // Only a tokenized program is decompiled; a plain-text file is refused before
-        // any temporary directory is created or bbjlst is launched.
+        // Only a tokenized program is decompiled; anything else is refused, with its own cause,
+        // before any temporary directory is created or bbjlst is launched.
         const probe = await probeTokenizedFile(resolvedFileName);
         if (probe.kind !== 'tokenized') {
-          vscode.window.showWarningMessage(notTokenizedMessage(fileName));
+          refuseDecompile(fileName, probe);
           return;
         }
 
