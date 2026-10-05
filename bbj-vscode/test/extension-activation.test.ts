@@ -532,6 +532,42 @@ describe('denumber diagnostics output', () => {
             disposeSubscriptions(context);
         });
 
+        test.each<[string, Record<string, unknown>]>([
+            ['a missing version', { uri: 'file:///ws/a.bbj', diagnostics: payload.diagnostics }],
+            ['a version that differs from the document', { ...payload, version: 2 }],
+            ['a version older than the document', { ...payload, version: 0 }],
+            ['a negative version', { ...payload, version: -1 }],
+            ['a fractional version', { ...payload, version: 1.5 }],
+            ['a version that is text', { ...payload, version: '1' }],
+            ['a null version', { ...payload, version: null }],
+        ])('%s writes the log copy and places nothing', (_name, unversioned) => {
+            const { context, channel, list } = activateAndFindHandlers();
+            open('file:///ws/a.bbj', ['one', 'two', 'three']);
+
+            expect(() => list(unversioned)).not.toThrow();
+
+            expect(createCollection).not.toHaveBeenCalled();
+            expect(channel.appendLine.mock.calls).toEqual([
+                ['Denumber diagnostics for /ws/a.bbj:'],
+                ['  line 1 (original 0010) ERROR: syntax error'],
+            ]);
+            expect(channel.debug).not.toHaveBeenCalled();
+
+            disposeSubscriptions(context);
+        });
+
+        test('a document typed into after the edit, so past the version of the list, gets nothing placed', () => {
+            const { context, list } = activateAndFindHandlers();
+            const document = open('file:///ws/a.bbj', ['one', 'two', 'three'], 'bbj', 2);
+
+            document.version = 3;
+            list({ ...payload, version: 2 });
+
+            expect(createCollection).not.toHaveBeenCalled();
+
+            disposeSubscriptions(context);
+        });
+
         test('the collection is created once and reused by the next list', () => {
             const { context, list } = activateAndFindHandlers();
             open('file:///ws/a.bbj', ['one', 'two', 'three']);

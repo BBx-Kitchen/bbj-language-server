@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from '../src/denum-diagnostics-output.js';
+import { denumPayloadUri, denumPayloadVersion, denumProblems, formatDenumDiagnosticsBlock } from '../src/denum-diagnostics-output.js';
 
 const UNKNOWN_HEADER = 'Denumber diagnostics for an unknown file:';
 
@@ -209,6 +209,39 @@ describe('denumPayloadUri', () => {
         ['a string', 'x'],
     ])('gives undefined for %s', (_name, payload) => {
         expect(denumPayloadUri(payload)).toBeUndefined();
+    });
+});
+
+describe('denumPayloadVersion', () => {
+    test.each([
+        ['zero', 0],
+        ['a positive version', 7],
+    ])('gives %s as it is', (_name, version) => {
+        expect(denumPayloadVersion({ uri: 'file:///ws/a.bbj', diagnostics: [], version })).toBe(version);
+    });
+
+    test.each<[string, unknown]>([
+        ['a negative number', -1],
+        ['a fraction', 1.5],
+        ['NaN', Number.NaN],
+        ['Infinity', Number.POSITIVE_INFINITY],
+        ['a number beyond the safe integers', 2 ** 53],
+        ['a numeric string', '7'],
+        ['null', null],
+        ['an object', { value: 7 }],
+    ])('gives undefined for %s', (_name, version) => {
+        expect(denumPayloadVersion({ uri: 'file:///ws/a.bbj', diagnostics: [], version })).toBeUndefined();
+    });
+
+    test.each<[string, unknown]>([
+        ['a missing version key', { uri: 'file:///ws/a.bbj', diagnostics: [] }],
+        ['null', null],
+        ['a number', 7],
+        ['a string', '7'],
+        ['an array', [7]],
+        ['undefined', undefined],
+    ])('gives undefined for %s as the payload', (_name, payload) => {
+        expect(denumPayloadVersion(payload)).toBeUndefined();
     });
 });
 
