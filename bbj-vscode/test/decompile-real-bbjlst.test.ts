@@ -135,4 +135,26 @@ describe.skipIf(!hasBBj)('Decompile against the real bbjlst', () => {
         expect(fs.readdirSync(workDir).sort()).toEqual(folderBefore);
         expect(leftoverPrivateDirs()).toEqual([]);
     }, PER_TEST_TIMEOUT_MS);
+
+    test('Decompile (Read-only) opens a read-only source copy and leaves the tokenized original alone', async () => {
+        const { Commands } = loadCommands();
+        const target = path.join(workDir, 'a.bbj');
+        fs.writeFileSync(target, tokenized);
+
+        Commands.decompileReadonly({ fsPath: target });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(fs.readFileSync(target).equals(tokenized)).toBe(true);
+        expect(fs.readdirSync(workDir)).toEqual(['a.bbj']);
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        const openedPath = (uri as { fsPath?: string } | undefined)?.fsPath ?? '';
+        expect(path.basename(path.dirname(openedPath))).toMatch(/^bbj-decompiled-/);
+        expect(path.dirname(path.dirname(openedPath))).toBe(scratchTmp);
+        expect(path.basename(openedPath)).toBe('a.bbj');
+        expectDecompiledSource(openedPath);
+        expect(fakeVscode.commands.executeCommand).toHaveBeenCalledWith(
+            'workbench.action.files.setActiveEditorReadonlyInSession'
+        );
+    }, PER_TEST_TIMEOUT_MS);
 });

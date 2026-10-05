@@ -3,7 +3,15 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
-import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst, statSize } from '../src/decompile-io.js';
+import {
+    isTokenizedFile,
+    waitForDecompileOutput,
+    deleteLeftoverLst,
+    statSize,
+    waitForListing,
+    verifyListing,
+    replaceWithListing,
+} from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
 
@@ -129,6 +137,139 @@ describe('decompile-io', () => {
 
         test('returns undefined for a missing path', async () => {
             expect(await statSize(path.join(dir, 'nope'))).toBeUndefined();
+        });
+    });
+
+    describe('waitForListing', () => {
+        const fast = { pollMs: 5, missingGraceMs: 2000, timeoutMs: 2000 };
+
+        test('resolves for a listing whose size is stable', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, 'print "hi"\n');
+            await expect(waitForListing(listing, fast)).resolves.toBeUndefined();
+        });
+
+        test('resolves once a listing that appears late has stopped growing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            setTimeout(() => fs.writeFileSync(listing, 'print "hi"\n'), 30);
+            await expect(waitForListing(listing, fast)).resolves.toBeUndefined();
+        });
+
+        test('rejects naming the file when nothing appears within the missing-listing grace', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            await expect(waitForListing(listing, { pollMs: 5, missingGraceMs: 100, timeoutMs: 2000 }))
+                .rejects.toThrow('bbjlst wrote no decompiled listing for "prog.bbj".');
+        });
+
+        test('treats a symlinked listing as absent', async () => {
+            const real = path.join(dir, 'real.txt');
+            fs.writeFileSync(real, 'print "hi"\n');
+            const listing = path.join(dir, 'prog.bbj');
+            fs.symlinkSync(real, listing);
+            await expect(waitForListing(listing, { pollMs: 5, missingGraceMs: 100, timeoutMs: 2000 }))
+                .rejects.toThrow(/wrote no decompiled listing/);
+        });
+
+        test('rejects when a listing keeps growing past the timeout', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            let bytes = 0;
+            const grower = setInterval(() => { bytes += 4; fs.writeFileSync(listing, 'x'.repeat(bytes)); }, 3);
+            try {
+                await expect(waitForListing(listing, { pollMs: 8, missingGraceMs: 2000, timeoutMs: 150 }))
+                    .rejects.toThrow('bbjlst did not finish writing the listing for "prog.bbj".');
+            } finally {
+                clearInterval(grower);
+            }
+        });
+    });
+
+    describe('verifyListing', () => {
+        test('resolves for a plain-text listing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, 'print "hi"\n');
+            await expect(verifyListing(listing)).resolves.toBeUndefined();
+        });
+
+        test('rejects an empty listing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, '');
+            await expect(verifyListing(listing)).rejects.toThrow('bbjlst wrote an empty listing for "prog.bbj".');
+        });
+
+        test('rejects a listing that is still a tokenized program', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            await expect(verifyListing(listing))
+                .rejects.toThrow('bbjlst did not decompile "prog.bbj"; the listing is still a tokenized program.');
+        });
+
+        test('rejects a missing listing', async () => {
+            await expect(verifyListing(path.join(dir, 'prog.bbj'))).rejects.toThrow(/wrote no decompiled listing/);
+        });
+    });
+
+    describe('replaceWithListing', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        function stagedFiles(): string[] {
+            return fs.readdirSync(dir).filter((name) => name.endsWith('.decompiled'));
+        }
+
+        test('replaces the target with the listing and leaves no staged file behind', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+
+            await replaceWithListing(target, listing);
+
+            expect(fs.readFileSync(target, 'utf-8')).toBe('print "decompiled"\n');
+            expect(fs.readFileSync(listing, 'utf-8')).toBe('print "decompiled"\n');
+            expect(fs.readdirSync(dir).sort()).toEqual(['listing.txt', 'prog.bbj']);
+        });
+
+        test.skipIf(process.platform === 'win32')('keeps the permission bits of the target', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.chmodSync(target, 0o640);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            fs.chmodSync(listing, 0o600);
+
+            await replaceWithListing(target, listing);
+
+            expect(fs.statSync(target).mode & 0o7777).toBe(0o640);
+        });
+
+        test('when the final rename fails, the target is byte-identical and no staged file remains', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            const original = Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]);
+            fs.writeFileSync(target, original);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            vi.spyOn(fs.promises, 'rename').mockRejectedValueOnce(new Error('rename boom'));
+
+            await expect(replaceWithListing(target, listing)).rejects.toThrow('rename boom');
+
+            expect(fs.readFileSync(target).equals(original)).toBe(true);
+            expect(stagedFiles()).toEqual([]);
+        });
+
+        test('never overwrites an existing file at the staged name', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+            const planted = path.join(dir, `.prog.bbj.${process.pid}.1234567890.decompiled`);
+            fs.writeFileSync(planted, 'planted');
+
+            await expect(replaceWithListing(target, listing)).rejects.toThrow(/EEXIST/);
+
+            expect(fs.readFileSync(planted, 'utf-8')).toBe('planted');
+            expect(fs.readFileSync(target).equals(MAGIC)).toBe(true);
         });
     });
 

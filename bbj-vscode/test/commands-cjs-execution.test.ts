@@ -592,6 +592,130 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         const [message] = fakeVscode.window.showErrorMessage.mock.calls[0];
         expect(message).toMatch(/^Failed to decompile/);
     });
+
+    const BOTH_COMMANDS = ['decompileReplace', 'decompileReadonly'] as const;
+
+    function errorMessages(): string[] {
+        return fakeVscode.window.showErrorMessage.mock.calls.map(([message]) => message as string);
+    }
+
+    test.each(BOTH_COMMANDS)(
+        '%s reports a bbjlst run that exits 0 without writing a listing, with bbjlst\'s own output as details',
+        async (command) => {
+            const { Commands } = loadCommands();
+            const inputPath = path.join(tmpDir, 'nolisting.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeProcessRunner.runProcess.mockImplementation(async () => ({
+                stdout: 'Unable to open file\n',
+                stderr: '',
+            }));
+
+            Commands[command]({ fsPath: inputPath });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(errorMessages()).toHaveLength(1);
+            expect(errorMessages()[0]).toMatch(/^Failed to decompile/);
+            expect(errorMessages()[0]).toContain('wrote no decompiled listing for "nolisting.bbj"');
+            expect(errorMessages()[0]).toContain('\n\nDetails:\nUnable to open file');
+            expect(fs.readFileSync(inputPath, 'utf-8')).toBe(TOKENIZED_PROGRAM);
+            expect(decompileTempDirs()).toEqual([]);
+            expect(fakeVscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        },
+        15_000
+    );
+
+    test.each(
+        BOTH_COMMANDS.flatMap((command) => [
+            [command, 'an empty listing', '', 'wrote an empty listing for "bad.bbj"'],
+            [command, 'a still-tokenized listing', '<<bbj>>still tokenized', 'is still a tokenized program'],
+        ])
+    )('%s fails on %s, leaves the file unchanged and no private directory behind', async (command, _label, listing, message) => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'bad.bbj');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        fakeBbjlstWrites(listing);
+
+        Commands[command]({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(errorMessages()).toHaveLength(1);
+        expect(errorMessages()[0]).toMatch(/^Failed to decompile/);
+        expect(errorMessages()[0]).toContain(message);
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(TOKENIZED_PROGRAM);
+        expect(decompileTempDirs()).toEqual([]);
+    });
+
+    test.each(BOTH_COMMANDS)('%s leaves no private directory behind when bbjlst itself fails to run', async (command) => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'boom.bbj');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        fakeProcessRunner.runProcess.mockRejectedValueOnce(new Error('decompile boom'));
+
+        Commands[command]({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(errorMessages()[0]).toMatch(/^Failed to decompile ".*boom\.bbj": decompile boom/);
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(TOKENIZED_PROGRAM);
+        expect(decompileTempDirs()).toEqual([]);
+    });
+
+    test.each([
+        ['a .pub file', 'a.pub'],
+        ['an extensionless file', 'a'],
+        ['a .lst file', 'a.lst'],
+    ])('decompileReplace rewrites %s in place and leaves no private directory behind', async (_label, fileName) => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, fileName);
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        const listing = 'unnumbered listing\n';
+        fakeBbjlstWrites(listing);
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(listing);
+        expect(fs.readdirSync(tmpDir)).toEqual([fileName]);
+        expect(decompileTempDirs()).toEqual([]);
+    });
+
+    test('decompileReplace of a.bbj leaves a sibling file named a byte-identical', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'a.bbj');
+        const siblingPath = path.join(tmpDir, 'a');
+        const siblingContent = 'plain text sibling\n';
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        fs.writeFileSync(siblingPath, siblingContent);
+        fakeBbjlstWrites('unnumbered listing\n');
+
+        Commands.decompileReplace({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe('unnumbered listing\n');
+        expect(fs.readFileSync(siblingPath, 'utf-8')).toBe(siblingContent);
+        expect(fs.readdirSync(tmpDir).sort()).toEqual(['a', 'a.bbj']);
+    });
+
+    test('decompileReadonly of a.pub opens <private dir>/a.bbj holding the listing, keeps the directory and leaves the original unchanged', async () => {
+        const { Commands } = loadCommands();
+        const inputPath = path.join(tmpDir, 'a.pub');
+        fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+        const listing = 'read-only listing\n';
+        fakeBbjlstWrites(listing);
+
+        Commands.decompileReadonly({ fsPath: inputPath });
+        await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        const openedPath = (uri as { fsPath?: string } | undefined)?.fsPath ?? '';
+        expect(path.basename(path.dirname(openedPath))).toMatch(/^bbj-decompiled-/);
+        expect(path.basename(openedPath)).toBe('a.bbj');
+        expect(fs.readFileSync(openedPath, 'utf-8')).toBe(listing);
+        expect(decompileTempDirs()).toEqual([path.basename(path.dirname(openedPath))]);
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe(TOKENIZED_PROGRAM);
+        expect(fs.readdirSync(tmpDir)).toEqual(['a.pub']);
+    });
 });
 
 describe('Commands.cjs openEnterpriseManager / openPropertiesFile', () => {

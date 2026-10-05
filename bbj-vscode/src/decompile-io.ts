@@ -145,13 +145,19 @@ export async function replaceWithListing(targetPath: string, listingPath: string
         path.dirname(targetPath),
         `.${path.basename(targetPath)}.${process.pid}.${Date.now()}.decompiled`
     );
+    // Only a staged file this call created is ever removed: when the exclusive copy itself
+    // fails (the name is taken), whatever sits at that path is not ours to delete.
+    let created = false;
     try {
         await fs.promises.copyFile(listingPath, staged, fs.constants.COPYFILE_EXCL);
+        created = true;
         const mode = (await fs.promises.stat(targetPath)).mode & 0o7777;
         await fs.promises.chmod(staged, mode);
         await fs.promises.rename(staged, targetPath);
     } catch (err) {
-        await fs.promises.unlink(staged).catch(() => { });
+        if (created) {
+            await fs.promises.unlink(staged).catch(() => { });
+        }
         throw err;
     }
 }
