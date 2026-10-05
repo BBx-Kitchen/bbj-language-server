@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130.1
 current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)"
 status: executing
-stopped_at: Completed 130.1-08-PLAN.md
-last_updated: "2026-10-05T08:12:05.903Z"
+stopped_at: Completed 130.1-09-PLAN.md
+last_updated: "2026-10-05T08:19:07.999Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 130.1 execution started
-state_head: 3b6dbcd043b4b1562d6e2727858e34a3cb3d25e2
+state_head: 6737ba0edb6bd5c2f6806be541db204e1fbcb913
 progress:
   total_phases: 7
   completed_phases: 7
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)) — EXECUTING
-Plan: 9 of 10
+Plan: 2 of 10
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 130.1 execution started
 
@@ -253,6 +253,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130.1 P05 | 14 min | 3 tasks | 10 files |
 | Phase 130.1 P02 | 12 min | 3 tasks | 10 files |
 | Phase 130.1 P08 | 9 min | 2 tasks | 9 files |
+| Phase 130.1 P09 | 3 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -530,8 +531,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-05T08:12:05.538Z
-Stopped at: Completed 130.1-08-PLAN.md
+Last session: 2026-10-05T08:19:07.633Z
+Stopped at: Completed 130.1-09-PLAN.md
 Resume file: None
 
 Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
