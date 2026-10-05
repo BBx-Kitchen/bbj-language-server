@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, type ActiveEditorSnapshot } from '../src/Commands/target-resolution.js';
-import { createDenumberCommand, denumberFailedMessage, type DenumberDocument } from '../src/denumber-command.js';
+import { createDenumberCommand, denumberFailedMessage, tokenizedProgramMessage, type DenumberDocument } from '../src/denumber-command.js';
 import type { DenumParams, DenumResult } from '../src/language/denum-command.js';
 
 /**
@@ -27,6 +27,8 @@ interface Scenario {
     sendResult?: DenumResult;
     sendError?: unknown;
     openError?: unknown;
+    /** What the tokenized probe answers: a boolean, or an error it rejects with. Defaults to false. */
+    tokenized?: boolean | Error;
 }
 
 function documentFor(fsPath: string): DenumberDocument & { fsPath: string } {
@@ -40,8 +42,16 @@ function setup(scenario: Scenario = {}) {
         names: () => calls.map(call => call[0]),
         count: (name: string) => calls.filter(call => call[0] === name).length,
     };
+    const tokenizedChecks: string[] = [];
     const handler = createDenumberCommand({
         activeEditor: () => scenario.active,
+        isTokenized: async (fsPath: string) => {
+            tokenizedChecks.push(fsPath);
+            if (scenario.tokenized instanceof Error) {
+                throw scenario.tokenized;
+            }
+            return scenario.tokenized ?? false;
+        },
         openDocument: async (fsPath: string) => {
             calls.push(['openDocument', fsPath]);
             if (scenario.openError !== undefined) {
@@ -73,7 +83,7 @@ function setup(scenario: Scenario = {}) {
             calls.push(['error', message]);
         },
     });
-    return { handler, recorder };
+    return { handler, recorder, tokenizedChecks };
 }
 
 const bbjEditor: ActiveEditorSnapshot = { fileName: '/work/active.bbj', languageId: 'bbj' };
@@ -202,6 +212,64 @@ describe('the Denumber command request', () => {
         expect(recorder.count('sendDenum')).toBe(2);
         expect(recorder.count('warn')).toBe(0);
         expect(recorder.count('error')).toBe(0);
+    });
+});
+
+describe('the Denumber command on a tokenized program', () => {
+    test('warns once with the message that names the decompile command and does nothing else', async () => {
+        const { handler, recorder } = setup({ tokenized: true });
+        await handler({ fsPath: '/work/prog.bbj' });
+        expect(recorder.calls).toEqual([
+            ['warn', '"prog.bbj" is a tokenized (binary) BBj program. Use "Decompile Tokenized BBj Program" first.'],
+        ]);
+    });
+
+    test('the message is the one tokenizedProgramMessage builds, naming the file by its base name', () => {
+        expect(tokenizedProgramMessage('/a/b/prog.pub')).toBe(
+            '"prog.pub" is a tokenized (binary) BBj program. Use "Decompile Tokenized BBj Program" first.'
+        );
+    });
+
+    test('openDocument, show, skipOpenPrompt, sendDenum and error are never called', async () => {
+        const { handler, recorder } = setup({ tokenized: true });
+        await handler({ fsPath: '/work/prog.bbj' });
+        for (const name of ['openDocument', 'show', 'skipOpenPrompt', 'sendDenum', 'error']) {
+            expect(recorder.count(name)).toBe(0);
+        }
+    });
+
+    test('the probe is asked about the resolved target, including the active-editor fallback', async () => {
+        const { handler, tokenizedChecks } = setup({ active: bbjEditor, tokenized: true });
+        await handler();
+        expect(tokenizedChecks).toEqual(['/work/active.bbj']);
+    });
+
+    test('a program that is not tokenized keeps the existing flow: open, then send', async () => {
+        const { handler, recorder } = setup({ tokenized: false, visible: true });
+        await handler({ fsPath: '/work/numbered.bbj' });
+        expect(recorder.names()).toEqual(['openDocument', 'skipOpenPrompt', 'isVisible', 'sendDenum']);
+        expect(recorder.count('warn')).toBe(0);
+    });
+
+    test('a probe that rejects counts as not tokenized and the existing flow runs', async () => {
+        const { handler, recorder } = setup({ tokenized: new Error('probe exploded'), visible: true });
+        await handler({ fsPath: '/work/numbered.bbj' });
+        expect(recorder.names()).toEqual(['openDocument', 'skipOpenPrompt', 'isVisible', 'sendDenum']);
+        expect(recorder.count('warn')).toBe(0);
+        expect(recorder.count('error')).toBe(0);
+    });
+
+    test('a failure to open after a rejected probe still goes through the Denumber failed message', async () => {
+        const { handler, recorder } = setup({ tokenized: new Error('probe exploded'), openError: new Error('file not found') });
+        await handler({ fsPath: '/work/missing.bbj' });
+        expect(recorder.calls.filter(call => call[0] === 'error')).toEqual([['error', 'Denumber failed: file not found']]);
+    });
+
+    test('with no target the probe is not asked at all', async () => {
+        const { handler, recorder, tokenizedChecks } = setup({ tokenized: true });
+        await handler();
+        expect(tokenizedChecks).toEqual([]);
+        expect(recorder.calls).toEqual([['warn', NO_ACTIVE_BBJ_FILE_MESSAGE]]);
     });
 });
 
