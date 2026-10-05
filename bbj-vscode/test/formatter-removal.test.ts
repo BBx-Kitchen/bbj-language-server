@@ -45,6 +45,32 @@ function importersOf(moduleName: string): string[] {
         .map((file) => path.relative(SRC_DIR, file).split(path.sep).join('/'));
 }
 
+const REMOVED_MODULES = ['document-formatter', 'formatter-java-resolver', 'formatter-verifier'];
+const VENDORED_NAMES = ['BBjCFCli', 'tools/formatter'];
+
+/** Source text with `//` and block comments removed; string literals are left intact. */
+function stripComments(text: string): string {
+    return text;
+}
+
+/** Removed module names found inside an import, dynamic import or require specifier. */
+function removedModuleSpecifiers(text: string): string[] {
+    void text;
+    return [];
+}
+
+/** Vendored formatter names found inside a quoted string literal. */
+function quotedVendoredNames(text: string): string[] {
+    void text;
+    return [];
+}
+
+/** Every string value in a parsed JSON document, at any depth. */
+function jsonStringValues(value: unknown): string[] {
+    void value;
+    return [];
+}
+
 function exists(relativePath: string): boolean {
     return fs.existsSync(path.join(REPO_ROOT, relativePath));
 }
@@ -121,5 +147,52 @@ describe('the client-side formatter is removed', () => {
     test('the IntelliJ build copies no vendored formatter file', () => {
         const gradle = fs.readFileSync(path.join(REPO_ROOT, '..', 'bbj-intellij', 'build.gradle.kts'), 'utf-8');
         expect(gradle).not.toContain('tools/formatter');
+    });
+});
+
+describe('the removed-reference matchers', () => {
+    test('a module-specifier matcher reports import, require and dynamic import of a removed module', () => {
+        expect(removedModuleSpecifiers("import x from './document-formatter.js';")).toEqual(['document-formatter']);
+        expect(removedModuleSpecifiers('const v = require("../formatter-verifier");')).toEqual(['formatter-verifier']);
+        expect(removedModuleSpecifiers("const r = await import('./formatter-java-resolver.js');")).toEqual([
+            'formatter-java-resolver',
+        ]);
+    });
+
+    test('a module-specifier matcher ignores a comment that names the same modules', () => {
+        const text = [
+            "// import x from './document-formatter.js'",
+            "/* const v = require('../formatter-verifier'); */",
+            '/**',
+            " * The old import('./formatter-java-resolver.js') is gone.",
+            ' */',
+            "import { other } from './other.js';",
+        ].join('\n');
+        expect(removedModuleSpecifiers(text)).toEqual([]);
+    });
+
+    test('a string-literal matcher reports a vendored path or name inside quotes', () => {
+        expect(quotedVendoredNames("const jar = 'tools/formatter/BBjCFCli.jar';")).toEqual(['BBjCFCli', 'tools/formatter']);
+        expect(quotedVendoredNames('const name = "BBjCFCli";')).toEqual(['BBjCFCli']);
+        expect(quotedVendoredNames('const p = `${root}/tools/formatter`;')).toEqual(['tools/formatter']);
+    });
+
+    test('a string-literal matcher ignores the same words in a comment or in plain code', () => {
+        const text = [
+            '// the BBjCFCli jar used to live in tools/formatter',
+            '/* tools/formatter and BBjCFCli were removed */',
+            "const ok = 'unrelated';",
+            "const quoteAfterComment = 'x'; // BBjCFCli",
+        ].join('\n');
+        expect(quotedVendoredNames(text)).toEqual([]);
+    });
+
+    test('a comment marker inside a string literal does not hide a reference after it', () => {
+        expect(quotedVendoredNames("const url = 'http://host'; const jar = 'tools/formatter';")).toEqual(['tools/formatter']);
+    });
+
+    test('a JSON string-value walker reaches nested strings and skips keys and numbers', () => {
+        const values = jsonStringValues({ a: 'one', 'tools/formatter': 1, b: [{ c: 'two' }, 3, ['three']] });
+        expect(values.sort()).toEqual(['one', 'three', 'two']);
     });
 });
