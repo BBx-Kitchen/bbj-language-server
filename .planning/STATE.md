@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130.1
 current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode"
 status: executing
-stopped_at: Completed 130.1-01-PLAN.md
-last_updated: "2026-10-05T06:47:49.416Z"
+stopped_at: Completed 130.1-03-PLAN.md
+last_updated: "2026-10-05T06:50:35.555Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 130.1 execution started
-state_head: 3c2adf7f02a640ff3398200ddbedd16a44696935
+state_head: c4a42eb7d4353f9403637e0b2671e1b607474bb0
 progress:
   total_phases: 7
   completed_phases: 7
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 130.1 execution started
 
@@ -246,6 +246,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130 P04 | 14 min | 2 tasks | 6 files |
 | Phase 130 P05 | 6 min | 2 tasks | 3 files |
 | Phase 130.1 P01 | 5 min | 3 tasks | 7 files |
+| Phase 130.1 P03 | 6 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -446,6 +447,7 @@ decisions:
 - [Phase 130]: 130-03: QA rows carry no planning ids; Denumber action expected greyed out on unnumbered and early-mixed files in IntelliJ — Repo rule for QA files; research enablement trap
 - [Phase 130]: 130-04: IntelliJ Formatting page reuses the VS Code Description cells word for word (script-checked), the CRLF warning follows the Line ending row, and the Denumber failed balloon bodies have their own table
 - [Phase 130]: 130-05: changeNotes carries no version number; README formatting bullet links both published guides — Version comes from -Pversion at build time; both IDEs now format and denumber
+- [Phase 130.1]: Denumber menu fix uses the menu-clause option only: three bbj.denumber when clauses drop the bbx branch, no in-command language check — Menu offers only what the client announces to the server; other 12 entries stay on the shared clause
 
 ### Tech Debt
 
@@ -516,8 +518,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-05T06:47:49.050Z
-Stopped at: Completed 130.1-01-PLAN.md
+Last session: 2026-10-05T06:50:35.180Z
+Stopped at: Completed 130.1-03-PLAN.md
 Resume file: None
 
 Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
