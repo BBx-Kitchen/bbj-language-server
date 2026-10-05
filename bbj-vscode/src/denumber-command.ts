@@ -18,6 +18,7 @@
  * message. Nothing in this module saves, writes or launches anything.
  */
 
+import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, type ActiveEditorSnapshot } from './Commands/target-resolution.js';
 import type { DenumParams, DenumResult } from './language/denum-command.js';
 
@@ -30,6 +31,11 @@ export interface DenumberDocument {
 export interface DenumberCommandDeps<D extends DenumberDocument> {
     /** The active editor reduced to its file name and language id, or undefined when there is none. */
     activeEditor(): ActiveEditorSnapshot | undefined;
+    /**
+     * Whether the file at this path is a tokenized (binary) BBj program, which has no line numbers
+     * to remove. A rejection counts as "not tokenized".
+     */
+    isTokenized(fsPath: string): Promise<boolean>;
     /** Opens (or returns the already open) document for a file system path. */
     openDocument(fsPath: string): PromiseLike<D>;
     /** Whether an editor currently shows the document with this URI string. */
@@ -49,6 +55,14 @@ export interface DenumberCommandDeps<D extends DenumberDocument> {
 /** The one message the client words itself: the request was rejected or the file could not be opened. */
 export function denumberFailedMessage(error: unknown): string {
     return `Denumber failed: ${error instanceof Error ? error.message : String(error)}`;
+}
+
+/**
+ * The warning shown instead of VS Code's raw "binary file" error when the target is a tokenized
+ * program. It points at the command that applies; the user runs it themselves.
+ */
+export function tokenizedProgramMessage(fsPath: string): string {
+    return `"${path.basename(fsPath)}" is a tokenized (binary) BBj program. Use "Decompile Tokenized BBj Program" first.`;
 }
 
 /** Reads `fsPath` from a command argument, accepting only a non-empty string on an object. */
@@ -72,6 +86,16 @@ export function createDenumberCommand<D extends DenumberDocument>(
         const target = resolveRunTarget(fsPathOf(argument), deps.activeEditor());
         if (!target) {
             deps.warn(NO_ACTIVE_BBJ_FILE_MESSAGE);
+            return;
+        }
+        let tokenized = false;
+        try {
+            tokenized = await deps.isTokenized(target);
+        } catch {
+            // A probe that cannot answer is not a reason to refuse: the normal flow reports its own errors.
+        }
+        if (tokenized) {
+            deps.warn(tokenizedProgramMessage(target));
             return;
         }
         try {

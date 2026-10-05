@@ -13,6 +13,7 @@ import {
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { registerOpenFilePrompts, type OpenFilePrompts } from './open-file-prompts.js';
 import { createDenumberCommand } from './denumber-command.js';
+import { probeTokenizedFile } from './decompile-io.js';
 import { DENUM_REQUEST_METHOD, type DenumResult } from './language/denum-command.js';
 import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
@@ -580,6 +581,7 @@ function registerCompileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", createDenumberCommand({
         activeEditor: () => toActiveEditorSnapshot(vscode.window.activeTextEditor),
+        isTokenized: async (fsPath) => (await probeTokenizedFile(fsPath)).kind === 'tokenized',
         openDocument: (fsPath) => vscode.workspace.openTextDocument(vscode.Uri.file(fsPath)),
         isVisible: (uri) => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === uri),
         show: (document) => vscode.window.showTextDocument(document, { preview: false }),
