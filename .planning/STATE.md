@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130.1
-current_phase_name: address-tech-debt-127-review-warnings-and-loading-of-binary
-status: "Phase 130.1 inserted after the milestone audit — next: /gsd-plan-phase 130.1"
+current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode"
+status: executing
 stopped_at: Phase 130.1 context gathered
-last_updated: "2026-10-05T06:27:29.493Z"
-last_activity: 2026-10-04
-last_activity_desc: Phase 130 complete
-state_head: 958a4a6ec1c5bb79c54cbde37bc01f6d5fe06002
+last_updated: "2026-10-05T06:41:28.210Z"
+last_activity: 2026-10-05
+last_activity_desc: Phase 130.1 execution started
+state_head: adde9d416b4cffb895e12921829cb3b309af57cf
 progress:
   total_phases: 7
   completed_phases: 7
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.9 complete — ready for /gsd-complete-milestone
+**Current Focus:** Phase 130.1 — Address tech debt: 127 review warnings and loading of binary files, intellij and vscode
 
 ---
 
 ## Current Position
 
-Phase: 130.1 (address-tech-debt-127-review-warnings-and-loading-of-binary) — READY TO EXECUTE
-Plan: 0 of TBD
-Status: Phase 130.1 inserted after the milestone audit — next: /gsd-plan-phase 130.1
-Last activity: 2026-10-04 — Phase 130 complete
+Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 130.1
+Last activity: 2026-10-05 — Phase 130.1 execution started
 
 Progress: [██████████] 100% (v4.9: 7/7 phases)
 
