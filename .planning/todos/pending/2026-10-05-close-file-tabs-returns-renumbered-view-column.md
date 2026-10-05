@@ -4,6 +4,9 @@ title: closeTabsOnFiles can return a view column that now names a different edit
 area: vscode
 source: phase 130.1 code review (IN-02)
 files: bbj-vscode/src/close-file-tabs.ts
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

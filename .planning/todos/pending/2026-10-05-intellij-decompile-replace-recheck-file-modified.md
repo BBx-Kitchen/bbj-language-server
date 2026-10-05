@@ -4,6 +4,9 @@ title: IntelliJ Decompile & Replace - re-check isFileModified right before repla
 area: intellij
 source: phase 130.1 code review (IN-04, IntelliJ half)
 files: bbj-intellij/src/main/java/com/basis/bbj/intellij/tokenized/BbjTokenizedDecompiler.java
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

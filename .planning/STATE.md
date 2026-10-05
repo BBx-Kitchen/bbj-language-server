@@ -1,44 +1,42 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.9
-milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — PHASES COMPLETE, CLOSE PENDING
-current_phase: 130.1
-status: completed
-stopped_at: Phase 130.1 complete — all phases complete
-last_updated: "2026-10-05T15:49:22.261Z"
+milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05
+status: Awaiting next milestone
+stopped_at: Milestone v4.9 completed and archived
+last_updated: "2026-10-05T17:16:11.839Z"
 last_activity: 2026-10-05
-last_activity_desc: Phase 130.1 complete
-state_head: 3becc42649471f3955dc7c0754486119e8ce4274
+last_activity_desc: Milestone v4.9 completed and archived
+state_head: f70af2af71091c0d27481e540a388506bccd3c9d
 progress:
   total_phases: 8
   completed_phases: 8
   total_plans: 53
   completed_plans: 53
   percent: 100
+current_phase: 130.1
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-10-05 (Phase 130.1 tech debt complete — 10/10 plans, hand check approved in both IDEs, verification 18/18 passed; v4.9 all 8 phases complete)
+**Last Updated:** 2026-10-05 (milestone v4.9 bbj-ls DENUM & Format Migration completed and archived; override closeout, 8 todos acknowledged)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-04)
+See: .planning/PROJECT.md (updated 2026-10-05)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Milestone v4.9 close — all phases complete (124-130.1)
+**Current Focus:** Planning the next milestone (`/gsd-new-milestone`); v4.9 branch `gsd/v4.9-bbj-ls-denum-format` still to land on `main` via PR
 
 ---
 
 ## Current Position
 
-Phase: 130.1
-Plan: 10 of 10 (130.1-01..10 complete)
-Status: All phases complete — milestone close pending
-Last activity: 2026-10-05 — Phase 130.1 complete
-
-Progress: [██████████] 100% (v4.9: 8/8 phases)
+Phase: Milestone v4.9 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-05 — Milestone v4.9 completed and archived
 
 ### v4.9 milestone map
 
@@ -56,7 +54,7 @@ The interop client comes first. The server formatter lands together with the rem
 jar provider and IntelliJ's switch set to off. DENUM (`bbj/denum`) follows formatting, and the VS
 Code cut-over ends with an end-to-end check from the built VSIX against live BBj 26.03. The
 IntelliJ DENUM action and banner come before the evaluation and the user's verdict. Docs come last.
-The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`.
+The v4.8 and v4.9 maps are archived in `.planning/milestones/v4.8-ROADMAP.md` and `v4.9-ROADMAP.md`.
 
 ## Performance Metrics
 
@@ -511,10 +509,8 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 1 | Complete settings example in VS Code configuration.md uses shipped defaults (phase 123 VSC-04 gap) | 2026-09-30 | c46a5d9f | — | — |
-| 260930-m99 | Root README rewritten as a customer landing page: install and docs links up front, feature showcase, no build steps | 2026-09-30 | d17ea86d | — | [260930-m99-clean-up-the-readme-advertising-tone-no-](./quick/260930-m99-clean-up-the-readme-advertising-tone-no-/) |
 
-Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
+Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README); the 2026-09-30 rows (incl. 260930-m99) under `.planning/milestones/v4.9-quick/`.
 
 ---
 
@@ -532,10 +528,10 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 ## Session Continuity
 
 Last session: 2026-10-05T15:03:30.086Z
-Stopped at: Phase 130.1 complete — all phases complete
+Stopped at: Milestone v4.9 completed and archived
 Resume file: None
 
-Next: /gsd-complete-milestone v4.9. Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open. Phase 130.1 fixed 127 WR-01, backlog 999.1 and the line-numbered syntax-check todo; its own review WR-01/WR-02 are fixed, WR-03/WR-04 and info items are todos (.planning/todos/pending/2026-10-05-*).
+Next: open the v4.9 PR from `gsd/v4.9-bbj-ls-denum-format` (add `Closes #N` lines for fixed issues), then `/gsd-new-milestone`. Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 130.1 closed the 127 review warnings, 126 WR-02, 130 WR-02/WR-03 and backlog 999.1; its own WR-03/WR-04 and info items are acknowledged todos (.planning/todos/pending/2026-10-05-*).
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -544,6 +540,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| todos | 2026-10-04-nested-java-classes-from-bbj-ls.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-close-file-tabs-returns-renumbered-view-column.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-denumber-success-message-waits-for-mirror-version.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-replace-recheck-file-modified.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-task-not-cancellable.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-unsettled-listing-fails-open.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-tokenized-check-reads-vfs-in-is-enabled.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-vscode-decompile-menu-noise-and-stale-comment.md | (presence-only) | 2026-10-05 | v4.9 |
 | todos | 2026-09-29-lsp4j-1-0-with-bbj-ls.md | (presence-only) | 2026-09-30 | v4.8 |
 | todos | 2026-09-29-vitest-5-upgrade.md | (presence-only) | 2026-09-30 | v4.8 |
 | todos | 2026-09-29-vscode-jsonrpc-9-migration.md | (presence-only) | 2026-09-30 | v4.8 |
@@ -653,4 +657,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Plan Phase 130 with /gsd-plan-phase 130 (or /gsd-discuss-phase 130 first)
+- Start the next milestone with /gsd-new-milestone

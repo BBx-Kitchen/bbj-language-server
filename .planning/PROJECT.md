@@ -2,36 +2,33 @@
 
 ## What This Is
 
-A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics (including compiler diagnostics from BBj's own parser on BBj 26.03 or later, run while typing, on save, or not at all), code completion, go-to-definition, signature help, Structure view, run and compile commands (GUI/BUI/DWC), visual code composers (MSGBOX, addWindow/addChildWindow, CVS(), SETOPTS) with in-editor cues, and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
+A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics (including compiler diagnostics from BBj's own parser on BBj 26.03 or later, run while typing, on save, or not at all), code completion, go-to-definition, signature help, Structure view, formatting and line-number removal (Denumber) through BBj's own bbj-ls on BBj 26.03 or later, in-place decompile of tokenized programs, run and compile commands (GUI/BUI/DWC), visual code composers (MSGBOX, addWindow/addChildWindow, CVS(), SETOPTS) with in-editor cues, and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## Current Milestone: v4.9 bbj-ls DENUM & Format Migration
+## Next Milestone Goals
 
-**Goal:** Replace the vendored 2021 formatter jar and the `bbjlst` denumber path with bbj-ls's
-`formatProgram` and `denumProgram` JSON-RPC methods (BBj 26.03), served from the language server
-so VS Code and IntelliJ share one implementation.
-
-**Target features:**
-- LSP `textDocument/formatting` and `textDocument/rangeFormatting` in the language server, backed
-  by `formatProgram` over the existing :5008 interop connection
-- A language-server DENUM command backed by `denumProgram`; VS Code's `bbj.denumber` command and
-  open-file denumber prompt rewired to it
-- Typed error handling: DENUM-needed (-33006) offers DENUM first, invalid settings (-33007) per
-  key, mixed numbering (-33008) with the offending line, timeout/too-large/engine failure,
-  silent supersession (-32800), DENUM diagnostics surfaced
-- Hard cut-over: `BBjCFCli.jar`/`tools/formatter`, the formatter java resolver/verifier,
-  `bbj.formatter.javaPath` and the bbjlst denumber path removed (tokenized-program decompile
-  stays); BBj older than 26.03 gets a clear "requires BBj 26.03" message
-- All 15 formatter settings exposed in both IDEs, the existing four `bbj.formatter.*` keys
-  carried over (`splitSingleLineIF` -> `splitSingleLineIf`)
-- IntelliJ evaluation of LSP4IJ formatting against our formatter (whole document, range,
-  format-on-save, DENUM-needed, settings), then a user decision: officially supported or disabled
-- User guides and QA checklists updated
+Not defined yet; start with `/gsd-new-milestone`. Candidates: the v4.9 close-out todos (Denumber
+5 s stall on non-identical mirror text, the IntelliJ decompile and `isEnabled` follow-ups), nested
+Java classes from bbj-ls, the vscode-jsonrpc 9 / vitest 5 / lsp4j 1.0 upgrades, and a settings
+reference generated from `package.json`.
 
 ## Current State
+
+**v4.9 bbj-ls DENUM & Format Migration shipped 2026-10-05** (override closeout after a milestone
+audit with status `tech_debt`: 39/39 requirements, 8/8 phases verified, Nyquist-compliant and
+security-verified, 20/20 integration points and 7/7 flows clean, no gaps; eight follow-up todos
+acknowledged at close). Formatting (Format Document, Format Selection, format-on-save, IntelliJ
+Reformat Code and Actions on Save) and Denumber now run in the shared language server against
+bbj-ls's `formatProgram` / `denumProgram` (BBj 26.03) over a dedicated interop lane, with all 15
+formatter settings in both IDEs. The 2021 formatter jar, `bbj.formatter.javaPath` and the bbjlst
+denumber path are gone. Phase 130.1 (inserted after the first audit) fixed in-place decompile of
+tokenized programs in VS Code, added the same offer to IntelliJ as a banner, silenced diagnostics on
+tokenized and line-numbered programs, and made the VS Code language server start lazily. The work is
+on branch `gsd/v4.9-bbj-ls-denum-format` and lands on `main` via PR; the release body is
+`130-RELEASE-NOTES.md`. Phase artifacts are archived under `.planning/milestones/v4.9-phases/`.
 
 **v4.8 Documentation Drift shipped 2026-09-30** (override closeout after a milestone audit with
 status `tech_debt`: 18/18 requirements, phase 123 verified, cross-document links and 5/5 flows
@@ -504,6 +501,8 @@ until publication).
 - ✓ **IJ-01..02**: IntelliJ guide documents automatic EM login with remembered username, the BBj Compiler section and the Host fallback — v4.8 Phase 123
 - ✓ **COMP-01**: Both guides have a Composers page covering every composer command/action/intention and assign-to validation — v4.8 Phase 123
 - ✓ **DEV-01..03**: CLAUDE.md and the browser-editor concepts page match the architecture, test pattern and CI gates — v4.8 Phase 123
+- ✓ **INT-01..05**: a dedicated, lazily opened interop lane carries bbj-ls `formatProgram` / `denumProgram` with a strict answer guard, typed outcomes for every bbj-ls error code, per-method capability latching and a 15 s cancel-always backstop — v4.9 Phase 124
+- ✓ **DEN-02, DEN-05, DEN-06, SET-01, SET-03, SET-04, CUT-02, CUT-03**: VS Code Denumber and the open prompt run on `bbj/denum`; the jar formatter, its jars and `bbj.formatter.javaPath` are deleted; all 15 formatter settings are typed controls with a one-time `splitSingleLineIF` migration; decompile of tokenized programs stays (fixed in place in 130.1) — v4.9 Phase 127
 - ✓ **FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01**: Format Document, Format Selection and format-on-save run through the language server on bbj-ls `formatProgram` with minimal, version-checked edits and one deduplicated message per failure; only the 15 known formatter keys reach bbj-ls; VS Code's jar provider is no longer registered; IntelliJ LSP formatting is held off by one switch until the Phase 129 verdict — v4.9 Phase 125
 - ✓ **DEN-01, DEN-03, DEN-04, FMT-06, FMT-07**: a `bbj/denum` request for both IDEs denumbers the open buffer through bbj-ls with one version-checked edit and one message per outcome; formatting a line-numbered file offers "Denumber" / "Denumber and Format" (Format Selection: "Denumber") on every request instead of changing the buffer; DENUM diagnostics land in VS Code's Problems view (and the 'BBj' channel as a log copy) — v4.9 Phase 126
 - ✓ **IJF-05, IJF-06**: IntelliJ has a "Denumber BBj Program" action after Compile in the Tools and editor menus, enabled only on line-numbered BBj programs, applied as one undoable edit through `bbj/denum` and never saving; a line-numbered banner with one Denumber link disappears after the edit and comes back on Undo; DENUM diagnostics go to the BBj console as one plain-text block — v4.9 Phase 128
@@ -513,9 +512,9 @@ until publication).
 
 ### Active
 
-v4.9 bbj-ls DENUM & Format Migration — requirements in `.planning/REQUIREMENTS.md`.
+No milestone active; the next one starts with `/gsd-new-milestone` and a fresh `.planning/REQUIREMENTS.md`.
 
-Other candidates (not in v4.9): the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (todos acknowledged at the v4.8 close), the three pending todos acknowledged at the v4.7 close, and a settings reference generated from `package.json` (deferred from v4.8). The formatter jar's `--single-line-if` crash (#507) is resolved by v4.9's move off the jar.
+Candidates: the eight todos acknowledged at the v4.9 close (130.1 review follow-ups, nested Java classes from bbj-ls), the vscode-jsonrpc 9, vitest 5 and lsp4j 1.0 upgrades (acknowledged at the v4.8 close), the three pending todos acknowledged at the v4.7 close, and a settings reference generated from `package.json` (deferred from v4.8). The formatter jar's `--single-line-if` crash (#507) is resolved: v4.9 removed the jar.
 
 Carried over, maintainer-owned (not GSD phases):
 - [ ] Advisory publication (PROC-03) for the nine merged advisory fixes — the tagged release it waited on now exists (`v0.16.0`, 2026-09-20); per-advisory severity and CVE decisions are the maintainer's
@@ -546,7 +545,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.7 Audit Hygiene Burn-down shipped 2026-09-29 (Phases 110-122, 80 plans, 185 tasks, 63/63 requirements); 24 milestones shipped. v4.7 is on `main` via PR #708 and published as preview 0.16.10; no stable release since 0.16.0. v4.7 changed 272 files outside `.planning/` (+25,097 / −5,213) in 506 commits over four days (2026-09-26 → 2026-09-29). The whole vitest suite ran 3,715 tests with 0 failures at the close.
+**Current state:** v4.9 bbj-ls DENUM & Format Migration shipped 2026-10-05 (Phases 124-130.1, 53 plans, 115 tasks, 39/39 requirements); 26 milestones shipped. v4.9 changed 168 files in source, tests and docs (+24,073 / −2,725) in 405 commits over five days (2026-10-01 → 2026-10-05); the whole vitest suite ran 4,659 tests with 0 failures and the IntelliJ suite 1,367 tests with 0 failures at the close. v4.9 is not yet on `main`; no stable release since 0.16.0. Formatting and DENUM require BBj 26.03 or later (older BBj gets a "requires BBj 26.03" message).
 
 **Tech stack:** Java 17, Gradle 9.7.1 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v22.23.2 (auto-downloaded; minimum supported major 22), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
@@ -565,10 +564,11 @@ Carried over, maintainer-owned (not GSD phases):
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
 - IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
 - Static method return type inference gap — String.valueOf(2) does not assign type to target variable
+- v4.9 carried debt: Denumber success message can stall 5 s on non-identical mirror text (130.1 WR-03); IntelliJ reads the VFS inside `isEnabled` (WR-04); IntelliJ decompile not cancellable and accepts an unsettled listing; Windows behaviour of the IntelliJ zip and the decompile flow unexercised; 125 IN-02, 129 IN-02/IN-03 — listed in MILESTONES.md
 - v4.6 carried debt: a pending debounced check still runs after switching the trigger to `off` (106 CR-01, pre-existing); the fallback branch can keep a Langium warning beside the kept bbjcpl error (106 WR-01); an uncertain-receiver linking Warning is still hidden by Rule 2 (todo); 108 final UAT on the pre-review-fix build; 109-REVIEW IN-01..05 — listed in MILESTONES.md
 - v4.5 carried debt: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104
 - v4.4 carried debt: partial download-progress fix and three comment-unaware source guards (97-REVIEW), `linking.test.ts` live-interop failures, parallel publish jobs in `manual-release.yml` — listed in MILESTONES.md
-- v4.3 audit tech debt: planning identifiers in 21 source/test files, accepted review risks (86-05 WR-01/WR-02, AR-88-12), duplicated SETOPTS initial-selection logic, `document-formatter.ts` import-time listeners, the `.lst` denumber input path — listed in MILESTONES.md
+- v4.3 audit tech debt: planning identifiers in 21 source/test files, accepted review risks (86-05 WR-01/WR-02, AR-88-12), duplicated SETOPTS initial-selection logic, listed in MILESTONES.md (the `document-formatter.ts` listeners and the `.lst` denumber path went away with v4.9's jar and bbjlst removal)
 
 ## Constraints
 
@@ -786,6 +786,7 @@ Carried over, maintainer-owned (not GSD phases):
 | v4.9 Phase 126: formatting never denumbers; a numbered file gets the Denumber offer on every Format Document, Format Selection and format-on-save (outside the notice ledger), and DENUM diagnostics go to the Problems view keyed by the open document's own uri, cleared on edit or close, with the 'BBj' channel as log copy | UAT round 1 found the per-version offer dedupe silenced repeat requests (no save signal tells a save from Format Document) and the channel-only list was hard to find | ✓ Good — UAT round 2 7/7 in VS Code and IntelliJ against live BBj 26.03; Nyquist-compliant; 32/32 threats closed; tokenized/protected cases recheck in Phase 127 |
 | v4.9 Phase 130: the migration note quotes only real tool output, recorded in `130-FORMAT-EVIDENCE.md` (old jar from `06c81df9^` vs live `formatProgram`); it does not claim the old jar rewrote IF closers, because the evidence showed it kept `endif`/`ENDIF`/`fi` as written; it publishes as the GitHub release body at release time, and both guides link to GitHub Releases | The research framing assumed the jar normalized IF closers; the recorded runs disproved it | ✓ Good — UAT 4/4 (context-menu claim, release-body content, all new QA rows in real IDEs, Actions on Save); Nyquist-compliant; 17/17 threats closed |
 | v4.9 Phase 130.1: Decompile no longer passes bbjlst `-l` (reverses Phase 127 D-08), so a line-numbered program comes back numbered and Denumber turns jump targets into labels; VS Code activates on `onStartupFinished` but starts the language server only on the first BBj document or a command that needs it | The hand check showed `-l` leaves `GOSUB 0100` dangling and overwrites the original with a broken program; a binary tab never fires `onLanguage:bbj`, and activating on startup alone would start the server and interop popups in every window | ✓ Good — hand check approved in both IDEs; verification 18/18; a failed start shows one popup with Reload Window (vscode-languageclient cannot restart a failed client) |
+| v4.9 closed as an override closeout after a `tech_debt` audit (third pass, after 130.1) with eight todos acknowledged; phase artifacts archived on-tree; no `v4.9` git tag | Close taken 2026-10-05: 39/39 requirements, 8/8 phases, 7/7 flows, no gaps. The acknowledged todos are 130.1 review follow-ups and the nested-Java-classes follow-up from bbj-ls. Repository tags stay release versions | — Pending (branch not yet merged; release not cut) |
 
 ## Evolution
 
@@ -805,4 +806,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-05 after Phase 130.1*
+*Last updated: 2026-10-05 after v4.9 milestone*

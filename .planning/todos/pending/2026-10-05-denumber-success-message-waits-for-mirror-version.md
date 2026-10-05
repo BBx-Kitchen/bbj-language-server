@@ -4,6 +4,9 @@ title: Denumber success message can stall 5 s when the mirror text is not byte-i
 area: language-server
 source: phase 130.1 code review (WR-03)
 files: bbj-vscode/src/language/bbj-denum-service.ts
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

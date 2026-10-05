@@ -4,6 +4,9 @@ title: VS Code - Decompile Explorer entries show on every .bbj and extensionless
 area: vscode
 source: phase 130.1 code review (IN-01, IN-03)
 files: bbj-vscode/package.json, bbj-vscode/src/Commands/target-resolution.ts
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

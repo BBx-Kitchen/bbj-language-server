@@ -4,6 +4,9 @@ title: IntelliJ - decompile accepts a listing that never settled in size
 area: intellij
 source: phase 130.1 security audit (T-130.1-20, accepted)
 files: bbj-intellij/src/main/java/com/basis/bbj/intellij/tokenized/BbjLstCommand.java, bbj-intellij/src/test/java/com/basis/bbj/intellij/tokenized/BbjLstCommandTest.java
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

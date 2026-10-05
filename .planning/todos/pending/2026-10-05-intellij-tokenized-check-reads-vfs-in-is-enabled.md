@@ -4,6 +4,9 @@ title: IntelliJ - blocking virtual file system read inside LSPClientFeatures.isE
 area: intellij
 source: phase 130.1 code review (WR-04)
 files: bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java, bbj-intellij/src/main/java/com/basis/bbj/intellij/tokenized/TokenizedBbj.java
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem

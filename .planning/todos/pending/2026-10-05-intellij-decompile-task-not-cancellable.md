@@ -4,6 +4,9 @@ title: IntelliJ - decompile progress task cannot be cancelled
 area: intellij
 source: phase 130.1 security audit (T-130.1-18 rationale)
 files: bbj-intellij/src/main/java/com/basis/bbj/intellij/tokenized/BbjTokenizedDecompiler.java
+audit_acknowledged:
+  milestone: v4.9
+  at: 2026-10-05
 ---
 
 ## Problem
