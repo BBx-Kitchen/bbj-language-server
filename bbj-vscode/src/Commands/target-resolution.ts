@@ -17,7 +17,9 @@
  * clause would accept: `(resourceLangId == bbj && resourceExtname != .bbjt) ||
  * resourceLangId == bbx` in `package.json`. No language with id `bbx` is ever
  * declared there (`.bbx` files carry language id `bbj`), so only the live half
- * of that clause is mirrored here. The two Decompile commands have no menu
+ * of that clause is mirrored here. The Denumber menu entries already use only
+ * that live `bbj` half, while the other run/compile entries still carry the
+ * shared clause. The two Decompile commands have no menu
  * entry and accept tokenized binaries, so their fallback only requires the
  * `bbj` language id, including `.bbjt`.
  *

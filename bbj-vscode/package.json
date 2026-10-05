@@ -254,7 +254,7 @@
           "group": "BBj@4"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "BBj@5"
         },
@@ -316,7 +316,7 @@
           "group": "navigation@2"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "navigation@2"
         }
@@ -343,7 +343,7 @@
           "group": "BBj@4"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "BBj@5"
         }

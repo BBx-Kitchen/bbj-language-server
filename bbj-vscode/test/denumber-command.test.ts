@@ -241,7 +241,8 @@ describe('the Denumber command sources', () => {
 describe('the package.json contribution points of Denumber BBj Program', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8'));
     const contributes = manifest.contributes;
-    const when = '(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx';
+    const when = 'resourceLangId == bbj && resourceExtname != .bbjt';
+    const sharedRunClause = '(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx';
 
     test('keeps its id, title and both icons', () => {
         const entry = contributes.commands.find((command: { command: string }) => command.command === 'bbj.denumber');
@@ -267,5 +268,21 @@ describe('the package.json contribution points of Denumber BBj Program', () => {
 
         const menusWithDenumber = Object.keys(contributes.menus).filter(menu => menuEntries(menu).length > 0);
         expect(menusWithDenumber.sort()).toEqual(['editor/context', 'editor/title', 'explorer/context']);
+    });
+
+    test('offers Denumber only for bbj documents, with no bbx branch, and leaves the other entries on the shared clause', () => {
+        const allEntries: Array<{ when?: string; command: string }> = Object.values(contributes.menus).flat() as Array<{
+            when?: string;
+            command: string;
+        }>;
+        const denumberEntries = allEntries.filter(item => item.command === 'bbj.denumber');
+        expect(denumberEntries).toHaveLength(3);
+        for (const item of denumberEntries) {
+            expect(item.when).not.toContain('bbx');
+        }
+
+        const onSharedClause = allEntries.filter(item => item.when === sharedRunClause);
+        expect(onSharedClause).toHaveLength(12);
+        expect(onSharedClause.some(item => item.command === 'bbj.denumber')).toBe(false);
     });
 });
