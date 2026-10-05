@@ -274,6 +274,10 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjLineNumberedNotificationProvider"/>
 
+        <!-- Editor banner offering decompile on tokenized programs -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjTokenizedNotificationProvider"/>
+
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
