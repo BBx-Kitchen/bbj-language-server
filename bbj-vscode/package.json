@@ -346,6 +346,16 @@
           "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "BBj@5"
+        },
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == bbj || resourceExtname == .pub || resourceExtname == .src || resourceFilename =~ /^[^.]+$/)",
+          "command": "bbj.decompile",
+          "group": "BBj@6"
+        },
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == bbj || resourceExtname == .pub || resourceExtname == .src || resourceFilename =~ /^[^.]+$/)",
+          "command": "bbj.decompileReadonly",
+          "group": "BBj@7"
         }
       ]
     },
@@ -811,7 +821,8 @@
   },
   "activationEvents": [
     "onLanguage:bbj",
-    "onLanguage:bbx-config"
+    "onLanguage:bbx-config",
+    "onStartupFinished"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
