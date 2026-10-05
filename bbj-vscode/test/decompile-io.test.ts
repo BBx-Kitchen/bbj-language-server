@@ -3,10 +3,9 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
+import * as processArgs from '../src/Commands/process-args.js';
 import {
     isTokenizedFile,
-    waitForDecompileOutput,
-    deleteLeftoverLst,
     statSize,
     waitForListing,
     verifyListing,
@@ -14,8 +13,6 @@ import {
 } from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
-
-const COMMANDS_CJS = path.join(__dirname, '..', 'src', 'Commands', 'Commands.cjs');
 
 describe('decompile-io', () => {
     let dir: string;
@@ -272,191 +269,23 @@ describe('decompile-io', () => {
             expect(fs.readFileSync(target).equals(MAGIC)).toBe(true);
         });
     });
-
-    describe('waitForDecompileOutput', () => {
-        const fast = { pollMs: 5, timeoutMs: 2000 };
-
-        test('does not resolve to a symlinked .lst pointing at a real listing, and rejects on timeout', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const realListing = path.join(dir, 'real.lst');
-            fs.writeFileSync(realListing, '0010 print "hi"\n');
-            const lst = input + '.lst';
-            fs.symlinkSync(realListing, lst);
-
-            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 150 }))
-                .rejects.toThrow(/Timed out/);
-        });
-
-        test('resolves to the .lst path once it appears and its size settles', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            // Write the listing shortly after the wait starts, simulating async bbjlst output.
-            setTimeout(() => fs.writeFileSync(lst, '0010 print "hi"\n'), 30);
-
-            const result = await waitForDecompileOutput(input, fast);
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
-        });
-
-        test('detects in-place rewrite when a once-tokenized input becomes ASCII', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC); // starts tokenized
-            // No .lst ever appears; instead the input itself is rewritten to source.
-            setTimeout(() => fs.writeFileSync(input, 'print "hi"\n'), 30);
-
-            const result = await waitForDecompileOutput(input, { ...fast, canRewriteInPlace: true });
-            expect(result).toEqual({ sourcePath: input, inPlace: true });
-        });
-
-        test('does NOT treat a non-tokenized input as in-place (waits for .lst)', async () => {
-            // e.g. a plain-text, line-numbered file: bbjlst always emits .lst.
-            const input = path.join(dir, 'numbered.bbj');
-            fs.writeFileSync(input, '0010 print "hi"\n'); // never tokenized
-            const lst = input + '.lst';
-            setTimeout(() => fs.writeFileSync(lst, 'print "hi"\n'), 30);
-
-            // canRewriteInPlace defaults to false → must resolve to .lst, not in-place.
-            const result = await waitForDecompileOutput(input, fast);
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
-        });
-
-        test('rejects on timeout when no output ever appears', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 120 }))
-                .rejects.toThrow(/Timed out/);
-        });
-
-        test('a not-yet-stable .lst is not resolved until its size settles', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            // Grow the listing on every poll for a while, then stop — resolution must
-            // only happen after the size stops changing.
-            let bytes = 0;
-            const grower = setInterval(() => { bytes += 4; fs.writeFileSync(lst, 'x'.repeat(bytes)); }, 5);
-            setTimeout(() => clearInterval(grower), 60);
-
-            const result = await waitForDecompileOutput(input, { pollMs: 8, timeoutMs: 2000 });
-            expect(result.sourcePath).toBe(lst);
-            // Final observed size must equal what's on disk (i.e. it settled, not a partial read).
-            expect(fs.statSync(lst).size).toBe(bytes);
-        });
-
-        test('a fresh listing with a coarse, earlier-looking mtime resolves promptly (no mtime gate)', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            fs.writeFileSync(lst, '0010 print "hi"\n');
-            // Backdate the fresh listing's mtime to well before the call starts, simulating a
-            // coarse-mtime filesystem where a just-written file can read as "in the past".
-            const past = new Date(Date.now() - 10000);
-            fs.utimesSync(lst, past, past);
-
-            const start = Date.now();
-            const result = await waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 2000 });
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
-            expect(Date.now() - start).toBeLessThan(1000);
-        });
-
-        describe('P62-D2-011: a stale .lst of matching size is never mistaken for fresh output', () => {
-            // Committed under bbj-vscode/test/ (not a system temp directory), created and removed
-            // per test — a stale-.lst race needs a fixture that already exists before the wait
-            // starts, which the shared per-test `dir` (created fresh in the outer beforeEach)
-            // cannot represent.
-            const staleFixtureDir = path.join(__dirname, 'test-data', 'decompile-io-p62-d2-011');
-
-            beforeEach(() => {
-                fs.mkdirSync(staleFixtureDir, { recursive: true });
-            });
-            afterEach(() => {
-                fs.rmSync(staleFixtureDir, { recursive: true, force: true });
-            });
-
-            test('resolves with the fresh content, not a pre-existing .lst of coincidentally matching size', async () => {
-                const input = path.join(staleFixtureDir, 'prog.bbj');
-                fs.writeFileSync(input, MAGIC);
-                const lst = input + '.lst';
-                const staleContent = 'print "stale"\n';
-                const freshContent = 'print "fresh"\n';
-                expect(freshContent.length).toBe(staleContent.length); // the coincidental-size premise
-
-                // A stale .lst already on disk before the wait starts, e.g. left over from a
-                // crashed prior decompile attempt against the same file. It is the delete step
-                // below — not a timestamp — that guarantees this stale listing can never be
-                // observed by the wait: once removed, no size, however coincidentally matching,
-                // can be read from this path until the fresh run writes it.
-                fs.writeFileSync(lst, staleContent);
-
-                await deleteLeftoverLst(input);
-                expect(fs.existsSync(lst)).toBe(false);
-
-                const resultPromise = waitForDecompileOutput(input, { pollMs: 15, timeoutMs: 2000 });
-                let freshWrittenAt = 0;
-                setTimeout(() => {
-                    fs.writeFileSync(lst, freshContent);
-                    freshWrittenAt = Date.now();
-                }, 45);
-
-                const result = await resultPromise;
-                const resolvedAt = Date.now();
-                expect(resolvedAt).toBeGreaterThanOrEqual(freshWrittenAt);
-                expect(result).toEqual({ sourcePath: lst, inPlace: false });
-                expect(fs.readFileSync(lst, 'utf8')).toBe(freshContent);
-            });
-        });
-    });
-
-    describe('deleteLeftoverLst', () => {
-        test('removes an existing <input>.lst', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            const lst = input + '.lst';
-            fs.writeFileSync(lst, 'stale');
-            await deleteLeftoverLst(input);
-            expect(fs.existsSync(lst)).toBe(false);
-        });
-
-        test('resolves without error when no leftover exists', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            await expect(deleteLeftoverLst(input)).resolves.toBeUndefined();
-        });
-
-        test('fails closed when the leftover cannot be removed, naming the path and reason', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            const lst = input + '.lst';
-            // A directory at the .lst path is a real, mock-free way to make unlink fail with a
-            // non-ENOENT error (EISDIR on Linux, EPERM on macOS/Windows).
-            fs.mkdirSync(lst);
-
-            await expect(deleteLeftoverLst(input)).rejects.toThrow(
-                new RegExp(`Could not remove the leftover.*${lst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
-            );
-            expect(fs.existsSync(lst)).toBe(true);
-            expect(fs.statSync(lst).isDirectory()).toBe(true);
-        });
-
-        test('for a .lst input, removes only <input>.lst.lst and never the input file itself', async () => {
-            const input = path.join(dir, 'prog.lst');
-            const inputContent = '0010 rem x\n';
-            fs.writeFileSync(input, inputContent);
-            const leftover = input + '.lst'; // prog.lst.lst
-            fs.writeFileSync(leftover, 'stale listing');
-
-            await deleteLeftoverLst(input);
-
-            expect(fs.existsSync(leftover)).toBe(false);
-            expect(fs.existsSync(input)).toBe(true);
-            expect(fs.readFileSync(input, 'utf8')).toBe(inputContent);
-        });
-    });
 });
 
-describe('the bbjlst launch path never denumbers (source guard)', () => {
+describe('the bbjlst launch path passes bbjlst nothing but its listing options', () => {
+    test('process-args exports nothing that denumbers', () => {
+        expect(Object.keys(processArgs).filter((name) => /denum/i.test(name))).toEqual([]);
+    });
+
     test.each([
-        ['Commands.cjs', COMMANDS_CJS],
-        ['process-args.ts', path.join(__dirname, '..', 'src', 'Commands', 'process-args.ts')],
-    ])('%s contains no mention of denumbering', (_name, file) => {
-        expect(fs.readFileSync(file, 'utf-8')).not.toMatch(/denumber/i);
+        ['a .bbj', '/w/a.bbj'],
+        ['a .pub', '/w/a.pub'],
+        ['an extensionless', '/w/a'],
+        ['a .lst', '/w/a.lst'],
+    ])('buildDecompileArgv for %s input yields only -l, -xlst, the -d element and the file name', (_label, fileName) => {
+        const { args } = processArgs.buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, outputDir: '/out' });
+        const allowed = new Set(['-l', '-xlst', '-d/out', fileName]);
+        expect(args.filter((arg) => !allowed.has(arg))).toEqual([]);
+        expect(args.at(-1)).toBe(fileName);
+        expect(args.filter((arg) => arg.startsWith('-d'))).toEqual(['-d/out']);
     });
 });
