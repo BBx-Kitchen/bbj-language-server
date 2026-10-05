@@ -689,7 +689,7 @@
     "vscode-uri": "^3.1.0"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.6.4",
     "@types/vscode": "^1.101.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vscode/vsce": "^4.0.0",
