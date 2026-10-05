@@ -212,19 +212,23 @@ export interface BuildDecompileArgvOptions {
     home: string;
     platform?: NodeJS.Platform;
     fileName: string;
+    /** Directory bbjlst writes the listing into; it must already exist. */
+    outputDir: string;
 }
 
 /**
  * bbjlst's argv for decompiling a tokenized program: always `-l` (a listing without line
- * numbers), with `-xlst` added for a `.lst` input. The file name is always the final element.
+ * numbers), with `-xlst` added for a `.lst` input, then `-d<outputDir>`. With `-d` the listing
+ * lands in `outputDir` under exactly the input's file name, for every extension, and never
+ * next to the input. The file name is always the final element.
  */
 export function buildDecompileArgv(opts: BuildDecompileArgvOptions): Argv {
-    const { home, platform = process.platform, fileName } = opts;
+    const { home, platform = process.platform, fileName, outputDir } = opts;
     const args: string[] = ['-l'];
     if (fileName.endsWith('.lst')) {
         args.push('-xlst');
     }
-    args.push(fileName);
+    args.push(`-d${outputDir}`, fileName);
     return { file: bbjlstBin(home, platform), args };
 }
 

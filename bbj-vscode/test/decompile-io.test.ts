@@ -9,10 +9,6 @@ const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj
 
 const COMMANDS_CJS = path.join(__dirname, '..', 'src', 'Commands', 'Commands.cjs');
 
-function readCommandsSource(): string {
-    return fs.readFileSync(COMMANDS_CJS, 'utf-8');
-}
-
 describe('decompile-io', () => {
     let dir: string;
 
@@ -311,34 +307,6 @@ describe('decompile-io', () => {
             expect(fs.existsSync(leftover)).toBe(false);
             expect(fs.existsSync(input)).toBe(true);
             expect(fs.readFileSync(input, 'utf8')).toBe(inputContent);
-        });
-    });
-
-    describe('decompileInPlace wiring (source guard)', () => {
-        test('decompileInPlace awaits deleteLeftoverLst before execWithProgress, inside the try block', () => {
-            const source = readCommandsSource();
-            const start = source.indexOf('const decompileInPlace = (resolvedFileName) => {');
-            expect(start).toBeGreaterThan(-1);
-            const end = source.indexOf('const Commands = {', start);
-            expect(end).toBeGreaterThan(start);
-            const body = source.slice(start, end);
-
-            const tryIndex = body.indexOf('try {');
-            const deleteIndex = body.indexOf('await deleteLeftoverLst(resolvedFileName)');
-            const execIndex = body.indexOf('execWithProgress(argv)');
-
-            expect(tryIndex).toBeGreaterThan(-1);
-            expect(deleteIndex).toBeGreaterThan(-1);
-            expect(execIndex).toBeGreaterThan(-1);
-            expect(deleteIndex).toBeGreaterThan(tryIndex);
-            expect(deleteIndex).toBeLessThan(execIndex);
-        });
-
-        test('Commands.cjs requires deleteLeftoverLst from decompile-io', () => {
-            const source = readCommandsSource();
-            const requireLine = source.match(/const \{[^}]*\} = require\("\.\.\/decompile-io"\);/);
-            expect(requireLine).not.toBeNull();
-            expect(requireLine![0]).toMatch(/deleteLeftoverLst/);
         });
     });
 });
