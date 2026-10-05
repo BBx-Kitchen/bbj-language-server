@@ -1,21 +1,21 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.9
-milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
+milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — PHASES COMPLETE, CLOSE PENDING
 current_phase: 130.1
 current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)"
 status: executing
-stopped_at: Completed 130.1-09-PLAN.md
-last_updated: "2026-10-05T08:19:07.999Z"
+stopped_at: Completed 130.1-10-PLAN.md
+last_updated: "2026-10-05T15:03:30.456Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 130.1 execution started
-state_head: 6737ba0edb6bd5c2f6806be541db204e1fbcb913
+state_head: 320a108e41f1cc468d3d9fce7f9bcceee0bc682b
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
-  total_plans: 43
-  completed_plans: 43
-  percent: 100
+  total_plans: 53
+  completed_plans: 53
+  percent: 88
 ---
 
 # Project State: BBj Language Server
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)) — EXECUTING
-Plan: 10 of 10 (130.1-01..09 complete; 130.1-10 is wave 5)
-Status: Wave 4 complete — ready for wave 5
-Last activity: 2026-10-05 — Phase 130.1 wave 4 (plan 09, guides + QA) complete
+Plan: 10 of 10 (130.1-01..10 complete)
+Status: Wave 5 complete — ready for phase verification
+Last activity: 2026-10-05 — Phase 130.1 wave 5 (plan 10, final gates, hand check approved, ROADMAP and bookkeeping) complete
 
-Progress: [██████████] 100% (v4.9: 7/7 phases)
+Progress: [█████████░] 88% (v4.9: 7/7 phases)
 
 ### v4.9 milestone map
 
@@ -254,6 +254,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130.1 P02 | 12 min | 3 tasks | 10 files |
 | Phase 130.1 P08 | 9 min | 2 tasks | 9 files |
 | Phase 130.1 P09 | 3 min | 3 tasks | 6 files |
+| Phase 130.1 P10 | 1 session | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -531,11 +532,11 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-05T08:19:07.633Z
-Stopped at: Completed 130.1-09-PLAN.md
+Last session: 2026-10-05T15:03:30.086Z
+Stopped at: Completed 130.1-10-PLAN.md
 Resume file: None
 
-Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
+Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure (backlog 999.1) were fixed in phase 130.1, which also closed the todo about syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items

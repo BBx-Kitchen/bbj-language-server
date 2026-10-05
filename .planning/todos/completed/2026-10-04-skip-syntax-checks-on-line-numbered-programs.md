@@ -1,5 +1,7 @@
 ---
 created: 2026-10-04
+completed: 2026-10-05
+resolves_phase: 130.1
 title: Skip syntax checking for line-numbered programs (at least in IntelliJ)
 area: validation
 source: Phase 128 UAT (2026-10-04)

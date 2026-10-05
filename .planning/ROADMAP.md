@@ -27,7 +27,7 @@
 - ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on `main` via PR #699, merged 2026-09-26 — see MILESTONES.md)
 - ✅ **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (shipped 2026-09-29; on `main` via PR #708, merged 2026-09-29, preview 0.16.10 — see MILESTONES.md)
 - ✅ **v4.8 Documentation Drift** — Phase 123 (shipped 2026-09-30; on `main` via PR #726 — see MILESTONES.md)
-- 🔷 **v4.9 bbj-ls DENUM & Format Migration** — Phases 124-130 (in progress, started 2026-10-01)
+- 🔷 **v4.9 bbj-ls DENUM & Format Migration** — Phases 124-130.1 (started 2026-10-01; all phases complete 2026-10-05, milestone close pending)
 
 ## Phases
 
@@ -333,7 +333,7 @@ Full phase detail: `.planning/milestones/v4.8-ROADMAP.md`; requirements (18/18) 
 
 </details>
 
-### 🔷 v4.9 bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
+### 🔷 v4.9 bbj-ls DENUM & Format Migration (Phases 124-130.1) — PHASES COMPLETE, CLOSE PENDING
 
 Scope is the 39 requirements in `.planning/REQUIREMENTS.md`: replace the vendored 2021 formatter
 jar (`BBjCFCli.jar`) and the `bbjlst` denumber path with bbj-ls's `formatProgram` and
@@ -424,6 +424,7 @@ a `bbj/*` request runs that suite. Hermetic tests script `formatProgram`/`denumP
 - [x] **Phase 128: IntelliJ DENUM** - A Denumber action and a line-numbered-file banner in IntelliJ, backed by `bbj/denum` (completed 2026-10-04)
 - [x] **Phase 129: IntelliJ Verdict** - A hands-on evaluation of LSP4IJ formatting, the user's supported-or-disabled decision, and the formatter settings page only if supported (completed 2026-10-04)
 - [x] **Phase 130: Docs & Migration** - Both user guides, a migration note from the old formatter, and QA checklists for formatting and DENUM in both IDEs (completed 2026-10-04)
+- [x] **Phase 130.1: Tech Debt: Review Warnings and Tokenized Programs** - in-place decompile fixed (backlog 999.1), the IntelliJ tokenized banner, no diagnostics noise for tokenized and line-numbered programs, the 127/126/130 review warnings (completed 2026-10-05)
 
 ## Phase Details
 
@@ -669,6 +670,39 @@ Plans:
 
 - [x] 130-05-PLAN.md — IntelliJ changeNotes and root README, then the phase-wide gate and MIG-01..03 marked complete (wave 3)
 
+### Phase 130.1: Tech Debt: Review Warnings and Tokenized Programs (INSERTED)
+
+**Goal**: Opening a tokenized (binary) BBj program works in both IDEs: VS Code's in-place "Decompile & Replace" (backlog 999.1) is fixed with one shared detection rule, and IntelliJ gets the same open-time offer as a banner. Neither the language server nor the IDEs show diagnostic noise for tokenized or line-numbered programs, and the remaining phase 126/127/130 review warnings, the 125 Nyquist flag and the stale ROADMAP are fixed. The close-out plan also fixed the hand-check findings: activation on startup with a lazy language server start, Explorer decompile entries, decompile keeping line numbers, and the binary placeholder tab.
+**Depends on**: Phase 130
+**Requirements**: none (tech-debt phase; decisions D-01..D-18 in 130.1-CONTEXT.md)
+**Plans**: 10/10 plans executed
+
+Plans:
+**Wave 1**
+
+- [x] 130.1-01-PLAN.md — VS Code Decompile & Replace / Read-only through a private bbjlst output directory, proven against real bbjlst (tracer); failure paths and temp-dir cleanup; .lst flow retired
+- [x] 130.1-03-PLAN.md — Denumber menu clauses without the dead bbx branch (tracer); formatter-removal guards narrowed to real references
+- [x] 130.1-04-PLAN.md — Language server gate: no diagnostics for tokenized text, one Denumber hint for line-numbered text (tracer); compiler check never arms or publishes for either
+- [x] 130.1-06-PLAN.md — splitSingleLineIF migration re-runs on configuration change, single-flight (tracer); same-value clean-up; server fallback unchanged
+- [x] 130.1-07-PLAN.md — IntelliJ tokenized banner with Decompile & Replace / Open Read-only running bbjlst (tracer); detection kinds and failure paths; source guards and magic contract
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 130.1-05-PLAN.md — bbj/denumDiagnostics carries the document version: no-edit path to VS Code placement (tracer); post-edit version from the server mirror; client refuses mismatches
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 130.1-02-PLAN.md — One realpath-based tokenized probe for the prompt and both decompile commands, symlink case (tracer); honest I/O-error causes; Denumber on a binary points to Decompile
+- [x] 130.1-08-PLAN.md — IntelliJ never connects tokenized files to the language server (tracer); DENUM notification version in the IntelliJ model and contract
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 130.1-09-PLAN.md — IntelliJ decompile docs section (tracer); message-repeat notes, line-numbered information message, VS Code decompile texts; QA rows
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 130.1-10-PLAN.md — Final gates and both distributables from the final tree (tracer); hand check in both IDEs, plus the fixes it prompted (lazy server start, Explorer decompile entries, decompile without `-l`, placeholder tab); then 999.1 removed, ROADMAP, 125 flag and folded todo closed
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -698,7 +732,7 @@ Plans:
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 | v4.7 Audit Hygiene Burn-down | 110-122 | 80 | Complete | 2026-09-29 |
 | v4.8 Documentation Drift | 123 | 8 | Complete | 2026-09-30 |
-| v4.9 bbj-ls DENUM & Format Migration | 124-130 | TBD | In progress | — |
+| v4.9 bbj-ls DENUM & Format Migration | 124-130.1 | 53 | Phases complete | — |
 
 **Total:** 25 milestones shipped, 121 phases complete, 506 plans shipped.
 
@@ -711,81 +745,31 @@ v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
 
 ### v4.9 phase progress
 
-**Execution order:** 124 → 125 → 126 → 127 → 128 → 129 → 130 (128 needs only 126 and may run alongside 127).
+**Execution order:** 124 → 125 → 126 → 127 → 128 → 129 → 130 → 130.1 (128 needs only 126 and may run alongside 127).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 124. Interop Client | 6/6 | Complete | 2026-10-01 |
 | 125. LS Formatting | 6/6 | Complete | 2026-10-02 |
 | 126. LS DENUM | 7/7 | Complete | 2026-10-03 |
-| 127. VS Code Cut-Over | 6/6 | Planned |  |
-| 128. IntelliJ DENUM | 4/4 | In Progress |  |
-| 129. IntelliJ Verdict | 9/9 | In Progress |  |
-| 130. Docs & Migration | 5/5 | Planned |  |
+| 127. VS Code Cut-Over | 6/6 | Complete | 2026-10-03 |
+| 128. IntelliJ DENUM | 4/4 | Complete | 2026-10-04 |
+| 129. IntelliJ Verdict | 9/9 | Complete | 2026-10-04 |
+| 130. Docs & Migration | 5/5 | Complete | 2026-10-04 |
+| 130.1. Tech Debt | 10/10 | Complete | 2026-10-05 |
 
-**Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130), started 2026-10-01.
+**Current milestone:** v4.9 bbj-ls DENUM & Format Migration (Phases 124-130.1), started 2026-10-01.
 39/39 requirements mapped to 7 phases, with no orphans and no duplicates. IJF-04 depends on the
-Phase 129 verdict: on "disabled" it moves to Out of Scope. The scope is in `.planning/PROJECT.md`
-under "Current Milestone", and the requirement list and its traceability table are in
-`.planning/REQUIREMENTS.md`.
-Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
+Phase 129 verdict: on "disabled" it moves to Out of Scope. Phase 130.1 was inserted after the
+milestone audit to close its tech debt and carries no requirement ids. The scope is in
+`.planning/PROJECT.md` under "Current Milestone", and the requirement list and its traceability
+table are in `.planning/REQUIREMENTS.md`.
+Next: `/gsd-complete-milestone v4.9`.
 
 ## Backlog
 
-### Phase 130.1: Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)
-
-**Goal:** Opening a tokenized (binary) BBj program works in both IDEs: VS Code's in-place "Decompile & Replace" (backlog 999.1) is fixed with one shared detection rule, and IntelliJ gets the same open-time offer as a banner. Neither the language server nor the IDEs show diagnostic noise for tokenized or line-numbered programs, and the remaining phase 126/127/130 review warnings, the 125 Nyquist flag and the stale ROADMAP are fixed.
-**Requirements**: none (tech-debt phase; decisions D-01..D-18 in 130.1-CONTEXT.md)
-**Depends on:** Phase 130
-**Plans:** 9/10 plans executed
-
-Plans:
-**Wave 1**
-
-- [x] 130.1-01-PLAN.md — VS Code Decompile & Replace / Read-only through a private bbjlst output directory, proven against real bbjlst (tracer); failure paths and temp-dir cleanup; .lst flow retired
-- [x] 130.1-03-PLAN.md — Denumber menu clauses without the dead bbx branch (tracer); formatter-removal guards narrowed to real references
-- [x] 130.1-04-PLAN.md — Language server gate: no diagnostics for tokenized text, one Denumber hint for line-numbered text (tracer); compiler check never arms or publishes for either
-- [x] 130.1-06-PLAN.md — splitSingleLineIF migration re-runs on configuration change, single-flight (tracer); same-value clean-up; server fallback unchanged
-- [x] 130.1-07-PLAN.md — IntelliJ tokenized banner with Decompile & Replace / Open Read-only running bbjlst (tracer); detection kinds and failure paths; source guards and magic contract
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 130.1-05-PLAN.md — bbj/denumDiagnostics carries the document version: no-edit path to VS Code placement (tracer); post-edit version from the server mirror; client refuses mismatches
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 130.1-02-PLAN.md — One realpath-based tokenized probe for the prompt and both decompile commands, symlink case (tracer); honest I/O-error causes; Denumber on a binary points to Decompile
-- [x] 130.1-08-PLAN.md — IntelliJ never connects tokenized files to the language server (tracer); DENUM notification version in the IntelliJ model and contract
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 130.1-09-PLAN.md — IntelliJ decompile docs section (tracer); message-repeat notes, line-numbered information message, VS Code decompile texts; QA rows
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [ ] 130.1-10-PLAN.md — Final gates and both distributables from the final tree (tracer); hand check in both IDEs; then 999.1 removed, ROADMAP, 125 flag and folded todo closed
-
-### Phase 999.1: Safe in-place decompile of tokenized BBj programs (BACKLOG)
-
-**Goal:** [Captured for future planning] Opening a tokenized (binary) BBj program, with or without
-line numbers, does not upgrade it safely to source: "Decompile & Replace" fails to rewrite the binary
-in place as text. Found in the phase 127 hand check (127-06, step 15) from the VSIX built at
-`1f336351`, against BBj 26.03. Not a phase 127 regression: the bbjlst argv (`-l`, plus `-xlst` for
-`.lst`) and the rename step are unchanged from the phase base `fbe7e07d`; phase 127 only added the
-plain-text refusal. Revisit the whole open-binary flow (prompt, bbjlst invocation, in-place
-detection in `decompile-io.ts`, rename/replace, read-only copy) with proper planning, possibly
-moving decompile to bbj-ls the way DENUM moved.
-Also covers review WR-01 from phase 127 (accepted override): the open prompt detects tokenized
-content with a symlink-following read while the decompile guard `isTokenizedFile` refuses symlinks
-and reports any I/O error as "not a tokenized BBj program"; use one detection rule for both.
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+No backlog items.
 
 ---
 
-*Roadmap last updated: 2026-10-01 — v4.9 bbj-ls DENUM & Format Migration roadmapped (Phases
-124-130, 39/39 requirements mapped, no orphans).*
+*Roadmap last updated: 2026-10-05 — Phase 130.1 complete; backlog 999.1 absorbed and removed.*
