@@ -278,13 +278,18 @@ describe('decompile-io', () => {
 
         test('rejects when a listing keeps growing past the timeout', async () => {
             const listing = path.join(dir, 'prog.bbj');
-            let bytes = 0;
-            const grower = setInterval(() => { bytes += 4; fs.writeFileSync(listing, 'x'.repeat(bytes)); }, 3);
+            // Grow the file before every size check, so no two checks can see the same size
+            // however the runner schedules timers.
+            const realLstat = fs.promises.lstat.bind(fs.promises);
+            const lstatSpy = vi.spyOn(fs.promises, 'lstat').mockImplementation(async (file, ...rest) => {
+                fs.appendFileSync(listing, 'xxxx');
+                return realLstat(file, ...(rest as []));
+            });
             try {
                 await expect(waitForListing(listing, { pollMs: 8, missingGraceMs: 2000, timeoutMs: 150 }))
                     .rejects.toThrow('bbjlst did not finish writing the listing for "prog.bbj".');
             } finally {
-                clearInterval(grower);
+                lstatSpy.mockRestore();
             }
         });
     });
