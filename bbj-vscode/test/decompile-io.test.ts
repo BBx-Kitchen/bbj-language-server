@@ -390,10 +390,11 @@ describe('the bbjlst launch path passes bbjlst nothing but its listing options',
         ['a .pub', '/w/a.pub'],
         ['an extensionless', '/w/a'],
         ['a .lst', '/w/a.lst'],
-    ])('buildDecompileArgv for %s input yields only -l, -xlst, the -d element and the file name', (_label, fileName) => {
+    ])('buildDecompileArgv for %s input yields only -xlst, the -d element and the file name, and never -l', (_label, fileName) => {
         const { args } = processArgs.buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, outputDir: '/out' });
-        const allowed = new Set(['-l', '-xlst', '-d/out', fileName]);
+        const allowed = new Set(['-xlst', '-d/out', fileName]);
         expect(args.filter((arg) => !allowed.has(arg))).toEqual([]);
+        expect(args).not.toContain('-l');
         expect(args.at(-1)).toBe(fileName);
         expect(args.filter((arg) => arg.startsWith('-d'))).toEqual(['-d/out']);
     });

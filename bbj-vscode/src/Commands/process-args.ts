@@ -217,14 +217,16 @@ export interface BuildDecompileArgvOptions {
 }
 
 /**
- * bbjlst's argv for decompiling a tokenized program: always `-l` (a listing without line
- * numbers), with `-xlst` added for a `.lst` input, then `-d<outputDir>`. With `-d` the listing
- * lands in `outputDir` under exactly the input's file name, for every extension, and never
- * next to the input. The file name is always the final element.
+ * bbjlst's argv for decompiling a tokenized program: `-xlst` for a `.lst` input, then
+ * `-d<outputDir>`. There is deliberately no `-l`: it strips line numbers but leaves the numeric
+ * GOTO/GOSUB targets behind, which breaks a line-numbered program. Without it the program comes
+ * back as it was written (a numbered program stays numbered, an unnumbered one gets no numbers).
+ * With `-d` the listing lands in `outputDir` under exactly the input's file name, for every
+ * extension, and never next to the input. The file name is always the final element.
  */
 export function buildDecompileArgv(opts: BuildDecompileArgvOptions): Argv {
     const { home, platform = process.platform, fileName, outputDir } = opts;
-    const args: string[] = ['-l'];
+    const args: string[] = [];
     if (fileName.endsWith('.lst')) {
         args.push('-xlst');
     }

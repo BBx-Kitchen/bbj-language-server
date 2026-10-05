@@ -222,14 +222,14 @@ describe('process-args - buildCompileArgv (bbj.compiler.* group)', () => {
 });
 
 describe('process-args - buildDecompileArgv', () => {
-    test("['-l', '-d<outputDir>'] before the file name for a non-.lst input", () => {
+    test("['-d<outputDir>'] before the file name for a non-.lst input, with no -l", () => {
         const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', outputDir: '/out' });
-        expect(argv.args).toEqual(['-l', '-d/out', '/w/a.bbj']);
+        expect(argv.args).toEqual(['-d/out', '/w/a.bbj']);
     });
 
-    test("['-l', '-xlst', '-d<outputDir>'] before the file name for a .lst input", () => {
+    test("['-xlst', '-d<outputDir>'] before the file name for a .lst input, with no -l", () => {
         const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.lst', outputDir: '/out' });
-        expect(argv.args).toEqual(['-l', '-xlst', '-d/out', '/w/a.lst']);
+        expect(argv.args).toEqual(['-xlst', '-d/out', '/w/a.lst']);
     });
 
     test('a fileName carrying a shell metacharacter is one verbatim element', () => {
@@ -241,7 +241,7 @@ describe('process-args - buildDecompileArgv', () => {
     test('an outputDir containing a space and a shell metacharacter stays inside exactly one element', () => {
         const outputDir = `/tmp/out dir/${METACHAR_FIXTURE}`;
         const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', outputDir });
-        expect(argv.args).toEqual(['-l', `-d${outputDir}`, '/w/a.bbj']);
+        expect(argv.args).toEqual([`-d${outputDir}`, '/w/a.bbj']);
     });
 });
 

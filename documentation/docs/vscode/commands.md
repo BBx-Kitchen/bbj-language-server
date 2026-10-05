@@ -104,8 +104,14 @@ Opening a line-numbered program offers the same choice automatically (the button
 ## Decompile Commands
 
 Tokenized (binary) BBj programs can be converted to editable source with `bbjlst`. Both commands
-are available from the Command Palette only — they have no keybinding and appear in no context
-menu.
+are in the Command Palette and in the Explorer context menu (group `BBj`) for files, for `.bbj`
+files and for the names tokenized programs usually carry: `.pub`, `.src` and no extension. They
+have no keybinding. A tokenized file does not open in a text editor, so the Explorer is the way to
+reach the commands when the prompt on open was dismissed.
+
+Decompile returns the program as it was written: a line-numbered program stays line-numbered, with
+its numeric `GOTO` and `GOSUB` targets intact, and an unnumbered program gets no numbers. Use
+[Denumber](./formatting.md#denumber) afterwards to turn a numbered result into labels.
 
 ### Decompile Tokenized BBj Program (Replace)
 

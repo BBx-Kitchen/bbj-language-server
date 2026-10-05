@@ -74,13 +74,15 @@ public final class BbjLstCommand {
     }
 
     /**
-     * The argument list: the executable, {@code -l}, {@code -xlst} only for a {@code .lst} input,
-     * one {@code -d<outputDir>} element and the input path last. No element is ever split.
+     * The argument list: the executable, {@code -xlst} only for a {@code .lst} input, one
+     * {@code -d<outputDir>} element and the input path last. No element is ever split. There is
+     * deliberately no {@code -l}: it strips line numbers but leaves the numeric GOTO/GOSUB targets
+     * behind, which breaks a line-numbered program. Without it the program comes back as it was
+     * written.
      */
     public static @NotNull List<String> argv(@NotNull Path executable, @NotNull Path outputDir, @NotNull Path input) {
         List<String> argv = new ArrayList<>();
         argv.add(executable.toString());
-        argv.add("-l");
         if (input.getFileName().toString().endsWith(".lst")) {
             argv.add("-xlst");
         }

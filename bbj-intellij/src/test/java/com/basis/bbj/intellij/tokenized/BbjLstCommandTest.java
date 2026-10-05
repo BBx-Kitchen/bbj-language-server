@@ -41,9 +41,10 @@ class BbjLstCommandTest {
         List<String> argv = BbjLstCommand.argv(Paths.get("/bbx/bin/bbjlst"), out, Paths.get("/src", fileName));
 
         List<String> expected = xlst
-                ? List.of("/bbx/bin/bbjlst", "-l", "-xlst", "-d" + out, "/src/" + fileName)
-                : List.of("/bbx/bin/bbjlst", "-l", "-d" + out, "/src/" + fileName);
+                ? List.of("/bbx/bin/bbjlst", "-xlst", "-d" + out, "/src/" + fileName)
+                : List.of("/bbx/bin/bbjlst", "-d" + out, "/src/" + fileName);
         assertEquals(expected, argv);
+        assertFalse(argv.contains("-l"), "-l would strip the line numbers but leave the jump targets behind");
     }
 
     @Test
@@ -51,7 +52,7 @@ class BbjLstCommandTest {
         Path out = Paths.get("/work dir/out dir");
         List<String> argv = BbjLstCommand.argv(Paths.get("/bbx/bin/bbjlst"), out, Paths.get("/my src/a b.bbj"));
 
-        assertEquals(List.of("/bbx/bin/bbjlst", "-l", "-d/work dir/out dir", "/my src/a b.bbj"), argv);
+        assertEquals(List.of("/bbx/bin/bbjlst", "-d/work dir/out dir", "/my src/a b.bbj"), argv);
     }
 
     @Test
@@ -132,6 +133,22 @@ class BbjLstCommandTest {
 
         BbjLstCommand.deleteRecursively(dir);
         assertFalse(Files.exists(dir), "the private directory must be gone");
+    }
+
+    @Test
+    void aLineNumberedProgramComesBackWithItsNumbersAndItsJumpTargets() throws Exception {
+        Assumptions.assumeTrue(Files.isExecutable(REAL_BBJLST) && Files.isExecutable(REAL_BBJCPL),
+                "needs a BBj installation with bbjlst and bbjcpl");
+        String source = "0010 PRINT \"Hello\"\n0020 GOSUB 0100\n0030 END\n0100 PRINT \"Sub\"\n0110 RETURN\n";
+
+        Path program = Files.copy(tokenize(source), temp.resolve("numbered.bbj"));
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+        Path dir = BbjLstCommand.decompileToPrivateDir(
+                REAL_BBJLST, program, processRunner(), 60_000, privateParent);
+
+        String listing = Files.readString(BbjLstCommand.listingFor(dir, program), StandardCharsets.ISO_8859_1);
+        assertEquals(source, listing);
+        BbjLstCommand.deleteRecursively(dir);
     }
 
     @Test

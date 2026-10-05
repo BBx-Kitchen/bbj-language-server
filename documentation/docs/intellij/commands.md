@@ -124,6 +124,11 @@ and it goes away as soon as the file holds source.
 **Requires:** BBj Home set in Settings and `bbjlst` present in its `bin` folder. Both choices run
 in the background with a progress entry.
 
+Decompile returns the program as it was written: a line-numbered program stays line-numbered, with
+its numeric `GOTO` and `GOSUB` targets intact, and an unnumbered program gets no numbers. A
+numbered result shows the line-numbered banner, and [Denumber](./formatting.md#denumber) turns it
+into labels.
+
 **Good to know:**
 - A symlinked program is decompiled at its target: the target file receives the source and the link
   stays a link.

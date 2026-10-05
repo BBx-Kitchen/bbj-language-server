@@ -432,11 +432,11 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         return args.filter((arg) => arg.startsWith('-d'));
     }
 
-    test('decompileReplace on a tokenized program runs bbjlst once with -l, a private -d directory and the resolved path, and the file then holds the listing', async () => {
+    test('decompileReplace on a tokenized program runs bbjlst once without -l, with a private -d directory and the resolved path, and the file then holds the listing', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'tok-replace.bbj');
         fs.writeFileSync(inputPath, '<<bbj>>tokenized payload');
-        const lstContent = 'unnumbered listing\n';
+        const lstContent = 'listing\n';
         fakeBbjlstWrites(lstContent);
 
         Commands.decompileReplace({ fsPath: inputPath });
@@ -444,8 +444,8 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
 
         expect(fakeProcessRunner.runProcess).toHaveBeenCalledTimes(1);
         const args = fakeProcessRunner.runProcess.mock.calls[0][0].args as string[];
-        expect(args[0]).toBe('-l');
-        expect(args).toHaveLength(3);
+        expect(args).not.toContain('-l');
+        expect(args).toHaveLength(2);
         const flags = outputDirFlags(args);
         expect(flags).toHaveLength(1);
         expect(path.basename(flags[0].slice(2))).toMatch(/^bbj-decompiled-/);
@@ -453,20 +453,20 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         expect(fs.readFileSync(inputPath, 'utf-8')).toBe(lstContent);
     });
 
-    test('decompileReadonly on a tokenized program runs bbjlst once with -l, a private -d directory and the original path, leaving the original untouched', async () => {
+    test('decompileReadonly on a tokenized program runs bbjlst once without -l, with a private -d directory and the original path, leaving the original untouched', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'tok-readonly.bbj');
         const original = '<<bbj>>tokenized payload';
         fs.writeFileSync(inputPath, original);
-        fakeBbjlstWrites('unnumbered listing\n');
+        fakeBbjlstWrites('listing\n');
 
         Commands.decompileReadonly({ fsPath: inputPath });
         await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
 
         expect(fakeProcessRunner.runProcess).toHaveBeenCalledTimes(1);
         const args = fakeProcessRunner.runProcess.mock.calls[0][0].args as string[];
-        expect(args[0]).toBe('-l');
-        expect(args).toHaveLength(3);
+        expect(args).not.toContain('-l');
+        expect(args).toHaveLength(2);
         const flags = outputDirFlags(args);
         expect(flags).toHaveLength(1);
         expect(path.basename(flags[0].slice(2))).toMatch(/^bbj-decompiled-/);
@@ -794,12 +794,12 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         const siblingContent = 'plain text sibling\n';
         fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
         fs.writeFileSync(siblingPath, siblingContent);
-        fakeBbjlstWrites('unnumbered listing\n');
+        fakeBbjlstWrites('listing\n');
 
         Commands.decompileReplace({ fsPath: inputPath });
         await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
 
-        expect(fs.readFileSync(inputPath, 'utf-8')).toBe('unnumbered listing\n');
+        expect(fs.readFileSync(inputPath, 'utf-8')).toBe('listing\n');
         expect(fs.readFileSync(siblingPath, 'utf-8')).toBe(siblingContent);
         expect(fs.readdirSync(tmpDir).sort()).toEqual(['a', 'a.bbj']);
     });

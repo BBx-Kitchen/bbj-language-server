@@ -496,7 +496,7 @@ const Commands = {
     });
   },
   /**
-   * Decompile a tokenized (binary) BBj program to unnumbered source and replace
+   * Decompile a tokenized (binary) BBj program to source and replace
    * the file on disk (issue #65). Resolves the target from the passed uri so it
    * works for binary files that have no active text editor.
    */
