@@ -22,9 +22,10 @@ import {
     notifyOpenFormatterSettings, showFormatterDocument, showFormatterWarning, showFormatterWarningWithAction
 } from './bbj-notifications.js';
 import { logger } from './logger.js';
+import { TOKENIZED_BBJ_MAGIC_TEXT } from '../tokenized-bbj.js';
 
 /** A buffer starting with this text is a tokenized program, not source; bbj-ls cannot format it. */
-export const TOKENIZED_PROGRAM_PREFIX = '<<bbj>>';
+export const TOKENIZED_PROGRAM_PREFIX = TOKENIZED_BBJ_MAGIC_TEXT;
 
 /** The text shown once per connection when the connected BBjServices has no formatter. */
 export const FORMAT_REQUIRES_BBJ_26_03_MESSAGE =

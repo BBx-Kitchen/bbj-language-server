@@ -39,6 +39,8 @@ import {
 } from './bbj-kept-check.js';
 import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from '../composer-lens-contract.js';
+import { TOKENIZED_BBJ_MAGIC_TEXT } from '../tokenized-bbj.js';
+import { classifyDocumentText } from './bbj-document-kind.js';
 import type { BBjServices } from './bbj-module.js';
 import { BBjServiceRegistry } from './bbj-service-registry.js';
 
@@ -496,6 +498,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 return false;
             }
         }
+        // Skip numbered and tokenized text: the validator reports nothing for it, and a compiler
+        // check would only produce a wall of syntax errors for a program that is not checked.
+        if (classifyDocumentText(document.textDocument.getText()) !== 'normal') return false;
         return true;
     }
 
@@ -738,6 +743,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // compiles the file on disk instead -- checkedTextIsOnDisk decides whether the
                 // two happen to be the same text.
                 const checkedText = textDocumentBeforeRequest.getText();
+                // A cycle armed before the user typed or pasted line numbers (or before the buffer
+                // turned out to be tokenized) must not publish for text that is not checked.
+                if (classifyDocumentText(checkedText) !== 'normal') return;
                 let liveOutcome: LiveParseOutcome | undefined;
                 if (bbjParserService.isEnabled()) {
                     liveOutcome = await bbjParserService.requestLiveParse(document);
@@ -1139,7 +1147,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // Skip binary/tokenized BBj files that can't be parsed.
                     // Routine/expected — log at debug so it doesn't surface as an
                     // error in the output channel for workspaces with tokenized files.
-                    if (docFileData.text.startsWith('<<bbj>>')) {
+                    if (docFileData.text.startsWith(TOKENIZED_BBJ_MAGIC_TEXT)) {
                         logger.debug(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
                         continue;
                     }
