@@ -81,6 +81,38 @@ function safeLog<T>(deps: SettingsMigrationDeps<T>, line: string): void {
 }
 
 /**
+ * Wraps an asynchronous run so that it is never started twice at once. Calling the returned function
+ * starts the run when idle; a call that arrives while a run is in progress only records that another
+ * run is wanted, and exactly one more run starts once the current one settles, however many calls
+ * came in meanwhile. The returned function never throws, and a rejected run is dropped.
+ */
+export function createSingleFlightRunner(run: () => Promise<void>): () => void {
+    let running = false;
+    let rerun = false;
+    return () => {
+        if (running) {
+            rerun = true;
+            return;
+        }
+        running = true;
+        void (async () => {
+            try {
+                do {
+                    rerun = false;
+                    try {
+                        await run();
+                    } catch {
+                        // The run is best effort; a failure must not stop the follow-up run.
+                    }
+                } while (rerun);
+            } finally {
+                running = false;
+            }
+        })();
+    };
+}
+
+/**
  * Moves a boolean `splitSingleLineIF` to `splitSingleLineIf` in the user settings and, when the
  * workspace is trusted, in the workspace settings. A scope is left alone when its old value is not
  * a boolean or when the new key is already set in it. The returned promise never rejects.

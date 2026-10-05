@@ -248,6 +248,7 @@ const EXPECTED_SEQUENCE = [
     'outputChannel',
     'fileSystemWatcher',
     'onDidGrantWorkspaceTrust',
+    'onDidChangeConfiguration',
     'command:bbj.config',
     'command:bbj.properties',
     'command:bbj.em',
@@ -280,7 +281,7 @@ const EXPECTED_SEQUENCE = [
     'onDidOpenTextDocument',
     'onDidChangeConfiguration',
 ];
-const EXPECTED_SUBSCRIPTIONS_LENGTH = 36;
+const EXPECTED_SUBSCRIPTIONS_LENGTH = 37;
 
 let context: Parameters<typeof activate>[0];
 

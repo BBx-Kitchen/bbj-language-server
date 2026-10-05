@@ -37,7 +37,7 @@ import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './lang
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
 import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
-import { migrateSplitSingleLineIf } from './settings-migration.js';
+import { createSingleFlightRunner, migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
 import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerEmLoginCommand } from './em-auth.js';
@@ -462,21 +462,32 @@ function sweepOpenDocumentsForConfigAssociation(): void {
 
 /**
  * Moves a user's old `bbj.formatter.splitSingleLineIF` value to `splitSingleLineIf` in the same
- * settings scope. Fire-and-forget: it adds no disposable, no popup and never rejects, so it cannot
- * hold up or break activation. The configuration push the language client sends on registration
- * and on every change carries the moved value to the server either way.
+ * settings scope, once on activation and again whenever the old key changes (a Settings Sync pull
+ * or a hand edit can bring it in after activation). Runs are fire-and-forget and one at a time: it
+ * shows no popup, never rejects, and so cannot hold up or break activation. Each run reads a fresh
+ * configuration, since a configuration object is a snapshot. The only disposable it adds is the
+ * change listener. The configuration push the language client sends on registration and on every
+ * change carries the moved value to the server either way.
  */
-function startFormatterSettingsMigration(): void {
+function startFormatterSettingsMigration(context: vscode.ExtensionContext): void {
     try {
-        const formatterConfig = vscode.workspace.getConfiguration('bbj.formatter');
-        void migrateSplitSingleLineIf({
-            inspect: key => formatterConfig.inspect(key),
-            update: (key, value, target) => formatterConfig.update(key, value, target),
-            userTarget: vscode.ConfigurationTarget.Global,
-            workspaceTarget: vscode.ConfigurationTarget.Workspace,
-            workspaceTrusted: vscode.workspace.isTrusted,
-            log: appendOutputLine
+        const run = createSingleFlightRunner(() => {
+            const formatterConfig = vscode.workspace.getConfiguration('bbj.formatter');
+            return migrateSplitSingleLineIf({
+                inspect: key => formatterConfig.inspect(key),
+                update: (key, value, target) => formatterConfig.update(key, value, target),
+                userTarget: vscode.ConfigurationTarget.Global,
+                workspaceTarget: vscode.ConfigurationTarget.Workspace,
+                workspaceTrusted: vscode.workspace.isTrusted,
+                log: appendOutputLine
+            });
         });
+        run();
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration('bbj.formatter.splitSingleLineIF')) {
+                run();
+            }
+        }));
     } catch {
         // An unavailable configuration API means there is nothing to migrate.
     }
@@ -512,7 +523,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
-    startFormatterSettingsMigration();
+    startFormatterSettingsMigration(context);
 
     registerConfigFileCommands(context);
     registerEmLoginCommand(context, { outputChannel });

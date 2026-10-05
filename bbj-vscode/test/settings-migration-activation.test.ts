@@ -176,6 +176,24 @@ function migrationLines(): string[] {
     return channelLines.filter(line => line.includes('splitSingleLineIF'));
 }
 
+type ChangeEvent = { affectsConfiguration(section: string): boolean };
+
+/** Delivers one configuration change to every listener the extension registered at activation. */
+function fireConfigurationChange(...affected: string[]): void {
+    const listeners = vi.mocked(vscode.workspace.onDidChangeConfiguration).mock.calls
+        .map(call => (call as unknown as [(event: ChangeEvent) => void])[0]);
+    for (const listener of listeners) {
+        listener({ affectsConfiguration: section => affected.includes(section) });
+    }
+}
+
+function formatterConfigurationFetches(): number {
+    return vi.mocked(vscode.workspace.getConfiguration).mock.calls
+        .filter(call => call[0] === 'bbj.formatter').length;
+}
+
+const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+
 function expectNoNotification(): void {
     expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
     expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
@@ -281,5 +299,95 @@ describe('the formatter settings migration through activate()', () => {
         } finally {
             process.off('unhandledRejection', onUnhandled);
         }
+    });
+});
+
+describe('the formatter settings migration after activation', () => {
+    test('moves an old-spelling value that appears after activation when the old key changes', async () => {
+        scriptConfiguration();
+        activateFresh();
+        await settle();
+        expect(scripted.updates).toEqual([]);
+
+        scripted.table['splitSingleLineIF'] = { globalValue: true };
+        fireConfigurationChange('bbj.formatter.splitSingleLineIF');
+
+        await vi.waitFor(() => {
+            expect(scripted.updates).toHaveLength(2);
+        });
+        expect(scripted.updates).toEqual([
+            ['splitSingleLineIf', true, GLOBAL_TARGET],
+            ['splitSingleLineIF', undefined, GLOBAL_TARGET],
+        ]);
+        await vi.waitFor(() => {
+            expect(migrationLines()).toHaveLength(1);
+        });
+        expect(migrationLines()[0]).toBe(
+            'Moved bbj.formatter.splitSingleLineIF to bbj.formatter.splitSingleLineIf in the user settings.'
+        );
+        expectNoNotification();
+    });
+
+    test('does not run the migration for a change to another setting', async () => {
+        scriptConfiguration();
+        activateFresh();
+        await settle();
+
+        scripted.table['splitSingleLineIF'] = { globalValue: true };
+        fireConfigurationChange('bbj.formatter.indentWidth');
+        await settle();
+
+        expect(scripted.updates).toEqual([]);
+        expect(migrationLines()).toEqual([]);
+    });
+
+    test('never runs two migrations at once and runs once more for events that arrive meanwhile', async () => {
+        scripted.table['splitSingleLineIF'] = { globalValue: true };
+        scriptConfiguration();
+        let release!: () => void;
+        const gate = new Promise<void>(resolve => { release = resolve; });
+        const applyUpdate = scripted.formatter.update as (key: string, value: unknown, target: number) => Promise<void>;
+        scripted.formatter.update = vi.fn(async (key: string, value: unknown, target: number) => {
+            await gate;
+            await applyUpdate(key, value, target);
+        });
+        const inspect = scripted.formatter.inspect as ReturnType<typeof vi.fn>;
+
+        activateFresh();
+        await vi.waitFor(() => {
+            expect(scripted.formatter.update).toHaveBeenCalledTimes(1);
+        });
+        // One run reads the old and the new key once each.
+        expect(inspect).toHaveBeenCalledTimes(2);
+
+        fireConfigurationChange('bbj.formatter.splitSingleLineIF');
+        fireConfigurationChange('bbj.formatter.splitSingleLineIF');
+        await settle();
+        expect(inspect).toHaveBeenCalledTimes(2);
+
+        release();
+        await vi.waitFor(() => {
+            expect(inspect).toHaveBeenCalledTimes(4);
+        });
+        await settle();
+        expect(inspect).toHaveBeenCalledTimes(4);
+        expect(scripted.updates).toEqual([
+            ['splitSingleLineIf', true, GLOBAL_TARGET],
+            ['splitSingleLineIF', undefined, GLOBAL_TARGET],
+        ]);
+    });
+
+    test('reads a fresh configuration for the run a change event starts', async () => {
+        scriptConfiguration();
+        activateFresh();
+        await settle();
+        const before = formatterConfigurationFetches();
+        expect(before).toBeGreaterThan(0);
+
+        fireConfigurationChange('bbj.formatter.splitSingleLineIF');
+
+        await vi.waitFor(() => {
+            expect(formatterConfigurationFetches()).toBeGreaterThan(before);
+        });
     });
 });
