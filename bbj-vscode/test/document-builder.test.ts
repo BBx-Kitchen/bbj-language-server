@@ -103,6 +103,7 @@ type BuilderPrivates = {
     bbjcplAvailable: boolean | undefined;
     revalidateUseFilePathDiagnostics(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
     runBbjcplForDocuments(documents: LangiumDocument[], cancelToken: CancellationToken): Promise<void>;
+    shouldCompileWithBbjcpl(document: LangiumDocument): boolean;
 };
 
 afterEach(() => {
@@ -298,5 +299,76 @@ describe('revalidateUseFilePathDiagnostics keeps the remembered Langium diagnost
         // The re-remembered list keeps the snapshot's own validated text -- a later composition
         // still knows which text this filtered list belongs to.
         expect(recallLangiumSnapshot(doc)?.validatedText).toBe(validatedText);
+    });
+});
+
+describe('numbered and tokenized text never reaches the compiler check', () => {
+    const NORMAL_TEXT = 'PRINT "Hello"\nPRINT "World"\nEND\n';
+    const NUMBERED_TEXT = '0010 PRINT "Hello"\n0020 PRINT "World"\n0030 END\n';
+    const TOKENIZED_TEXT = '<<bbj>>\u0084\u0000\u0000rest';
+    const existingDiagnostic = (): Diagnostic => ({
+        message: 'existing',
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        severity: 1,
+        source: 'Langium',
+    });
+
+    function openDocument(harness: ReturnType<typeof buildHarness>, path: string, text: string): LangiumDocument {
+        const doc = fakeDocument(path, [existingDiagnostic()], text);
+        harness.openDocumentUris.add(doc.uri.toString());
+        return doc;
+    }
+
+    test.each([
+        ['normal', NORMAL_TEXT, true],
+        ['line-numbered', NUMBERED_TEXT, false],
+        ['tokenized', TOKENIZED_TEXT, false],
+    ])('an open document with %s text is compiled: %s', (_kind, text, expected) => {
+        const harness = buildHarness();
+        const doc = openDocument(harness, '/proj/kind-gate.bbj', text);
+        expect((harness.builder as unknown as BuilderPrivates).shouldCompileWithBbjcpl(doc)).toBe(expected);
+    });
+
+    test.each([
+        ['line-numbered', NUMBERED_TEXT],
+        ['tokenized', TOKENIZED_TEXT],
+    ])('a cycle armed on normal text publishes nothing once the text turns %s', async (_kind, newText) => {
+        vi.useFakeTimers();
+        const harness = buildHarness();
+        const doc = openDocument(harness, `/proj/turns-${_kind}.bbj`, NORMAL_TEXT);
+        const before = structuredClone(doc.diagnostics);
+
+        (harness.builder as unknown as BuilderPrivates).debouncedCompile(doc);
+        TextDocument.update(doc.textDocument, [{ text: newText }], 2);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(harness.requestLiveParseMock).not.toHaveBeenCalled();
+        expect(harness.compileMock).not.toHaveBeenCalled();
+        expect(doc.diagnostics).toEqual(before);
+    });
+
+    test('a cycle armed on normal text still runs when the text stays normal', async () => {
+        vi.useFakeTimers();
+        const harness = buildHarness();
+        harness.compileMock.mockResolvedValue([]);
+        const doc = openDocument(harness, '/proj/stays-normal.bbj', NORMAL_TEXT);
+
+        (harness.builder as unknown as BuilderPrivates).debouncedCompile(doc);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(harness.requestLiveParseMock).toHaveBeenCalledOnce();
+    });
+
+    test('runBbjcplForDocuments arms the normal open document and skips the numbered one', async () => {
+        const harness = buildHarness();
+        const privates = harness.builder as unknown as BuilderPrivates & { debouncedCompile: (d: LangiumDocument) => void };
+        privates.bbjcplAvailable = true;
+        const armed = vi.spyOn(privates, 'debouncedCompile').mockImplementation(() => { });
+        const normal = openDocument(harness, '/proj/run-normal.bbj', NORMAL_TEXT);
+        const numbered = openDocument(harness, '/proj/run-numbered.bbj', NUMBERED_TEXT);
+
+        await privates.runBbjcplForDocuments([normal, numbered], CancellationToken.None);
+
+        expect(armed.mock.calls.map(([d]) => d.uri.toString())).toEqual([normal.uri.toString()]);
     });
 });
