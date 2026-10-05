@@ -280,8 +280,9 @@ const EXPECTED_SEQUENCE = [
     `notification:${RESOLVED_CONFIG_PATH_METHOD}`,
     'onDidOpenTextDocument',
     'onDidChangeConfiguration',
+    'onDidOpenTextDocument',
 ];
-const EXPECTED_SUBSCRIPTIONS_LENGTH = 37;
+const EXPECTED_SUBSCRIPTIONS_LENGTH = 38;
 
 let context: Parameters<typeof activate>[0];
 

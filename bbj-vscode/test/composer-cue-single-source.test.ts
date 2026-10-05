@@ -17,11 +17,14 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const SRC_DIR = path.join(REPO_ROOT, 'src');
 const EXTENSION_TS = path.join(SRC_DIR, 'extension.ts');
 
-// Strip both line comments and block comments — good enough for a source guard.
+// Strip both line comments and block comments — good enough for a source guard. Single-quoted
+// string literals are matched first and kept, so a glob such as '**/*.bbj' is not read as the
+// start of a block comment.
 function stripComments(source: string): string {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/\/\/.*$/gm, '');
+    return source.replace(
+        /'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/.*$/gm,
+        match => (match.startsWith("'") ? match : '')
+    );
 }
 
 function readStripped(filePath: string): string {

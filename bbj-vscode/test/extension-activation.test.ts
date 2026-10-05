@@ -13,8 +13,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
  * webviews, or the actual language server process.
  */
 
-const { registeredCommandIds, onNotificationMock } = vi.hoisted(() => ({
+const { registeredCommandIds, commandHandlers, openListeners, sentRequests, onNotificationMock } = vi.hoisted(() => ({
     registeredCommandIds: new Set<string>(),
+    commandHandlers: new Map<string, (...args: unknown[]) => unknown>(),
+    openListeners: [] as Array<(document: unknown) => void>,
+    sentRequests: [] as string[],
     onNotificationMock: vi.fn((_method: string, _handler: (...args: unknown[]) => void) => ({ dispose: vi.fn() })),
 }));
 
@@ -41,12 +44,13 @@ vi.mock('vscode', () => {
             activeTextEditor: undefined,
         },
         commands: {
-            registerCommand: vi.fn((id: string, _handler: unknown) => {
+            registerCommand: vi.fn((id: string, handler: (...args: unknown[]) => unknown) => {
                 if (registeredCommandIds.has(id)) {
                     throw new Error(`command '${id}' already exists`);
                 }
                 registeredCommandIds.add(id);
-                return { dispose: () => { registeredCommandIds.delete(id); } };
+                commandHandlers.set(id, handler);
+                return { dispose: () => { registeredCommandIds.delete(id); commandHandlers.delete(id); } };
             }),
             executeCommand: vi.fn(),
         },
@@ -69,7 +73,10 @@ vi.mock('vscode', () => {
             })),
             textDocuments: [],
             openTextDocument: vi.fn(),
-            onDidOpenTextDocument: vi.fn(() => disposable()),
+            onDidOpenTextDocument: vi.fn((listener: (document: unknown) => void) => {
+                openListeners.push(listener);
+                return disposable();
+            }),
             onDidChangeTextDocument: vi.fn(() => disposable()),
             onDidCloseTextDocument: vi.fn(() => disposable()),
             onDidChangeConfiguration: vi.fn(() => disposable()),
@@ -105,6 +112,12 @@ vi.mock('vscode-languageclient/node', () => {
         start = startMock;
         stop = vi.fn();
         onNotification = onNotificationMock;
+        needsStop = () => true;
+        // A plain function: it records the request in the order the start and the request happen.
+        sendRequest(method: string): Promise<unknown> {
+            sentRequests.push(method);
+            return Promise.resolve(undefined);
+        }
         constructor() { }
     }
     return {
@@ -160,8 +173,22 @@ function disposeSubscriptions(context: Parameters<typeof activate>[0]): void {
     }
 }
 
+/** A text document as the extension sees it; the untitled scheme keeps the config-file association out of the way. */
+function fakeDocument(languageId: string): vscode.TextDocument {
+    return { languageId, uri: { scheme: 'untitled', fsPath: '' } } as unknown as vscode.TextDocument;
+}
+
+function openDocuments(): vscode.TextDocument[] {
+    return vscode.workspace.textDocuments as unknown as vscode.TextDocument[];
+}
+
 beforeEach(() => {
     registeredCommandIds.clear();
+    commandHandlers.clear();
+    openListeners.length = 0;
+    sentRequests.length = 0;
+    openDocuments().length = 0;
+    onNotificationMock.mockClear();
     startMock.mockReset();
     startMock.mockImplementation(() => Promise.resolve());
 });
@@ -169,6 +196,7 @@ beforeEach(() => {
 describe('extension activation (P62-D2-004)', () => {
     test('a client.start() rejection is observed and surfaced, not left unhandled', async () => {
         startMock.mockImplementation(() => Promise.reject(new Error('spawn ENOENT')));
+        openDocuments().push(fakeDocument('bbj'));
 
         const context = {
             subscriptions: [],
@@ -190,6 +218,7 @@ describe('extension activation (P62-D2-004)', () => {
 
     test('a successful client.start() activates without surfacing an error', async () => {
         startMock.mockImplementation(() => Promise.resolve());
+        openDocuments().push(fakeDocument('bbj'));
 
         const context = {
             subscriptions: [],
@@ -204,6 +233,97 @@ describe('extension activation (P62-D2-004)', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(startMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('language client starts on the first BBj document, not on activation', () => {
+    test('activation in a window without a BBj document starts no client, yet every notification handler is held for it', () => {
+        openDocuments().push(fakeDocument('plaintext'));
+        const context = makeContext();
+
+        activate(context);
+
+        expect(startMock).not.toHaveBeenCalled();
+        expect(onNotificationMock.mock.calls.length).toBeGreaterThan(0);
+        disposeSubscriptions(context);
+    });
+
+    test('a document of another language opening later does not start the client', () => {
+        const context = makeContext();
+        activate(context);
+
+        openListeners.forEach(listener => listener(fakeDocument('typescript')));
+        openListeners.forEach(listener => listener(fakeDocument('json')));
+
+        expect(startMock).not.toHaveBeenCalled();
+        disposeSubscriptions(context);
+    });
+
+    test('a BBj document that is already open at activation starts the client once', () => {
+        openDocuments().push(fakeDocument('bbj'), fakeDocument('bbj'));
+        const context = makeContext();
+
+        activate(context);
+
+        expect(startMock).toHaveBeenCalledTimes(1);
+        disposeSubscriptions(context);
+    });
+
+    test('a BBj document opening after activation starts the client once, however many follow', () => {
+        const context = makeContext();
+        activate(context);
+        expect(startMock).not.toHaveBeenCalled();
+
+        openListeners.forEach(listener => listener(fakeDocument('bbj')));
+        openListeners.forEach(listener => listener(fakeDocument('bbx-config')));
+        openListeners.forEach(listener => listener(fakeDocument('bbj')));
+
+        expect(startMock).toHaveBeenCalledTimes(1);
+        disposeSubscriptions(context);
+    });
+
+    test('Refresh Java Classes starts the client first and only then sends its request', async () => {
+        let startedAt = -1;
+        startMock.mockImplementation(() => {
+            startedAt = sentRequests.length;
+            return Promise.resolve();
+        });
+        const context = makeContext();
+        activate(context);
+        expect(startMock).not.toHaveBeenCalled();
+
+        await commandHandlers.get('bbj.refreshJavaClasses')!();
+
+        expect(startMock).toHaveBeenCalledTimes(1);
+        expect(startedAt).toBe(0);
+        expect(sentRequests).toEqual(['bbj/refreshJavaClasses']);
+        disposeSubscriptions(context);
+    });
+
+    test('Refresh Java Classes after a document already started the client does not start it again', async () => {
+        openDocuments().push(fakeDocument('bbj'));
+        const context = makeContext();
+        activate(context);
+
+        await commandHandlers.get('bbj.refreshJavaClasses')!();
+
+        expect(startMock).toHaveBeenCalledTimes(1);
+        disposeSubscriptions(context);
+    });
+
+    test('Refresh Java Classes reports a failed start instead of sending a request', async () => {
+        startMock.mockImplementation(() => Promise.reject(new Error('spawn ENOENT')));
+        (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mockClear();
+        const context = makeContext();
+        activate(context);
+
+        await commandHandlers.get('bbj.refreshJavaClasses')!();
+
+        expect(startMock).toHaveBeenCalledTimes(1);
+        const message = (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0])).join('\n');
+        expect(message).toMatch(/did not start/i);
+        disposeSubscriptions(context);
     });
 });
 

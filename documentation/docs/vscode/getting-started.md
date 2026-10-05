@@ -115,13 +115,15 @@ You can also right-click in the editor and select the run option from the contex
 
 If features like completion aren't working:
 
+The language server starts when the first BBj file (`.bbj` or a BBj config file) opens in a window; a window with no BBj file does not start it.
+
 1. Check the Output panel (`View` > `Output`)
 2. Select "BBj" from the dropdown
 3. Look for error messages
 
 ### Java Integration Not Working
 
-The Java interop service starts automatically with the extension and requires:
+The language server connects to the Java interop service when it starts, and that requires:
 
 1. BBjServices to be running
 2. Proper `bbj.home` configuration

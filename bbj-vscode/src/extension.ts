@@ -37,6 +37,7 @@ import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/
 import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
 import { denumPayloadUri, denumPayloadVersion, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
+import { createLanguageClientStarter, startOnServerDocuments, type LanguageClientStarter } from './language-client-starter.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { createSingleFlightRunner, migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
@@ -46,6 +47,7 @@ import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerE
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
+let clientStarter: LanguageClientStarter;
 let secretStorage: vscode.SecretStorage;
 let outputChannel: vscode.LogOutputChannel;
 let restartGate: RestartGate | undefined;
@@ -503,7 +505,10 @@ export function activate(context: vscode.ExtensionContext): void {
     registerComposerLensCommand(context); // click-through for server-side composer cues (#650)
     registerCvsComposer(context); // visual CVS() composer (#649)
     registerSetOptsComposer(context); // visual SETOPTS composer for config.bbx (#474)
-    registerSetOptsInCodeComposer(context, (method, params) => client.sendRequest(method, params)); // in-code SETOPTS composer (#475, DISC-06)
+    registerSetOptsInCodeComposer(context, async (method, params) => { // in-code SETOPTS composer (#475, DISC-06)
+        await clientStarter.ensureStarted();
+        return client.sendRequest(method, params);
+    });
     secretStorage = context.secrets;
 
     // The extension owns this channel end-to-end (#671): creating it here — before the
@@ -517,7 +522,11 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel = vscode.window.createOutputChannel('BBj', { log: true });
     context.subscriptions.push(outputChannel);
 
-    client = startLanguageClient(context, outputChannel);
+    // The client is constructed here but not started: starting it spawns the language server, which
+    // connects to the Java interop service, and a window without any BBj document has no use for
+    // that. Handlers registered below are held by the client and attached when it starts.
+    client = createLanguageClient(context, outputChannel);
+    clientStarter = createLanguageClientStarter(() => startLanguageClient(client));
 
     // The choke point every VS Code restart must go through (#486): reuses this exact
     // client instance (stop then start) so its already-registered notification handlers
@@ -530,13 +539,20 @@ export function activate(context: vscode.ExtensionContext): void {
     registerEmLoginCommand(context, { outputChannel });
     registerRunCommands(context, { outputChannel });
     registerCompileCommands(context);
-    registerJavaClasspathCommands(context, { client });
+    registerJavaClasspathCommands(context, { client, ensureStarted: () => clientStarter.ensureStarted() });
     registerFormatterSettingsLink(context, { client });
     registerDenumDiagnosticsOutput(context, { client, outputChannel });
     openFilePrompts = registerOpenFilePrompts(context, { log: appendOutputLine });
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
     registerConfigAssociation(context, { client });
+
+    // Last, so every handler above is in place before the server can start: the first BBj document,
+    // already open or opened later, starts it. Commands that need the server start it themselves.
+    context.subscriptions.push(startOnServerDocuments(clientStarter, {
+        openDocuments: () => vscode.workspace.textDocuments,
+        onDidOpen: listener => vscode.workspace.onDidOpenTextDocument(listener)
+    }));
 }
 
 /** Registers bbj.config, bbj.properties and bbj.em. */
@@ -586,7 +602,10 @@ function registerCompileCommands(context: vscode.ExtensionContext): void {
         isVisible: (uri) => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === uri),
         show: (document) => vscode.window.showTextDocument(document, { preview: false }),
         skipOpenPrompt: (uri) => openFilePrompts?.skipLineNumberedPrompt(uri),
-        sendDenum: (params) => client.sendRequest<DenumResult>(DENUM_REQUEST_METHOD, params),
+        sendDenum: async (params) => {
+            await clientStarter.ensureStarted();
+            return client.sendRequest<DenumResult>(DENUM_REQUEST_METHOD, params);
+        },
         warn: (message) => { void vscode.window.showWarningMessage(message); },
         error: (message) => { void vscode.window.showErrorMessage(message); },
     })));
@@ -596,14 +615,14 @@ function registerCompileCommands(context: vscode.ExtensionContext): void {
 }
 
 /** Registers the Java classpath refresh command and the classpath-entries picker. */
-function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
-    const { client } = deps;
+function registerJavaClasspathCommands(
+    context: vscode.ExtensionContext,
+    deps: { client: LanguageClient, ensureStarted: () => Promise<void> }
+): void {
+    const { client, ensureStarted } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
-        if (!client) {
-            vscode.window.showErrorMessage('BBj language server not running');
-            return;
-        }
         try {
+            await ensureStarted();
             await client.sendRequest('bbj/refreshJavaClasses');
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
@@ -874,13 +893,16 @@ export function deactivate(): Thenable<void> | undefined {
     // Cancel any pending restart before disposing the client — a scheduled restart must
     // never fire against a client that is being (or has been) shut down (#486).
     restartGate?.cancel();
+    // A client that was never started stops as a no-op, so a window without a BBj document
+    // deactivates cleanly.
     if (client) {
         return client.stop();
     }
     return undefined;
 }
 
-function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vscode.LogOutputChannel): LanguageClient {
+/** Constructs the language client without starting it; {@link startLanguageClient} does that. */
+function createLanguageClient(context: vscode.ExtensionContext, outputChannel: vscode.LogOutputChannel): LanguageClient {
     const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
     // The debug options for the server
     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging.
@@ -933,7 +955,9 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
         middleware: {
             workspace: createConfigPathTrustMiddleware(sendBbjSettings)
         },
-        initializationOptions: {
+        // A function, so the values are read when the client starts rather than at activation:
+        // the client may start long after activation and the settings may have changed since.
+        initializationOptions: () => ({
             version: context.extension.packageJSON.version,
             home: vscode.workspace.getConfiguration("bbj").get("home"),
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
@@ -946,10 +970,10 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
             compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced"),
             inlayHintsParameterNames: vscode.workspace.getConfiguration("bbj").get("inlayHints.parameterNames.enabled", "literals"),
             formatter: vscode.workspace.getConfiguration("bbj").get("formatter")
-        }
+        })
     };
 
-    // Create the language client and start the client.
+    // Create the language client; it is started later, on the first BBj document.
     client = new LanguageClient(
         'bbj',
         'BBj',
@@ -957,22 +981,27 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
         clientOptions
     );
 
-    // Start the client. This will also launch the server. Surface (not silently swallow) a
-    // start failure -- otherwise every command stays registered as though the server had
-    // started, and the rejection becomes an unhandled promise rejection in the extension host.
-    client.start().catch(error => {
-        const detail = error instanceof Error ? error.message : String(error);
-        console.error('BBj language server failed to start:', error);
-        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
-    });
-
     // Granting Workspace Trust makes the workspace-scoped bbj.configPath take effect without a
     // reload: re-send the gated settings through the same builder the push path uses (issue #511).
+    // A client that is not running yet has nothing to re-send to: it reads the settings when it starts.
     context.subscriptions.push(
-        registerTrustGrantRepush(sendBbjSettings, error => {
+        registerTrustGrantRepush(settings => client.needsStop() ? sendBbjSettings(settings) : Promise.resolve(), error => {
             const detail = error instanceof Error ? error.message : String(error);
             appendOutputLine(`Re-sending settings after the workspace trust grant failed: ${detail}`);
         })
     );
     return client;
+}
+
+/**
+ * Starts the language client, which also launches the server. Surfaces (not silently swallows) a
+ * start failure -- otherwise every command stays registered as though the server had started, and
+ * the rejection becomes an unhandled promise rejection in the extension host.
+ */
+function startLanguageClient(client: LanguageClient): Promise<void> {
+    return client.start().catch(error => {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error('BBj language server failed to start:', error);
+        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
+    });
 }

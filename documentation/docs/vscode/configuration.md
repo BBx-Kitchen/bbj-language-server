@@ -446,7 +446,7 @@ The Java interop service provides:
 - Field information
 - Package structure
 
-The service is managed by BBjServices and starts automatically when the extension activates. Configure the connection using `bbj.interop.host` and `bbj.interop.port` if you need to connect to a remote instance.
+The service is managed by BBjServices. The extension connects to it when you open the first BBj file in a window; a window without BBj files makes no connection. Configure the connection using `bbj.interop.host` and `bbj.interop.port` if you need to connect to a remote instance.
 
 ## Troubleshooting Configuration
 
