@@ -732,6 +732,39 @@ Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 
 ## Backlog
 
+### Phase 130.1: Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (INSERTED)
+
+**Goal:** Opening a tokenized (binary) BBj program works in both IDEs: VS Code's in-place "Decompile & Replace" (backlog 999.1) is fixed with one shared detection rule, and IntelliJ gets the same open-time offer as a banner. Neither the language server nor the IDEs show diagnostic noise for tokenized or line-numbered programs, and the remaining phase 126/127/130 review warnings, the 125 Nyquist flag and the stale ROADMAP are fixed.
+**Requirements**: none (tech-debt phase; decisions D-01..D-18 in 130.1-CONTEXT.md)
+**Depends on:** Phase 130
+**Plans:** 10 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 130.1-01-PLAN.md — VS Code Decompile & Replace / Read-only through a private bbjlst output directory, proven against real bbjlst (tracer); failure paths and temp-dir cleanup; .lst flow retired
+- [ ] 130.1-03-PLAN.md — Denumber menu clauses without the dead bbx branch (tracer); formatter-removal guards narrowed to real references
+- [ ] 130.1-04-PLAN.md — Language server gate: no diagnostics for tokenized text, one Denumber hint for line-numbered text (tracer); compiler check never arms or publishes for either
+- [ ] 130.1-06-PLAN.md — splitSingleLineIF migration re-runs on configuration change, single-flight (tracer); same-value clean-up; server fallback unchanged
+- [ ] 130.1-07-PLAN.md — IntelliJ tokenized banner with Decompile & Replace / Open Read-only running bbjlst (tracer); detection kinds and failure paths; source guards and magic contract
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 130.1-05-PLAN.md — bbj/denumDiagnostics carries the document version: no-edit path to VS Code placement (tracer); post-edit version from the server mirror; client refuses mismatches
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 130.1-02-PLAN.md — One realpath-based tokenized probe for the prompt and both decompile commands, symlink case (tracer); honest I/O-error causes; Denumber on a binary points to Decompile
+- [ ] 130.1-08-PLAN.md — IntelliJ never connects tokenized files to the language server (tracer); DENUM notification version in the IntelliJ model and contract
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 130.1-09-PLAN.md — IntelliJ decompile docs section (tracer); message-repeat notes, line-numbered information message, VS Code decompile texts; QA rows
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 130.1-10-PLAN.md — Final gates and both distributables from the final tree (tracer); hand check in both IDEs; then 999.1 removed, ROADMAP, 125 flag and folded todo closed
+
 ### Phase 999.1: Safe in-place decompile of tokenized BBj programs (BACKLOG)
 
 **Goal:** [Captured for future planning] Opening a tokenized (binary) BBj program, with or without
