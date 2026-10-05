@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130.1
 current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode"
 status: executing
-stopped_at: Completed 130.1-04-PLAN.md
-last_updated: "2026-10-05T06:56:18.324Z"
+stopped_at: Completed 130.1-06-PLAN.md
+last_updated: "2026-10-05T07:00:09.838Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 130.1 execution started
-state_head: 7b8165ff58918b059029232fd98dba3a500683f7
+state_head: 1f6d92db59d0ed5ef8737ae79c55d08932b11ee9
 progress:
   total_phases: 7
   completed_phases: 7
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode) — EXECUTING
-Plan: 4 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 130.1 execution started
 
@@ -248,6 +248,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130.1 P01 | 5 min | 3 tasks | 7 files |
 | Phase 130.1 P03 | 6 min | 2 tasks | 4 files |
 | Phase 130.1 P04 | 4 min | 2 tasks | 7 files |
+| Phase 130.1 P06 | 12 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -449,6 +450,7 @@ decisions:
 - [Phase 130]: 130-04: IntelliJ Formatting page reuses the VS Code Description cells word for word (script-checked), the CRLF warning follows the Line ending row, and the Denumber failed balloon bodies have their own table
 - [Phase 130]: 130-05: changeNotes carries no version number; README formatting bullet links both published guides — Version comes from -Pversion at build time; both IDEs now format and denumber
 - [Phase 130.1]: Denumber menu fix uses the menu-clause option only: three bbj.denumber when clauses drop the bbx branch, no in-command language check — Menu offers only what the client announces to the server; other 12 entries stay on the shared clause
+- [Phase 130.1]: 130.1-06: differing old/new splitSingleLineIF values stay untouched and silent; only an equal pair is cleaned — The new key already wins in the language server, and logging would repeat on every settings event for the old key
 
 ### Tech Debt
 
@@ -519,8 +521,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-05T06:56:17.922Z
-Stopped at: Completed 130.1-04-PLAN.md
+Last session: 2026-10-05T07:00:09.438Z
+Stopped at: Completed 130.1-06-PLAN.md
 Resume file: None
 
 Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
