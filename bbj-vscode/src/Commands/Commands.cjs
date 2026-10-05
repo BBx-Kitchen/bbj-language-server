@@ -53,6 +53,7 @@ const setOutputChannel = (channel) => {
 const execWithProgress = (argv) => runProcess(argv);
 
 const { probeTokenizedFile, waitForListing, verifyListing, replaceWithListing } = require("../decompile-io");
+const { closeTabsOnFiles } = require("../close-file-tabs");
 
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
@@ -290,6 +291,7 @@ const decompileInPlace = (resolvedFileName) => {
     cancellable: false
   }, async () => {
     let outputDir;
+    let replaced = false;
     try {
       // Only a tokenized program is decompiled in place; anything else is refused, with its
       // own cause, before anything is created or launched, so it is never rewritten.
@@ -303,13 +305,22 @@ const decompileInPlace = (resolvedFileName) => {
       const result = await decompileToPrivateDir(home, probe.resolvedPath);
       outputDir = result.outputDir;
       await replaceWithListing(probe.resolvedPath, result.listing);
+      replaced = true;
 
+      // The binary placeholder tab still holds the file, and VS Code keeps its binary verdict
+      // for as long as that tab is open, so the file cannot be opened as text until it is closed.
+      // Best effort: if a tab cannot be closed, opening the file is still tried and reports its own failure.
+      const viewColumn = await closeTabsOnFiles(vscode.window.tabGroups, [resolvedFileName, probe.resolvedPath])
+        .catch(() => undefined);
       const uri = vscode.Uri.file(resolvedFileName);
       const doc = await vscode.workspace.openTextDocument(uri);
-      await vscode.window.showTextDocument(doc, { preview: false });
+      await vscode.window.showTextDocument(doc, { preview: false, viewColumn });
     } catch (err) {
-      const errorMsg = `Failed to decompile "${resolvedFileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
-      vscode.window.showErrorMessage(errorMsg);
+      vscode.window.showErrorMessage(
+        replaced
+          ? `Decompiled "${path.basename(resolvedFileName)}", but could not open it: ${String(err.message || err).replace(/\.+$/, '')}. Close the tab and open the file again.`
+          : `Failed to decompile "${resolvedFileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`
+      );
     } finally {
       if (outputDir) {
         await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => { });

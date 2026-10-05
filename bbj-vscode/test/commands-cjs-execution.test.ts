@@ -804,6 +804,101 @@ describe('Commands.cjs decompileReplace / decompileReadonly', () => {
         expect(fs.readdirSync(tmpDir).sort()).toEqual(['a', 'a.bbj']);
     });
 
+    describe('decompileReplace and the tab that still holds the binary program', () => {
+        function fileTab(fsPath: string, isDirty = false) {
+            return { input: { uri: { scheme: 'file', fsPath } }, isDirty };
+        }
+
+        test('closes the placeholder tab before it opens the document, in the column that tab was in', async () => {
+            const { Commands } = loadCommands();
+            const inputPath = path.join(tmpDir, 'tab.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeBbjlstWrites('source\n');
+            const placeholder = fileTab(inputPath);
+            const other = fileTab(path.join(tmpDir, 'other.bbj'));
+            fakeVscode.window.tabGroups.all = [{ viewColumn: 1, tabs: [other] }, { viewColumn: 2, tabs: [placeholder] }];
+            const order: string[] = [];
+            fakeVscode.window.tabGroups.close.mockImplementation(async () => {
+                order.push('close');
+                return true;
+            });
+            fakeVscode.workspace.openTextDocument.mockImplementation(async (target: unknown) => {
+                order.push('open');
+                return { uri: target, fileName: inputPath };
+            });
+
+            Commands.decompileReplace({ fsPath: inputPath });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(order).toEqual(['close', 'open']);
+            expect(fakeVscode.window.tabGroups.close).toHaveBeenCalledWith([placeholder], true);
+            expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+            expect(fakeVscode.window.showTextDocument).toHaveBeenCalledWith(expect.anything(), { preview: false, viewColumn: 2 });
+        });
+
+        test('also closes a tab on the real path behind a symbolic link', async () => {
+            const { Commands } = loadCommands();
+            const target = path.join(tmpDir, 'target.bbj');
+            const link = path.join(tmpDir, 'link.bbj');
+            fs.writeFileSync(target, TOKENIZED_PROGRAM);
+            fs.symlinkSync(target, link);
+            fakeBbjlstWrites('source\n');
+            const onLink = fileTab(link);
+            const onTarget = fileTab(fs.realpathSync(target));
+            fakeVscode.window.tabGroups.all = [{ viewColumn: 1, tabs: [onLink, onTarget] }];
+
+            Commands.decompileReplace({ fsPath: link });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(fakeVscode.window.tabGroups.close).toHaveBeenCalledWith([onLink, onTarget], true);
+        });
+
+        test('a failure to open the document after the replace is not reported as a failed decompile', async () => {
+            const { Commands } = loadCommands();
+            const inputPath = path.join(tmpDir, 'noopen.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeBbjlstWrites('source\n');
+            fakeVscode.workspace.openTextDocument.mockRejectedValueOnce(new Error('Could NOT open editor for "file:///x".'));
+
+            Commands.decompileReplace({ fsPath: inputPath });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(fs.readFileSync(inputPath, 'utf-8')).toBe('source\n');
+            expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+            expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
+                'Decompiled "noopen.bbj", but could not open it: Could NOT open editor for "file:///x". Close the tab and open the file again.'
+            );
+        });
+
+        test('a failure to close the tab does not stop the document from being opened', async () => {
+            const { Commands } = loadCommands();
+            const inputPath = path.join(tmpDir, 'noclose.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeBbjlstWrites('source\n');
+            fakeVscode.window.tabGroups.all = [{ viewColumn: 1, tabs: [fileTab(inputPath)] }];
+            fakeVscode.window.tabGroups.close.mockRejectedValueOnce(new Error('close boom'));
+
+            Commands.decompileReplace({ fsPath: inputPath });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+            expect(fakeVscode.workspace.openTextDocument).toHaveBeenCalledTimes(1);
+        });
+
+        test('decompileReadonly closes no tab, because the original stays untouched', async () => {
+            const { Commands } = loadCommands();
+            const inputPath = path.join(tmpDir, 'ro.bbj');
+            fs.writeFileSync(inputPath, TOKENIZED_PROGRAM);
+            fakeBbjlstWrites('source\n');
+            fakeVscode.window.tabGroups.all = [{ viewColumn: 1, tabs: [fileTab(inputPath)] }];
+
+            Commands.decompileReadonly({ fsPath: inputPath });
+            await fakeVscode.window.withProgress.mock.results.at(-1)?.value;
+
+            expect(fakeVscode.window.tabGroups.close).not.toHaveBeenCalled();
+        });
+    });
+
     test('decompileReadonly of a.pub opens <private dir>/a.bbj holding the listing, keeps the directory and leaves the original unchanged', async () => {
         const { Commands } = loadCommands();
         const inputPath = path.join(tmpDir, 'a.pub');
