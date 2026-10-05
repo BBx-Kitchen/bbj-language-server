@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -131,6 +132,156 @@ class BbjLstCommandTest {
 
         BbjLstCommand.deleteRecursively(dir);
         assertFalse(Files.exists(dir), "the private directory must be gone");
+    }
+
+    @Test
+    void aRunnerFollowingTheOutputDirectoryRuleLeavesTheListingUnderTheReturnedDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.pub"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+
+        Path dir = BbjLstCommand.decompileToPrivateDir(
+                Paths.get("/bbx/bin/bbjlst"), input, listingWriter("print 1\n".getBytes(StandardCharsets.UTF_8)),
+                1_000, privateParent);
+
+        assertEquals(privateParent, dir.getParent());
+        assertTrue(dir.getFileName().toString().startsWith("bbj-decompiled-"));
+        assertEquals("print 1\n", Files.readString(BbjLstCommand.listingFor(dir, input)));
+    }
+
+    @Test
+    void aRunThatWritesNothingFailsWithItsCauseAndBbjlstsOutputAndLeavesNoDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.bbj"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+        BbjLstCommand.Runner silentFailure =
+                (argv, timeout) -> new BbjLstCommand.Output(0, "Unable to open file\n", "", false);
+
+        BbjLstCommand.DecompileException failure = assertThrows(BbjLstCommand.DecompileException.class,
+                () -> BbjLstCommand.decompileToPrivateDir(
+                        Paths.get("/bbx/bin/bbjlst"), input, silentFailure, 1_000, privateParent));
+
+        assertTrue(failure.getMessage().contains("wrote no decompiled listing"), failure.getMessage());
+        assertTrue(failure.getMessage().contains("Unable to open file"), failure.getMessage());
+        assertNoPrivateDirectory(privateParent);
+    }
+
+    @Test
+    void anEmptyListingFailsAndLeavesNoDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.bbj"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+
+        BbjLstCommand.DecompileException failure = assertThrows(BbjLstCommand.DecompileException.class,
+                () -> BbjLstCommand.decompileToPrivateDir(
+                        Paths.get("/bbx/bin/bbjlst"), input, listingWriter(new byte[0]), 1_000, privateParent));
+
+        assertTrue(failure.getMessage().contains("wrote an empty listing"), failure.getMessage());
+        assertNoPrivateDirectory(privateParent);
+    }
+
+    @Test
+    void aListingThatIsStillTokenizedFailsAndLeavesNoDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.bbj"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+        byte[] stillTokenized = "<<bbj>>\u0084 more".getBytes(StandardCharsets.ISO_8859_1);
+
+        BbjLstCommand.DecompileException failure = assertThrows(BbjLstCommand.DecompileException.class,
+                () -> BbjLstCommand.decompileToPrivateDir(
+                        Paths.get("/bbx/bin/bbjlst"), input, listingWriter(stillTokenized), 1_000, privateParent));
+
+        assertTrue(failure.getMessage().contains("the listing is still a tokenized program"), failure.getMessage());
+        assertNoPrivateDirectory(privateParent);
+    }
+
+    @Test
+    void aRunThatTimesOutFailsWithTheLimitAndLeavesNoDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.bbj"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+        BbjLstCommand.Runner hangs = (argv, timeout) -> new BbjLstCommand.Output(-1, "", "", true);
+
+        BbjLstCommand.DecompileException failure = assertThrows(BbjLstCommand.DecompileException.class,
+                () -> BbjLstCommand.decompileToPrivateDir(
+                        Paths.get("/bbx/bin/bbjlst"), input, hangs, 60_000, privateParent));
+
+        assertTrue(failure.getMessage().contains("did not finish within 60 seconds"), failure.getMessage());
+        assertNoPrivateDirectory(privateParent);
+    }
+
+    @Test
+    void aRunThatCannotBeStartedFailsWithItsCauseAndLeavesNoDirectory() throws Exception {
+        Path input = Files.writeString(temp.resolve("a.bbj"), "tokenized stand-in");
+        Path privateParent = Files.createDirectories(temp.resolve("private"));
+        BbjLstCommand.Runner cannotStart = (argv, timeout) -> {
+            throw new IOException("Cannot run program");
+        };
+
+        BbjLstCommand.DecompileException failure = assertThrows(BbjLstCommand.DecompileException.class,
+                () -> BbjLstCommand.decompileToPrivateDir(
+                        Paths.get("/bbx/bin/bbjlst"), input, cannotStart, 1_000, privateParent));
+
+        assertTrue(failure.getMessage().contains("Cannot run program"), failure.getMessage());
+        assertNoPrivateDirectory(privateParent);
+    }
+
+    @Test
+    void aFailedMoveLeavesTheTargetUnchangedAndNoStagedFile() throws Exception {
+        Assumptions.assumeFalse(System.getProperty("os.name").toLowerCase().contains("win"),
+                "directory permissions are POSIX only");
+        Assumptions.assumeFalse("root".equals(System.getProperty("user.name")),
+                "root ignores directory permissions");
+        Path locked = Files.createDirectories(temp.resolve("locked"));
+        Path target = Files.writeString(locked.resolve("prog.bbj"), "original");
+        Path listing = Files.writeString(temp.resolve("listing"), "replacement");
+        assertTrue(locked.toFile().setWritable(false), "could not lock the directory");
+        try {
+            assertThrows(IOException.class, () -> BbjLstCommand.replaceInPlace(target, listing));
+        } finally {
+            locked.toFile().setWritable(true);
+        }
+
+        assertEquals("original", Files.readString(target));
+        try (Stream<Path> names = Files.list(locked)) {
+            assertEquals(List.of("prog.bbj"), names.map(p -> p.getFileName().toString()).toList());
+        }
+    }
+
+    @Test
+    void replaceInPlaceKeepsTheTargetsPermissionsAndLeavesNoStagedFile() throws Exception {
+        Assumptions.assumeFalse(System.getProperty("os.name").toLowerCase().contains("win"),
+                "permission bits are POSIX only");
+        Path target = Files.writeString(temp.resolve("prog.bbj"), "original");
+        Files.setPosixFilePermissions(target, java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-x---"));
+        Path listing = Files.writeString(temp.resolve("listing"), "replacement");
+
+        BbjLstCommand.replaceInPlace(target, listing);
+
+        assertEquals("replacement", Files.readString(target));
+        assertEquals("rwxr-x---", java.nio.file.attribute.PosixFilePermissions.toString(
+                Files.getPosixFilePermissions(target)));
+        try (Stream<Path> names = Files.list(temp)) {
+            assertEquals(List.of("listing", "prog.bbj"),
+                    names.map(p -> p.getFileName().toString()).sorted().toList());
+        }
+    }
+
+    /** A runner that follows bbjlst's output rule: the listing goes to the -d directory under the input's name. */
+    private static BbjLstCommand.Runner listingWriter(byte[] content) {
+        return (argv, timeoutMillis) -> {
+            Path outputDir = null;
+            for (String element : argv) {
+                if (element.startsWith("-d")) {
+                    outputDir = Paths.get(element.substring(2));
+                }
+            }
+            Path input = Paths.get(argv.get(argv.size() - 1));
+            Files.write(outputDir.resolve(input.getFileName()), content);
+            return new BbjLstCommand.Output(0, "", "", false);
+        };
+    }
+
+    private static void assertNoPrivateDirectory(Path parent) throws IOException {
+        try (Stream<Path> entries = Files.list(parent)) {
+            assertEquals(List.of(), entries.map(p -> p.getFileName().toString()).toList(),
+                    "a failed run must leave no bbj-decompiled- directory behind");
+        }
     }
 
     private static Path executableFile(Path path) throws IOException {
