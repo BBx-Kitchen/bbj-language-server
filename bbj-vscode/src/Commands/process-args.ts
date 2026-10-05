@@ -212,24 +212,25 @@ export interface BuildDecompileArgvOptions {
     home: string;
     platform?: NodeJS.Platform;
     fileName: string;
-    denumber?: boolean;
+    /** Directory bbjlst writes the listing into; it must already exist. */
+    outputDir: string;
 }
 
 /**
- * Reproduces today's bbjlst flags: none when not denumbering; `['-l']` when
- * denumbering a non-`.lst` input; `['-l', '-xlst']` when denumbering a `.lst` input.
- * The file name is always the final element.
+ * bbjlst's argv for decompiling a tokenized program: `-xlst` for a `.lst` input, then
+ * `-d<outputDir>`. There is deliberately no `-l`: it strips line numbers but leaves the numeric
+ * GOTO/GOSUB targets behind, which breaks a line-numbered program. Without it the program comes
+ * back as it was written (a numbered program stays numbered, an unnumbered one gets no numbers).
+ * With `-d` the listing lands in `outputDir` under exactly the input's file name, for every
+ * extension, and never next to the input. The file name is always the final element.
  */
 export function buildDecompileArgv(opts: BuildDecompileArgvOptions): Argv {
-    const { home, platform = process.platform, fileName, denumber } = opts;
+    const { home, platform = process.platform, fileName, outputDir } = opts;
     const args: string[] = [];
-    if (denumber) {
-        args.push('-l');
-        if (fileName.endsWith('.lst')) {
-            args.push('-xlst');
-        }
+    if (fileName.endsWith('.lst')) {
+        args.push('-xlst');
     }
-    args.push(fileName);
+    args.push(`-d${outputDir}`, fileName);
     return { file: bbjlstBin(home, platform), args };
 }
 

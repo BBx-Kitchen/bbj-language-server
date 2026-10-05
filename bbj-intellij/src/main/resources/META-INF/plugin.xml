@@ -123,6 +123,15 @@
             <keyboard-shortcut keymap="$default" first-keystroke="alt C"/>
         </action>
 
+        <!-- Sits next to Compile in both menus; the id matches the VS Code command id. -->
+        <action id="bbj.denumber"
+                class="com.basis.bbj.intellij.actions.BbjDenumberAction"
+                text="Denumber BBj Program"
+                description="Remove the line numbers from the current BBj program">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.compile"/>
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="bbj.compile"/>
+        </action>
+
         <!-- BBj Run submenu for Project View context menu -->
         <group id="bbj.runGroup"
                text="BBj Run"
@@ -261,6 +270,14 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjJavaInteropNotificationProvider"/>
 
+        <!-- Editor banner offering Denumber on line-numbered programs -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjLineNumberedNotificationProvider"/>
+
+        <!-- Editor banner offering decompile on tokenized programs -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjTokenizedNotificationProvider"/>
+
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
@@ -269,6 +286,9 @@
 
         <!-- Project-level composer server/catalogs handle cache (#612) -->
         <projectService serviceImplementation="com.basis.bbj.intellij.composer.BbjComposerService"/>
+
+        <!-- Project-level refresher for the line-numbered banner -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.denum.BbjLineNumberedBannerRefresher"/>
 
         <!-- Status bar widget -->
         <statusBarWidgetFactory

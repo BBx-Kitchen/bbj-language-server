@@ -222,25 +222,26 @@ describe('process-args - buildCompileArgv (bbj.compiler.* group)', () => {
 });
 
 describe('process-args - buildDecompileArgv', () => {
-    test('no flags when not denumbering', () => {
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj' });
-        expect(argv.args).toEqual(['/w/a.bbj']);
+    test("['-d<outputDir>'] before the file name for a non-.lst input, with no -l", () => {
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', outputDir: '/out' });
+        expect(argv.args).toEqual(['-d/out', '/w/a.bbj']);
     });
 
-    test("['-l'] when denumbering a non-.lst input", () => {
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', denumber: true });
-        expect(argv.args).toEqual(['-l', '/w/a.bbj']);
-    });
-
-    test("['-l', '-xlst'] when denumbering a .lst input", () => {
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.lst', denumber: true });
-        expect(argv.args).toEqual(['-l', '-xlst', '/w/a.lst']);
+    test("['-xlst', '-d<outputDir>'] before the file name for a .lst input, with no -l", () => {
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.lst', outputDir: '/out' });
+        expect(argv.args).toEqual(['-xlst', '-d/out', '/w/a.lst']);
     });
 
     test('a fileName carrying a shell metacharacter is one verbatim element', () => {
         const fileName = `/w/${METACHAR_FIXTURE}.bbj`;
-        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, denumber: true });
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, outputDir: '/out' });
         expect(argv.args[argv.args.length - 1]).toBe(fileName);
+    });
+
+    test('an outputDir containing a space and a shell metacharacter stays inside exactly one element', () => {
+        const outputDir = `/tmp/out dir/${METACHAR_FIXTURE}`;
+        const argv = buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName: '/w/a.bbj', outputDir });
+        expect(argv.args).toEqual([`-d${outputDir}`, '/w/a.bbj']);
     });
 });
 

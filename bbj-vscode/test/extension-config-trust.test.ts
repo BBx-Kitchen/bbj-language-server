@@ -33,7 +33,7 @@ const h = vi.hoisted(() => ({
         bbjSection: {} as Record<string, unknown>,
     },
     capturedClientOptions: undefined as {
-        initializationOptions?: Record<string, unknown>;
+        initializationOptions?: Record<string, unknown> | (() => Record<string, unknown>);
         middleware?: {
             workspace?: {
                 didChangeConfiguration?: (sections: string[] | undefined, next: (sections: string[] | undefined) => Promise<void>) => Promise<void>;
@@ -62,6 +62,17 @@ function fireWorkspaceTrustGranted(): void {
     }
 }
 
+/** The initialization options as the language client resolves them when it starts. */
+function initOptions(): Record<string, unknown> | undefined {
+    const options = h.capturedClientOptions?.initializationOptions;
+    return typeof options === 'function' ? options() : options;
+}
+
+/** Makes one BBj document count as open, which is what starts the language client. */
+function openBbjDocument(): void {
+    (vscode.workspace.textDocuments as unknown[]).push({ languageId: 'bbj', uri: { scheme: 'untitled', fsPath: '' } });
+}
+
 /** Reset every piece of hoisted mock state between tests. */
 function resetState(): void {
     h.state.isTrusted = false;
@@ -77,6 +88,7 @@ function resetState(): void {
     h.onNotificationMock.mockClear();
     h.registeredCommandIds.clear();
     h.grantListeners = [];
+    (vscode.workspace.textDocuments as unknown[]).length = 0;
 }
 
 /** Merges the workspace-scoped and user-level `configPath`, mirroring how VS Code merges scopes. */
@@ -187,6 +199,7 @@ vi.mock('vscode-languageclient/node', () => {
         outputChannel = { appendLine: vi.fn() };
         start = h.startMock;
         stop = h.stopMock;
+        needsStop = () => h.startMock.mock.calls.length > 0;
         onNotification = h.onNotificationMock;
         sendNotification = h.sendNotificationMock;
         constructor(_id: string, _name: string, _serverOptions: unknown, clientOptions: Record<string, unknown>) {
@@ -218,13 +231,13 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
         runBUI: vi.fn(),
         runDWC: vi.fn(),
         compile: vi.fn(),
-        denumber: vi.fn(),
         decompileReplace: vi.fn(),
         decompileReadonly: vi.fn(),
         setOutputChannel: vi.fn(),
     },
 }));
 
+import * as vscode from 'vscode';
 import { DidChangeConfigurationNotification } from 'vscode-languageclient/node';
 import { activate } from '../src/extension.js';
 import { getActiveConfigPath, resetConfigPathCacheForTests } from '../src/config-path-cache.js';
@@ -387,7 +400,7 @@ describe('initializationOptions honour Workspace Trust for bbj.configPath (issue
         const context = fakeContext();
         activate(context);
 
-        expect(h.capturedClientOptions?.initializationOptions?.configPath).toBe('/home/user/cfg/config.bbx');
+        expect(initOptions()?.configPath).toBe('/home/user/cfg/config.bbx');
         disposeSubscriptions(context);
     });
 
@@ -399,7 +412,7 @@ describe('initializationOptions honour Workspace Trust for bbj.configPath (issue
         const context = fakeContext();
         activate(context);
 
-        expect(h.capturedClientOptions?.initializationOptions?.configPath).toBe('/ws/evil/config.bbx');
+        expect(initOptions()?.configPath).toBe('/ws/evil/config.bbx');
         disposeSubscriptions(context);
     });
 
@@ -410,8 +423,8 @@ describe('initializationOptions honour Workspace Trust for bbj.configPath (issue
         const context = fakeContext();
         activate(context);
 
-        expect(h.capturedClientOptions?.initializationOptions?.interopHost).toBeUndefined();
-        expect(h.capturedClientOptions?.initializationOptions?.interopPort).toBeUndefined();
+        expect(initOptions()?.interopHost).toBeUndefined();
+        expect(initOptions()?.interopPort).toBeUndefined();
         disposeSubscriptions(context);
     });
 
@@ -422,8 +435,8 @@ describe('initializationOptions honour Workspace Trust for bbj.configPath (issue
         const context = fakeContext();
         activate(context);
 
-        expect(h.capturedClientOptions?.initializationOptions?.interopHost).toBe('myhost');
-        expect(h.capturedClientOptions?.initializationOptions?.interopPort).toBe(6000);
+        expect(initOptions()?.interopHost).toBe('myhost');
+        expect(initOptions()?.interopPort).toBe(6000);
         disposeSubscriptions(context);
     });
 });
@@ -665,6 +678,7 @@ describe('granting Workspace Trust re-pushes the bbj settings (issue #511)', () 
         h.state.globalConfigPath = '/home/user/cfg/config.bbx';
         h.state.workspaceConfigPath = '/ws/evil/config.bbx';
         h.state.bbjSection = { home: '/opt/bbj' };
+        openBbjDocument();
 
         const context = fakeContext();
         activate(context);
@@ -682,6 +696,40 @@ describe('granting Workspace Trust re-pushes the bbj settings (issue #511)', () 
 
         disposeSubscriptions(context);
         expect(h.grantListeners.length).toBe(0);
+    });
+
+    test('through activate(): with no BBj document open the client is not running, so a trust grant sends nothing', async () => {
+        resetState();
+        h.state.isTrusted = false;
+        h.state.workspaceConfigPath = '/ws/evil/config.bbx';
+
+        const context = fakeContext();
+        activate(context);
+        h.state.isTrusted = true;
+        fireWorkspaceTrustGranted();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(h.startMock).not.toHaveBeenCalled();
+        expect(h.sendNotificationMock).not.toHaveBeenCalled();
+        disposeSubscriptions(context);
+    });
+});
+
+describe('the language client reads its initialization options when it starts', () => {
+    beforeEach(() => {
+        resetState();
+    });
+
+    test('a setting changed between activation and the first start is what the server receives', () => {
+        h.state.isTrusted = true;
+        h.state.bbjSection = { home: '/opt/old' };
+        const context = fakeContext();
+        activate(context);
+
+        h.state.bbjSection = { home: '/opt/new' };
+
+        expect(initOptions()?.home).toBe('/opt/new');
+        disposeSubscriptions(context);
     });
 });
 
@@ -705,5 +753,33 @@ describe('config-path-cache honours Workspace Trust before any server push (issu
         h.state.workspaceConfigPath = '/ws/evil/config.bbx';
 
         expect(getActiveConfigPath()).toBe('/ws/evil/config.bbx');
+    });
+});
+
+describe('initializationOptions carry the raw formatter section', () => {
+    beforeEach(() => {
+        resetState();
+    });
+
+    test('initializationOptions.formatter is the section the user holds, untouched', () => {
+        h.state.isTrusted = true;
+        h.state.bbjSection = { formatter: { indentWidth: 4, indentCharacter: 'TAB' } };
+
+        const context = fakeContext();
+        activate(context);
+
+        expect(initOptions()?.formatter).toEqual({ indentWidth: 4, indentCharacter: 'TAB' });
+        disposeSubscriptions(context);
+    });
+
+    test('initializationOptions.formatter is undefined when the section holds no formatter', () => {
+        h.state.isTrusted = true;
+        h.state.bbjSection = {};
+
+        const context = fakeContext();
+        activate(context);
+
+        expect(initOptions()?.formatter).toBeUndefined();
+        disposeSubscriptions(context);
     });
 });

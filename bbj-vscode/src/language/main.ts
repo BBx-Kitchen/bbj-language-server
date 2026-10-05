@@ -16,6 +16,7 @@ import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
 import { initNotifications, notifyResolvedConfigPath, notifyConfigReloadRequired } from './bbj-notifications.js';
 import { registerComposerRequests } from '../composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
+import { registerDenumRequest } from './denum-command.js';
 import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
 import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
 import { createConfigWatcher } from './config-watcher.js';
@@ -23,6 +24,7 @@ import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { registerBoundedCodeActionHandler } from './bbj-code-action-handler.js';
 import { registerComposerCodeLensHandler } from './composer-codelens-handler.js';
 import { registerConfigAwareHoverHandler } from './bbj-hover-handler.js';
+import { registerBoundedFormattingHandler } from './bbj-formatting-handler.js';
 import { JavaClassReloadServices, reloadClasspathAndRecheckDocuments } from './java-class-reload.js';
 import { createInlayHintRefresher, createReloadJavaClassesAndRevalidate, registerRefreshJavaClassesRequest } from './java-class-refresh.js';
 import { registerConfigurationChangeHandler } from './configuration-change-handler.js';
@@ -72,6 +74,13 @@ registerRefreshJavaClassesRequest(connection, { reloadJavaClassesAndRevalidate }
 registerCompileRequest(connection, {
     cplService: BBj.compiler.BBjCPLService,
     wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+});
+
+// Denumbers the open buffer of a BBj document for both IDEs. The server applies the edit and
+// shows the outcome itself, so a client only sends the request.
+registerDenumRequest(connection, {
+    getTextDocument: (uri) => shared.workspace.TextDocuments?.get(uri),
+    denum: BBj.compiler.BBjDenumService,
 });
 
 // The one shared answer to "which file is the BBj config file" (#485), exposed on-demand
@@ -124,6 +133,12 @@ registerComposerCodeLensHandler(connection, shared, BBj);
 // codeAction/codeLens overrides above already close. This handler answers a config document's
 // hover instantly and delegates every other document unchanged. See bbj-hover-handler.ts.
 registerConfigAwareHoverHandler(connection, shared);
+
+// Register AFTER startLanguageServer to override Langium's default formatting handlers
+// deliberately: those hold a request until the whole workspace has loaded and can read a
+// client-supplied uri from disk, which would make format-on-save wait for a cold start. This
+// handler formats the open buffer only. See bbj-formatting-handler.ts.
+registerBoundedFormattingHandler(connection, shared, BBj);
 
 // Ask the client to re-request code lenses once the first build completes, so a composer-cue
 // request answered null during a cold start is re-issued by clients that support refresh.
@@ -189,4 +204,5 @@ registerConfigurationChangeHandler(connection, {
     setMaxErrors,
     setCompilerTrigger,
     setParameterHintMode,
+    setFormatterSettings: settings => BBj.compiler.BBjFormatService.setSettings(settings),
 });

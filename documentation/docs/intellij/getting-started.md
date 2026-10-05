@@ -14,9 +14,10 @@ Before installing the plugin, ensure you have:
 - **IntelliJ IDEA** version 2024.2 or higher (Community or Ultimate)
 - **BBj** version 25.00 or higher installed
 - **BBj** version 26.03 or higher for live compiler diagnostics (the compiler's own syntax
-  errors appearing as you type, without saving); an earlier BBj simply keeps the save-time
-  compiler check
-- **BBjServices** running locally (required for full functionality)
+  errors appearing as you type, without saving), and for formatting and Denumber; an earlier BBj
+  simply keeps the save-time compiler check and has no formatting or Denumber
+- **BBjServices** running locally (required for full functionality; formatting and Denumber run
+  inside it)
 - **Java 17** or higher (for the Java interop service)
 - **Node.js 22** or higher (auto-detected from PATH, or auto-downloaded by plugin)
 

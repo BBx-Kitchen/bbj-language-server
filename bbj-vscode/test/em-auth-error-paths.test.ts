@@ -149,7 +149,6 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
         runBUI: vi.fn(),
         runDWC: vi.fn(),
         compile: vi.fn(),
-        denumber: vi.fn(),
         decompileReplace: vi.fn(),
         decompileReadonly: vi.fn(),
         setOutputChannel: vi.fn(),

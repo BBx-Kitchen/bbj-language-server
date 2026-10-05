@@ -68,7 +68,10 @@ set through [Configure Compile Options](#configure-compile-options) below.
 
 ### Denumber BBj Program (`Alt+N`)
 
-Removes line numbers from a BBj program.
+Removes the line numbers from a BBj program in the open editor, through BBjServices (BBj 26.03 or
+later). The result is left unsaved for you to review and save, and one Undo restores the line
+numbers. Line numbers that a statement refers to become labels, and problems found while
+denumbering appear in the Problems view. See [Denumber](./formatting.md#denumber) for the details.
 
 **Command ID:** `bbj.denumber`
 
@@ -79,24 +82,36 @@ Removes line numbers from a BBj program.
 **Before:**
 ```bbj
 0010 PRINT "Hello"
-0020 PRINT "World"
+0020 GOSUB 0100
+0030 END
+0100 PRINT "Sub"
+0110 RETURN
 ```
 
 **After:**
 ```bbj
 PRINT "Hello"
-PRINT "World"
+GOSUB L100
+END
+L100: PRINT "Sub"
+RETURN
 ```
 
-Opening a line-numbered program offers the same choice automatically (denumber and replace, or
-open read-only) unless `bbj.denumber.promptOnOpen` is off — see
+Opening a line-numbered program offers the same choice automatically (the buttons `Denumber` and
+`Open Read-only`) unless `bbj.denumber.promptOnOpen` is off — see
 [Opening Programs](./configuration.md#opening-programs) in the Configuration guide.
 
 ## Decompile Commands
 
 Tokenized (binary) BBj programs can be converted to editable source with `bbjlst`. Both commands
-are available from the Command Palette only — they have no keybinding and appear in no context
-menu.
+are in the Command Palette and in the Explorer context menu (group `BBj`) for files, for `.bbj`
+files and for the names tokenized programs usually carry: `.pub`, `.src` and no extension. They
+have no keybinding. A tokenized file does not open in a text editor, so the Explorer is the way to
+reach the commands when the prompt on open was dismissed.
+
+Decompile returns the program as it was written: a line-numbered program stays line-numbered, with
+its numeric `GOTO` and `GOSUB` targets intact, and an unnumbered program gets no numbers. Use
+[Denumber](./formatting.md#denumber) afterwards to turn a numbered result into labels.
 
 ### Decompile Tokenized BBj Program (Replace)
 
@@ -109,6 +124,23 @@ Runs `bbjlst` and replaces the tokenized file on disk with its decompiled source
 Runs `bbjlst` and opens a read-only decompiled copy, leaving the original binary file untouched.
 
 **Command ID:** `bbj.decompileReadonly`
+
+`bbjlst` writes into a private temporary folder, so no listing file is left next to the program
+and no other file is overwritten; the Replace command changes only the program itself. A symlinked program is decompiled
+at its target: the target receives the source and the link stays a link.
+
+When a command cannot decompile, it reports the cause:
+
+| Message | Meaning |
+|---------|---------|
+| `"<file name>" is not a tokenized BBj program, so there is nothing to decompile.` | The file holds source already; `bbjlst` is not started. |
+| `"<file name>" was not found, so there is nothing to decompile.` | The path no longer exists. |
+| `"<file name>" is not a regular file, so there is nothing to decompile.` | The path is a directory or another kind of file. |
+| `Could not read "<file name>": <cause>` | The file cannot be read at all, for example for lack of permission. |
+| `bbjlst wrote no decompiled listing for "<file name>".` | `bbjlst` finished without producing a listing. |
+| `bbjlst wrote an empty listing for "<file name>".` | The listing is empty. |
+| `bbjlst did not decompile "<file name>"; the listing is still a tokenized program.` | The listing still starts like a compiled program. |
+| `bbjlst did not finish writing the listing for "<file name>".` | The listing was still growing when the wait ran out. |
 
 Opening a tokenized program offers the same two choices automatically, unless
 `bbj.decompile.promptOnOpen` is off — see
@@ -252,9 +284,9 @@ For commands to work properly, ensure:
 
 1. **BBj Home** is configured (`bbj.home` setting)
 2. **BBjServices** is running
-3. **Formatting** runs Java (`bbj.formatter.javaPath` when set, else `java` on PATH — an invalid
-   configured path cancels formatting, with no PATH fallback). Compiling and running programs do
-   not need Java: they run BBj's own `bbjcpl` and `bbj` executables from `{bbj.home}/bin`.
+3. **Formatting and Denumber** run through the BBj language server and BBjServices (BBj 26.03 or
+   later). Compiling and running programs do not need Java: they run BBj's own `bbjcpl` and `bbj`
+   executables from `{bbj.home}/bin`.
 4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands — see
    [Login to Enterprise Manager](#login-to-enterprise-manager) above)
 
@@ -265,6 +297,12 @@ For commands to work properly, ensure:
 1. Verify `bbj.home` setting points to a valid BBj installation
 2. Check BBjServices is running
 3. Look for errors in the Output panel (select the `BBj` channel)
+
+### Formatting or Denumber Does Nothing
+
+- BBjServices must be running and be BBj 26.03 or later
+- Read the message that appears and look it up in [the message tables](./formatting.md#messages)
+- A file with line numbers is denumbered before it can be formatted
 
 ### Run Commands Fail
 

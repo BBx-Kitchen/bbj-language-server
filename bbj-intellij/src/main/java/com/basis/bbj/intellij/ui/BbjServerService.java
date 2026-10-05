@@ -123,6 +123,16 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
+     * Scroll the log console to its last line. Call on the EDT; does nothing before the console
+     * exists.
+     */
+    public void scrollConsoleToEnd() {
+        if (consoleView != null) {
+            consoleView.requestScrollingToEnd();
+        }
+    }
+
+    /**
      * Check if the server is in crashed state.
      */
     public boolean isServerCrashed() {

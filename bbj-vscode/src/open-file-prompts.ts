@@ -6,31 +6,15 @@
 
 /**
  * Prompts offered when a tab or the active editor turns out to hold a tokenized (binary)
- * or line-numbered BBj program — decompile/denumber in place, or open a read-only copy.
+ * or line-numbered BBj program — decompile it in place or denumber it, or open it read-only.
  * `registerOpenFilePrompts` owns both listeners and their per-activation "already prompted"
  * state; nothing here is module-level.
  */
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import Commands from './Commands/Commands.cjs';
-import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
+import { probeTokenizedFile } from './decompile-io.js';
 import { isLineNumberedSource } from './line-numbering.js';
-
-/** Read the first `length` bytes of a file, or undefined if it can't be read. */
-async function readLeadingBytes(fsPath: string, length: number): Promise<Uint8Array | undefined> {
-    let handle: fs.promises.FileHandle | undefined;
-    try {
-        handle = await fs.promises.open(fsPath, 'r');
-        const buffer = Buffer.alloc(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, 0);
-        return buffer.subarray(0, bytesRead);
-    } catch {
-        return undefined;
-    } finally {
-        await handle?.close().catch(() => { });
-    }
-}
 
 /** Extract a file URI from any tab whose input carries one (text, custom, notebook…). */
 function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
@@ -44,7 +28,11 @@ function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
  * Detection is content-based (magic bytes), so it works regardless of the file's
  * extension — tokenized programs are often named `.pub`, `.src`, or extensionless.
  */
-async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokenizedFiles: Set<string>): Promise<void> {
+async function maybePromptTokenized(
+    uri: vscode.Uri | undefined,
+    promptedTokenizedFiles: Set<string>,
+    deps: OpenFilePromptDeps
+): Promise<void> {
     if (!uri || uri.scheme !== 'file') return;
     if (!vscode.workspace.getConfiguration('bbj').get<boolean>('decompile.promptOnOpen', true)) return;
 
@@ -54,10 +42,14 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokeniz
     // event and the activation scan, and we must not prompt (or decompile) twice.
     promptedTokenizedFiles.add(key);
 
-    const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
-    if (!bytes || !isTokenizedBBjHeader(bytes)) {
-        // Not tokenized after all — allow a later check (e.g. if the file changes).
+    const probe = await probeTokenizedFile(uri.fsPath);
+    if (probe.kind !== 'tokenized') {
+        // Not tokenized after all, or not checkable — allow a later check (e.g. if the file
+        // changes). An unreadable file is only logged: opening a file must not raise a popup.
         promptedTokenizedFiles.delete(key);
+        if (probe.kind === 'unreadable') {
+            deps.log(`Could not check whether "${path.basename(uri.fsPath)}" is a tokenized BBj program: ${probe.message}`);
+        }
         return;
     }
 
@@ -75,8 +67,8 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokeniz
 }
 
 /**
- * When a line-numbered BBj program is opened, ask whether to denumber it
- * (replacing the file with editable source) or open it read-only (issue #64).
+ * When a line-numbered BBj program is opened, ask whether to denumber it for editing or open it
+ * read-only (issue #64).
  */
 async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, promptedLineNumberedDocs: Set<string>): Promise<void> {
     if (!editor) return;
@@ -89,14 +81,15 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, pr
     if (!isLineNumberedSource(doc.getText())) return;
     promptedLineNumberedDocs.add(key);
 
-    const denumberAction = 'Denumber & Replace';
+    const denumberAction = 'Denumber';
     const readOnlyAction = 'Open Read-only';
     const choice = await vscode.window.showInformationMessage(
-        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
+        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it for editing, or open it read-only?`,
         denumberAction, readOnlyAction
     );
     if (choice === denumberAction) {
-        // bbj.denumber runs bbjlst and replaces the file in place with denumbered source.
+        // Runs the Denumber BBj Program command: the language server denumbers the open buffer
+        // and leaves it unsaved for the user to review.
         vscode.commands.executeCommand('bbj.denumber', doc.uri);
     } else if (choice === readOnlyAction) {
         // Make sure our editor is the active one before flipping it read-only in-session,
@@ -106,12 +99,30 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, pr
     }
 }
 
+/** What the open-file prompts need from the extension. */
+export interface OpenFilePromptDeps {
+    /** Writes one line to the BBj output channel. */
+    log(line: string): void;
+}
+
+/** What the rest of the extension may do to the prompts wired by {@link registerOpenFilePrompts}. */
+export interface OpenFilePrompts {
+    /**
+     * Marks a document as already handled for this activation, so the line-numbered prompt does not
+     * appear for a document the Denumber command is about to show.
+     */
+    skipLineNumberedPrompt(uri: string): void;
+}
+
 /**
  * Wires both open-file prompts (tokenized and line-numbered) for this activation: the tab-change
  * listener plus a scan of already-open tabs for the tokenized prompt, and the active-editor
  * listener plus a check of the already-active editor for the line-numbered prompt.
  */
-export function registerOpenFilePrompts(context: vscode.ExtensionContext): void {
+export function registerOpenFilePrompts(
+    context: vscode.ExtensionContext,
+    deps: OpenFilePromptDeps = { log: () => { } }
+): OpenFilePrompts {
     // Tracks files we've already prompted about this session so re-focusing the tab
     // (or reopening it) doesn't nag the user again.
     const promptedTokenizedFiles = new Set<string>();
@@ -125,14 +136,14 @@ export function registerOpenFilePrompts(context: vscode.ExtensionContext): void 
     context.subscriptions.push(
         vscode.window.tabGroups.onDidChangeTabs((event) => {
             for (const tab of event.opened) {
-                void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles);
+                void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles, deps);
             }
         })
     );
     // Inspect tabs already open when the extension activates.
     for (const group of vscode.window.tabGroups.all) {
         for (const tab of group.tabs) {
-            void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles);
+            void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles, deps);
         }
     }
 
@@ -142,4 +153,10 @@ export function registerOpenFilePrompts(context: vscode.ExtensionContext): void 
     );
     // Handle the editor that is already active when the extension activates.
     void maybePromptLineNumbered(vscode.window.activeTextEditor, promptedLineNumberedDocs);
+
+    return {
+        skipLineNumberedPrompt(uri: string): void {
+            promptedLineNumberedDocs.add(uri);
+        },
+    };
 }

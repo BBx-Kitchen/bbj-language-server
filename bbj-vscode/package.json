@@ -254,7 +254,7 @@
           "group": "BBj@4"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "BBj@5"
         },
@@ -316,7 +316,7 @@
           "group": "navigation@2"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "navigation@2"
         }
@@ -343,9 +343,19 @@
           "group": "BBj@4"
         },
         {
-          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
+          "when": "resourceLangId == bbj && resourceExtname != .bbjt",
           "command": "bbj.denumber",
           "group": "BBj@5"
+        },
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == bbj || resourceExtname == .pub || resourceExtname == .src || resourceFilename =~ /^[^.]+$/)",
+          "command": "bbj.decompile",
+          "group": "BBj@6"
+        },
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == bbj || resourceExtname == .pub || resourceExtname == .src || resourceFilename =~ /^[^.]+$/)",
+          "command": "bbj.decompileReadonly",
+          "group": "BBj@7"
         }
       ]
     },
@@ -404,38 +414,188 @@
         "bbj.denumber.promptOnOpen": {
           "type": "boolean",
           "default": true,
-          "description": "When opening a line-numbered BBj program, prompt to denumber it (replacing the file with editable source) or open it read-only.",
+          "description": "When opening a line-numbered BBj program, prompt to denumber it for editing or open it read-only.",
           "scope": "window"
         },
         "bbj.formatter.indentWidth": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16,
           "default": 2,
-          "description": "Set the indentation width",
+          "order": 1,
+          "description": "Number of indent characters per block level, from 0 to 16.",
           "scope": "window"
         },
-        "bbj.formatter.removeLineContinuation": {
+        "bbj.formatter.indentCharacter": {
+          "type": "string",
+          "enum": [
+            "SPACE",
+            "TAB"
+          ],
+          "default": "SPACE",
+          "order": 2,
+          "description": "Character used for indentation.",
+          "enumDescriptions": [
+            "Indent with spaces.",
+            "Indent with tab characters."
+          ],
+          "scope": "window"
+        },
+        "bbj.formatter.indentLabelBlocks": {
           "type": "boolean",
           "default": false,
-          "description": "Enable/disable removing line continuations",
+          "order": 3,
+          "description": "Indent the statements between a subroutine label and its closing RETURN by one level.",
           "scope": "window"
         },
         "bbj.formatter.keywordsToUppercase": {
           "type": "boolean",
           "default": false,
-          "description": "Enable/disable converting keywords to uppercase",
+          "order": 10,
+          "markdownDescription": "Write BBj keywords in upper case. Wins over `#bbj.formatter.ifKeywordCase#`.",
+          "scope": "window"
+        },
+        "bbj.formatter.ifClosingKeyword": {
+          "type": "string",
+          "enum": [
+            "KEEP",
+            "FI",
+            "ENDIF"
+          ],
+          "default": "KEEP",
+          "order": 11,
+          "markdownDescription": "Keyword that closes a block `IF`. `KEEP` leaves every existing `FI` or `ENDIF` as written; a closer the formatter adds uses `FI`.",
+          "enumDescriptions": [
+            "Leave existing closers as written; added closers use FI.",
+            "Close every block IF with FI.",
+            "Close every block IF with ENDIF."
+          ],
+          "scope": "window"
+        },
+        "bbj.formatter.ifKeywordCase": {
+          "type": "string",
+          "enum": [
+            "KEEP",
+            "MATCH_IF",
+            "LOWER_CASE",
+            "UPPER_CASE"
+          ],
+          "default": "KEEP",
+          "order": 12,
+          "markdownDescription": "Case of `ELSE`, `FI` and `ENDIF`. `KEEP` leaves existing keywords as written; added ones copy the case of their `IF`. `#bbj.formatter.keywordsToUppercase#` always wins.",
+          "enumDescriptions": [
+            "Leave existing keywords as written; added ones copy the IF's case.",
+            "Copy the case of the opening IF.",
+            "Write them in lower case.",
+            "Write them in upper case."
+          ],
+          "scope": "window"
+        },
+        "bbj.formatter.splitSingleLineIf": {
+          "type": "boolean",
+          "default": false,
+          "order": 13,
+          "description": "Split a single-line IF statement across several lines.",
+          "scope": "window"
+        },
+        "bbj.formatter.removeLineContinuation": {
+          "type": "boolean",
+          "default": false,
+          "order": 20,
+          "description": "Remove line-continuation characters.",
+          "scope": "window"
+        },
+        "bbj.formatter.splitInlineComments": {
+          "type": "boolean",
+          "default": false,
+          "order": 21,
+          "description": "Move in-line comments onto their own line.",
+          "scope": "window"
+        },
+        "bbj.formatter.splitInlineLabelComment": {
+          "type": "boolean",
+          "default": false,
+          "order": 22,
+          "description": "Move a label's in-line comment onto its own line.",
+          "scope": "window"
+        },
+        "bbj.formatter.collapseMultiLine": {
+          "type": "boolean",
+          "default": false,
+          "order": 23,
+          "description": "Collapse consecutive blank lines into one.",
+          "scope": "window"
+        },
+        "bbj.formatter.blankLineAfterReturn": {
+          "type": "boolean",
+          "default": false,
+          "order": 24,
+          "description": "Put exactly one blank line after a subroutine's closing RETURN.",
+          "scope": "window"
+        },
+        "bbj.formatter.parameterLayout": {
+          "type": "string",
+          "enum": [
+            "KEEP_INITIAL_LAYOUT",
+            "NO_BLANK",
+            "BEFORE_COMMA",
+            "AFTER_COMMA",
+            "BEFORE_AND_AFTER_COMMA"
+          ],
+          "default": "KEEP_INITIAL_LAYOUT",
+          "order": 25,
+          "description": "Spacing around the commas between method parameters.",
+          "enumDescriptions": [
+            "Keep the spacing as written.",
+            "No blank around the commas.",
+            "One blank before each comma.",
+            "One blank after each comma.",
+            "One blank before and after each comma."
+          ],
+          "scope": "window"
+        },
+        "bbj.formatter.operatorSpacing": {
+          "type": "string",
+          "enum": [
+            "KEEP",
+            "SPACED"
+          ],
+          "default": "KEEP",
+          "order": 26,
+          "description": "Spacing around binary operators.",
+          "enumDescriptions": [
+            "Keep the spacing as written.",
+            "Exactly one blank on each side; unary signs, exponents, strings and comments stay as written."
+          ],
+          "scope": "window"
+        },
+        "bbj.formatter.eolCharacter": {
+          "type": "string",
+          "enum": [
+            "KEEP",
+            "LF",
+            "CRLF"
+          ],
+          "default": "KEEP",
+          "order": 30,
+          "description": "Line ending of the formatted file.",
+          "enumDescriptions": [
+            "Use the file's most frequent line ending.",
+            "Use LF.",
+            "Use CRLF."
+          ],
           "scope": "window"
         },
         "bbj.formatter.splitSingleLineIF": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable/disable single line IF statements",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null,
+          "description": "Old spelling of bbj.formatter.splitSingleLineIf.",
+          "deprecationMessage": "Renamed to bbj.formatter.splitSingleLineIf. A value set here is moved there automatically.",
+          "markdownDeprecationMessage": "Renamed to `#bbj.formatter.splitSingleLineIf#`. A value set here is moved there automatically.",
           "scope": "window"
-        },
-        "bbj.formatter.javaPath": {
-          "type": "string",
-          "default": "",
-          "description": "Absolute path to the java executable the formatter runs. It must exist and be executable or formatting is cancelled with an error; PATH is never used as a fallback for an invalid value. When empty, the formatter looks up java on PATH.",
-          "scope": "machine"
         },
         "bbj.compiler.typeChecking.enabled": {
           "type": "boolean",
@@ -661,7 +821,8 @@
   },
   "activationEvents": [
     "onLanguage:bbj",
-    "onLanguage:bbx-config"
+    "onLanguage:bbx-config",
+    "onStartupFinished"
   ],
   "main": "./out/extension.cjs",
   "scripts": {

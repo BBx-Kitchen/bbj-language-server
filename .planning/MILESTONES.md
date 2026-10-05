@@ -1,5 +1,69 @@
 # Project Milestones: BBj Language Server
 
+## v4.9 bbj-ls DENUM & Format Migration (Shipped: 2026-10-05)
+
+**Closed 2026-10-05** as an override closeout after a milestone audit with status `tech_debt`
+(`milestones/v4.9-MILESTONE-AUDIT.md`, third pass after phase 130.1): 39/39 requirements satisfied,
+all 8 phases verified `passed`, Nyquist COMPLIANT and security-verified (0 open threats),
+20/20 integration points and 7/7 end-to-end flows clean. The close counts as an override only
+because eight pending todos (130.1 review follow-ups and the nested-Java-classes follow-up) were
+acknowledged rather than resolved.
+
+**Where the code lives.** Branch `gsd/v4.9-bbj-ls-denum-format`, not yet pushed; it lands on
+`main` through a PR.
+
+**Delivered:** formatting and line-number removal (DENUM) now come from BBj's own bbj-ls through
+the language server in both IDEs. The jar formatter and the client-side bbjlst denumber path are
+gone, and tokenized programs decompile in place in VS Code and IntelliJ.
+
+**Phases completed:** 124-130.1 (8 phases, 53 plans, 115 tasks); 405 commits, 168 files in
+`src`/`test`/docs (+24,073 / −2,725), 2026-10-01 → 2026-10-05.
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 124 | Interop Client | INT-01..05 |
+| 125 | LS Formatting | FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01 |
+| 126 | LS DENUM | FMT-06, FMT-07, DEN-01, DEN-03, DEN-04 |
+| 127 | VS Code Cut-Over | DEN-02, DEN-05, DEN-06, SET-01, SET-03, SET-04, CUT-02, CUT-03 |
+| 128 | IntelliJ DENUM | IJF-05, IJF-06 |
+| 129 | IntelliJ Verdict | IJF-02..04 (verdict: supported) |
+| 130 | Docs & Migration | MIG-01..03 |
+| 130.1 | Tech Debt: Review Warnings and Tokenized Programs (inserted) | — (D-01..D-18) |
+
+**Key accomplishments:**
+
+- bbj-ls client: `formatProgram` and `denumProgram` run over a dedicated, lazily opened third
+  connection with a strict answer guard, per-method capability latching and a 15 s cancel-always
+  backstop; a small DENUM behind a large parse takes 3-4 ms instead of about 175 ms.
+- Language-server formatting: Format Document, Format Selection and format-on-save are answered
+  by bbj-ls with minimal line edits and 15 normalized settings; the jar formatter, its three
+  vendored jars and `bbj.formatter.javaPath` are deleted.
+- `bbj/denum`: Denumber edits the open buffer as one undoable versioned edit, its diagnostics land
+  in Problems (VS Code) or the console (IntelliJ), and Format Document on a numbered program
+  offers Denumber or Denumber and Format.
+- IntelliJ: Denumber action and banner, LSP formatting switched on after an evaluation verdict of
+  "supported" (Reformat Code, selection, Actions on Save), 15 formatter settings with restart on
+  Apply.
+- Tokenized programs (130.1): one hardened, symlink-aware detection rule; in-place Decompile &
+  Replace fixed in VS Code and added to IntelliJ as a banner; no diagnostic noise for tokenized or
+  line-numbered programs; the language server starts lazily on the first BBj document.
+- Migration: new Formatting pages in both guides, release notes with real before/after output,
+  QA rows, and a one-time `splitSingleLineIF` → `splitSingleLineIf` settings migration.
+
+**Known verification overrides:** 8 newly acknowledged, 41 carried forward from prior closes
+(see STATE.md Deferred Items):
+
+- 130.1 review follow-ups: Denumber 5 s stall on non-identical mirror text (WR-03), IntelliJ VFS
+  read in `isEnabled` (WR-04), IntelliJ decompile not cancellable / accepts an unsettled listing /
+  no re-check of unsaved changes, view-column and menu-noise info items
+- nested Java classes from bbj-ls (follow-up for the next milestone)
+
+**Tech debt carried:** Windows behaviour of the installed IntelliJ zip and of the new decompile
+flow not exercised; 125 IN-02 and 129 IN-02/IN-03 skipped; manual release step: paste
+`130-RELEASE-NOTES.md` into the GitHub release body.
+
+---
+
 ## v4.8 Documentation Drift (Shipped: 2026-09-30)
 
 **Closed 2026-09-30** as an override closeout after a milestone audit with status `tech_debt`
@@ -8,9 +72,8 @@
 cross-document links and 5/5 end-to-end flows clean. The close counts as an override only because
 three unrelated dependency-upgrade todos were acknowledged rather than resolved.
 
-**Where the code lives.** On branch `gsd/v4.8-documentation-drift`; one docs PR to `main` is still
-to open. Merging it triggers `deploy-docs.yml`, which rebuilds and publishes the docs site to
-GitHub Pages.
+**Where the code lives.** On `main` via PR #726 (from branch `gsd/v4.8-documentation-drift`); the
+merge triggered `deploy-docs.yml`, which rebuilt and published the docs site to GitHub Pages.
 
 **Delivered:** every document back in line with the code on `main` after v4.7 — build
 instructions, QA checklists, both user guides (new Composers pages) and the developer docs.
@@ -42,6 +105,7 @@ instructions, QA checklists, both user guides (new Composers pages) and the deve
 
 **Known verification overrides:** 3 newly acknowledged, 39 carried forward from prior closes
 (see STATE.md Deferred Items):
+
 - three pending dependency todos: lsp4j 1.0 with bbj-ls, vitest 5 upgrade, vscode-jsonrpc 9
   migration
 

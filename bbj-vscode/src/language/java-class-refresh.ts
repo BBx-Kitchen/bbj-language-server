@@ -56,7 +56,9 @@ export function createReloadJavaClassesAndRevalidate(deps: ReloadJavaClassesDeps
         deps.refreshInlayHints();
 
         // Step 5: Send notification
-        deps.window.showInformationMessage('Java classes refreshed');
+        // A message is a request the client may cancel (LSP4IJ does when the balloon is closed);
+        // an unhandled rejection would terminate the server.
+        void Promise.resolve(deps.window.showInformationMessage('Java classes refreshed')).catch(() => { /* harmless */ });
     };
 }
 
@@ -76,7 +78,7 @@ export function createRefreshJavaClassesHandler(
             return true;
         } catch (error) {
             console.error('Failed to refresh Java classes:', error);
-            connection.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
+            void Promise.resolve(connection.window.showErrorMessage(`Failed to refresh Java classes: ${error}`)).catch(() => { /* harmless */ });
             return false;
         }
     };

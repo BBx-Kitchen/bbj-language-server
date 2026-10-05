@@ -18,12 +18,18 @@ import {
     ResponseError,
     SocketMessageReader,
     SocketMessageWriter,
+    type CancellationToken,
     type MessageConnection,
 } from 'vscode-jsonrpc/node.js';
 
-/** Passed to every handler; `connectionId` identifies which accepted socket carried the request. */
+/**
+ * Passed to every handler. `connectionId` identifies which accepted socket carried the request;
+ * `token` is that request's own cancellation token, cancelled when a `$/cancelRequest` for it
+ * arrives over the wire.
+ */
 export interface LoopbackPeerContext {
     readonly connectionId: number;
+    readonly token: CancellationToken;
     drop(): void;
 }
 
@@ -44,6 +50,8 @@ export interface LoopbackPeer {
     readonly port: number;
     /** Every request received, in arrival order. */
     readonly requests: readonly RecordedRequest[];
+    /** Every request whose `$/cancelRequest` arrived, in arrival order. */
+    readonly cancellations: readonly RecordedRequest[];
     /** Total number of sockets accepted so far. */
     readonly connectionCount: number;
     /** Number of requests currently being handled (dispatched but not yet settled). */
@@ -63,6 +71,7 @@ export function startLoopbackPeer(handlers: LoopbackPeerHandlers = {}): Promise<
         const sockets = new Set<Socket>();
         const connections: MessageConnection[] = [];
         const requests: RecordedRequest[] = [];
+        const cancellations: RecordedRequest[] = [];
         let connectionIdCounter = 0;
         let inFlightCount = 0;
         let maxInFlight = 0;
@@ -80,10 +89,11 @@ export function startLoopbackPeer(handlers: LoopbackPeerHandlers = {}): Promise<
             );
             connections.push(conn);
 
-            const ctx: LoopbackPeerContext = { connectionId, drop: () => socket.destroy() };
-
-            conn.onRequest((method: string, params: unknown) => {
-                requests.push({ method, params, connectionId });
+            conn.onRequest((method: string, params: unknown, token: CancellationToken) => {
+                const record: RecordedRequest = { method, params, connectionId };
+                const ctx: LoopbackPeerContext = { connectionId, token, drop: () => socket.destroy() };
+                requests.push(record);
+                token.onCancellationRequested(() => { cancellations.push(record); });
                 inFlightCount += 1;
                 if (inFlightCount > maxInFlight) {
                     maxInFlight = inFlightCount;
@@ -109,6 +119,7 @@ export function startLoopbackPeer(handlers: LoopbackPeerHandlers = {}): Promise<
             resolvePeer({
                 port,
                 get requests() { return requests; },
+                get cancellations() { return cancellations; },
                 get connectionCount() { return connectionIdCounter; },
                 inFlight: () => inFlightCount,
                 get maxInFlight() { return maxInFlight; },

@@ -84,6 +84,75 @@ Compiles the current BBj source file to bytecode.
 configured in Settings — compiling without one reports that no compile output directory is
 configured.
 
+## Denumber Command
+
+### Denumber BBj Program
+
+Removes the line numbers from a line-numbered BBj program in the open editor.
+
+**Action ID:** `bbj.denumber`
+
+**Keyboard Shortcut:** none
+
+**Access:**
+- `Tools > Denumber BBj Program`
+- Right-click in a BBj file editor → "Denumber BBj Program" (listed after "Compile BBj File")
+
+**Available when:** The open BBj file looks line-numbered. The action is greyed out on any other
+file.
+
+**Requires:** BBj 26.03 or later and a running BBjServices.
+
+The edit happens in the editor text and is left unsaved; one Undo restores the line numbers. A
+line-numbered file also shows the banner `This is a line-numbered BBj program. Denumber it for editing.`
+with a `Denumber` link, and problems found while denumbering go to the `BBj Language Server`
+console. See [Denumber](./formatting.md#denumber) for the details.
+
+## Decompile Tokenized Programs
+
+A tokenized (binary) BBj program is a compiled program, for example the output of
+[Compile BBj File](#compile-command). Its text cannot be read or edited. When you open one,
+the editor shows the banner `This is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy.`
+with two links. The banner is decided from the first bytes of the file itself, not from its name,
+and it goes away as soon as the file holds source.
+
+| Link | What it does |
+|------|--------------|
+| `Decompile & Replace` | Runs `bbjlst` from `<BBj Home>/bin`, replaces the tokenized file with its decompiled source, and reopens the file |
+| `Open Read-only` | Runs `bbjlst` and opens a read-only `.bbj` copy of the source; the tokenized original is left untouched |
+
+**Requires:** BBj Home set in Settings and `bbjlst` present in its `bin` folder. Both choices run
+in the background with a progress entry.
+
+Decompile returns the program as it was written: a line-numbered program stays line-numbered, with
+its numeric `GOTO` and `GOSUB` targets intact, and an unnumbered program gets no numbers. A
+numbered result shows the line-numbered banner, and [Denumber](./formatting.md#denumber) turns it
+into labels.
+
+**Good to know:**
+- A symlinked program is decompiled at its target: the target file receives the source and the link
+  stays a link.
+- `Decompile & Replace` refuses a file that has unsaved changes in the editor. Save or revert them
+  first.
+- The banner appears only for files IntelliJ opens as BBj files (`.bbj`, `.bbjt`, `.src` and
+  `.bbx`). A tokenized program named `.pub`, or without an extension, shows no banner.
+- Tokenized programs are not sent to the language server, so they show no diagnostics.
+
+When a choice cannot be carried out, one `Decompile failed` balloon names the cause:
+
+| Cause | Text |
+|-------|------|
+| BBj Home is empty | `BBj Home is not configured. Set it in Settings > Languages & Frameworks > BBj.` |
+| No `bbjlst` | `bbjlst was not found in <BBj Home>/bin.` |
+| The file holds source already | `"<file name>" is not a tokenized BBj program, so there is nothing to decompile.` |
+| The file is gone | `"<file name>" was not found, so there is nothing to decompile.` |
+| Not an ordinary file | `"<file name>" is not a regular file, so there is nothing to decompile.` |
+| The file cannot be read | `Could not read "<file name>": <cause>` |
+| Unsaved editor changes | `"<file name>" has unsaved changes in the editor. Save or revert them first.` |
+| `bbjlst` wrote no listing | `bbjlst wrote no decompiled listing for "<file name>".` |
+| `bbjlst` wrote an empty listing | `bbjlst wrote an empty listing for "<file name>".` |
+| `bbjlst` left the program tokenized | `bbjlst did not decompile "<file name>"; the listing is still a tokenized program.` |
+
 ## Composer Actions
 
 Visual dialogs for composing or editing `MSGBOX`, `addWindow`, `addChildWindow`, `CVS()`, and
@@ -93,7 +162,8 @@ cues — see [Composers](./composers.md) for the full list and how assign-to val
 ## Tools Menu Commands
 
 The following commands are available in the Tools menu. `Tools > Compile BBj File` is also here —
-see [Compile Command](#compile-command) above for its full description.
+see [Compile Command](#compile-command) above for its full description. So is
+`Tools > Denumber BBj Program` — see [Denumber Command](#denumber-command).
 
 ### Restart BBj Language Server
 
@@ -174,6 +244,7 @@ and the [composer actions](./composers.md):
 - Run As BUI Program
 - Run As DWC Program
 - Compile BBj File
+- Denumber BBj Program
 - Compose MSGBOX…, Compose addWindow…, Compose addChildWindow…, Compose CVS()…, Configure SETOPTS
   Options in Code…, Compose SETOPTS… — see [Composers](./composers.md)
 
@@ -202,6 +273,7 @@ For commands to work properly, ensure:
 4. **For BUI/DWC commands:**
    - Enterprise Manager is accessible at the configured EM URL
    - You are authenticated (use `Tools > Login to Enterprise Manager`)
+5. **For formatting and Denumber:** BBj 26.03 or later and a running BBjServices — they run inside it
 
 ## Troubleshooting
 
@@ -237,3 +309,20 @@ If Compile BBj File does not appear or does not run:
 2. Check that a `.bbj`, `.bbx`, or `.src` file is open in the editor
 3. Ensure the language server is running (check status bar widget shows "Ready")
 4. Configure a [Compile output directory](./configuration.md#compile-output-directory) in Settings
+
+### Formatting or Denumber Does Nothing
+
+If Reformat Code or Denumber BBj Program changes nothing:
+- Check that BBjServices is running and that it is BBj 26.03 or later
+- Read the `BBj Language Server` balloon and look its text up in [the message tables](./formatting.md#messages)
+- Denumber is greyed out on files that do not look line-numbered
+
+### Decompile Does Nothing
+
+If `Decompile & Replace` or `Open Read-only` on a tokenized program shows a `Decompile failed`
+balloon or no result:
+1. Verify BBj Home is configured and that `bbjlst` exists in its `bin` folder
+2. Save or revert unsaved changes in the editor — `Decompile & Replace` refuses them
+3. Look the balloon text up in [the cause table](#decompile-tokenized-programs)
+4. If no banner appears at all, the file is not opened as a BBj file (a `.pub` file or one without
+   an extension is not)

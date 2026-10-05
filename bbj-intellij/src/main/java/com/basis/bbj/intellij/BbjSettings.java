@@ -35,6 +35,21 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
         public String compilerOutputDirectory = "";  // Default: empty (no output directory configured; #571)
         public String compilerTrigger = "debounced";  // Default: debounced. Options: debounced, on-save, off
+        public int formatterIndentWidth = 2;  // Default: 2. Range: 0..16
+        public String formatterIndentCharacter = "SPACE";  // Default: SPACE. Options: SPACE, TAB
+        public boolean formatterKeywordsToUppercase = false;  // Default: false
+        public boolean formatterRemoveLineContinuation = false;  // Default: false
+        public boolean formatterSplitSingleLineIf = false;  // Default: false
+        public boolean formatterSplitInlineComments = false;  // Default: false
+        public boolean formatterSplitInlineLabelComment = false;  // Default: false
+        public boolean formatterCollapseMultiLine = false;  // Default: false
+        public String formatterEolCharacter = "KEEP";  // Default: KEEP. Options: KEEP, LF, CRLF
+        public String formatterIfClosingKeyword = "KEEP";  // Default: KEEP. Options: KEEP, FI, ENDIF
+        public String formatterIfKeywordCase = "KEEP";  // Default: KEEP. Options: KEEP, MATCH_IF, LOWER_CASE, UPPER_CASE
+        public String formatterParameterLayout = "KEEP_INITIAL_LAYOUT";  // Default: KEEP_INITIAL_LAYOUT. Options: KEEP_INITIAL_LAYOUT, NO_BLANK, BEFORE_COMMA, AFTER_COMMA, BEFORE_AND_AFTER_COMMA
+        public String formatterOperatorSpacing = "KEEP";  // Default: KEEP. Options: KEEP, SPACED
+        public boolean formatterIndentLabelBlocks = false;  // Default: false
+        public boolean formatterBlankLineAfterReturn = false;  // Default: false
     }
 
     private State myState = new State();

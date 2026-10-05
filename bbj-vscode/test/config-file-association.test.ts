@@ -94,7 +94,6 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
         runBUI: vi.fn(),
         runDWC: vi.fn(),
         compile: vi.fn(),
-        denumber: vi.fn(),
         decompileReplace: vi.fn(),
         decompileReadonly: vi.fn(),
         setOutputChannel: vi.fn(),
@@ -271,8 +270,7 @@ describe('bbx-config editor association', () => {
         (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockClear();
         setResolvedConfigPath(pushedPath({ path: '/srv/custom/new-config.bbx' }));
 
-        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
-        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.configPath' });
+        fireConfigChange('bbj.configPath');
 
         expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, undefined);
         expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docB, 'bbx-config');
@@ -303,8 +301,7 @@ describe('bbx-config editor association', () => {
         // The setting change fires first, BEFORE the cache is updated with the new path: it
         // releases A, then immediately resweeps and finds A still active (cache unchanged) —
         // re-associating A right back. Net effect on A: unchanged.
-        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
-        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.configPath' });
+        fireConfigChange('bbj.configPath');
         expect(docA.languageId).toBe('bbx-config');
         expect(docB.languageId).toBe('plaintext');
 
@@ -325,12 +322,22 @@ describe('bbx-config editor association', () => {
         activate(fakeContext());
         (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockClear();
 
-        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
-        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.home' });
+        fireConfigChange('bbj.home');
 
         expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
     });
 });
+
+/**
+ * Fires a configuration change for `changedKey` at every registered `onDidChangeConfiguration`
+ * listener, as VS Code does; activation registers more than one, each filtering on its own keys.
+ */
+function fireConfigChange(changedKey: string): void {
+    const event = { affectsConfiguration: (key: string) => key === changedKey };
+    for (const [listener] of (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls) {
+        listener(event);
+    }
+}
 
 /** A minimal stand-in for the active `vscode.TextEditor`, with no SETOPTS line in the document. */
 function fakeEditor(fsPath: string, languageId: string): {

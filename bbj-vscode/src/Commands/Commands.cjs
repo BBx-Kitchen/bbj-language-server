@@ -52,7 +52,8 @@ const setOutputChannel = (channel) => {
  */
 const execWithProgress = (argv) => runProcess(argv);
 
-const { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst } = require("../decompile-io");
+const { probeTokenizedFile, waitForListing, verifyListing, replaceWithListing } = require("../decompile-io");
+const { closeTabsOnFiles } = require("../close-file-tabs");
 
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
@@ -156,9 +157,9 @@ const runWeb = (params, client, credentials) => {
 };
 
 /**
- * Resolves the target for Run, Run BUI, Run DWC, Compile and Denumber via
+ * Resolves the target for Run, Run BUI, Run DWC and Compile via
  * target-resolution.js's resolveRunTarget (argument-first, then an active
- * editor that passes the run/compile/denumber menus' own `when` check). Shows
+ * editor that passes the run/compile menus' own `when` check). Shows
  * the shared "no active BBj file" warning and returns undefined when neither
  * is available, so the caller can bail out instead of throwing (issue #512).
  */
@@ -183,68 +184,147 @@ const decompileTargetOrWarn = (params) => {
   return fileName;
 };
 
-const decompile = (params, options = {}) => {
-  const fileName = runTargetOrWarn(params);
-  if (!fileName) return;
-  const home = getBBjHome();
-  if (!home) return;
-  decompileInPlace(path.resolve(fileName), options);
+/**
+ * Shown when a decompile command is pointed at a file that is not a tokenized BBj
+ * program (plain text, or anything `probeTokenizedFile` does not report as tokenized). bbjlst is never
+ * launched on such a file.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const notTokenizedMessage = (fileName) =>
+  `"${path.basename(fileName)}" is not a tokenized BBj program, so there is nothing to decompile.`;
+
+/**
+ * Shown (as an error) when a decompile command cannot read the file at all, so the real cause
+ * (permission, a busy file, a read race) is never mistaken for "not a tokenized program".
+ * @param {string} fileName - The file the command was invoked on
+ * @param {{message: string}} probe - The `unreadable` result of probeTokenizedFile
+ * @returns {string} The error text
+ */
+const unreadableMessage = (fileName, probe) =>
+  `Could not read "${path.basename(fileName)}": ${probe.message}`;
+
+/**
+ * Shown when a decompile command is pointed at a path that no longer exists.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const missingMessage = (fileName) =>
+  `"${path.basename(fileName)}" was not found, so there is nothing to decompile.`;
+
+/**
+ * Shown when a decompile command is pointed at a directory, FIFO, socket or device.
+ * @param {string} fileName - The file the command was invoked on
+ * @returns {string} The warning text
+ */
+const notAFileMessage = (fileName) =>
+  `"${path.basename(fileName)}" is not a regular file, so there is nothing to decompile.`;
+
+/**
+ * Reports why a probed file cannot be decompiled, with the message that names the real cause.
+ * Call only for a probe that is not `tokenized`.
+ * @param {string} fileName - The file the command was invoked on
+ * @param {import('../decompile-io').TokenizedProbe} probe - The probe result
+ */
+const refuseDecompile = (fileName, probe) => {
+  switch (probe.kind) {
+    case 'unreadable':
+      vscode.window.showErrorMessage(unreadableMessage(fileName, probe));
+      break;
+    case 'missing':
+      vscode.window.showWarningMessage(missingMessage(fileName));
+      break;
+    case 'not-a-file':
+      vscode.window.showWarningMessage(notAFileMessage(fileName));
+      break;
+    default:
+      vscode.window.showWarningMessage(notTokenizedMessage(fileName));
+  }
 };
 
 /**
- * Run bbjlst on an already-resolved file, replacing it in place with the result,
- * then open the result. `options.denumber` selects denumbered (clean) source.
+ * Runs bbjlst on an already-resolved tokenized program with its output directed to a fresh
+ * private `bbj-decompiled-*` directory, so nothing is ever written next to the user's files.
+ * With `-d`, bbjlst names the listing exactly like its input, for every extension. bbjlst
+ * exits 0 even when it fails, so success is judged only by the listing: it must exist, settle
+ * in size, be non-empty and no longer be a tokenized program. On any failure bbjlst's own
+ * output is attached as `err.stderr` (shown under "Details"), the directory is removed and the
+ * error is rethrown.
+ * @param {string} home - The BBj home directory
+ * @param {string} inputPath - The resolved tokenized program
+ * @returns {Promise<{outputDir: string, listing: string}>} The private directory and the listing in it
  */
-const decompileInPlace = (resolvedFileName, options = {}) => {
+const decompileToPrivateDir = async (home, inputPath) => {
+  const outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'bbj-decompiled-'));
+  try {
+    const argv = buildDecompileArgv({ home, platform: os.platform(), fileName: inputPath, outputDir });
+    const output = await execWithProgress(argv);
+    const listing = path.join(outputDir, path.basename(inputPath));
+    try {
+      await waitForListing(listing);
+      await verifyListing(listing);
+    } catch (err) {
+      const details = [output && output.stdout, output && output.stderr].filter(Boolean).join('\n').trim();
+      if (details && !err.stderr) {
+        err.stderr = details;
+      }
+      throw err;
+    }
+    return { outputDir, listing };
+  } catch (err) {
+    await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => { });
+    throw err;
+  }
+};
+
+/**
+ * Run bbjlst on an already-resolved tokenized program, replacing it in place with the
+ * decompiled source, then open the result.
+ */
+const decompileInPlace = (resolvedFileName) => {
   const home = getBBjHome();
   if (!home) return;
-  const fileName = resolvedFileName;
-  const resolvedLstFileName = resolvedFileName.endsWith('.lst')
-    ? resolvedFileName
-    : resolvedFileName + '.lst';
-
-  const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
-
-  const argv = buildDecompileArgv({
-    home,
-    platform: os.platform(),
-    fileName: resolvedFileName,
-    denumber: options.denumber
-  });
-
-  const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
 
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
-    title: title,
+    title: "Decompiling BBj Program...",
     cancellable: false
   }, async () => {
+    let outputDir;
+    let replaced = false;
     try {
-      // Capture up-front whether the input is tokenized: only then can bbjlst
-      // legitimately rewrite it in place (denumbering plain text always emits `.lst`).
-      const wasTokenized = await isTokenizedFile(resolvedFileName);
-      await deleteLeftoverLst(resolvedFileName);
-      await execWithProgress(argv);
-
-      // bbjlst may return before its output is on disk, and may either produce
-      // `<input>.lst` or rewrite the input in place — wait for whichever happens.
-      const { inPlace } = await waitForDecompileOutput(resolvedFileName, { canRewriteInPlace: wasTokenized });
-
-      if (!inPlace) {
-        if (!options.denumber && resolvedFileName !== newFileName) {
-          await fs.promises.unlink(resolvedFileName).catch(() => { });
-        }
-        await fs.promises.rename(resolvedLstFileName, newFileName);
+      // Only a tokenized program is decompiled in place; anything else is refused, with its
+      // own cause, before anything is created or launched, so it is never rewritten.
+      const probe = await probeTokenizedFile(resolvedFileName);
+      if (probe.kind !== 'tokenized') {
+        refuseDecompile(resolvedFileName, probe);
+        return;
       }
-      // When inPlace, bbjlst already wrote the source into `resolvedFileName`
-      // (=== newFileName for denumber), so there is nothing to move.
+      // bbjlst reads, and the replace rewrites, the real file behind a symlink; the document
+      // opened afterwards is still the path the user opened, so a link keeps its own tab.
+      const result = await decompileToPrivateDir(home, probe.resolvedPath);
+      outputDir = result.outputDir;
+      await replaceWithListing(probe.resolvedPath, result.listing);
+      replaced = true;
 
-      const uri = vscode.Uri.file(newFileName);
+      // The binary placeholder tab still holds the file, and VS Code keeps its binary verdict
+      // for as long as that tab is open, so the file cannot be opened as text until it is closed.
+      // Best effort: if a tab cannot be closed, opening the file is still tried and reports its own failure.
+      const viewColumn = await closeTabsOnFiles(vscode.window.tabGroups, [resolvedFileName, probe.resolvedPath])
+        .catch(() => undefined);
+      const uri = vscode.Uri.file(resolvedFileName);
       const doc = await vscode.workspace.openTextDocument(uri);
-      await vscode.window.showTextDocument(doc, { preview: false });
+      await vscode.window.showTextDocument(doc, { preview: false, viewColumn });
     } catch (err) {
-      const errorMsg = `Failed to decompile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
-      vscode.window.showErrorMessage(errorMsg);
+      vscode.window.showErrorMessage(
+        replaced
+          ? `Decompiled "${path.basename(resolvedFileName)}", but could not open it: ${String(err.message || err).replace(/\.+$/, '')}. Close the tab and open the file again.`
+          : `Failed to decompile "${resolvedFileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`
+      );
+    } finally {
+      if (outputDir) {
+        await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => { });
+      }
     }
   });
 };
@@ -426,18 +506,15 @@ const Commands = {
       }
     });
   },
-  denumber: function (params) {
-    decompile(params, { denumber: true });
-  },
   /**
-   * Decompile a tokenized (binary) BBj program to denumbered source and replace
+   * Decompile a tokenized (binary) BBj program to source and replace
    * the file on disk (issue #65). Resolves the target from the passed uri so it
    * works for binary files that have no active text editor.
    */
   decompileReplace: function (params) {
     const fileName = decompileTargetOrWarn(params);
     if (!fileName) return;
-    decompileInPlace(path.resolve(fileName), { denumber: true });
+    decompileInPlace(path.resolve(fileName));
   },
   /**
    * Decompile a tokenized (binary) BBj program to a temporary, read-only source
@@ -455,31 +532,37 @@ const Commands = {
       title: "Decompiling BBj Program...",
       cancellable: false
     }, async () => {
+      let outputDir;
+      let shown = false;
       try {
-        // Run bbjlst against a private copy in a temp dir, so the original binary
-        // is never touched — regardless of whether bbjlst emits `<input>.lst` or
-        // rewrites its input in place.
-        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-decompiled-'));
+        // Only a tokenized program is decompiled; anything else is refused, with its own cause,
+        // before any temporary directory is created or bbjlst is launched.
+        const probe = await probeTokenizedFile(resolvedFileName);
+        if (probe.kind !== 'tokenized') {
+          refuseDecompile(fileName, probe);
+          return;
+        }
+
+        // bbjlst only reads the original; the listing is written to a private directory.
+        const result = await decompileToPrivateDir(home, probe.resolvedPath);
+        outputDir = result.outputDir;
+
+        // Normalise the listing to a `.bbj` file so the editor opens it with BBj language support.
         const base = path.basename(resolvedFileName).replace(/\.[^.]*$/, '') || 'program';
-        const tmpInput = path.join(tmpDir, base + path.extname(resolvedFileName));
-        await fs.promises.copyFile(resolvedFileName, tmpInput);
-
-        const wasTokenized = await isTokenizedFile(tmpInput);
-        const argv = buildDecompileArgv({ home, platform: os.platform(), fileName: tmpInput, denumber: true });
-        await execWithProgress(argv);
-
-        // Wait for the output, then normalise it to a `.bbj` file so the editor
-        // opens it with BBj language support.
-        const { sourcePath } = await waitForDecompileOutput(tmpInput, { canRewriteInPlace: wasTokenized });
-        const tmpFile = path.join(tmpDir, base + '.bbj');
-        if (sourcePath !== tmpFile) {
-          await fs.promises.rename(sourcePath, tmpFile);
+        const tmpFile = path.join(outputDir, base + '.bbj');
+        if (result.listing !== tmpFile) {
+          await fs.promises.rename(result.listing, tmpFile);
         }
 
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(tmpFile));
         await vscode.window.showTextDocument(doc, { preview: false });
+        shown = true;
         await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
       } catch (err) {
+        // The directory outlives a failure only as the home of an already opened document.
+        if (outputDir && !shown) {
+          await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => { });
+        }
         const errorMsg = `Failed to decompile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
         vscode.window.showErrorMessage(errorMsg);
       }

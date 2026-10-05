@@ -104,7 +104,7 @@ class Lsp4ijOverrideSiteSourceGuardTest {
     }
 
     @Test
-    void createClientFeaturesBuildsExactlyOneDocumentLinkFeatureThenOneCompletionFeatureWithOneInitializeParamsOverride() {
+    void createClientFeaturesBuildsOneDocumentLinkThenOneCompletionThenOneFormattingFeatureWithOneInitializeParamsOverride() {
         String text = readGuardedSource(FACTORY_SOURCE);
         String body = bodyOf(text, "public @NotNull LSPClientFeatures createClientFeatures()");
 
@@ -114,8 +114,46 @@ class Lsp4ijOverrideSiteSourceGuardTest {
             "createClientFeatures() must call setCompletionFeature( exactly once");
         assertTrue(body.indexOf("setDocumentLinkFeature(") < body.indexOf("setCompletionFeature("),
             "setDocumentLinkFeature( must be called before setCompletionFeature( in the builder chain");
+        assertEquals(1, countOccurrences(body, "setFormattingFeature("),
+            "createClientFeatures() must call setFormattingFeature( exactly once");
+        assertTrue(body.indexOf("setCompletionFeature(") < body.indexOf("setFormattingFeature("),
+            "setCompletionFeature( must be called before setFormattingFeature( in the builder chain");
         assertEquals(1, countOccurrences(body, "public void initializeParams("),
             "createClientFeatures()'s anonymous LSPClientFeatures must override initializeParams(...) exactly once");
+    }
+
+    @Test
+    void createClientFeaturesKeepsTokenizedFilesAwayFromTheServerWithOneIsEnabledOverride() {
+        String text = readGuardedSource(FACTORY_SOURCE);
+        String body = bodyOf(text, "public @NotNull LSPClientFeatures createClientFeatures()");
+
+        assertEquals(1, countOccurrences(body, "public boolean isEnabled(@NotNull VirtualFile file)"),
+            "createClientFeatures()'s anonymous LSPClientFeatures must override isEnabled(VirtualFile) exactly once");
+        assertEquals(1, countOccurrences(body, "super.isEnabled(file) && !TokenizedBbj.isTokenized(file)"),
+            "the isEnabled(VirtualFile) override must defer to super and then refuse a tokenized file");
+    }
+
+    @Test
+    void theLspFormattingSwitchIsOneConstantSetToTrueThatGatesAllFourFormattingChecks() {
+        String text = readGuardedSource(FACTORY_SOURCE);
+
+        assertEquals(1, countOccurrences(text,
+                "private static final boolean LSP_FORMATTING_ENABLED = true;"),
+            "the factory must declare the formatting switch exactly once, set to true");
+        assertEquals(0, countOccurrences(text, "LSP_RANGE_FORMATTING_ENABLED"),
+            "range formatting must follow the one switch; no second, range-only constant may exist");
+
+        String body = bodyOf(text, "new LSPFormattingFeature()");
+        assertEquals(1, countOccurrences(body, "public boolean isEnabled(@NotNull PsiFile file)"),
+            "the formatting feature must override isEnabled exactly once");
+        assertEquals(1, countOccurrences(body, "public boolean isSupported(@NotNull PsiFile file)"),
+            "the formatting feature must override isSupported exactly once");
+        assertEquals(1, countOccurrences(body, "public boolean isFormattingSupported(@NotNull PsiFile file)"),
+            "the formatting feature must override isFormattingSupported exactly once");
+        assertEquals(1, countOccurrences(body, "public boolean isRangeFormattingSupported(@NotNull PsiFile file)"),
+            "the formatting feature must override isRangeFormattingSupported exactly once");
+        assertEquals(4, countOccurrences(body, "LSP_FORMATTING_ENABLED && super."),
+            "all four formatting checks must short-circuit on the switch before calling super");
     }
 
     @Test

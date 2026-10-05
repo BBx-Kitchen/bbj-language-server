@@ -27,14 +27,15 @@ The BBj Language Support plugin provides comprehensive IDE support for BBj devel
 | [Configuration](intellij/configuration) | IntelliJ settings reference |
 | [Commands](intellij/commands) | Keyboard shortcuts and run commands |
 | [Composers](intellij/composers) | Dialogs for MSGBOX, addWindow, addChildWindow, CVS() and SETOPTS |
+| [Formatting](intellij/formatting) | Reformat Code, selection, Actions on Save and Denumber |
 
 ## Requirements
 
 - **IntelliJ IDEA** 2024.2 or higher (Community or Ultimate)
 - **BBj** 25.00 or higher
 - **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
-  compiler check)
-- **BBjServices** running locally
+  compiler check), and for formatting and Denumber (an earlier BBj has neither)
+- **BBjServices** running locally (formatting and Denumber run inside it)
 - **Java 17** or higher
 - **Node.js 22** or higher (auto-detected from PATH, or auto-downloaded by plugin)
 

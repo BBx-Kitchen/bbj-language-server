@@ -16,6 +16,9 @@
  */
 export const TOKENIZED_BBJ_MAGIC = Uint8Array.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
 
+/** The magic as text, for code that sees a decoded buffer. */
+export const TOKENIZED_BBJ_MAGIC_TEXT = '<<bbj>>';
+
 /** Number of leading bytes needed to decide whether a file is tokenized. */
 export const TOKENIZED_BBJ_MAGIC_LENGTH = TOKENIZED_BBJ_MAGIC.length;
 

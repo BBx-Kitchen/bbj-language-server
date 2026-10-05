@@ -184,6 +184,12 @@ class ComposerFlowTest {
         }
 
         @Override
+        public CompletableFuture<com.basis.bbj.intellij.denum.DenumModels.DenumResult> denum(
+                com.basis.bbj.intellij.denum.DenumModels.DenumParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
             throw new UnsupportedOperationException();
         }

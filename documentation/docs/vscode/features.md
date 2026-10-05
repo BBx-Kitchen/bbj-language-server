@@ -104,14 +104,9 @@ Hover over elements to see:
 
 ## Code Formatting
 
-Format your BBj code with configurable options:
-
-- **Indentation**: Configurable indent width
-- **Line Continuation**: Option to remove line continuations
-- **Keyword Case**: Convert keywords to uppercase
-- **IF Statement Formatting**: Split single-line IF statements
-
-Format the document with `Shift+Alt+F` or configure format-on-save.
+Format Document, Format Selection and format on save run through the BBj language server and are
+controlled by 15 settings. Denumber removes the line numbers from a line-numbered program. See
+[Formatting](./formatting.md) for the details.
 
 ## Developer Commands
 

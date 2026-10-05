@@ -29,6 +29,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -84,10 +85,12 @@ public final class BbjCompileAction extends AnAction {
                     uri = file.getUrl();
                 }
 
+                // LSP4IJ cancels its pending requests when the server stops or restarts, which
+                // surfaces from get() as an unchecked CancellationException.
                 BbjComposerServer server;
                 try {
                     server = BbjComposerService.server(project).get(COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+                } catch (InterruptedException | ExecutionException | TimeoutException | CancellationException ex) {
                     render(project, fileName, CompileResultPresenter.requestFailed(fileName, messageOf(ex)));
                     return;
                 }
@@ -100,7 +103,7 @@ public final class BbjCompileAction extends AnAction {
                 CompileResult result;
                 try {
                     result = server.compile(new CompileParams(uri)).get(COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+                } catch (InterruptedException | ExecutionException | TimeoutException | CancellationException ex) {
                     render(project, fileName, CompileResultPresenter.requestFailed(fileName, messageOf(ex)));
                     return;
                 }

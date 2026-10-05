@@ -10,7 +10,7 @@ This extension adds support for the BBj language. It allows you to locate your l
 
 * Syntax Highlight for bbj files and config.bbx
 * Code Completion using a Language Server for BBj based on https://langium.org/
-* Code Formatting (using BBjCodeFormatter)
+* Code Formatting through the BBj language server (needs BBjServices from BBj 26.03 or later)
 * A short command to show the config.bbx ^ BBj.properties
 * Run bbj code from the editor directly
 * A short command to launch BBj's enterprise manager

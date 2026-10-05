@@ -88,8 +88,13 @@ Code and IntelliJ IDEA.
 - **Enterprise Manager built in.** Log in to Enterprise Manager for BUI and DWC runs in both IDEs;
   VS Code also opens Enterprise Manager, shows the active config file and BBj.properties, and
   lists the available classpath entries.
-- **In VS Code:** code formatting (indent width, keyword case, line continuations, single-line
-  IF), Denumber (`Alt+N`), and decompiling tokenized programs.
+- **Formatting and Denumber in both IDEs.** Format a whole file, a selection, or on save with 15
+  formatter settings, and denumber line-numbered programs in the editor. This needs BBj 26.03 or
+  later and a running BBjServices. See the
+  [VS Code](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/formatting) and
+  [IntelliJ IDEA](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij/formatting)
+  formatting guides.
+- **In VS Code:** decompiling tokenized programs.
 - **In IntelliJ IDEA:** status bar widgets for the language server and the Java interop
   connection, editor banners that guide setup, a server log tool window, automatic Node.js
   download, BBj-aware spell checking, and REM comment toggling.

@@ -63,17 +63,13 @@ intellijPlatform {
         description = file("src/main/resources/META-INF/description.html").readText()
 
         changeNotes = """
-            <h3>0.1.0 - Initial Release</h3>
+            <h3>Formatting and Denumber for BBj files</h3>
             <ul>
-              <li>Syntax highlighting with TextMate grammars for BBj and BBx config files</li>
-              <li>Real-time error diagnostics and validation</li>
-              <li>Intelligent code completion for BBj keywords and Java classes</li>
-              <li>Go-to-definition navigation</li>
-              <li>Hover documentation for symbols and methods</li>
-              <li>Signature help for method calls</li>
-              <li>Java interop intelligence for BASIS.BBjAPI classes</li>
-              <li>Run commands for GUI, BUI, and DWC programs</li>
-              <li>Document outline and structure view</li>
+              <li>Reformat Code formats BBj files: the whole file, a selection, and on save through the Actions on Save settings</li>
+              <li>A Formatter section on the BBj settings page with all 15 formatter settings, applied after the language server restarts</li>
+              <li>A Denumber BBj Program action (Tools menu and editor context menu) and a banner on line-numbered programs; the denumbered text stays in the editor until you save</li>
+              <li>Formatting and Denumber need BBj 26.03 or later and a running BBjServices</li>
+              <li>Known issue: setting Line ending to CRLF stops formatting (lsp4ij issue #381); keep it at KEEP</li>
             </ul>
         """.trimIndent()
 

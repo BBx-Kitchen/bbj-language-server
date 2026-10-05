@@ -26,7 +26,8 @@
 - ✅ **v4.5 Compiler Conformance** — Phases 98-105 (shipped 2026-09-24; on `main` via PR #691, merged 2026-09-24 — see MILESTONES.md)
 - ✅ **v4.6 User-Facing Bug Burn-down** — Phases 106-109 (shipped 2026-09-26; on `main` via PR #699, merged 2026-09-26 — see MILESTONES.md)
 - ✅ **v4.7 Audit Hygiene Burn-down** — Phases 110-122 (shipped 2026-09-29; on `main` via PR #708, merged 2026-09-29, preview 0.16.10 — see MILESTONES.md)
-- ✅ **v4.8 Documentation Drift** — Phase 123 (shipped 2026-09-30; docs PR to `main` pending — see MILESTONES.md)
+- ✅ **v4.8 Documentation Drift** — Phase 123 (shipped 2026-09-30; on `main` via PR #726 — see MILESTONES.md)
+- ✅ **v4.9 bbj-ls DENUM & Format Migration** — Phases 124-130.1 (shipped 2026-10-05; branch `gsd/v4.9-bbj-ls-denum-format`, lands on `main` via PR — see MILESTONES.md)
 
 ## Phases
 
@@ -332,6 +333,25 @@ Full phase detail: `.planning/milestones/v4.8-ROADMAP.md`; requirements (18/18) 
 
 </details>
 
+<details>
+<summary>✅ v4.9 bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05</summary>
+
+- [x] Phase 124: Interop Client (6/6 plans) — completed 2026-10-01
+- [x] Phase 125: LS Formatting (6/6 plans) — completed 2026-10-02
+- [x] Phase 126: LS DENUM (7/7 plans) — completed 2026-10-03
+- [x] Phase 127: VS Code Cut-Over (6/6 plans) — completed 2026-10-03
+- [x] Phase 128: IntelliJ DENUM (4/4 plans) — completed 2026-10-04
+- [x] Phase 129: IntelliJ Verdict (9/9 plans) — completed 2026-10-04
+- [x] Phase 130: Docs & Migration (5/5 plans) — completed 2026-10-04
+- [x] Phase 130.1: Tech Debt: Review Warnings and Tokenized Programs (INSERTED) (10/10 plans) — completed 2026-10-05
+
+Full phase detail: `.planning/milestones/v4.9-ROADMAP.md`; requirements (39/39) in
+`.planning/milestones/v4.9-REQUIREMENTS.md`; audit (`tech_debt`, no gaps) in
+`.planning/milestones/v4.9-MILESTONE-AUDIT.md`; phase artifacts under
+`.planning/milestones/v4.9-phases/` (tracked). Override closeout: 8 todos acknowledged.
+
+</details>
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -361,18 +381,21 @@ Full phase detail: `.planning/milestones/v4.8-ROADMAP.md`; requirements (18/18) 
 | v4.6 User-Facing Bug Burn-down | 106-109 | 25 | Complete | 2026-09-26 |
 | v4.7 Audit Hygiene Burn-down | 110-122 | 80 | Complete | 2026-09-29 |
 | v4.8 Documentation Drift | 123 | 8 | Complete | 2026-09-30 |
+| v4.9 bbj-ls DENUM & Format Migration | 124-130.1 | 53 | Complete | 2026-10-05 |
 
-**Total:** 25 milestones shipped, 121 phases complete, 506 plans shipped.
+**Total:** 26 milestones shipped, 129 phases complete, 559 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
 here but have no `.planning/milestones/v4.0-phases/` archive on `main`. v4.1's phase
 artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, excluded from git
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's to
-v4.8's artifacts (78-123) carry no advisory detail and are tracked normally.
+v4.9's artifacts (78-130.1) carry no advisory detail and are tracked normally.
 
-**Current milestone:** none — v4.8 shipped 2026-09-30. Next: `/gsd-new-milestone`.
+## Backlog
+
+No backlog items.
 
 ---
 
-*Roadmap last updated: 2026-09-30 — v4.8 Documentation Drift shipped and archived.*
+*Roadmap last updated: 2026-10-05 — v4.9 bbj-ls DENUM & Format Migration archived.*

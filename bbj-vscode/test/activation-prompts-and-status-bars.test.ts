@@ -41,7 +41,8 @@ const {
         tabsAll: Array<{ tabs: unknown[] }>;
         activeTextEditor: unknown;
         diagnostics: Array<{ severity: number }>;
-    } = { tabsAll: [], activeTextEditor: undefined, diagnostics: [] };
+        visibleEditors: unknown[];
+    } = { tabsAll: [], activeTextEditor: undefined, diagnostics: [], visibleEditors: [] };
     const onNotificationMock = vi.fn((method: string, handler: (...args: unknown[]) => unknown) => {
         notificationHandlers.set(method, handler);
         return { dispose: vi.fn() };
@@ -53,6 +54,7 @@ const {
 });
 
 const startMock = vi.fn();
+const sendRequestMock = vi.fn();
 
 vi.mock('vscode', () => {
     const disposable = () => ({ dispose: vi.fn() });
@@ -67,6 +69,7 @@ vi.mock('vscode', () => {
             this.asString = `${scheme}://${fsPath}`;
         }
         toString(): string { return this.asString; }
+        static file(fsPath: string): Uri { return new Uri('file', fsPath); }
     }
 
     return {
@@ -96,6 +99,7 @@ vi.mock('vscode', () => {
                 return disposable();
             }),
             get activeTextEditor() { return hostState.activeTextEditor; },
+            get visibleTextEditors() { return hostState.visibleEditors; },
         },
         commands: {
             registerCommand: vi.fn((id: string, handler: (...args: unknown[]) => unknown) => {
@@ -122,6 +126,7 @@ vi.mock('vscode', () => {
                 formatter: {},
             })),
             textDocuments: [],
+            openTextDocument: vi.fn(),
             onDidOpenTextDocument: vi.fn(() => disposable()),
             onDidChangeTextDocument: vi.fn(() => disposable()),
             onDidCloseTextDocument: vi.fn(() => disposable()),
@@ -145,6 +150,7 @@ vi.mock('vscode-languageclient/node', () => {
         start = startMock;
         stop = vi.fn();
         onNotification = onNotificationMock;
+        sendRequest = sendRequestMock;
         constructor() { }
     }
     return {
@@ -172,7 +178,6 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
         runBUI: vi.fn(),
         runDWC: vi.fn(),
         compile: vi.fn(),
-        denumber: vi.fn(),
         decompileReplace: vi.fn(),
         decompileReadonly: vi.fn(),
         setOutputChannel: vi.fn(),
@@ -186,6 +191,7 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
 import * as vscode from 'vscode';
 import Commands from '../src/Commands/Commands.cjs';
 import { activate } from '../src/extension.js';
+import { NO_ACTIVE_BBJ_FILE_MESSAGE } from '../src/Commands/target-resolution.js';
 
 const UriCtor = vscode.Uri as unknown as new (scheme: string, fsPath: string) => vscode.Uri;
 
@@ -240,7 +246,9 @@ beforeEach(() => {
     hostState.tabsAll = [];
     hostState.activeTextEditor = undefined;
     hostState.diagnostics = [];
+    hostState.visibleEditors = [];
     startMock.mockImplementation(() => Promise.resolve());
+    sendRequestMock.mockResolvedValue({ status: 'denumbered' });
 });
 
 afterEach(() => {
@@ -276,6 +284,70 @@ describe('the tokenized-file open prompt', () => {
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
     });
 
+    function channelLines(): string[] {
+        const channels = (vscode.window.createOutputChannel as ReturnType<typeof vi.fn>).mock.results
+            .map((result) => result.value as { appendLine: ReturnType<typeof vi.fn> });
+        return channels.flatMap((channel) => channel.appendLine.mock.calls.map(([line]) => String(line)));
+    }
+
+    test('an unreadable file raises no popup, logs one channel line, and is probed again on a later tab event', async () => {
+        const filePath = path.join(tmpDir, 'tokenized-unreadable.bbj');
+        fs.writeFileSync(filePath, Buffer.concat([Buffer.from('<<bbj>>'), Buffer.from('payload')]));
+        const resolved = fs.realpathSync(filePath);
+        const uri = new UriCtor('file', filePath);
+        const tab = { input: { uri } };
+        hostState.tabsAll = [{ tabs: [tab] }];
+        const realOpen = fs.promises.open.bind(fs.promises);
+        const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(((target: fs.PathLike, ...rest: unknown[]) => {
+            if (target === resolved) {
+                return Promise.reject(Object.assign(new Error('resource busy or locked'), { code: 'EBUSY' }));
+            }
+            return (realOpen as (...args: unknown[]) => Promise<fs.promises.FileHandle>)(target, ...rest);
+        }) as typeof fs.promises.open);
+        try {
+            activateFresh();
+
+            await vi.waitFor(() => {
+                expect(channelLines().filter((line) => line.startsWith('Could not check whether "'))).toEqual([
+                    'Could not check whether "tokenized-unreadable.bbj" is a tokenized BBj program: resource busy or locked',
+                ]);
+            });
+            expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+            expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+        } finally {
+            openSpy.mockRestore();
+        }
+
+        tabsListeners[0]({ opened: [tab] });
+
+        await vi.waitFor(() => {
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    test('a symlink to a tokenized program is offered, and Decompile & Replace receives the link uri', async () => {
+        const target = path.join(tmpDir, 'tokenized-link-target.bbj');
+        fs.writeFileSync(target, Buffer.concat([Buffer.from('<<bbj>>'), Buffer.from('payload')]));
+        const link = path.join(tmpDir, 'tokenized-link.bbj');
+        fs.symlinkSync(target, link);
+        const uri = new UriCtor('file', link);
+        hostState.tabsAll = [{ tabs: [{ input: { uri } }] }];
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Decompile & Replace');
+
+        activateFresh();
+
+        await vi.waitFor(() => {
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+                '"tokenized-link.bbj" is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy?',
+                'Decompile & Replace', 'Open Read-only'
+            );
+        });
+        await vi.waitFor(() => {
+            expect(Commands.decompileReplace).toHaveBeenCalledWith(uri);
+        });
+    });
+
     test('with decompile.promptOnOpen false, neither a tokenized file nor a plain-text file prompts', () => {
         settings['decompile.promptOnOpen'] = false;
         const tokenizedPath = path.join(tmpDir, 'tokenized-suppressed.bbj');
@@ -295,21 +367,27 @@ describe('the tokenized-file open prompt', () => {
 });
 
 describe('the line-numbered-file open prompt', () => {
-    test('shows once for the active editor; a repeat active-editor event shows nothing further; Denumber & Replace runs bbj.denumber', async () => {
-        const filePath = path.join(tmpDir, 'line-numbered.bbj');
-        const text = '0010 LET A=5\n0020 PRINT A\n0030 END\n';
+    const numberedText = '0010 LET A=5\n0020 PRINT A\n0030 END\n';
+
+    function activeEditorWith(fileName: string, text: string) {
+        const filePath = path.join(tmpDir, fileName);
         fs.writeFileSync(filePath, text);
-        const uri = new UriCtor('file', filePath);
-        const doc = { languageId: 'bbj', uri, fileName: filePath, getText: () => text };
+        const doc = { languageId: 'bbj', uri: new UriCtor('file', filePath), fileName: filePath, getText: () => text };
         const editor = { document: doc };
         hostState.activeTextEditor = editor;
-        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Denumber & Replace');
+        return { doc, editor };
+    }
+
+    test('shows once for the active editor; a repeat active-editor event shows nothing further; Denumber runs bbj.denumber', async () => {
+        const { doc, editor } = activeEditorWith('line-numbered.bbj', numberedText);
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Denumber');
 
         activateFresh();
 
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledTimes(1);
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-            `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
-            'Denumber & Replace', 'Open Read-only'
+            `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it for editing, or open it read-only?`,
+            'Denumber', 'Open Read-only'
         );
         await vi.waitFor(() => {
             expect(vscode.commands.executeCommand).toHaveBeenCalledWith('bbj.denumber', doc.uri);
@@ -320,6 +398,116 @@ describe('the line-numbered-file open prompt', () => {
             listener(editor);
         }
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('Open Read-only shows the document and flips it read-only without ever running bbj.denumber', async () => {
+        const { doc } = activeEditorWith('line-numbered-readonly.bbj', numberedText);
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockResolvedValueOnce('Open Read-only');
+
+        activateFresh();
+
+        await vi.waitFor(() => {
+            expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.action.files.setActiveEditorReadonlyInSession');
+        });
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(doc, { preview: false });
+        const showOrder = (vscode.window.showTextDocument as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+        const readonlyOrder = (vscode.commands.executeCommand as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+        expect(readonlyOrder).toBeGreaterThan(showOrder);
+        const executedCommands = (vscode.commands.executeCommand as ReturnType<typeof vi.fn>).mock.calls.map(call => call[0]);
+        expect(executedCommands).not.toContain('bbj.denumber');
+    });
+
+    test('an unnumbered bbj editor shows no line-numbered prompt', () => {
+        activeEditorWith('plain-source.bbj', 'print 1\nprint 2\n');
+
+        activateFresh();
+
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('with denumber.promptOnOpen false, a numbered bbj editor shows no prompt', () => {
+        settings['denumber.promptOnOpen'] = false;
+        activeEditorWith('line-numbered-suppressed.bbj', numberedText);
+
+        activateFresh();
+
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('the Denumber BBj Program command wired through activate()', () => {
+    const numberedText = '0010 LET A=5\n0020 PRINT A\n0030 END\n';
+
+    function numberedDocument(filePath: string) {
+        return {
+            languageId: 'bbj',
+            uri: new UriCtor('file', filePath),
+            fileName: filePath,
+            getText: () => numberedText,
+            save: vi.fn(),
+        };
+    }
+
+    test('from the editor it sends one bbj/denum request with the document URI, shows nothing and never saves', async () => {
+        const filePath = path.join(tmpDir, 'denumber-editor.bbj');
+        const doc = numberedDocument(filePath);
+        const editor = { document: doc };
+        hostState.activeTextEditor = editor;
+        hostState.visibleEditors = [editor];
+        (vscode.workspace.openTextDocument as ReturnType<typeof vi.fn>).mockResolvedValue(doc);
+
+        activateFresh();
+        const handler = commandHandlers.get('bbj.denumber')!;
+        await handler();
+
+        expect(sendRequestMock).toHaveBeenCalledTimes(1);
+        expect(sendRequestMock).toHaveBeenCalledWith('bbj/denum', { uri: `file://${filePath}` });
+        expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
+        expect(doc.save).not.toHaveBeenCalled();
+        expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    test('from the Explorer on a file that is not open it opens, shows without the prompt, then sends the request', async () => {
+        const filePath = path.join(tmpDir, 'denumber-explorer.bbj');
+        const doc = numberedDocument(filePath);
+        const editor = { document: doc };
+        (vscode.workspace.openTextDocument as ReturnType<typeof vi.fn>).mockResolvedValue(doc);
+        (vscode.window.showTextDocument as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+            hostState.activeTextEditor = editor;
+            hostState.visibleEditors = [editor];
+            for (const listener of activeEditorListeners) {
+                listener(editor);
+            }
+            return editor;
+        });
+
+        activateFresh();
+        const explorerUri = new UriCtor('file', filePath);
+        const handler = commandHandlers.get('bbj.denumber')!;
+        await handler(explorerUri, [explorerUri]);
+
+        expect(vscode.workspace.openTextDocument).toHaveBeenCalledTimes(1);
+        const openedWith = (vscode.workspace.openTextDocument as ReturnType<typeof vi.fn>).mock.calls[0][0] as { fsPath: string };
+        expect(openedWith.fsPath).toBe(filePath);
+        expect(vscode.window.showTextDocument).toHaveBeenCalledTimes(1);
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(doc, { preview: false });
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+        expect(sendRequestMock).toHaveBeenCalledTimes(1);
+        expect(sendRequestMock).toHaveBeenCalledWith('bbj/denum', { uri: `file://${filePath}` });
+        const showOrder = (vscode.window.showTextDocument as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+        const sendOrder = sendRequestMock.mock.invocationCallOrder[0];
+        expect(sendOrder).toBeGreaterThan(showOrder);
+        expect(doc.save).not.toHaveBeenCalled();
+    });
+
+    test('with no target it shows the no-active-file warning and neither opens nor sends anything', async () => {
+        activateFresh();
+        const handler = commandHandlers.get('bbj.denumber')!;
+        await handler();
+
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(NO_ACTIVE_BBJ_FILE_MESSAGE);
+        expect(vscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        expect(sendRequestMock).not.toHaveBeenCalled();
     });
 });
 

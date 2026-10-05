@@ -1,46 +1,60 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.8
-milestone_name: Documentation Drift
+milestone: v4.9
+milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05
 status: Awaiting next milestone
-stopped_at: Phase 123 complete — all phases complete
-last_updated: "2026-09-30T15:44:41.049Z"
-last_activity: 2026-09-30
-last_activity_desc: Milestone v4.8 completed and archived
-state_head: 2bf8ccc3d25f53a46a9fb15c815125de6af243c0
+stopped_at: Milestone v4.9 completed and archived
+last_updated: "2026-10-05T17:16:11.839Z"
+last_activity: 2026-10-05
+last_activity_desc: Milestone v4.9 completed and archived
+state_head: f70af2af71091c0d27481e540a388506bccd3c9d
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 53
+  completed_plans: 53
   percent: 100
-current_phase: 123
+current_phase: 130.1
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-30 (v4.8 Documentation Drift shipped and archived; docs PR to `main` pending)
+**Last Updated:** 2026-10-05 (milestone v4.9 bbj-ls DENUM & Format Migration completed and archived; override closeout, 8 todos acknowledged)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-30)
+See: .planning/PROJECT.md (updated 2026-10-05)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Open the v4.8 docs PR, then plan the next milestone
+**Current Focus:** Planning the next milestone (`/gsd-new-milestone`); v4.9 branch `gsd/v4.9-bbj-ls-denum-format` still to land on `main` via PR
 
 ---
 
 ## Current Position
 
-Phase: Milestone v4.8 complete
+Phase: Milestone v4.9 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-30 - Completed quick task 260930-m99: README as a customer landing page
+Last activity: 2026-10-05 — Milestone v4.9 completed and archived
 
-The v4.8 map is archived in `.planning/milestones/v4.8-ROADMAP.md`. The milestone sits on
-branch `gsd/v4.8-documentation-drift`; merging its docs PR to `main` rebuilds and publishes the
-docs site through `deploy-docs.yml`.
+### v4.9 milestone map
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 124 | Interop Client | INT-01..05 |
+| 125 | LS Formatting | FMT-01..05, FMT-08..12, SET-02, CUT-01, IJF-01 |
+| 126 | LS DENUM | DEN-01, DEN-03, DEN-04, FMT-06, FMT-07 |
+| 127 | VS Code Cut-Over | SET-01, SET-03, SET-04, DEN-02, DEN-05, DEN-06, CUT-02, CUT-03 |
+| 128 | IntelliJ DENUM | IJF-05, IJF-06 |
+| 129 | IntelliJ Verdict | IJF-02, IJF-03, IJF-04 (IJF-04 only on a "supported" verdict) |
+| 130 | Docs & Migration | MIG-01..03 |
+
+The interop client comes first. The server formatter lands together with the removal of VS Code's
+jar provider and IntelliJ's switch set to off. DENUM (`bbj/denum`) follows formatting, and the VS
+Code cut-over ends with an end-to-end check from the built VSIX against live BBj 26.03. The
+IntelliJ DENUM action and banner come before the evaluation and the user's verdict. Docs come last.
+The v4.8 and v4.9 maps are archived in `.planning/milestones/v4.8-ROADMAP.md` and `v4.9-ROADMAP.md`.
 
 ## Performance Metrics
 
@@ -185,11 +199,68 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 123 P06 | 40min | 2 tasks | 3 files |
 | Phase 123 P07 | 15min | 2 tasks | 3 files |
 | Phase 123 P08 | 15min | 3 tasks | 1 files |
+| Phase 124 P01 | 12min | 2 tasks | 4 files |
+| Phase 124 P02 | 5min | 3 tasks | 3 files |
+| Phase 124 P03 | 10min | 3 tasks | 5 files |
+| Phase 124 P04 | 8min | 3 tasks | 3 files |
+| Phase 124 P05 | 7min | 3 tasks | 4 files |
+| Phase 124 P06 | 5min | 2 tasks | 1 files |
+| Phase 125 P01 | 7 min | 2 tasks | 5 files |
+| Phase 125 P02 | 10 min | 2 tasks | 5 files |
+| Phase 125 P03 | 14 min | 3 tasks | 8 files |
+| Phase 125 P04 | 11min | 3 tasks | 5 files |
+| Phase 125 P05 | 6 min | 2 tasks | 7 files |
+| Phase 125 P06 | 5 min | 3 tasks | 7 files |
+| Phase 126 P01 | 8min | 3 tasks | 11 files |
+| Phase 126 P02 | 3 min | 2 tasks | 5 files |
+| Phase 126 P03 | 12 min | 2 tasks | 4 files |
+| Phase 126 P04 | 10 min | 3 tasks | 6 files |
+| Phase 126 P05 | 10 min | 2 tasks | 1 files |
+| Phase 126 P06 | 9 min | 2 tasks | 2 files |
+| Phase 126 P07 | 5 min | 2 tasks | 6 files |
+| Phase 127 P01 | 10 min | 2 tasks | 5 files |
+| Phase 127 P02 | 2 min | 3 tasks | 16 files |
+| Phase 127 P03 | 9 min | 2 tasks | 6 files |
+| Phase 127 P04 | 8 min | 3 tasks | 8 files |
+| Phase 127 P05 | 5 min | 2 tasks | 10 files |
+| Phase 127 P06 | 5 min + hand check | 3 tasks | 0 files |
+| Phase 128 P01 | 12 min | 3 tasks | 11 files |
+| Phase 128 P02 | 6 min | 2 tasks | 8 files |
+| Phase 128 P03 | 8 min | 3 tasks | 9 files |
+| Phase 128 P04 | ~1 day incl. hand check | 3 tasks | 6 files |
+| Phase 129 P01 | 6 min | 2 tasks | 4 files |
+| Phase 129 P02 | 12min | 2 tasks | 6 files |
+| Phase 129 P03 | 20 min | 3 tasks | 2 files |
+| Phase 129 P04 | 30min | 3 tasks | 2 files |
+| Phase 129 P05 | 13min | 3 tasks | 3 files |
+| Phase 129 P06 | 6 min | 3 tasks | 5 files |
+| Phase 129 P07 | 5 min | 3 tasks | 7 files |
+| Phase 129 P08 | 2min | 1 tasks | 1 files |
+| Phase 129 P09 | 9min | 3 tasks | 3 files |
+| Phase 130 P01 | 4 min | 3 tasks | 6 files |
+| Phase 130 P02 | 3 min | 2 tasks | 2 files |
+| Phase 130 P03 | 8 min | 2 tasks | 2 files |
+| Phase 130 P04 | 14 min | 2 tasks | 6 files |
+| Phase 130 P05 | 6 min | 2 tasks | 3 files |
+| Phase 130.1 P01 | 5 min | 3 tasks | 7 files |
+| Phase 130.1 P03 | 6 min | 2 tasks | 4 files |
+| Phase 130.1 P04 | 4 min | 2 tasks | 7 files |
+| Phase 130.1 P06 | 12 min | 2 tasks | 5 files |
+| Phase 130.1 P07 | 6 min | 3 tasks | 11 files |
+| Phase 130.1 P05 | 14 min | 3 tasks | 10 files |
+| Phase 130.1 P02 | 12 min | 3 tasks | 10 files |
+| Phase 130.1 P08 | 9 min | 2 tasks | 9 files |
+| Phase 130.1 P09 | 3 min | 3 tasks | 6 files |
+| Phase 130.1 P10 | 1 session | 3 tasks | 25 files |
 
 ## Accumulated Context
 
 ### Active Constraints
 
+- **v4.9:** hard cut-over with no fallback to `BBjCFCli.jar` or bbjlst denumbering. A BBj older than 26.03 gets a "requires BBj 26.03 or later" message. Decompiling tokenized programs through bbjlst stays.
+- **v4.9:** every push to `main` publishes previews. The server formatter capability, the removal of VS Code's client-side jar provider (CUT-01) and IntelliJ's formatting switch set to off (IJF-01) therefore land in one change (Phase 125). IntelliJ formatting stays off until the Phase 129 verdict, which is a user decision checkpoint.
+- **v4.9:** DENUM is a custom `bbj/denum` request, like `bbj/compile`. It edits the open buffer (undoable, left unsaved), never the file on disk, and never runs automatically on format or save. IntelliJ formatter settings travel in `initializationOptions` with a server restart on change. `indentWidth` stays 2 by default in both IDEs.
+- **v4.9:** bbj-ls is not changed in this milestone; anything it should change is drafted as a bbj-ls issue. Adding a `bbj/*` request means updating `ComposerRequestContractTest` and running `bbj-intellij ./gradlew test`, which the vitest gates do not cover.
 - **v4.8:** docs only; the only non-doc changes are a new `.vscode/tasks.json` build task, a `preLaunchTask` in `.vscode/launch.json` that uses it, and `npm run build` in `.gitpod.yml`'s `init` (user-approved 2026-09-30). Nothing else outside the docs. The user wants a short milestone: one phase, one docs PR, no extra work folded in.
 - **v4.7:** the milestone PR carries one `Closes #N` line per issue (61 issues across Phases 110-122); an issue table does not close issues. Before the squash merge, scan the branch's commit bodies for closing keywords.
 - **v4.7:** Phase 122 changes `preview.yml`, `manual-release.yml` and `vscode:prepublish`, which publish to both marketplaces on every push to `main`. The publish workflows cannot be run from the branch without publishing: check them statically, run packaging only up to the publish step, and watch the first preview run after the merge.
@@ -214,6 +285,7 @@ decisions:
 - [v4.1, standing]: No CVE is requested for any advisory during implementation; CVE and severity are decided by the maintainer at publication time (a deliberate PROC-03 departure).
 - [v4.1, standing]: Whole-suite regression gate is project-wide `numFailedTests: 0` plus deterministic targeted-file runs, not a failing-suite identity delta (DEBT.md item 5).
 - [v4.4, standing]: IntelliJ consolidations ship as an abstract base plus thin no-arg subclasses, never a runtime-keyed "data-driven" single class — every per-kind difference stays compile-time checked.
+- [v4.9 Phase 129]: IntelliJ LSP formatting is `supported` (`LSP_FORMATTING_ENABLED = true`), the user's override of Claude's `disabled` recommendation; CRLF with Line ending CRLF silently formats nothing in IntelliJ (LSP4IJ #381), kept as a known issue and stated on the settings page. All 15 formatter settings are on the IntelliJ BBj page and reach the server via `initializationOptions.formatter`; Apply restarts the server.
 - [v4.4, standing]: A runtime status or lifecycle sequence used as UAT evidence must come from a real `idea.log`, not a hand-derived trace (the Phase 97 crash-detection rework was approved on a wrong trace and reverted).
 - [v4.4, standing]: IntelliJ whole-suite gates run with `--rerun-tasks` (or `cleanTest test`); a plain `test` can report UP-TO-DATE and mask a stale green.
 - [v4.4, standing]: Before a squash merge, scan the branch's commit bodies for closing keywords — PR #679's squash closed #621/#594 early.
@@ -339,6 +411,54 @@ decisions:
 - [Phase 123]: 123-06: composers.md documents all seven compose commands, five cue titles and every lightbulb label across MSGBOX/addWindow/addChildWindow/CVS()/SETOPTS, plus assign-to validation; COMP-01 held back (shared with 123-07) per requirements.ready-ids
 - [Phase 123]: 123-07: composers.md documents all seven compose actions (including the cue-only bbj.openComposerAt) and five Alt+Enter intentions, plus assign-to validation; COMP-01 stays blocked because 123-08 also declares it and has no SUMMARY yet
 - [Phase 123]: Phase 123: 123-08 confirmed all 45 drift-scan items and planning-time extras were already fixed by 123-01..07; no new doc edit needed, all five sweeps (old strings, VS Code channel wording, IntelliJ toolbar wording, planning ids, scope) came back clean
+- [Phase 124]: 124-02: java-program-guard.ts validates every format/DENUM answer against the request that was sent (strict version echo, exact shape, in-document overlapping range edit, 4x+64KiB/16MiB size cap) and returns a fresh object or a fixed reason token; diagnostics capped at 500 with line 0 kept as no location
+- [Phase 124]: 124-03: format and DENUM travel over a third dedicated connection (ProgramLane) handed only createSocket/wrapSocket and a read-only shared generation; a failed open answers not-reachable with a 5 s cool-down lifted by dispose, and lane loss moves only the lane's own epoch
+- [Phase 124]: 124-04: each format/DENUM method has its own availability latch keyed on shared generation and lane epoch (only -32601 latches off; -33004, -32602, cancel, client timeout and transport never do), written only under the key captured before sending; a request settles through a 15 s cancel-always backstop or the caller's token without awaiting the peer
+- [Phase 124]: 124-05: the loopback wire suite proves omitted optional fields, -33007/-33008 data framing, per-method availability and real $/cancelRequest at the backstop and on caller cancellation; JavaInteropTestService scripts formatProgram/denumProgram with a success default, routes scripted wire answers through the production guard and classifier, and rejects createSocket so it can never open a socket
+- [Phase 124]: 124-06: dedicated program lane kept (measured live): small DENUM behind a pending large parse 3-4 ms on the lane vs ~175 ms on a shared connection, parse latency not above idle while a large DENUM runs; bbj-ls honours $/cancelRequest (-32800 in 1-2 ms) — Route confirmed by measurement through the real client; no route change
+- [Phase 125]: Non-JSON formatter setting values are forwarded as JSON text (String fallback) so bbj-ls rejects the key by name — A silent fallback to a default would hide a misconfiguration
+- [Phase 125]: IntelliJ LSP formatting is gated by one false constant overriding all four LSP4IJ formatting checks; no handler added for bbj/openFormatterSettings (LSP4J 1.0.0 logs a WARNING and returns) — Formatting services gate on isEnabled then call the supported checks directly; the notification cannot be produced while the switch is off
+- [Phase 125]: 125-03: tokenized-program check lives in the format service so handlers and the Langium adapter share it; one private handler body takes an optional range so document and range gates cannot drift
+- [Phase 125]: Formatting notices log fixed tokens and numeric codes only, never peer text (bbj-ls messages can quote source)
+- [Phase 125]: Notice ledger holds exactly 256 entries, evicting the oldest when a new one arrives while full
+- [Phase 125]: 125-05: formatter settings intake is raw-object handoff to BBjFormatService (normalizes to 15 keys); push applies before startup gate, initializationOptions.formatter applies on initialize; no trust gating for formatter values
+- [Phase 125]: Formatting switched on in one commit: lsp.Formatter slot, bounded handler after startLanguageServer, client-side jar formatter removed; first format on a fresh program connection measures 8 ms (stay lazy, no warm-up)
+- [Phase 126]: bbj/denum: server applies a versioned TextDocumentEdit after re-checking the live version; no canonicalName on DENUM requests; per-document in-flight guard answers in-progress — Never apply text computed for another version; overlapping runs must not cancel each other
+- [Phase 126]: Denumber offer: selection explanation and document offer are separate ledger kinds on the same uri@version scope, so neither suppresses the other and an edit re-arms both — Reuses the bounded format notice ledger; no second ledger
+- [Phase 126]: Denumber and Format is one whole-document formatProgram call with the denumber permission; formatting failures use the formatting texts, all others the DENUM texts — One undoable edit, one orchestration core shared with plain DENUM
+- [Phase 126]: Format-on-save and Format Document offer denumbering on every request (no save signal exists); offer kept out of the notice ledger — LSP formatting carries no trigger and VS Code's save participant races format-on-save
+- [Phase 126]: 126-07: Show opens the Problems view (preserveFocus) and a bbj-denum collection holds the entries, cleared on content change or close; the BBj channel keeps the log copy
+- [Phase 127]: Denumber command sends bbj/denum through createDenumberCommand, client words no outcome, no retry; Explorer path marks the document so the numbered-file prompt stays quiet — Server presents every outcome and applies the edit; the document is opened first so the server already has it
+- [Phase 127]: Client-side formatter and bbj.formatter.javaPath removed; the language server normalizer stays as the backstop for leftover user values — The language server formats; the vendored jars, java resolver and verifier were dead code and a supply-chain surface
+- [Phase 127]: 127-03: formatter settings migration moves splitSingleLineIF to splitSingleLineIf per scope (user, then trusted workspace), write-before-remove, never overwrites a set value
+- [Phase 127]: 127-04: both Decompile commands refuse a non-tokenized input (symlinks included) before any bbjlst launch; -xlst kept for .lst input — Running bbjlst on plain text is the denumber path being removed; isTokenizedFile already treats non-regular files as not tokenized (issue #585)
+- [Phase 128]: Denumber client words no outcome: DenumResult discarded; only a transport failure shows one XML-escaped 'Denumber failed' balloon (60 s timeout)
+- [Phase 128]: Show reveals the BBj console with show() only (no activate), so the editor keeps focus; the diagnostics notification never shows the window — Matches VS Code; a source guard forbids activate() and show() in the diagnostics handler
+- [Phase 128]: [Phase 128] Line-numbered banner uses Info status; per-file 300 ms debounced refresh via a lazily created Disposable project service that parents its listener and alarm to itself
+- [Phase 128]: A cancelled window/showMessageRequest (balloon closed in IntelliJ) must never terminate the language server: all five fire-and-forget message sites handle the rejection — Found in the 128-04 hand check; fixed in acb1912a inside the phase with the user's approval, so the phase finishes clean
+- [Phase 129]: 129-01: interop wire keys renamed on the IntelliJ side only (interopHost/interopPort); no server-side shim, BbjSettings.State field names unchanged
+- [Phase 129]: 129-02: formatter State fields are formatter+Key; out-of-range indentWidth resets to 2, choices match exactly after trim else default; normalization lives in the seam
+- [Phase 129]: 129-03: Linux evaluation driven by the performanceTesting script plugin under Xvfb with a node wrapper for wire capture; runIde sandbox folders are suffixed _runIde, runIde needs network, every case uses a fresh corpus file name plus Synchronize
+- [Phase 129]: Phase 129-04: Actions on Save reaches the server on IntelliJ 2024.2 in both modes (formatting / rangeFormatting); eolCharacter CRLF is rejected by the IDE (known issue, sub-question for the user); KEEP and LF format CRLF files correctly
+- [Phase 129]: Phase 129-04: Windows run returned on IntelliJ 2026.2.2 (#IU-262.10315.125) with LSP4IJ 0.21.0; zip sha256 not verified by the user, switch-on build shown by formatting requests on the wire
+- [Phase 129]: Phase 129: IntelliJ LSP formatting verdict is supported (the user's answer, overriding the recommendation disabled); eolCharacter CRLF is a known issue whose Formatter note says plainly that CRLF stops formatting entirely in IntelliJ (LSP4IJ, lsp4ij #381)
+- [Phase 129]: IntelliJ LSP formatting is on (LSP_FORMATTING_ENABLED = true) for whole-file, range and on-save formatting; no range-only constant
+- [Phase 129]: bbj/openFormatterSettings opens BbjSettingsConfigurable by class and ignores its keys payload
+- [Phase 129]: IntelliJ Formatter section: RESTART_NOTE ends with the verdict's eol_note verbatim; note and format-on-save hint are wrapping comment labels
+- [Phase 129]: 129-08 disabled-outcome plan skipped: verdict is supported, no file changed
+- [Phase 129]: IJF-02, IJF-03 and IJF-04 complete on the supported verdict; final zip verified (switch int 1, seam and handler present, main.cjs identical)
+- [Phase 130]: 130-01: settings table Description cells avoid VS Code key names so the IntelliJ guide reuses them word for word; message tables quote server text verbatim
+- [Phase 130]: 130-02: release notes state only verified old-jar differences; old blank-line positions are not listed because the live run differs from the research capture
+- [Phase 130]: 130-03: QA rows carry no planning ids; Denumber action expected greyed out on unnumbered and early-mixed files in IntelliJ — Repo rule for QA files; research enablement trap
+- [Phase 130]: 130-04: IntelliJ Formatting page reuses the VS Code Description cells word for word (script-checked), the CRLF warning follows the Line ending row, and the Denumber failed balloon bodies have their own table
+- [Phase 130]: 130-05: changeNotes carries no version number; README formatting bullet links both published guides — Version comes from -Pversion at build time; both IDEs now format and denumber
+- [Phase 130.1]: Denumber menu fix uses the menu-clause option only: three bbj.denumber when clauses drop the bbx branch, no in-command language check — Menu offers only what the client announces to the server; other 12 entries stay on the shared clause
+- [Phase 130.1]: 130.1-06: differing old/new splitSingleLineIF values stay untouched and silent; only an equal pair is cleaned — The new key already wins in the language server, and logging would repeat on every settings event for the old key
+- [Phase 130.1]: 130.1-07: tokenized-program refusal texts live in plain-Java TokenizedBbj.refusal so they are unit-tested; the banner decides from the file's first 7 bytes via the VFS, never the Document — Keeps the platform glue thin and the verdict independent of garbled binary document text
+- [Phase 130.1]: Denum diagnostics version is stamped from the server's TextDocuments mirror after a bounded wait (5 s), only for runs that send a list; never pre-edit version + 1; no match means no version and VS Code logs only — Each client numbers its own didChange versions; arithmetic would mis-stamp on double bumps
+- [Phase 130.1]: Denumber on a tokenized program warns once naming Decompile Tokenized BBj Program; a rejecting probe falls through to the normal flow — One shared probeTokenizedFile; no chaining or button
+- [Phase 130.1]: Unreadable file at open time is one BBj-channel line, no popup; decompile commands notify with the real cause — Opening a file must not raise a popup; user asked for the command
+- [Phase 130.1]: 130.1-08: IntelliJ filters tokenized files via LSPClientFeatures.isEnabled(VirtualFile) with a per-stamp cached 7-byte check; DENUM version stays a boxed Long with a lenient Gson adapter
 
 ### Tech Debt
 
@@ -350,17 +470,19 @@ decisions:
 - v4.6: 107 A2 accepted on a file-set reading; 108 final UAT ran on the pre-review-fix build; 109-REVIEW IN-01..05 open (full list in `milestones/v4.6-MILESTONE-AUDIT.md`)
 - v4.6 Phase 106 review debt (106-REVIEW.md): CR-01 a pending debounced compiler check still runs and publishes after switching the trigger to `off` (pre-existing); WR-01 the bbjcpl fallback branch suppresses Langium warnings before merging the kept BBjCPL error
 - v4.7 Phase 114 review (114-REVIEW.md, advisory): WR-01 the formatter's ENOENT branch in `document-formatter.ts` rejects exactly like the other branch (pre-existing dead code); IN-01 `readSimpleName` duplicated in `bbj-hover.ts` and `java-javadoc.ts` with different return types. `installed-extension-e2e` still counts as a failed suite with 0 failed assertions (stale installed bundle, pre-existing)
+- v4.9 Phase 129 review (129-REVIEW-FIX.md): IN-02 (formatter defaults duplicated as literals in `BbjSettings.State`) and IN-03 (switch constant `true` makes the four overrides tautological; kill-switch not exercised by a test) skipped on purpose. LSP4IJ CRLF `newText` issue draft (`129-LSP4IJ-ISSUE-crlf-newtext.md`) not filed yet; filing is the user's call
 - v4.5: verdict state never cleared for deleted files (103 WR-01); open review warnings in 98/99/100/104; no SECURITY.md for 101 and 104 (full list in `milestones/v4.5-MILESTONE-AUDIT.md`)
 
 ### Pending Todos
 
-4 pending in `.planning/todos/pending/`:
+Listed in `.planning/todos/pending/`:
 
 - `2026-09-27-windows-intellij-node-download-progress-check` — repeat the IntelliJ Node.js download progress check on Windows the next time Windows is used for testing (Linux passed in Phase 114; opportunistic, not blocking)
 - `2026-09-20-linking-interop-failures-survive-class-warmup` — root cause found (hermetic test double), not fixed → TEST-05, Phase 116
-- `2026-09-26-intellij-interop-initoptions-key-mismatch` — IntelliJ sends javaInteropHost/Port, the server reads interopHost/Port (found in Phase 110; unscheduled)
 - `2026-09-26-signature-help-and-snippet-peer-name-escaping` — transferred threat T-111-15: peer names in the signature-help fence and completion snippet placeholders (unscheduled)
+- `2026-10-04-skip-syntax-checks-on-line-numbered-programs` — line-numbered programs show many pointless syntax errors (at least in IntelliJ); send no diagnostics, or one pointing to Denumber (from the Phase 128 UAT; unscheduled)
 
+Closed in v4.9: `2026-09-26-intellij-interop-initoptions-key-mismatch` (folded into Phase 129).
 Closed in v4.7: `2026-09-24-unknown-java-member-linking-warning-extras` (FIX-03, Phase 111), `2026-09-20-phase-97-code-review-follow-ups` (FIX-04, Phase 114).
 Closed in v4.6: lost-connection crash detection and the stale previous-status log line (Phase 108), the live parse waiting on the shared breaker (Phase 106), and the use-before-assignment crash (Phase 107).
 
@@ -387,29 +509,29 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 1 | Complete settings example in VS Code configuration.md uses shipped defaults (phase 123 VSC-04 gap) | 2026-09-30 | c46a5d9f | — | — |
-| 260930-m99 | Root README rewritten as a customer landing page: install and docs links up front, feature showcase, no build steps | 2026-09-30 | d17ea86d | — | [260930-m99-clean-up-the-readme-advertising-tone-no-](./quick/260930-m99-clean-up-the-readme-advertising-tone-no-/) |
 
-Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README).
+Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README); the 2026-09-30 rows (incl. 260930-m99) under `.planning/milestones/v4.9-quick/`.
 
 ---
 
 ### Roadmap Evolution
 
+- v4.9 roadmap created 2026-10-01: Phases 124-130 for 39 requirements. CUT-01 and IJF-01 land with the server formatter in 125. SET-02 (the server-side 15-key whitelist) sits in 125 rather than with the other settings in 127, because without it unknown keys such as `bbj.formatter.javaPath` would reach bbj-ls and every format would fail with `-33007`. FMT-06/07 and DEN-03/04 sit with `bbj/denum` in 126. IJF-04 depends on the 129 verdict and moves to Out of Scope on "disabled".
 - v4.8 roadmap created 2026-09-30: one phase (123) for 18 requirements. The count was first given as 19; the requirement list has 18, and nothing in the drift scan is left without one.
 - v4.7 roadmap created 2026-09-26: Phases 110-122 for 63 requirements (61 GitHub issues plus three carried-over todos). REF-02 folded into 110, FIX-02/03 into 111, TEST-09 into 112, TEST-10/DOC-01 into 113, FIX-04 into 114, DEP-03 into 115, TEST-08 into 116, DEP-01/CI-04 into 117, FIX-01 into 119, REF-09 into 121.
 - v4.6 archived 2026-09-26 (Phases 106-109).
 - v4.6 roadmap created 2026-09-24: Phases 106-109 for 18 requirements (DIAG-01 and JINT-03 folded into 106, JINT-01/02 into 109).
 - v4.5 archived 2026-09-24 (Phases 98-105).
 - Phase 105 added: Live diagnostics responsiveness on large workspaces (issue #692) — live-parse timer is armed inside buildDocuments, behind Langium's FIFO WorkspaceLock; observed in both IDEs during phase 102 UAT
+- Phase 130.1 inserted after Phase 130: Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (URGENT)
 
 ## Session Continuity
 
-Last session: 2026-09-30T14:45:20.704Z
-Stopped at: Phase 123 complete — all phases complete
+Last session: 2026-10-05T15:03:30.086Z
+Stopped at: Milestone v4.9 completed and archived
 Resume file: None
 
-Next: open the v4.8 docs PR to `main`, then `/gsd-new-milestone`.
+Next: open the v4.9 PR from `gsd/v4.9-bbj-ls-denum-format` (add `Closes #N` lines for fixed issues), then `/gsd-new-milestone`. Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 130.1 closed the 127 review warnings, 126 WR-02, 130 WR-02/WR-03 and backlog 999.1; its own WR-03/WR-04 and info items are acknowledged todos (.planning/todos/pending/2026-10-05-*).
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
 
 ## Deferred Items
@@ -418,6 +540,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| todos | 2026-10-04-nested-java-classes-from-bbj-ls.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-close-file-tabs-returns-renumbered-view-column.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-denumber-success-message-waits-for-mirror-version.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-replace-recheck-file-modified.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-task-not-cancellable.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-decompile-unsettled-listing-fails-open.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-intellij-tokenized-check-reads-vfs-in-is-enabled.md | (presence-only) | 2026-10-05 | v4.9 |
+| todos | 2026-10-05-vscode-decompile-menu-noise-and-stale-comment.md | (presence-only) | 2026-10-05 | v4.9 |
 | todos | 2026-09-29-lsp4j-1-0-with-bbj-ls.md | (presence-only) | 2026-09-30 | v4.8 |
 | todos | 2026-09-29-vitest-5-upgrade.md | (presence-only) | 2026-09-30 | v4.8 |
 | todos | 2026-09-29-vscode-jsonrpc-9-migration.md | (presence-only) | 2026-09-30 | v4.8 |
@@ -527,5 +657,4 @@ detail for phases 70-109 live with their archived phase artifacts; this file is 
 
 ## Operator Next Steps
 
-- Open the v4.8 docs PR from `gsd/v4.8-documentation-drift` to `main`
 - Start the next milestone with /gsd-new-milestone

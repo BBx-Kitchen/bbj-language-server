@@ -27,14 +27,15 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 | [Configuration](vscode/configuration) | VS Code settings reference |
 | [Commands](vscode/commands) | Keyboard shortcuts and commands |
 | [Composers](vscode/composers) | Visual editors for MSGBOX, addWindow, CVS() and SETOPTS |
+| [Formatting](vscode/formatting) | Format Document, Format Selection, format on save and Denumber |
 
 ## Requirements
 
 - **VS Code** 1.101.0 or higher
 - **BBj** 25.00 or higher
 - **BBj** 26.03 or higher for live compiler diagnostics (an earlier BBj keeps the save-time
-  compiler check)
-- **BBjServices** running locally
+  compiler check) and for formatting and Denumber
+- **BBjServices** running locally (formatting and Denumber need it)
 - **Java 17** or higher
 
 ## Getting Help

@@ -7,7 +7,8 @@
 /**
  * The Java interop connection lifecycle: the shared socket connection to the Java backend
  * service, its three-state circuit breaker, the connection generation and the recovery
- * listeners that fire once a probe succeeds after an outage.
+ * listeners that fire once a probe succeeds after an outage. Two further connections hang off
+ * it: the dedicated `parseProgram` lane, and the dedicated format and DENUM lane.
  *
  * Split out of `JavaInteropService` (#558).
  */
@@ -19,6 +20,13 @@ import {
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { JavaClass } from './generated/ast.js';
 import { DEFAULT_INTEROP_HOST, DEFAULT_INTEROP_PORT, formatInteropRejection, validateInteropConfig } from './interop-config.js';
+import { formatRequestTimeoutMs, ProgramLane } from './java-interop-program-lane.js';
+import {
+    denumProgramRequest, formatProgramRequest,
+    type DenumProgramParams, type DenumProgramResult, type FormatProgramParams, type FormatProgramResult,
+    type ProgramOutcome
+} from './java-interop-program-types.js';
+import { validateDenumResult, validateFormatResult } from './java-program-guard.js';
 import { logger } from './logger.js';
 
 /**
@@ -187,7 +195,8 @@ export class JavaInteropConnection {
      * connection itself never bumps this value — the server behind it is the one the shared
      * connection already probed — but losing it does, so any per-connection latch (e.g. a probe
      * result) or stored diagnostic verdict keyed on this value resets and re-decides on the next
-     * request.
+     * request. The format and DENUM lane never bumps it, on open, loss or disposal: it keeps its
+     * own epoch, so format traffic can never reset a live-parse verdict.
      */
     public generation = 0;
     /** Fired once per half-open-to-closed transition, scheduled with Promise.resolve().then(...) — connect() never awaits them. */
@@ -212,6 +221,17 @@ export class JavaInteropConnection {
      * moves past this value.
      */
     private parseLaneRetiredGeneration = -1;
+
+    /**
+     * The third connection, used only by `formatProgram` and `denumProgram`. The hooks are arrow
+     * closures so they are read only when the lane calls them; the lane gets the socket hooks and a
+     * read-only view of {@link generation}, and nothing that could reach the breaker.
+     */
+    private readonly programLane = new ProgramLane({
+        createSocket: () => this.hooks.createSocket(),
+        wrapSocket: (socket) => this.hooks.wrapSocket(socket),
+        sharedGeneration: () => this.generation
+    });
 
     /**
      * Establishes connection to the Java backend service. Concurrent same-tick callers share the
@@ -438,6 +458,33 @@ export class JavaInteropConnection {
         // the next parse attempts it again.
         this.disposeParseLane();
         this.parseLaneRetiredGeneration = -1;
+        // And the format and DENUM connection, which also forgets its own open cool-down.
+        this.programLane.dispose();
+    }
+
+    /**
+     * Formats `params.text` (the whole document, or `params.range`) through the peer's
+     * `formatProgram` endpoint. Travels over the dedicated format and DENUM connection, never the
+     * shared connection or the parse lane, and never touches the circuit breaker. Never throws:
+     * every failure, including an unreachable peer, is a typed outcome, and a peer answer is only
+     * ever returned after it passed validation against `params`.
+     * @param params the format request — the live document text, not a file path
+     * @param token cancellation token forwarded to the request
+     */
+    public formatProgram(params: FormatProgramParams, token?: CancellationToken): Promise<ProgramOutcome<FormatProgramResult>> {
+        return this.programLane.request(formatProgramRequest, params, (raw) => validateFormatResult(params, raw), token, formatRequestTimeoutMs(params));
+    }
+
+    /**
+     * Removes line numbers from `params.text` through the peer's `denumProgram` endpoint. Travels
+     * over the same dedicated connection as {@link formatProgram}, and like it never throws and
+     * never touches the circuit breaker. The caller passes the live editor text — the client never
+     * reads a file.
+     * @param params the DENUM request
+     * @param token cancellation token forwarded to the request
+     */
+    public denumProgram(params: DenumProgramParams, token?: CancellationToken): Promise<ProgramOutcome<DenumProgramResult>> {
+        return this.programLane.request(denumProgramRequest, params, (raw) => validateDenumResult(params, raw), token);
     }
 
     /**

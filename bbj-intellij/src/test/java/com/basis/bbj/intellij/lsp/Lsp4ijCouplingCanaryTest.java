@@ -3,6 +3,7 @@ package com.basis.bbj.intellij.lsp;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.redhat.devtools.lsp4ij.LanguageServerFactory;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
@@ -11,6 +12,7 @@ import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPCompletionFeature;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
+import com.redhat.devtools.lsp4ij.client.features.LSPFormattingFeature;
 import com.redhat.devtools.lsp4ij.commands.CommandExecutor;
 import com.redhat.devtools.lsp4ij.commands.LSPCommand;
 import com.redhat.devtools.lsp4ij.commands.LSPCommandAction;
@@ -77,6 +79,38 @@ class Lsp4ijCouplingCanaryTest {
             "LSPClientFeatures no longer references the experimental marker -- re-audit #554");
         assertTrue(referencesAnnotation(LSPDocumentLinkFeature.class, EXPERIMENTAL_DESCRIPTOR),
             "LSPDocumentLinkFeature no longer references the experimental marker -- re-audit #554");
+    }
+
+    @Test
+    void theFormattingFeatureClassStillCarriesTheExperimentalMarker() {
+        assertTrue(referencesAnnotation(LSPFormattingFeature.class, EXPERIMENTAL_DESCRIPTOR),
+            "LSPFormattingFeature no longer references the experimental marker -- the vendor "
+                + "graduated the API and the formatting switch needs a re-audit");
+    }
+
+    @Test
+    void theFormattingFeatureMembersTheSwitchReliesOnStillExist() throws NoSuchMethodException {
+        Method setFormattingFeature = LSPClientFeatures.class.getMethod(
+            "setFormattingFeature", LSPFormattingFeature.class);
+        assertEquals(LSPClientFeatures.class, setFormattingFeature.getReturnType(),
+            "LSPClientFeatures.setFormattingFeature(LSPFormattingFeature) no longer returns "
+                + "LSPClientFeatures -- the factory's builder chain depends on it");
+
+        Method getFormattingFeature = LSPClientFeatures.class.getMethod("getFormattingFeature");
+        assertEquals(LSPFormattingFeature.class, getFormattingFeature.getReturnType(),
+            "LSPClientFeatures.getFormattingFeature() no longer returns LSPFormattingFeature");
+
+        for (String name : new String[] {
+                "isEnabled", "isSupported", "isFormattingSupported", "isRangeFormattingSupported"}) {
+            Method check = LSPFormattingFeature.class.getMethod(name, PsiFile.class);
+            assertEquals(boolean.class, check.getReturnType(),
+                "LSPFormattingFeature." + name + "(PsiFile) no longer returns boolean");
+            assertTrue(Modifier.isPublic(check.getModifiers()),
+                "LSPFormattingFeature." + name + " must stay public -- the factory overrides it");
+            assertFalse(Modifier.isFinal(check.getModifiers()),
+                "LSPFormattingFeature." + name + " must stay overridable -- the formatting switch "
+                    + "depends on overriding it");
+        }
     }
 
     @Test
@@ -151,6 +185,16 @@ class Lsp4ijCouplingCanaryTest {
         Method isSupported = LSPDocumentLinkFeature.class.getMethod("isSupported", PsiFile.class);
         assertEquals(boolean.class, isSupported.getReturnType());
         assertTrue(Modifier.isPublic(isSupported.getModifiers()));
+    }
+
+    @Test
+    void thePerFileEnabledCheckTheTokenizedFilterOverridesStillExists() throws NoSuchMethodException {
+        Method isEnabled = LSPClientFeatures.class.getMethod("isEnabled", VirtualFile.class);
+        assertEquals(boolean.class, isEnabled.getReturnType(),
+            "LSPClientFeatures.isEnabled(VirtualFile) no longer returns boolean -- the factory "
+                + "relies on overriding it to keep tokenized files away from the server");
+        assertFalse(Modifier.isFinal(isEnabled.getModifiers()),
+            "LSPClientFeatures.isEnabled(VirtualFile) must stay overridable");
     }
 
     @Test

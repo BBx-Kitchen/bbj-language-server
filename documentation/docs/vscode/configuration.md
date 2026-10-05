@@ -164,8 +164,9 @@ bytes), so it works regardless of the file's extension — tokenized programs ar
 
 #### `bbj.denumber.promptOnOpen`
 
-When opening a line-numbered BBj program, prompt to denumber it (replacing the file with editable
-source) or open it read-only.
+When opening a line-numbered BBj program, prompt to denumber it in the editor (the result is left
+unsaved for you to review and save) or open it read-only. The buttons are `Denumber` and
+`Open Read-only`.
 
 ```json
 {
@@ -269,69 +270,26 @@ uses its default silently, with no warning.
 
 ### Formatter Settings
 
-#### `bbj.formatter.indentWidth`
+There are 15 formatter settings. They apply on the next format, without a reload, and can be set in user or workspace settings. A value the formatter rejects is reported when you format, with the message `Invalid BBj formatter settings` and an `Open Settings` button. How formatting works is described on [Formatting](./formatting.md).
 
-Number of spaces for indentation.
-
-```json
-{
-  "bbj.formatter.indentWidth": 2
-}
-```
-
-**Default**: `2`
-
-#### `bbj.formatter.removeLineContinuation`
-
-Remove line continuation characters when formatting.
-
-```json
-{
-  "bbj.formatter.removeLineContinuation": true
-}
-```
-
-**Default**: `false`
-
-#### `bbj.formatter.keywordsToUppercase`
-
-Convert BBj keywords to uppercase when formatting.
-
-```json
-{
-  "bbj.formatter.keywordsToUppercase": true
-}
-```
-
-**Default**: `false`
-
-#### `bbj.formatter.splitSingleLineIF`
-
-Split single-line IF statements into multiple lines.
-
-```json
-{
-  "bbj.formatter.splitSingleLineIF": true
-}
-```
-
-**Default**: `false`
-
-#### `bbj.formatter.javaPath`
-
-Absolute path to the `java` executable the formatter runs. When empty, the formatter looks up
-`java` on PATH. A configured value must exist and be executable, or formatting is cancelled with
-an error naming the configured path and the problem — PATH is never used as a fallback for an
-invalid value. This setting can only be set in user settings; it cannot be set from a workspace
-`.vscode/settings.json` file.
-
-```json
-{
-  "bbj.formatter.javaPath": "/opt/jdk-17/bin/java"
-}
-```
-
-**Default**: `""` (look up java on PATH)
+| Setting | Type and values | Default | Description |
+|---------|-----------------|---------|-------------|
+| `bbj.formatter.indentWidth` | integer, `0` to `16` | `2` | Number of indent characters per block level, from 0 to 16. |
+| `bbj.formatter.indentCharacter` | `SPACE`, `TAB` | `SPACE` | Character used for indentation: spaces or tab characters. |
+| `bbj.formatter.indentLabelBlocks` | boolean | `false` | Indent the statements between a subroutine label and its closing RETURN by one level. |
+| `bbj.formatter.keywordsToUppercase` | boolean | `false` | Write BBj keywords in upper case. This wins over the IF keyword case setting. |
+| `bbj.formatter.ifClosingKeyword` | `KEEP`, `FI`, `ENDIF` | `KEEP` | Keyword that closes a block IF. `KEEP` leaves every existing FI or ENDIF as written, and a closer the formatter adds uses FI. `FI` closes every block IF with FI. `ENDIF` closes every block IF with ENDIF. |
+| `bbj.formatter.ifKeywordCase` | `KEEP`, `MATCH_IF`, `LOWER_CASE`, `UPPER_CASE` | `KEEP` | Case of ELSE, FI and ENDIF. `KEEP` leaves existing keywords as written, and added ones copy the case of their IF. `MATCH_IF` copies the case of the opening IF. `LOWER_CASE` and `UPPER_CASE` force that case. Upper-casing all keywords always wins. |
+| `bbj.formatter.splitSingleLineIf` | boolean | `false` | Split a single-line IF statement across several lines. |
+| `bbj.formatter.removeLineContinuation` | boolean | `false` | Remove line-continuation characters. |
+| `bbj.formatter.splitInlineComments` | boolean | `false` | Move in-line comments onto their own line. |
+| `bbj.formatter.splitInlineLabelComment` | boolean | `false` | Move a label's in-line comment onto its own line. |
+| `bbj.formatter.collapseMultiLine` | boolean | `false` | Collapse consecutive blank lines into one. |
+| `bbj.formatter.blankLineAfterReturn` | boolean | `false` | Put exactly one blank line after a subroutine's closing RETURN. |
+| `bbj.formatter.parameterLayout` | `KEEP_INITIAL_LAYOUT`, `NO_BLANK`, `BEFORE_COMMA`, `AFTER_COMMA`, `BEFORE_AND_AFTER_COMMA` | `KEEP_INITIAL_LAYOUT` | Spacing around the commas between method parameters. `KEEP_INITIAL_LAYOUT` keeps the spacing as written. `NO_BLANK` puts no blank around the commas. `BEFORE_COMMA` puts one blank before each comma, `AFTER_COMMA` one blank after each comma, and `BEFORE_AND_AFTER_COMMA` one blank before and after each comma. |
+| `bbj.formatter.operatorSpacing` | `KEEP`, `SPACED` | `KEEP` | Spacing around binary operators. `KEEP` keeps the spacing as written. `SPACED` puts exactly one blank on each side; unary signs, exponents, strings and comments stay as written. |
+| `bbj.formatter.eolCharacter` | `KEEP`, `LF`, `CRLF` | `KEEP` | Line ending of the formatted file. `KEEP` uses the file's most frequent line ending. `LF` and `CRLF` force that line ending. |
+| `bbj.formatter.splitSingleLineIF` | boolean or `null` | `null` | Deprecated. Renamed to `bbj.formatter.splitSingleLineIf`. A value set here is moved to the new name once per scope when the extension starts: user settings always, workspace settings when the workspace is trusted, and never over a value that is already set. The `BBj` output channel logs the move. |
 
 ## Complete Settings Example
 
@@ -357,10 +315,20 @@ options, which the **Configure Compile Options** command sets (see the note belo
   "bbj.interop.host": "localhost",
   "bbj.interop.port": 5008,
   "bbj.formatter.indentWidth": 2,
-  "bbj.formatter.removeLineContinuation": false,
+  "bbj.formatter.indentCharacter": "SPACE",
+  "bbj.formatter.indentLabelBlocks": false,
   "bbj.formatter.keywordsToUppercase": false,
-  "bbj.formatter.splitSingleLineIF": false,
-  "bbj.formatter.javaPath": ""
+  "bbj.formatter.ifClosingKeyword": "KEEP",
+  "bbj.formatter.ifKeywordCase": "KEEP",
+  "bbj.formatter.splitSingleLineIf": false,
+  "bbj.formatter.removeLineContinuation": false,
+  "bbj.formatter.splitInlineComments": false,
+  "bbj.formatter.splitInlineLabelComment": false,
+  "bbj.formatter.collapseMultiLine": false,
+  "bbj.formatter.blankLineAfterReturn": false,
+  "bbj.formatter.parameterLayout": "KEEP_INITIAL_LAYOUT",
+  "bbj.formatter.operatorSpacing": "KEEP",
+  "bbj.formatter.eolCharacter": "KEEP"
 }
 ```
 
@@ -377,9 +345,7 @@ For project-specific settings, create a `.vscode/settings.json` file in your wor
 }
 ```
 
-Workspace settings override user settings, with two exceptions:
-[`bbj.formatter.javaPath`](#bbjformatterjavapath) is machine-scoped, so VS Code only reads it from
-user (or machine) settings, never from a workspace file; and a workspace-scoped
+Workspace settings override user settings, with one exception: a workspace-scoped
 [`bbj.configPath`](#bbjconfigpath) is ignored entirely while the workspace is untrusted (see
 Workspace Trust above).
 
@@ -480,7 +446,7 @@ The Java interop service provides:
 - Field information
 - Package structure
 
-The service is managed by BBjServices and starts automatically when the extension activates. Configure the connection using `bbj.interop.host` and `bbj.interop.port` if you need to connect to a remote instance.
+The service is managed by BBjServices. The extension connects to it when you open the first BBj file in a window; a window without BBj files makes no connection. Configure the connection using `bbj.interop.host` and `bbj.interop.port` if you need to connect to a remote instance.
 
 ## Troubleshooting Configuration
 

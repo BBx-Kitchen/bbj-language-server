@@ -100,8 +100,12 @@ export const fakeVscode = {
         withProgress: vi.fn((_options: unknown, task: (progress?: unknown, token?: unknown) => unknown) =>
             task(undefined, undefined)
         ),
-        showTextDocument: vi.fn(async () => undefined),
+        showTextDocument: vi.fn(async (..._args: unknown[]) => undefined),
         activeTextEditor: undefined as unknown,
+        tabGroups: {
+            all: [] as unknown[],
+            close: vi.fn(async (_tabs: unknown, _preserveFocus?: boolean) => true),
+        },
     },
     commands: {
         executeCommand: vi.fn(async (_command: string, ..._args: unknown[]) => undefined),
@@ -152,7 +156,6 @@ interface CommandsModule {
     runBUI: (params: RunTargetParams, credentials?: WebCredentials) => void;
     runDWC: (params: RunTargetParams, credentials?: WebCredentials) => void;
     compile: (params: RunTargetParams) => void;
-    denumber: (params: RunTargetParams) => void;
     decompileReplace: (params: RunTargetParams) => void;
     decompileReadonly: (params: RunTargetParams) => void;
     [key: string]: unknown;
@@ -322,6 +325,8 @@ export function resetCommandsHarness(): void {
             task(undefined, undefined)
         );
     (fakeVscode.window.showTextDocument as Mock).mockReset().mockImplementation(async () => undefined);
+    fakeVscode.window.tabGroups.all = [];
+    (fakeVscode.window.tabGroups.close as Mock).mockReset().mockImplementation(async () => true);
     (fakeVscode.workspace.openTextDocument as Mock)
         .mockReset()
         .mockImplementation(async (target: unknown) => fakeDocument(target));

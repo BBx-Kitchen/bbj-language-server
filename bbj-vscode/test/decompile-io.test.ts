@@ -3,15 +3,17 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
-import { isTokenizedFile, waitForDecompileOutput, deleteLeftoverLst, statSize } from '../src/decompile-io.js';
+import * as processArgs from '../src/Commands/process-args.js';
+import {
+    isTokenizedFile,
+    probeTokenizedFile,
+    statSize,
+    waitForListing,
+    verifyListing,
+    replaceWithListing,
+} from '../src/decompile-io.js';
 
 const MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]); // "<<bbj>>"
-
-const COMMANDS_CJS = path.join(__dirname, '..', 'src', 'Commands', 'Commands.cjs');
-
-function readCommandsSource(): string {
-    return fs.readFileSync(COMMANDS_CJS, 'utf-8');
-}
 
 describe('decompile-io', () => {
     let dir: string;
@@ -42,12 +44,12 @@ describe('decompile-io', () => {
             expect(await isTokenizedFile(path.join(dir, 'nope'))).toBe(false);
         });
 
-        test('false for a symlink pointing at a real tokenized file', async () => {
+        test('true for a symlink pointing at a real tokenized file', async () => {
             const target = path.join(dir, 'prog');
             fs.writeFileSync(target, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
             const link = path.join(dir, 'prog-link');
             fs.symlinkSync(target, link);
-            expect(await isTokenizedFile(link)).toBe(false);
+            expect(await isTokenizedFile(link)).toBe(true);
         });
 
         test('false for a directory', async () => {
@@ -55,23 +57,121 @@ describe('decompile-io', () => {
             fs.mkdirSync(d);
             expect(await isTokenizedFile(d)).toBe(false);
         });
+    });
+
+    describe('probeTokenizedFile', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        function writeTokenized(name: string): string {
+            const f = path.join(dir, name);
+            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            return f;
+        }
+
+        test('reports tokenized with the real path for a plain tokenized file', async () => {
+            const f = writeTokenized('prog');
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'tokenized', resolvedPath: fs.realpathSync(f) });
+        });
+
+        test('reports tokenized with the target as resolvedPath for a symlink to a tokenized file', async () => {
+            const target = writeTokenized('prog');
+            const link = path.join(dir, 'prog-link');
+            fs.symlinkSync(target, link);
+            expect(await probeTokenizedFile(link)).toEqual({ kind: 'tokenized', resolvedPath: fs.realpathSync(target) });
+        });
+
+        test('reports not-tokenized with the real path for plain text', async () => {
+            const f = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(f, 'rem hi\nprint "x"\n');
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'not-tokenized', resolvedPath: fs.realpathSync(f) });
+        });
+
+        test('reports not-tokenized for a file shorter than the magic', async () => {
+            const f = path.join(dir, 'short');
+            fs.writeFileSync(f, '<<bb');
+            expect((await probeTokenizedFile(f)).kind).toBe('not-tokenized');
+        });
+
+        test('reports a directory as not-a-file', async () => {
+            const d = path.join(dir, 'a-directory');
+            fs.mkdirSync(d);
+            expect(await probeTokenizedFile(d)).toEqual({ kind: 'not-a-file' });
+        });
 
         test.skipIf(process.platform === 'win32')(
-            'false for a FIFO, returning promptly instead of blocking on open',
+            'reports a FIFO as not-a-file, returning promptly instead of blocking on open',
             async () => {
                 const fifo = path.join(dir, 'a-fifo');
                 execFileSync('mkfifo', [fifo]);
-                expect(await isTokenizedFile(fifo)).toBe(false);
+                expect(await probeTokenizedFile(fifo)).toEqual({ kind: 'not-a-file' });
             },
             2000
         );
 
+        test.skipIf(process.platform === 'win32')(
+            'reports a symlink to a FIFO as not-a-file, returning promptly',
+            async () => {
+                const fifo = path.join(dir, 'a-fifo');
+                execFileSync('mkfifo', [fifo]);
+                const link = path.join(dir, 'a-fifo-link');
+                fs.symlinkSync(fifo, link);
+                expect(await probeTokenizedFile(link)).toEqual({ kind: 'not-a-file' });
+            },
+            2000
+        );
+
+        test('reports a missing path as missing', async () => {
+            expect(await probeTokenizedFile(path.join(dir, 'nope'))).toEqual({ kind: 'missing' });
+        });
+
+        test('reports a dangling symlink as missing', async () => {
+            const link = path.join(dir, 'dangling');
+            fs.symlinkSync(path.join(dir, 'gone'), link);
+            expect(await probeTokenizedFile(link)).toEqual({ kind: 'missing' });
+        });
+
+        test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+            'reports a file that cannot be read as unreadable with EACCES',
+            async () => {
+                const f = writeTokenized('locked');
+                fs.chmodSync(f, 0o000);
+                const probe = await probeTokenizedFile(f);
+                expect(probe.kind).toBe('unreadable');
+                expect(probe).toMatchObject({ code: 'EACCES' });
+            }
+        );
+
+        test('reports an open failure as unreadable with its code and a one-line message', async () => {
+            const f = writeTokenized('busy');
+            const failure = Object.assign(new Error('resource busy\nor locked'), { code: 'EBUSY' });
+            vi.spyOn(fs.promises, 'open').mockRejectedValueOnce(failure);
+
+            const probe = await probeTokenizedFile(f);
+
+            expect(probe).toEqual({ kind: 'unreadable', code: 'EBUSY', message: 'resource busy or locked' });
+        });
+
+        test('reports a read failure as unreadable and still closes the handle', async () => {
+            const f = writeTokenized('racy');
+            const closeSpy = vi.fn().mockResolvedValue(undefined);
+            const fakeHandle = {
+                stat: vi.fn().mockResolvedValue({ isFile: () => true }),
+                close: closeSpy,
+                read: vi.fn().mockRejectedValue(Object.assign(new Error('read raced'), { code: 'EIO' })),
+            };
+            vi.spyOn(fs.promises, 'open').mockResolvedValueOnce(fakeHandle as unknown as fs.promises.FileHandle);
+
+            expect(await probeTokenizedFile(f)).toMatchObject({ kind: 'unreadable', code: 'EIO' });
+            expect(closeSpy).toHaveBeenCalledTimes(1);
+        });
+
         test('opens with O_NOFOLLOW and O_NONBLOCK where the platform defines them', async () => {
-            const f = path.join(dir, 'prog');
-            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            const f = writeTokenized('prog');
             const openSpy = vi.spyOn(fs.promises, 'open');
 
-            expect(await isTokenizedFile(f)).toBe(true);
+            expect((await probeTokenizedFile(f)).kind).toBe('tokenized');
 
             expect(openSpy).toHaveBeenCalledTimes(1);
             const flags = openSpy.mock.calls[0][1] as number;
@@ -83,9 +183,19 @@ describe('decompile-io', () => {
             }
         });
 
-        test('reports false and still closes the handle when the opened handle is not a regular file on fstat re-check', async () => {
-            const f = path.join(dir, 'prog');
-            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+        test('opens the resolved target, not the link', async () => {
+            const target = writeTokenized('prog');
+            const link = path.join(dir, 'prog-link');
+            fs.symlinkSync(target, link);
+            const openSpy = vi.spyOn(fs.promises, 'open');
+
+            await probeTokenizedFile(link);
+
+            expect(openSpy.mock.calls[0][0]).toBe(fs.realpathSync(target));
+        });
+
+        test('reports not-a-file and still closes the handle when the opened handle is not a regular file on fstat re-check', async () => {
+            const f = writeTokenized('prog');
             const closeSpy = vi.fn().mockResolvedValue(undefined);
             const fakeHandle = {
                 stat: vi.fn().mockResolvedValue({ isFile: () => false }),
@@ -94,7 +204,7 @@ describe('decompile-io', () => {
             };
             vi.spyOn(fs.promises, 'open').mockResolvedValueOnce(fakeHandle as unknown as fs.promises.FileHandle);
 
-            expect(await isTokenizedFile(f)).toBe(false);
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'not-a-file' });
             expect(closeSpy).toHaveBeenCalledTimes(1);
         });
     });
@@ -136,209 +246,161 @@ describe('decompile-io', () => {
         });
     });
 
-    describe('waitForDecompileOutput', () => {
-        const fast = { pollMs: 5, timeoutMs: 2000 };
+    describe('waitForListing', () => {
+        const fast = { pollMs: 5, missingGraceMs: 2000, timeoutMs: 2000 };
 
-        test('does not resolve to a symlinked .lst pointing at a real listing, and rejects on timeout', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const realListing = path.join(dir, 'real.lst');
-            fs.writeFileSync(realListing, '0010 print "hi"\n');
-            const lst = input + '.lst';
-            fs.symlinkSync(realListing, lst);
-
-            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 150 }))
-                .rejects.toThrow(/Timed out/);
+        test('resolves for a listing whose size is stable', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, 'print "hi"\n');
+            await expect(waitForListing(listing, fast)).resolves.toBeUndefined();
         });
 
-        test('resolves to the .lst path once it appears and its size settles', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            // Write the listing shortly after the wait starts, simulating async bbjlst output.
-            setTimeout(() => fs.writeFileSync(lst, '0010 print "hi"\n'), 30);
-
-            const result = await waitForDecompileOutput(input, fast);
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
+        test('resolves once a listing that appears late has stopped growing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            setTimeout(() => fs.writeFileSync(listing, 'print "hi"\n'), 30);
+            await expect(waitForListing(listing, fast)).resolves.toBeUndefined();
         });
 
-        test('detects in-place rewrite when a once-tokenized input becomes ASCII', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC); // starts tokenized
-            // No .lst ever appears; instead the input itself is rewritten to source.
-            setTimeout(() => fs.writeFileSync(input, 'print "hi"\n'), 30);
-
-            const result = await waitForDecompileOutput(input, { ...fast, canRewriteInPlace: true });
-            expect(result).toEqual({ sourcePath: input, inPlace: true });
+        test('rejects naming the file when nothing appears within the missing-listing grace', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            await expect(waitForListing(listing, { pollMs: 5, missingGraceMs: 100, timeoutMs: 2000 }))
+                .rejects.toThrow('bbjlst wrote no decompiled listing for "prog.bbj".');
         });
 
-        test('does NOT treat a non-tokenized input as in-place (waits for .lst)', async () => {
-            // e.g. denumbering line-numbered text: bbjlst always emits .lst.
-            const input = path.join(dir, 'numbered.bbj');
-            fs.writeFileSync(input, '0010 print "hi"\n'); // never tokenized
-            const lst = input + '.lst';
-            setTimeout(() => fs.writeFileSync(lst, 'print "hi"\n'), 30);
-
-            // canRewriteInPlace defaults to false → must resolve to .lst, not in-place.
-            const result = await waitForDecompileOutput(input, fast);
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
+        test('treats a symlinked listing as absent', async () => {
+            const real = path.join(dir, 'real.txt');
+            fs.writeFileSync(real, 'print "hi"\n');
+            const listing = path.join(dir, 'prog.bbj');
+            fs.symlinkSync(real, listing);
+            await expect(waitForListing(listing, { pollMs: 5, missingGraceMs: 100, timeoutMs: 2000 }))
+                .rejects.toThrow(/wrote no decompiled listing/);
         });
 
-        test('rejects on timeout when no output ever appears', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            await expect(waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 120 }))
-                .rejects.toThrow(/Timed out/);
-        });
-
-        test('a not-yet-stable .lst is not resolved until its size settles', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            // Grow the listing on every poll for a while, then stop — resolution must
-            // only happen after the size stops changing.
-            let bytes = 0;
-            const grower = setInterval(() => { bytes += 4; fs.writeFileSync(lst, 'x'.repeat(bytes)); }, 5);
-            setTimeout(() => clearInterval(grower), 60);
-
-            const result = await waitForDecompileOutput(input, { pollMs: 8, timeoutMs: 2000 });
-            expect(result.sourcePath).toBe(lst);
-            // Final observed size must equal what's on disk (i.e. it settled, not a partial read).
-            expect(fs.statSync(lst).size).toBe(bytes);
-        });
-
-        test('a fresh listing with a coarse, earlier-looking mtime resolves promptly (no mtime gate)', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            fs.writeFileSync(input, MAGIC);
-            const lst = input + '.lst';
-            fs.writeFileSync(lst, '0010 print "hi"\n');
-            // Backdate the fresh listing's mtime to well before the call starts, simulating a
-            // coarse-mtime filesystem where a just-written file can read as "in the past".
-            const past = new Date(Date.now() - 10000);
-            fs.utimesSync(lst, past, past);
-
-            const start = Date.now();
-            const result = await waitForDecompileOutput(input, { pollMs: 5, timeoutMs: 2000 });
-            expect(result).toEqual({ sourcePath: lst, inPlace: false });
-            expect(Date.now() - start).toBeLessThan(1000);
-        });
-
-        describe('P62-D2-011: a stale .lst of matching size is never mistaken for fresh output', () => {
-            // Committed under bbj-vscode/test/ (not a system temp directory), created and removed
-            // per test — a stale-.lst race needs a fixture that already exists before the wait
-            // starts, which the shared per-test `dir` (created fresh in the outer beforeEach)
-            // cannot represent.
-            const staleFixtureDir = path.join(__dirname, 'test-data', 'decompile-io-p62-d2-011');
-
-            beforeEach(() => {
-                fs.mkdirSync(staleFixtureDir, { recursive: true });
+        test('rejects when a listing keeps growing past the timeout', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            // Grow the file before every size check, so no two checks can see the same size
+            // however the runner schedules timers.
+            const realLstat = fs.promises.lstat.bind(fs.promises);
+            const lstatSpy = vi.spyOn(fs.promises, 'lstat').mockImplementation(async (file, ...rest) => {
+                fs.appendFileSync(listing, 'xxxx');
+                return realLstat(file, ...(rest as []));
             });
-            afterEach(() => {
-                fs.rmSync(staleFixtureDir, { recursive: true, force: true });
-            });
-
-            test('resolves with the fresh content, not a pre-existing .lst of coincidentally matching size', async () => {
-                const input = path.join(staleFixtureDir, 'prog.bbj');
-                fs.writeFileSync(input, MAGIC);
-                const lst = input + '.lst';
-                const staleContent = 'print "stale"\n';
-                const freshContent = 'print "fresh"\n';
-                expect(freshContent.length).toBe(staleContent.length); // the coincidental-size premise
-
-                // A stale .lst already on disk before the wait starts, e.g. left over from a
-                // crashed prior decompile attempt against the same file. It is the delete step
-                // below — not a timestamp — that guarantees this stale listing can never be
-                // observed by the wait: once removed, no size, however coincidentally matching,
-                // can be read from this path until the fresh run writes it.
-                fs.writeFileSync(lst, staleContent);
-
-                await deleteLeftoverLst(input);
-                expect(fs.existsSync(lst)).toBe(false);
-
-                const resultPromise = waitForDecompileOutput(input, { pollMs: 15, timeoutMs: 2000 });
-                let freshWrittenAt = 0;
-                setTimeout(() => {
-                    fs.writeFileSync(lst, freshContent);
-                    freshWrittenAt = Date.now();
-                }, 45);
-
-                const result = await resultPromise;
-                const resolvedAt = Date.now();
-                expect(resolvedAt).toBeGreaterThanOrEqual(freshWrittenAt);
-                expect(result).toEqual({ sourcePath: lst, inPlace: false });
-                expect(fs.readFileSync(lst, 'utf8')).toBe(freshContent);
-            });
+            try {
+                await expect(waitForListing(listing, { pollMs: 8, missingGraceMs: 2000, timeoutMs: 150 }))
+                    .rejects.toThrow('bbjlst did not finish writing the listing for "prog.bbj".');
+            } finally {
+                lstatSpy.mockRestore();
+            }
         });
     });
 
-    describe('deleteLeftoverLst', () => {
-        test('removes an existing <input>.lst', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            const lst = input + '.lst';
-            fs.writeFileSync(lst, 'stale');
-            await deleteLeftoverLst(input);
-            expect(fs.existsSync(lst)).toBe(false);
+    describe('verifyListing', () => {
+        test('resolves for a plain-text listing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, 'print "hi"\n');
+            await expect(verifyListing(listing)).resolves.toBeUndefined();
         });
 
-        test('resolves without error when no leftover exists', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            await expect(deleteLeftoverLst(input)).resolves.toBeUndefined();
+        test('rejects an empty listing', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, '');
+            await expect(verifyListing(listing)).rejects.toThrow('bbjlst wrote an empty listing for "prog.bbj".');
         });
 
-        test('fails closed when the leftover cannot be removed, naming the path and reason', async () => {
-            const input = path.join(dir, 'prog.bbj');
-            const lst = input + '.lst';
-            // A directory at the .lst path is a real, mock-free way to make unlink fail with a
-            // non-ENOENT error (EISDIR on Linux, EPERM on macOS/Windows).
-            fs.mkdirSync(lst);
-
-            await expect(deleteLeftoverLst(input)).rejects.toThrow(
-                new RegExp(`Could not remove the leftover.*${lst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
-            );
-            expect(fs.existsSync(lst)).toBe(true);
-            expect(fs.statSync(lst).isDirectory()).toBe(true);
+        test('rejects a listing that is still a tokenized program', async () => {
+            const listing = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(listing, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            await expect(verifyListing(listing))
+                .rejects.toThrow('bbjlst did not decompile "prog.bbj"; the listing is still a tokenized program.');
         });
 
-        test('for a .lst input, removes only <input>.lst.lst and never the input file itself', async () => {
-            const input = path.join(dir, 'prog.lst');
-            const inputContent = '0010 rem x\n';
-            fs.writeFileSync(input, inputContent);
-            const leftover = input + '.lst'; // prog.lst.lst
-            fs.writeFileSync(leftover, 'stale listing');
-
-            await deleteLeftoverLst(input);
-
-            expect(fs.existsSync(leftover)).toBe(false);
-            expect(fs.existsSync(input)).toBe(true);
-            expect(fs.readFileSync(input, 'utf8')).toBe(inputContent);
+        test('rejects a missing listing', async () => {
+            await expect(verifyListing(path.join(dir, 'prog.bbj'))).rejects.toThrow(/wrote no decompiled listing/);
         });
     });
 
-    describe('decompileInPlace wiring (source guard)', () => {
-        test('decompileInPlace awaits deleteLeftoverLst before execWithProgress, inside the try block', () => {
-            const source = readCommandsSource();
-            const start = source.indexOf('const decompileInPlace = (resolvedFileName, options = {}) => {');
-            expect(start).toBeGreaterThan(-1);
-            const end = source.indexOf('const Commands = {', start);
-            expect(end).toBeGreaterThan(start);
-            const body = source.slice(start, end);
-
-            const tryIndex = body.indexOf('try {');
-            const deleteIndex = body.indexOf('await deleteLeftoverLst(resolvedFileName)');
-            const execIndex = body.indexOf('execWithProgress(argv)');
-
-            expect(tryIndex).toBeGreaterThan(-1);
-            expect(deleteIndex).toBeGreaterThan(-1);
-            expect(execIndex).toBeGreaterThan(-1);
-            expect(deleteIndex).toBeGreaterThan(tryIndex);
-            expect(deleteIndex).toBeLessThan(execIndex);
+    describe('replaceWithListing', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
         });
 
-        test('Commands.cjs requires deleteLeftoverLst from decompile-io', () => {
-            const source = readCommandsSource();
-            const requireLine = source.match(/const \{[^}]*\} = require\("\.\.\/decompile-io"\);/);
-            expect(requireLine).not.toBeNull();
-            expect(requireLine![0]).toMatch(/deleteLeftoverLst/);
+        function stagedFiles(): string[] {
+            return fs.readdirSync(dir).filter((name) => name.endsWith('.decompiled'));
+        }
+
+        test('replaces the target with the listing and leaves no staged file behind', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+
+            await replaceWithListing(target, listing);
+
+            expect(fs.readFileSync(target, 'utf-8')).toBe('print "decompiled"\n');
+            expect(fs.readFileSync(listing, 'utf-8')).toBe('print "decompiled"\n');
+            expect(fs.readdirSync(dir).sort()).toEqual(['listing.txt', 'prog.bbj']);
         });
+
+        test.skipIf(process.platform === 'win32')('keeps the permission bits of the target', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.chmodSync(target, 0o640);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            fs.chmodSync(listing, 0o600);
+
+            await replaceWithListing(target, listing);
+
+            expect(fs.statSync(target).mode & 0o7777).toBe(0o640);
+        });
+
+        test('when the final rename fails, the target is byte-identical and no staged file remains', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            const original = Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]);
+            fs.writeFileSync(target, original);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            vi.spyOn(fs.promises, 'rename').mockRejectedValueOnce(new Error('rename boom'));
+
+            await expect(replaceWithListing(target, listing)).rejects.toThrow('rename boom');
+
+            expect(fs.readFileSync(target).equals(original)).toBe(true);
+            expect(stagedFiles()).toEqual([]);
+        });
+
+        test('never overwrites an existing file at the staged name', async () => {
+            const target = path.join(dir, 'prog.bbj');
+            const listing = path.join(dir, 'listing.txt');
+            fs.writeFileSync(target, MAGIC);
+            fs.writeFileSync(listing, 'print "decompiled"\n');
+            vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+            const planted = path.join(dir, `.prog.bbj.${process.pid}.1234567890.decompiled`);
+            fs.writeFileSync(planted, 'planted');
+
+            await expect(replaceWithListing(target, listing)).rejects.toThrow(/EEXIST/);
+
+            expect(fs.readFileSync(planted, 'utf-8')).toBe('planted');
+            expect(fs.readFileSync(target).equals(MAGIC)).toBe(true);
+        });
+    });
+});
+
+describe('the bbjlst launch path passes bbjlst nothing but its listing options', () => {
+    test('process-args exports nothing that denumbers', () => {
+        expect(Object.keys(processArgs).filter((name) => /denum/i.test(name))).toEqual([]);
+    });
+
+    test.each([
+        ['a .bbj', '/w/a.bbj'],
+        ['a .pub', '/w/a.pub'],
+        ['an extensionless', '/w/a'],
+        ['a .lst', '/w/a.lst'],
+    ])('buildDecompileArgv for %s input yields only -xlst, the -d element and the file name, and never -l', (_label, fileName) => {
+        const { args } = processArgs.buildDecompileArgv({ home: '/opt/bbj', platform: 'linux', fileName, outputDir: '/out' });
+        const allowed = new Set(['-xlst', '-d/out', fileName]);
+        expect(args.filter((arg) => !allowed.has(arg))).toEqual([]);
+        expect(args).not.toContain('-l');
+        expect(args.at(-1)).toBe(fileName);
+        expect(args.filter((arg) => arg.startsWith('-d'))).toEqual(['-d/out']);
     });
 });

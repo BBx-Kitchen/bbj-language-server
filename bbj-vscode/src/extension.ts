@@ -11,8 +11,10 @@ import {
     DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
-import { DocumentFormatter } from './document-formatter.js';
-import { registerOpenFilePrompts } from './open-file-prompts.js';
+import { registerOpenFilePrompts, type OpenFilePrompts } from './open-file-prompts.js';
+import { createDenumberCommand } from './denumber-command.js';
+import { probeTokenizedFile } from './decompile-io.js';
+import { DENUM_REQUEST_METHOD, type DenumResult } from './language/denum-command.js';
 import { registerDiagnosticStatusBars } from './diagnostic-status-bars.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import { registerAddWindowComposer } from './addwindow-composer-ui.js';
@@ -32,7 +34,12 @@ import { createConfigPathTrustMiddleware, effectiveConfigPath, registerTrustGran
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
+import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
+import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
+import { denumPayloadUri, denumPayloadVersion, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
+import { createLanguageClientStarter, ensureStartedForCommand, startOnServerDocuments, type LanguageClientStarter } from './language-client-starter.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
+import { createSingleFlightRunner, migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE, resolveRunTarget, toActiveEditorSnapshot } from './Commands/target-resolution.js';
 import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerEmLoginCommand } from './em-auth.js';
@@ -40,9 +47,11 @@ import { ensureValidToken, getEMCredentials as getStoredEMCredentials, registerE
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
+let clientStarter: LanguageClientStarter;
 let secretStorage: vscode.SecretStorage;
 let outputChannel: vscode.LogOutputChannel;
 let restartGate: RestartGate | undefined;
+let openFilePrompts: OpenFilePrompts | undefined;
 let configReloadStatusBar: vscode.StatusBarItem;
 let configReloadAutoHideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -454,6 +463,39 @@ function sweepOpenDocumentsForConfigAssociation(): void {
     lastKnownActiveConfigPath = getActiveConfigPath();
 }
 
+/**
+ * Moves a user's old `bbj.formatter.splitSingleLineIF` value to `splitSingleLineIf` in the same
+ * settings scope, once on activation and again whenever the old key changes (a Settings Sync pull
+ * or a hand edit can bring it in after activation). Runs are fire-and-forget and one at a time: it
+ * shows no popup, never rejects, and so cannot hold up or break activation. Each run reads a fresh
+ * configuration, since a configuration object is a snapshot. The only disposable it adds is the
+ * change listener. The configuration push the language client sends on registration and on every
+ * change carries the moved value to the server either way.
+ */
+function startFormatterSettingsMigration(context: vscode.ExtensionContext): void {
+    try {
+        const run = createSingleFlightRunner(() => {
+            const formatterConfig = vscode.workspace.getConfiguration('bbj.formatter');
+            return migrateSplitSingleLineIf({
+                inspect: key => formatterConfig.inspect(key),
+                update: (key, value, target) => formatterConfig.update(key, value, target),
+                userTarget: vscode.ConfigurationTarget.Global,
+                workspaceTarget: vscode.ConfigurationTarget.Workspace,
+                workspaceTrusted: vscode.workspace.isTrusted,
+                log: appendOutputLine
+            });
+        });
+        run();
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration('bbj.formatter.splitSingleLineIF')) {
+                run();
+            }
+        }));
+    } catch {
+        // An unavailable configuration API means there is nothing to migrate.
+    }
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
@@ -463,7 +505,10 @@ export function activate(context: vscode.ExtensionContext): void {
     registerComposerLensCommand(context); // click-through for server-side composer cues (#650)
     registerCvsComposer(context); // visual CVS() composer (#649)
     registerSetOptsComposer(context); // visual SETOPTS composer for config.bbx (#474)
-    registerSetOptsInCodeComposer(context, (method, params) => client.sendRequest(method, params)); // in-code SETOPTS composer (#475, DISC-06)
+    registerSetOptsInCodeComposer(context, async (method, params) => { // in-code SETOPTS composer (#475, DISC-06)
+        await ensureStartedForCommand(clientStarter);
+        return client.sendRequest(method, params);
+    });
     secretStorage = context.secrets;
 
     // The extension owns this channel end-to-end (#671): creating it here — before the
@@ -477,24 +522,37 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel = vscode.window.createOutputChannel('BBj', { log: true });
     context.subscriptions.push(outputChannel);
 
-    client = startLanguageClient(context, outputChannel);
+    // The client is constructed here but not started: starting it spawns the language server, which
+    // connects to the Java interop service, and a window without any BBj document has no use for
+    // that. Handlers registered below are held by the client and attached when it starts.
+    client = createLanguageClient(context, outputChannel);
+    clientStarter = createLanguageClientStarter(() => startLanguageClient(client), reportStartFailure);
 
     // The choke point every VS Code restart must go through (#486): reuses this exact
     // client instance (stop then start) so its already-registered notification handlers
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as unknown as { setOutputChannel(channel: vscode.OutputChannel): void }).setOutputChannel(outputChannel);
+    startFormatterSettingsMigration(context);
 
     registerConfigFileCommands(context);
     registerEmLoginCommand(context, { outputChannel });
     registerRunCommands(context, { outputChannel });
     registerCompileCommands(context);
-    registerJavaClasspathCommands(context, { client });
-    registerDocumentFormatter(context);
-    registerOpenFilePrompts(context);
+    registerJavaClasspathCommands(context, { client, ensureStarted: () => ensureStartedForCommand(clientStarter) });
+    registerFormatterSettingsLink(context, { client });
+    registerDenumDiagnosticsOutput(context, { client, outputChannel });
+    openFilePrompts = registerOpenFilePrompts(context, { log: appendOutputLine });
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
     registerConfigAssociation(context, { client });
+
+    // Last, so every handler above is in place before the server can start: the first BBj document,
+    // already open or opened later, starts it. Commands that need the server start it themselves.
+    context.subscriptions.push(startOnServerDocuments(clientStarter, {
+        openDocuments: () => vscode.workspace.textDocuments,
+        onDidOpen: listener => vscode.workspace.onDidOpenTextDocument(listener)
+    }));
 }
 
 /** Registers bbj.config, bbj.properties and bbj.em. */
@@ -537,18 +595,37 @@ function registerRunCommands(context: vscode.ExtensionContext, deps: { outputCha
 /** Registers the compile/denumber/decompile commands and the compiler-options QuickPick. */
 function registerCompileCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("bbj.compile", Commands.compile));
-    context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", Commands.denumber));
+    context.subscriptions.push(vscode.commands.registerCommand("bbj.denumber", createDenumberCommand({
+        activeEditor: () => toActiveEditorSnapshot(vscode.window.activeTextEditor),
+        isTokenized: async (fsPath) => (await probeTokenizedFile(fsPath)).kind === 'tokenized',
+        openDocument: (fsPath) => vscode.workspace.openTextDocument(vscode.Uri.file(fsPath)),
+        isVisible: (uri) => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === uri),
+        show: (document) => vscode.window.showTextDocument(document, { preview: false }),
+        skipOpenPrompt: (uri) => openFilePrompts?.skipLineNumberedPrompt(uri),
+        sendDenum: async (params) => {
+            await ensureStartedForCommand(clientStarter);
+            return client.sendRequest<DenumResult>(DENUM_REQUEST_METHOD, params);
+        },
+        warn: (message) => { void vscode.window.showWarningMessage(message); },
+        error: (message) => { void vscode.window.showErrorMessage(message); },
+    })));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly));
     context.subscriptions.push(vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions));
 }
 
 /** Registers the Java classpath refresh command and the classpath-entries picker. */
-function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
-    const { client } = deps;
+function registerJavaClasspathCommands(
+    context: vscode.ExtensionContext,
+    deps: { client: LanguageClient, ensureStarted: () => Promise<void> }
+): void {
+    const { client, ensureStarted } = deps;
     context.subscriptions.push(vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
-        if (!client) {
-            vscode.window.showErrorMessage('BBj language server not running');
+        try {
+            await ensureStarted();
+        } catch {
+            // The server did not start; the starter already told the user why. Sending a request
+            // to a client that never came up would only add a second, less useful error.
             return;
         }
         try {
@@ -601,13 +678,146 @@ function registerJavaClasspathCommands(context: vscode.ExtensionContext, deps: {
     }));
 }
 
-/** Registers the BBj document formatter. */
-function registerDocumentFormatter(context: vscode.ExtensionContext): void {
+/**
+ * Registers the handler for the server's open-settings notification. The server has already decided
+ * the formatter settings are invalid and the user chose Open Settings; this handler only opens the
+ * Settings UI filtered to the formatter settings. It never reads the payload, so a setting name
+ * supplied by the peer can never become a command argument.
+ */
+function registerFormatterSettingsLink(context: vscode.ExtensionContext, deps: { client: LanguageClient }): void {
+    const { client } = deps;
     context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider(
-            "bbj",
-            DocumentFormatter
-        )
+        client.onNotification(OPEN_FORMATTER_SETTINGS_METHOD, () => {
+            void vscode.commands.executeCommand('workbench.action.openSettings', FORMATTER_SETTINGS_QUERY);
+        })
+    );
+}
+
+function denumSeverity(severity: 'ERROR' | 'WARNING' | 'INFO'): vscode.DiagnosticSeverity {
+    switch (severity) {
+        case 'ERROR': return vscode.DiagnosticSeverity.Error;
+        case 'WARNING': return vscode.DiagnosticSeverity.Warning;
+        case 'INFO': return vscode.DiagnosticSeverity.Information;
+    }
+}
+
+/**
+ * Registers the handlers for the server's two denumber notifications. The server sends the list of
+ * DENUM's diagnostics after a successful run that reported any, and the reveal request when the
+ * user picks Show.
+ *
+ * The list is placed twice. It becomes problems on the denumbered document, in a collection of its
+ * own that is created when the first list names a BBj document the editor has open at the version
+ * the payload carries (a list without that version, or for another one, places nothing), and it is
+ * written into the 'BBj' channel as plain lines, one block per run, as a log copy that outlives the
+ * problems. The reveal request opens the Problems view while any problem is placed, and the
+ * channel holding the log copy once none is; it ignores its payload.
+ *
+ * Nothing in a payload becomes a command, a link or a path to open: the uri only selects an open
+ * document by comparing strings, and the problems are keyed by that document's own uri.
+ */
+function registerDenumDiagnosticsOutput(
+    context: vscode.ExtensionContext,
+    deps: { client: LanguageClient, outputChannel: vscode.LogOutputChannel }
+): void {
+    const { client, outputChannel } = deps;
+    let collection: vscode.DiagnosticCollection | undefined;
+    // The documents that hold problems right now, by uri string. Show reads it to know whether the
+    // Problems view has anything to show.
+    const placed = new Set<string>();
+
+    function clearProblems(document: vscode.TextDocument): void {
+        collection?.delete(document.uri);
+        placed.delete(document.uri.toString());
+    }
+
+    function placeProblems(params: unknown): void {
+        const uri = denumPayloadUri(params);
+        if (uri === undefined) {
+            return;
+        }
+        // Parsed only to be compared as text, never opened, so a spelling the editor would
+        // normalise differently (a drive-letter case, an encoding) still selects its document.
+        const wanted = vscode.Uri.parse(uri).toString();
+        const document = vscode.workspace.textDocuments.find(
+            candidate => candidate.languageId === 'bbj' && candidate.uri.toString() === wanted
+        );
+        if (document === undefined) {
+            return;
+        }
+        // The list describes one version of the text. A missing or invalid version, or a document
+        // that has moved on since, gets no problems: the log copy already holds the list.
+        const version = denumPayloadVersion(params);
+        if (version === undefined || version !== document.version) {
+            return;
+        }
+        const problems = denumProblems(params, document.lineCount);
+        if (collection === undefined) {
+            collection = vscode.languages.createDiagnosticCollection('bbj-denum');
+            context.subscriptions.push(collection);
+        }
+        if (problems.length === 0) {
+            clearProblems(document);
+            return;
+        }
+        placed.add(document.uri.toString());
+        collection.set(document.uri, problems.map(problem => {
+            const diagnostic = new vscode.Diagnostic(
+                new vscode.Range(problem.line, 0, problem.line, document.lineAt(problem.line).text.length),
+                problem.message,
+                denumSeverity(problem.severity)
+            );
+            diagnostic.source = 'BBj Denumber';
+            return diagnostic;
+        }));
+    }
+
+    context.subscriptions.push(
+        client.onNotification(DENUM_DIAGNOSTICS_METHOD, (params: unknown) => {
+            // Raw appendLine, not the log-level methods: those add a timestamp and the Output
+            // panel's level filter could hide an ERROR entry.
+            for (const line of formatDenumDiagnosticsBlock(params)) {
+                try {
+                    outputChannel.appendLine(line);
+                } catch {
+                    // A broken write must not stop the rest of the list.
+                }
+            }
+            try {
+                placeProblems(params);
+            } catch {
+                // The log copy above already holds the list; a failed placement must not surface.
+                // A fixed token only, never the payload or the error text.
+                outputChannel.debug('denumber problems not placed');
+            }
+        }),
+        client.onNotification(SHOW_DENUM_DIAGNOSTICS_METHOD, () => {
+            if (placed.size === 0) {
+                // The problems are gone (the user edited or closed the document), so the Problems
+                // view would be empty; the channel still holds the log copy of the list.
+                outputChannel.show(true);
+                return;
+            }
+            // preserveFocus opens the view without taking focus from the editor, and never
+            // toggles an already focused Problems view closed.
+            void vscode.commands.executeCommand('workbench.actions.view.problems', { preserveFocus: true });
+        })
+    );
+
+    // The problems describe the text the list was computed for, so they go when that text goes:
+    // a content change or a close deletes them, and the next list replaces them. An event without
+    // a content change (the dirty-state flip of a save) keeps them, because the text is the same.
+    // The denumber edit itself never clears its own problems: the server sends the list only after
+    // the edit is applied.
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(event => {
+            if (event.contentChanges.length > 0) {
+                clearProblems(event.document);
+            }
+        }),
+        vscode.workspace.onDidCloseTextDocument(document => {
+            clearProblems(document);
+        })
     );
 }
 
@@ -689,13 +899,16 @@ export function deactivate(): Thenable<void> | undefined {
     // Cancel any pending restart before disposing the client — a scheduled restart must
     // never fire against a client that is being (or has been) shut down (#486).
     restartGate?.cancel();
+    // A client that was never started stops as a no-op, so a window without a BBj document
+    // deactivates cleanly.
     if (client) {
         return client.stop();
     }
     return undefined;
 }
 
-function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vscode.LogOutputChannel): LanguageClient {
+/** Constructs the language client without starting it; {@link startLanguageClient} does that. */
+function createLanguageClient(context: vscode.ExtensionContext, outputChannel: vscode.LogOutputChannel): LanguageClient {
     const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
     // The debug options for the server
     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging.
@@ -718,9 +931,9 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
     // Referenced by sendBbjSettings below, assigned once the client is constructed further
     // down; the closure is only ever invoked after that assignment (on a later push or a
     // trust-grant re-push), never synchronously during client construction itself.
-    let client: LanguageClient;
+    let languageClient: LanguageClient;
     const sendBbjSettings = (settings: Record<string, unknown>): Promise<void> =>
-        client.sendNotification(DidChangeConfigurationNotification.type, { settings });
+        languageClient.sendNotification(DidChangeConfigurationNotification.type, { settings });
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
@@ -748,7 +961,9 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
         middleware: {
             workspace: createConfigPathTrustMiddleware(sendBbjSettings)
         },
-        initializationOptions: {
+        // A function, so the values are read when the client starts rather than at activation:
+        // the client may start long after activation and the settings may have changed since.
+        initializationOptions: () => ({
             version: context.extension.packageJSON.version,
             home: vscode.workspace.getConfiguration("bbj").get("home"),
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
@@ -759,34 +974,56 @@ function startLanguageClient(context: vscode.ExtensionContext, outputChannel: vs
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
             maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20),
             compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced"),
-            inlayHintsParameterNames: vscode.workspace.getConfiguration("bbj").get("inlayHints.parameterNames.enabled", "literals")
-        }
+            inlayHintsParameterNames: vscode.workspace.getConfiguration("bbj").get("inlayHints.parameterNames.enabled", "literals"),
+            formatter: vscode.workspace.getConfiguration("bbj").get("formatter")
+        })
     };
 
-    // Create the language client and start the client.
-    client = new LanguageClient(
+    // Create the language client; it is started later, on the first BBj document.
+    languageClient = new LanguageClient(
         'bbj',
         'BBj',
         serverOptions,
         clientOptions
     );
 
-    // Start the client. This will also launch the server. Surface (not silently swallow) a
-    // start failure -- otherwise every command stays registered as though the server had
-    // started, and the rejection becomes an unhandled promise rejection in the extension host.
-    client.start().catch(error => {
-        const detail = error instanceof Error ? error.message : String(error);
-        console.error('BBj language server failed to start:', error);
-        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
-    });
-
     // Granting Workspace Trust makes the workspace-scoped bbj.configPath take effect without a
     // reload: re-send the gated settings through the same builder the push path uses (issue #511).
+    // A client that is not running yet has nothing to re-send to: it reads the settings when it starts.
     context.subscriptions.push(
-        registerTrustGrantRepush(sendBbjSettings, error => {
+        registerTrustGrantRepush(settings => languageClient.needsStop() ? sendBbjSettings(settings) : Promise.resolve(), error => {
             const detail = error instanceof Error ? error.message : String(error);
             appendOutputLine(`Re-sending settings after the workspace trust grant failed: ${detail}`);
         })
     );
-    return client;
+    return languageClient;
+}
+
+/**
+ * Starts the language client, which also launches the server. A start failure rejects, so the
+ * starter caches no success and every caller sees it; the user is told once, from the starter's
+ * {@link reportStartFailure}, not from here.
+ */
+function startLanguageClient(languageClient: LanguageClient): Promise<void> {
+    return languageClient.start();
+}
+
+const RELOAD_WINDOW_ACTION = 'Reload Window';
+
+/**
+ * Tells the user that an attempt to start the language server failed. Called by the starter once
+ * per failed attempt. vscode-languageclient keeps the rejected start promise of a client whose
+ * start failed, so a later attempt on the same client can end with the same error; the reload
+ * action is the way out in that case.
+ */
+function reportStartFailure(error: unknown): void {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('BBj language server failed to start:', error);
+    void Promise.resolve(
+        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`, RELOAD_WINDOW_ACTION)
+    ).then(choice => {
+        if (choice === RELOAD_WINDOW_ACTION) {
+            void vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+    });
 }

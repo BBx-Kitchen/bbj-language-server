@@ -4,6 +4,7 @@ import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module.js";
+import type { BBjFormatService } from "./bbj-format-service.js";
 import { JavaInteropService } from "./java-interop.js";
 import { JavadocProvider } from "./java-javadoc.js";
 import { logger } from "./logger.js";
@@ -29,6 +30,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
     private javadocProvider: JavadocProvider;
+    private formatService: () => BBjFormatService;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
@@ -59,7 +61,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const version = params.initializationOptions?.version || 'unknown';
             console.log(`BBj Language Server v${version}`);
 
-            logger.debug(() => `Initialization options received: ${JSON.stringify(params.initializationOptions)}`);
+            // The formatter values stay out of the log; only the other options are shown.
+            logger.debug(() => {
+                const options = params.initializationOptions;
+                const shown = options !== null && typeof options === 'object' && 'formatter' in options
+                    ? { ...options, formatter: '[omitted]' }
+                    : options;
+                return `Initialization options received: ${JSON.stringify(shown)}`;
+            });
             if (typeof params.initializationOptions === 'string') {
                 // Legacy: just the home directory
                 this.bbjdir = params.initializationOptions;
@@ -128,12 +137,21 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
                 // Set parameter name inlay hint mode (invalid/missing values keep the default)
                 setParameterHintMode(params.initializationOptions.inlayHintsParameterNames);
+
+                // Startup channel for the formatter settings: the service keeps only the keys
+                // bbj-ls accepts, so the raw object is handed over as the client holds it.
+                const formatter = params.initializationOptions.formatter;
+                if (formatter !== undefined) {
+                    this.formatService().setSettings(formatter);
+                }
             }
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
         this.javadocProvider = bbjServices.java.JavadocProvider;
+        // Resolved on first use so the format service is never built while this manager is.
+        this.formatService = () => bbjServices.compiler.BBjFormatService;
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {

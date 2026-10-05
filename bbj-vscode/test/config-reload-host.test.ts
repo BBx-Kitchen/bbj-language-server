@@ -266,7 +266,6 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
         runBUI: vi.fn(),
         runDWC: vi.fn(),
         compile: vi.fn(),
-        denumber: vi.fn(),
         decompileReplace: vi.fn(),
         decompileReadonly: vi.fn(),
         setOutputChannel: vi.fn(),
@@ -328,9 +327,8 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
 
     test('receiving bbj/configReloadRequired results in exactly one request on the gate, and no direct stop/start call from the handler itself', async () => {
         activateForTest();
-        // startLanguageClient() itself performs the one initial client.start() as part of
-        // activation, before any reload is requested — the baseline this test's deltas are
-        // measured against.
+        // No BBj document is open here, so activation starts nothing; the baseline is whatever
+        // start count exists before any reload is requested.
         const initialStartCalls = clientStartMock.mock.calls.length;
         const handler = capturedHandler(CONFIG_RELOAD_METHOD);
 
@@ -427,7 +425,7 @@ describe('config-reload status bar: the non-blocking signal and failure path', (
 
     test('the failed phase hides the item and calls showErrorMessage exactly once; no showInformationMessage or showWarningMessage call is made on any phase', async () => {
         const error = new Error('spawn ENOENT');
-        clientStartMock.mockImplementationOnce(() => Promise.resolve()); // the initial startLanguageClient() start
+        // No BBj document is open, so activation does not start the client; the restart is the only start.
         clientStartMock.mockImplementation(() => Promise.reject(error));
 
         activateForTest();
@@ -561,8 +559,9 @@ describe('source guard: the choke point is the only restart path', () => {
 
     test('extension.ts contains exactly one client.start() and exactly one client.stop( occurrence', () => {
         const source = readGuardedSource('extension.ts');
-        expect(countOccurrences(source, 'client.start()')).toBe(1);
-        expect(countOccurrences(source, 'client.stop(')).toBe(1);
+        // Any identifier ending in "client" counts, so renaming the local does not hide a second start.
+        expect(source.match(/\b\w*[cC]lient\.start\(\)/g) ?? []).toHaveLength(1);
+        expect(source.match(/\b\w*[cC]lient\.stop\(/g) ?? []).toHaveLength(1);
     });
 
     test("extension.ts's client.stop( appears after its gate-cancel call, inside deactivate()", () => {

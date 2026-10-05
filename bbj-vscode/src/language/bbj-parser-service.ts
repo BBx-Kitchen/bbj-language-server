@@ -1,8 +1,9 @@
 import { LangiumDocument } from 'langium';
-import { Diagnostic, DiagnosticSeverity, LSPErrorCodes, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getMaxErrors } from './bbj-document-validator.js';
 import { clearAllVerdictStates } from './bbj-diagnostic-reconciliation.js';
-import { JavaInteropService, METHOD_NOT_FOUND, ParseError, ParseProgramParams } from './java-interop.js';
+import { classifyInteropError, FailureLogCadence, MALFORMED_RESULT_KIND } from './java-interop-errors.js';
+import { JavaInteropService, ParseError, ParseProgramParams } from './java-interop.js';
 import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 import { logger } from './logger.js';
 
@@ -99,35 +100,15 @@ export type LiveParseOutcome =
     | { kind: 'cancelled' };
 
 /**
- * The endpoint's own application error codes (see `101-MR-DESCRIPTION.md`), each mapped to the
- * short kind token used in {@link BBjParserService}'s failure log lines and per-kind warn/debug
- * cadence. Any JSON-RPC error whose `code` is not one of these (a rejected connect, a closed
- * connection, a breaker-open short circuit, or any other unrecognized code) classifies as
- * `'transport'` instead.
+ * The classified kinds that keep their own token in the live-parse failure log: the endpoint's
+ * own application errors for a parse. Every other classified kind (the format and DENUM codes,
+ * invalid parameters, a connection failure) logs as `transport`, so the live-parse log text is the
+ * same as it was before the shared classifier existed. A cancelled request and a missing method are
+ * handled before any logging.
  */
-const APPLICATION_ERROR_KINDS: Record<number, string> = {
-    [-33001]: 'parser-exception',
-    [-33002]: 'timeout',
-    [-33003]: 'size-cap',
-    [-33004]: 'service-unavailable',
-    [-33005]: 'protected-program',
-};
-
-/** The kind token for a `malformed-result` failure — a resolved result whose `errors` is invalid. */
-const MALFORMED_RESULT_KIND = 'malformed-result';
-/** The kind token for any failure that is not one of the endpoint's own application error codes. */
-const TRANSPORT_KIND = 'transport';
-
-/**
- * Classifies a caught failure's JSON-RPC `code` (or its absence) into one of the short kind
- * tokens used by the failure log cadence.
- */
-function classifyFailureKind(code: number | undefined): string {
-    if (code !== undefined && code in APPLICATION_ERROR_KINDS) {
-        return APPLICATION_ERROR_KINDS[code];
-    }
-    return TRANSPORT_KIND;
-}
+const LIVE_PARSE_LOGGED_KINDS: ReadonlySet<string> = new Set([
+    'parser-exception', 'timeout', 'size-cap', 'service-unavailable', 'protected-program'
+]);
 
 /**
  * The structural slice of `BBjWorkspaceManager` this service reads: the resolved PREFIX list and
@@ -166,8 +147,9 @@ type ParserMode = 'unknown' | 'on' | 'off';
  *
  * The first real parse on a connection IS the probe: no capability request, no empty-text probe,
  * no BBj version string is ever read, parsed or compared. A `MethodNotFound` error latches
- * the mode `'off'` for the current connection generation; any other outcome (a result, or an
- * application error, which proves the method exists) latches `'on'`. The latch resets whenever
+ * the mode `'off'` for the current connection generation, and a result carrying an `errors` array
+ * latches it `'on'`. Every other outcome (an application error, a transport failure, a result
+ * without an `errors` array) leaves the latch as it was. The latch resets whenever
  * `javaInteropService.connectionGeneration` changes — a post-outage reconnect or a Java-class
  * cache clear both bump it — so the next parse re-probes.
  */
@@ -181,13 +163,11 @@ export class BBjParserService {
     /** The connection generation {@link mode} was decided for. */
     private decidedForGeneration = -1;
     /**
-     * Failure kind tokens already reported (at warn) for the current connection generation —
-     * see {@link logFailure}. A later occurrence of an already-reported kind logs at debug
-     * instead, until a successful parse clears this set so the next outage warns again.
+     * The warn-then-debug cadence of the failure log — see {@link logFailure}. A later occurrence
+     * of an already-reported kind logs at debug instead, until a successful parse or a new
+     * connection generation re-arms warn so the next outage warns again.
      */
-    private readonly reportedFailureKinds = new Set<string>();
-    /** The connection generation {@link reportedFailureKinds} currently belongs to. */
-    private failureKindsGeneration = -1;
+    private readonly failureLogCadence = new FailureLogCadence();
 
     constructor(services: BBjParserServiceContext) {
         this.javaInteropService = services.java.JavaInteropService;
@@ -206,11 +186,11 @@ export class BBjParserService {
     }
 
     /**
-     * Resets {@link mode} to `'unknown'` and {@link reportedFailureKinds} when the interop
-     * connection has moved on since either was last touched. A connection change while the latch
-     * was already decided (a reconnect, or a Java-class cache clear, after `'on'` or `'off'` had
-     * been latched) also clears every document's verdict state, once — the server behind the
-     * socket may not be the same one those verdicts were decided against. Undecided-latch calls
+     * Resets {@link mode} to `'unknown'` and re-arms the warn level of {@link failureLogCadence}
+     * when the interop connection has moved on since either was last touched. A connection change
+     * while the latch was already decided (a reconnect, or a Java-class cache clear, after `'on'`
+     * or `'off'` had been latched) also clears every document's verdict state, once — the server
+     * behind the socket may not be the same one those verdicts were decided against. Undecided-latch calls
      * (repeated probes before the first real parse) never repeat that clear: {@link mode} stays
      * `'unknown'` between them, so the guard below only fires on an actual decided-to-undecided
      * transition.
@@ -223,10 +203,7 @@ export class BBjParserService {
             }
             this.mode = 'unknown';
         }
-        if (generation !== this.failureKindsGeneration) {
-            this.reportedFailureKinds.clear();
-            this.failureKindsGeneration = generation;
-        }
+        this.failureLogCadence.syncGeneration(generation);
     }
 
     /**
@@ -256,38 +233,32 @@ export class BBjParserService {
             }
             this.latchOn(generation);
             // A genuine successful parse re-arms the warn level for every failure kind.
-            this.reportedFailureKinds.clear();
+            this.failureLogCadence.clear();
             const diagnostics = parseErrorsToDiagnostics(result.errors, document.textDocument.lineCount, getMaxErrors());
             return { kind: 'verdict', diagnostics };
         } catch (e) {
-            const code = (e as { code?: number } | undefined)?.code;
-            if (code === LSPErrorCodes.RequestCancelled) {
+            const failure = classifyInteropError(e);
+            if (failure.kind === 'cancelled') {
                 return { kind: 'cancelled' };
             }
-            if (code === METHOD_NOT_FOUND) {
+            if (failure.kind === 'method-not-found') {
                 this.latchOff(generation);
                 return { kind: 'unavailable' };
             }
-            const message = e instanceof Error ? e.message : String(e);
-            this.logFailure(classifyFailureKind(code), message);
+            this.logFailure(LIVE_PARSE_LOGGED_KINDS.has(failure.kind) ? failure.kind : 'transport', failure.message);
             return { kind: 'failed' };
         }
     }
 
     /**
      * Logs one failure log line, at warn for the first occurrence of `kind` on the current
-     * connection generation and at debug for every repeat, until a successful parse clears
-     * {@link reportedFailureKinds}. The line carries the kind and the error's own message only —
+     * connection generation and at debug for every repeat, until a successful parse re-arms
+     * {@link failureLogCadence}. The line carries the kind and the error's own message only —
      * never the request's document text, at any level.
      */
     private logFailure(kind: string, message: string): void {
         const line = `Live compiler diagnostics: request failed (${kind}): ${message}`;
-        if (this.reportedFailureKinds.has(kind)) {
-            logger.debug(line);
-        } else {
-            this.reportedFailureKinds.add(kind);
-            logger.warn(line);
-        }
+        this.failureLogCadence.report(kind, line);
     }
 
     /** Latches the mode `'on'` for `generation`, logging the mode line once per generation. */
