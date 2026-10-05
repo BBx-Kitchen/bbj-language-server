@@ -38,6 +38,8 @@ Choose **Tools > Denumber BBj Program**, or use **Denumber BBj Program** in the 
 
 A line-numbered file also shows a banner at the top of the editor: `This is a line-numbered BBj program. Denumber it for editing.` Its `Denumber` link runs the same action. The banner disappears after the edit and comes back after Undo.
 
+While a file has line numbers it is not checked. The editor shows one information message on the first line instead of syntax errors: `This is a line-numbered BBj program. Use "Denumber BBj Program" to remove the line numbers; it is not checked until then.` After denumbering, the file is checked as usual.
+
 Denumber removes the line numbers from the text in the open editor, through BBjServices. A line number that a statement refers to becomes a label. For example, this program:
 
 ```bbj
@@ -108,6 +110,8 @@ Messages appear as `BBj Language Server` balloons. Each message is quoted as the
 | `This file has line numbers, so it cannot be formatted as it is. Denumber it, or denumber and format it in one step.` | The file is a line-numbered program. Shown on every Reformat Code and on every save with Reformat code turned on, with the buttons `Denumber` and `Denumber and Format`. | Click `Denumber and Format`, or `Denumber` and format afterwards. |
 | `Formatting a selection needs a file without line numbers. Denumber the file first.` | Reformat Code was run on a selection in a file with line numbers. The button `Denumber` is offered. | Click `Denumber`, then format the selection again. |
 | No message of its own | BBjServices is not running, so the file stays unchanged. A Java interop connection error such as `Failed to connect to the Java interop service.` may appear. | Start BBjServices and format again. |
+
+Most of these messages are shown once and are not repeated. The requires-BBj-26.03, timeout, "could not process this file" and "not available right now" messages are shown once per connection to BBjServices; restart the language server to see them again. The too-large and protected messages are shown once per version of a file, so an edit shows them again but saving an unchanged file does not. The invalid-settings message is shown once until one of the formatter settings changes. A later identical failure changes nothing: no balloon appears and it only reaches the `BBj Language Server` console. A format that finds mixed line numbering shows that message once per file version as well. The Denumber offer, the selection message and every Denumber message are shown every time.
 
 ### Denumber messages
 

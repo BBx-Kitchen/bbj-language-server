@@ -119,6 +119,23 @@ Runs `bbjlst` and opens a read-only decompiled copy, leaving the original binary
 
 **Command ID:** `bbj.decompileReadonly`
 
+`bbjlst` writes into a private temporary folder, so no listing file is left next to the program
+and no other file is overwritten; the Replace command changes only the program itself. A symlinked program is decompiled
+at its target: the target receives the source and the link stays a link.
+
+When a command cannot decompile, it reports the cause:
+
+| Message | Meaning |
+|---------|---------|
+| `"<file name>" is not a tokenized BBj program, so there is nothing to decompile.` | The file holds source already; `bbjlst` is not started. |
+| `"<file name>" was not found, so there is nothing to decompile.` | The path no longer exists. |
+| `"<file name>" is not a regular file, so there is nothing to decompile.` | The path is a directory or another kind of file. |
+| `Could not read "<file name>": <cause>` | The file cannot be read at all, for example for lack of permission. |
+| `bbjlst wrote no decompiled listing for "<file name>".` | `bbjlst` finished without producing a listing. |
+| `bbjlst wrote an empty listing for "<file name>".` | The listing is empty. |
+| `bbjlst did not decompile "<file name>"; the listing is still a tokenized program.` | The listing still starts like a compiled program. |
+| `bbjlst did not finish writing the listing for "<file name>".` | The listing was still growing when the wait ran out. |
+
 Opening a tokenized program offers the same two choices automatically, unless
 `bbj.decompile.promptOnOpen` is off — see
 [Opening Programs](./configuration.md#opening-programs) in the Configuration guide.

@@ -65,6 +65,8 @@ When you format a file with line numbers, the `Denumber and Format` button does 
 
 Opening a line-numbered program shows the prompt `"<file name>" is a line-numbered BBj program. Denumber it for editing, or open it read-only?` with the buttons `Denumber` and `Open Read-only`. It appears once per file and session, unless `bbj.denumber.promptOnOpen` is off. The prompt only appears for a file whose first non-blank lines are all numbered, at least three of them, so a two-line sample triggers no prompt.
 
+While a file has line numbers it is not checked. The editor shows one information message on the first line instead of syntax errors: `This is a line-numbered BBj program. Use "Denumber BBj Program" to remove the line numbers; it is not checked until then.` After denumbering, the file is checked as usual.
+
 ## Settings
 
 The 15 `bbj.formatter.*` settings control how the formatter lays out your code. They apply on the next format, without a reload, and are listed in [Formatter Settings](./configuration.md#formatter-settings).
@@ -86,6 +88,8 @@ The 15 `bbj.formatter.*` settings control how the formatter lays out your code. 
 | `Formatting a selection needs a file without line numbers. Denumber the file first.` | Format Selection was run on a file with line numbers. The button `Denumber` is offered. | Click `Denumber`, then format the selection again. |
 | No message of its own | BBjServices is not running, so the file stays unchanged. A Java interop connection error such as `Failed to connect to the Java interop service.` may appear. | Start BBjServices and format again. |
 
+Most of these messages are shown once and are not repeated. The requires-BBj-26.03, timeout, "could not process this file" and "not available right now" messages are shown once per connection to BBjServices; restart the language server to see them again. The too-large and protected messages are shown once per version of a file, so an edit shows them again but saving an unchanged file does not. The invalid-settings message is shown once until one of the formatter settings changes. A later identical failure changes nothing: no message appears and it only reaches the `BBj` output channel. A format that finds mixed line numbering shows that message once per file version as well. The Denumber offer, the selection message and every Denumber message are shown every time.
+
 ### Denumber messages
 
 | Message | Meaning | What to do |
@@ -105,6 +109,7 @@ The 15 `bbj.formatter.*` settings control how the formatter lays out your code. 
 | `Denumbering failed. The file was not changed. See the BBj output for details.` | The denumbering failed for another reason. | Open the `BBj` output channel for details. |
 | `The BBj denumbering service is not available right now. The file was not changed; try again later.` | The denumbering service in BBjServices cannot be reached at the moment. | Check that BBjServices is running, then try again. |
 | `This is a tokenized BBj program, not source text. Decompile it first, then denumber the source.` | The file is a compiled program, not source text. | Decompile it first, then denumber the source. |
+| `"<file name>" is a tokenized (binary) BBj program. Use "Decompile Tokenized BBj Program" first.` | **Denumber BBj Program** was run on a compiled program, for example from the Explorer. This message comes from the extension. | Run **Decompile Tokenized BBj Program**, then denumber the source. |
 | `Open the BBj file in the editor first; denumbering works on the open editor text.` | The file is not open in an editor. | Open the file in the editor and run Denumber again. |
 | `The file changed while it was being denumbered. Nothing was changed; run Denumber again.` | You edited the file while the denumbering was running. | Run Denumber again. |
 | `The editor did not accept the denumbered text. Nothing was changed; run Denumber again.` | The editor refused the change. | Run Denumber again. |
