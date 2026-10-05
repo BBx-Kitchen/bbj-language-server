@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { EmptyFileSystem } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
-import type { Connection } from 'vscode-languageserver';
+import type { Connection, TextEdit } from 'vscode-languageserver';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -21,6 +21,7 @@ import { logger } from '../src/language/logger.js';
 import { createBBjTestServices, type JavaInteropTestService } from './bbj-test-module.js';
 import { createFakeServerConnection } from './fake-server-connection.js';
 import { listenOnFakeConnection } from './fake-text-document-connection.js';
+import { applyEditsAsClient } from './denum-test-harness.js';
 
 const URI_TEXT = 'file:///ws/numbered.bbj';
 const NUMBERED = '0010 print 1\n0020 goto 0010\n';
@@ -33,6 +34,14 @@ function createHarness() {
     const client = listenOnFakeConnection(textDocuments);
     const fake = createFakeServerConnection();
     initNotifications(fake.connection);
+    // Like a real client: an accepted edit reaches the document as one didChange with the next version.
+    fake.workspace.applyEdit.mockImplementation(async (params: unknown) => {
+        const { edit } = params as { edit: { documentChanges: Array<{ textDocument: { uri: string }; edits: TextEdit[] }> } };
+        for (const change of edit.documentChanges) {
+            applyEditsAsClient(client, textDocuments, change.textDocument.uri, change.edits);
+        }
+        return { applied: true };
+    });
     vi.spyOn(logger, 'debug').mockImplementation(() => { /* silenced */ });
     const handler = createDenumHandler({
         getTextDocument: uri => textDocuments.get(uri),

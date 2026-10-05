@@ -292,12 +292,15 @@ describe('the edit', () => {
 
 describe('repeated runs', () => {
 
-    test('the same successful run twice on an unchanged document shows two messages', async () => {
+    test('the same successful run twice shows two messages', async () => {
         const harness = createDenumHarness();
         harness.client.open(URI_TEXT, 1, NUMBERED);
         harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1));
 
         await harness.run(URI_TEXT);
+        // The editor accepted the first edit, so put the numbered text back before the second run.
+        harness.client.change(URI_TEXT, 10, [{ text: NUMBERED }]);
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 10));
         await harness.run(URI_TEXT);
 
         expect(informed(harness)).toEqual([DENUM_SUCCESS_MESSAGE, DENUM_SUCCESS_MESSAGE]);

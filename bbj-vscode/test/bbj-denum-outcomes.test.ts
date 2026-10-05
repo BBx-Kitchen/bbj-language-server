@@ -7,7 +7,7 @@
 import { CancellationTokenSource } from 'vscode-jsonrpc';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-    DENUM_FAILED_MESSAGE, DENUM_IN_PROGRESS_MESSAGE, DENUM_SUCCESS_MESSAGE, DENUM_TOKENIZED_MESSAGE,
+    DENUM_FAILED_MESSAGE, DENUM_VERSION_WAIT_MS, DENUM_IN_PROGRESS_MESSAGE, DENUM_SUCCESS_MESSAGE, DENUM_TOKENIZED_MESSAGE,
     SHOW_DENUM_DIAGNOSTICS_ACTION, denumSuccessMessage
 } from '../src/language/bbj-denum-service.js';
 import { TOKENIZED_PROGRAM_PREFIX, mixedNumberingMessage } from '../src/language/bbj-format-service.js';
@@ -21,7 +21,10 @@ const URI_TEXT = 'file:///ws/numbered.bbj';
 const NUMBERED = '0010 print 1\n0020 goto 0010\n';
 const DENUMBERED = 'L10: print 1\ngoto L10\n';
 
-afterEach(resetDenumHarness);
+afterEach(() => {
+    vi.useRealTimers();
+    resetDenumHarness();
+});
 
 const error = (line: number, message = 'e'): DenumDiagnosticDto => ({ line, originalLineNumber: '', severity: 'ERROR', message });
 
@@ -67,7 +70,7 @@ describe('a DENUM run that reported diagnostics', () => {
         expect(result.status).toBe('denumbered');
         expect(result.message).toBe('Denumbered. 2 errors, 1 warning.');
         expect(harness.workspace.applyEdit).toHaveBeenCalledTimes(1);
-        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([[{ uri: URI_TEXT, diagnostics: THREE }]]);
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([[{ uri: URI_TEXT, diagnostics: THREE, version: 2 }]]);
         expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
         expect(harness.window.showWarningMessage).toHaveBeenCalledWith('Denumbered. 2 errors, 1 warning.', { title: 'Show' });
         expect(harness.window.showInformationMessage).not.toHaveBeenCalled();
@@ -184,6 +187,118 @@ describe('a DENUM run that reported diagnostics', () => {
         openNumbered(harness);
 
         await expect(harness.run(URI_TEXT)).resolves.toMatchObject({ status: 'denumbered', applied: true });
+    });
+});
+
+describe('the version a diagnostics list carries after an applied edit', () => {
+
+    const ONE_ERROR = [error(1)];
+
+    /** The payload of the only list sent, as a plain record so key presence can be checked. */
+    function onlyList(harness: DenumHarness): Record<string, unknown> {
+        const lists = sent(harness, DENUM_DIAGNOSTICS_METHOD);
+        expect(lists).toHaveLength(1);
+        return lists[0][0] as Record<string, unknown>;
+    }
+
+    test('a client that applies the edit with one change reports the version that change produced', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+
+        await harness.run(URI_TEXT);
+
+        expect(onlyList(harness).version).toBe(2);
+    });
+
+    test('a client that applies the edit with two changes reports the version of the last, never the first plus one', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+        harness.workspace.applyEdit.mockImplementationOnce(async () => {
+            harness.client.change(URI_TEXT, 2, [{ text: 'partial' }]);
+            harness.client.change(URI_TEXT, 3, [{ text: DENUMBERED }]);
+            return { applied: true };
+        });
+
+        await harness.run(URI_TEXT);
+
+        expect(onlyList(harness).version).toBe(3);
+    });
+
+    test('a client that sends its change after the answer is waited for and its version is used', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+        harness.workspace.applyEdit.mockImplementationOnce(async () => {
+            setTimeout(() => harness.client.change(URI_TEXT, 5, [{ text: DENUMBERED }]), 0);
+            return { applied: true };
+        });
+
+        await harness.run(URI_TEXT);
+
+        expect(onlyList(harness).version).toBe(5);
+    });
+
+    test('a client that reports the edit applied but never sends a change gets a list without a version, and the confirmation', async () => {
+        vi.useFakeTimers();
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+        harness.workspace.applyEdit.mockImplementationOnce(async () => ({ applied: true }));
+
+        const running = harness.run(URI_TEXT);
+        await vi.advanceTimersByTimeAsync(DENUM_VERSION_WAIT_MS + 1);
+        const result = await running;
+
+        expect(result).toMatchObject({ status: 'denumbered', applied: true });
+        expect('version' in onlyList(harness)).toBe(false);
+        expect(onlyList(harness).uri).toBe(URI_TEXT);
+        expect(harness.window.showWarningMessage).toHaveBeenCalledWith('Denumbered. 1 error.', { title: 'Show' });
+    });
+
+    test('a mirror that ends with other text than the denumbered text gets a list without a version', async () => {
+        vi.useFakeTimers();
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+        harness.workspace.applyEdit.mockImplementationOnce(async () => {
+            harness.client.change(URI_TEXT, 2, [{ text: DENUMBERED.replace(/\n/g, '\r\n') }]);
+            return { applied: true };
+        });
+
+        const running = harness.run(URI_TEXT);
+        await vi.advanceTimersByTimeAsync(DENUM_VERSION_WAIT_MS + 1);
+        await running;
+
+        expect('version' in onlyList(harness)).toBe(false);
+    });
+
+    test('the wait does not end before its bound', async () => {
+        vi.useFakeTimers();
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1, ONE_ERROR));
+        openNumbered(harness);
+        harness.workspace.applyEdit.mockImplementationOnce(async () => ({ applied: true }));
+        let settled = false;
+
+        const running = harness.run(URI_TEXT).then(result => { settled = true; return result; });
+        await vi.advanceTimersByTimeAsync(DENUM_VERSION_WAIT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(2);
+        await running;
+
+        expect(settled).toBe(true);
+    });
+
+    test('a run that reported no diagnostics sends no list', async () => {
+        const harness = createDenumHarness();
+        harness.double.scriptDenumProgram(denumAnswer(DENUMBERED, 1));
+        openNumbered(harness);
+
+        await harness.run(URI_TEXT);
+
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([]);
     });
 });
 

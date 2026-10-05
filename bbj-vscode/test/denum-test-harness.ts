@@ -5,7 +5,7 @@
  */
 import { EmptyFileSystem } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
-import type { Connection } from 'vscode-languageserver';
+import type { Connection, TextEdit } from 'vscode-languageserver';
 import { CancellationToken } from 'vscode-jsonrpc';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { vi } from 'vitest';
@@ -15,7 +15,7 @@ import type { ProgramDiagnostic } from '../src/language/java-interop-program-typ
 import { logger } from '../src/language/logger.js';
 import { createBBjTestServices, type JavaInteropTestService } from './bbj-test-module.js';
 import { createFakeServerConnection } from './fake-server-connection.js';
-import { listenOnFakeConnection } from './fake-text-document-connection.js';
+import { listenOnFakeConnection, type FakeTextDocumentClient } from './fake-text-document-connection.js';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -39,12 +39,31 @@ export function createDenumHarness() {
     initNotifications(fake.connection);
     const loggers = spyOnLogger();
     const service = BBj.compiler.BBjDenumService;
+    // Like a real client: an accepted edit reaches the document as one didChange with the next version.
+    fake.workspace.applyEdit.mockImplementation(async (params: unknown) => {
+        const { edit } = params as { edit: { documentChanges: Array<{ textDocument: { uri: string }; edits: TextEdit[] }> } };
+        for (const change of edit.documentChanges) {
+            applyEditsAsClient(client, textDocuments, change.textDocument.uri, change.edits);
+        }
+        return { applied: true };
+    });
     const run = (uri: string, token: CancellationToken = CancellationToken.None) =>
         service.run({ uri, current: () => textDocuments.get(uri) }, token);
     return { shared, BBj, double, client, textDocuments, service, run, loggers, ...fake };
 }
 
 export type DenumHarness = ReturnType<typeof createDenumHarness>;
+
+/** Sends the edits to the server's document mirror as one didChange carrying the next version, like an editor that applied them. */
+export function applyEditsAsClient(
+    client: FakeTextDocumentClient,
+    textDocuments: NormalizedTextDocuments<TextDocument>,
+    uri: string,
+    edits: readonly TextEdit[]
+): void {
+    const version = textDocuments.get(uri)?.version ?? 0;
+    client.change(uri, version + 1, edits.map(edit => ({ range: edit.range, text: edit.newText })));
+}
 
 /** A scripted answer: the denumbered text for `version`, with optional diagnostics. */
 export function denumAnswer(text: string, version: number, diagnostics: ProgramDiagnostic[] = []) {
@@ -63,7 +82,10 @@ export function installRecordingMessenger(harness: DenumHarness) {
         openFormatterSettings: vi.fn(),
         denumDiagnostics: vi.fn(),
         showDenumDiagnostics: vi.fn(),
-        applyEdit: vi.fn(async () => true)
+        applyEdit: vi.fn(async (uri: string, _version: number, edits: TextEdit[], _label: string) => {
+            applyEditsAsClient(harness.client, harness.textDocuments, uri, edits);
+            return true;
+        })
     } satisfies DenumMessenger;
     harness.service.setMessenger(messenger);
     return messenger;

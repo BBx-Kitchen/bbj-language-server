@@ -11,7 +11,8 @@
  * explicit user action and always gets its answer.
  */
 
-import { CancellationToken, type TextEdit } from 'vscode-languageserver';
+import { CancellationToken, type Disposable, type TextEdit } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 import type { BBjDenumRequest, DenumFailureReason, DenumResult } from './denum-command.js';
 import type {
     DenumProgramResult, FormatSettingValue, ProgramFailureKind, ProgramOutcome, ProgramSettingProblem
@@ -89,6 +90,12 @@ export const DENUM_SERVICE_UNAVAILABLE_MESSAGE =
 
 /** Shown after a successful Denumber and Format run. */
 export const DENUM_AND_FORMAT_SUCCESS_MESSAGE = 'Denumbered and formatted.';
+
+/**
+ * The longest a run waits, after the editor reported the edit applied, for the server's own copy of
+ * the document to hold the denumbered text. Well under the deadline of the apply request itself.
+ */
+export const DENUM_VERSION_WAIT_MS = 5_000;
 
 /** The label of the edit in the editor's undo history. */
 export const DENUMBER_EDIT_LABEL = 'Denumber';
@@ -199,6 +206,17 @@ const DEFAULT_MESSENGER: DenumMessenger = {
 export interface BBjDenumServiceContext {
     java: {
         JavaInteropService: JavaInteropService;
+    };
+    /**
+     * The server's mirror of the open documents. A run reads it after an applied edit to learn the
+     * version the editor's change produced. Optional: without it a list carries no version.
+     */
+    shared?: {
+        workspace: {
+            TextDocuments?: {
+                onDidChangeContent(listener: (event: { document: TextDocument }) => void): Disposable;
+            };
+        };
     };
     /** Read when a Denumber and Format run starts or fails, never in the constructor: the two services must not depend on each other's creation order. */
     compiler: {
@@ -353,7 +371,11 @@ export class BBjDenumService {
             if (!applied) {
                 return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
             }
-            const message = this.presentSuccess(live.uri, diagnostics, base, undefined);
+            // Only a run that sends a list needs the version, so a clean run never waits for the mirror.
+            const mirrored = diagnostics.length === 0
+                ? undefined
+                : await this.mirrorVersionFor(request, live.uri, outcome.result.text);
+            const message = this.presentSuccess(live.uri, diagnostics, base, mirrored);
             return { status: 'denumbered', message, version, edits, diagnostics, applied: true };
         } catch (error) {
             // Log lines carry fixed tokens only, never document or peer text.
@@ -389,6 +411,59 @@ export class BBjDenumService {
             this.messenger.infoWithAction(text, SHOW_DENUM_DIAGNOSTICS_ACTION, reveal);
         }
         return text;
+    }
+
+    /**
+     * The version the server's mirror of the document `uri` holds once its text is `expectedText`,
+     * or `undefined` when it does not get there within {@link DENUM_VERSION_WAIT_MS}. Each client
+     * numbers its own changes, so the version is read from the mirror and never derived from the
+     * version the edit was sent for. Never rejects; the subscription and the timer are always released.
+     */
+    private mirrorVersionFor(request: BBjDenumRequest, uri: string, expectedText: string): Promise<number | undefined> {
+        return new Promise(resolve => {
+            let subscription: Disposable | undefined;
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            let done = false;
+            const finish = (version: number | undefined) => {
+                if (done) {
+                    return;
+                }
+                done = true;
+                if (timer !== undefined) {
+                    clearTimeout(timer);
+                }
+                try {
+                    subscription?.dispose();
+                } catch {
+                    // A subscription that cannot be released must not fail the run.
+                }
+                resolve(version);
+            };
+            try {
+                const current = request.current();
+                if (current !== undefined && current.uri === uri && current.getText() === expectedText) {
+                    finish(current.version);
+                    return;
+                }
+                const documents = this.context.shared?.workspace.TextDocuments;
+                if (documents === undefined) {
+                    finish(undefined);
+                    return;
+                }
+                subscription = documents.onDidChangeContent(event => {
+                    try {
+                        if (event.document.uri === uri && event.document.getText() === expectedText) {
+                            finish(event.document.version);
+                        }
+                    } catch {
+                        finish(undefined);
+                    }
+                });
+                timer = setTimeout(() => finish(undefined), DENUM_VERSION_WAIT_MS);
+            } catch {
+                finish(undefined);
+            }
+        });
     }
 
     /**
