@@ -155,6 +155,17 @@ class DenumDiagnosticsPresenterTest {
     }
 
     @Test
+    void aVersionOnThePayloadChangesNothingInTheRenderedLines() {
+        DenumDiagnosticsParams without = params("file:///tmp/prog.bbj",
+            entry(2L, "0020", "ERROR", "Unexpected token"), entry(0L, "", "WARNING", "w"));
+        DenumDiagnosticsParams with = params("file:///tmp/prog.bbj",
+            entry(2L, "0020", "ERROR", "Unexpected token"), entry(0L, "", "WARNING", "w"));
+        with.version = 7L;
+
+        assertEquals(DenumDiagnosticsPresenter.present(without), DenumDiagnosticsPresenter.present(with));
+    }
+
+    @Test
     void nullParamsAndANullUriGiveTheUnknownFileHeader() {
         assertEquals(List.of("Denumber diagnostics for an unknown file:"),
             texts(DenumDiagnosticsPresenter.present(null)));

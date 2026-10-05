@@ -1,7 +1,13 @@
 package com.basis.bbj.intellij.denum;
 
 import com.google.gson.JsonElement;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -51,7 +57,47 @@ public final class DenumModels {
      */
     public static final class DenumDiagnosticsParams {
         public String uri;
+
+        /**
+         * The document version the list was computed for; absent when the server could not
+         * confirm it. IntelliJ only logs the list, so the value is carried for the contract and
+         * not acted on. A value that is not a whole number reads as absent rather than rejecting
+         * the notification.
+         */
+        @JsonAdapter(LenientLongAdapter.class)
+        public Long version;
+
         public List<DenumDiagnostic> diagnostics;
+    }
+
+    /**
+     * Reads a whole number, and reads anything else (a fraction, a boolean, an object, text that
+     * is not a number) as {@code null}, so one odd optional member never rejects the notification
+     * it travels in.
+     */
+    static final class LenientLongAdapter extends TypeAdapter<Long> {
+        @Override
+        public void write(JsonWriter out, Long value) throws IOException {
+            out.value(value);
+        }
+
+        @Override
+        public Long read(JsonReader in) throws IOException {
+            JsonToken token = in.peek();
+            if (token == JsonToken.NULL) {
+                in.nextNull();
+                return null;
+            }
+            if (token == JsonToken.NUMBER || token == JsonToken.STRING) {
+                try {
+                    return Long.valueOf(in.nextString().trim());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }
+            in.skipValue();
+            return null;
+        }
     }
 
     /**

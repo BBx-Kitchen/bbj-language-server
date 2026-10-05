@@ -3,6 +3,7 @@ package com.basis.bbj.intellij.denum;
 import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
 import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
 import org.eclipse.lsp4j.jsonrpc.messages.Message;
+import org.eclipse.lsp4j.jsonrpc.messages.NotificationMessage;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseMessage;
 import org.junit.jupiter.api.Test;
 
@@ -89,6 +90,45 @@ class DenumModelsJsonBoundaryTest {
         assertNull(result.message);
         assertNull(result.edits);
         assertNull(result.applied);
+    }
+
+    private static DenumModels.DenumDiagnosticsParams parseNotification(String envelope) {
+        MessageJsonHandler notificationHandler = new MessageJsonHandler(Map.of("bbj/denumDiagnostics",
+            JsonRpcMethod.notification("bbj/denumDiagnostics", DenumModels.DenumDiagnosticsParams.class)));
+        NotificationMessage message = (NotificationMessage) notificationHandler.parseMessage(envelope);
+        return (DenumModels.DenumDiagnosticsParams) message.getParams();
+    }
+
+    @Test
+    void aNotificationVersionParsesToTheDocumentVersion() {
+        DenumModels.DenumDiagnosticsParams params = parseNotification("""
+            {"jsonrpc":"2.0","method":"bbj/denumDiagnostics","params":{"uri":"file:///tmp/a.bbj","version":7,"diagnostics":[{"line":2,"originalLineNumber":"0020","severity":"ERROR","message":"bad"}]}}""");
+
+        assertEquals(Long.valueOf(7L), params.version);
+        assertEquals("file:///tmp/a.bbj", params.uri);
+        assertEquals(1, params.diagnostics.size());
+    }
+
+    @Test
+    void aNotificationWithoutAVersionLeavesItNull() {
+        DenumModels.DenumDiagnosticsParams params = parseNotification("""
+            {"jsonrpc":"2.0","method":"bbj/denumDiagnostics","params":{"uri":"file:///tmp/a.bbj","diagnostics":[]}}""");
+
+        assertNull(params.version);
+        assertEquals("file:///tmp/a.bbj", params.uri);
+    }
+
+    @Test
+    void aNotificationVersionOfAnotherJsonTypeDoesNotRejectTheList() {
+        for (String odd : new String[] {"\"7\"", "1.5", "null", "true"}) {
+            DenumModels.DenumDiagnosticsParams params = parseNotification("""
+                {"jsonrpc":"2.0","method":"bbj/denumDiagnostics","params":{"uri":"file:///tmp/a.bbj","version":%s,"diagnostics":[{"line":1,"severity":"INFO","message":"m"}]}}"""
+                .formatted(odd));
+
+            assertNotNull(params, "version " + odd + " must not reject the notification");
+            assertEquals("file:///tmp/a.bbj", params.uri);
+            assertEquals(1, params.diagnostics.size(), "version " + odd + " must not drop the list");
+        }
     }
 
     @Test

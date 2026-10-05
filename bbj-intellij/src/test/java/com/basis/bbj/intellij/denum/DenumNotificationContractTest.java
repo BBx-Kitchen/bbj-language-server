@@ -37,7 +37,7 @@ class DenumNotificationContractTest {
 
     private static final String[] METHOD_NAMES = {"bbj/denumDiagnostics", "bbj/showDenumDiagnostics"};
     private static final String[] NOTIFICATION_FIELDS = {
-        "uri", "diagnostics", "line", "originalLineNumber", "severity", "message"};
+        "uri", "version", "diagnostics", "line", "originalLineNumber", "severity", "message"};
     private static final String[] RESULT_FIELDS = {"status", "reason", "message", "edits", "applied"};
     private static final String[] SEVERITIES = {"ERROR", "WARNING", "INFO"};
     private static final String[] HEADER_TEXTS = {"Denumber diagnostics for ", "an unknown file"};
