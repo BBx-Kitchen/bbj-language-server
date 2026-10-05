@@ -7,6 +7,11 @@ import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, Diagnostic
 import { isJavaClass, isMemberCall, isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
 import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
+import {
+    classifyDocumentText,
+    LINE_NUMBERED_DIAGNOSTIC_CODE,
+    LINE_NUMBERED_DIAGNOSTIC_MESSAGE
+} from "./bbj-document-kind.js";
 import { isUniversalObjectReceiver, UNKNOWN_JAVA_MEMBER_CODE } from "./validations/check-unknown-java-member.js";
 import {
     clearVerdictState,
@@ -364,6 +369,24 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         options?: ValidationOptions,
         cancelToken?: CancellationToken
     ): Promise<Diagnostic[]> {
+        // A tokenized or line-numbered document is not checked at all: it cannot be parsed
+        // meaningfully, and a wall of syntax errors helps nobody. Its remembered compiler state is
+        // dropped so diagnostics from before the text changed cannot come back later.
+        const kind = classifyDocumentText(document.textDocument.getText());
+        if (kind !== 'normal') {
+            clearVerdictState(document.uri);
+            clearKeptCheck(document.uri);
+            if (kind === 'tokenized') {
+                return [];
+            }
+            return [{
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: END_OF_LINE_CHARACTER } },
+                severity: DiagnosticSeverity.Information,
+                source: this.getSource(),
+                code: LINE_NUMBERED_DIAGNOSTIC_CODE,
+                message: LINE_NUMBERED_DIAGNOSTIC_MESSAGE
+            }];
+        }
         const diagnostics = dropShadowedMemberLinkingDiagnostics(await super.validateDocument(document, options, cancelToken));
         // Remembered before the hierarchy runs: the debounce callback reconciles a verdict
         // against this pre-hierarchy list, not against the already-filtered result below, so a
