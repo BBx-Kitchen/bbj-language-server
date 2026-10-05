@@ -21,3 +21,11 @@ If the EDT is among them: on a stamp change answer "enabled" and compute the ver
 thread, which then re-triggers the connect or disconnect decision. At least guard the read with an
 `isDispatchThread()` check that skips it. The verdict cache and the no-store-on-failure rule in
 `TokenizedBbj.cachedHeaderVerdict` stay as they are.
+
+## Security audit link (T-130.1-30, accepted)
+
+Since the failed-read fix, a file whose read keeps failing is read again on every `isEnabled`
+call (`TokenizedBbj.java:186-195`; `TokenizedBbjTest.aReadThatKeepsFailingIsAskedAgainEveryTime`
+pins it). A slow failure (network-volume timeout) then repeats on whatever thread calls
+`isEnabled`. When fixing this todo, also cache a failure per modification stamp with a retry
+interval, or move the verdict off-thread; then close T-130.1-30 in `130.1-SECURITY.md`.
