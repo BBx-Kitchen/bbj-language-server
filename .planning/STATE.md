@@ -5,11 +5,11 @@ milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
 current_phase: 130.1
 current_phase_name: "Address tech debt: 127 review warnings and loading of binary files, intellij and vscode"
 status: executing
-stopped_at: Completed 130.1-07-PLAN.md
-last_updated: "2026-10-05T07:08:02.955Z"
+stopped_at: Completed 130.1-05-PLAN.md
+last_updated: "2026-10-05T07:22:14.399Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 130.1 execution started
-state_head: b9e61ba102eea0ec6e2e56935f30006efb63c5be
+state_head: 67cc8ab313df302c2d410367cc9f91365e6d5977
 progress:
   total_phases: 7
   completed_phases: 7
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 130.1 (Address tech debt: 127 review warnings and loading of binary files, intellij and vscode) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 130.1 execution started
 
@@ -250,6 +250,7 @@ Per-plan metrics for phases 98-109 are in the phase SUMMARYs under `.planning/mi
 | Phase 130.1 P04 | 4 min | 2 tasks | 7 files |
 | Phase 130.1 P06 | 12 min | 2 tasks | 5 files |
 | Phase 130.1 P07 | 6 min | 3 tasks | 11 files |
+| Phase 130.1 P05 | 14 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -453,6 +454,7 @@ decisions:
 - [Phase 130.1]: Denumber menu fix uses the menu-clause option only: three bbj.denumber when clauses drop the bbx branch, no in-command language check — Menu offers only what the client announces to the server; other 12 entries stay on the shared clause
 - [Phase 130.1]: 130.1-06: differing old/new splitSingleLineIF values stay untouched and silent; only an equal pair is cleaned — The new key already wins in the language server, and logging would repeat on every settings event for the old key
 - [Phase 130.1]: 130.1-07: tokenized-program refusal texts live in plain-Java TokenizedBbj.refusal so they are unit-tested; the banner decides from the file's first 7 bytes via the VFS, never the Document — Keeps the platform glue thin and the verdict independent of garbled binary document text
+- [Phase 130.1]: Denum diagnostics version is stamped from the server's TextDocuments mirror after a bounded wait (5 s), only for runs that send a list; never pre-edit version + 1; no match means no version and VS Code logs only — Each client numbers its own didChange versions; arithmetic would mis-stamp on double bumps
 
 ### Tech Debt
 
@@ -523,8 +525,8 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 
 ## Session Continuity
 
-Last session: 2026-10-05T07:08:02.591Z
-Stopped at: Completed 130.1-07-PLAN.md
+Last session: 2026-10-05T07:22:14.064Z
+Stopped at: Completed 130.1-05-PLAN.md
 Resume file: None
 
 Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
