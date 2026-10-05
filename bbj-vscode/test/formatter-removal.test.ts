@@ -48,26 +48,64 @@ function importersOf(moduleName: string): string[] {
 const REMOVED_MODULES = ['document-formatter', 'formatter-java-resolver', 'formatter-verifier'];
 const VENDORED_NAMES = ['BBjCFCli', 'tools/formatter'];
 
-/** Source text with `//` and block comments removed; string literals are left intact. */
+/**
+ * Source text with `//` and block comments removed. String and template
+ * literals are copied through untouched, so a comment marker inside a string
+ * does not hide what follows it.
+ */
 function stripComments(text: string): string {
-    return text;
+    let out = '';
+    let i = 0;
+    while (i < text.length) {
+        const ch = text[i];
+        const next = text[i + 1];
+        if (ch === '/' && next === '/') {
+            while (i < text.length && text[i] !== '\n') {
+                i++;
+            }
+        } else if (ch === '/' && next === '*') {
+            const close = text.indexOf('*/', i + 2);
+            i = close === -1 ? text.length : close + 2;
+        } else if (ch === "'" || ch === '"' || ch === '`') {
+            let j = i + 1;
+            while (j < text.length && text[j] !== ch) {
+                j += text[j] === '\\' ? 2 : 1;
+            }
+            out += text.slice(i, j + 1);
+            i = j + 1;
+        } else {
+            out += ch;
+            i++;
+        }
+    }
+    return out;
 }
 
 /** Removed module names found inside an import, dynamic import or require specifier. */
 function removedModuleSpecifiers(text: string): string[] {
-    void text;
-    return [];
+    const code = stripComments(text);
+    return REMOVED_MODULES.filter((name) =>
+        new RegExp(`(?:from\\s+|require\\(\\s*|import\\(\\s*|import\\s+)['"][^'"]*${name}(?:\\.js)?['"]`).test(code)
+    );
 }
 
 /** Vendored formatter names found inside a quoted string literal. */
 function quotedVendoredNames(text: string): string[] {
-    void text;
-    return [];
+    const literals = stripComments(text).match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) ?? [];
+    return VENDORED_NAMES.filter((name) => literals.some((literal) => literal.includes(name)));
 }
 
 /** Every string value in a parsed JSON document, at any depth. */
 function jsonStringValues(value: unknown): string[] {
-    void value;
+    if (typeof value === 'string') {
+        return [value];
+    }
+    if (Array.isArray(value)) {
+        return value.flatMap(jsonStringValues);
+    }
+    if (value !== null && typeof value === 'object') {
+        return Object.values(value).flatMap(jsonStringValues);
+    }
     return [];
 }
 
@@ -122,20 +160,20 @@ describe('the client-side formatter is removed', () => {
         expect(jars).toEqual([]);
     });
 
-    test('no file under src/ names a removed formatter module or its vendored files', () => {
-        const removedNames = ['document-formatter', 'formatter-java-resolver', 'formatter-verifier', 'BBjCFCli', 'tools/formatter'];
+    test('no file under src/ imports a removed formatter module or quotes its vendored files', () => {
         const offenders = sourceFiles().flatMap((file) => {
             const text = fs.readFileSync(file, 'utf-8');
-            return removedNames
-                .filter((name) => text.includes(name))
-                .map((name) => `${path.relative(SRC_DIR, file)}: ${name}`);
+            return [...removedModuleSpecifiers(text), ...quotedVendoredNames(text)].map(
+                (name) => `${path.relative(SRC_DIR, file)}: ${name}`
+            );
         });
         expect(offenders).toEqual([]);
     });
 
     test('package.json mentions no vendored formatter path', () => {
-        const manifest = fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8');
-        expect(manifest).not.toContain('tools/formatter');
+        const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8'));
+        const offenders = jsonStringValues(manifest).filter((value) => value.includes('tools/formatter'));
+        expect(offenders).toEqual([]);
     });
 
     test('the BBj run tools still ship from tools/', () => {
@@ -146,7 +184,7 @@ describe('the client-side formatter is removed', () => {
 
     test('the IntelliJ build copies no vendored formatter file', () => {
         const gradle = fs.readFileSync(path.join(REPO_ROOT, '..', 'bbj-intellij', 'build.gradle.kts'), 'utf-8');
-        expect(gradle).not.toContain('tools/formatter');
+        expect(quotedVendoredNames(gradle)).toEqual([]);
     });
 });
 
