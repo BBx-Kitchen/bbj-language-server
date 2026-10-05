@@ -737,7 +737,7 @@ Next: `/gsd-discuss-phase 124` or `/gsd-plan-phase 124`.
 **Goal:** Opening a tokenized (binary) BBj program works in both IDEs: VS Code's in-place "Decompile & Replace" (backlog 999.1) is fixed with one shared detection rule, and IntelliJ gets the same open-time offer as a banner. Neither the language server nor the IDEs show diagnostic noise for tokenized or line-numbered programs, and the remaining phase 126/127/130 review warnings, the 125 Nyquist flag and the stale ROADMAP are fixed.
 **Requirements**: none (tech-debt phase; decisions D-01..D-18 in 130.1-CONTEXT.md)
 **Depends on:** Phase 130
-**Plans:** 7/10 plans executed
+**Plans:** 8/10 plans executed
 
 Plans:
 **Wave 1**
@@ -755,7 +755,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 130.1-02-PLAN.md — One realpath-based tokenized probe for the prompt and both decompile commands, symlink case (tracer); honest I/O-error causes; Denumber on a binary points to Decompile
-- [ ] 130.1-08-PLAN.md — IntelliJ never connects tokenized files to the language server (tracer); DENUM notification version in the IntelliJ model and contract
+- [x] 130.1-08-PLAN.md — IntelliJ never connects tokenized files to the language server (tracer); DENUM notification version in the IntelliJ model and contract
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
