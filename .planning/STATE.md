@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130) — IN PROGRESS
-current_phase: 130
-current_phase_name: Docs & Migration
-status: completed
-stopped_at: Phase 130 complete — all phases complete
-last_updated: "2026-10-04T19:18:28.105Z"
+current_phase: 130.1
+current_phase_name: "Address tech debt: 127 review warnings and binary-file loading"
+status: "Phase 130.1 inserted after the milestone audit — next: /gsd-plan-phase 130.1"
+stopped_at: Phase 130.1 context gathered
+last_updated: "2026-10-05T05:19:19.068Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 130 complete
-state_head: a2e32dc6b963f5c85d5e08eb7e414812627aa760
+state_head: 2619ead6b3080765a9efeaf57c9b9dcb1584c1a5
 progress:
   total_phases: 7
   completed_phases: 7
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 ## Current Position
 
-Phase: 130 (Docs & Migration) — COMPLETE
-Plan: 5 of 5
-Status: All v4.9 phases complete — ready to complete milestone
+Phase: 130.1 (Address tech debt: 127 review warnings and binary-file loading)
+Plan: 0 of TBD
+Status: Phase 130.1 inserted after the milestone audit — next: /gsd-plan-phase 130.1
 Last activity: 2026-10-04 — Phase 130 complete
 
 Progress: [██████████] 100% (v4.9: 7/7 phases)
@@ -511,12 +511,13 @@ Rows through 2026-09-17 are archived with their directories under `.planning/mil
 - v4.6 roadmap created 2026-09-24: Phases 106-109 for 18 requirements (DIAG-01 and JINT-03 folded into 106, JINT-01/02 into 109).
 - v4.5 archived 2026-09-24 (Phases 98-105).
 - Phase 105 added: Live diagnostics responsiveness on large workspaces (issue #692) — live-parse timer is armed inside buildDocuments, behind Langium's FIFO WorkspaceLock; observed in both IDEs during phase 102 UAT
+- Phase 130.1 inserted after Phase 130: Address tech debt: 127 review warnings and loading of binary files, intellij and vscode (URGENT)
 
 ## Session Continuity
 
-Last session: 2026-10-04T19:20:00Z
-Stopped at: Phase 130 complete — all phases complete
-Resume file: None
+Last session: 2026-10-05T05:19:18.711Z
+Stopped at: Phase 130.1 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/130.1-address-tech-debt-127-review-warnings-and-loading-of-binary/130.1-CONTEXT.md
 
 Next: /gsd-complete-milestone v4.9 (phase 130 UAT 4/4 passed, VALIDATION and SECURITY done). Paste 130-RELEASE-NOTES.md into the GitHub release body at release time. Phase 125 review WR-01..03 (125-REVIEW.md) and phase 127 review WR-02..04 (127-REVIEW.md) are still open; 127 WR-01 and the in-place decompile failure are accepted overrides tracked in backlog 999.1. New todo from the 128 UAT: skip syntax checks on line-numbered programs.
 The `bbj-ls` hardening follow-up is tracked separately in `bbj-ls` and is not a GSD step here.
