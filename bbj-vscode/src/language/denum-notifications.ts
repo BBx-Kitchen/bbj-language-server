@@ -48,4 +48,10 @@ export interface DenumDiagnosticsParams {
     /** The document that was denumbered. */
     uri: string;
     diagnostics: DenumDiagnosticDto[];
+    /**
+     * The document version the list was computed for, as the server's open-document store saw it.
+     * Absent means the server could not confirm the version, so a host must not place the list on
+     * the document and keeps the text copy only.
+     */
+    version?: number;
 }

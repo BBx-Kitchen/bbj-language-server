@@ -35,7 +35,7 @@ import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './la
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
 import { OPEN_FORMATTER_SETTINGS_METHOD, FORMATTER_SETTINGS_QUERY } from './language/format-settings-notification.js';
 import { DENUM_DIAGNOSTICS_METHOD, SHOW_DENUM_DIAGNOSTICS_METHOD } from './language/denum-notifications.js';
-import { denumPayloadUri, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
+import { denumPayloadUri, denumPayloadVersion, denumProblems, formatDenumDiagnosticsBlock } from './denum-diagnostics-output.js';
 import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 import { createSingleFlightRunner, migrateSplitSingleLineIf } from './settings-migration.js';
 import { CONFIG_DOCUMENT_LANGUAGE_ID } from './composer-lens-contract.js';
@@ -680,7 +680,8 @@ function denumSeverity(severity: 'ERROR' | 'WARNING' | 'INFO'): vscode.Diagnosti
  * user picks Show.
  *
  * The list is placed twice. It becomes problems on the denumbered document, in a collection of its
- * own that is created when the first list names a BBj document the editor has open, and it is
+ * own that is created when the first list names a BBj document the editor has open at the version
+ * the payload carries (a list without that version, or for another one, places nothing), and it is
  * written into the 'BBj' channel as plain lines, one block per run, as a log copy that outlives the
  * problems. The reveal request opens the Problems view while any problem is placed, and the
  * channel holding the log copy once none is; it ignores its payload.
@@ -715,6 +716,12 @@ function registerDenumDiagnosticsOutput(
             candidate => candidate.languageId === 'bbj' && candidate.uri.toString() === wanted
         );
         if (document === undefined) {
+            return;
+        }
+        // The list describes one version of the text. A missing or invalid version, or a document
+        // that has moved on since, gets no problems: the log copy already holds the list.
+        const version = denumPayloadVersion(params);
+        if (version === undefined || version !== document.version) {
             return;
         }
         const problems = denumProblems(params, document.lineCount);

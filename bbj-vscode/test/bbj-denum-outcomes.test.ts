@@ -144,7 +144,7 @@ describe('a DENUM run that reported diagnostics', () => {
         expect(result).toMatchObject({ status: 'denumbered', message: 'Denumbered. 2 errors, 1 warning.', applied: false });
         expect(result.diagnostics).toEqual(THREE);
         expect(harness.workspace.applyEdit).not.toHaveBeenCalled();
-        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([[{ uri: URI_TEXT, diagnostics: THREE }]]);
+        expect(sent(harness, DENUM_DIAGNOSTICS_METHOD)).toEqual([[{ uri: URI_TEXT, diagnostics: THREE, version: 1 }]]);
         expect(harness.window.showWarningMessage).toHaveBeenCalledTimes(1);
         expect(harness.window.showWarningMessage).toHaveBeenCalledWith('Denumbered. 2 errors, 1 warning.', { title: 'Show' });
         expect(harness.window.showInformationMessage).not.toHaveBeenCalled();

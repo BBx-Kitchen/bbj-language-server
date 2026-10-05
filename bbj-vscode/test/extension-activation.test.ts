@@ -341,6 +341,7 @@ describe('denumber diagnostics output', () => {
 
     const payload = {
         uri: 'file:///ws/a.bbj',
+        version: 1,
         diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'syntax error' }],
     };
 
@@ -465,10 +466,11 @@ describe('denumber diagnostics output', () => {
         const openDocuments: unknown[] = [];
 
         /** Puts a fake open document into the editor's document list for the length of one test. */
-        function open(uri: string, lines: string[], languageId = 'bbj'): { uri: { toString(): string }; lineCount: number } {
+        function open(uri: string, lines: string[], languageId = 'bbj', version = 1): { uri: { toString(): string }; lineCount: number; version: number } {
             const document = {
                 uri: { toString: () => uri },
                 languageId,
+                version,
                 lineCount: lines.length,
                 lineAt: (n: number) => ({ text: lines[n] }),
             };
@@ -517,6 +519,19 @@ describe('denumber diagnostics output', () => {
             disposeSubscriptions(context);
         });
 
+        test('a list whose version equals the open document version is placed', () => {
+            const { context, list } = activateAndFindHandlers();
+            const document = open('file:///ws/a.bbj', ['L10: if then', 'x', 'y'], 'bbj', 7);
+
+            list({ ...payload, version: 7 });
+
+            const [collection] = collections();
+            expect(collection.set).toHaveBeenCalledTimes(1);
+            expect(collection.set.mock.calls[0][0]).toBe(document.uri);
+
+            disposeSubscriptions(context);
+        });
+
         test('the collection is created once and reused by the next list', () => {
             const { context, list } = activateAndFindHandlers();
             open('file:///ws/a.bbj', ['one', 'two', 'three']);
@@ -536,6 +551,7 @@ describe('denumber diagnostics output', () => {
 
             list({
                 uri: 'file:///ws/a.bbj',
+                version: 1,
                 diagnostics: [
                     { line: 0, originalLineNumber: '', severity: 'INFO', message: 'note' },
                     { line: 2, originalLineNumber: '0020', severity: 'WARNING', message: 'careful' },
@@ -563,6 +579,7 @@ describe('denumber diagnostics output', () => {
             list(payload);
             list({
                 uri: 'file:///ws/a.bbj',
+                version: 1,
                 diagnostics: [{ line: 3, originalLineNumber: '', severity: 'WARNING', message: 'second run' }],
             });
 
@@ -578,7 +595,7 @@ describe('denumber diagnostics output', () => {
             const { context, list } = activateAndFindHandlers();
             const document = open('file:///ws/a.bbj', ['one', 'two', 'three']);
 
-            list({ uri: 'file:///ws/a.bbj', diagnostics: [{ line: -1, severity: 'ERROR', message: 'bad' }, null] });
+            list({ uri: 'file:///ws/a.bbj', version: 1, diagnostics: [{ line: -1, severity: 'ERROR', message: 'bad' }, null] });
 
             const [collection] = collections();
             expect(collection.set).not.toHaveBeenCalled();
@@ -655,6 +672,7 @@ describe('denumber diagnostics output', () => {
 
             list({
                 uri: 'file:///ws/a.bbj',
+                version: 1,
                 diagnostics: [{ line: 1, originalLineNumber: '0010', severity: 'ERROR', message: 'command:workbench.action.quit' }],
             });
 

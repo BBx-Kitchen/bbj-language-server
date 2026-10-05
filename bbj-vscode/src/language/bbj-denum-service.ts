@@ -346,14 +346,14 @@ export class BBjDenumService {
             const diagnostics = copyDiagnostics(outcome.result);
             if (edits.length === 0) {
                 // Nothing to apply, but the diagnostics are still the answer the user asked for.
-                const message = this.presentSuccess(live.uri, diagnostics, base);
+                const message = this.presentSuccess(live.uri, diagnostics, base, live.version);
                 return { status: 'denumbered', message, version, edits, diagnostics, applied: false };
             }
             const applied = await this.messenger.applyEdit(live.uri, version, edits, label);
             if (!applied) {
                 return this.fail('not-applied', DENUM_NOT_APPLIED_MESSAGE);
             }
-            const message = this.presentSuccess(live.uri, diagnostics, base);
+            const message = this.presentSuccess(live.uri, diagnostics, base, undefined);
             return { status: 'denumbered', message, version, edits, diagnostics, applied: true };
         } catch (error) {
             // Log lines carry fixed tokens only, never document or peer text.
@@ -370,13 +370,17 @@ export class BBjDenumService {
      * The end of an applied run. A run that reported diagnostics sends the list first, then shows
      * one message with the counts and a Show button: a Warning when any entry is an error, an
      * Information message otherwise. A clean run shows the plain confirmation.
+     *
+     * `version` is the document version the list describes; the key is left out of the payload
+     * when it is unknown, so a client sees no version at all rather than a guess.
      */
-    private presentSuccess(uri: string, diagnostics: DenumDiagnosticDto[], base: string): string {
+    private presentSuccess(uri: string, diagnostics: DenumDiagnosticDto[], base: string, version: number | undefined): string {
         if (diagnostics.length === 0) {
             this.messenger.info(base);
             return base;
         }
-        this.messenger.denumDiagnostics({ uri, diagnostics });
+        const params: DenumDiagnosticsParams = version === undefined ? { uri, diagnostics } : { uri, diagnostics, version };
+        this.messenger.denumDiagnostics(params);
         const text = denumSuccessMessage(base, diagnostics);
         const reveal = () => this.messenger.showDenumDiagnostics();
         if (diagnostics.some(diagnostic => diagnostic.severity === 'ERROR')) {

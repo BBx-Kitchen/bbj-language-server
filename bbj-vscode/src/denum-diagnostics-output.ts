@@ -74,6 +74,19 @@ export function denumPayloadUri(params: unknown): string | undefined {
 }
 
 /**
+ * The document version the payload says the list was computed for, when it is a safe integer that
+ * is not negative; otherwise undefined. Never throws. A host places problems only when this equals
+ * the version of the open document.
+ */
+export function denumPayloadVersion(params: unknown): number | undefined {
+    if (!isRecord(params)) {
+        return undefined;
+    }
+    const { version } = params;
+    return typeof version === 'number' && Number.isSafeInteger(version) && version >= 0 ? version : undefined;
+}
+
+/**
  * One problem per valid entry, in payload order, at most `MAX_DENUM_PROBLEMS` of them. A located
  * entry lands on its zero-based line, clamped to the document's `lineCount`; an entry without a
  * location lands on the first line. The message is flattened and followed by the original line
