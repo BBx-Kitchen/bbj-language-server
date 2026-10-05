@@ -16,7 +16,7 @@
  *
  * It has no `vscode` import, so it is driven with a plain fake configuration, and it never throws:
  * a configuration that cannot be read is a silent no-op, and a failed write is logged and left for
- * the next activation.
+ * the next run (the next activation or the next change to the old key).
  */
 
 import { LEGACY_SPLIT_SINGLE_LINE_IF_KEY, type FormatterSettingKey } from './language/bbj-format-settings.js';
@@ -49,8 +49,16 @@ function reasonOf(error: unknown): string {
 }
 
 /**
- * Moves one scope's boolean value to the new key, then removes the old key there.
- * Returns true when both writes went through.
+ * What happened to one scope: its old value was moved to the new key, its old key was removed
+ * because the new key already held the same value, or nothing changed.
+ */
+type ScopeOutcome = 'moved' | 'cleaned' | 'none';
+
+/**
+ * Moves one scope's boolean value to the new key, then removes the old key there. When the new key
+ * is already set in the scope, the old key is removed only if both hold the same value (a move that
+ * was interrupted after its first write); differing values are the user's choice and stay as they
+ * are, silently, since the new key wins in the language server.
  */
 async function migrateScope<T>(
     deps: SettingsMigrationDeps<T>,
@@ -58,17 +66,29 @@ async function migrateScope<T>(
     oldValue: unknown,
     newValue: unknown,
     target: T
-): Promise<boolean> {
-    if (typeof oldValue !== 'boolean' || newValue !== undefined) {
-        return false;
+): Promise<ScopeOutcome> {
+    if (typeof oldValue !== 'boolean') {
+        return 'none';
+    }
+    if (newValue !== undefined) {
+        if (newValue !== oldValue) {
+            return 'none';
+        }
+        try {
+            await deps.update(LEGACY_SPLIT_SINGLE_LINE_IF_KEY, undefined, target);
+            return 'cleaned';
+        } catch (error) {
+            safeLog(deps, `Could not remove ${OLD_NAME} in the ${scope} settings: ${reasonOf(error)}`);
+            return 'none';
+        }
     }
     try {
         await deps.update(NEW_KEY, oldValue, target);
         await deps.update(LEGACY_SPLIT_SINGLE_LINE_IF_KEY, undefined, target);
-        return true;
+        return 'moved';
     } catch (error) {
         safeLog(deps, `Could not finish moving ${OLD_NAME} to ${NEW_NAME} in the ${scope} settings: ${reasonOf(error)}`);
-        return false;
+        return 'none';
     }
 }
 
@@ -115,7 +135,8 @@ export function createSingleFlightRunner(run: () => Promise<void>): () => void {
 /**
  * Moves a boolean `splitSingleLineIF` to `splitSingleLineIf` in the user settings and, when the
  * workspace is trusted, in the workspace settings. A scope is left alone when its old value is not
- * a boolean or when the new key is already set in it. The returned promise never rejects.
+ * a boolean or when the new key is set in it to a different value; when the new key holds the same
+ * value, only the old key is removed. The returned promise never rejects.
  */
 export async function migrateSplitSingleLineIf<T>(deps: SettingsMigrationDeps<T>): Promise<void> {
     try {
@@ -132,15 +153,23 @@ export async function migrateSplitSingleLineIf<T>(deps: SettingsMigrationDeps<T>
         }
 
         const moved: string[] = [];
-        if (await migrateScope(deps, 'user', oldInspection.globalValue, newInspection?.globalValue, deps.userTarget)) {
-            moved.push('user');
-        }
-        if (deps.workspaceTrusted
-            && await migrateScope(deps, 'workspace', oldInspection.workspaceValue, newInspection?.workspaceValue, deps.workspaceTarget)) {
-            moved.push('workspace');
+        const cleaned: string[] = [];
+        const record = (scope: 'user' | 'workspace', outcome: ScopeOutcome): void => {
+            if (outcome === 'moved') {
+                moved.push(scope);
+            } else if (outcome === 'cleaned') {
+                cleaned.push(scope);
+            }
+        };
+        record('user', await migrateScope(deps, 'user', oldInspection.globalValue, newInspection?.globalValue, deps.userTarget));
+        if (deps.workspaceTrusted) {
+            record('workspace', await migrateScope(deps, 'workspace', oldInspection.workspaceValue, newInspection?.workspaceValue, deps.workspaceTarget));
         }
         if (moved.length > 0) {
             safeLog(deps, `Moved ${OLD_NAME} to ${NEW_NAME} in the ${moved.join(' and ')} settings.`);
+        }
+        if (cleaned.length > 0) {
+            safeLog(deps, `Removed ${OLD_NAME} from the ${cleaned.join(' and ')} settings; ${NEW_NAME} already holds the same value.`);
         }
     } catch {
         // Never reject: the migration is best effort and must not affect activation.
