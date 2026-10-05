@@ -136,6 +136,25 @@ describe.skipIf(!hasBBj)('Decompile against the real bbjlst', () => {
         expect(leftoverPrivateDirs()).toEqual([]);
     }, PER_TEST_TIMEOUT_MS);
 
+    test('Decompile & Replace of a symlinked program rewrites the target, keeps the link and opens the link path', async () => {
+        const target = path.join(workDir, 'target.bbj');
+        const link = path.join(workDir, 'link.bbj');
+        fs.writeFileSync(target, tokenized);
+        fs.symlinkSync(target, link);
+
+        await decompileReplace(link);
+
+        expect(fakeVscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(fakeVscode.window.showWarningMessage).not.toHaveBeenCalled();
+        expectDecompiledSource(target);
+        expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+        expect(fs.lstatSync(target).isSymbolicLink()).toBe(false);
+        expect(fs.readdirSync(workDir).sort()).toEqual(['link.bbj', 'target.bbj']);
+        expect(leftoverPrivateDirs()).toEqual([]);
+        const [uri] = fakeVscode.workspace.openTextDocument.mock.calls.at(-1) ?? [];
+        expect((uri as { fsPath?: string } | undefined)?.fsPath).toBe(link);
+    }, PER_TEST_TIMEOUT_MS);
+
     test('Decompile (Read-only) opens a read-only source copy and leaves the tokenized original alone', async () => {
         const { Commands } = loadCommands();
         const target = path.join(workDir, 'a.bbj');

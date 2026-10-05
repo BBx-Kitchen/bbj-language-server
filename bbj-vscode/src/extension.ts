@@ -532,7 +532,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerJavaClasspathCommands(context, { client });
     registerFormatterSettingsLink(context, { client });
     registerDenumDiagnosticsOutput(context, { client, outputChannel });
-    openFilePrompts = registerOpenFilePrompts(context);
+    openFilePrompts = registerOpenFilePrompts(context, { log: appendOutputLine });
     registerDiagnosticStatusBars(context, { client });
     registerConfigReloadStatus(context, { client, restartGate });
     registerConfigAssociation(context, { client });

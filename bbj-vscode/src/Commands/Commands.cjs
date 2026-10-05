@@ -52,7 +52,7 @@ const setOutputChannel = (channel) => {
  */
 const execWithProgress = (argv) => runProcess(argv);
 
-const { isTokenizedFile, waitForListing, verifyListing, replaceWithListing } = require("../decompile-io");
+const { probeTokenizedFile, waitForListing, verifyListing, replaceWithListing } = require("../decompile-io");
 
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
@@ -185,7 +185,7 @@ const decompileTargetOrWarn = (params) => {
 
 /**
  * Shown when a decompile command is pointed at a file that is not a tokenized BBj
- * program (plain text, or anything `isTokenizedFile` does not accept). bbjlst is never
+ * program (plain text, or anything `probeTokenizedFile` does not report as tokenized). bbjlst is never
  * launched on such a file.
  * @param {string} fileName - The file the command was invoked on
  * @returns {string} The warning text
@@ -245,13 +245,16 @@ const decompileInPlace = (resolvedFileName) => {
     try {
       // Only a tokenized program is decompiled in place; a plain-text file is refused
       // before anything is created or launched, so it is never rewritten.
-      if (!(await isTokenizedFile(resolvedFileName))) {
+      const probe = await probeTokenizedFile(resolvedFileName);
+      if (probe.kind !== 'tokenized') {
         vscode.window.showWarningMessage(notTokenizedMessage(resolvedFileName));
         return;
       }
-      const result = await decompileToPrivateDir(home, resolvedFileName);
+      // bbjlst reads, and the replace rewrites, the real file behind a symlink; the document
+      // opened afterwards is still the path the user opened, so a link keeps its own tab.
+      const result = await decompileToPrivateDir(home, probe.resolvedPath);
       outputDir = result.outputDir;
-      await replaceWithListing(resolvedFileName, result.listing);
+      await replaceWithListing(probe.resolvedPath, result.listing);
 
       const uri = vscode.Uri.file(resolvedFileName);
       const doc = await vscode.workspace.openTextDocument(uri);
@@ -475,13 +478,14 @@ const Commands = {
       try {
         // Only a tokenized program is decompiled; a plain-text file is refused before
         // any temporary directory is created or bbjlst is launched.
-        if (!(await isTokenizedFile(resolvedFileName))) {
+        const probe = await probeTokenizedFile(resolvedFileName);
+        if (probe.kind !== 'tokenized') {
           vscode.window.showWarningMessage(notTokenizedMessage(fileName));
           return;
         }
 
         // bbjlst only reads the original; the listing is written to a private directory.
-        const result = await decompileToPrivateDir(home, resolvedFileName);
+        const result = await decompileToPrivateDir(home, probe.resolvedPath);
         outputDir = result.outputDir;
 
         // Normalise the listing to a `.bbj` file so the editor opens it with BBj language support.

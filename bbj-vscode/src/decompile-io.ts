@@ -14,22 +14,59 @@ const TOKENIZED_MAGIC = Buffer.from(TOKENIZED_BBJ_MAGIC);
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * True if the file still starts with the tokenized-BBj magic (i.e. not yet decompiled).
- *
- * Refuses to open anything but a regular file (issue #585): a symlink, directory, FIFO,
- * socket or device reports false without ever reaching `open` — a FIFO would otherwise block
- * the open call indefinitely. `lstat` runs first, before any open, so the check cannot be
- * fooled by following a symlink; the open itself additionally requests `O_NOFOLLOW` and
- * `O_NONBLOCK` where the platform defines them (POSIX only — both are undefined on Windows,
- * where the `lstat` check above is the sole guard), and the opened handle is re-checked with
- * `fstat()` to close the swap window between the `lstat` and the `open`.
+ * What {@link probeTokenizedFile} found at a path. `resolvedPath` is the real path after symlinks
+ * were followed; it is what bbjlst reads and what an in-place replace must target.
  */
-export async function isTokenizedFile(file: string): Promise<boolean> {
+export type TokenizedProbe =
+    | { kind: 'tokenized'; resolvedPath: string }
+    | { kind: 'not-tokenized'; resolvedPath: string }
+    | { kind: 'not-a-file' }
+    | { kind: 'missing' }
+    | { kind: 'unreadable'; code: string; message: string };
+
+function collapseLineBreaks(text: string): string {
+    return text.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+}
+
+function describeIoError(err: unknown): { code: string; message: string } {
+    const code = (err as NodeJS.ErrnoException | undefined)?.code;
+    const message = err instanceof Error ? err.message : String(err);
+    return { code: typeof code === 'string' ? code : 'UNKNOWN', message: collapseLineBreaks(message) };
+}
+
+/**
+ * Decides whether `file` is a tokenized (binary) BBj program, by content, and says why when it
+ * cannot tell. The one rule shared by the open prompt, both decompile commands and Denumber.
+ *
+ * A symlink is followed with `realpath` first, so a link to a tokenized program is decompiled at
+ * its target. The resolved path is then held to the #585 hardening: it must be a regular file
+ * (`lstat` runs before any open, so a FIFO, socket, device or directory never reaches `open` — a
+ * FIFO would otherwise block the open call indefinitely), the open requests `O_NOFOLLOW` and
+ * `O_NONBLOCK` where the platform defines them (POSIX only — both are undefined on Windows, where
+ * the `lstat` check is the sole guard), and the opened handle is re-checked with `fstat()` to
+ * close the swap window between the `lstat` and the `open`. Because `realpath` has already run,
+ * `O_NOFOLLOW` on the resolved path guards against a swap to a symlink after the resolution.
+ *
+ * An I/O failure (EACCES, EBUSY, a read race) is `unreadable` with its real cause, never
+ * `not-tokenized`.
+ */
+export async function probeTokenizedFile(file: string): Promise<TokenizedProbe> {
+    let resolvedPath: string;
+    try {
+        resolvedPath = await fs.promises.realpath(file);
+    } catch (err) {
+        const code = (err as NodeJS.ErrnoException | undefined)?.code;
+        if (code === 'ENOENT' || code === 'ENOTDIR') {
+            return { kind: 'missing' };
+        }
+        return { kind: 'unreadable', ...describeIoError(err) };
+    }
+
     let handle: fs.promises.FileHandle | undefined;
     try {
-        const entry = await fs.promises.lstat(file);
+        const entry = await fs.promises.lstat(resolvedPath);
         if (!entry.isFile()) {
-            return false;
+            return { kind: 'not-a-file' };
         }
         let flags = fs.constants.O_RDONLY;
         if (typeof fs.constants.O_NOFOLLOW === 'number') {
@@ -38,19 +75,29 @@ export async function isTokenizedFile(file: string): Promise<boolean> {
         if (typeof fs.constants.O_NONBLOCK === 'number') {
             flags |= fs.constants.O_NONBLOCK;
         }
-        handle = await fs.promises.open(file, flags);
+        handle = await fs.promises.open(resolvedPath, flags);
         const handleStat = await handle.stat();
         if (!handleStat.isFile()) {
-            return false;
+            return { kind: 'not-a-file' };
         }
         const buffer = Buffer.alloc(TOKENIZED_MAGIC.length);
         const { bytesRead } = await handle.read(buffer, 0, TOKENIZED_MAGIC.length, 0);
-        return bytesRead === TOKENIZED_MAGIC.length && buffer.equals(TOKENIZED_MAGIC);
-    } catch {
-        return false;
+        const tokenized = bytesRead === TOKENIZED_MAGIC.length && buffer.equals(TOKENIZED_MAGIC);
+        return { kind: tokenized ? 'tokenized' : 'not-tokenized', resolvedPath };
+    } catch (err) {
+        const code = (err as NodeJS.ErrnoException | undefined)?.code;
+        if (code === 'ENOENT') {
+            return { kind: 'missing' };
+        }
+        return { kind: 'unreadable', ...describeIoError(err) };
     } finally {
         await handle?.close().catch(() => { });
     }
+}
+
+/** True if the file still starts with the tokenized-BBj magic (i.e. not yet decompiled). */
+export async function isTokenizedFile(file: string): Promise<boolean> {
+    return (await probeTokenizedFile(file)).kind === 'tokenized';
 }
 
 interface FileSize {

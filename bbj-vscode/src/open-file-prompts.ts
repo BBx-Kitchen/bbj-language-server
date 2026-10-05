@@ -12,25 +12,9 @@
  */
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import Commands from './Commands/Commands.cjs';
-import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
+import { probeTokenizedFile } from './decompile-io.js';
 import { isLineNumberedSource } from './line-numbering.js';
-
-/** Read the first `length` bytes of a file, or undefined if it can't be read. */
-async function readLeadingBytes(fsPath: string, length: number): Promise<Uint8Array | undefined> {
-    let handle: fs.promises.FileHandle | undefined;
-    try {
-        handle = await fs.promises.open(fsPath, 'r');
-        const buffer = Buffer.alloc(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, 0);
-        return buffer.subarray(0, bytesRead);
-    } catch {
-        return undefined;
-    } finally {
-        await handle?.close().catch(() => { });
-    }
-}
 
 /** Extract a file URI from any tab whose input carries one (text, custom, notebook…). */
 function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
@@ -44,7 +28,11 @@ function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
  * Detection is content-based (magic bytes), so it works regardless of the file's
  * extension — tokenized programs are often named `.pub`, `.src`, or extensionless.
  */
-async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokenizedFiles: Set<string>): Promise<void> {
+async function maybePromptTokenized(
+    uri: vscode.Uri | undefined,
+    promptedTokenizedFiles: Set<string>,
+    deps: OpenFilePromptDeps
+): Promise<void> {
     if (!uri || uri.scheme !== 'file') return;
     if (!vscode.workspace.getConfiguration('bbj').get<boolean>('decompile.promptOnOpen', true)) return;
 
@@ -54,10 +42,14 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined, promptedTokeniz
     // event and the activation scan, and we must not prompt (or decompile) twice.
     promptedTokenizedFiles.add(key);
 
-    const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
-    if (!bytes || !isTokenizedBBjHeader(bytes)) {
-        // Not tokenized after all — allow a later check (e.g. if the file changes).
+    const probe = await probeTokenizedFile(uri.fsPath);
+    if (probe.kind !== 'tokenized') {
+        // Not tokenized after all, or not checkable — allow a later check (e.g. if the file
+        // changes). An unreadable file is only logged: opening a file must not raise a popup.
         promptedTokenizedFiles.delete(key);
+        if (probe.kind === 'unreadable') {
+            deps.log(`Could not check whether "${path.basename(uri.fsPath)}" is a tokenized BBj program: ${probe.message}`);
+        }
         return;
     }
 
@@ -107,6 +99,12 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined, pr
     }
 }
 
+/** What the open-file prompts need from the extension. */
+export interface OpenFilePromptDeps {
+    /** Writes one line to the BBj output channel. */
+    log(line: string): void;
+}
+
 /** What the rest of the extension may do to the prompts wired by {@link registerOpenFilePrompts}. */
 export interface OpenFilePrompts {
     /**
@@ -121,7 +119,10 @@ export interface OpenFilePrompts {
  * listener plus a scan of already-open tabs for the tokenized prompt, and the active-editor
  * listener plus a check of the already-active editor for the line-numbered prompt.
  */
-export function registerOpenFilePrompts(context: vscode.ExtensionContext): OpenFilePrompts {
+export function registerOpenFilePrompts(
+    context: vscode.ExtensionContext,
+    deps: OpenFilePromptDeps = { log: () => { } }
+): OpenFilePrompts {
     // Tracks files we've already prompted about this session so re-focusing the tab
     // (or reopening it) doesn't nag the user again.
     const promptedTokenizedFiles = new Set<string>();
@@ -135,14 +136,14 @@ export function registerOpenFilePrompts(context: vscode.ExtensionContext): OpenF
     context.subscriptions.push(
         vscode.window.tabGroups.onDidChangeTabs((event) => {
             for (const tab of event.opened) {
-                void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles);
+                void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles, deps);
             }
         })
     );
     // Inspect tabs already open when the extension activates.
     for (const group of vscode.window.tabGroups.all) {
         for (const tab of group.tabs) {
-            void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles);
+            void maybePromptTokenized(uriFromTab(tab), promptedTokenizedFiles, deps);
         }
     }
 

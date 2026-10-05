@@ -6,6 +6,7 @@ import { execFileSync } from 'child_process';
 import * as processArgs from '../src/Commands/process-args.js';
 import {
     isTokenizedFile,
+    probeTokenizedFile,
     statSize,
     waitForListing,
     verifyListing,
@@ -43,12 +44,12 @@ describe('decompile-io', () => {
             expect(await isTokenizedFile(path.join(dir, 'nope'))).toBe(false);
         });
 
-        test('false for a symlink pointing at a real tokenized file', async () => {
+        test('true for a symlink pointing at a real tokenized file', async () => {
             const target = path.join(dir, 'prog');
             fs.writeFileSync(target, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
             const link = path.join(dir, 'prog-link');
             fs.symlinkSync(target, link);
-            expect(await isTokenizedFile(link)).toBe(false);
+            expect(await isTokenizedFile(link)).toBe(true);
         });
 
         test('false for a directory', async () => {
@@ -56,23 +57,121 @@ describe('decompile-io', () => {
             fs.mkdirSync(d);
             expect(await isTokenizedFile(d)).toBe(false);
         });
+    });
+
+    describe('probeTokenizedFile', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        function writeTokenized(name: string): string {
+            const f = path.join(dir, name);
+            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            return f;
+        }
+
+        test('reports tokenized with the real path for a plain tokenized file', async () => {
+            const f = writeTokenized('prog');
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'tokenized', resolvedPath: fs.realpathSync(f) });
+        });
+
+        test('reports tokenized with the target as resolvedPath for a symlink to a tokenized file', async () => {
+            const target = writeTokenized('prog');
+            const link = path.join(dir, 'prog-link');
+            fs.symlinkSync(target, link);
+            expect(await probeTokenizedFile(link)).toEqual({ kind: 'tokenized', resolvedPath: fs.realpathSync(target) });
+        });
+
+        test('reports not-tokenized with the real path for plain text', async () => {
+            const f = path.join(dir, 'prog.bbj');
+            fs.writeFileSync(f, 'rem hi\nprint "x"\n');
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'not-tokenized', resolvedPath: fs.realpathSync(f) });
+        });
+
+        test('reports not-tokenized for a file shorter than the magic', async () => {
+            const f = path.join(dir, 'short');
+            fs.writeFileSync(f, '<<bb');
+            expect((await probeTokenizedFile(f)).kind).toBe('not-tokenized');
+        });
+
+        test('reports a directory as not-a-file', async () => {
+            const d = path.join(dir, 'a-directory');
+            fs.mkdirSync(d);
+            expect(await probeTokenizedFile(d)).toEqual({ kind: 'not-a-file' });
+        });
 
         test.skipIf(process.platform === 'win32')(
-            'false for a FIFO, returning promptly instead of blocking on open',
+            'reports a FIFO as not-a-file, returning promptly instead of blocking on open',
             async () => {
                 const fifo = path.join(dir, 'a-fifo');
                 execFileSync('mkfifo', [fifo]);
-                expect(await isTokenizedFile(fifo)).toBe(false);
+                expect(await probeTokenizedFile(fifo)).toEqual({ kind: 'not-a-file' });
             },
             2000
         );
 
+        test.skipIf(process.platform === 'win32')(
+            'reports a symlink to a FIFO as not-a-file, returning promptly',
+            async () => {
+                const fifo = path.join(dir, 'a-fifo');
+                execFileSync('mkfifo', [fifo]);
+                const link = path.join(dir, 'a-fifo-link');
+                fs.symlinkSync(fifo, link);
+                expect(await probeTokenizedFile(link)).toEqual({ kind: 'not-a-file' });
+            },
+            2000
+        );
+
+        test('reports a missing path as missing', async () => {
+            expect(await probeTokenizedFile(path.join(dir, 'nope'))).toEqual({ kind: 'missing' });
+        });
+
+        test('reports a dangling symlink as missing', async () => {
+            const link = path.join(dir, 'dangling');
+            fs.symlinkSync(path.join(dir, 'gone'), link);
+            expect(await probeTokenizedFile(link)).toEqual({ kind: 'missing' });
+        });
+
+        test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+            'reports a file that cannot be read as unreadable with EACCES',
+            async () => {
+                const f = writeTokenized('locked');
+                fs.chmodSync(f, 0o000);
+                const probe = await probeTokenizedFile(f);
+                expect(probe.kind).toBe('unreadable');
+                expect(probe).toMatchObject({ code: 'EACCES' });
+            }
+        );
+
+        test('reports an open failure as unreadable with its code and a one-line message', async () => {
+            const f = writeTokenized('busy');
+            const failure = Object.assign(new Error('resource busy\nor locked'), { code: 'EBUSY' });
+            vi.spyOn(fs.promises, 'open').mockRejectedValueOnce(failure);
+
+            const probe = await probeTokenizedFile(f);
+
+            expect(probe).toEqual({ kind: 'unreadable', code: 'EBUSY', message: 'resource busy or locked' });
+        });
+
+        test('reports a read failure as unreadable and still closes the handle', async () => {
+            const f = writeTokenized('racy');
+            const closeSpy = vi.fn().mockResolvedValue(undefined);
+            const fakeHandle = {
+                stat: vi.fn().mockResolvedValue({ isFile: () => true }),
+                close: closeSpy,
+                read: vi.fn().mockRejectedValue(Object.assign(new Error('read raced'), { code: 'EIO' })),
+            };
+            vi.spyOn(fs.promises, 'open').mockResolvedValueOnce(fakeHandle as unknown as fs.promises.FileHandle);
+
+            expect(await probeTokenizedFile(f)).toMatchObject({ kind: 'unreadable', code: 'EIO' });
+            expect(closeSpy).toHaveBeenCalledTimes(1);
+        });
+
         test('opens with O_NOFOLLOW and O_NONBLOCK where the platform defines them', async () => {
-            const f = path.join(dir, 'prog');
-            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+            const f = writeTokenized('prog');
             const openSpy = vi.spyOn(fs.promises, 'open');
 
-            expect(await isTokenizedFile(f)).toBe(true);
+            expect((await probeTokenizedFile(f)).kind).toBe('tokenized');
 
             expect(openSpy).toHaveBeenCalledTimes(1);
             const flags = openSpy.mock.calls[0][1] as number;
@@ -84,9 +183,19 @@ describe('decompile-io', () => {
             }
         });
 
-        test('reports false and still closes the handle when the opened handle is not a regular file on fstat re-check', async () => {
-            const f = path.join(dir, 'prog');
-            fs.writeFileSync(f, Buffer.concat([MAGIC, Buffer.from([0x84, 0, 0])]));
+        test('opens the resolved target, not the link', async () => {
+            const target = writeTokenized('prog');
+            const link = path.join(dir, 'prog-link');
+            fs.symlinkSync(target, link);
+            const openSpy = vi.spyOn(fs.promises, 'open');
+
+            await probeTokenizedFile(link);
+
+            expect(openSpy.mock.calls[0][0]).toBe(fs.realpathSync(target));
+        });
+
+        test('reports not-a-file and still closes the handle when the opened handle is not a regular file on fstat re-check', async () => {
+            const f = writeTokenized('prog');
             const closeSpy = vi.fn().mockResolvedValue(undefined);
             const fakeHandle = {
                 stat: vi.fn().mockResolvedValue({ isFile: () => false }),
@@ -95,7 +204,7 @@ describe('decompile-io', () => {
             };
             vi.spyOn(fs.promises, 'open').mockResolvedValueOnce(fakeHandle as unknown as fs.promises.FileHandle);
 
-            expect(await isTokenizedFile(f)).toBe(false);
+            expect(await probeTokenizedFile(f)).toEqual({ kind: 'not-a-file' });
             expect(closeSpy).toHaveBeenCalledTimes(1);
         });
     });
