@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessDeniedException;
@@ -127,35 +128,70 @@ public final class TokenizedBbj {
         }
     }
 
+    /** A read of the program header that can fail, so "could not tell" differs from "not tokenized". */
+    @FunctionalInterface
+    interface HeaderRead {
+        boolean read() throws IOException;
+    }
+
     /**
      * Whether the bytes behind {@code file} are a tokenized program. Reads only the first seven
      * bytes through the virtual file system, never the whole file, and never the editor's
-     * document, which is garbled text for a binary program.
+     * document, which is garbled text for a binary program. A file that cannot be read counts as
+     * not tokenized here; {@link #isTokenized} tells that case apart.
      */
     public static boolean readsTokenized(@NotNull VirtualFile file) {
-        if (!file.isValid() || file.isDirectory()) {
-            return false;
-        }
-        try (InputStream in = file.getInputStream()) {
-            return isTokenizedHeader(in.readNBytes(MAGIC.length));
+        try {
+            return readHeader(file);
         } catch (IOException e) {
             return false;
         }
     }
 
     /**
+     * The header test behind {@link #readsTokenized}. A directory is a definite "no"; a file that
+     * is no longer valid or cannot be read throws, because nothing was learned about its content.
+     */
+    static boolean readHeader(@NotNull VirtualFile file) throws IOException {
+        if (!file.isValid()) {
+            throw new IOException("the file is no longer valid");
+        }
+        if (file.isDirectory()) {
+            return false;
+        }
+        try (InputStream in = file.getInputStream()) {
+            return isTokenizedHeader(in.readNBytes(MAGIC.length));
+        }
+    }
+
+    /**
      * Whether {@code file} is a tokenized program, cheap enough to ask on every connect decision:
      * the verdict is kept on the file and reused while its modification stamp is unchanged, so the
-     * seven-byte read happens once per content. Never throws; a failure counts as not tokenized
-     * and is not remembered.
+     * seven-byte read happens once per content. Never throws; a file that cannot be read counts
+     * as not tokenized for this call only and nothing is remembered, so the next call reads again.
      */
     public static boolean isTokenized(@NotNull VirtualFile file) {
         try {
-            return cachedVerdict(file.getUserData(VERDICT), file.getModificationStamp(),
-                    () -> readsTokenized(file), verdict -> file.putUserData(VERDICT, verdict));
+            return cachedHeaderVerdict(file.getUserData(VERDICT), file.getModificationStamp(),
+                    () -> readHeader(file), verdict -> file.putUserData(VERDICT, verdict));
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    /**
+     * {@link #cachedVerdict} over a read that can fail: an {@link IOException} from {@code read}
+     * answers false and stores nothing, where a successful read, "not tokenized" included, is stored.
+     */
+    static boolean cachedHeaderVerdict(long @Nullable [] stored, long stamp, @NotNull HeaderRead read,
+                                       @NotNull Consumer<long[]> store) {
+        return cachedVerdict(stored, stamp, () -> {
+            try {
+                return read.read();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }, store);
     }
 
     /**

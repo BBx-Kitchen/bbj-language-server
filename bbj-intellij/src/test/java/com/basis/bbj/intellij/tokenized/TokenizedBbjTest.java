@@ -12,7 +12,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -201,6 +203,64 @@ class TokenizedBbjTest {
 
         assertFalse(verdict);
         assertTrue(stored.isEmpty());
+    }
+
+    @Test
+    void aFailedReadIsNotRememberedAndALaterSuccessfulReadGivesTheVerdict() {
+        AtomicReference<long[]> store = new AtomicReference<>();
+        AtomicInteger reads = new AtomicInteger();
+        TokenizedBbj.HeaderRead flaky = () -> {
+            if (reads.incrementAndGet() == 1) {
+                throw new IOException("the disk was busy");
+            }
+            return true;
+        };
+
+        assertFalse(TokenizedBbj.cachedHeaderVerdict(store.get(), 5L, flaky, store::set));
+        assertNull(store.get());
+
+        assertTrue(TokenizedBbj.cachedHeaderVerdict(store.get(), 5L, flaky, store::set));
+        assertEquals(2, reads.get());
+        assertArrayEquals(new long[] {5L, 1L}, store.get());
+    }
+
+    @Test
+    void aReadThatKeepsFailingIsAskedAgainEveryTime() {
+        AtomicReference<long[]> store = new AtomicReference<>();
+        AtomicInteger reads = new AtomicInteger();
+        TokenizedBbj.HeaderRead broken = () -> {
+            reads.incrementAndGet();
+            throw new IOException("unreadable");
+        };
+
+        assertFalse(TokenizedBbj.cachedHeaderVerdict(store.get(), 5L, broken, store::set));
+        assertFalse(TokenizedBbj.cachedHeaderVerdict(store.get(), 5L, broken, store::set));
+
+        assertEquals(2, reads.get());
+        assertNull(store.get());
+    }
+
+    @Test
+    void aSuccessfulVerdictIsCachedPerModificationStamp() {
+        AtomicReference<long[]> store = new AtomicReference<>();
+        AtomicInteger reads = new AtomicInteger();
+        AtomicBoolean tokenized = new AtomicBoolean(false);
+        TokenizedBbj.HeaderRead read = () -> {
+            reads.incrementAndGet();
+            return tokenized.get();
+        };
+
+        assertFalse(TokenizedBbj.cachedHeaderVerdict(store.get(), 1L, read, store::set));
+        assertFalse(TokenizedBbj.cachedHeaderVerdict(store.get(), 1L, read, store::set));
+        assertEquals(1, reads.get());
+        assertArrayEquals(new long[] {1L, 0L}, store.get());
+
+        // The content changed to a tokenized program: a new stamp reads once more, then is kept.
+        tokenized.set(true);
+        assertTrue(TokenizedBbj.cachedHeaderVerdict(store.get(), 2L, read, store::set));
+        assertTrue(TokenizedBbj.cachedHeaderVerdict(store.get(), 2L, read, store::set));
+        assertEquals(2, reads.get());
+        assertArrayEquals(new long[] {2L, 1L}, store.get());
     }
 
     private static Path linkOrSkip(Path link, Path target) throws IOException {
