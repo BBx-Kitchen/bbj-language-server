@@ -6,6 +6,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Diagnostic } from 'vscode-languageserver';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
+import { BBjDocumentUpdateHandler } from '../src/language/bbj-document-update-handler.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { clearAllVerdictStates } from '../src/language/bbj-diagnostic-reconciliation.js';
@@ -214,5 +215,180 @@ describe('a PREFIX document that is not open', () => {
         expect(documents.getDocument(uriOf(LIB_PATH))).toBe(library);
         const libraryDocuments = documents.all.filter(doc => doc.uri.toString() === uriOf(LIB_PATH).toString()).toArray();
         expect(libraryDocuments).toHaveLength(1);
+    });
+});
+
+describe('closing a document under a PREFIX directory', () => {
+    const closeEditor = (path: string): void => {
+        textDocuments.delete(uriOf(path).toString());
+    };
+
+    const updateHandler = (): BBjDocumentUpdateHandler =>
+        services.shared.lsp.DocumentUpdateHandler as BBjDocumentUpdateHandler;
+
+    /** Calls the handler the way Langium does when the client closes `path`, after the store dropped it. */
+    const notifyClosed = (path: string): void => {
+        updateHandler().didCloseDocument({
+            document: TextDocument.create(uriOf(path).toString(), 'bbj', 1, files.get(path) ?? '')
+        });
+    };
+
+    test('publishes empty diagnostics and clears the document diagnostics', async () => {
+        const library = await openAndBuild(LIB_PATH);
+        expect(messages(library.diagnostics)).toContain(ERROR_MESSAGE);
+        const send = vi.spyOn(privates, 'sendDiagnosticsToClient').mockImplementation(() => { });
+
+        closeEditor(LIB_PATH);
+
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledWith(expect.objectContaining({ path: uriOf(LIB_PATH).path }), []);
+        expect(library.diagnostics ?? []).toEqual([]);
+    });
+
+    test('cancels the pending compiler cycle that opening armed', async () => {
+        privates.bbjcplAvailable = true;
+        await buildWithoutOpening(LIB_PATH);
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        open(LIB_PATH);
+        expect(builder.hasPendingCompile()).toBe(true);
+
+        closeEditor(LIB_PATH);
+        expect(builder.hasPendingCompile()).toBe(false);
+    });
+
+    test('does not let a cycle that was already in flight publish for the closed document', async () => {
+        const library = await openAndBuild(LIB_PATH);
+        const send = vi.spyOn(privates, 'sendDiagnosticsToClient').mockImplementation(() => { });
+        closeEditor(LIB_PATH);
+        send.mockClear();
+
+        const stale: Diagnostic = {
+            message: 'stale compiler result',
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            severity: 1
+        };
+        await privates.publishCycleDiagnostics(library, [stale]);
+
+        expect(send).not.toHaveBeenCalled();
+        expect(library.diagnostics ?? []).toEqual([]);
+    });
+
+    test('rebuilds the document from disk as an unvalidated library document', async () => {
+        const diskText = files.get(LIB_PATH)!;
+        const library = await openAndBuild(LIB_PATH, `${diskText}BEGIN EXCEPT 1\n`);
+        expect(library.textDocument.getText()).toContain('BEGIN EXCEPT 1');
+        const update = vi.spyOn(services.shared.workspace.DocumentBuilder, 'update');
+
+        closeEditor(LIB_PATH);
+        notifyClosed(LIB_PATH);
+
+        await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+        await update.mock.results[0].value;
+        const [changed, deleted] = update.mock.calls[0];
+        expect(changed.map(u => u.toString())).toEqual([uriOf(LIB_PATH).toString()]);
+        expect(deleted).toEqual([]);
+
+        const documents = services.shared.workspace.LangiumDocuments;
+        expect(documents.getDocument(uriOf(LIB_PATH))).toBe(library);
+        expect(library.textDocument.getText()).toBe(diskText);
+        expect(library.diagnostics ?? []).toEqual([]);
+        expect(library.state).toBe(DocumentState.Validated);
+        expect(documents.all.filter(doc => doc.uri.toString() === uriOf(LIB_PATH).toString()).toArray()).toHaveLength(1);
+    });
+
+    test('leaves a document outside the PREFIX alone', async () => {
+        await openAndBuild(OTHER_PATH);
+        const update = vi.spyOn(services.shared.workspace.DocumentBuilder, 'update');
+
+        closeEditor(OTHER_PATH);
+        notifyClosed(OTHER_PATH);
+        // Let any chained work that would have called update run.
+        await services.shared.workspace.WorkspaceManager.ready;
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(update).not.toHaveBeenCalled();
+    });
+
+    test('removes the document when the PREFIX file no longer exists, without an unhandled rejection', async () => {
+        await openAndBuild(LIB_PATH);
+        const update = vi.spyOn(services.shared.workspace.DocumentBuilder, 'update');
+        const unhandled = vi.fn();
+        process.on('unhandledRejection', unhandled);
+        try {
+            closeEditor(LIB_PATH);
+            files.delete(LIB_PATH);
+            notifyClosed(LIB_PATH);
+
+            await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+            await update.mock.results[0].value;
+            const [changed, deleted] = update.mock.calls[0];
+            expect(changed).toEqual([]);
+            expect(deleted.map(u => u.toString())).toEqual([uriOf(LIB_PATH).toString()]);
+            expect(services.shared.workspace.LangiumDocuments.hasDocument(uriOf(LIB_PATH))).toBe(false);
+            await new Promise(resolve => setImmediate(resolve));
+            expect(unhandled).not.toHaveBeenCalled();
+        } finally {
+            process.off('unhandledRejection', unhandled);
+        }
+    });
+
+    test('logs and swallows a failing rebuild instead of rejecting', async () => {
+        await openAndBuild(LIB_PATH);
+        const boom = vi.spyOn(services.shared.workspace.DocumentBuilder, 'update').mockRejectedValue(new Error('rebuild boom'));
+        const unhandled = vi.fn();
+        process.on('unhandledRejection', unhandled);
+        try {
+            closeEditor(LIB_PATH);
+            notifyClosed(LIB_PATH);
+
+            await vi.waitFor(() => expect(boom).toHaveBeenCalledTimes(1));
+            await new Promise(resolve => setImmediate(resolve));
+            expect(unhandled).not.toHaveBeenCalled();
+        } finally {
+            process.off('unhandledRejection', unhandled);
+        }
+    });
+});
+
+describe('a workspace file that USEs a PREFIX file', () => {
+    const MAIN_URI = 'file:///virtual/project/main.bbj';
+    const unresolved = (document: LangiumDocument): string[] =>
+        messages(document.diagnostics).filter(m => /could not be resolved/i.test(m));
+
+    test('resolves it while the PREFIX file is open, without loading it a second time', async () => {
+        const library = await openAndBuild(LIB_PATH);
+        expect(messages(library.diagnostics)).toContain(ERROR_MESSAGE);
+
+        const parse = parseHelper<Model>(services.BBj);
+        const main = await parse('use ::Lib.bbj::Lib\nx = new Lib()\n', { documentUri: MAIN_URI, validation: true });
+
+        const documents = services.shared.workspace.LangiumDocuments;
+        expect(unresolved(main)).toEqual([]);
+        expect(documents.getDocument(uriOf(LIB_PATH))).toBe(library);
+        expect(documents.all.filter(doc => doc.uri.toString() === uriOf(LIB_PATH).toString()).toArray()).toHaveLength(1);
+        expect(messages(library.diagnostics)).toContain(ERROR_MESSAGE);
+    });
+
+    test('still resolves it after the PREFIX file was closed and rebuilt as a library file', async () => {
+        const library = await openAndBuild(LIB_PATH);
+        const mainText = 'use ::Lib.bbj::Lib\nx = new Lib()\n';
+        files.set(uriOf('/virtual/project/main.bbj').fsPath, mainText);
+        const parse = parseHelper<Model>(services.BBj);
+        const main = await parse(mainText, { documentUri: MAIN_URI, validation: true });
+
+        const update = vi.spyOn(services.shared.workspace.DocumentBuilder, 'update');
+        textDocuments.delete(uriOf(LIB_PATH).toString());
+        (services.shared.lsp.DocumentUpdateHandler as BBjDocumentUpdateHandler).didCloseDocument({
+            document: TextDocument.create(uriOf(LIB_PATH).toString(), 'bbj', 1, LIB_TEXT)
+        });
+        await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+        await update.mock.results[0].value;
+        expect(library.diagnostics ?? []).toEqual([]);
+
+        await services.shared.workspace.DocumentBuilder.update([main.uri], []);
+
+        const rebuiltMain = services.shared.workspace.LangiumDocuments.getDocument(main.uri)!;
+        expect(unresolved(rebuiltMain)).toEqual([]);
     });
 });

@@ -32,6 +32,8 @@ import {
 import {
     clearAllContentChanges,
     clearAllKeptChecks,
+    clearContentChanges,
+    clearKeptCheck,
     contentChangesSince,
     pruneContentChangesThrough,
     setKeptCheck,
@@ -258,13 +260,49 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             }
             // Forgets the closed document's last-saved-version record -- a later reopen of the
             // same uri (a different file, or the same file edited outside this editor) must not
-            // find a stale record from a previous editing session.
+            // find a stale record from a previous editing session. A closed PREFIX document also
+            // gives up everything that made it a fully supported document -- see
+            // {@link releaseClosedLibraryDocument}.
             if (typeof textDocuments.onDidClose === 'function') {
                 textDocuments.onDidClose(event => {
-                    this.lastSavedVersion.delete(UriUtils.normalize(URI.parse(event.document.uri)));
+                    const uri = URI.parse(event.document.uri);
+                    this.lastSavedVersion.delete(UriUtils.normalize(uri));
+                    try {
+                        this.releaseClosedLibraryDocument(uri);
+                    } catch (e) {
+                        logger.error(`Releasing the closed document failed for ${event.document.uri}: ${e instanceof Error ? e.message : String(e)}`);
+                    }
                 });
             }
         }
+    }
+
+    /**
+     * Called when the editor for `uri` closes. A PREFIX document stops being fully supported at
+     * that moment: its pending compiler cycle is cancelled, its verdict, kept-check and change
+     * state are dropped, and its diagnostics are emptied and published empty -- Langium publishes
+     * nothing on a close by itself, so without this the last diagnostics would stay in the
+     * client's problems view. The rebuild that turns the document back into an unvalidated
+     * library document is queued by the update handler's `didCloseDocument`. Any other document
+     * keeps its diagnostics when its editor closes, exactly as before.
+     */
+    private releaseClosedLibraryDocument(uri: URI): void {
+        const wsManager = this.wsManager();
+        if (!(wsManager instanceof BBjWorkspaceManager) || !wsManager.isExternalDocument(uri)) return;
+        const document = this.langiumDocuments.getDocument(uri);
+        if (!document) return;
+
+        const key = document.uri.fsPath;
+        const timer = this.cplDebounceTimers.get(key);
+        if (timer) {
+            clearTimeout(timer);
+            this.cplDebounceTimers.delete(key);
+        }
+        clearVerdictState(document.uri);
+        clearKeptCheck(document.uri);
+        clearContentChanges(document.uri);
+        document.diagnostics = [];
+        this.sendDiagnosticsToClient(document.uri, []);
     }
 
     /**
@@ -989,8 +1027,13 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * validates; and firing the Validated phase would resolve every `waitUntil(Validated, uri)`
      * waiter for this uri (code actions, among others) against a document that was never actually
      * validated. Sends straight to the client instead.
+     *
+     * A PREFIX document whose editor has closed publishes nothing: a cycle that was already in
+     * flight when the close happened must not bring back the diagnostics the close just cleared.
      */
     private async publishCycleDiagnostics(document: LangiumDocument, diagnostics: Diagnostic[]): Promise<void> {
+        const wsManager = this.wsManager();
+        if (wsManager instanceof BBjWorkspaceManager && wsManager.isClosedLibraryDocument(document.uri, this.textDocuments)) return;
         if (document.state >= DocumentState.Validated) {
             document.diagnostics = diagnostics;
             await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);

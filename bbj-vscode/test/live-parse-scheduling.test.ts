@@ -213,13 +213,26 @@ describe('live-parse scheduling', () => {
         expect(builder.hasPendingCompile()).toBe(false);
     });
 
-    test('a change event for a non-file: uri, and for a document under a configured PREFIX directory, arms nothing', async () => {
+    test('a change event for a non-file: uri arms nothing', async () => {
         const { shared, builder, interopService, textDocuments } = createHarness();
         const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
 
         const nonFileUri = URI.parse('untitled:/scratch.bbj');
         const nonFileText = 'x = 1\n';
         addWorkspaceDocument(shared, nonFileUri, nonFileText);
+
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        openOrChange(textDocuments, nonFileUri.toString(), 1, nonFileText);
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(parseProgramSpy).not.toHaveBeenCalled();
+        expect(builder.hasPendingCompile()).toBe(false);
+    });
+
+    test('a document under a configured PREFIX directory is live-parsed once it is open', async () => {
+        const { shared, builder, interopService, textDocuments } = createHarness();
+        interopService.scriptParseProgram({ errors: [] });
+        const parseProgramSpy = vi.spyOn(interopService, 'parseProgram');
 
         const wsManagerSettings = shared.workspace.WorkspaceManager as unknown as {
             settings: { prefixes: string[]; classpath: string[] };
@@ -230,12 +243,11 @@ describe('live-parse scheduling', () => {
         addWorkspaceDocument(shared, externalUri, externalText);
 
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-        openOrChange(textDocuments, nonFileUri.toString(), 1, nonFileText);
         openOrChange(textDocuments, externalUri.toString(), 1, externalText);
+        expect(builder.hasPendingCompile()).toBe(true);
         await vi.advanceTimersByTimeAsync(600);
 
-        expect(parseProgramSpy).not.toHaveBeenCalled();
-        expect(builder.hasPendingCompile()).toBe(false);
+        expect(parseProgramSpy).toHaveBeenCalledTimes(1);
     });
 
     test('a change event followed within 500 ms by a rebuild-driven trigger produces exactly one parse request', async () => {
