@@ -355,8 +355,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             return false;
         }
         if (this.wsManager() instanceof BBjWorkspaceManager) {
+            // A PREFIX file is a closed library document only while it is not open in an editor;
+            // an open one is validated like any workspace document.
             const validate = super.shouldValidate(_document)
-                && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
+                && !(this.wsManager() as BBjWorkspaceManager).isClosedLibraryDocument(_document.uri, this.textDocuments)
             if (!validate) {
                 // mark as validated to avoid rebuilding
                 _document.state = DocumentState.Validated;
@@ -477,8 +479,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * Determine whether a document should be compiled with BBjCPL.
-     * Only compile real .bbj files that are open in an editor — skip synthetic,
-     * external, and non-file documents.
+     * Only compile real .bbj files that are open in an editor — skip synthetic and
+     * non-file documents. A PREFIX-resolved document is skipped only while it is not
+     * open; once it is open it is compiled like any other file.
      *
      * The open-editor gate mirrors when Langium itself validates (initial workspace
      * builds run without the validation option): without it, workspace initialization
@@ -492,9 +495,9 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         if (document.uri.scheme !== 'file') return false;
         // Skip the Java synthetic classpath document
         if (document.uri.toString() === JavaSyntheticDocUri) return false;
-        // Skip external PREFIX-resolved documents
+        // Skip PREFIX-resolved documents that are not open in an editor
         if (this.wsManager() instanceof BBjWorkspaceManager) {
-            if ((this.wsManager() as BBjWorkspaceManager).isExternalDocument(document.uri)) {
+            if ((this.wsManager() as BBjWorkspaceManager).isClosedLibraryDocument(document.uri, this.textDocuments)) {
                 return false;
             }
         }
@@ -1205,7 +1208,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         }
 
         for (const document of documents) {
-            if (bbjWsManager.isExternalDocument(document.uri)) continue;
+            if (bbjWsManager.isClosedLibraryDocument(document.uri, this.textDocuments)) continue;
             if (!document.diagnostics?.length) continue;
 
             // Lifted into a named predicate (not just applied inline to document.diagnostics
