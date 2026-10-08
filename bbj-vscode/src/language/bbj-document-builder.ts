@@ -11,6 +11,7 @@ import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
 import { normalize, join } from "path";
 import { containedPrefixCandidates } from "./path-containment.js";
+import { programPathCandidates } from "./program-path-resolution.js";
 import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
@@ -1172,6 +1173,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // against are ever opened (issue #526) -- a `..` escape or an absolute path
                 // outside every root is skipped without a read, and resolution continues
                 // with the next prefix exactly as a not-found candidate would.
+                // The working-directory candidate is not loaded here: workspace files are
+                // already indexed by the workspace traversal.
                 const candidates = containedPrefixCandidates(prefixes, importPath);
                 if (candidates.length < prefixes.length) {
                     logger.debug(`Skipped ${prefixes.length - candidates.length} PREFIX candidate(s) outside their root for USE path: ${importPath}`);
@@ -1276,13 +1279,14 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 }
                 const cleanPath = pathMatch[1];
 
-                // Build candidate URIs (same logic as checkUsedClassExists). Only PREFIX
-                // candidates that lie inside their root are offered (issue #526), so this
-                // revalidation agrees with the scope and the validator.
-                const adjustedFileUris = [
-                    UriUtils.resolvePath(UriUtils.dirname(document.uri), cleanPath)
-                ].concat(
-                    containedPrefixCandidates(prefixes, cleanPath).map(p => URI.file(p))
+                // Same candidates as the scope provider and the validator (working directory,
+                // then PREFIX; see program-path-resolution.ts), so this revalidation never
+                // drops a diagnostic for a path the validator rejects.
+                const adjustedFileUris = programPathCandidates(
+                    cleanPath,
+                    document.uri,
+                    bbjWsManager.getWorkspaceFolderUris(),
+                    prefixes
                 );
 
                 // Check if any BbjClass now exists at these URIs, via the Map built once

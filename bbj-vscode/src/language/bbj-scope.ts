@@ -16,9 +16,7 @@ import {
     GrammarUtils,
     IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
-    StreamScope,
-    URI,
-    UriUtils
+    StreamScope
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
 import { isBbjDocument, isJavaDocument } from './bbj-scope-local.js';
@@ -53,7 +51,7 @@ import {
 import { JavaInteropService, JAVA_PRIMITIVE_TYPE_NAMES } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import type { BBjIndexManager } from './bbj-index-manager.js';
-import { containedPrefixCandidates } from './path-containment.js';
+import { programPathCandidates } from './program-path-resolution.js';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
 
@@ -329,15 +327,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     private getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean) {
         const currentDocUri = AstUtils.getDocument(container).uri;
-        const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
-        const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
-        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)]
-            // Resolve relative to each workspace/project root too (#378), so a USE from a
-            // subfolder can reference files by their project-root-relative path.
-            .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, bbjFilePath)))
-            // Only PREFIX candidates that lie inside the root they were resolved against are
-            // offered (issue #526); the two candidate groups above are unaffected.
-            .concat(containedPrefixCandidates(prefixes, bbjFilePath).map(p => URI.file(p)));
+        // Working directory first, then PREFIX (#378, #526); see program-path-resolution.ts.
+        const adjustedFileUris = programPathCandidates(
+            bbjFilePath,
+            currentDocUri,
+            this.workspaceManager.getWorkspaceFolderUris(),
+            this.workspaceManager.getSettings()?.prefixes ?? []
+        );
         let bbjClasses = stream((this.indexManager as BBjIndexManager).getBBjClassesForFiles(adjustedFileUris));
         if (!simpleName) {
             bbjClasses = bbjClasses.map(d => {
