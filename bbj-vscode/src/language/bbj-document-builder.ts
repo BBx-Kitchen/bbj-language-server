@@ -6,9 +6,10 @@ import type { Connection, Diagnostic, Event, TextDocumentChangeEvent } from 'vsc
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
-import { Use, isUse, BbjClass } from "./generated/ast.js";
+import { pathKeyOf } from "./bbj-index-manager.js";
+import { Use, isUse, isProgram, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
-import { BBjPathPattern } from "./bbj-scope.js";
+import { BBjPathPattern, collectAllUseStatements } from "./bbj-scope.js";
 import { normalize, join } from "path";
 import { containedPrefixCandidates } from "./path-containment.js";
 import { accessSync } from "fs";
@@ -1124,7 +1125,86 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // actually affected by a changed URI (i.e., one of its resolved
         // dependencies changed). This avoids relinking 25+ documents on
         // every keystroke just because they have some unresolvable references.
-        return this.indexManager.isAffected(document, changedUris);
+        if (this.indexManager.isAffected(document, changedUris)) {
+            return true;
+        }
+        return this.unresolvedFileTargetChanged(document, changedUris);
+    }
+
+    /**
+     * True when `document` has an unresolved reference and a file it names in a USE
+     * statement has a candidate location among the changed documents. The unresolved
+     * USE never produced a dependency on that file, so `isAffected` cannot see it.
+     * Path-based on purpose: the changed documents are not re-indexed yet when
+     * Langium asks, so their new exports are unknown.
+     */
+    private unresolvedFileTargetChanged(document: LangiumDocument, changedUris: Set<string>): boolean {
+        if (document.uri.toString() === JavaSyntheticDocUri || document.uri.scheme === 'bbjlib') {
+            return false;
+        }
+        const wsManager = this.wsManager();
+        if (wsManager instanceof BBjWorkspaceManager && wsManager.isClosedLibraryDocument(document.uri, this.textDocuments)) {
+            return false;
+        }
+        if (!document.references.some(ref => ref.error !== undefined)) {
+            return false;
+        }
+        const namedPaths = new Set<string>();
+        const root = document.parseResult.value;
+        if (isProgram(root)) {
+            for (const use of collectAllUseStatements(root)) {
+                const match = use.bbjFilePath?.match(BBjPathPattern);
+                if (match) {
+                    namedPaths.add(match[1]);
+                }
+            }
+        }
+        if (namedPaths.size === 0) {
+            return false;
+        }
+        const changedKeys = this.changedPathKeys(changedUris);
+        for (const path of namedPaths) {
+            for (const candidate of this.candidateLocations(document.uri, path)) {
+                if (changedKeys.has(pathKeyOf(candidate))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Path keys of the changed URIs, computed once per update (Langium passes one Set per update). */
+    private changedPathKeysCache: { source: Set<string>; keys: Set<string> } | undefined;
+
+    private changedPathKeys(changedUris: Set<string>): Set<string> {
+        if (this.changedPathKeysCache?.source !== changedUris) {
+            const keys = new Set<string>();
+            for (const changed of changedUris) {
+                keys.add(pathKeyOf(URI.parse(changed)));
+            }
+            this.changedPathKeysCache = { source: changedUris, keys };
+        }
+        return this.changedPathKeysCache.keys;
+    }
+
+    /**
+     * Every location a USE path could point at from `documentUri`: the document's own
+     * directory, each workspace root, and each contained PREFIX candidate. Strings only,
+     * nothing is read or stat'ed.
+     */
+    private candidateLocations(documentUri: URI, path: string): URI[] {
+        const locations = [UriUtils.resolvePath(UriUtils.dirname(documentUri), path)];
+        const wsManager = this.wsManager();
+        if (wsManager instanceof BBjWorkspaceManager) {
+            for (const root of wsManager.getWorkspaceFolderUris()) {
+                locations.push(UriUtils.resolvePath(root, path));
+            }
+            const prefixes = wsManager.getSettings()?.prefixes ?? [];
+            for (const candidate of containedPrefixCandidates(prefixes, path)) {
+                locations.push(URI.file(candidate));
+            }
+        }
+        return locations;
     }
 
     async addImportedBBjDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken) {
