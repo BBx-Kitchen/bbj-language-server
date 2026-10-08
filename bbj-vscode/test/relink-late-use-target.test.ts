@@ -202,3 +202,35 @@ describe('a document that names a different missing file', () => {
         expect(AstUtils.streamAllContents(after.parseResult.value).count()).toBeGreaterThan(0);
     });
 });
+
+describe('editing the USE statements of an open program', () => {
+    const progWithUse = (path: string) => PROG_TEXT.replace('::lib/OtherClass.bbj::', `::${path}::`);
+
+    /** Applies an editor change to an already open document and rebuilds it, as on didChange. */
+    async function editAndBuild(path: string, text: string, version: number): Promise<LangiumDocument> {
+        textDocuments.set(TextDocument.create(uriOf(path).toString(), 'bbj', version, text));
+        await builder.update([uriOf(path)], []);
+        return services.shared.workspace.LangiumDocuments.getDocument(uriOf(path))!;
+    }
+
+    test('correcting the USE path links the bare class name without a reload', async () => {
+        await appearOnDisk(OTHER_PATH, classText('OtherClass'));
+        const prog = await openAndBuild(PROG_PATH, progWithUse('lib/OtherClas.bbj'));
+        expect(erroringRefTexts(prog)).toContain('OtherClass');
+
+        const after = await editAndBuild(PROG_PATH, progWithUse('lib/OtherClass.bbj'), 2);
+
+        expect(erroringRefTexts(after)).toEqual([]);
+        expect(linkingDiagnostics(after)).toEqual([]);
+    });
+
+    test('removing the USE statement unlinks the bare class name', async () => {
+        await appearOnDisk(OTHER_PATH, classText('OtherClass'));
+        const prog = await openAndBuild(PROG_PATH, PROG_TEXT);
+        expect(erroringRefTexts(prog)).toEqual([]);
+
+        const after = await editAndBuild(PROG_PATH, PROG_TEXT.replace('use ::lib/OtherClass.bbj::OtherClass\n', ''), 2);
+
+        expect(erroringRefTexts(after)).toContain('OtherClass');
+    });
+});

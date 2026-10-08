@@ -171,6 +171,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
         if (isProgram(rootNode)) {
             // Cache USE statements. They are used frequently during scope resolution.
+            // Drop the previous parse's cache first: collectAllUseStatements returns it when set,
+            // which would keep the old USE nodes after the document was edited.
+            (document as BbjDocument).cachedUseStatements = undefined;
             (document as BbjDocument).cachedUseStatements = collectAllUseStatements(rootNode);
         }
 
