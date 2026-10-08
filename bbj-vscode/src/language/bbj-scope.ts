@@ -55,7 +55,7 @@ import { programPathCandidates } from './program-path-resolution.js';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
 
-const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
+export const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
 const MAX_INHERITANCE_DEPTH = 20;
 

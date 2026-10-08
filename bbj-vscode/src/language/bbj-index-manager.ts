@@ -10,7 +10,7 @@ import { BbjClass } from "./generated/ast.js";
  * normalization `getBBjClassesFromFile` used before this index existed, so a lookup
  * against `bbjClassesByPath` returns the same documents the old full scan would have.
  */
-function pathKeyOf(uri: URI): string {
+export function pathKeyOf(uri: URI): string {
     return normalize(uri.fsPath).toLowerCase();
 }
 
