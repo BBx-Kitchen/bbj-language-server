@@ -9,6 +9,8 @@ The BBj Language Support plugin for IntelliJ IDEA provides commands for running,
 
 ## Run Commands
 
+All three run commands start BBj with the project base directory as the working directory, or with the program's own folder when it lies outside the project. BUI and DWC register the web app with that working directory. The language server resolves relative `use ::path::Class` references and RUN/CALL program names the same way BBj does: the working directory first, then each PREFIX directory. A program in `subdir/` therefore refers to a file next to it as `::subdir/OtherClass.bbj::`, and `::OtherClass.bbj::` is flagged.
+
 ### Run As BBj Program (Alt+G)
 
 Runs the current BBj file as a GUI (desktop) application.

@@ -11,10 +11,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { NO_ACTIVE_BBJ_FILE_MESSAGE } from '../src/Commands/target-resolution.js';
+import { runWorkingDir } from '../src/Commands/process-args.js';
 import type { Argv } from '../src/Commands/process-args.js';
 import type { ProcessError } from '../src/Commands/process-runner.js';
 import {
@@ -981,5 +983,71 @@ describe('Commands.cjs openEnterpriseManager / openPropertiesFile', () => {
         expect(fakeVscode.window.showErrorMessage).toHaveBeenCalledWith(
             expect.stringContaining('com.basis.jetty.host/com.basis.jetty.port')
         );
+    });
+});
+
+describe('Commands.cjs working directory', () => {
+    beforeEach(() => {
+        resetCommandsHarness();
+        setFakeSettings(DEFAULT_TEST_SETTINGS);
+    });
+
+    test('runWorkingDir prefers the containing workspace folder and falls back to the file directory', () => {
+        expect(runWorkingDir('/w/sub/a.bbj', '/w')).toBe('/w');
+        expect(runWorkingDir('/w/sub/a.bbj', undefined)).toBe('/w/sub');
+        expect(runWorkingDir('/w/sub/a.bbj', '')).toBe('/w/sub');
+        expect(runWorkingDir('/w/sub/a.bbj', null)).toBe('/w/sub');
+    });
+
+    test('Commands.run uses the workspace folder that contains the file as the working directory', () => {
+        const { Commands, configPathCache } = loadCommands();
+        configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
+        (fakeVscode.workspace.getWorkspaceFolder as Mock).mockImplementation(() => ({ uri: { fsPath: '/w' } }));
+
+        Commands.run({ fsPath: '/w/sub/a.bbj' });
+
+        const [argv] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        expect(argv.args).toContain('-WD/w');
+        expect(argv.args.at(-1)).toBe('/w/sub/a.bbj');
+    });
+
+    test('Commands.run falls back to the file directory when no workspace folder contains the file', () => {
+        const { Commands, configPathCache } = loadCommands();
+        configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
+
+        Commands.run({ fsPath: '/w/sub/a.bbj' });
+
+        const [argv] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        expect(argv.args).toContain('-WD/w/sub');
+    });
+
+    test('Commands.runBUI registers the app with the project root and the absolute program path', () => {
+        const { Commands, configPathCache } = loadCommands();
+        configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
+        (fakeVscode.workspace.getWorkspaceFolder as Mock).mockImplementation(() => ({ uri: { fsPath: '/w' } }));
+
+        Commands.runBUI({ fsPath: '/w/sub/a.bbj' }, { username: '__token__', password: 'tok-123' });
+
+        const [argv] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        const i = argv.args.indexOf('BUI');
+        expect(argv.args[i + 1]).toBe('a');
+        expect(argv.args[i + 2]).toBe('/w/sub/a.bbj');
+        expect(argv.args[i + 3]).toBe('/w');
+        // The runner's own working directory (the tools directory) is unaffected.
+        expect(argv.args[1]).toMatch(/^-WD.*tools$/);
+        expect(argv.args[1]).not.toBe('-WD/w');
+    });
+
+    test('Commands.runDWC falls back to the file directory when no workspace folder contains the file', () => {
+        const { Commands, configPathCache } = loadCommands();
+        configPathCache.setResolvedConfigPath({ path: '/cfg/config.bbx', exists: true });
+
+        Commands.runDWC({ fsPath: '/w/sub/a.bbj' }, { username: 'jdoe', password: 'pw' });
+
+        const [argv] = fakeProcessRunner.runProcessCallback.mock.calls[0];
+        const i = argv.args.indexOf('DWC');
+        expect(argv.args[i + 1]).toBe('a');
+        expect(argv.args[i + 2]).toBe('/w/sub/a.bbj');
+        expect(argv.args[i + 3]).toBe('/w/sub');
     });
 });

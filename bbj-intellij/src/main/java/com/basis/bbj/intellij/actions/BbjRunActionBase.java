@@ -314,8 +314,8 @@ public abstract class BbjRunActionBase extends AnAction {
 
     /**
      * Shared body for the BUI and DWC web-run actions: resolves the BBj executable and bundled
-     * web.bbj runner, derives the file's name/programme/working directory, acquires and validates
-     * an EM login token (prompting/re-prompting as needed), resolves the classpath and config
+     * web.bbj runner, derives the file's name, programme (absolute path) and working directory,
+     * acquires and validates an EM login token (prompting/re-prompting as needed), resolves the classpath and config
      * path, and assembles the command line that spawns {@code bbj -q -WD<webRunnerDir>
      * <webBbjPath> - <clientType> <name> <programme> <workingDir> <classpath> [<configPath>]}
      * with the token traveling on the environment ({@link BbjProcessSecretEnv}), never as a
@@ -351,16 +351,20 @@ public abstract class BbjRunActionBase extends AnAction {
             ? fileName.substring(0, fileName.lastIndexOf('.'))
             : fileName;
 
-        // Programme is the filename only (basename)
-        String programme = fileName;
+        // Programme is the program's absolute path (the value the GUI run executes): the working
+        // directory is the project base directory, so a bare file name would not be found for a
+        // program in a subfolder. The app name above still comes from the file's base name.
+        String programme = file.getPath();
 
-        // Working directory is the file's parent directory
+        // Working directory is the project base directory, or the file's own directory when the
+        // file lies outside the project
         VirtualFile parent = file.getParent();
-        if (parent == null) {
+        String workingDir = RunWorkingDirectory.forFile(
+            project.getBasePath(), file.getPath(), parent != null ? parent.getPath() : null);
+        if (workingDir == null) {
             logError(project, "Cannot determine working directory for " + file.getName());
             return null;
         }
-        String workingDir = parent.getPath();
 
         // Get token from PasswordSafe, auto-prompt login if not stored
         String token = BbjEMTokenStore.getToken();
