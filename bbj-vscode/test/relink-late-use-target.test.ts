@@ -2,7 +2,7 @@ import { AstUtils, DocumentState, URI } from 'langium';
 import type { FileSystemNode, FileSystemProvider, LangiumDocument } from 'langium';
 import type { NormalizedTextDocuments } from 'langium/lsp';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import type { WorkspaceFolder } from 'vscode-languageserver';
+import { Diagnostic, type WorkspaceFolder } from 'vscode-languageserver';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { BBjDocumentBuilder } from '../src/language/bbj-document-builder.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
@@ -123,8 +123,9 @@ function erroringRefTexts(document: LangiumDocument): string[] {
 
 function linkingDiagnostics(document: LangiumDocument): string[] {
     return (document.diagnostics ?? [])
+        .map(d => ({ line: d.range.start.line, message: Diagnostic.getMessageString(d) }))
         .filter(d => /resolve reference|could not be resolved/i.test(d.message))
-        .map(d => `${d.range.start.line}: ${d.message}`);
+        .map(d => `${d.line}: ${d.message}`);
 }
 
 function wasValidated(path: string): boolean {
@@ -167,6 +168,21 @@ describe('a USE target that first exists without the class', () => {
         expect(erroringRefTexts(after)).toEqual([]);
         expect(linkingDiagnostics(after)).toEqual([]);
         expect(wasValidated(PROG_PATH)).toBe(true);
+    });
+});
+
+describe('an inline file-qualified class reference', () => {
+    test('relinks and revalidates once the named file appears', async () => {
+        const decl = await openAndBuild(DECLARE_PATH, DECLARE_TEXT);
+        const broken = erroringRefTexts(decl);
+        expect(broken.some(text => text.startsWith('::lib/OtherClass.bbj::'))).toBe(true);
+        validated.length = 0;
+
+        await appearOnDisk(OTHER_PATH, classText('OtherClass'));
+
+        const after = services.shared.workspace.LangiumDocuments.getDocument(uriOf(DECLARE_PATH))!;
+        expect(erroringRefTexts(after)).toEqual([]);
+        expect(wasValidated(DECLARE_PATH)).toBe(true);
     });
 });
 

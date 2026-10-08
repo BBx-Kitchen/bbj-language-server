@@ -9,7 +9,7 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { pathKeyOf } from "./bbj-index-manager.js";
 import { Use, isUse, isProgram, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
-import { BBjPathPattern, collectAllUseStatements } from "./bbj-scope.js";
+import { BBjClassNamePattern, BBjPathPattern, collectAllUseStatements } from "./bbj-scope.js";
 import { normalize, join } from "path";
 import { containedPrefixCandidates } from "./path-containment.js";
 import { accessSync } from "fs";
@@ -1104,13 +1104,32 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * change, which causes a cascading rebuild loop when combined with
      * transitive USE import resolution.
      *
-     * However, during the import flow (isImportingBBjDocuments), we restore
-     * the default behavior of relinking documents with unresolved references.
-     * This is necessary because when new external documents are loaded via
-     * addImportedBBjDocuments, existing documents may have unresolved
-     * references (e.g., extends clauses, field accesses) that can now be
-     * resolved with the newly available documents. The isImportingBBjDocuments
-     * flag already prevents infinite loops by blocking recursive imports.
+     * A document is relinked when any of these holds, checked in this order:
+     *
+     * 1. The import flow is running (isImportingBBjDocuments). Documents with
+     *    unresolved references are relinked, because when new external documents
+     *    are loaded via addImportedBBjDocuments, existing documents may have
+     *    unresolved references (e.g., extends clauses, field accesses) that can
+     *    now be resolved. The flag already prevents infinite loops by blocking
+     *    recursive imports.
+     * 2. The document is affected by a changed URI, i.e. one of its resolved
+     *    dependencies changed (indexManager.isAffected).
+     * 3. The document has an unresolved reference and names a changed file, in a
+     *    USE statement or in a `::path::Class` reference. Such a document has no
+     *    resolved dependency on that file, so condition 2 cannot see it; this is
+     *    the program that was linked before its USE target was indexed.
+     *
+     * Condition 3 keeps the per-keystroke intent. Typing in a document puts that
+     * document in the changed set, so Langium skips it. A document whose USE of
+     * the changed file resolved is already relinked through condition 2. What
+     * condition 3 adds are only documents with a linking error that name the
+     * changed file and could not resolve it, which are exactly the stale ones --
+     * not every document that merely has some unresolvable reference.
+     *
+     * The candidate locations in condition 3 are deliberately a superset of the
+     * scope provider's (document directory, every workspace root, contained PREFIX
+     * candidates): an over-match costs one extra relink, an under-match leaves
+     * stale errors behind.
      */
     protected override shouldRelink(document: LangiumDocument, changedUris: Set<string>): boolean {
         // During import resolution, also relink documents that have unresolved
@@ -1132,9 +1151,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
-     * True when `document` has an unresolved reference and a file it names in a USE
-     * statement has a candidate location among the changed documents. The unresolved
-     * USE never produced a dependency on that file, so `isAffected` cannot see it.
+     * True when `document` has an unresolved reference and a file it names -- in a USE
+     * statement or in an inline `::path::Class` reference -- has a candidate location
+     * among the changed documents. Every BBj-class reference that can bind to another
+     * file's classes names that file explicitly (bare names resolve through the USE
+     * list), so a file-path match is complete for BBj class targets.
      * Path-based on purpose: the changed documents are not re-indexed yet when
      * Langium asks, so their new exports are unknown.
      */
@@ -1146,10 +1167,24 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         if (wsManager instanceof BBjWorkspaceManager && wsManager.isClosedLibraryDocument(document.uri, this.textDocuments)) {
             return false;
         }
-        if (!document.references.some(ref => ref.error !== undefined)) {
+        const erroring = document.references.filter(ref => ref.error !== undefined);
+        if (erroring.length === 0) {
             return false;
         }
         const namedPaths = new Set<string>();
+        for (const ref of erroring) {
+            const qualified = ref.$refText?.match(BBjClassNamePattern);
+            if (qualified) {
+                namedPaths.add(qualified[1]);
+            }
+            const container = ref.$refNode?.astNode;
+            if (container && isUse(container) && container.bbjFilePath) {
+                const match = container.bbjFilePath.match(BBjPathPattern);
+                if (match) {
+                    namedPaths.add(match[1]);
+                }
+            }
+        }
         const root = document.parseResult.value;
         if (isProgram(root)) {
             for (const use of collectAllUseStatements(root)) {

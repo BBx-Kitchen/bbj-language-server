@@ -90,6 +90,17 @@ describe('rebuild guards (#232)', () => {
         expect(internals.shouldRelink(consumer, new Set([PROVIDER_URI.toString()]))).toBe(true);
     });
 
+    test('a document with an unresolved USE is relinked when the file it names changes', () => {
+        const missing = (path: string) => new Set([URI.file(path).toString()]);
+        // The file the USE names, at the workspace-root candidate location.
+        expect(internals.shouldRelink(broken, missing('/root/lib/Missing.bbj'))).toBe(true);
+        // Same case-insensitive path key the BBj class index uses.
+        expect(internals.shouldRelink(broken, missing('/root/LIB/missing.bbj'))).toBe(true);
+        // Same file name in a directory the USE cannot resolve to.
+        expect(internals.shouldRelink(broken, missing('/root/other/Missing.bbj'))).toBe(false);
+        expect(internals.shouldRelink(broken, new Set([UNRELATED_URI.toString()]))).toBe(false);
+    });
+
     test('during import resolution, documents with unresolved references are relinked again', () => {
         // Newly loaded USE targets can resolve what was previously broken, so inside the
         // import flow the default behaviour is deliberately restored.
