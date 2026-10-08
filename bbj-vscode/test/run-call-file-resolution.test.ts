@@ -8,8 +8,10 @@ import { Model } from '../src/language/generated/ast.js';
 
 /**
  * Issue #173: filenames in RUN and CALL that are given as static string literals should be flagged
- * when they cannot be resolved relative to the current file's directory, a workspace/project root,
- * or a PREFIX directory. Dynamic targets (concatenations/variables) must not be flagged.
+ * when they cannot be resolved the way BBj resolves them: against the working directory (the
+ * workspace/project root that contains the file) and then each PREFIX directory. A name that is
+ * only present next to the calling file is therefore flagged, while the root-relative path is
+ * not. Dynamic targets (concatenations/variables) must not be flagged.
  */
 
 function fileNotResolvedWarnings(doc: LangiumDocument) {
@@ -40,9 +42,19 @@ describe('RUN/CALL file resolution (#173)', () => {
         expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');
     });
 
-    test('CALL target resolving against the current file directory produces no warning', async () => {
+    test('CALL target that only exists next to the calling file is flagged', async () => {
         const doc = await parse(`CALL "helper.bbj"`, {
             documentUri: URI.file('/root/app/main-samedir.bbj').toString(),
+            validation: true,
+        });
+        const warnings = fileNotResolvedWarnings(doc);
+        expect(warnings).toHaveLength(1);
+        expect(Diagnostic.getMessageString(warnings[0])).toContain("'helper.bbj'");
+    });
+
+    test('CALL target given relative to the project root produces no warning', async () => {
+        const doc = await parse(`CALL "app/helper.bbj"`, {
+            documentUri: URI.file('/root/app/main-rootrel.bbj').toString(),
             validation: true,
         });
         expect(fileNotResolvedWarnings(doc).map(d => Diagnostic.getMessageString(d)).join('\n')).toBe('');

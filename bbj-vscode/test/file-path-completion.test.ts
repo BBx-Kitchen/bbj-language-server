@@ -295,6 +295,43 @@ describe('file-path completion integration (issue #456)', () => {
         expect(labels).toContain('pfx.bbj');
     });
 
+    test('lists the workspace folder that contains the file, not the file directory', async () => {
+        const workspaceLayout: Record<string, Array<{ name: string, dir: boolean }>> = {
+            '/workspace': [
+                { name: 'proj', dir: true },
+                { name: 'root.bbj', dir: false }
+            ],
+            '/workspace/proj': [
+                { name: 'foo.bbj', dir: false }
+            ]
+        };
+        vi.spyOn(fsProvider, 'readDirectory').mockImplementation(async (uri: URI) => {
+            const entries = workspaceLayout[uri.fsPath];
+            if (!entries) {
+                throw new Error('ENOENT');
+            }
+            return entries.map(e => ({
+                isFile: !e.dir,
+                isDirectory: e.dir,
+                uri: URI.file(uri.fsPath + '/' + e.name)
+            }));
+        });
+        const wsManager = bbjServices.shared.workspace.WorkspaceManager as unknown as {
+            getWorkspaceFolderUris(): URI[]
+        };
+        vi.spyOn(wsManager, 'getWorkspaceFolderUris').mockReturnValue([URI.file('/workspace')]);
+
+        const useLabels = (await complete('use ::<|>')).map(i => i.label);
+        expect(useLabels).toContain('proj/');
+        expect(useLabels).toContain('root.bbj');
+        expect(useLabels).not.toContain('foo.bbj');
+
+        const runLabels = (await complete('run "<|>')).map(i => i.label);
+        expect(runLabels).toContain('proj/');
+        expect(runLabels).toContain('root.bbj');
+        expect(runLabels).not.toContain('foo.bbj');
+    });
+
     test('does not offer files after the closing `::` (class-name portion)', async () => {
         const spy = vi.spyOn(fsProvider, 'readDirectory');
         // The default provider handles class completion here; our path completion must not fire.

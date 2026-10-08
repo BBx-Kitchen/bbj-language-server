@@ -13,6 +13,7 @@ import { JavaInteropService } from "./java-interop.js";
 import { escapeJavadocMarkdown, escapeMarkdown, isJavaQualifiedName, toFenceSafeLine } from "./java-peer-guard.js";
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
+import { programPathBaseDirectories } from "./program-path-resolution.js";
 import { logger } from "./logger.js";
 
 
@@ -353,8 +354,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     /**
      * File-path completion inside the `::...::` segment of a `use`/`declare` statement, and inside
      * the file-name string literal of a `RUN`/`CALL` statement (issue #456). Returns subdirectory
-     * (drill-down) and `.bbj` file items reachable from the current file's directory, the workspace
-     * folder(s) and every configured PREFIX path; returns undefined when the cursor is not in such a
+     * (drill-down) and `.bbj` file items reachable from the working directory (the workspace folder
+     * that contains the file, or the file's directory outside every folder) and every configured
+     * PREFIX path; returns undefined when the cursor is not in such a
      * path position (so completion falls through to the default provider — e.g. class completion
      * after the closing `::`).
      *
@@ -395,7 +397,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     /**
      * Enumerates the subdirectories and `.bbj` files of `pathContext.dir` under each base directory
-     * (current file's dir, workspace roots, PREFIX paths), filtered by the leaf prefix. Deduplicated
+     * (the working directory, then every PREFIX path), filtered by the leaf prefix. Deduplicated
      * by name across bases; never throws.
      */
     protected async collectFilePathItems(
@@ -403,18 +405,16 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         pathContext: FilePathCompletionContext,
         replaceRange: { start: { line: number, character: number }, end: { line: number, character: number } }
     ): Promise<CompletionItem[]> {
-        const baseDirs: URI[] = [UriUtils.dirname(docUri)];
+        let baseDirs: URI[];
         try {
-            for (const root of this.wsManager.getWorkspaceFolderUris()) {
-                baseDirs.push(root);
-            }
-            for (const prefix of this.wsManager.getSettings()?.prefixes ?? []) {
-                if (prefix && prefix.length > 0) {
-                    baseDirs.push(URI.file(prefix));
-                }
-            }
+            baseDirs = programPathBaseDirectories(
+                docUri,
+                this.wsManager.getWorkspaceFolderUris(),
+                this.wsManager.getSettings()?.prefixes ?? []
+            );
         } catch {
             // Settings/workspace not available — the current file's directory is still usable.
+            baseDirs = [UriUtils.dirname(docUri)];
         }
 
         const prefixLower = pathContext.prefix.toLowerCase();
