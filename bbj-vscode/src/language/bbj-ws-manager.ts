@@ -1,4 +1,5 @@
 import { AstNode, DefaultWorkspaceManager, FileSystemProvider, LangiumDocument, LangiumDocumentFactory, } from "langium";
+import type { TextDocumentProvider } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
@@ -304,6 +305,18 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Whether `documentUri` is a PREFIX library file that is not open in an editor. Such a
+     * document is loaded only so USE statements can resolve: it is not validated or compiled and
+     * is linked by member signature only. Every document that is open gets full language support
+     * wherever it lives on disk, so a PREFIX file stops being a closed library document the
+     * moment the client opens it. `textDocuments` is the caller's own text-document store, so
+     * "open" means what the caller already means by it.
+     */
+    public isClosedLibraryDocument(documentUri: URI, textDocuments: TextDocumentProvider | undefined): boolean {
+        return this.isExternalDocument(documentUri) && !textDocuments?.get(documentUri);
     }
 
     public setConfigPath(path: string): void {

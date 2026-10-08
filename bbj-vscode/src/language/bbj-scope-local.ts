@@ -10,6 +10,7 @@ import {
     LocalSymbols,
     MapScope,
     MultiMap,
+    TextDocumentProvider,
     WorkspaceManager
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
@@ -52,7 +53,7 @@ import { JAVA_PRIMITIVE_TYPE_NAMES, JavaInteropService, JavaSyntheticDocUri } fr
 /** Minimal shape needed to detect a real `BBjWorkspaceManager` without a runtime import of
  * bbj-ws-manager.ts, which would close an import cycle (bbj-ws-manager -> bbj-document-validator
  * -> bbj-scope -> bbj-scope-local). */
-type IsExternalDocumentCapable = Pick<BBjWorkspaceManager, 'isExternalDocument'>;
+type IsClosedLibraryDocumentCapable = Pick<BBjWorkspaceManager, 'isClosedLibraryDocument'>;
 
 export class BbjScopeComputation extends DefaultScopeComputation {
 
@@ -60,12 +61,14 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     protected readonly astNodeLocator: AstNodeLocator;
     /** Lazily read so DI construction order never matters, mirroring bbj-linker.ts's own accessor. */
     private readonly workspaceManager: () => WorkspaceManager;
+    private readonly textDocuments: () => TextDocumentProvider;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
         this.astNodeLocator = services.workspace.AstNodeLocator;
         this.workspaceManager = () => services.shared.workspace.WorkspaceManager;
+        this.textDocuments = () => services.shared.workspace.TextDocuments;
     }
 
     override async collectExportedSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
@@ -120,16 +123,18 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         // Override to process node in an async way
         // to trigger backend resolution of Java class references.
         //
-        // For an external (PREFIX) document, only class member signatures are ever linked
-        // (see bbj-linker.ts's link()) — a reference deep inside a method body can never be
-        // resolved from outside that file, so collecting local symbols from inside member
-        // bodies is pure unused work that still scales with body size. Mirror the linker's
-        // own rule here: process a non-private member's own node and (for a method) its
+        // For a PREFIX document that is not open in an editor, only class member signatures are
+        // ever linked (see bbj-linker.ts's link()) — a reference deep inside a method body can
+        // never be resolved from outside that file, so collecting local symbols from inside
+        // member bodies is pure unused work that still scales with body size. Once the file is
+        // open, validation, hover, definition and completion resolve references inside its
+        // bodies, so an open document is processed completely. Mirror the linker's own rule
+        // here: process a non-private member's own node and (for a method) its
         // parameters, then prune the body instead of descending into it. A private member is
         // skipped entirely, matching what the linker would never expose either.
         const wsManager = this.workspaceManager();
-        const externalDoc = typeof (wsManager as Partial<IsExternalDocumentCapable>).isExternalDocument === 'function'
-            && (wsManager as unknown as IsExternalDocumentCapable).isExternalDocument(document.uri);
+        const externalDoc = typeof (wsManager as Partial<IsClosedLibraryDocumentCapable>).isClosedLibraryDocument === 'function'
+            && (wsManager as unknown as IsClosedLibraryDocumentCapable).isClosedLibraryDocument(document.uri, this.textDocuments());
 
         const treeIter = AstUtils.streamAllContents(rootNode).iterator();
         for (const node of treeIter) {

@@ -8,6 +8,7 @@ import {
     isReference,
     LangiumDocument, LinkingError,
     ReferenceInfo,
+    TextDocumentProvider,
     WorkspaceManager
 } from 'langium';
 import { LangiumServices } from 'langium/lsp';
@@ -31,18 +32,22 @@ export class BbjLinker extends DefaultLinker {
 
     wsManager: () => WorkspaceManager;
     indexManager: () => IndexManager;
+    textDocuments: () => TextDocumentProvider;
 
     constructor(services: LangiumServices) {
         super(services)
         this.wsManager = () => services.shared.workspace.WorkspaceManager;
         this.indexManager = () => services.shared.workspace.IndexManager;
+        this.textDocuments = () => services.shared.workspace.TextDocuments;
     }
 
     override async link(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
         const started = Date.now()
         const wsManager = this.wsManager()
+        // Only a PREFIX file that is not open is linked by member signature; an open one is
+        // linked completely, since the editor resolves references inside its method bodies.
         const externalDoc = (wsManager instanceof BBjWorkspaceManager)
-            && (wsManager as BBjWorkspaceManager).isExternalDocument(document.uri)
+            && (wsManager as BBjWorkspaceManager).isClosedLibraryDocument(document.uri, this.textDocuments())
 
         const treeIter = AstUtils.streamAst(document.parseResult.value).iterator()
         for (const node of treeIter) {
