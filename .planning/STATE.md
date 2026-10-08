@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v4.9 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-07 - Completed quick task 261007-u09: Validate open BBj documents under a PREFIX directory
+Last activity: 2026-10-08 - Completed quick task 261008-9ur: Default BBj working directory to the project root; LS resolves relative program paths like BBj (WD, then PREFIX)
 
 ### v4.9 milestone map
 
@@ -509,6 +509,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 261008-9ur | Default BBj working directory to the project root; LS resolves relative program paths like BBj (WD, then PREFIX) | 2026-10-08 | 8c56311d | complete | [261008-9ur-default-bbj-working-directory-to-the-pro](./quick/261008-9ur-default-bbj-working-directory-to-the-pro/) |
 | 261007-u09 | Validate open BBj documents under a PREFIX directory | 2026-10-07 | 200a8e2a | complete | [261007-u09-validate-open-bbj-documents-under-a-pref](./quick/261007-u09-validate-open-bbj-documents-under-a-pref/) |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README); the 2026-09-30 rows (incl. 260930-m99) under `.planning/milestones/v4.9-quick/`.

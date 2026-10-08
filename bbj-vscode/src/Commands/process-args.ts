@@ -33,6 +33,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 
 export interface Argv {
     file: string;
@@ -96,6 +97,17 @@ export function bbjlstBin(home: string, platform: NodeJS.Platform = process.plat
 
 export function bbjcplBin(home: string, platform: NodeJS.Platform = process.platform): string {
     return `${home}/bin/bbjcpl${exeSuffix(platform)}`;
+}
+
+/**
+ * The working directory a run command starts BBj with. BBj resolves a relative program path
+ * (`use ::path::`, RUN/CALL) against the working directory first and then PREFIX, and the language
+ * server applies the same rule, so the working directory must be the project root rather than the
+ * program's own folder. The caller passes the folder `vscode.workspace.getWorkspaceFolder` returns
+ * for the file; a file outside every workspace folder runs from its own directory.
+ */
+export function runWorkingDir(fileName: string, workspaceFolderPath?: string | null): string {
+    return workspaceFolderPath ? workspaceFolderPath : path.dirname(fileName);
 }
 
 export interface BuildRunArgvOptions {

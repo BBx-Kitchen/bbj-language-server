@@ -4,9 +4,9 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { basename, normalize } from 'path';
-import { containedPrefixCandidates } from './path-containment.js';
+import { programPathCandidates } from './program-path-resolution.js';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BbjClass, BeginStatement, CallStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, RunStatement, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSwitchStatement, isSymbolRef } from './generated/ast.js';
@@ -334,18 +334,15 @@ export class BBjValidator {
             if (match) {
                 const cleanPath = match[1];
                 const currentDocUri = AstUtils.getDocument(use).uri;
-                const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
-                const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
-                const adjustedFileUris = [
-                    UriUtils.resolvePath(UriUtils.dirname(currentDocUri), cleanPath)
-                ]
-                    // Also resolve relative to each workspace/project root (#378), matching
-                    // the scope provider so the diagnostic agrees with actual resolution.
-                    .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, cleanPath)))
-                    // Only PREFIX candidates that lie inside their root are offered here too
-                    // (issue #526), so a path that escapes every root is reported as not
-                    // resolved instead of resolving through the escaping candidate.
-                    .concat(containedPrefixCandidates(prefixes, cleanPath).map(p => URI.file(p)));
+                // Working directory first, then PREFIX (#378, #526): the same candidates the
+                // scope provider uses, so the diagnostic agrees with actual resolution. A path
+                // that escapes every root is reported as not resolved.
+                const adjustedFileUris = programPathCandidates(
+                    cleanPath,
+                    currentDocUri,
+                    this.workspaceManager.getWorkspaceFolderUris(),
+                    this.workspaceManager.getSettings()?.prefixes ?? []
+                );
                 // Check if a document exists at any candidate URI. We check document
                 // existence rather than BbjClass index entries because external files
                 // may have parser errors that prevent BbjClass nodes from being created,
@@ -380,10 +377,11 @@ export class BBjValidator {
 
     /**
      * Flags a `RUN` or `CALL` whose target program file cannot be resolved on disk, when that
-     * target is given as a static string literal (issue #173). Resolution — searching relative
-     * to the current file's directory, each workspace/project root, each PREFIX directory, and
-     * absolute/drive-letter targets — lives in run-call-target.ts, shared with the hover and
-     * go-to-definition providers (issue #663).
+     * target is given as a static string literal (issue #173). Resolution lives in
+     * run-call-target.ts, shared with the hover and go-to-definition providers (issue #663): it
+     * searches the working directory (the workspace or project root that contains the file, or
+     * the file's own directory outside every root), then each PREFIX directory, plus absolute
+     * and drive-letter targets.
      *
      * Only plain string literals are checked. A dynamic target — a variable or a concatenation such
      * as `RUN "./"+A$` — has an unknown value until runtime, so it is skipped to avoid false

@@ -4,7 +4,7 @@ const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader").default;
 const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
-const { buildRunArgv, buildWebRunArgv, buildCompileArgv, buildDecompileArgv } = require("./process-args");
+const { buildRunArgv, buildWebRunArgv, buildCompileArgv, buildDecompileArgv, runWorkingDir } = require("./process-args");
 const { runProcess, runProcessCallback, formatArgvForLog } = require("./process-runner");
 const { getActiveConfigPath, getResolvedConfigPath } = require("../config-path-cache");
 const { NO_ACTIVE_BBJ_FILE_MESSAGE, toActiveEditorSnapshot, resolveRunTarget, resolveDecompileTarget } = require("./target-resolution");
@@ -73,6 +73,15 @@ const getBBjHome = () => {
   return home;
 }
 
+/**
+ * The working directory for running `fileName`: the workspace folder that contains it, or the
+ * file's own directory when no folder does (see runWorkingDir in process-args.ts).
+ */
+const workingDirFor = (fileName) => {
+  const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(fileName));
+  return runWorkingDir(fileName, folder ? folder.uri.fsPath : undefined);
+};
+
 const runWeb = (params, client, credentials) => {
   const fileName = runTargetOrWarn(params);
   if (!fileName) return;
@@ -105,11 +114,15 @@ const runWeb = (params, client, credentials) => {
   }
 
   const sscp = stripSentinel(vscode.workspace.getConfiguration("bbj").classpath);
-  const workingDir = path.dirname(fileName);
-  const programme = path.basename(fileName);
-  const name = webConfig.apps.hasOwnProperty(programme)
-    ? webConfig.apps[programme].name
-    : programme
+  const workingDir = workingDirFor(fileName);
+  // The app is registered with the program's absolute path (the value the GUI run executes),
+  // since the working directory is the project root. The EM app name and the bbj.web.apps
+  // lookup keep using the file's base name.
+  const programme = fileName;
+  const baseName = path.basename(fileName);
+  const name = webConfig.apps.hasOwnProperty(baseName)
+    ? webConfig.apps[baseName].name
+    : baseName
       .split(".")
       .slice(0, -1)
       .join(".");
@@ -149,7 +162,7 @@ const runWeb = (params, client, credentials) => {
   // set, and omitting process.env here would strip PATH/BBJ_HOME from the child.
   runProcessCallback(argv, { env: { ...process.env, ...argv.env } }, (err, stdout, stderr) => {
     if (err) {
-      const errorMsg = `Failed to run "${programme}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
+      const errorMsg = `Failed to run "${baseName}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
       vscode.window.showErrorMessage(errorMsg);
       return;
     }
@@ -408,7 +421,7 @@ const Commands = {
     const sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
 
     const active = vscode.window.activeTextEditor;
-    const workingDir = path.dirname(fileName);
+    const workingDir = workingDirFor(fileName);
 
     // Use the language server's resolved config path (cached on this host), never a
     // locally-guessed fallback. stripSentinel is a second defensive layer;

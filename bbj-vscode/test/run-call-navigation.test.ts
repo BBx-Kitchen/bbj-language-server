@@ -59,13 +59,13 @@ describe('RUN/CALL file target navigation (#663)', () => {
     });
 
     test('CALL with a ::label suffix links to the program file, label stripped', async () => {
-        const doc = await parse(`CALL "helper.bbj::setUp", A$`, {
+        const doc = await parse(`CALL "app/helper.bbj::setUp", A$`, {
             documentUri: URI.file('/root/app/nav-call.bbj').toString(),
             validation: true,
         });
 
         const definitionProvider = services.BBj.lsp.DefinitionProvider!;
-        const position = positionInside(doc, '"helper.bbj::setUp"');
+        const position = positionInside(doc, '"app/helper.bbj::setUp"');
         const result = await definitionProvider.getDefinition(doc, {
             textDocument: { uri: doc.textDocument.uri },
             position
@@ -73,6 +73,26 @@ describe('RUN/CALL file target navigation (#663)', () => {
 
         expect(result).toHaveLength(1);
         expect(result![0].targetUri).toBe(URI.file('/root/app/helper.bbj').toString());
+    });
+
+    test('a RUN target that only exists next to the calling file returns no link and hovers as unresolved', async () => {
+        const doc = await parse(`RUN "helper.bbj"`, {
+            documentUri: URI.file('/root/app/nav-samedir.bbj').toString(),
+            validation: true,
+        });
+
+        const definitionProvider = services.BBj.lsp.DefinitionProvider!;
+        const position = positionInside(doc, '"helper.bbj"');
+        const result = await definitionProvider.getDefinition(doc, {
+            textDocument: { uri: doc.textDocument.uri },
+            position
+        });
+        expect(result ?? []).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const hover = await hoverProvider.getHoverContent(doc, { textDocument: { uri: doc.textDocument.uri }, position });
+        expect(hover).toBeDefined();
+        expect((hover!.contents as { value: string }).value).toContain('could not be resolved');
     });
 
     test('an absolute POSIX target resolves as itself, with no unresolved-file warning', async () => {
