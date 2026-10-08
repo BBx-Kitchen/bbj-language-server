@@ -41,11 +41,14 @@ public final class BbjRunGuiAction extends BbjRunActionBase {
             cmd.addParameter(configPath);
         }
 
-        // Add working directory (project root)
-        String projectRoot = project.getBasePath();
-        if (projectRoot != null) {
-            cmd.addParameter("-WD" + projectRoot);
-            cmd.setWorkDirectory(projectRoot);
+        // Add working directory: the project base directory, or the file's own directory when
+        // the file lies outside the project
+        VirtualFile parent = file.getParent();
+        String workingDir = RunWorkingDirectory.forFile(
+            project.getBasePath(), file.getPath(), parent != null ? parent.getPath() : null);
+        if (workingDir != null) {
+            cmd.addParameter("-WD" + workingDir);
+            cmd.setWorkDirectory(workingDir);
         }
 
         // Add file path

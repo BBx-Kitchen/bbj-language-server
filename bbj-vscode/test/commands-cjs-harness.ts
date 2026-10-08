@@ -92,6 +92,7 @@ export const fakeVscode = {
         isTrusted: true,
         getConfiguration,
         openTextDocument: vi.fn(async (target: unknown) => fakeDocument(target)),
+        getWorkspaceFolder: vi.fn((_uri: unknown) => undefined as { uri: { fsPath: string } } | undefined),
     },
     window: {
         showErrorMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined as string | undefined),
@@ -331,6 +332,7 @@ export function resetCommandsHarness(): void {
         .mockReset()
         .mockImplementation(async (target: unknown) => fakeDocument(target));
     (fakeVscode.commands.executeCommand as Mock).mockReset().mockImplementation(async () => undefined);
+    (fakeVscode.workspace.getWorkspaceFolder as Mock).mockReset().mockImplementation(() => undefined);
 
     (fakeProcessRunner.runProcess as Mock).mockReset().mockImplementation(async () => ({ stdout: '', stderr: '' }));
     (fakeProcessRunner.runProcessCallback as Mock).mockReset();

@@ -280,9 +280,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     /**
-     * Root URIs of the open workspace folders. Used as additional base directories when
-     * resolving relative `use ::path::Class` references, so a USE from a subfolder can
-     * address files relative to the project root (#378), not only the current file's dir.
+     * Root URIs of the open workspace folders. They serve as working-directory candidates for
+     * relative program paths (USE/DECLARE `::path::`, RUN/CALL): the root that contains a
+     * document is its working directory (#378).
      */
     public getWorkspaceFolderUris(): URI[] {
         return this.folders?.map(folder => this.getRootFolder(folder)) ?? [];

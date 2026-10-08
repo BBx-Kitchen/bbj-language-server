@@ -4,15 +4,15 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { CstNode, FileSystemProvider, LangiumDocuments, URI, UriUtils } from 'langium';
-import { resolve } from 'path';
+import { CstNode, FileSystemProvider, LangiumDocuments, URI } from 'langium';
 import type { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { CallStatement, RunStatement, StringLiteral, isCallStatement, isRunStatement, isStringLiteral } from './generated/ast.js';
+import { programPathCandidates } from './program-path-resolution.js';
 
 /**
  * Shared RUN/CALL static-target extraction and resolution. `RUN "file"` and `CALL "file"`
- * (optionally `CALL "file::label"`) take a program file name that is absolute, resolves
- * through a PREFIX, or sits relative to the current file. This module is the single place
+ * (optionally `CALL "file::label"`) take a program file name that is absolute or that BBj
+ * resolves against the working directory and then each PREFIX. This module is the single place
  * that walks the candidate list — the unresolved-file warning (issue #173), hover, and
  * go-to-definition (issue #663) all call into it so the resolution rules exist once.
  */
@@ -94,11 +94,11 @@ const DRIVE_LETTER_PATH = /^[a-zA-Z]:[\\/]/;
 /**
  * Resolves `path` (as written in a RUN/CALL literal) to the first candidate URI that is
  * either an already-indexed workspace document or exists on disk. Candidate order:
- * 1. relative to the directory of the current document
- * 2. relative to each workspace root
- * 3. relative to each non-empty PREFIX directory
+ * 1. the working directory: the workspace or project root that contains the current document,
+ *    or the document's own directory when no root contains it
+ * 2. each non-empty PREFIX directory whose resolved candidate stays inside it (#526)
  * An absolute Windows path (drive letter) resolves to itself instead — a POSIX absolute path
- * already resolves as itself through `UriUtils.resolvePath` in step 1, so it needs no branch.
+ * already resolves as itself through step 1, so it needs no branch.
  * This resolver never looks at type-resolution-warnings or project-context gating; that
  * decision stays with each caller (the validator gates on it, hover and go-to-definition do not).
  */
@@ -107,13 +107,12 @@ export function resolveRunCallPath(path: string, currentDocUri: URI, context: Ru
     if (DRIVE_LETTER_PATH.test(path)) {
         candidateUris = [URI.file(path.replace(/\\/g, '/'))];
     } else {
-        const workspaceRoots = context.workspaceManager.getWorkspaceFolderUris();
-        const prefixes = nonEmptyPrefixes(context);
-        candidateUris = [
-            UriUtils.resolvePath(UriUtils.dirname(currentDocUri), path)
-        ]
-            .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, path)))
-            .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, path))));
+        candidateUris = programPathCandidates(
+            path,
+            currentDocUri,
+            context.workspaceManager.getWorkspaceFolderUris(),
+            nonEmptyPrefixes(context)
+        );
     }
 
     return candidateUris.find(uri =>
