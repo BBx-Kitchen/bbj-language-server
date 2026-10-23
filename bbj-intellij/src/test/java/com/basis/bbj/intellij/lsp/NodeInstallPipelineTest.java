@@ -345,6 +345,98 @@ class NodeInstallPipelineTest {
         assertEquals(installed, fresh.cachedNodePath());
     }
 
+    /** Writes a marker executable and its digest record at {@code executable}, creating parents. */
+    private static void writeRecordedExecutable(Path executable) throws IOException {
+        Files.createDirectories(executable.getParent());
+        Files.writeString(executable, WINDOWS_MARKER_BYTES_TEXT, StandardCharsets.UTF_8);
+        new NodeInstallIntegrity().record(executable, NodeArchiveVerifier.REAL_FILES);
+    }
+
+    @Test
+    void aSuccessfulInstallRemovesInstallsLeftByEarlierVersionsAndKeepsUnrelatedEntries(
+            @TempDir Path dataDirectory, @TempDir Path temporaryRoot) throws IOException {
+        writeRecordedExecutable(dataDirectory.resolve("node.exe"));
+        writeRecordedExecutable(dataDirectory.resolve("v20.0.0").resolve("node.exe"));
+        writeRecordedExecutable(dataDirectory.resolve("v21.1.0").resolve("node.exe"));
+        Files.writeString(dataDirectory.resolve("notes.txt"), "keep me\n");
+        Files.createDirectories(dataDirectory.resolve("vendor"));
+        Files.writeString(dataDirectory.resolve("vendor").resolve("keep.txt"), "keep me too\n");
+
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, WINDOWS_FIXTURE_DIGEST));
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
+                new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
+                new NodeInstallIntegrity());
+
+        Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+
+        assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node.exe"), installed);
+        assertTrue(Files.exists(NodeInstallIntegrity.sidecarFor(installed)));
+        assertFalse(Files.exists(dataDirectory.resolve("node.exe")), "the legacy executable must be removed");
+        assertFalse(Files.exists(NodeInstallIntegrity.sidecarFor(dataDirectory.resolve("node.exe"))),
+                "the legacy digest record must be removed");
+        assertFalse(Files.exists(dataDirectory.resolve("v20.0.0")), "an older version directory must be removed");
+        assertFalse(Files.exists(dataDirectory.resolve("v21.1.0")), "an older version directory must be removed");
+        assertTrue(Files.exists(dataDirectory.resolve("notes.txt")), "an unrelated file must stay");
+        assertTrue(Files.exists(dataDirectory.resolve("vendor").resolve("keep.txt")),
+                "a directory that is not a Node.js version directory must stay");
+        try (var entries = Files.list(dataDirectory)) {
+            assertEquals(3, entries.count(),
+                    "only the current version directory, notes.txt and vendor must remain");
+        }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void anEarlierInstallThatCannotBeDeletedNeverFailsTheDownload(@TempDir Path dataDirectory,
+            @TempDir Path temporaryRoot) throws IOException {
+        Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "this host's default filesystem has no POSIX view");
+
+        Path olderDirectory = dataDirectory.resolve(OLDER_VERSION);
+        Path older = olderDirectory.resolve("node.exe");
+        writeRecordedExecutable(older);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, WINDOWS_FIXTURE_DIGEST));
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
+                new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
+                new NodeInstallIntegrity());
+
+        Path installed;
+        boolean stillThere;
+        Files.setPosixFilePermissions(olderDirectory,
+                Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+        try {
+            installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+            stillThere = Files.exists(older);
+        } finally {
+            Files.setPosixFilePermissions(olderDirectory, Set.of(PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE));
+        }
+
+        assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node.exe"), installed);
+        assertEquals(installed, pipeline.cachedNodePath());
+        // If this host did not enforce the missing write bit (e.g. running as root), the older
+        // install was deleted anyway and the failing-deletion path was never exercised.
+        Assumptions.assumeTrue(stillThere, "this host did not enforce the missing write bit");
+    }
+
+    @Test
+    void aFailedInstallLeavesTheLegacyNodeInPlace(@TempDir Path dataDirectory, @TempDir Path temporaryRoot)
+            throws IOException {
+        Path legacy = dataDirectory.resolve("node.exe");
+        writeRecordedExecutable(legacy);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, "0".repeat(64)));
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
+                new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
+                new NodeInstallIntegrity());
+
+        assertThrows(IOException.class,
+                () -> pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED));
+
+        assertTrue(Files.exists(legacy), "the legacy executable must survive a failed install");
+        assertTrue(Files.exists(NodeInstallIntegrity.sidecarFor(legacy)),
+                "the legacy digest record must survive a failed install");
+    }
+
     /**
      * A {@link NodeArchiveVerifier.ByteSource} that, the first time it is opened, records how
      * many entries the given temporary root already holds. Verification reads the archive

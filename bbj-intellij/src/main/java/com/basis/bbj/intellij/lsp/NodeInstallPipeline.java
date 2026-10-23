@@ -6,10 +6,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -28,6 +32,9 @@ public final class NodeInstallPipeline {
 
     public static final String NODE_VERSION = "v22.23.2";
     public static final String DOWNLOAD_BASE_URL = "https://nodejs.org/dist/";
+
+    /** The name of a Node.js version directory, e.g. {@code v22.23.4}. */
+    private static final String VERSION_DIRECTORY_NAME = "v[0-9]+\\.[0-9]+\\.[0-9]+";
 
     /** The three Node.js distribution platforms this pipeline can target. */
     public enum Os {
@@ -204,6 +211,7 @@ public final class NodeInstallPipeline {
                 progress.step("Installing Node.js to plugin directory...", 0.9);
                 cancel.checkCanceled();
                 Path installed = installExtracted(tempExtractDir);
+                removeStaleInstallsQuietly();
 
                 progress.step("Installing Node.js to plugin directory...", 1.0);
                 return installed;
@@ -310,6 +318,35 @@ public final class NodeInstallPipeline {
         // Record the installed executable's digest so cachedNodePath() can re-check it.
         integrity.record(targetPath, bytes);
         return targetPath;
+    }
+
+    /**
+     * Best-effort removal of installs left by earlier versions, run after a successful install.
+     * Removes the legacy unversioned executable with its digest record, and every direct child
+     * directory of the data directory named like a Node.js version other than {@link #NODE_VERSION}.
+     * Symbolic links and every other entry are left alone. Never throws: a deletion that fails,
+     * for example because a running executable is locked, must not fail the install.
+     */
+    private void removeStaleInstallsQuietly() {
+        try {
+            Path legacy = dataDirectory.resolve(target.nodeExecutableName());
+            deleteIfExistsQuietly(NodeInstallIntegrity.sidecarFor(legacy));
+            deleteIfExistsQuietly(legacy);
+
+            List<Path> children;
+            try (Stream<Path> listing = Files.list(dataDirectory)) {
+                children = listing.collect(Collectors.toList());
+            }
+            for (Path child : children) {
+                String name = child.getFileName().toString();
+                if (Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS)
+                        && name.matches(VERSION_DIRECTORY_NAME) && !name.equals(NODE_VERSION)) {
+                    deleteRecursivelyQuietly(child);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            // Best-effort cleanup: nothing here may fail an install that already succeeded.
+        }
     }
 
     private static void deleteRecursivelyQuietly(Path root) {
