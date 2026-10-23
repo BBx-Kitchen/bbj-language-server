@@ -26,6 +26,7 @@ import java.util.concurrent.CancellationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +44,9 @@ class NodeInstallPipelineTest {
             "src", "test", "resources", "node-fixtures").toAbsolutePath();
 
     private static final Path WINDOWS_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win.zip");
+
+    /** A version directory name standing in for an install left by an earlier pin. */
+    private static final String OLDER_VERSION = "v20.0.0";
 
     private static final String WINDOWS_ARCHIVE_NAME = "node-v22.23.2-win-x64.zip";
     private static final String WINDOWS_DOWNLOAD_URL =
@@ -199,7 +203,7 @@ class NodeInstallPipelineTest {
 
         Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
 
-        assertEquals(dataDirectory.resolve("node.exe"), installed);
+        assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node.exe"), installed);
         assertTrue(Files.exists(installed), "the installed executable must exist");
         assertEquals(WINDOWS_MARKER_BYTES_TEXT, Files.readString(installed, StandardCharsets.UTF_8),
                 "the installed executable's bytes must equal the fixture's marker bytes");
@@ -221,7 +225,7 @@ class NodeInstallPipelineTest {
 
         Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
 
-        assertEquals(dataDirectory.resolve("node.exe"), installed);
+        assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node.exe"), installed);
         assertTrue(Files.exists(installed), "the installed executable must exist");
         String installedBytes = Files.readString(installed, StandardCharsets.UTF_8);
         assertEquals(WINDOWS_MARKER_BYTES_TEXT, installedBytes,
@@ -305,6 +309,42 @@ class NodeInstallPipelineTest {
         assertEquals(1, fetcher.invocations(), "a cache hit must not spawn a second install");
     }
 
+    @Test
+    void aCacheLeftByAnOlderNodeVersionIsNotReturnedAsCachedForTheCurrentVersion(@TempDir Path dataDirectory,
+            @TempDir Path temporaryRoot) throws IOException {
+        assertNotEquals(OLDER_VERSION, NodeInstallPipeline.NODE_VERSION,
+                "the older version used here must differ from the pinned version");
+
+        // The legacy layout: an unversioned executable straight in the data directory, with a
+        // valid digest record.
+        Path legacy = dataDirectory.resolve("node.exe");
+        Files.writeString(legacy, WINDOWS_MARKER_BYTES_TEXT, StandardCharsets.UTF_8);
+        new NodeInstallIntegrity().record(legacy, NodeArchiveVerifier.REAL_FILES);
+
+        // An install left by an earlier pinned version, in its own version directory.
+        Path olderDirectory = Files.createDirectories(dataDirectory.resolve(OLDER_VERSION));
+        Path older = olderDirectory.resolve("node.exe");
+        Files.writeString(older, WINDOWS_MARKER_BYTES_TEXT, StandardCharsets.UTF_8);
+        new NodeInstallIntegrity().record(older, NodeArchiveVerifier.REAL_FILES);
+
+        FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, WINDOWS_FIXTURE_DIGEST));
+        NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot, fetcher, digests,
+                new FakePathProbe(), new NodeInstallIntegrity());
+
+        assertNull(pipeline.cachedNodePath(),
+                "an executable cached for another Node.js version must not count as cached");
+
+        Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+
+        assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node.exe"), installed);
+        assertTrue(Files.exists(NodeInstallIntegrity.sidecarFor(installed)),
+                "the digest record must sit beside the installed executable");
+        NodeInstallPipeline fresh = windowsPipeline(dataDirectory, temporaryRoot, fetcher, digests,
+                new FakePathProbe(), new NodeInstallIntegrity());
+        assertEquals(installed, fresh.cachedNodePath());
+    }
+
     /**
      * A {@link NodeArchiveVerifier.ByteSource} that, the first time it is opened, records how
      * many entries the given temporary root already holds. Verification reads the archive
@@ -372,7 +412,7 @@ class NodeInstallPipelineTest {
 
             Path installed = pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
 
-            assertEquals(dataDirectory.resolve("node"), installed);
+            assertEquals(dataDirectory.resolve(NodeInstallPipeline.NODE_VERSION).resolve("node"), installed);
             assertTrue(Files.exists(installed), "the installed executable must exist");
             assertEquals(UNIX_MARKER_BYTES_TEXT, Files.readString(installed, StandardCharsets.UTF_8),
                     "the installed executable's bytes must equal the fixture's marker bytes");
@@ -598,7 +638,7 @@ class NodeInstallPipelineTest {
             Path reinstalled = secondPipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
 
             assertEquals(installed, reinstalled);
-            try (var entries = Files.list(dataDirectory)) {
+            try (var entries = Files.list(installed.getParent())) {
                 long executableNamedFiles = entries
                         .filter(p -> !p.getFileName().toString().endsWith(NodeInstallIntegrity.SIDECAR_SUFFIX))
                         .count();

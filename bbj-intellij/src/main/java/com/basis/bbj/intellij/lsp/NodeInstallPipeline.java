@@ -113,7 +113,9 @@ public final class NodeInstallPipeline {
 
     /**
      * @param target        which platform/architecture archive to fetch and install
-     * @param dataDirectory where the installed executable is placed; assumed to already exist
+     * @param dataDirectory the root under which each Node.js version gets its own subdirectory
+     *                      holding the installed executable; the root itself is assumed to
+     *                      already exist
      * @param temporaryRoot the directory under which the temporary archive file and the
      *                      temporary extraction directory are created — a test points this at
      *                      its own temporary directory so both can be asserted gone afterwards
@@ -148,9 +150,13 @@ public final class NodeInstallPipeline {
         return DOWNLOAD_BASE_URL + NODE_VERSION + "/" + archiveFileName();
     }
 
-    /** Where the installed executable lives, or would live, inside {@code dataDirectory}. */
+    /**
+     * Where the installed executable lives, or would live: inside a subdirectory of
+     * {@code dataDirectory} named after {@link #NODE_VERSION}. Keeping each version in its own
+     * directory means a changed pin reads as not cached, so the normal download path runs again.
+     */
     public Path installedPath() {
-        return dataDirectory.resolve(target.nodeExecutableName());
+        return dataDirectory.resolve(NODE_VERSION).resolve(target.nodeExecutableName());
     }
 
     /**
@@ -293,6 +299,7 @@ public final class NodeInstallPipeline {
         }
 
         Path targetPath = installedPath();
+        Files.createDirectories(targetPath.getParent());
         Files.copy(extractedNode, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
         // Set executable permission (important for Unix-like systems).
