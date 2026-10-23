@@ -48,9 +48,9 @@ class NodeInstallPipelineTest {
     /** A version directory name standing in for an install left by an earlier pin. */
     private static final String OLDER_VERSION = "v20.0.0";
 
-    private static final String WINDOWS_ARCHIVE_NAME = "node-v22.23.2-win-x64.zip";
+    private static final String WINDOWS_ARCHIVE_NAME = "node-v22.23.4-win-x64.zip";
     private static final String WINDOWS_DOWNLOAD_URL =
-            "https://nodejs.org/dist/v22.23.2/node-v22.23.2-win-x64.zip";
+            "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip";
     private static final String WINDOWS_MARKER_BYTES_TEXT = "fake-node-binary-windows\n";
 
     private static final Path UNIX_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix.tar.gz");
@@ -58,22 +58,22 @@ class NodeInstallPipelineTest {
     private static final Path UNIX_NO_BINARY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-unix-no-binary.tar.gz");
     private static final Path WINDOWS_DECOY_FIXTURE = FIXTURES_ROOT.resolve("fake-node-win-decoy.zip");
 
-    private static final String UNIX_ARCHIVE_NAME = "node-v22.23.2-linux-x64.tar.gz";
+    private static final String UNIX_ARCHIVE_NAME = "node-v22.23.4-linux-x64.tar.gz";
     private static final String UNIX_MARKER_BYTES_TEXT = "fake-node-binary-unix\n";
 
     // Pinned literals, transcribed from the fixtures README rather than computed from the same
     // bytes the verifier reads — computing a pin from the archive it verifies would make the
     // verify step vacuous, since a corrupted fixture and its "pin" would always agree.
     private static final String WINDOWS_FIXTURE_DIGEST =
-            "7886ad2638168e4b4a2823b4d8149090ef421a6a2a8da7e7a75cb42a9dc1a454";
+            "6d5bafe4dbeddb0b7c797f3ea4252cd12f033568ef0cff3e83ad0aa46cc5e13d";
     private static final String UNIX_FIXTURE_DIGEST =
-            "b907928f77ce903538200180fb376929fd2fa35b98ddb3bd17ca247c74e05f1e";
+            "973819fe1c322ce3847641ea3c4537c4fc0a48382f6ac3fa168fbf209afb0818";
     private static final String WINDOWS_NO_BINARY_FIXTURE_DIGEST =
-            "5350aad3b4373234603e54e8de4a5de4231ff9d2729dd0f8408a125e840027c7";
+            "92913fdbfb724f681211555c5ec24482d05396387985044ad1a3f62cc70cc847";
     private static final String UNIX_NO_BINARY_FIXTURE_DIGEST =
-            "8eaf190d87eac28ae2253ce1af15ea560e50a3b504e767521398135a8d15dc76";
+            "e76aa05b2bbe85910e9c1aee35a8c451b1d99b416a59cce29716976cafd8bfe6";
     private static final String WINDOWS_DECOY_FIXTURE_DIGEST =
-            "f7f1bd8402a99c7631bbfe3c7ca892a3c8929d02f986068ad430525b9b102663";
+            "484b4040e79d99e949ddad08e9235f7efcabd17d4c54d9dcfb09f160dd728271";
 
     /** Copies a fixture archive into the requested target path, recording every call it saw. */
     private static final class FixtureCopyingFetcher implements NodeInstallPipeline.Fetcher {
@@ -515,17 +515,17 @@ class NodeInstallPipelineTest {
         void everyPlatformAndArchitecturePairAssemblesAnArchiveNameThatHasAPinnedDigest() throws IOException {
             Map<NodeInstallPipeline.Target, String> expectedNames = new LinkedHashMap<>();
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64),
-                    "node-v22.23.2-win-x64.zip");
+                    "node-v22.23.4-win-x64.zip");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.ARM64),
-                    "node-v22.23.2-win-arm64.zip");
+                    "node-v22.23.4-win-arm64.zip");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.MACOS, NodeInstallPipeline.Arch.X64),
-                    "node-v22.23.2-darwin-x64.tar.gz");
+                    "node-v22.23.4-darwin-x64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.MACOS, NodeInstallPipeline.Arch.ARM64),
-                    "node-v22.23.2-darwin-arm64.tar.gz");
+                    "node-v22.23.4-darwin-arm64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.X64),
-                    "node-v22.23.2-linux-x64.tar.gz");
+                    "node-v22.23.4-linux-x64.tar.gz");
             expectedNames.put(new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.ARM64),
-                    "node-v22.23.2-linux-arm64.tar.gz");
+                    "node-v22.23.4-linux-arm64.tar.gz");
             assertEquals(6, expectedNames.size());
 
             for (Map.Entry<NodeInstallPipeline.Target, String> entry : expectedNames.entrySet()) {
@@ -536,7 +536,7 @@ class NodeInstallPipelineTest {
                 assertEquals(entry.getValue(), pipeline.archiveFileName());
                 assertTrue(NodeArchiveVerifier.pinnedArchiveNames().contains(pipeline.archiveFileName()),
                         "no pinned digest for " + pipeline.archiveFileName());
-                assertEquals("https://nodejs.org/dist/v22.23.2/" + entry.getValue(), pipeline.downloadUrl());
+                assertEquals("https://nodejs.org/dist/v22.23.4/" + entry.getValue(), pipeline.downloadUrl());
             }
         }
     }

@@ -30,7 +30,7 @@ import java.util.zip.ZipInputStream;
  */
 public final class NodeInstallPipeline {
 
-    public static final String NODE_VERSION = "v22.23.2";
+    public static final String NODE_VERSION = "v22.23.4";
     public static final String DOWNLOAD_BASE_URL = "https://nodejs.org/dist/";
 
     /** The name of a Node.js version directory, e.g. {@code v22.23.4}. */
@@ -146,7 +146,7 @@ public final class NodeInstallPipeline {
         this.paths = paths;
     }
 
-    /** The archive file name this target assembles to, e.g. {@code node-v22.23.2-win-x64.zip}. */
+    /** The archive file name this target assembles to, e.g. {@code node-v22.23.4-win-x64.zip}. */
     public String archiveFileName() {
         return "node-" + NODE_VERSION + "-" + target.platformName() + "-" + target.archName()
                 + target.archiveExtension();
@@ -232,7 +232,7 @@ public final class NodeInstallPipeline {
     }
 
     private void extractZip(Path zipFile, Path destDir) throws IOException {
-        // The archive's own top-level directory, e.g. "node-v22.23.2-win-x64", built from the
+        // The archive's own top-level directory, e.g. "node-v22.23.4-win-x64", built from the
         // same literals archiveFileName() assembles, joined to the executable's relative path
         // with the forward slash the zip format mandates regardless of host OS.
         String expectedEntryName = "node-" + NODE_VERSION + "-" + target.platformName() + "-"
