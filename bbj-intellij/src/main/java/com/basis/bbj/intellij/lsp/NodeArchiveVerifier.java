@@ -45,19 +45,19 @@ public final class NodeArchiveVerifier {
     };
 
     /**
-     * The pinned trust anchor for Node.js {@code v22.23.2}, transcribed from
-     * {@code https://nodejs.org/dist/v22.23.2/SHASUMS256.txt} on 2026-09-20. These values ship
+     * The pinned trust anchor for Node.js {@code v22.23.4}, transcribed from
+     * {@code https://nodejs.org/dist/v22.23.4/SHASUMS256.txt} on 2026-10-23. These values ship
      * inside the signed plugin artifact rather than arriving over the same channel as the
      * archive they verify, so a later reader can re-derive them from the URL above rather than
      * trust them blindly.
      */
     private static final java.util.Map<String, String> PINNED_TABLE = java.util.Map.of(
-            "node-v22.23.2-darwin-arm64.tar.gz", "61130f394c1630d211dd50aecc4353d379480f36d3ac913cd85dbba1aed585c6",
-            "node-v22.23.2-darwin-x64.tar.gz", "58e99022c2ff89395576cc7fd4d98cea24bb68081475d5f88b801ee8729fb026",
-            "node-v22.23.2-linux-arm64.tar.gz", "013b59cfd2819703a6f4a14ab891fc46fc2a4e3f5bcd92de3fb4929b43e35b30",
-            "node-v22.23.2-linux-x64.tar.gz", "b294a556e639d64338823920e5866c21c02741742d2e1529ee1a225c1ec9252a",
-            "node-v22.23.2-win-arm64.zip", "fec025a6da31757e3b6af84c5a1628e9d38442ca99a2161091d78f2fcfa35ef3",
-            "node-v22.23.2-win-x64.zip", "1177b4137ba5adaa56354ae40f1080c7450e8ae09cecb47da459d1c52ac99f97"
+            "node-v22.23.4-darwin-arm64.tar.gz", "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428",
+            "node-v22.23.4-darwin-x64.tar.gz", "efcc2b0db6f94bf53eddb038fe2b370277a042bd29e4f19b8f8e23598795b819",
+            "node-v22.23.4-linux-arm64.tar.gz", "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9",
+            "node-v22.23.4-linux-x64.tar.gz", "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
+            "node-v22.23.4-win-arm64.zip", "a8b8cd79cbbb3062435f449591d98dd63730bbbf30ce2d7cc3a6376c236cb111",
+            "node-v22.23.4-win-x64.zip", "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20"
     );
 
     /**

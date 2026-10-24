@@ -6,10 +6,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -26,8 +30,11 @@ import java.util.zip.ZipInputStream;
  */
 public final class NodeInstallPipeline {
 
-    public static final String NODE_VERSION = "v22.23.2";
+    public static final String NODE_VERSION = "v22.23.4";
     public static final String DOWNLOAD_BASE_URL = "https://nodejs.org/dist/";
+
+    /** The name of a Node.js version directory, e.g. {@code v22.23.4}. */
+    private static final String VERSION_DIRECTORY_NAME = "v[0-9]+\\.[0-9]+\\.[0-9]+";
 
     /** The three Node.js distribution platforms this pipeline can target. */
     public enum Os {
@@ -113,7 +120,9 @@ public final class NodeInstallPipeline {
 
     /**
      * @param target        which platform/architecture archive to fetch and install
-     * @param dataDirectory where the installed executable is placed; assumed to already exist
+     * @param dataDirectory the root under which each Node.js version gets its own subdirectory
+     *                      holding the installed executable; the root itself is assumed to
+     *                      already exist
      * @param temporaryRoot the directory under which the temporary archive file and the
      *                      temporary extraction directory are created — a test points this at
      *                      its own temporary directory so both can be asserted gone afterwards
@@ -137,7 +146,7 @@ public final class NodeInstallPipeline {
         this.paths = paths;
     }
 
-    /** The archive file name this target assembles to, e.g. {@code node-v22.23.2-win-x64.zip}. */
+    /** The archive file name this target assembles to, e.g. {@code node-v22.23.4-win-x64.zip}. */
     public String archiveFileName() {
         return "node-" + NODE_VERSION + "-" + target.platformName() + "-" + target.archName()
                 + target.archiveExtension();
@@ -148,9 +157,13 @@ public final class NodeInstallPipeline {
         return DOWNLOAD_BASE_URL + NODE_VERSION + "/" + archiveFileName();
     }
 
-    /** Where the installed executable lives, or would live, inside {@code dataDirectory}. */
+    /**
+     * Where the installed executable lives, or would live: inside a subdirectory of
+     * {@code dataDirectory} named after {@link #NODE_VERSION}. Keeping each version in its own
+     * directory means a changed pin reads as not cached, so the normal download path runs again.
+     */
     public Path installedPath() {
-        return dataDirectory.resolve(target.nodeExecutableName());
+        return dataDirectory.resolve(NODE_VERSION).resolve(target.nodeExecutableName());
     }
 
     /**
@@ -198,6 +211,7 @@ public final class NodeInstallPipeline {
                 progress.step("Installing Node.js to plugin directory...", 0.9);
                 cancel.checkCanceled();
                 Path installed = installExtracted(tempExtractDir);
+                removeStaleInstallsQuietly();
 
                 progress.step("Installing Node.js to plugin directory...", 1.0);
                 return installed;
@@ -218,7 +232,7 @@ public final class NodeInstallPipeline {
     }
 
     private void extractZip(Path zipFile, Path destDir) throws IOException {
-        // The archive's own top-level directory, e.g. "node-v22.23.2-win-x64", built from the
+        // The archive's own top-level directory, e.g. "node-v22.23.4-win-x64", built from the
         // same literals archiveFileName() assembles, joined to the executable's relative path
         // with the forward slash the zip format mandates regardless of host OS.
         String expectedEntryName = "node-" + NODE_VERSION + "-" + target.platformName() + "-"
@@ -293,6 +307,7 @@ public final class NodeInstallPipeline {
         }
 
         Path targetPath = installedPath();
+        Files.createDirectories(targetPath.getParent());
         Files.copy(extractedNode, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
         // Set executable permission (important for Unix-like systems).
@@ -303,6 +318,35 @@ public final class NodeInstallPipeline {
         // Record the installed executable's digest so cachedNodePath() can re-check it.
         integrity.record(targetPath, bytes);
         return targetPath;
+    }
+
+    /**
+     * Best-effort removal of installs left by earlier versions, run after a successful install.
+     * Removes the legacy unversioned executable with its digest record, and every direct child
+     * directory of the data directory named like a Node.js version other than {@link #NODE_VERSION}.
+     * Symbolic links and every other entry are left alone. Never throws: a deletion that fails,
+     * for example because a running executable is locked, must not fail the install.
+     */
+    private void removeStaleInstallsQuietly() {
+        try {
+            Path legacy = dataDirectory.resolve(target.nodeExecutableName());
+            deleteIfExistsQuietly(NodeInstallIntegrity.sidecarFor(legacy));
+            deleteIfExistsQuietly(legacy);
+
+            List<Path> children;
+            try (Stream<Path> listing = Files.list(dataDirectory)) {
+                children = listing.collect(Collectors.toList());
+            }
+            for (Path child : children) {
+                String name = child.getFileName().toString();
+                if (Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS)
+                        && name.matches(VERSION_DIRECTORY_NAME) && !name.equals(NODE_VERSION)) {
+                    deleteRecursivelyQuietly(child);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            // Best-effort cleanup: nothing here may fail an install that already succeeded.
+        }
     }
 
     private static void deleteRecursivelyQuietly(Path root) {

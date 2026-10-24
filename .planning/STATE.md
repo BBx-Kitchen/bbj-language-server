@@ -1,20 +1,20 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v4.9
-milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05
 status: Awaiting next milestone
 stopped_at: Milestone v4.9 completed and archived
-last_updated: "2026-10-05T17:16:11.839Z"
-last_activity: 2026-10-05
+last_updated: "2026-10-23T16:38:46.270Z"
+last_activity: 2026-10-23
 last_activity_desc: Milestone v4.9 completed and archived
-state_head: f70af2af71091c0d27481e540a388506bccd3c9d
+state_head: 38d364497b2c57f5b177b9c0f43ba747109a7179
+milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05
+current_phase: "130.1"
 progress:
   total_phases: 8
   completed_phases: 8
   total_plans: 53
   completed_plans: 53
   percent: 100
-current_phase: 130.1
 ---
 
 # Project State: BBj Language Server
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v4.9 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-08 - Completed quick task 261008-ayg: Relink documents whose unresolved USE target file is indexed later
+Last activity: 2026-10-23 - Completed quick task 261023-mtv: IntelliJ: version-aware Node.js cache + pin v22.23.4 (#753)
 
 ### v4.9 milestone map
 
@@ -512,6 +512,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 | 261008-ayg | Relink documents whose unresolved USE target file is indexed later | 2026-10-08 | 6904ccac | complete | [261008-ayg-relink-documents-whose-unresolved-refere](./quick/261008-ayg-relink-documents-whose-unresolved-refere/) |
 | 261008-9ur | Default BBj working directory to the project root; LS resolves relative program paths like BBj (WD, then PREFIX) | 2026-10-08 | 8c56311d | complete | [261008-9ur-default-bbj-working-directory-to-the-pro](./quick/261008-9ur-default-bbj-working-directory-to-the-pro/) |
 | 261007-u09 | Validate open BBj documents under a PREFIX directory | 2026-10-07 | 200a8e2a | complete | [261007-u09-validate-open-bbj-documents-under-a-pref](./quick/261007-u09-validate-open-bbj-documents-under-a-pref/) |
+| 261023-mtv | IntelliJ: version-aware Node.js cache + pin v22.23.4 (#753) | 2026-10-23 | 38d36449 | — | [261023-mtv-intellij-version-aware-node-js-cache-pin](./quick/261023-mtv-intellij-version-aware-node-js-cache-pin/) |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README); the 2026-09-30 rows (incl. 260930-m99) under `.planning/milestones/v4.9-quick/`.
 

@@ -16,26 +16,26 @@ marker bytes.
 Built from a scratch directory containing:
 
 ```
-node-v22.23.2-win-x64/CHANGELOG.md   -> "Node.js v22.23.2 changelog (fixture)\n"
-node-v22.23.2-win-x64/node.exe       -> "fake-node-binary-windows\n"
+node-v22.23.4-win-x64/CHANGELOG.md   -> "Node.js v22.23.4 changelog (fixture)\n"
+node-v22.23.4-win-x64/node.exe       -> "fake-node-binary-windows\n"
 ```
 
 with the following commands (`scratch/` is a throwaway directory outside this repository):
 
 ```
-mkdir -p scratch/node-win/node-v22.23.2-win-x64
-printf 'Node.js v22.23.2 changelog (fixture)\n' > scratch/node-win/node-v22.23.2-win-x64/CHANGELOG.md
-printf 'fake-node-binary-windows\n' > scratch/node-win/node-v22.23.2-win-x64/node.exe
+mkdir -p scratch/node-win/node-v22.23.4-win-x64
+printf 'Node.js v22.23.4 changelog (fixture)\n' > scratch/node-win/node-v22.23.4-win-x64/CHANGELOG.md
+printf 'fake-node-binary-windows\n' > scratch/node-win/node-v22.23.4-win-x64/node.exe
 python3 -c "
 import zipfile
 with zipfile.ZipFile('scratch/fake-node-win.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-    z.write('scratch/node-win/node-v22.23.2-win-x64/CHANGELOG.md', arcname='node-v22.23.2-win-x64/CHANGELOG.md')
-    z.write('scratch/node-win/node-v22.23.2-win-x64/node.exe', arcname='node-v22.23.2-win-x64/node.exe')
+    z.write('scratch/node-win/node-v22.23.4-win-x64/CHANGELOG.md', arcname='node-v22.23.4-win-x64/CHANGELOG.md')
+    z.write('scratch/node-win/node-v22.23.4-win-x64/node.exe', arcname='node-v22.23.4-win-x64/node.exe')
 "
 sha256sum scratch/fake-node-win.zip
 ```
 
-SHA-256: `7886ad2638168e4b4a2823b4d8149090ef421a6a2a8da7e7a75cb42a9dc1a454`
+SHA-256: `6d5bafe4dbeddb0b7c797f3ea4252cd12f033568ef0cff3e83ad0aa46cc5e13d`
 
 ## fake-node-unix.tar.gz
 
@@ -45,21 +45,21 @@ Unix-branch fixture. One top-level directory so `--strip-components=1` yields `R
 Built from a scratch directory containing:
 
 ```
-node-v22.23.2-linux-x64/README.md    -> "Node.js v22.23.2 readme (fixture)\n"
-node-v22.23.2-linux-x64/bin/node     -> "fake-node-binary-unix\n"
+node-v22.23.4-linux-x64/README.md    -> "Node.js v22.23.4 readme (fixture)\n"
+node-v22.23.4-linux-x64/bin/node     -> "fake-node-binary-unix\n"
 ```
 
 with the following commands:
 
 ```
-mkdir -p scratch/node-unix/node-v22.23.2-linux-x64/bin
-printf 'Node.js v22.23.2 readme (fixture)\n' > scratch/node-unix/node-v22.23.2-linux-x64/README.md
-printf 'fake-node-binary-unix\n' > scratch/node-unix/node-v22.23.2-linux-x64/bin/node
-tar -czf scratch/fake-node-unix.tar.gz -C scratch/node-unix node-v22.23.2-linux-x64
+mkdir -p scratch/node-unix/node-v22.23.4-linux-x64/bin
+printf 'Node.js v22.23.4 readme (fixture)\n' > scratch/node-unix/node-v22.23.4-linux-x64/README.md
+printf 'fake-node-binary-unix\n' > scratch/node-unix/node-v22.23.4-linux-x64/bin/node
+tar -czf scratch/fake-node-unix.tar.gz -C scratch/node-unix node-v22.23.4-linux-x64
 sha256sum scratch/fake-node-unix.tar.gz
 ```
 
-SHA-256: `b907928f77ce903538200180fb376929fd2fa35b98ddb3bd17ca247c74e05f1e`
+SHA-256: `973819fe1c322ce3847641ea3c4537c4fc0a48382f6ac3fa168fbf209afb0818`
 
 ## fake-node-win-no-binary.zip
 
@@ -68,23 +68,23 @@ Windows-branch negative fixture: only the decoy `CHANGELOG.md` entry, no `node.e
 Built from a scratch directory containing:
 
 ```
-node-v22.23.2-win-x64/CHANGELOG.md   -> "Node.js v22.23.2 changelog (fixture)\n"
+node-v22.23.4-win-x64/CHANGELOG.md   -> "Node.js v22.23.4 changelog (fixture)\n"
 ```
 
 with the following commands:
 
 ```
-mkdir -p scratch/node-win-no-binary/node-v22.23.2-win-x64
-printf 'Node.js v22.23.2 changelog (fixture)\n' > scratch/node-win-no-binary/node-v22.23.2-win-x64/CHANGELOG.md
+mkdir -p scratch/node-win-no-binary/node-v22.23.4-win-x64
+printf 'Node.js v22.23.4 changelog (fixture)\n' > scratch/node-win-no-binary/node-v22.23.4-win-x64/CHANGELOG.md
 python3 -c "
 import zipfile
 with zipfile.ZipFile('scratch/fake-node-win-no-binary.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-    z.write('scratch/node-win-no-binary/node-v22.23.2-win-x64/CHANGELOG.md', arcname='node-v22.23.2-win-x64/CHANGELOG.md')
+    z.write('scratch/node-win-no-binary/node-v22.23.4-win-x64/CHANGELOG.md', arcname='node-v22.23.4-win-x64/CHANGELOG.md')
 "
 sha256sum scratch/fake-node-win-no-binary.zip
 ```
 
-SHA-256: `5350aad3b4373234603e54e8de4a5de4231ff9d2729dd0f8408a125e840027c7`
+SHA-256: `92913fdbfb724f681211555c5ec24482d05396387985044ad1a3f62cc70cc847`
 
 ## fake-node-unix-no-binary.tar.gz
 
@@ -93,19 +93,19 @@ Unix-branch negative fixture: one top-level directory with only `README.md`, no 
 Built from a scratch directory containing:
 
 ```
-node-v22.23.2-linux-x64/README.md    -> "Node.js v22.23.2 readme (fixture)\n"
+node-v22.23.4-linux-x64/README.md    -> "Node.js v22.23.4 readme (fixture)\n"
 ```
 
 with the following commands:
 
 ```
-mkdir -p scratch/node-unix-no-binary/node-v22.23.2-linux-x64
-printf 'Node.js v22.23.2 readme (fixture)\n' > scratch/node-unix-no-binary/node-v22.23.2-linux-x64/README.md
-tar -czf scratch/fake-node-unix-no-binary.tar.gz -C scratch/node-unix-no-binary node-v22.23.2-linux-x64
+mkdir -p scratch/node-unix-no-binary/node-v22.23.4-linux-x64
+printf 'Node.js v22.23.4 readme (fixture)\n' > scratch/node-unix-no-binary/node-v22.23.4-linux-x64/README.md
+tar -czf scratch/fake-node-unix-no-binary.tar.gz -C scratch/node-unix-no-binary node-v22.23.4-linux-x64
 sha256sum scratch/fake-node-unix-no-binary.tar.gz
 ```
 
-SHA-256: `8eaf190d87eac28ae2253ce1af15ea560e50a3b504e767521398135a8d15dc76`
+SHA-256: `e76aa05b2bbe85910e9c1aee35a8c451b1d99b416a59cce29716976cafd8bfe6`
 
 ## fake-node-win-decoy.zip
 
@@ -118,22 +118,22 @@ Built from a scratch directory containing:
 
 ```
 other/decoy-node.exe                  -> "decoy-not-the-real-binary\n"
-node-v22.23.2-win-x64/node.exe        -> "fake-node-binary-windows\n"
+node-v22.23.4-win-x64/node.exe        -> "fake-node-binary-windows\n"
 ```
 
 with the following commands (`scratch/` is a throwaway directory outside this repository):
 
 ```
-mkdir -p scratch/node-win-decoy/other scratch/node-win-decoy/node-v22.23.2-win-x64
+mkdir -p scratch/node-win-decoy/other scratch/node-win-decoy/node-v22.23.4-win-x64
 printf 'decoy-not-the-real-binary\n' > scratch/node-win-decoy/other/decoy-node.exe
-printf 'fake-node-binary-windows\n' > scratch/node-win-decoy/node-v22.23.2-win-x64/node.exe
+printf 'fake-node-binary-windows\n' > scratch/node-win-decoy/node-v22.23.4-win-x64/node.exe
 python3 -c "
 import zipfile
 with zipfile.ZipFile('scratch/fake-node-win-decoy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     z.write('scratch/node-win-decoy/other/decoy-node.exe', arcname='other/decoy-node.exe')
-    z.write('scratch/node-win-decoy/node-v22.23.2-win-x64/node.exe', arcname='node-v22.23.2-win-x64/node.exe')
+    z.write('scratch/node-win-decoy/node-v22.23.4-win-x64/node.exe', arcname='node-v22.23.4-win-x64/node.exe')
 "
 sha256sum scratch/fake-node-win-decoy.zip
 ```
 
-SHA-256: `f7f1bd8402a99c7631bbfe3c7ca892a3c8929d02f986068ad430525b9b102663`
+SHA-256: `484b4040e79d99e949ddad08e9235f7efcabd17d4c54d9dcfb09f160dd728271`
