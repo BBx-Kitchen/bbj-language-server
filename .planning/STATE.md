@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v4.9
 status: Awaiting next milestone
 stopped_at: Milestone v4.9 completed and archived
-last_updated: "2026-10-23T16:38:46.270Z"
+last_updated: "2026-11-20T15:12:43.229Z"
 last_activity: 2026-10-23
 last_activity_desc: Milestone v4.9 completed and archived
-state_head: 38d364497b2c57f5b177b9c0f43ba747109a7179
+state_head: 485247a68c0b177636d5937d5caf633c58b655f2
 milestone_name: bbj-ls DENUM & Format Migration (Phases 124-130.1) — SHIPPED 2026-10-05
 current_phase: "130.1"
 progress:
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v4.9 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-23 - Completed quick task 261023-mtv: IntelliJ: version-aware Node.js cache + pin v22.23.4 (#753)
+Last activity: 2026-11-20 - Completed quick task 261120-ko9: inlay hints wait for the rebuild instead of answering from a stale parse (#761)
 
 ### v4.9 milestone map
 
@@ -513,6 +513,7 @@ Closed in v4.6: lost-connection crash detection and the stale previous-status lo
 | 261008-9ur | Default BBj working directory to the project root; LS resolves relative program paths like BBj (WD, then PREFIX) | 2026-10-08 | 8c56311d | complete | [261008-9ur-default-bbj-working-directory-to-the-pro](./quick/261008-9ur-default-bbj-working-directory-to-the-pro/) |
 | 261007-u09 | Validate open BBj documents under a PREFIX directory | 2026-10-07 | 200a8e2a | complete | [261007-u09-validate-open-bbj-documents-under-a-pref](./quick/261007-u09-validate-open-bbj-documents-under-a-pref/) |
 | 261023-mtv | IntelliJ: version-aware Node.js cache + pin v22.23.4 (#753) | 2026-10-23 | 38d36449 | — | [261023-mtv-intellij-version-aware-node-js-cache-pin](./quick/261023-mtv-intellij-version-aware-node-js-cache-pin/) |
+| 261120-ko9 | Inlay hints wait for the rebuild instead of answering from a stale parse (#761) | 2026-11-20 | 485247a6 | — | [261120-ko9-fix-761-stale-inlay-hint-positions](./quick/261120-ko9-fix-761-stale-inlay-hint-positions/) |
 
 Rows through 2026-09-17 are archived with their directories under `.planning/milestones/v4.4-quick/` (see its README); the 2026-09-30 rows (incl. 260930-m99) under `.planning/milestones/v4.9-quick/`.
 
