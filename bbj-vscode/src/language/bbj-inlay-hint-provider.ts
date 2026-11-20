@@ -1,6 +1,6 @@
-import { AstNode } from 'langium';
+import { AstNode, DocumentState, LangiumDocument, LangiumSharedCoreServices, OperationCancelled, delayNextTick } from 'langium';
 import { AbstractInlayHintProvider, InlayHintAcceptor } from 'langium/lsp';
-import { InlayHintKind } from 'vscode-languageserver';
+import { CancellationToken, InlayHint, InlayHintKind, InlayHintParams, LSPErrorCodes, ResponseError } from 'vscode-languageserver';
 import type { BBjServices } from './bbj-module.js';
 import { isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
 import { ArgumentType, argumentTypeOf, findBestOverload } from './bbj-overload-selector.js';
@@ -28,19 +28,92 @@ export function getParameterHintMode(): ParameterHintMode {
  */
 const SYNTHETIC_NAME = /^(arg|param|p)\d+$/i;
 
+/** How many times a request waits for the workspace to catch up with the client's text before it gives up. */
+const MAX_FRESHNESS_ATTEMPTS = 3;
+
 /**
  * Parameter name inlay hints at call sites (issue #108). Resolves the callee the same
  * way signature help does: through the reference's FunctionNodeDescription, which
  * normalizes BBj class methods, DEF FN functions, builtin library functions and Java
  * methods (with the Javadoc-backed realName fallback) into one parameter list.
+ *
+ * A didChange only queues the rebuild behind the workspace lock, so for a short while the
+ * built document still carries the syntax tree of the previous text. Langium answers an inlay
+ * request from that tree at once, and the client then maps the old line and column onto its
+ * current text (issue #761: a hint inside a freshly typed REM line). This provider therefore
+ * checks that the tree was parsed from the text the client holds, waits for the queued rebuild
+ * when it was not, and fails with ContentModified, which clients ignore silently, when the
+ * rebuild does not arrive within a bounded number of waits.
  */
 export class BBjInlayHintProvider extends AbstractInlayHintProvider {
 
     protected readonly inferer: TypeInferer;
+    protected readonly shared: LangiumSharedCoreServices;
 
     constructor(services: BBjServices) {
         super();
         this.inferer = services.types.Inferer;
+        this.shared = services.shared;
+    }
+
+    override async getInlayHints(document: LangiumDocument, params: InlayHintParams, cancelToken: CancellationToken = CancellationToken.None): Promise<InlayHint[] | undefined> {
+        if (this.isParseCurrent(document)) {
+            return super.getInlayHints(document, params, cancelToken);
+        }
+        for (let attempt = 0; attempt < MAX_FRESHNESS_ATTEMPTS; attempt++) {
+            await delayNextTick();
+            await this.waitForQueuedWrites(cancelToken);
+            // The rebuild may have replaced the document, so look it up again.
+            const refreshed = this.shared.workspace.LangiumDocuments.getDocument(document.uri);
+            if (refreshed && refreshed.state >= DocumentState.IndexedReferences && this.isParseCurrent(refreshed)) {
+                return super.getInlayHints(refreshed, params, cancelToken);
+            }
+        }
+        throw new ResponseError(LSPErrorCodes.ContentModified, 'The server has not yet built the text the client holds.');
+    }
+
+    /**
+     * True when the syntax tree was parsed from the text the client currently holds. The
+     * versions of the two text documents cannot tell: the built document keeps a reference to
+     * the very instance held by the text document manager, and an edit mutates that instance
+     * in place through TextDocument.update, so both always report the same version. The text
+     * the tree was parsed from is the only reliable witness.
+     */
+    protected isParseCurrent(document: LangiumDocument): boolean {
+        const live = this.shared.workspace.TextDocuments?.get(document.uri);
+        if (!live) {
+            return true;
+        }
+        const parsedText = document.parseResult.value.$cstNode?.root.fullText;
+        return parsedText === undefined || parsedText === live.getText();
+    }
+
+    /**
+     * Resolves once every write queued before this call has finished (reads only run when the
+     * write queue is empty). The read does nothing itself, so it is purely a barrier. It takes
+     * no cancellation token, so the wait is raced against the request's token; an abandoned
+     * read entry resolves harmlessly later.
+     */
+    protected waitForQueuedWrites(cancelToken: CancellationToken): Promise<void> {
+        if (cancelToken.isCancellationRequested) {
+            return Promise.reject(OperationCancelled);
+        }
+        return new Promise<void>((resolve, reject) => {
+            const listener = cancelToken.onCancellationRequested(() => {
+                listener.dispose();
+                reject(OperationCancelled);
+            });
+            this.shared.workspace.WorkspaceLock.read(() => undefined).then(
+                () => {
+                    listener.dispose();
+                    resolve();
+                },
+                error => {
+                    listener.dispose();
+                    reject(error);
+                }
+            );
+        });
     }
 
     override computeInlayHint(node: AstNode, acceptor: InlayHintAcceptor): void {
