@@ -1,7 +1,9 @@
-import { AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
+import { AstUtils, Deferred, EmptyFileSystem, LangiumDocument, OperationCancelled, delayNextTick } from 'langium';
 import { parseHelper } from 'langium/test';
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { InlayHint, Range } from 'vscode-languageserver';
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { CancellationToken, CancellationTokenSource, InlayHint, LSPErrorCodes, Range, ResponseError } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { isLiteralArgument, isSelfDescribing, matchesParameterName, setParameterHintMode } from '../src/language/bbj-inlay-hint-provider.js';
 import { Model, isParameterCall } from '../src/language/generated/ast.js';
 import { createBBjTestServices } from './bbj-test-module.js';
@@ -221,6 +223,167 @@ describe('Inlay hints', () => {
             X = FNTWICE(3,4)
         `);
         expect(hints.map(h => h.label)).toEqual(['N:']);
+    });
+
+    describe('document edited while its rebuild is still queued (#761)', () => {
+
+        const SOURCE = `
+            class public Person
+                method public resize(BBjNumber width, BBjNumber height)
+                methodend
+            classend
+
+            declare Person p!
+            p!.resize(100, 200)
+        `;
+        const REM_LINE = '            REM Instead, after this we are instructed to call resize\n';
+
+        const lock = services.shared.workspace.WorkspaceLock;
+        const builder = services.shared.workspace.DocumentBuilder;
+        const textDocuments = services.shared.workspace.TextDocuments;
+        const openedUris: string[] = [];
+        let gate: Deferred<void> | undefined;
+
+        beforeEach(() => {
+            setCompilerTrigger('off');
+        });
+
+        afterEach(async () => {
+            gate?.resolve();
+            gate = undefined;
+            await lock.read(() => undefined);
+            for (const uri of openedUris.splice(0)) {
+                textDocuments.delete(uri);
+            }
+            setCompilerTrigger('debounced');
+        });
+
+        /** Mirrors a client didOpen: the document is built from the live text document held by TextDocuments. */
+        async function openDocument(content: string): Promise<{ document: LangiumDocument, live: TextDocument }> {
+            const document = await parse(content);
+            expect(document.parseResult.lexerErrors).toHaveLength(0);
+            expect(document.parseResult.parserErrors).toHaveLength(0);
+            const uri = document.uri.toString();
+            const live = TextDocument.create(uri, 'bbj', 1, content);
+            textDocuments.set(live);
+            openedUris.push(uri);
+            await lock.write(token => builder.update([document.uri], [], token));
+            expect(document.textDocument).toBe(live);
+            return { document, live };
+        }
+
+        /** Mirrors a client didChange: the live text document is mutated in place, no rebuild yet. */
+        function insertRemAboveCall(live: TextDocument): void {
+            const line = live.positionAt(live.getText().indexOf('p!.resize')).line;
+            TextDocument.update(live, [{ range: Range.create(line, 0, line, 0), text: REM_LINE }], 2);
+        }
+
+        async function requestHints(document: LangiumDocument, live: TextDocument, token?: CancellationToken) {
+            return services.BBj.lsp.InlayHintProvider!.getInlayHints(document, {
+                textDocument: { uri: document.uri.toString() },
+                range: Range.create(0, 0, live.lineCount, 0)
+            }, token);
+        }
+
+        test('waits for the queued rebuild and returns positions in the current text', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            const oldPosition = positionOf(document, '100');
+
+            insertRemAboveCall(live);
+
+            // The parsed document shares the live text document and its version, so only the
+            // text the syntax tree was parsed from can tell that the parse is out of date.
+            expect(document.textDocument).toBe(live);
+            expect(document.textDocument.version).toBe(live.version);
+            expect(document.parseResult.value.$cstNode?.root.fullText).not.toEqual(live.getText());
+            const oldLine = live.getText().split('\n')[oldPosition.line];
+            expect(oldLine.trim().startsWith('REM')).toBe(true);
+
+            const release = new Deferred<void>();
+            gate = release;
+            const rebuild = lock.write(async token => {
+                await release.promise;
+                await builder.update([document.uri], [], token);
+            });
+
+            let settled = false;
+            const request = requestHints(document, live).then(result => {
+                settled = true;
+                return result;
+            });
+            for (let i = 0; i < 5; i++) {
+                await delayNextTick();
+            }
+            expect(settled).toBe(false);
+
+            release.resolve();
+            const hints = await request ?? [];
+            await rebuild;
+
+            expect(hints.map(h => h.label)).toEqual(['width:', 'height:']);
+            expect(hints[0].position).toEqual(positionOf(document, '100'));
+            expect(hints[1].position).toEqual(positionOf(document, '200'));
+            expect(hints.map(h => h.position)).not.toContainEqual(oldPosition);
+        });
+
+        test('answers at once when the parse matches the live text, whatever the version says', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            TextDocument.update(live, [{ text: live.getText() }], 2);
+            expect(document.textDocument.version).toBe(2);
+
+            const release = new Deferred<void>();
+            gate = release;
+            const held = lock.write(async () => {
+                await release.promise;
+            });
+            try {
+                const hints = await requestHints(document, live) ?? [];
+                expect(hints.map(h => h.label)).toEqual(['width:', 'height:']);
+                expect(hints[0].position).toEqual(positionOf(document, '100'));
+                expect(hints[1].position).toEqual(positionOf(document, '200'));
+            } finally {
+                release.resolve();
+                await held;
+            }
+        });
+
+        test('gives up with ContentModified when the rebuild never arrives', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            insertRemAboveCall(live);
+
+            const error = await requestHints(document, live).then(
+                () => undefined,
+                (e: unknown) => e
+            );
+            expect(error).toBeInstanceOf(ResponseError);
+            expect((error as ResponseError).code).toBe(LSPErrorCodes.ContentModified);
+        });
+
+        test('a cancelled request ends promptly and leaves the workspace lock usable', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            insertRemAboveCall(live);
+
+            const release = new Deferred<void>();
+            gate = release;
+            const rebuild = lock.write(async token => {
+                await release.promise;
+                await builder.update([document.uri], [], token);
+            });
+            const source = new CancellationTokenSource();
+            const outcome = requestHints(document, live, source.token).then(
+                () => undefined,
+                (e: unknown) => e
+            );
+            await delayNextTick();
+            await delayNextTick();
+            source.cancel();
+
+            expect(await outcome).toBe(OperationCancelled);
+
+            release.resolve();
+            await rebuild;
+            await lock.read(() => undefined);
+        });
     });
 });
 
