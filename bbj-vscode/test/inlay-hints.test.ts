@@ -1,7 +1,7 @@
-import { AstUtils, Deferred, EmptyFileSystem, LangiumDocument, delayNextTick } from 'langium';
+import { AstUtils, Deferred, EmptyFileSystem, LangiumDocument, OperationCancelled, delayNextTick } from 'langium';
 import { parseHelper } from 'langium/test';
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { InlayHint, Range } from 'vscode-languageserver';
+import { CancellationToken, CancellationTokenSource, InlayHint, LSPErrorCodes, Range, ResponseError } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { setCompilerTrigger } from '../src/language/bbj-document-validator.js';
 import { isLiteralArgument, isSelfDescribing, matchesParameterName, setParameterHintMode } from '../src/language/bbj-inlay-hint-provider.js';
@@ -278,11 +278,11 @@ describe('Inlay hints', () => {
             TextDocument.update(live, [{ range: Range.create(line, 0, line, 0), text: REM_LINE }], 2);
         }
 
-        function requestHints(document: LangiumDocument, live: TextDocument) {
+        async function requestHints(document: LangiumDocument, live: TextDocument, token?: CancellationToken) {
             return services.BBj.lsp.InlayHintProvider!.getInlayHints(document, {
                 textDocument: { uri: document.uri.toString() },
                 range: Range.create(0, 0, live.lineCount, 0)
-            });
+            }, token);
         }
 
         test('waits for the queued rebuild and returns positions in the current text', async () => {
@@ -324,6 +324,65 @@ describe('Inlay hints', () => {
             expect(hints[0].position).toEqual(positionOf(document, '100'));
             expect(hints[1].position).toEqual(positionOf(document, '200'));
             expect(hints.map(h => h.position)).not.toContainEqual(oldPosition);
+        });
+
+        test('answers at once when the parse matches the live text, whatever the version says', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            TextDocument.update(live, [{ text: live.getText() }], 2);
+            expect(document.textDocument.version).toBe(2);
+
+            const release = new Deferred<void>();
+            gate = release;
+            const held = lock.write(async () => {
+                await release.promise;
+            });
+            try {
+                const hints = await requestHints(document, live) ?? [];
+                expect(hints.map(h => h.label)).toEqual(['width:', 'height:']);
+                expect(hints[0].position).toEqual(positionOf(document, '100'));
+                expect(hints[1].position).toEqual(positionOf(document, '200'));
+            } finally {
+                release.resolve();
+                await held;
+            }
+        });
+
+        test('gives up with ContentModified when the rebuild never arrives', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            insertRemAboveCall(live);
+
+            const error = await requestHints(document, live).then(
+                () => undefined,
+                (e: unknown) => e
+            );
+            expect(error).toBeInstanceOf(ResponseError);
+            expect((error as ResponseError).code).toBe(LSPErrorCodes.ContentModified);
+        });
+
+        test('a cancelled request ends promptly and leaves the workspace lock usable', async () => {
+            const { document, live } = await openDocument(SOURCE);
+            insertRemAboveCall(live);
+
+            const release = new Deferred<void>();
+            gate = release;
+            const rebuild = lock.write(async token => {
+                await release.promise;
+                await builder.update([document.uri], [], token);
+            });
+            const source = new CancellationTokenSource();
+            const outcome = requestHints(document, live, source.token).then(
+                () => undefined,
+                (e: unknown) => e
+            );
+            await delayNextTick();
+            await delayNextTick();
+            source.cancel();
+
+            expect(await outcome).toBe(OperationCancelled);
+
+            release.resolve();
+            await rebuild;
+            await lock.read(() => undefined);
         });
     });
 });
